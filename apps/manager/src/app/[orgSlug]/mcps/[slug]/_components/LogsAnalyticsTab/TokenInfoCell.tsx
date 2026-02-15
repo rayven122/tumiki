@@ -1,9 +1,6 @@
 import React from "react";
 import { Shrink } from "lucide-react";
-import {
-  formatTokenCount,
-  calculateTokenReductionRate,
-} from "@/utils/formatters";
+import { formatTokenCount, calculateTokenReductionRate } from "@tumiki/shared";
 
 type TokenInfoCellProps = {
   inputTokens: number | null;

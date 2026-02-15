@@ -5,7 +5,7 @@ import { useChat, type UIMessage } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useSession } from "next-auth/react";
 import type { AgentId } from "@/schema/ids";
-import { getProxyServerUrl } from "@/utils/url";
+import { getProxyServerUrl } from "@/lib/url";
 import { generateCUID, fetchWithErrorHandlers } from "@/lib/utils";
 
 type UseAgentExecutionParams = {

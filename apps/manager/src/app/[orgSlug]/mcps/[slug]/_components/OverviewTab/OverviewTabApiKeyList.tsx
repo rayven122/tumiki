@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Plus } from "lucide-react";
-import { toast } from "@/utils/client/toast";
+import { toast } from "@/lib/client/toast";
 import { ApiKeyItem } from "./OverviewTabApiKeyItem";
 import { GenerateApiKeyDialog } from "./OverviewTabGenerateApiKeyDialog";
 import { DeactivateApiKeyDialog } from "./OverviewTabDeactivateApiKeyDialog";

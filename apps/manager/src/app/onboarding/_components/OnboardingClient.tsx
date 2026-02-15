@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { OrganizationCreateForm } from "./OrganizationCreateForm";
-import { toast } from "@/utils/client/toast";
+import { toast } from "@/lib/client/toast";
 import { SuccessAnimation } from "@/app/_components/ui/SuccessAnimation";
 import type { Session } from "next-auth";
 import { getSessionInfo } from "~/lib/auth/session-utils";

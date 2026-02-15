@@ -18,7 +18,7 @@ import {
   calculateExpirationStatus,
   getDetailedExpirationText,
   type ExpirationStatus,
-} from "@/utils/shared/expirationHelpers";
+} from "@/lib/shared/expirationHelpers";
 import {
   AlertCircle,
   Loader2,

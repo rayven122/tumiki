@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { api } from "@/trpc/react";
-import { toast } from "@/utils/client/toast";
+import { toast } from "@/lib/client/toast";
 import { normalizeServerName } from "@tumiki/shared/utils/normalizeServerName";
 
 import { Button } from "@/components/ui/button";

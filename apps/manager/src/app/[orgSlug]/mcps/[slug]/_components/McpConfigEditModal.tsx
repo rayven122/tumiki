@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Loader2, ChevronDown, Check } from "lucide-react";
 import { api } from "@/trpc/react";
-import { toast } from "@/utils/client/toast";
+import { toast } from "@/lib/client/toast";
 import { cn } from "@/lib/utils";
 import type { McpServerId } from "@/schema/ids";
 import { McpServerIcon } from "../../_components/McpServerIcon";

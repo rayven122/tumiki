@@ -16,7 +16,7 @@ import {
   countEnabledTools,
   countTotalToolsForSelectedServers,
   getServerIconPath,
-} from "@/utils/mcpServerUtils";
+} from "@/features/mcps/utils/mcpServerUtils";
 
 type OfficialServer = RouterOutputs["userMcpServer"]["findMcpServers"][number];
 

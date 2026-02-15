@@ -1,6 +1,6 @@
 import { Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getExpirationText } from "@/utils/shared/expirationHelpers";
+import { getExpirationText } from "@/lib/shared/expirationHelpers";
 
 type ApiKeyStatus = {
   isExpired: boolean;

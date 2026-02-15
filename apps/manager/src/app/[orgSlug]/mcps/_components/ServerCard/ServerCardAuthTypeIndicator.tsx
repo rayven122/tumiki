@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import {
   calculateExpirationStatus,
   getDetailedExpirationText,
-} from "@/utils/shared/expirationHelpers";
+} from "@/lib/shared/expirationHelpers";
 import type { AuthType } from "@tumiki/db/prisma";
 import {
   AlertCircle,

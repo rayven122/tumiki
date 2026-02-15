@@ -11,7 +11,7 @@ import { useOrganizationContext } from "@/hooks/useOrganizationContext";
 import { Building2, User, Plus, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { OrganizationIdSchema } from "@/schema/ids";
-import { toast } from "@/utils/client/toast";
+import { toast } from "@/lib/client/toast";
 
 export const OrganizationSwitcher = () => {
   const {

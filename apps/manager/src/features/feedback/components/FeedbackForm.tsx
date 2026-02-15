@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { api } from "@/trpc/react";
 import { Loader2 } from "lucide-react";
-import { toast } from "@/utils/client/toast";
+import { toast } from "@/lib/client/toast";
 import type { CreateFeedbackOutput } from "../api/schemas";
 
 type FeedbackType = "INQUIRY" | "FEATURE_REQUEST";

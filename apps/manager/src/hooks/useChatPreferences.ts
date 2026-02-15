@@ -2,7 +2,7 @@
 
 import { useAtom } from "jotai";
 import { useCallback } from "react";
-import { chatPreferencesAtom } from "@/atoms/chatPreferencesAtoms";
+import { chatPreferencesAtom } from "@/store/chatPreferences";
 
 type UseChatPreferencesProps = {
   organizationId: string;

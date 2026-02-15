@@ -2,9 +2,9 @@
 
 import { Button } from "@/components/ui/button";
 import { Copy, Link2 } from "lucide-react";
-import { copyToClipboard } from "@/utils/client/copyToClipboard";
-import { toast } from "@/utils/client/toast";
-import { makeHttpProxyServerUrl } from "@/utils/url";
+import { copyToClipboard } from "@/lib/client/copyToClipboard";
+import { toast } from "@/lib/client/toast";
+import { makeHttpProxyServerUrl } from "@/lib/url";
 
 type OAuthEndpointUrlProps = {
   userMcpServerSlug: string;

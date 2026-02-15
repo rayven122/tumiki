@@ -7,7 +7,7 @@
  * @see https://ai-sdk.dev/docs/ai-sdk-core/mcp-tools
  */
 import { jsonSchema, type Tool } from "ai";
-import { makeHttpProxyServerUrl } from "~/utils/url";
+import { makeHttpProxyServerUrl } from "~/lib/url";
 import { db } from "@tumiki/db/server";
 import { DYNAMIC_SEARCH_META_TOOLS } from "./dynamic-search-meta-tools";
 

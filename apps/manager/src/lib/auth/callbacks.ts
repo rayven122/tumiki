@@ -6,7 +6,7 @@ import type { KeycloakJWTPayload, KeycloakTumikiClaims } from "./types";
 import { db } from "@tumiki/db/server";
 // 循環依存を回避: trpc.ts → ~/auth → callbacks.ts → @/features/user → userRouter → trpc.ts
 import { getTumikiClaims } from "@/features/user/api/getTumikiClaims";
-import { getKeycloakEnv } from "~/utils/env";
+import { getKeycloakEnv } from "~/lib/env";
 import { decodeJwt } from "jose";
 
 /**

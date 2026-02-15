@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { ICON_COLOR_PALETTE, type IconColorName } from "@/utils/iconColor";
+import { ICON_COLOR_PALETTE, type IconColorName } from "@/lib/iconColor";
 
 type IconColorPickerProps = {
   selectedColor: IconColorName;

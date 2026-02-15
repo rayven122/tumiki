@@ -13,11 +13,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Bot, Clock, Activity, CheckCircle, XCircle, Eye } from "lucide-react";
+import { Clock, Activity, CheckCircle, XCircle, Eye } from "lucide-react";
 import type { RouterOutputs } from "@/trpc/react";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
-import { McpServerIcon } from "../../mcps/_components/McpServerIcon";
+import { EntityIcon } from "@/components/ui/EntityIcon";
 import { ExecutionHistoryModal } from "../../agents/[agentSlug]/_components/ExecutionHistoryModal";
 
 type Execution = RouterOutputs["dashboard"]["getRecentExecutions"][number];
@@ -164,17 +164,12 @@ export const RecentExecutions = ({
                         href={`/${orgSlug}/agents/${execution.agentSlug}`}
                         className="flex items-center gap-2 hover:underline"
                       >
-                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-purple-100">
-                          {execution.agentIconPath ? (
-                            <McpServerIcon
-                              iconPath={execution.agentIconPath}
-                              alt={execution.agentName}
-                              size={16}
-                            />
-                          ) : (
-                            <Bot className="h-3 w-3 text-purple-600" />
-                          )}
-                        </div>
+                        <EntityIcon
+                          iconPath={execution.agentIconPath}
+                          type="agent"
+                          size="sm"
+                          alt={execution.agentName}
+                        />
                         <span className="font-medium">
                           {execution.agentName}
                         </span>

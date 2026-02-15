@@ -5,7 +5,7 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { FaviconImage } from "./FaviconImage";
 import { getIconComponent } from "@/app/[orgSlug]/mcps/_components/McpIconPicker";
-import { parseIconPath, getIconColorClass } from "@/utils/iconColor";
+import { parseIconPath, getIconColorClass } from "@/lib/iconColor";
 
 /**
  * サイズバリアント

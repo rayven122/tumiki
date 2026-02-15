@@ -9,7 +9,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { type VRM, VRMLoaderPlugin, VRMUtils } from "@pixiv/three-vrm";
-import { VRM_PATH, checkVrmExists } from "@/utils/coharu";
+import { VRM_PATH, checkVrmExists } from "@/features/avatar/utils";
 
 type VRMLoaderResult = {
   vrm: VRM | null;

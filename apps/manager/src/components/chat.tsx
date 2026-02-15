@@ -31,7 +31,7 @@ import type { SessionData } from "~/auth";
 import { useDataStream } from "./data-stream-provider";
 import { CoharuProvider, useCoharuContext } from "@/features/avatar/hooks";
 import { useChatPreferences } from "@/hooks/useChatPreferences";
-import { getProxyServerUrl } from "@/utils/url";
+import { getProxyServerUrl } from "@/lib/url";
 
 // CoharuViewer を動的インポート（Three.js のバンドルサイズ最適化）
 const CoharuViewer = lazy(() =>

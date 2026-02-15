@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { McpServerIdSchema } from "@/schema/ids";
-import { generateApiKey as generateTumikiApiKey } from "@/utils/server/apiKey";
+import { generateApiKey as generateTumikiApiKey } from "@/lib/server/apiKey";
 import { createAdminNotifications } from "@/features/notification";
 
 export const generateApiKeyInputSchema = z.object({

@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/trpc/react";
-import { toast } from "@/utils/client/toast";
+import { toast } from "@/lib/client/toast";
 import { Loader2, AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { UserMcpServerDetail } from "./types";

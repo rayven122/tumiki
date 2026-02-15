@@ -1,7 +1,11 @@
 import type { UIMessage } from "ai";
 import { z } from "zod";
-import type { ArtifactKind } from "@/components/artifact";
 import type { Suggestion } from "@tumiki/db/prisma";
+
+/**
+ * アーティファクトの種類
+ */
+export type ArtifactKind = "text" | "code" | "image" | "sheet";
 
 export type DataPart = { type: "append-message"; message: string };
 
