@@ -5,7 +5,11 @@ import {
   alphanumericWithHyphenUnderscoreSchema,
 } from "@/schema/validation";
 import { AgentIdSchema, McpServerIdSchema } from "@/schema/ids";
-import { McpServerVisibilitySchema, AgentSchema } from "@tumiki/db/zod";
+import {
+  McpServerVisibilitySchema,
+  AgentSchema,
+  NotificationPrioritySchema,
+} from "@tumiki/db/zod";
 import { createAgent } from "./create";
 import { updateAgent } from "./update";
 import { deleteAgent } from "./delete";
@@ -28,6 +32,11 @@ export const CreateAgentInputSchema = z.object({
   modelId: z.string().optional(),
   visibility: McpServerVisibilitySchema.default("PRIVATE"),
   mcpServerIds: z.array(McpServerIdSchema).optional(),
+  // Slack通知設定（EE機能）
+  enableSlackNotification: z.boolean().optional(),
+  slackNotificationChannelId: z.string().optional(),
+  notificationPriority: NotificationPrioritySchema.optional(),
+  notifyOnlyOnFailure: z.boolean().optional(),
 });
 
 // エージェント作成の出力スキーマ
@@ -47,6 +56,11 @@ export const UpdateAgentInputSchema = z.object({
   modelId: z.string().nullable().optional(),
   visibility: McpServerVisibilitySchema.optional(),
   mcpServerIds: z.array(McpServerIdSchema).optional(),
+  // Slack通知設定（EE機能）
+  enableSlackNotification: z.boolean().optional(),
+  slackNotificationChannelId: z.string().nullable().optional(),
+  notificationPriority: NotificationPrioritySchema.optional(),
+  notifyOnlyOnFailure: z.boolean().optional(),
 });
 
 // エージェント更新の出力スキーマ
@@ -164,6 +178,11 @@ export const FindAllAgentsOutputSchema = z.array(
     createdById: true,
     createdAt: true,
     updatedAt: true,
+    // Slack通知設定（EE機能）
+    enableSlackNotification: true,
+    slackNotificationChannelId: true,
+    notificationPriority: true,
+    notifyOnlyOnFailure: true,
   }).extend({
     createdBy: CreatedBySchema,
     mcpServers: z.array(McpServerInfoSchema),

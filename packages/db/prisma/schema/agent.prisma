@@ -36,6 +36,15 @@ model Agent {
   /// 推定実行時間（ミリ秒）- 初回は30秒、実行完了後に更新
   estimatedDurationMs Int @default(30000)
 
+  /// Slack通知を有効化（EE機能）
+  enableSlackNotification    Boolean @default(false)
+  /// 通知先SlackチャンネルID（エージェントごとに設定）
+  slackNotificationChannelId String?
+  /// 通知優先度
+  notificationPriority       NotificationPriority @default(NORMAL)
+  /// 失敗時のみ通知
+  notifyOnlyOnFailure        Boolean @default(false)
+
   /// 組織ID
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)

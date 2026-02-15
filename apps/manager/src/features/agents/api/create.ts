@@ -55,6 +55,11 @@ export const createAgent = async (
             connect: input.mcpServerIds.map((id) => ({ id })),
           }
         : undefined,
+      // Slack通知設定（EE機能）
+      enableSlackNotification: input.enableSlackNotification,
+      slackNotificationChannelId: input.slackNotificationChannelId,
+      notificationPriority: input.notificationPriority,
+      notifyOnlyOnFailure: input.notifyOnlyOnFailure,
     },
     select: {
       id: true,

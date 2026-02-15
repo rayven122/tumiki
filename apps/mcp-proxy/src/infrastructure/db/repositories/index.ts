@@ -35,9 +35,13 @@ export { getUserIdFromKeycloakId, getUserIdByEmail } from "./userRepository.js";
 export {
   findAgentForExecution,
   updateAgentEstimatedDuration,
+  getAgentNotificationConfig,
 } from "./agentRepository.js";
 
-export type { AgentForExecution } from "./agentRepository.js";
+export type {
+  AgentForExecution,
+  AgentNotificationConfig,
+} from "./agentRepository.js";
 
 // エージェント実行ログ関連
 export {

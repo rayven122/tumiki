@@ -22,6 +22,7 @@ import { toError } from "../../../../shared/errors/toError.js";
 import { logError, logInfo } from "../../../../shared/logger/index.js";
 import { parseIntWithDefault } from "../../../../shared/utils/parseIntWithDefault.js";
 import { getChatMcpTools } from "../../../chat/chatMcpTools.js";
+import { notifyAgentExecution } from "../../../notification/index.js";
 import type {
   ExecuteAgentRequest,
   ExecuteAgentResult,
@@ -247,6 +248,19 @@ export const executeAgentCommand = async (
       });
     }
 
+    // Slack通知を送信（EE機能、CE版では何もしない）
+    // 使用したツール名を取得
+    const usedToolNames = Object.keys(mcpTools);
+    await notifyAgentExecution({
+      agentId: request.agentId,
+      agentName: agent.name,
+      organizationId: agent.organizationId,
+      success: true,
+      durationMs,
+      toolNames: usedToolNames.length > 0 ? usedToolNames : undefined,
+      chatId: chatId ?? undefined,
+    });
+
     return {
       executionId,
       success: true,
@@ -290,6 +304,18 @@ export const executeAgentCommand = async (
           durationMs,
         });
       }
+    }
+
+    // Slack通知を送信（EE機能、CE版では何もしない）
+    if (agentInfo) {
+      await notifyAgentExecution({
+        agentId: request.agentId,
+        agentName: agentInfo.name,
+        organizationId: agentInfo.organizationId,
+        success: false,
+        durationMs,
+        errorMessage,
+      });
     }
 
     return {
