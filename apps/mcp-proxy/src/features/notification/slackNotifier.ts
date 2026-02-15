@@ -7,15 +7,15 @@
 import {
   sendSlackBotMessage,
   makeAgentExecutionSlackMessage,
+  isSlackApiError,
 } from "@tumiki/slack";
-import { logError, logInfo } from "../../shared/logger/index.js";
+import { logError, logInfo, logWarn } from "../../shared/logger/index.js";
 import { toError } from "../../shared/errors/toError.js";
 import {
   getAgentNotificationConfig,
   getOrganizationSlackConfig as getOrgSlackConfigFromDb,
   type AgentNotificationConfig,
 } from "../../infrastructure/db/repositories/index.js";
-import { decrypt } from "../../infrastructure/crypto/index.js";
 
 export type AgentExecutionNotifyParams = {
   agentId: string;
@@ -26,6 +26,20 @@ export type AgentExecutionNotifyParams = {
   errorMessage?: string;
   toolNames?: string[];
   chatId?: string;
+};
+
+/** Slack通知の結果 */
+export type SlackNotificationResult = {
+  /** 通知を試みたか */
+  attempted: boolean;
+  /** 成功したか */
+  success: boolean;
+  /** エラーコード（失敗時） */
+  errorCode?: string;
+  /** エラーメッセージ（失敗時） */
+  errorMessage?: string;
+  /** ユーザーが取るべきアクション（失敗時） */
+  userAction?: string;
 };
 
 type DecryptedSlackConfig = {
@@ -44,23 +58,15 @@ const buildDetailUrl = (chatId?: string): string | undefined => {
 };
 
 /**
- * 組織のSlack Bot Token を取得・復号化
+ * 組織のSlack Bot Token を取得
  *
- * データベースから暗号化されたトークンを取得し、復号化して返す
+ * データベースからトークンを取得（prisma-field-encryptionで自動復号化）
  */
-const getDecryptedSlackConfig = async (
+const getSlackConfig = async (
   organizationId: string,
 ): Promise<DecryptedSlackConfig> => {
   const orgConfig = await getOrgSlackConfigFromDb(organizationId);
-
-  if (!orgConfig?.slackBotToken) {
-    return { slackBotToken: null };
-  }
-
-  // 暗号化されたトークンを復号化
-  const decryptedToken = decrypt(orgConfig.slackBotToken);
-
-  return { slackBotToken: decryptedToken };
+  return { slackBotToken: orgConfig?.slackBotToken ?? null };
 };
 
 /**
@@ -83,18 +89,29 @@ const shouldNotify = (
   return true;
 };
 
+/** 通知を試みなかった場合の結果 */
+const NOT_ATTEMPTED: SlackNotificationResult = {
+  attempted: false,
+  success: false,
+};
+
 /**
  * エージェント実行完了時にSlack通知を送信
+ *
+ * @returns 通知結果（試みたか、成功したか、エラー情報）
  */
 export const notifyAgentExecution = async (
   params: AgentExecutionNotifyParams,
-): Promise<void> => {
+): Promise<SlackNotificationResult> => {
+  // catchブロックでも参照できるようにチャンネルIDを保持
+  let notificationChannelId: string | undefined;
+
   try {
     // エージェントの通知設定を取得
     const agentConfig = await getAgentNotificationConfig(params.agentId);
     if (!agentConfig) {
       logInfo("Agent not found for notification", { agentId: params.agentId });
-      return;
+      return NOT_ATTEMPTED;
     }
 
     // 通知すべきかどうかを判定
@@ -105,16 +122,19 @@ export const notifyAgentExecution = async (
         notifyOnlyOnFailure: agentConfig.notifyOnlyOnFailure,
         success: params.success,
       });
-      return;
+      return NOT_ATTEMPTED;
     }
 
-    // 組織のSlack設定を取得・復号化
-    const orgConfig = await getDecryptedSlackConfig(params.organizationId);
+    // チャンネルIDを保持（エラー時のログ用）
+    notificationChannelId = agentConfig.slackNotificationChannelId ?? undefined;
+
+    // 組織のSlack設定を取得（prisma-field-encryptionで自動復号化）
+    const orgConfig = await getSlackConfig(params.organizationId);
     if (!orgConfig.slackBotToken) {
       logInfo("Slack bot token not configured", {
         organizationId: params.organizationId,
       });
-      return;
+      return NOT_ATTEMPTED;
     }
 
     // 詳細ページURLを構築
@@ -139,11 +159,39 @@ export const notifyAgentExecution = async (
       success: params.success,
       channelId: agentConfig.slackNotificationChannelId,
     });
+
+    return { attempted: true, success: true };
   } catch (error) {
-    // 通知失敗は致命的エラーではないため、警告ログのみ
-    logError("Failed to send Slack notification", toError(error), {
+    // Slack APIエラーの場合はユーザーフレンドリーなメッセージを返す
+    if (isSlackApiError(error)) {
+      logWarn("Slack notification failed - user action required", {
+        agentId: params.agentId,
+        organizationId: params.organizationId,
+        errorCode: error.code,
+        userMessage: error.userMessage,
+        userAction: error.userAction,
+        channelId: notificationChannelId,
+      });
+      return {
+        attempted: true,
+        success: false,
+        errorCode: error.code,
+        errorMessage: error.userMessage,
+        userAction: error.userAction,
+      };
+    }
+
+    // その他のエラー（ネットワークエラーなど）
+    const err = toError(error);
+    logError("Failed to send Slack notification", err, {
       agentId: params.agentId,
       organizationId: params.organizationId,
     });
+    return {
+      attempted: true,
+      success: false,
+      errorCode: "unknown",
+      errorMessage: err.message,
+    };
   }
 };

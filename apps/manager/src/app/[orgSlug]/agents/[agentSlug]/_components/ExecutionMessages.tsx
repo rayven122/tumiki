@@ -6,6 +6,7 @@ import { Response } from "@/components/response";
 import { MessageParts } from "@/components/message-parts";
 import { sanitizeText } from "@/lib/utils";
 import { type ExecutionMessage, type MessagePart } from "@/features/chat";
+import { SlackNotificationAlert } from "./SlackNotificationAlert";
 
 type ExecutionMessagesProps = {
   messages: ExecutionMessage[] | undefined;
@@ -21,6 +22,37 @@ const getPartType = (part: MessagePart): string => {
 /** パーツからtext文字列を取得 */
 const getPartText = (part: MessagePart): string => {
   return typeof part.text === "string" ? part.text : "";
+};
+
+/** Slack通知パーツの型 */
+type SlackNotificationPartData = {
+  type: "slack-notification";
+  success: boolean;
+  errorCode?: string;
+  errorMessage?: string;
+  userAction?: string;
+};
+
+/** パーツがSlack通知パーツかどうかを判定 */
+const isSlackNotificationPart = (
+  part: MessagePart,
+): part is SlackNotificationPartData => {
+  return getPartType(part) === "slack-notification";
+};
+
+/** メッセージからSlack通知パーツを抽出 */
+const findSlackNotificationPart = (
+  messages: ExecutionMessage[],
+): SlackNotificationPartData | null => {
+  for (const message of messages) {
+    if (message.role !== "assistant") continue;
+    for (const part of message.parts) {
+      if (isSlackNotificationPart(part)) {
+        return part;
+      }
+    }
+  }
+  return null;
 };
 
 /** ユーザーメッセージコンポーネント */
@@ -79,6 +111,9 @@ export const ExecutionMessages = ({
 
   // メッセージがある場合
   if (messages && messages.length > 0) {
+    // Slack通知パーツを検索
+    const slackNotification = findSlackNotificationPart(messages);
+
     return (
       <div className="space-y-6">
         {messages.map((message) => (
@@ -96,6 +131,15 @@ export const ExecutionMessages = ({
             )}
           </div>
         ))}
+
+        {/* Slack通知結果を表示（失敗時のみ） */}
+        {slackNotification && !slackNotification.success && (
+          <SlackNotificationAlert
+            success={slackNotification.success}
+            errorMessage={slackNotification.errorMessage}
+            userAction={slackNotification.userAction}
+          />
+        )}
       </div>
     );
   }

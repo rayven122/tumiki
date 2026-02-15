@@ -31,6 +31,8 @@ import {
   RefreshCw,
   MoreHorizontal,
   ImageIcon,
+  Bell,
+  AlertCircle,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -69,6 +71,55 @@ const VISIBILITY_INFO: Record<
     icon: Building2,
     label: "公開",
   },
+};
+
+/** Slack通知状態の判定 */
+type SlackNotificationStatus = "enabled" | "channel-missing" | "disabled";
+
+const getSlackNotificationStatus = (agent: {
+  enableSlackNotification: boolean;
+  slackNotificationChannelId: string | null;
+}): SlackNotificationStatus => {
+  if (!agent.enableSlackNotification) {
+    return "disabled";
+  }
+  if (!agent.slackNotificationChannelId) {
+    return "channel-missing";
+  }
+  return "enabled";
+};
+
+/** Slack通知状態バッジ */
+const SlackNotificationBadge = ({
+  status,
+}: {
+  status: SlackNotificationStatus;
+}) => {
+  switch (status) {
+    case "enabled":
+      return (
+        <Badge
+          variant="outline"
+          className="border-green-300 bg-green-50 text-green-700"
+        >
+          <Bell className="mr-1 h-3 w-3" />
+          Slack通知: 有効
+        </Badge>
+      );
+    case "channel-missing":
+      return (
+        <Badge
+          variant="outline"
+          className="border-yellow-300 bg-yellow-50 text-yellow-700"
+        >
+          <AlertCircle className="mr-1 h-3 w-3" />
+          Slack通知: チャンネル未設定
+        </Badge>
+      );
+    case "disabled":
+      // 無効の場合は何も表示しない
+      return null;
+  }
 };
 
 const AsyncAgentDetail = ({
@@ -114,6 +165,7 @@ const AsyncAgentDetail = ({
 
   const visibilityInfo = VISIBILITY_INFO[agent.visibility];
   const VisibilityIcon = visibilityInfo.icon;
+  const slackNotificationStatus = getSlackNotificationStatus(agent);
 
   const handleDeleteSuccess = () => {
     void utils.agent.findAll.invalidate();
@@ -149,7 +201,7 @@ const AsyncAgentDetail = ({
                 {agent.description && (
                   <p className="mt-1 text-gray-600">{agent.description}</p>
                 )}
-                <div className="mt-2 flex items-center gap-3">
+                <div className="mt-2 flex flex-wrap items-center gap-3">
                   <div className="flex items-center gap-1 text-sm text-gray-500">
                     <VisibilityIcon className="h-4 w-4" />
                     <span>{visibilityInfo.label}</span>
@@ -157,6 +209,7 @@ const AsyncAgentDetail = ({
                   {agent.modelId && (
                     <Badge variant="outline">{agent.modelId}</Badge>
                   )}
+                  <SlackNotificationBadge status={slackNotificationStatus} />
                 </div>
               </div>
             </div>

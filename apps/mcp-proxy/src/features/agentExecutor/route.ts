@@ -27,7 +27,9 @@ import { verifyChatAuth } from "../chat/index.js";
 import { getChatMcpTools } from "../chat/index.js";
 import { buildStreamTextConfig } from "../execution/shared/index.js";
 import { buildSystemPrompt } from "./commands/index.js";
+import { notifyAgentExecution } from "../notification/index.js";
 import type { ExecutionTrigger } from "./types.js";
+import { buildSlackNotificationPart } from "./commands/executeAgent/buildMessageParts.js";
 
 /** エージェント実行用のデフォルトモデル */
 const DEFAULT_AGENT_MODEL = AGENT_EXECUTION_CONFIG.DEFAULT_MODEL;
@@ -212,6 +214,21 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
           const durationMs = Date.now() - startTime;
 
           try {
+            // Slack通知を先に送信して結果を取得
+            const slackResult = await notifyAgentExecution({
+              agentId,
+              agentName: agent.name,
+              organizationId,
+              success: true,
+              durationMs,
+              toolNames: mcpToolNames,
+              chatId,
+            });
+
+            // Slack通知結果をパーツに変換
+            const slackNotificationPart =
+              buildSlackNotificationPart(slackResult);
+
             // トランザクションでChat, Message, AgentExecutionLogを一括作成
             await db.$transaction(async (tx) => {
               const now = new Date();
@@ -246,15 +263,35 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
               );
 
               if (assistantMessages.length > 0) {
+                // 最後のアシスタントメッセージにSlack通知結果を追加
+                const messagesWithSlackResult = assistantMessages.map(
+                  (msg, index) => {
+                    const isLastMessage =
+                      index === assistantMessages.length - 1;
+                    const baseParts =
+                      msg.parts as unknown as Prisma.InputJsonValue[];
+                    // 最後のメッセージにSlack通知結果パーツを追加
+                    const parts =
+                      isLastMessage && slackNotificationPart
+                        ? [
+                            ...baseParts,
+                            slackNotificationPart as unknown as Prisma.InputJsonValue,
+                          ]
+                        : baseParts;
+
+                    return {
+                      id: msg.id,
+                      chatId,
+                      role: "assistant" as const,
+                      parts,
+                      attachments: [],
+                      createdAt: now,
+                    };
+                  },
+                );
+
                 await tx.message.createMany({
-                  data: assistantMessages.map((msg) => ({
-                    id: msg.id,
-                    chatId,
-                    role: "assistant" as const,
-                    parts: msg.parts as unknown as Prisma.InputJsonValue[],
-                    attachments: [],
-                    createdAt: now,
-                  })),
+                  data: messagesWithSlackResult,
                 });
               }
 
@@ -273,6 +310,8 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
               agentId,
               chatId,
               durationMs,
+              slackNotificationAttempted: slackResult.attempted,
+              slackNotificationSuccess: slackResult.success,
             });
           } catch (error) {
             // ログ保存失敗は致命的エラーではないため、警告ログのみ
@@ -310,6 +349,19 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
                 success: false,
                 durationMs,
               },
+            })
+            .then(() => {
+              // Slack通知を送信（失敗時）
+              void notifyAgentExecution({
+                agentId,
+                agentName: agent.name,
+                organizationId,
+                success: false,
+                durationMs,
+                errorMessage,
+                toolNames: mcpToolNames,
+                chatId,
+              });
             })
             .catch((updateError) => {
               logError(

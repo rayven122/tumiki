@@ -7,6 +7,8 @@
 
 import type { Block, KnownBlock } from "@slack/web-api";
 
+import { SlackApiError } from "./errors.js";
+
 export type SlackBotMessage = {
   channel: string;
   text: string;
@@ -56,7 +58,8 @@ export const sendSlackBotMessage = async (
   };
 
   if (!data.ok) {
-    throw new Error(`Slack API error: ${data.error ?? "unknown error"}`);
+    const errorCode = data.error ?? "unknown_error";
+    throw new SlackApiError(errorCode);
   }
 
   return { ok: true, ts: data.ts };
@@ -118,7 +121,8 @@ export const listSlackChannels = async (
     const data = (await response.json()) as SlackConversationsListResponse;
 
     if (!data.ok) {
-      throw new Error(`Slack API error: ${data.error ?? "unknown error"}`);
+      const errorCode = data.error ?? "unknown_error";
+      throw new SlackApiError(errorCode);
     }
 
     if (data.channels) {

@@ -20,3 +20,12 @@ export {
 
 // Slack Block Kit型定義を再エクスポート
 export type { Block, KnownBlock } from "@slack/web-api";
+
+// エラー関連
+export {
+  SlackApiError,
+  isSlackApiError,
+  getSlackErrorInfo,
+  extractSlackErrorCode,
+  SLACK_ERROR_MESSAGES,
+} from "./errors.js";

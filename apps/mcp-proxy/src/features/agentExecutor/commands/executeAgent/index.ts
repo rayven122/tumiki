@@ -9,8 +9,11 @@ export { executeAgentCommand, executeAgent } from "./executeAgentCommand.js";
 export { buildSystemPrompt, triggerToString } from "./buildSystemPrompt.js";
 export {
   buildMessageParts,
+  buildSlackNotificationPart,
   type TextPart,
   type ToolCallPart,
+  type SlackNotificationPart,
+  type SlackNotificationResultParams,
   type MessagePart,
   type StreamTextResult,
 } from "./buildMessageParts.js";

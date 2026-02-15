@@ -7,6 +7,7 @@ import type {
 import {
   notifyAgentExecution,
   type AgentExecutionNotifyParams,
+  type SlackNotificationResult,
 } from "../slackNotifier.js";
 
 // @tumiki/slack をモック
@@ -21,11 +22,20 @@ vi.mock("@tumiki/slack", () => ({
     mockSendSlackBotMessage(config, message) as Promise<{ ok: boolean }>,
   makeAgentExecutionSlackMessage: (data: unknown): unknown =>
     mockMakeAgentExecutionSlackMessage(data) as unknown,
+  isSlackApiError: (error: unknown): boolean => {
+    // SlackApiErrorかどうかを判定（テスト用に簡易実装）
+    return (
+      error instanceof Error &&
+      "code" in error &&
+      typeof (error as { code: string }).code === "string"
+    );
+  },
 }));
 
 // logger をモック
 const mockLogInfo = vi.fn();
 const mockLogError = vi.fn();
+const mockLogWarn = vi.fn();
 
 vi.mock("../../../shared/logger/index.js", () => ({
   logInfo: (message: string, metadata?: unknown): void => {
@@ -33,6 +43,9 @@ vi.mock("../../../shared/logger/index.js", () => ({
   },
   logError: (message: string, error: Error, metadata?: unknown): void => {
     mockLogError(message, error, metadata);
+  },
+  logWarn: (message: string, metadata?: unknown): void => {
+    mockLogWarn(message, metadata);
   },
 }));
 
@@ -51,12 +64,7 @@ vi.mock("../../../infrastructure/db/repositories/index.js", () => ({
     Promise.resolve(mockGetOrganizationSlackConfig(organizationId)),
 }));
 
-// crypto をモック
-const mockDecrypt = vi.fn();
-
-vi.mock("../../../infrastructure/crypto/index.js", () => ({
-  decrypt: (encrypted: string): string => mockDecrypt(encrypted) as string,
-}));
+// crypto はprisma-field-encryptionで自動復号化されるためモック不要
 
 // toError をモック
 vi.mock("../../../shared/errors/toError.js", () => ({
@@ -79,8 +87,8 @@ describe("notifyAgentExecution", () => {
     notifyOnlyOnFailure: false,
   };
 
-  const encryptedToken = "encrypted-xoxb-test-bot-token";
-  const decryptedToken = "xoxb-test-bot-token";
+  // prisma-field-encryptionで自動復号化されたトークン
+  const slackBotToken = "xoxb-test-bot-token";
 
   beforeEach(() => {
     vi.stubEnv("MANAGER_BASE_URL", "https://app.tumiki.io");
@@ -91,12 +99,10 @@ describe("notifyAgentExecution", () => {
       blocks: [],
     });
     mockSendSlackBotMessage.mockResolvedValue({ ok: true });
-    // デフォルトで組織のSlack設定を返す
+    // デフォルトで組織のSlack設定を返す（prisma-field-encryptionで自動復号化済み）
     mockGetOrganizationSlackConfig.mockReturnValue({
-      slackBotToken: encryptedToken,
+      slackBotToken,
     });
-    // デフォルトで復号化されたトークンを返す
-    mockDecrypt.mockReturnValue(decryptedToken);
   });
 
   afterEach(() => {
@@ -107,11 +113,15 @@ describe("notifyAgentExecution", () => {
     test("通知設定が有効な場合にSlack通知を送信する", async () => {
       mockGetAgentNotificationConfig.mockReturnValue(enabledConfig);
 
-      await notifyAgentExecution(baseParams);
+      const result = await notifyAgentExecution(baseParams);
 
+      expect(result).toStrictEqual<SlackNotificationResult>({
+        attempted: true,
+        success: true,
+      });
       expect(mockGetAgentNotificationConfig).toHaveBeenCalledWith("agent-123");
       expect(mockGetOrganizationSlackConfig).toHaveBeenCalledWith("org-456");
-      expect(mockDecrypt).toHaveBeenCalledWith(encryptedToken);
+      // prisma-field-encryptionで自動復号化されるため、decrypt呼び出しの検証は不要
       expect(mockMakeAgentExecutionSlackMessage).toHaveBeenCalledWith({
         agentName: "テストエージェント",
         success: true,
@@ -122,7 +132,7 @@ describe("notifyAgentExecution", () => {
         channelId: "C1234567890",
       });
       expect(mockSendSlackBotMessage).toHaveBeenCalledWith(
-        { botToken: decryptedToken },
+        { botToken: slackBotToken },
         { channel: "C1234567890", text: "テストメッセージ", blocks: [] },
       );
       expect(mockLogInfo).toHaveBeenCalledWith(
@@ -187,8 +197,12 @@ describe("notifyAgentExecution", () => {
     test("エージェントが見つからない場合は通知をスキップする", async () => {
       mockGetAgentNotificationConfig.mockReturnValue(null);
 
-      await notifyAgentExecution(baseParams);
+      const result = await notifyAgentExecution(baseParams);
 
+      expect(result).toStrictEqual<SlackNotificationResult>({
+        attempted: false,
+        success: false,
+      });
       expect(mockLogInfo).toHaveBeenCalledWith(
         "Agent not found for notification",
         { agentId: "agent-123" },
@@ -202,8 +216,12 @@ describe("notifyAgentExecution", () => {
         enableSlackNotification: false,
       });
 
-      await notifyAgentExecution(baseParams);
+      const result = await notifyAgentExecution(baseParams);
 
+      expect(result).toStrictEqual<SlackNotificationResult>({
+        attempted: false,
+        success: false,
+      });
       expect(mockLogInfo).toHaveBeenCalledWith(
         "Notification skipped based on config",
         expect.objectContaining({
@@ -220,8 +238,12 @@ describe("notifyAgentExecution", () => {
         slackNotificationChannelId: null,
       });
 
-      await notifyAgentExecution(baseParams);
+      const result = await notifyAgentExecution(baseParams);
 
+      expect(result).toStrictEqual<SlackNotificationResult>({
+        attempted: false,
+        success: false,
+      });
       expect(mockLogInfo).toHaveBeenCalledWith(
         "Notification skipped based on config",
         expect.objectContaining({ agentId: "agent-123" }),
@@ -235,8 +257,15 @@ describe("notifyAgentExecution", () => {
         notifyOnlyOnFailure: true,
       });
 
-      await notifyAgentExecution({ ...baseParams, success: true });
+      const result = await notifyAgentExecution({
+        ...baseParams,
+        success: true,
+      });
 
+      expect(result).toStrictEqual<SlackNotificationResult>({
+        attempted: false,
+        success: false,
+      });
       expect(mockLogInfo).toHaveBeenCalledWith(
         "Notification skipped based on config",
         expect.objectContaining({
@@ -254,8 +283,15 @@ describe("notifyAgentExecution", () => {
         notifyOnlyOnFailure: true,
       });
 
-      await notifyAgentExecution({ ...baseParams, success: false });
+      const result = await notifyAgentExecution({
+        ...baseParams,
+        success: false,
+      });
 
+      expect(result).toStrictEqual<SlackNotificationResult>({
+        attempted: true,
+        success: true,
+      });
       expect(mockSendSlackBotMessage).toHaveBeenCalled();
     });
 
@@ -263,8 +299,12 @@ describe("notifyAgentExecution", () => {
       mockGetAgentNotificationConfig.mockReturnValue(enabledConfig);
       mockGetOrganizationSlackConfig.mockReturnValue({ slackBotToken: null });
 
-      await notifyAgentExecution(baseParams);
+      const result = await notifyAgentExecution(baseParams);
 
+      expect(result).toStrictEqual<SlackNotificationResult>({
+        attempted: false,
+        success: false,
+      });
       expect(mockLogInfo).toHaveBeenCalledWith(
         "Slack bot token not configured",
         { organizationId: "org-456" },
@@ -276,8 +316,12 @@ describe("notifyAgentExecution", () => {
       mockGetAgentNotificationConfig.mockReturnValue(enabledConfig);
       mockGetOrganizationSlackConfig.mockReturnValue(null);
 
-      await notifyAgentExecution(baseParams);
+      const result = await notifyAgentExecution(baseParams);
 
+      expect(result).toStrictEqual<SlackNotificationResult>({
+        attempted: false,
+        success: false,
+      });
       expect(mockLogInfo).toHaveBeenCalledWith(
         "Slack bot token not configured",
         { organizationId: "org-456" },
@@ -328,8 +372,14 @@ describe("notifyAgentExecution", () => {
         new Error("Slack API error: channel_not_found"),
       );
 
-      await expect(notifyAgentExecution(baseParams)).resolves.not.toThrow();
+      const result = await notifyAgentExecution(baseParams);
 
+      expect(result).toStrictEqual<SlackNotificationResult>({
+        attempted: true,
+        success: false,
+        errorCode: "unknown",
+        errorMessage: "Slack API error: channel_not_found",
+      });
       expect(mockLogError).toHaveBeenCalledWith(
         "Failed to send Slack notification",
         expect.any(Error),
@@ -345,8 +395,14 @@ describe("notifyAgentExecution", () => {
         throw new Error("Database connection error");
       });
 
-      await expect(notifyAgentExecution(baseParams)).resolves.not.toThrow();
+      const result = await notifyAgentExecution(baseParams);
 
+      expect(result).toStrictEqual<SlackNotificationResult>({
+        attempted: true,
+        success: false,
+        errorCode: "unknown",
+        errorMessage: "Database connection error",
+      });
       expect(mockLogError).toHaveBeenCalledWith(
         "Failed to send Slack notification",
         expect.any(Error),

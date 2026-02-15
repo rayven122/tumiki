@@ -19,8 +19,17 @@ export type ToolCallPart = {
   output: JSONValue | undefined;
 };
 
+/** Slack通知結果パーツ型 */
+export type SlackNotificationPart = {
+  type: "slack-notification";
+  success: boolean;
+  errorCode?: string;
+  errorMessage?: string;
+  userAction?: string;
+};
+
 /** メッセージパーツの型 */
-export type MessagePart = TextPart | ToolCallPart;
+export type MessagePart = TextPart | ToolCallPart | SlackNotificationPart;
 
 /** AI SDK streamText の結果型（必要なプロパティのみ） */
 export type StreamTextResult = {
@@ -71,4 +80,41 @@ export const buildMessageParts = (result: StreamTextResult): MessagePart[] => {
   }
 
   return parts;
+};
+
+/** Slack通知結果からSlackNotificationPartを生成するためのパラメータ */
+export type SlackNotificationResultParams = {
+  /** 通知を試みたか */
+  attempted: boolean;
+  /** 成功したか */
+  success: boolean;
+  /** エラーコード（失敗時） */
+  errorCode?: string;
+  /** エラーメッセージ（失敗時） */
+  errorMessage?: string;
+  /** ユーザーが取るべきアクション（失敗時） */
+  userAction?: string;
+};
+
+/**
+ * Slack通知結果からSlackNotificationPartを生成
+ *
+ * @param result - Slack通知結果
+ * @returns 通知を試みた場合はSlackNotificationPart、試みなかった場合はnull
+ */
+export const buildSlackNotificationPart = (
+  result: SlackNotificationResultParams,
+): SlackNotificationPart | null => {
+  // 通知を試みなかった場合はパーツを作成しない
+  if (!result.attempted) {
+    return null;
+  }
+
+  return {
+    type: "slack-notification",
+    success: result.success,
+    ...(result.errorCode && { errorCode: result.errorCode }),
+    ...(result.errorMessage && { errorMessage: result.errorMessage }),
+    ...(result.userAction && { userAction: result.userAction }),
+  };
 };
