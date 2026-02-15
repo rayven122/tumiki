@@ -5,7 +5,11 @@ import {
   alphanumericWithHyphenUnderscoreSchema,
 } from "@/schema/validation";
 import { AgentIdSchema, McpServerIdSchema } from "@/schema/ids";
-import { McpServerVisibilitySchema, AgentSchema } from "@tumiki/db/zod";
+import {
+  McpServerVisibilitySchema,
+  AgentSchema,
+  NotificationPrioritySchema,
+} from "@tumiki/db/zod";
 import { createAgent } from "./create";
 import { updateAgent } from "./update";
 import { deleteAgent } from "./delete";
@@ -18,17 +22,27 @@ export const AgentSlugSchema = alphanumericWithHyphenUnderscoreSchema
   .min(1, "スラグは必須です")
   .max(50, "スラグは50文字以内で入力してください");
 
-// エージェント作成の入力スキーマ
-export const CreateAgentInputSchema = z.object({
-  name: displayNameValidationSchema,
-  slug: AgentSlugSchema.optional(),
-  description: z.string().optional(),
-  iconPath: z.string().optional(),
-  systemPrompt: z.string().min(1, "システムプロンプトは必須です"),
-  modelId: z.string().optional(),
-  visibility: McpServerVisibilitySchema.default("PRIVATE"),
-  mcpServerIds: z.array(McpServerIdSchema).optional(),
+// Slack通知設定の共通スキーマ（EE機能）
+const SlackNotificationFieldsSchema = z.object({
+  enableSlackNotification: z.boolean().optional(),
+  slackNotificationChannelId: z.string().optional(),
+  notificationPriority: NotificationPrioritySchema.optional(),
+  notifyOnlyOnFailure: z.boolean().optional(),
 });
+
+// エージェント作成の入力スキーマ
+export const CreateAgentInputSchema = z
+  .object({
+    name: displayNameValidationSchema,
+    slug: AgentSlugSchema.optional(),
+    description: z.string().optional(),
+    iconPath: z.string().optional(),
+    systemPrompt: z.string().min(1, "システムプロンプトは必須です"),
+    modelId: z.string().optional(),
+    visibility: McpServerVisibilitySchema.default("PRIVATE"),
+    mcpServerIds: z.array(McpServerIdSchema).optional(),
+  })
+  .merge(SlackNotificationFieldsSchema);
 
 // エージェント作成の出力スキーマ
 export const CreateAgentOutputSchema = z.object({
@@ -36,18 +50,28 @@ export const CreateAgentOutputSchema = z.object({
   slug: z.string(),
 });
 
-// エージェント更新の入力スキーマ
-export const UpdateAgentInputSchema = z.object({
-  id: AgentIdSchema,
-  name: displayNameValidationSchema.optional(),
-  slug: AgentSlugSchema.optional(),
-  description: z.string().optional(),
-  iconPath: z.string().nullable().optional(),
-  systemPrompt: z.string().min(1).optional(),
-  modelId: z.string().nullable().optional(),
-  visibility: McpServerVisibilitySchema.optional(),
-  mcpServerIds: z.array(McpServerIdSchema).optional(),
+// 更新用Slack通知設定（nullable対応）
+const SlackNotificationFieldsForUpdateSchema = z.object({
+  enableSlackNotification: z.boolean().optional(),
+  slackNotificationChannelId: z.string().nullable().optional(),
+  notificationPriority: NotificationPrioritySchema.optional(),
+  notifyOnlyOnFailure: z.boolean().optional(),
 });
+
+// エージェント更新の入力スキーマ
+export const UpdateAgentInputSchema = z
+  .object({
+    id: AgentIdSchema,
+    name: displayNameValidationSchema.optional(),
+    slug: AgentSlugSchema.optional(),
+    description: z.string().optional(),
+    iconPath: z.string().nullable().optional(),
+    systemPrompt: z.string().min(1).optional(),
+    modelId: z.string().nullable().optional(),
+    visibility: McpServerVisibilitySchema.optional(),
+    mcpServerIds: z.array(McpServerIdSchema).optional(),
+  })
+  .merge(SlackNotificationFieldsForUpdateSchema);
 
 // エージェント更新の出力スキーマ
 export const UpdateAgentOutputSchema = z.object({
@@ -164,6 +188,11 @@ export const FindAllAgentsOutputSchema = z.array(
     createdById: true,
     createdAt: true,
     updatedAt: true,
+    // Slack通知設定（EE機能）
+    enableSlackNotification: true,
+    slackNotificationChannelId: true,
+    notificationPriority: true,
+    notifyOnlyOnFailure: true,
   }).extend({
     createdBy: CreatedBySchema,
     mcpServers: z.array(McpServerInfoSchema),

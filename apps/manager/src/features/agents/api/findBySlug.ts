@@ -32,6 +32,11 @@ export const findAgentBySlug = async (
       modelId: true,
       visibility: true,
       organizationId: true,
+      // Slack通知設定（EE機能）
+      enableSlackNotification: true,
+      slackNotificationChannelId: true,
+      notificationPriority: true,
+      notifyOnlyOnFailure: true,
       createdById: true,
       createdBy: {
         select: {
