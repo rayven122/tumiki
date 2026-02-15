@@ -145,11 +145,15 @@ export const systemPrompt = ({
 }): string => {
   const mcpToolsPrompt = getMcpToolsPrompt(mcpToolNames);
   const coharuPrompt = isCoharuEnabled ? coharuProfilePrompt : "";
+  const reasoning = isReasoningModel(selectedChatModel);
 
-  // 推論モデルはアーティファクト機能を使用しない
-  if (isReasoningModel(selectedChatModel)) {
-    return `${regularPrompt}\n\n${coharuPrompt}${mcpToolsPrompt}`;
-  }
+  // プロンプトパーツを構築（推論モデルはアーティファクト機能を使用しない）
+  const parts = [
+    regularPrompt,
+    coharuPrompt,
+    reasoning ? "" : artifactsPrompt,
+    mcpToolsPrompt,
+  ].filter(Boolean);
 
-  return `${regularPrompt}\n\n${coharuPrompt}\n\n${artifactsPrompt}${mcpToolsPrompt}`;
+  return parts.join("\n\n");
 };

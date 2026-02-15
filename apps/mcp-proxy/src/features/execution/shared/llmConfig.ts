@@ -37,6 +37,15 @@ export type LLMConfigOptions = {
 };
 
 /**
+ * Anthropic thinking設定の型
+ */
+type AnthropicThinkingConfig = {
+  anthropic: {
+    thinking: { type: "enabled"; budgetTokens: number };
+  };
+};
+
+/**
  * streamText 共通設定のレスポンス型
  */
 export type StreamTextConfig = {
@@ -44,13 +53,7 @@ export type StreamTextConfig = {
   system: string;
   abortSignal?: AbortSignal;
   experimental_activeTools: string[];
-  providerOptions:
-    | {
-        anthropic: {
-          thinking: { type: "enabled"; budgetTokens: number };
-        };
-      }
-    | undefined;
+  providerOptions: AnthropicThinkingConfig | undefined;
   tools: Record<string, Tool> | undefined;
 };
 

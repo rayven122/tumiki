@@ -246,6 +246,13 @@ const calculateSuccessRate = (
   return { rate, total: completedLogs.length, success: successCount };
 };
 
+/** 成功率に応じた色クラスを取得 */
+const getSuccessRateColorClass = (rate: number): string => {
+  if (rate >= 80) return "text-green-500";
+  if (rate >= 50) return "text-yellow-500";
+  return "text-red-500";
+};
+
 /** 利用可能なツール数を計算 */
 const calculateTotalTools = (mcpServers: Agent["mcpServers"]): number => {
   return mcpServers.reduce((total, server) => {
@@ -606,11 +613,7 @@ export const AgentCard = ({
                         <TrendingUp
                           className={cn(
                             "h-4 w-4",
-                            stats.rate >= 80
-                              ? "text-green-500"
-                              : stats.rate >= 50
-                                ? "text-yellow-500"
-                                : "text-red-500",
+                            getSuccessRateColorClass(stats.rate),
                           )}
                         />
                         <span className="text-gray-600">

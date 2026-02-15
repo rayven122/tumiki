@@ -27,8 +27,8 @@ export const mapDynamicToolState = (state: string): ToolState => {
       return "output-available";
     case "error":
       return "output-error";
-    case "pending":
     default:
+      // "pending" およびその他の未知の状態
       return "input-available";
   }
 };

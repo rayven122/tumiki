@@ -26,5 +26,7 @@ export {
   isAutoModel,
   selectModelByTask,
   analyzeTaskComplexity,
+  detectTaskType,
+  calculateComplexityScore,
   type TaskContext,
 } from "./auto-model-selector";

@@ -62,19 +62,19 @@ export const chatRoute = new Hono<HonoEnv>().post("/chat", async (c) => {
   );
 
   if (!authResult.success) {
-    const statusCode =
-      authResult.error.code === "unauthorized"
-        ? 401
-        : authResult.error.code === "forbidden"
-          ? 403
-          : 400;
-    return c.json(
-      {
-        code: `${authResult.error.code}:chat`,
-        message: authResult.error.message,
-      },
-      statusCode,
-    );
+    const errorResponse = {
+      code: `${authResult.error.code}:chat`,
+      message: authResult.error.message,
+    };
+    // 認証エラーコードに応じたHTTPステータスを返す
+    switch (authResult.error.code) {
+      case "unauthorized":
+        return c.json(errorResponse, 401);
+      case "forbidden":
+        return c.json(errorResponse, 403);
+      default:
+        return c.json(errorResponse, 400);
+    }
   }
 
   const { userId } = authResult.context;
