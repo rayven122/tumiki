@@ -43,6 +43,7 @@ export type SlackNotificationResult = {
 };
 
 type DecryptedSlackConfig = {
+  slug: string;
   slackBotToken: string | null;
 };
 
@@ -50,23 +51,34 @@ const DEFAULT_MANAGER_BASE_URL = "https://app.tumiki.io";
 
 /**
  * 詳細ページURLを構築
+ *
+ * @param orgSlug - 組織のslug
+ * @param chatId - チャットID
+ * @returns チャット詳細ページのURL
  */
-const buildDetailUrl = (chatId?: string): string | undefined => {
+const buildDetailUrl = (
+  orgSlug: string,
+  chatId?: string,
+): string | undefined => {
   if (!chatId) return undefined;
   const baseUrl = process.env.MANAGER_BASE_URL ?? DEFAULT_MANAGER_BASE_URL;
-  return `${baseUrl}/agents/executions/${chatId}`;
+  return `${baseUrl}/${orgSlug}/chat/${chatId}`;
 };
 
 /**
- * 組織のSlack Bot Token を取得
+ * 組織のSlack設定を取得
  *
  * データベースからトークンを取得（prisma-field-encryptionで自動復号化）
  */
 const getSlackConfig = async (
   organizationId: string,
-): Promise<DecryptedSlackConfig> => {
+): Promise<DecryptedSlackConfig | null> => {
   const orgConfig = await getOrgSlackConfigFromDb(organizationId);
-  return { slackBotToken: orgConfig?.slackBotToken ?? null };
+  if (!orgConfig) return null;
+  return {
+    slug: orgConfig.slug,
+    slackBotToken: orgConfig.slackBotToken,
+  };
 };
 
 /**
@@ -130,7 +142,7 @@ export const notifyAgentExecution = async (
 
     // 組織のSlack設定を取得（prisma-field-encryptionで自動復号化）
     const orgConfig = await getSlackConfig(params.organizationId);
-    if (!orgConfig.slackBotToken) {
+    if (!orgConfig?.slackBotToken) {
       logInfo("Slack bot token not configured", {
         organizationId: params.organizationId,
       });
@@ -138,7 +150,7 @@ export const notifyAgentExecution = async (
     }
 
     // 詳細ページURLを構築
-    const detailUrl = buildDetailUrl(params.chatId);
+    const detailUrl = buildDetailUrl(orgConfig.slug, params.chatId);
 
     // 通知メッセージを生成
     const message = makeAgentExecutionSlackMessage({

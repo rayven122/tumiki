@@ -89,6 +89,7 @@ describe("notifyAgentExecution", () => {
 
   // prisma-field-encryptionで自動復号化されたトークン
   const slackBotToken = "xoxb-test-bot-token";
+  const orgSlug = "@test-org";
 
   beforeEach(() => {
     vi.stubEnv("MANAGER_BASE_URL", "https://app.tumiki.io");
@@ -101,6 +102,7 @@ describe("notifyAgentExecution", () => {
     mockSendSlackBotMessage.mockResolvedValue({ ok: true });
     // デフォルトで組織のSlack設定を返す（prisma-field-encryptionで自動復号化済み）
     mockGetOrganizationSlackConfig.mockReturnValue({
+      slug: orgSlug,
       slackBotToken,
     });
   });
@@ -155,7 +157,7 @@ describe("notifyAgentExecution", () => {
 
       expect(mockMakeAgentExecutionSlackMessage).toHaveBeenCalledWith(
         expect.objectContaining({
-          detailUrl: "https://app.tumiki.io/agents/executions/chat-789",
+          detailUrl: `https://app.tumiki.io/${orgSlug}/chat/chat-789`,
         }),
       );
     });
@@ -297,7 +299,10 @@ describe("notifyAgentExecution", () => {
 
     test("Slack Bot Tokenが未設定の場合はスキップする", async () => {
       mockGetAgentNotificationConfig.mockReturnValue(enabledConfig);
-      mockGetOrganizationSlackConfig.mockReturnValue({ slackBotToken: null });
+      mockGetOrganizationSlackConfig.mockReturnValue({
+        slug: orgSlug,
+        slackBotToken: null,
+      });
 
       const result = await notifyAgentExecution(baseParams);
 
@@ -343,7 +348,7 @@ describe("notifyAgentExecution", () => {
 
       expect(mockMakeAgentExecutionSlackMessage).toHaveBeenCalledWith(
         expect.objectContaining({
-          detailUrl: "https://app.tumiki.io/agents/executions/chat-abc",
+          detailUrl: `https://app.tumiki.io/${orgSlug}/chat/chat-abc`,
         }),
       );
     });
@@ -359,7 +364,7 @@ describe("notifyAgentExecution", () => {
 
       expect(mockMakeAgentExecutionSlackMessage).toHaveBeenCalledWith(
         expect.objectContaining({
-          detailUrl: "https://custom.example.com/agents/executions/chat-xyz",
+          detailUrl: `https://custom.example.com/${orgSlug}/chat/chat-xyz`,
         }),
       );
     });
