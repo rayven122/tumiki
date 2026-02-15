@@ -61,6 +61,22 @@ vi.mock("lucide-react", () => ({
     React.createElement("span", { className, "data-testid": "loader-icon" }),
 }));
 
+// McpServerIconのモック（lucide-reactアイコンへの依存を回避）
+vi.mock("@/app/[orgSlug]/mcps/_components/McpServerIcon", () => ({
+  McpServerIcon: ({
+    iconPath,
+    size,
+  }: {
+    iconPath: string | null | undefined;
+    size?: number;
+  }) =>
+    React.createElement("span", {
+      "data-testid": "mcp-server-icon",
+      "data-icon-path": iconPath,
+      "data-size": size,
+    }),
+}));
+
 // OrganizationIdSchemaのモック
 vi.mock("@/schema/ids", () => ({
   OrganizationIdSchema: {
@@ -74,17 +90,17 @@ vi.mock("@/schema/ids", () => ({
 }));
 
 // UIコンポーネントのモック - 型安全な実装
-interface SelectProps {
+type SelectProps = {
   children: React.ReactNode;
   value?: string;
   onValueChange?: (value: string) => void;
   disabled?: boolean;
-}
+};
 
-interface SelectItemProps {
+type SelectItemProps = {
   children: React.ReactNode;
   value: string;
-}
+};
 
 // onValueChangeハンドラーを保存するための変数
 let selectOnValueChange: ((value: string) => void) | undefined;

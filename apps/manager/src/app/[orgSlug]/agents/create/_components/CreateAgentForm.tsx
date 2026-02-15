@@ -284,6 +284,7 @@ export const CreateAgentForm = ({ orgSlug }: CreateAgentFormProps) => {
         value={{
           enableSlackNotification: flowState.enableSlackNotification,
           slackNotificationChannelId: flowState.slackNotificationChannelId,
+          slackNotificationChannelName: flowState.slackNotificationChannelName,
           notifyOnlyOnFailure: flowState.notifyOnlyOnFailure,
         }}
         onChange={updateFlowState}

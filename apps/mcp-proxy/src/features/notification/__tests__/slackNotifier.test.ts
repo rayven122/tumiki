@@ -84,6 +84,7 @@ describe("notifyAgentExecution", () => {
   const enabledConfig: AgentNotificationConfig = {
     enableSlackNotification: true,
     slackNotificationChannelId: "C1234567890",
+    slackNotificationChannelName: "general",
     notifyOnlyOnFailure: false,
   };
 
@@ -120,6 +121,7 @@ describe("notifyAgentExecution", () => {
       expect(result).toStrictEqual<SlackNotificationResult>({
         attempted: true,
         success: true,
+        channelName: "general",
       });
       expect(mockGetAgentNotificationConfig).toHaveBeenCalledWith("agent-123");
       expect(mockGetOrganizationSlackConfig).toHaveBeenCalledWith("org-456");
@@ -293,6 +295,7 @@ describe("notifyAgentExecution", () => {
       expect(result).toStrictEqual<SlackNotificationResult>({
         attempted: true,
         success: true,
+        channelName: "general",
       });
       expect(mockSendSlackBotMessage).toHaveBeenCalled();
     });

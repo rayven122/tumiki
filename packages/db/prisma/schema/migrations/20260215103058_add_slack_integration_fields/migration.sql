@@ -1,7 +1,8 @@
 -- AlterTable
 ALTER TABLE "Agent" ADD COLUMN     "enableSlackNotification" BOOLEAN NOT NULL DEFAULT false,
 ADD COLUMN     "notifyOnlyOnFailure" BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN     "slackNotificationChannelId" TEXT;
+ADD COLUMN     "slackNotificationChannelId" TEXT,
+ADD COLUMN     "slackNotificationChannelName" TEXT;
 
 -- AlterTable
 ALTER TABLE "Organization" ADD COLUMN     "slackBotToken" TEXT,

@@ -34,6 +34,7 @@ export const findAllAgents = async (
       // Slack通知設定
       enableSlackNotification: true,
       slackNotificationChannelId: true,
+      slackNotificationChannelName: true,
       notifyOnlyOnFailure: true,
       createdById: true,
       createdBy: {

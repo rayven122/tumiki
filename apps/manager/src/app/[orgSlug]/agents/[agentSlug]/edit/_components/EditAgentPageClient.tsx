@@ -51,6 +51,7 @@ type EditFormState = {
   // Slack通知設定
   enableSlackNotification: boolean;
   slackNotificationChannelId: string;
+  slackNotificationChannelName: string;
   notifyOnlyOnFailure: boolean;
 };
 
@@ -107,6 +108,7 @@ const EditForm = ({
     // Slack通知設定
     enableSlackNotification: agent.enableSlackNotification,
     slackNotificationChannelId: agent.slackNotificationChannelId ?? "",
+    slackNotificationChannelName: agent.slackNotificationChannelName ?? "",
     notifyOnlyOnFailure: agent.notifyOnlyOnFailure,
   });
 
@@ -341,6 +343,7 @@ const EditForm = ({
         value={{
           enableSlackNotification: formState.enableSlackNotification,
           slackNotificationChannelId: formState.slackNotificationChannelId,
+          slackNotificationChannelName: formState.slackNotificationChannelName,
           notifyOnlyOnFailure: formState.notifyOnlyOnFailure,
         }}
         onChange={updateFormState}
