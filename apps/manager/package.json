@@ -52,7 +52,7 @@
     "@uiw/react-json-view": "2.0.0-alpha.34",
     "@vercel/functions": "^2.2.13",
     "@xyflow/react": "^12.10.0",
-    "ai": "^6.0.49",
+    "ai": "^6.0.86",
     "classnames": "^2.5.1",
     "codemirror": "^6.0.2",
     "cron-parser": "^5.5.0",

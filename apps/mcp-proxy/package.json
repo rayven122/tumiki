@@ -29,7 +29,7 @@
     "@tumiki/db": "workspace:*",
     "@tumiki/oauth-token-manager": "workspace:*",
     "@tumiki/shared": "workspace:*",
-    "ai": "6.0.41",
+    "ai": "6.0.86",
     "fetch-to-node": "^2.1.0",
     "google-auth-library": "^10.5.0",
     "hono": "^4.11.7",
