@@ -2,22 +2,22 @@
 
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
-import { type VariantProps, cva } from "class-variance-authority";
 import { PanelLeft } from "lucide-react";
+import { type VariantProps, cva } from "@tumiki/ui";
 
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/chat/button";
-import { Input } from "@/components/ui/chat/input";
-import { Separator } from "@/components/ui/chat/separator";
-import { Sheet, SheetContent } from "@/components/ui/chat/sheet";
-import { Skeleton } from "@/components/ui/chat/skeleton";
+import { Button } from "@tumiki/ui/button";
+import { Input } from "@tumiki/ui/input";
+import { Separator } from "@tumiki/ui/separator";
+import { Sheet, SheetContent } from "@tumiki/ui/sheet";
+import { Skeleton } from "@tumiki/ui/skeleton";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/chat/tooltip";
+} from "@tumiki/ui/tooltip";
 
 const SIDEBAR_COOKIE_NAME = "sidebar:state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
@@ -38,14 +38,14 @@ type SidebarContext = {
 
 const SidebarContext = React.createContext<SidebarContext | null>(null);
 
-function useSidebar() {
+const useSidebar = () => {
   const context = React.useContext(SidebarContext);
   if (!context) {
     throw new Error("useSidebar must be used within a SidebarProvider.");
   }
 
   return context;
-}
+};
 
 const SidebarProvider = React.forwardRef<
   HTMLDivElement,

@@ -1,7 +1,7 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@tumiki/ui/button";
+import { Badge } from "@tumiki/ui/badge";
 import { Key, Copy, Eye, EyeOff, Trash2, Clock, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { calculateExpirationStatus } from "@/lib/shared/expirationHelpers";

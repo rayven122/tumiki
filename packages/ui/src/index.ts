@@ -1,6 +1,9 @@
 // ユーティリティ関数
 export { cn } from "./utils.js";
 
+// class-variance-authority の再エクスポート
+export { cva, type VariantProps } from "class-variance-authority";
+
 // コンポーネントの再エクスポート
 export * from "./components/button.js";
 export * from "./components/card.js";

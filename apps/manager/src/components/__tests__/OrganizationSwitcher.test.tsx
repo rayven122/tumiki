@@ -105,7 +105,7 @@ type SelectItemProps = {
 // onValueChangeハンドラーを保存するための変数
 let selectOnValueChange: ((value: string) => void) | undefined;
 
-vi.mock("@/components/ui/select", () => ({
+vi.mock("@tumiki/ui/select", () => ({
   Select: ({ children, value, onValueChange, disabled }: SelectProps) => {
     // onValueChangeを保存
     selectOnValueChange = onValueChange;

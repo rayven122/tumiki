@@ -1,9 +1,9 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@tumiki/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@tumiki/ui/card";
+import { Badge } from "@tumiki/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+} from "@tumiki/ui/alert-dialog";
 import { Mail, RefreshCw, X, Clock } from "lucide-react";
 import { api } from "@/trpc/react";
 import { getSessionInfo } from "~/lib/auth/session-utils";

@@ -8,17 +8,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+} from "@tumiki/ui/dialog";
+import { Button } from "@tumiki/ui/button";
+import { Label } from "@tumiki/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+} from "@tumiki/ui/select";
+import { Alert, AlertDescription } from "@tumiki/ui/alert";
 import { AlertTriangle } from "lucide-react";
 
 type GenerateApiKeyDialogProps = {

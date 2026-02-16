@@ -9,7 +9,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@tumiki/ui/alert-dialog";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
 import type { Department } from "@/features/org-structure/utils/mock/mockOrgData";

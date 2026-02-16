@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { Shield, Pencil, Trash2, Tag } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@tumiki/ui/button";
+import { Badge } from "@tumiki/ui/badge";
 import { api } from "@/trpc/react";
 import { EditRoleDialog } from "./EditRoleDialog";
 import { DeleteRoleDialog } from "./DeleteRoleDialog";

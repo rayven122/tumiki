@@ -2,13 +2,13 @@
 
 import { type ReactNode, useMemo, useState } from "react";
 import type { McpServerVisibility } from "@tumiki/db";
-import { Button } from "@/components/ui/chat/button";
+import { Button } from "@tumiki/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/chat/dropdown-menu";
+} from "@tumiki/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import {
   CheckCircleFillIcon,

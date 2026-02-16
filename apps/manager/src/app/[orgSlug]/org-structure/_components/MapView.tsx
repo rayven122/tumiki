@@ -16,13 +16,13 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { Button } from "@tumiki/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@tumiki/ui/tooltip";
 import { Save, ArrowDownUp, Pencil, X } from "lucide-react";
 import { CreateDepartmentDialog } from "./CreateDepartmentDialog";
 import { DeleteDepartmentConfirmDialog } from "./DeleteDepartmentConfirmDialog";

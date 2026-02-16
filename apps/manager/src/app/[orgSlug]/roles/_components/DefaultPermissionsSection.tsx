@@ -5,7 +5,7 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+} from "@tumiki/ui/collapsible";
 import { ToggleRow } from "./ToggleRow";
 
 type DefaultPermissionsSectionProps = {

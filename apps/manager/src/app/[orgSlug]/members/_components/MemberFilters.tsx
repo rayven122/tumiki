@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@tumiki/ui/button";
 import { Crown, User } from "lucide-react";
 
 type MemberFiltersProps = {

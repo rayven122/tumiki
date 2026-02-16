@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@tumiki/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -9,9 +9,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from "@tumiki/ui/dialog";
+import { Input } from "@tumiki/ui/input";
+import { Label } from "@tumiki/ui/label";
 import { api } from "@/trpc/react";
 import { toast } from "@/lib/client/toast";
 import { Loader2, AlertTriangle } from "lucide-react";

@@ -7,7 +7,7 @@ import { Loader2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { normalizeSlug } from "@tumiki/db/utils/slug";
 import { api } from "@/trpc/react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@tumiki/ui/button";
 import {
   Form,
   FormControl,
@@ -16,9 +16,9 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+} from "@tumiki/ui/form";
+import { Input } from "@tumiki/ui/input";
+import { Textarea } from "@tumiki/ui/textarea";
 import { toast } from "@/lib/client/toast";
 
 /**

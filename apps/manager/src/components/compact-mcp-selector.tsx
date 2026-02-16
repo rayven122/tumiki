@@ -1,21 +1,13 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Button } from "@/components/ui/chat/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Button } from "@tumiki/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@tumiki/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@tumiki/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { CheckCircleFillIcon, RouteIcon } from "./icons";
 import { api, type RouterOutputs } from "~/trpc/react";
-import { EntityIcon } from "@/components/ui/EntityIcon";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/chat/tooltip";
+import { EntityIcon } from "@/features/shared/components/EntityIcon";
 import {
   countEnabledTools,
   countTotalToolsForSelectedServers,

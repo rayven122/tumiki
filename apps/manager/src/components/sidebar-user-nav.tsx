@@ -11,12 +11,12 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/chat/dropdown-menu";
+} from "@tumiki/ui/dropdown-menu";
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/chat/sidebar";
+} from "@/features/chat/components/Sidebar";
 import { toast } from "./toast";
 import { LoaderIcon } from "./icons";
 import { guestRegex } from "@/lib/constants";

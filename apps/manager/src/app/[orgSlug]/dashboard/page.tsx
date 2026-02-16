@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { DashboardClient } from "./_components/DashboardClient";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@tumiki/ui/skeleton";
 
 type DashboardPageProps = {
   params: Promise<{ orgSlug: string }>;

@@ -1,8 +1,8 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Card, CardContent, CardHeader, CardTitle } from "@tumiki/ui/card";
+import { Badge } from "@tumiki/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@tumiki/ui/avatar";
 import { Activity, Users, TrendingUp, Calendar } from "lucide-react";
 import { api } from "@/trpc/react";
 type MemberStat = {

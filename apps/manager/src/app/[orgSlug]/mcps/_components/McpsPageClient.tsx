@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@tumiki/ui/button";
 import { ArrowUpDown, X, Search } from "lucide-react";
 import { useSortModeManager } from "@/hooks/useSortModeManager";
 import {
@@ -12,9 +12,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+} from "@tumiki/ui/alert-dialog";
+import { Input } from "@tumiki/ui/input";
+import { Badge } from "@tumiki/ui/badge";
 import { useState, useMemo } from "react";
 import { api } from "@/trpc/react";
 import { useSession } from "next-auth/react";

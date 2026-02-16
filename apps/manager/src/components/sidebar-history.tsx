@@ -15,13 +15,13 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/chat/alert-dialog";
+} from "@tumiki/ui/alert-dialog";
 import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarMenu,
   useSidebar,
-} from "@/components/ui/chat/sidebar";
+} from "@/features/chat/components/Sidebar";
 import { fetcher } from "@/lib/utils";
 import { ChatItem } from "./sidebar-history-item";
 import useSWRInfinite from "swr/infinite";

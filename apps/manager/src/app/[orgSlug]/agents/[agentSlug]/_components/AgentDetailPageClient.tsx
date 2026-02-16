@@ -2,21 +2,17 @@
 
 import { Suspense, useCallback, useState } from "react";
 import { api } from "@/trpc/react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Button } from "@tumiki/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@tumiki/ui/card";
+import { Badge } from "@tumiki/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@tumiki/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@tumiki/ui/dropdown-menu";
 import {
   ArrowLeft,
   Edit2,
@@ -40,7 +36,7 @@ import { useRouter } from "next/navigation";
 import { McpServerVisibility } from "@tumiki/db/prisma";
 import type { AgentId } from "@/schema/ids";
 
-import { EntityIcon } from "@/components/ui/EntityIcon";
+import { EntityIcon } from "@/features/shared/components/EntityIcon";
 import { DeleteAgentModal } from "../../_components/DeleteAgentModal";
 import { AgentIconEditModal } from "../../_components/AgentIconEditModal";
 import { useAgentExecution } from "../_hooks";

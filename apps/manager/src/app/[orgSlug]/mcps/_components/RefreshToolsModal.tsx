@@ -10,13 +10,13 @@ import {
   RefreshCw,
   Wrench,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@tumiki/ui/badge";
+import { Button } from "@tumiki/ui/button";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+} from "@tumiki/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -24,7 +24,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@tumiki/ui/dialog";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 import { toast } from "@/lib/client/toast";

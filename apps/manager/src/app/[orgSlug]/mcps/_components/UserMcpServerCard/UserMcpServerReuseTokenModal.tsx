@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@tumiki/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -8,11 +8,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@tumiki/ui/dialog";
 import { RefreshCw, CheckCircle, Key } from "lucide-react";
 import { api, type RouterOutputs } from "@/trpc/react";
 import { toast } from "@/lib/client/toast";
-import { EntityIcon } from "@/components/ui/EntityIcon";
+import { EntityIcon } from "@/features/shared/components/EntityIcon";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 

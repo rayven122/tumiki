@@ -1,24 +1,24 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@tumiki/ui/button";
+import { Input } from "@tumiki/ui/input";
+import { Label } from "@tumiki/ui/label";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog";
+} from "@tumiki/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+} from "@tumiki/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@tumiki/ui/tabs";
 import { Loader2, Clock, Globe, Timer, CalendarClock } from "lucide-react";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";

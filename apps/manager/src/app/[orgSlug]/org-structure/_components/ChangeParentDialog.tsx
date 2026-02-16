@@ -1,22 +1,22 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@tumiki/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@tumiki/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
+} from "@tumiki/ui/select";
+import { Label } from "@tumiki/ui/label";
 import { ArrowRight } from "lucide-react";
 import { type Department } from "@/features/org-structure/utils/mock/mockOrgData";
 import type { DepartmentEdgeType } from "@/features/org-structure/components/edges/DepartmentEdge";

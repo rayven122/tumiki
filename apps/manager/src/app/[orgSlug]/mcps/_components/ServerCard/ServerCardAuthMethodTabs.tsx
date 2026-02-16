@@ -1,7 +1,7 @@
 import { Info } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Input } from "@tumiki/ui/input";
+import { Label } from "@tumiki/ui/label";
+import { Alert, AlertDescription } from "@tumiki/ui/alert";
 import type { Prisma } from "@tumiki/db/prisma";
 
 type McpServerTemplate = Prisma.McpServerTemplateGetPayload<object>;

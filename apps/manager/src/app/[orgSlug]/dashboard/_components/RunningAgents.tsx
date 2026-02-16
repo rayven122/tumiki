@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { Card, CardContent, CardHeader, CardTitle } from "@tumiki/ui/card";
+import { Progress } from "@tumiki/ui/progress";
 import { ExternalLink } from "lucide-react";
 import type { RouterOutputs } from "@/trpc/react";
-import { EntityIcon } from "@/components/ui/EntityIcon";
+import { EntityIcon } from "@/features/shared/components/EntityIcon";
 import { formatDistanceToNow } from "date-fns";
 import { ja } from "date-fns/locale";
 

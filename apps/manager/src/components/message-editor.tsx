@@ -1,7 +1,7 @@
 "use client";
 
 import type { UIMessage, TextUIPart } from "ai";
-import { Button } from "./ui/chat/button";
+import { Button } from "@tumiki/ui/button";
 import {
   type Dispatch,
   type SetStateAction,
@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Textarea } from "./ui/chat/textarea";
+import { Textarea } from "@tumiki/ui/textarea";
 import { deleteTrailingMessages } from "@/app/[orgSlug]/chat/actions";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import type { ChatMessage } from "@/lib/types";

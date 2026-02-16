@@ -15,7 +15,7 @@ import {
 } from "@/features/org-structure/utils/keycloakToOrgDataConverter";
 import type { OrgData } from "@/features/org-structure/utils/mock/mockOrgData";
 import { Loader2, Network, LayoutGrid, List } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@tumiki/ui/button";
 import { ListView } from "./ListView";
 
 /**

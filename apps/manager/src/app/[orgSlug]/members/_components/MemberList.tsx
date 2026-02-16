@@ -3,19 +3,19 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@tumiki/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@tumiki/ui/card";
+import { Textarea } from "@tumiki/ui/textarea";
+import { Label } from "@tumiki/ui/label";
+import { Avatar, AvatarFallback, AvatarImage } from "@tumiki/ui/avatar";
+import { Badge } from "@tumiki/ui/badge";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@tumiki/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,14 +26,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+} from "@tumiki/ui/alert-dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@tumiki/ui/select";
 import { UserPlus, Trash2, Crown, User, Mail, Shield, Eye } from "lucide-react";
 import { api } from "@/trpc/react";
 import { getSessionInfo } from "~/lib/auth/session-utils";

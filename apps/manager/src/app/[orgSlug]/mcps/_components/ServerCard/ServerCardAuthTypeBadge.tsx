@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@tumiki/ui/badge";
 import type { AuthType } from "@tumiki/db/prisma";
 
 type AuthTypeBadgeProps = {

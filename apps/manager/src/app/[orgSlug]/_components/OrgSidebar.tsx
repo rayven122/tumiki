@@ -25,7 +25,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@tumiki/ui/tooltip";
 import { ChatHistoryList } from "@/features/chat";
 
 type OrgSidebarProps = {

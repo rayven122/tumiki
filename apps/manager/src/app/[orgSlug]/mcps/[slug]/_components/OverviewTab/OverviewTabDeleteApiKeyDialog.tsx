@@ -7,8 +7,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+} from "@tumiki/ui/dialog";
+import { Button } from "@tumiki/ui/button";
 import { AlertTriangle } from "lucide-react";
 
 type DeleteApiKeyDialogProps = {

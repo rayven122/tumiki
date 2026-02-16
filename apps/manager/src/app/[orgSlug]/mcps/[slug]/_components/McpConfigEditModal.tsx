@@ -7,17 +7,17 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+} from "@tumiki/ui/dialog";
+import { Separator } from "@tumiki/ui/separator";
+import { Button } from "@tumiki/ui/button";
+import { Input } from "@tumiki/ui/input";
+import { Label } from "@tumiki/ui/label";
+import { Badge } from "@tumiki/ui/badge";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+} from "@tumiki/ui/collapsible";
 import { Loader2, ChevronDown, Check } from "lucide-react";
 import { api } from "@/trpc/react";
 import { toast } from "@/lib/client/toast";

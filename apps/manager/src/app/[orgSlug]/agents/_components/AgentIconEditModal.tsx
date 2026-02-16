@@ -13,7 +13,7 @@ import { toast } from "@/lib/client/toast";
 import { Upload, X, Bot } from "lucide-react";
 import { z } from "zod";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@tumiki/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -21,8 +21,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+} from "@tumiki/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@tumiki/ui/tabs";
 import { type AgentId } from "@/schema/ids";
 import { McpIconPicker } from "../../mcps/_components/McpIconPicker";
 import { McpServerIcon } from "../../mcps/_components/McpServerIcon";

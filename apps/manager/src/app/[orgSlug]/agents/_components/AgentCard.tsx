@@ -1,22 +1,22 @@
 "use client";
 
 import { useChat, type UIMessage } from "@ai-sdk/react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@tumiki/ui/badge";
+import { Button } from "@tumiki/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@tumiki/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@tumiki/ui/dropdown-menu";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@tumiki/ui/tooltip";
 import { cn, generateCUID } from "@/lib/utils";
 import { api, type RouterOutputs } from "@/trpc/react";
 import { McpServerVisibility } from "@tumiki/db/prisma";
@@ -48,7 +48,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 
-import { EntityIcon } from "@/components/ui/EntityIcon";
+import { EntityIcon } from "@/features/shared/components/EntityIcon";
 import { DeleteAgentModal } from "./DeleteAgentModal";
 import { AgentIconEditModal } from "./AgentIconEditModal";
 import { ExecutionResultModal } from "../[agentSlug]/_components/ExecutionResultModal";
