@@ -5,6 +5,9 @@
 /* include utility classes in streamdown */
 @source "../../../node_modules/streamdown/dist/index.js";
 
+/* include utility classes in @tumiki/ui package */
+@source "../../../../packages/ui/dist/**/*.js";
+
 @theme {
   --font-sans:
     var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
