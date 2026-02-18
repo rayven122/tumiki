@@ -8,7 +8,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@tumiki/ui/select";
+} from "@/components/ui/select";
 
 export function LanguageToggle() {
   const pathname = usePathname();

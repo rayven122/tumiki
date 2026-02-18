@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@tumiki/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, Info } from "lucide-react";
 import { toast } from "@/lib/client/toast";
 import { api } from "@/trpc/react";

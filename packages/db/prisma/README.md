@@ -600,7 +600,7 @@ MCPサーバーインスタンスへのリクエストログ
 リレーションを排除し、IDのみ保持することでサイズを削減
 
 **Properties**
-  - `id`: レコードID（cuid: 25文字）
+  - `id`: レコードID��cuid: 25文字）
   - `mcpServerId`: MCPサーバーインスタンスID
   - `organizationId`: 組織ID
   - `userId`: リクエストを実行したユーザーID

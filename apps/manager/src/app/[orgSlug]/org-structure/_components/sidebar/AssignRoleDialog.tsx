@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Button } from "@tumiki/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@tumiki/ui/dialog";
+} from "@/components/ui/dialog";
 import { Shield, Plus } from "lucide-react";
 
 type AvailableRole = {

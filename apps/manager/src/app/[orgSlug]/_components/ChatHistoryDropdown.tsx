@@ -6,12 +6,16 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Plus, MoreHorizontal, Trash2 } from "lucide-react";
 import { ChevronDownIcon, HistoryIcon, UsersIcon } from "@/components/icons";
-import { EntityIcon } from "@/features/shared/components/EntityIcon";
+import { EntityIcon } from "@/components/ui/EntityIcon";
 import Link from "next/link";
 import useSWRInfinite from "swr/infinite";
 
-import { Popover, PopoverContent, PopoverTrigger } from "@tumiki/ui/popover";
-import { Button } from "@tumiki/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Button } from "@/components/ui/chat/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,13 +25,13 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@tumiki/ui/alert-dialog";
+} from "@/components/ui/chat/alert-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@tumiki/ui/dropdown-menu";
+} from "@/components/ui/dropdown-menu";
 import { cn, fetcher } from "@/lib/utils";
 import { LoaderIcon } from "@/components/icons";
 import type { ChatWithUser, ChatHistory, GroupedChats } from "@/lib/types/chat";

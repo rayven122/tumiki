@@ -1,13 +1,13 @@
 "use client";
 
-import { Button } from "@tumiki/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@tumiki/ui/dropdown-menu";
+} from "@/components/ui/dropdown-menu";
 import { Settings, User, ChevronDown, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";

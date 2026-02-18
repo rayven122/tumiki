@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@tumiki/ui/button";
+import { Button } from "@/components/ui/chat/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,7 +10,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from "@tumiki/ui/dropdown-menu";
+} from "@/components/ui/chat/dropdown-menu";
 import { AUTO_MODEL_ID } from "@/features/chat/services/ai/auto-model-selector";
 import { useModelSelector } from "@/hooks/useModelSelector";
 import { cn } from "@/lib/utils";

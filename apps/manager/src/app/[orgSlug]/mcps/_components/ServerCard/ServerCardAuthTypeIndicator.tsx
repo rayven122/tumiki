@@ -1,12 +1,16 @@
-import { Badge } from "@tumiki/ui/badge";
-import { Button } from "@tumiki/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@tumiki/ui/popover";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@tumiki/ui/tooltip";
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import {
   calculateExpirationStatus,

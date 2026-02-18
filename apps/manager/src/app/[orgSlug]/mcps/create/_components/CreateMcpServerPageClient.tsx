@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Button } from "@tumiki/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@tumiki/ui/card";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronLeft, Plus, Workflow } from "lucide-react";
 
 type CreateMcpServerPageClientProps = {

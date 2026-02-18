@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@tumiki/ui/button";
+import { Button } from "@/components/ui/chat/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
-} from "@tumiki/ui/dropdown-menu";
+} from "@/components/ui/chat/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { CheckCircleFillIcon, ChevronDownIcon, RouteIcon } from "./icons";
 import { api, type RouterOutputs } from "~/trpc/react";

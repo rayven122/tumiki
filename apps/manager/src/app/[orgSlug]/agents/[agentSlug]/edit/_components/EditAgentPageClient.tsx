@@ -3,18 +3,18 @@
 import { Suspense, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/trpc/react";
-import { Button } from "@tumiki/ui/button";
-import { Input } from "@tumiki/ui/input";
-import { Label } from "@tumiki/ui/label";
-import { Textarea } from "@tumiki/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@tumiki/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@tumiki/ui/card";
+} from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Bot, Check, Loader2, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";

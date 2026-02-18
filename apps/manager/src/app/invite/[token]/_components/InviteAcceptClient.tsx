@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Button } from "@tumiki/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@tumiki/ui/card";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
 import { Mail, UserPlus } from "lucide-react";

@@ -6,8 +6,8 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@tumiki/ui/dialog";
-import { Input } from "@tumiki/ui/input";
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { useState } from "react";
 import type { McpTool } from "@tumiki/db/prisma";

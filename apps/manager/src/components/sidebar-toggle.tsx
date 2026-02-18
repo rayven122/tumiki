@@ -1,13 +1,14 @@
 import type { ComponentProps } from "react";
 
+import { type SidebarTrigger, useSidebar } from "@/components/ui/chat/sidebar";
 import {
-  type SidebarTrigger,
-  useSidebar,
-} from "@/features/chat/components/Sidebar";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@tumiki/ui/tooltip";
-import { Button } from "@tumiki/ui/button";
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/chat/tooltip";
 
 import { SidebarLeftIcon } from "./icons";
+import { Button } from "./ui/chat/button";
 
 export function SidebarToggle({
   className,

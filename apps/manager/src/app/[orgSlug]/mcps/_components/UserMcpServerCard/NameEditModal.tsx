@@ -3,7 +3,7 @@ import { api } from "@/trpc/react";
 import { toast } from "@/lib/client/toast";
 import { normalizeServerName } from "@tumiki/shared/utils/normalizeServerName";
 
-import { Button } from "@tumiki/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -11,9 +11,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@tumiki/ui/dialog";
-import { Input } from "@tumiki/ui/input";
-import { Label } from "@tumiki/ui/label";
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { type McpServerId } from "@/schema/ids";
 
 type NameEditModalProps = {

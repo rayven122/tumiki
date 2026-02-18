@@ -1,7 +1,7 @@
 import Form from "next/form";
 
-import { Input } from "@tumiki/ui/input";
-import { Label } from "@tumiki/ui/label";
+import { Input } from "./ui/chat/input";
+import { Label } from "./ui/chat/label";
 
 export function AuthForm({
   action,

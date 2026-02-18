@@ -1,12 +1,12 @@
 "use client";
 
-import { Button } from "@tumiki/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@tumiki/ui/tooltip";
+} from "@/components/ui/tooltip";
 import { Shield, Trash2, Loader2 } from "lucide-react";
 import type { GroupRoleOutput } from "@/server/utils/groupSchemas";
 

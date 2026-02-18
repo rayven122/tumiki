@@ -5,29 +5,29 @@ import { Loader2, RefreshCw } from "lucide-react";
 import type { TransportType } from "@tumiki/db/prisma";
 import { normalizeSlug } from "@tumiki/db/utils/slug";
 
-import { Button } from "@tumiki/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@tumiki/ui/dialog";
-import { Input } from "@tumiki/ui/input";
-import { Label } from "@tumiki/ui/label";
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@tumiki/ui/select";
+} from "@/components/ui/select";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@tumiki/ui/accordion";
+} from "@/components/ui/accordion";
 import { toast } from "react-toastify";
 import { useCreateServerForm } from "@/app/[orgSlug]/mcps/_components/ServerCard/hooks/useCreateServerForm";
 import { normalizeServerName } from "@tumiki/shared/utils/normalizeServerName";

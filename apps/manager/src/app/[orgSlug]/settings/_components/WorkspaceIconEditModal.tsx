@@ -11,7 +11,7 @@ import {
 import { Upload, X, Building2 } from "lucide-react";
 import { z } from "zod";
 
-import { Button } from "@tumiki/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -19,8 +19,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@tumiki/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@tumiki/ui/tabs";
+} from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { McpIconPicker } from "../../mcps/_components/McpIconPicker";
 import { McpServerIcon } from "../../mcps/_components/McpServerIcon";
 import { cn } from "@/lib/utils";

@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
-import { Button } from "@tumiki/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@tumiki/ui/card";
-import { Input } from "@tumiki/ui/input";
-import { Label } from "@tumiki/ui/label";
-import { Textarea } from "@tumiki/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Edit2, Save, X, Users } from "lucide-react";
 import { api } from "@/trpc/react";
 import { getSessionInfo } from "~/lib/auth/session-utils";

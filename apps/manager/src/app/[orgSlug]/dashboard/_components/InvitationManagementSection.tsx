@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@tumiki/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@tumiki/ui/card";
-import { Badge } from "@tumiki/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@tumiki/ui/alert-dialog";
+} from "@/components/ui/alert-dialog";
 import { Mail, Clock, RefreshCw, X, AlertCircle } from "lucide-react";
 import { api } from "@/trpc/react";
 import { getSessionInfo } from "~/lib/auth/session-utils";
@@ -23,7 +23,7 @@ import { type OrganizationInvitationId } from "@/schema/ids";
 import { format, formatDistanceToNow } from "date-fns";
 import { ja } from "date-fns/locale";
 import { useSession } from "next-auth/react";
-import { Alert, AlertDescription } from "@tumiki/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 // 定数定義
 const ANIMATION_DURATION = 3000; // アニメーション表示時間（ミリ秒）

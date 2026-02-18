@@ -7,7 +7,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@tumiki/ui/select";
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,7 +17,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@tumiki/ui/alert-dialog";
+} from "@/components/ui/alert-dialog";
 import { Shield, Eye, User } from "lucide-react";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";

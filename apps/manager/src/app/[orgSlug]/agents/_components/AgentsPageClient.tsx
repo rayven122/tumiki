@@ -1,7 +1,7 @@
 "use client";
 
-import { Button } from "@tumiki/ui/button";
-import { Input } from "@tumiki/ui/input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { REALTIME_LOG_POLLING_MS } from "@/features/agents/constants";
 import { api } from "@/trpc/react";
 import { Bot, Plus, Search } from "lucide-react";

@@ -1,13 +1,13 @@
 "use client";
 
 import { useMemo } from "react";
-import { Button } from "@tumiki/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@tumiki/ui/tooltip";
+} from "@/components/ui/tooltip";
 import { Save, ArrowDownUp } from "lucide-react";
 import { toast } from "sonner";
 import { detectOrphanedDepartments } from "@/features/org-structure/utils/validation";

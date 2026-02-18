@@ -1,12 +1,12 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@tumiki/ui/card";
-import { Badge } from "@tumiki/ui/badge";
-import { Button } from "@tumiki/ui/button";
-import { Input } from "@tumiki/ui/input";
-import { Label } from "@tumiki/ui/label";
-import { Textarea } from "@tumiki/ui/textarea";
-import { Separator } from "@tumiki/ui/separator";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import { useSession } from "next-auth/react";
 import {
   User,

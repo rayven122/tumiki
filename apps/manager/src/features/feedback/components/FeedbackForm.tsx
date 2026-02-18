@@ -1,17 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@tumiki/ui/button";
-import { Input } from "@tumiki/ui/input";
-import { Label } from "@tumiki/ui/label";
-import { Textarea } from "@tumiki/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@tumiki/ui/select";
+} from "@/components/ui/select";
 import { api } from "@/trpc/react";
 import { Loader2 } from "lucide-react";
 import { toast } from "@/lib/client/toast";

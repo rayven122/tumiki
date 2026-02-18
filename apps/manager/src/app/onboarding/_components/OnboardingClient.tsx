@@ -4,14 +4,14 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { User, Users, ArrowRight, CheckCircle, Lock, Mail } from "lucide-react";
 import { motion } from "framer-motion";
-import { Button } from "@tumiki/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@tumiki/ui/dialog";
+} from "@/components/ui/dialog";
 import { OrganizationCreateForm } from "./OrganizationCreateForm";
 import { OnboardingFloatingBlocks } from "./OnboardingFloatingBlocks";
 import { TeamInquiryModal } from "./TeamInquiryModal";

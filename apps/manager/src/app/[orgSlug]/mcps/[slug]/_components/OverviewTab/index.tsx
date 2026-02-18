@@ -7,7 +7,7 @@ import { ToolCard } from "./ToolCard";
 import { RequestStatsCard } from "./RequestStatsCard";
 import { DataUsageStatsCard } from "./DataUsageStatsCard";
 import { sanitizeErrorMessage } from "./errorUtils";
-import { EntityIcon } from "@/features/shared/components/EntityIcon";
+import { EntityIcon } from "@/components/ui/EntityIcon";
 import { cn } from "@/lib/utils";
 import type { UserMcpServerDetail, RequestStats } from "../types";
 import type { McpServerId, ToolId } from "@/schema/ids";

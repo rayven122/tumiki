@@ -6,10 +6,10 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@tumiki/ui/dialog";
-import { Input } from "@tumiki/ui/input";
-import { Label } from "@tumiki/ui/label";
-import { Separator } from "@tumiki/ui/separator";
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import type { Prisma } from "@tumiki/db/prisma";
 import { useServerConfigForm } from "./hooks/useServerConfigForm";
 import { AuthMethodTabs } from "./ServerCardAuthMethodTabs";

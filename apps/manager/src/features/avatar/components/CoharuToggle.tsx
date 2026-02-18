@@ -6,8 +6,12 @@
  */
 
 import { useCoharuContext } from "@/features/avatar/hooks/useCoharuContext";
-import { Button } from "@tumiki/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@tumiki/ui/tooltip";
+import { Button } from "@/components/ui/chat/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/chat/tooltip";
 
 type CoharuToggleProps = {
   className?: string;

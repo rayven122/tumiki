@@ -4,17 +4,17 @@ import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Button } from "@tumiki/ui/button";
-import { Input } from "@tumiki/ui/input";
-import { Label } from "@tumiki/ui/label";
-import { Textarea } from "@tumiki/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@tumiki/ui/dialog";
+} from "@/components/ui/dialog";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
 import { PermissionSelector, type McpPermission } from "./PermissionSelector";

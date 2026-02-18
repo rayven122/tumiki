@@ -1,4 +1,4 @@
-import { Card, CardContent } from "@tumiki/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -6,9 +6,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@tumiki/ui/table";
-import { Button } from "@tumiki/ui/button";
-import { Badge } from "@tumiki/ui/badge";
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   ChevronLeft,
   ChevronRight,
@@ -16,7 +16,11 @@ import {
   Shrink,
   ShieldCheck,
 } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@tumiki/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { formatDataSize } from "@tumiki/shared";
 import { getPaginationPages } from "./utils";
 import { MaskingInfoCell } from "./MaskingInfoCell";

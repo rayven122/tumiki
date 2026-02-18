@@ -1,4 +1,4 @@
-import { Button } from "@tumiki/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -6,7 +6,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@tumiki/ui/dialog";
+} from "@/components/ui/dialog";
 import { AlertTriangleIcon } from "lucide-react";
 import { api } from "@/trpc/react";
 import { toast } from "@/lib/client/toast";

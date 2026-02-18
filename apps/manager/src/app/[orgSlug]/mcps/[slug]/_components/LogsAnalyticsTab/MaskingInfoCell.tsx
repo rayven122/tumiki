@@ -1,5 +1,9 @@
 import React from "react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@tumiki/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { ShieldCheck, ShieldOff } from "lucide-react";
 import type { PiiMaskingMode } from "./constants";
 

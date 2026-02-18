@@ -1,6 +1,6 @@
 "use client";
 
-import { Switch } from "@tumiki/ui/switch";
+import { Switch } from "@/components/ui/switch";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 type ToolCardProps = {

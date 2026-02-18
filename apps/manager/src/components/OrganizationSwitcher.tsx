@@ -6,7 +6,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@tumiki/ui/select";
+} from "@/components/ui/select";
 import { useOrganizationContext } from "@/hooks/useOrganizationContext";
 import { Building2, User, Plus, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";

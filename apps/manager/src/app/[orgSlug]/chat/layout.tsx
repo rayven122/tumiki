@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { TooltipProvider } from "@tumiki/ui/tooltip";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 type ChatLayoutProps = {
   children: ReactNode;

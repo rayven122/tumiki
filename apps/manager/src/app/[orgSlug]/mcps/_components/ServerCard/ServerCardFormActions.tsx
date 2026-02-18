@@ -1,5 +1,5 @@
 import { Loader2 } from "lucide-react";
-import { Button } from "@tumiki/ui/button";
+import { Button } from "@/components/ui/button";
 import type { Prisma } from "@tumiki/db/prisma";
 
 type McpServerTemplate = Prisma.McpServerTemplateGetPayload<object>;

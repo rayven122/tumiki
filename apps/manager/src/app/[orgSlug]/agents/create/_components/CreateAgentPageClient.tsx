@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowLeft, Bot } from "lucide-react";
-import { Button } from "@tumiki/ui/button";
+import { Button } from "@/components/ui/button";
 
 import { CreateAgentForm } from "./CreateAgentForm";
 

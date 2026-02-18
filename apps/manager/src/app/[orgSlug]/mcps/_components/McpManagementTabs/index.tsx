@@ -1,6 +1,6 @@
 "use client";
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@tumiki/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Layers } from "lucide-react";
 import { AddMcpTab } from "./AddMcpTab";
 import { IntegrateMcpTab } from "./IntegrateMcpTab";

@@ -2,13 +2,13 @@ import type { UIMessage } from "ai";
 import { useCopyToClipboard } from "usehooks-ts";
 
 import { CopyIcon } from "./icons";
-import { Button } from "@tumiki/ui/button";
+import { Button } from "./ui/chat/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@tumiki/ui/tooltip";
+} from "./ui/chat/tooltip";
 import { memo } from "react";
 import { toast } from "sonner";
 

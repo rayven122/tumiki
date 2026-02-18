@@ -1,6 +1,6 @@
 "use client";
 
-import { Input } from "@tumiki/ui/input";
+import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 
 type MemberSearchBarProps = {

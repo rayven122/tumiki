@@ -7,8 +7,8 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@tumiki/ui/dialog";
-import { Separator } from "@tumiki/ui/separator";
+} from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 import type { Prisma } from "@tumiki/db/prisma";
 import { normalizeSlug } from "@tumiki/db/utils/slug";
 import { useCreateServerForm } from "./hooks/useCreateServerForm";

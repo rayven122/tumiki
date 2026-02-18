@@ -10,8 +10,8 @@
 import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { Card, CardContent, CardHeader, CardTitle } from "@tumiki/ui/card";
-import { Button } from "@tumiki/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,7 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@tumiki/ui/alert-dialog";
+} from "@/components/ui/alert-dialog";
 import { Check, Loader2, Unlink, AlertCircle } from "lucide-react";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";

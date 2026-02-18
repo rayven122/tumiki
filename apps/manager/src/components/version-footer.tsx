@@ -10,7 +10,7 @@ import type { Document } from "@tumiki/db/prisma";
 import { getDocumentTimestampByIndex } from "@/lib/utils";
 
 import { LoaderIcon } from "./icons";
-import { Button } from "@tumiki/ui/button";
+import { Button } from "./ui/chat/button";
 import { useArtifact } from "@/hooks/use-artifact";
 
 interface VersionFooterProps {

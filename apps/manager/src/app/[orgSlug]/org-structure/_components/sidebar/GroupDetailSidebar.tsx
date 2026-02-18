@@ -9,10 +9,10 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@tumiki/ui/sheet";
-import { Separator } from "@tumiki/ui/separator";
-import { Button } from "@tumiki/ui/button";
-import { Input } from "@tumiki/ui/input";
+} from "@/components/ui/sheet";
+import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { api } from "@/trpc/react";
 import type { Department } from "@/features/org-structure/utils/mock/mockOrgData";
 import { MemberList } from "./MemberList";

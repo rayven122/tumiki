@@ -7,7 +7,7 @@ import { useWindowSize } from "usehooks-ts";
 import type { UISuggestion } from "@/lib/editor/suggestions";
 
 import { CrossIcon, MessageIcon } from "./icons";
-import { Button } from "@tumiki/ui/button";
+import { Button } from "./ui/chat/button";
 import { cn } from "@/lib/utils";
 import type { ArtifactKind } from "./artifact";
 

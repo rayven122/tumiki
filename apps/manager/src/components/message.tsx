@@ -14,15 +14,15 @@ import { Weather, type WeatherAtLocation } from "./weather";
 import equal from "fast-deep-equal";
 import { cn, sanitizeText } from "@/lib/utils";
 import { McpToolCall } from "./mcp-tool-call";
-import { Button } from "@tumiki/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@tumiki/ui/tooltip";
+import { Button } from "./ui/chat/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/chat/tooltip";
 import { MessageEditor } from "./message-editor";
 import { DocumentPreview } from "./document-preview";
 import { MessageReasoning } from "./message-reasoning";
 import { TypingIndicator } from "./typing-indicator";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import type { AgentInfo, ChatMessage } from "@/lib/types";
-import { EntityIcon } from "@/features/shared/components/EntityIcon";
+import { EntityIcon } from "./ui/EntityIcon";
 import { SlackNotificationAlert } from "@/app/[orgSlug]/agents/[agentSlug]/_components/SlackNotificationAlert";
 import {
   type SlackNotificationPart,

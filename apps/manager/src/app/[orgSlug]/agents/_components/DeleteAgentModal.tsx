@@ -9,7 +9,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@tumiki/ui/alert-dialog";
+} from "@/components/ui/alert-dialog";
 import type { AgentId } from "@/schema/ids";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";

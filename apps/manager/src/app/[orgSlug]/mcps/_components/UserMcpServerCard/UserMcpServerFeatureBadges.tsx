@@ -1,13 +1,13 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Badge } from "@tumiki/ui/badge";
+import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@tumiki/ui/tooltip";
+} from "@/components/ui/tooltip";
 import type { PiiMaskingMode } from "@tumiki/db/prisma";
 import type { LucideIcon } from "lucide-react";
 import { Search, ShieldCheck, Shrink } from "lucide-react";

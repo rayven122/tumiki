@@ -16,7 +16,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@tumiki/ui/tooltip";
+} from "@/components/ui/chat/tooltip";
 import { cn } from "@/lib/utils";
 
 type AvatarModeChatPanelProps = {

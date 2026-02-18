@@ -6,11 +6,11 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Plus, MoreHorizontal, Trash2, Bot, MessageSquare } from "lucide-react";
 import { UsersIcon, LoaderIcon } from "@/components/icons";
-import { EntityIcon } from "@/features/shared/components/EntityIcon";
+import { EntityIcon } from "@/components/ui/EntityIcon";
 import Link from "next/link";
 import useSWRInfinite from "swr/infinite";
 
-import { Button } from "@tumiki/ui/button";
+import { Button } from "@/components/ui/chat/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,13 +20,13 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@tumiki/ui/alert-dialog";
+} from "@/components/ui/chat/alert-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@tumiki/ui/dropdown-menu";
+} from "@/components/ui/dropdown-menu";
 import { cn, fetcher } from "@/lib/utils";
 import type { ChatWithUser, ChatHistory, GroupedChats } from "@/lib/types/chat";
 import { getChatHistoryPaginationKey } from "@/components/sidebar-history";

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@tumiki/ui/button";
-import { Badge } from "@tumiki/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -10,7 +10,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@tumiki/ui/table";
+} from "@/components/ui/table";
 import { CheckCircle, XCircle, Clock, Loader2, Eye } from "lucide-react";
 import { api } from "@/trpc/react";
 import { format } from "date-fns";

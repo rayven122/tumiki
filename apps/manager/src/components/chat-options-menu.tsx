@@ -4,8 +4,12 @@ import type React from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Monitor, Star, Sparkles, ChevronDown, Check } from "lucide-react";
-import { Button } from "@tumiki/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@tumiki/ui/popover";
+import { Button } from "@/components/ui/chat/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useCoharuContext } from "@/features/avatar/hooks/useCoharuContext";
 

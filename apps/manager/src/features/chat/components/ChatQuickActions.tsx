@@ -1,8 +1,12 @@
 "use client";
 
 import { Copy } from "lucide-react";
-import { Button } from "@tumiki/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@tumiki/ui/tooltip";
+import { Button } from "@/components/ui/chat/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/chat/tooltip";
 import {
   VisibilitySelector,
   type VisibilityType,

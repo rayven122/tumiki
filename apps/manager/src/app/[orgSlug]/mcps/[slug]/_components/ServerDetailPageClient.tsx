@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent } from "@tumiki/ui/card";
-import { Badge } from "@tumiki/ui/badge";
-import { Button } from "@tumiki/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Activity,
   ArrowLeft,
@@ -30,8 +30,12 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@tumiki/ui/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@tumiki/ui/tooltip";
+} from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { AUTH_TYPE_LABELS } from "@/features/mcps/constants/userMcpServer";
 import { cn } from "@/lib/utils";
 import type { McpServerId } from "@/schema/ids";
@@ -43,11 +47,11 @@ import { CustomTabs } from "./CustomTabs";
 import { DeleteServerDialog } from "./DeleteServerDialog";
 import { LogsAnalyticsTab } from "./LogsAnalyticsTab";
 import { OverviewTab } from "./OverviewTab";
-import { EntityIcon } from "@/features/shared/components/EntityIcon";
+import { EntityIcon } from "@/components/ui/EntityIcon";
 import { IconEditModal } from "../../_components/UserMcpServerCard/IconEditModal";
 import { useReauthenticateOAuth } from "../../_components/UserMcpServerCard/hooks/useReauthenticateOAuth";
 import { McpConfigEditModal } from "./McpConfigEditModal";
-import { Switch } from "@tumiki/ui/switch";
+import { Switch } from "@/components/ui/switch";
 import { RefreshToolsModal } from "../../_components/RefreshToolsModal";
 
 // サーバータイプのラベル

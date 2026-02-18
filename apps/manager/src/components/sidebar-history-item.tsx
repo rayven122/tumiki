@@ -2,7 +2,7 @@ import {
   SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/features/chat/components/Sidebar";
+} from "./ui/chat/sidebar";
 import Link from "next/link";
 import {
   DropdownMenu,
@@ -13,7 +13,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from "@tumiki/ui/dropdown-menu";
+} from "./ui/chat/dropdown-menu";
 import {
   BotIcon,
   CheckCircleFillIcon,

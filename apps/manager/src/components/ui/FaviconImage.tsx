@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { getFaviconUrlsFromUrl } from "@/lib/faviconUtils";
 
-type FaviconImageProps = {
+interface FaviconImageProps {
   /** MCPサーバーのURL（ファビコンを抽出するため） */
   url?: string | null;
   /** フォールバック表示用のReactNode */
@@ -15,7 +15,7 @@ type FaviconImageProps = {
   alt: string;
   /** 追加のCSSクラス */
   className?: string;
-};
+}
 
 export const FaviconImage = ({
   url,

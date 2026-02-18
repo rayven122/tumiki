@@ -1,19 +1,19 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@tumiki/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@tumiki/ui/select";
+} from "@/components/ui/select";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-} from "@/features/analytics/components/Chart";
+} from "@/components/ui/chart";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { api } from "@/trpc/react";
 import { Server, Bot, Loader2 } from "lucide-react";

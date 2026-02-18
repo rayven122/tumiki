@@ -10,9 +10,13 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@tumiki/ui/dialog";
-import { Button } from "@tumiki/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@tumiki/ui/tooltip";
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { sidebarOpenAtom } from "@/store/sidebar";
 
 type ExecutionModalBaseProps = {

@@ -5,7 +5,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@tumiki/ui/card";
+} from "@/components/ui/card";
 
 type AuthCardProps = {
   title: string;
