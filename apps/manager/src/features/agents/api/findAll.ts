@@ -28,6 +28,7 @@ export const findAllAgents = async (
       description: true,
       iconPath: true,
       systemPrompt: true,
+      personaId: true,
       modelId: true,
       visibility: true,
       estimatedDurationMs: true,

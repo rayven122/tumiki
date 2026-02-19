@@ -7,6 +7,7 @@ export { executeAgentCommand, executeAgent } from "./executeAgentCommand.js";
 
 // ヘルパー関数
 export { buildSystemPrompt, triggerToString } from "./buildSystemPrompt.js";
+export { resolveAgentSystemPrompt } from "./resolveAgentSystemPrompt.js";
 export {
   buildMessageParts,
   buildSlackNotificationPart,

@@ -29,6 +29,8 @@ model Agent {
   iconPath     String?
   /// カスタムシステムプロンプト
   systemPrompt String              @db.Text
+  /// ペルソナID（null = ペルソナなし）
+  personaId    String?
   /// 使用するLLMモデルID（例: "anthropic/claude-3.5-haiku"）
   modelId      String?
   /// 可視性（共有設定）
