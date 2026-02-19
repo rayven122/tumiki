@@ -6,3 +6,4 @@ export {
   type SlackNotificationSettingsValue,
   type SlackChannel,
 } from "./SlackNotificationSettings";
+export { AgentPersonaSelector } from "./AgentPersonaSelector";
