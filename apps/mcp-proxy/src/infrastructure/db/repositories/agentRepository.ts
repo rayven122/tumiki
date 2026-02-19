@@ -12,6 +12,7 @@ export type AgentForExecution = {
   name: string;
   organizationId: string;
   systemPrompt: string | null;
+  personaId: string | null;
   modelId: string | null;
   createdById: string | null;
   mcpServers: Array<{ id: string }>;
@@ -33,6 +34,7 @@ export const findAgentForExecution = async (
       name: true,
       organizationId: true,
       systemPrompt: true,
+      personaId: true,
       modelId: true,
       createdById: true,
       mcpServers: { select: { id: true } },

@@ -41,6 +41,7 @@ import {
   TIMEOUT_ERROR_MESSAGE,
   type MessagePart,
 } from "./index.js";
+import { resolveAgentSystemPrompt } from "./resolveAgentSystemPrompt.js";
 
 /** エージェント実行用のデフォルトモデル（環境変数で上書き可能） */
 const DEFAULT_AGENT_MODEL =
@@ -114,10 +115,12 @@ export const executeAgentCommand = async (
     // エラー時に再利用するため保持
     agentInfo = agent;
 
-    const systemPrompt = buildSystemPrompt(
-      request.trigger,
-      agent.systemPrompt ?? undefined,
+    // ペルソナとsystemPromptを結合してからbuildSystemPromptに渡す
+    const resolvedPrompt = resolveAgentSystemPrompt(
+      agent.systemPrompt,
+      agent.personaId,
     );
+    const systemPrompt = buildSystemPrompt(request.trigger, resolvedPrompt);
     // "auto" または未設定の場合はデフォルトモデルに解決
     modelId =
       agent.modelId && agent.modelId !== AUTO_MODEL_ID
