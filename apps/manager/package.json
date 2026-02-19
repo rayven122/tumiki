@@ -46,6 +46,7 @@
     "@tumiki/db": "workspace:*",
     "@tumiki/keycloak": "workspace:*",
     "@tumiki/mailer": "workspace:*",
+    "@tumiki/prompts": "workspace:*",
     "@tumiki/shared": "workspace:*",
     "@tumiki/slack": "workspace:*",
     "@tumiki/ui": "workspace:*",
