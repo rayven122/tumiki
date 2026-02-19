@@ -274,12 +274,8 @@ export const POST = async (request: Request) => {
       selectedChatModel,
       selectedVisibilityType,
       selectedMcpServerIds,
-      isCoharuEnabled,
+      personaId,
     } = requestBody;
-
-    // @deprecated 2025-06 以降に削除予定: isCoharuEnabled → personaId 移行完了後に除去
-    const personaId =
-      requestBody.personaId ?? (isCoharuEnabled ? "coharu" : undefined);
 
     const session = await auth();
 

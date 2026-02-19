@@ -51,9 +51,6 @@ export const postRequestBodySchema = z.object({
   selectedMcpServerIds: z.array(z.string()).optional().default([]),
   // ペルソナID（指定しない場合はデフォルト）
   personaId: z.string().optional(),
-  // @deprecated 2025-06 以降に削除予定。personaId を使用すること。
-  // 後方互換性: personaId 未指定時に true なら "coharu" として扱う
-  isCoharuEnabled: z.boolean().optional().default(false),
 });
 
 export type PostRequestBody = z.infer<typeof postRequestBodySchema>;

@@ -10,14 +10,13 @@
     }
   },
   "scripts": {
-    "dev": "tsc --watch --project tsconfig.build.json",
-    "build": "rm -rf dist .cache/tsbuildinfo.json && tsc --project tsconfig.build.json && cp -r src/personas dist/personas && cp -r src/instructions dist/instructions",
-    "clean": "git clean -xdf .cache .turbo dist node_modules",
+    "dev": "tsc --project tsconfig.build.json --watch",
+    "build": "tsc --project tsconfig.build.json && cp -r src/personas dist/personas && cp -r src/instructions dist/instructions",
+    "clean": "git clean -xdf .cache .turbo node_modules dist",
     "typecheck": "tsc --noEmit",
     "lint": "eslint",
-    "format": "prettier --check . --ignore-path ../../.gitignore",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "format": "prettier --check . --ignore-path ../../.gitignore --write",
+    "test": "vitest"
   },
   "devDependencies": {
     "@tumiki/eslint-config": "workspace:*",

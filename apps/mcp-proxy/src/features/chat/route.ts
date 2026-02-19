@@ -52,12 +52,8 @@ export const chatRoute = new Hono<HonoEnv>().post("/chat", async (c) => {
     selectedChatModel,
     selectedVisibilityType,
     selectedMcpServerIds,
-    isCoharuEnabled,
+    personaId,
   } = requestBody;
-
-  // @deprecated 2025-06 以降に削除予定: isCoharuEnabled → personaId 移行完了後に除去
-  const personaId =
-    requestBody.personaId ?? (isCoharuEnabled ? "coharu" : undefined);
 
   // JWT認証を実行
   const authResult = await verifyChatAuth(
@@ -104,7 +100,6 @@ export const chatRoute = new Hono<HonoEnv>().post("/chat", async (c) => {
           organizationId,
           title,
           visibility: selectedVisibilityType,
-          personaId: personaId ?? null,
           createdAt: new Date(),
         },
       });

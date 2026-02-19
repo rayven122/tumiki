@@ -992,7 +992,6 @@ erDiagram
   McpServerVisibility visibility
   String organizationId FK
   String agentId FK "nullable"
-  String personaId "nullable"
 }
 "Message" {
   String id PK
@@ -1056,7 +1055,6 @@ erDiagram
   - `visibility`: チャットの可視性（McpServerVisibility を共通利用）
   - `organizationId`: 組織ID（組織レベルでのチャット管理）
   - `agentId`: エージェントID（エージェント実行の場合に設定、nullならユーザーチャット）
-  - `personaId`: ペルソナID（null = デフォルトペルソナ）
 
 ### `Message`
 

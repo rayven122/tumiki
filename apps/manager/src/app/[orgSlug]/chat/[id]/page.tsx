@@ -104,7 +104,6 @@ export default async function Page(props: PageProps) {
         autoResume={true}
         isPersonalOrg={organization.isPersonal}
         agentInfo={agentInfo}
-        initialPersonaId={chat.personaId ?? undefined}
       />
       <DataStreamHandler />
     </DataStreamProvider>

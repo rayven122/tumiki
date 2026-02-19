@@ -31,7 +31,6 @@ import type { SessionData } from "~/auth";
 import { useDataStream } from "./data-stream-provider";
 import { CoharuProvider, useCoharuContext } from "@/features/avatar/hooks";
 import { useChatPreferences } from "@/hooks/useChatPreferences";
-import { useLatestRef } from "@/hooks/useLatestRef";
 import { getProxyServerUrl } from "@/lib/url";
 import {
   isAutoModel,
@@ -60,7 +59,6 @@ type ChatProps = {
   isPersonalOrg: boolean;
   isNewChat?: boolean;
   agentInfo?: AgentInfo;
-  initialPersonaId?: string;
 };
 
 export function Chat(props: ChatProps) {
@@ -85,7 +83,6 @@ function ChatContent({
   isPersonalOrg,
   isNewChat = false,
   agentInfo,
-  initialPersonaId,
 }: ChatProps) {
   const { mutate } = useSWRConfig();
   const { setDataStream } = useDataStream();
@@ -100,8 +97,10 @@ function ChatContent({
   } = useCoharuContext();
 
   // useChat のコールバック内で最新値を参照するための ref
-  const isCoharuEnabledRef = useLatestRef(isCoharuEnabled);
-  const speakRef = useLatestRef(speak);
+  const isCoharuEnabledRef = useRef(isCoharuEnabled);
+  isCoharuEnabledRef.current = isCoharuEnabled;
+  const speakRef = useRef(speak);
+  speakRef.current = speak;
 
   // ストリーミング中のTTS用状態
   // 蓄積中のテキスト
@@ -129,13 +128,16 @@ function ChatContent({
     ? storedMcpServerIds
     : initialMcpServerIds;
 
-  // ペルソナは新規チャットのみ変更可能（既存チャットはinitialPersonaIdを使用）
-  const selectedPersonaId = isNewChat ? storedPersonaId : initialPersonaId;
+  // ペルソナはLocalStorageの値を常に使用（モデルと同じ管理方式）
+  const selectedPersonaId = storedPersonaId;
 
   // useChat のコールバック内で最新値を参照するための ref
-  const selectedMcpServerIdsRef = useLatestRef(selectedMcpServerIds);
-  const selectedPersonaIdRef = useLatestRef(selectedPersonaId);
-  const selectedChatModelRef = useLatestRef(selectedChatModel);
+  const selectedMcpServerIdsRef = useRef(selectedMcpServerIds);
+  selectedMcpServerIdsRef.current = selectedMcpServerIds;
+  const selectedPersonaIdRef = useRef(selectedPersonaId);
+  selectedPersonaIdRef.current = selectedPersonaId;
+  const selectedChatModelRef = useRef(selectedChatModel);
+  selectedChatModelRef.current = selectedChatModel;
 
   const { visibilityType } = useChatVisibility({
     chatId: id,

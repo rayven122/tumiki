@@ -20,9 +20,6 @@ model Chat {
   agentId String?
   agent   Agent?  @relation(fields: [agentId], references: [id], onDelete: SetNull)
 
-  /// ペルソナID（null = デフォルトペルソナ）
-  personaId String?
-
   messages   Message[]
   votes      Vote[]
   streams    Stream[]
