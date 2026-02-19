@@ -16,10 +16,6 @@ type DefaultPermissionsSectionProps = {
   onDefaultChange: (key: "access" | "manage", value: boolean) => void;
 };
 
-/**
- * デフォルト権限セクション（すべてのMCPサーバー）
- * 折りたたみ可能なデフォルト権限設定UI
- */
 export const DefaultPermissionsSection = ({
   isOpen,
   onOpenChange,
@@ -54,7 +50,7 @@ export const DefaultPermissionsSection = ({
       </CollapsibleTrigger>
 
       <CollapsibleContent>
-        <div className="divide-y border-t px-4">
+        <div className="divide-y border-t px-2 sm:px-4">
           <ToggleRow
             label="アクセス"
             description="MCPサーバーの閲覧と実行ができます"

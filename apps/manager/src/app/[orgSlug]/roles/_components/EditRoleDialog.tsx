@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -60,24 +60,15 @@ export const EditRoleDialog = ({
   open,
   onOpenChange,
 }: EditRoleDialogProps) => {
-  // DB用の read/write/execute をUI用の access/manage に変換（useCallbackでメモ化）
-  const mapMcpPermissions = useCallback(
-    (
-      mcpPermissions: typeof role.mcpPermissions,
-    ): EditRoleFormData["mcpPermissions"] => {
-      return (mcpPermissions ?? []).map((p) => ({
-        mcpServerId: p.mcpServerId,
-        access: mapDbToUiAccess(p.read, p.execute),
-        manage: p.write,
-      }));
-    },
-    [],
-  );
-
-  // DB用のデフォルト権限をUI用に変換
-  const getDefaultAccess = useCallback((): boolean => {
-    return mapDbToUiAccess(role.defaultRead, role.defaultExecute);
-  }, [role.defaultRead, role.defaultExecute]);
+  // DB用の read/write/execute をUI用の access/manage に変換
+  const mapMcpPermissions = (
+    mcpPermissions: typeof role.mcpPermissions,
+  ): EditRoleFormData["mcpPermissions"] =>
+    (mcpPermissions ?? []).map((p) => ({
+      mcpServerId: p.mcpServerId,
+      access: mapDbToUiAccess(p.read, p.execute),
+      manage: p.write,
+    }));
 
   const {
     register,
@@ -92,7 +83,7 @@ export const EditRoleDialog = ({
       name: role.name,
       description: role.description ?? "",
       isDefault: role.isDefault,
-      defaultAccess: getDefaultAccess(),
+      defaultAccess: mapDbToUiAccess(role.defaultRead, role.defaultExecute),
       defaultManage: role.defaultWrite,
       mcpPermissions: mapMcpPermissions(role.mcpPermissions),
     },
@@ -108,7 +99,7 @@ export const EditRoleDialog = ({
       defaultManage: role.defaultWrite,
       mcpPermissions: mapMcpPermissions(role.mcpPermissions),
     });
-  }, [role, reset, mapMcpPermissions]);
+  }, [role, reset]);
 
   const utils = api.useUtils();
 
@@ -118,8 +109,7 @@ export const EditRoleDialog = ({
       enabled: open,
     });
 
-  // MCPサーバーのオプション形式に変換（iconPathを含む）
-  // McpServer自体のiconPathを優先し、なければテンプレートのiconPathをフォールバック
+  // MCPサーバーのオプション形式に変換（サーバー自身のiconPathを優先、なければテンプレートのiconPathを使用）
   const mcpServerOptions = useMemo(() => {
     return (mcpServers ?? []).map((server) => ({
       id: server.id,
@@ -149,8 +139,6 @@ export const EditRoleDialog = ({
   });
 
   const onSubmit = (data: EditRoleFormData) => {
-    // UI用の access/manage をDB用の read/write/execute に変換
-    // 統一されたマッピングロジックを使用
     const defaultAccess = data.defaultAccess ?? false;
     updateMutation.mutate({
       slug: role.slug,
@@ -168,7 +156,7 @@ export const EditRoleDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="max-h-[90vh] overflow-x-hidden overflow-y-auto sm:max-w-lg">
         <DialogHeader className="space-y-3">
           <div className="bg-primary/10 mx-auto flex h-12 w-12 items-center justify-center rounded-full">
             <Pencil className="text-primary h-6 w-6" />

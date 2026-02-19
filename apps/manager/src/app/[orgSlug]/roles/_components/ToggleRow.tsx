@@ -12,10 +12,6 @@ type ToggleRowProps = {
   colorClass: string;
 };
 
-/**
- * 権限トグルスイッチ行
- * アクセス/管理権限の表示と切り替えに使用
- */
 export const ToggleRow = ({
   label,
   description,
@@ -24,17 +20,17 @@ export const ToggleRow = ({
   onCheckedChange,
   colorClass,
 }: ToggleRowProps) => (
-  <div className="flex items-center justify-between py-2">
-    <div className="flex items-center gap-3">
+  <div className="flex items-center justify-between gap-2 py-2">
+    <div className="flex min-w-0 items-center gap-3">
       <div
         className={cn(
-          "h-2 w-2 rounded-full",
+          "h-2 w-2 shrink-0 rounded-full",
           checked ? colorClass : "bg-muted-foreground/30",
         )}
       />
-      <div>
+      <div className="min-w-0">
         <span className="text-sm font-medium">{label}</span>
-        <p className="text-muted-foreground text-xs">{description}</p>
+        <p className="text-muted-foreground truncate text-xs">{description}</p>
       </div>
     </div>
     <Switch
