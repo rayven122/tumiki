@@ -11,12 +11,14 @@ export const saveChat = async ({
   organizationId,
   title,
   visibility,
+  personaId,
 }: {
   id: string;
   userId: string;
   organizationId: string;
   title: string;
   visibility: VisibilityType;
+  personaId?: string;
 }) => {
   try {
     return await db.chat.create({
@@ -27,6 +29,7 @@ export const saveChat = async ({
         organizationId,
         title,
         visibility,
+        personaId: personaId ?? null,
       },
     });
   } catch (error) {

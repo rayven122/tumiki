@@ -60,21 +60,17 @@ export const ChatOptionsMenu = ({
 
   // モード選択ハンドラ
   const handleModeSelect = (mode: DisplayMode) => {
+    setOpen(false);
+
     if (mode === "avatar") {
-      // アバターモードへ移動
-      setOpen(false);
-      if (isNewChat) {
-        router.push(`/${orgSlug}/avatar`);
-      } else {
-        router.push(`/${orgSlug}/avatar/${chatId}`);
-      }
-    } else if (mode === "coharu") {
-      setCoharuEnabled(true);
-      setOpen(false);
-    } else {
-      setCoharuEnabled(false);
-      setOpen(false);
+      const path = isNewChat
+        ? `/${orgSlug}/avatar`
+        : `/${orgSlug}/avatar/${chatId}`;
+      router.push(path);
+      return;
     }
+
+    setCoharuEnabled(mode === "coharu");
   };
 
   return (

@@ -22,6 +22,7 @@ erDiagram
   String description "nullable"
   String iconPath "nullable"
   String systemPrompt
+  String personaId "nullable"
   String modelId "nullable"
   McpServerVisibility visibility
   Int estimatedDurationMs
@@ -75,6 +76,7 @@ AIエージェント定義
   - `description`: エージェントの説明
   - `iconPath`: アイコンパス
   - `systemPrompt`: カスタムシステムプロンプト
+  - `personaId`: ペルソナID（null = ペルソナなし）
   - `modelId`: 使用するLLMモデルID（例: "anthropic/claude-3.5-haiku"）
   - `visibility`: 可視性（共有設定）
   - `estimatedDurationMs`: 推定実行時間（ミリ秒）- 初回は30秒、実行完了後に更新
@@ -990,6 +992,7 @@ erDiagram
   McpServerVisibility visibility
   String organizationId FK
   String agentId FK "nullable"
+  String personaId "nullable"
 }
 "Message" {
   String id PK
@@ -1053,6 +1056,7 @@ erDiagram
   - `visibility`: チャットの可視性（McpServerVisibility を共通利用）
   - `organizationId`: 組織ID（組織レベルでのチャット管理）
   - `agentId`: エージェントID（エージェント実行の場合に設定、nullならユーザーチャット）
+  - `personaId`: ペルソナID（null = デフォルトペルソナ）
 
 ### `Message`
 

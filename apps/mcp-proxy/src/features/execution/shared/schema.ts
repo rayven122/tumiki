@@ -52,7 +52,12 @@ export const postRequestBodySchema = z.object({
   selectedVisibilityType: z.enum(["PRIVATE", "ORGANIZATION", "PUBLIC"]),
   /** 選択されたMCPサーバーIDの配列 */
   selectedMcpServerIds: z.array(z.string()).optional().default([]),
-  /** Coharu が有効かどうか */
+  /** ペルソナID（指定しない場合はデフォルト） */
+  personaId: z.string().optional(),
+  /**
+   * @deprecated 2025-06 以降に削除予定。personaId を使用すること。
+   * 後方互換性: personaId 未指定時に true なら "coharu" として扱う
+   */
   isCoharuEnabled: z.boolean().optional().default(false),
 });
 
@@ -85,20 +90,17 @@ export type DBToolPart = {
 
 /**
  * DBに保存されているツール状態を AI SDK 6 形式に変換
+ * 新旧両方の形式をサポート
  */
 export const convertToolState = (state: string): ToolState => {
-  // 新しい形式の場合はそのまま返す
-  if (
-    state === "input-streaming" ||
-    state === "input-available" ||
-    state === "output-available" ||
-    state === "output-error"
-  ) {
-    return state as ToolState;
-  }
-
-  // 古い形式からの変換（後方互換性）
   switch (state) {
+    // 新しい形式（そのまま返す）
+    case "input-streaming":
+    case "input-available":
+    case "output-available":
+    case "output-error":
+      return state;
+    // 古い形式からの変換
     case "call":
       return "input-available";
     case "partial-call":
