@@ -40,11 +40,7 @@
     },
     "postgres": {
       "command": "uv",
-      "args": [
-        "run",
-        "postgres-mcp",
-        "--access-mode=unrestricted"
-      ],
+      "args": ["run", "postgres-mcp", "--access-mode=unrestricted"],
       "env": {
         "DATABASE_URI": "${DATABASE_URL}"
       }
