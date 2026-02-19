@@ -25,6 +25,7 @@ import {
 import { DEFAULT_MODEL_ID, MODEL_OPTIONS } from "@/features/agents/constants";
 import {
   SlackNotificationSettings,
+  AgentPersonaSelector,
   type SlackChannel,
 } from "@/features/agents/components";
 import type { McpServerId } from "@/schema/ids";
@@ -142,6 +143,7 @@ export const CreateAgentForm = ({ orgSlug }: CreateAgentFormProps) => {
     createAgentMutation.mutate({
       name: flowState.name,
       systemPrompt: flowState.systemPrompt,
+      personaId: flowState.personaId || undefined,
       modelId: flowState.modelId || DEFAULT_MODEL_ID,
       visibility: flowState.visibility,
       mcpServerIds:
@@ -221,6 +223,18 @@ export const CreateAgentForm = ({ orgSlug }: CreateAgentFormProps) => {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          {/* キャラクター選択 */}
+          <div className="space-y-2">
+            <Label>キャラクター（性格・口調）</Label>
+            <AgentPersonaSelector
+              selectedPersonaId={flowState.personaId || undefined}
+              onPersonaChange={(id) => updateFlowState({ personaId: id ?? "" })}
+            />
+            <p className="text-xs text-gray-500">
+              AIのキャラクター（性格・口調）を選択します（任意）
+            </p>
           </div>
 
           {/* システムプロンプト */}

@@ -9,6 +9,7 @@ export type AgentFlowState = {
   // 基本情報
   name: string;
   systemPrompt: string;
+  personaId: string;
   modelId: string;
   iconPath: string;
   // MCPサーバー選択
@@ -26,6 +27,7 @@ export type AgentFlowState = {
 const initialState: AgentFlowState = {
   name: "",
   systemPrompt: "",
+  personaId: "",
   modelId: "",
   iconPath: "",
   selectedMcpServerIds: [],

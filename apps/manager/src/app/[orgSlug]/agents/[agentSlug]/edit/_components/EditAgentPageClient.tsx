@@ -27,6 +27,7 @@ import {
 import { DEFAULT_MODEL_ID, MODEL_OPTIONS } from "@/features/agents/constants";
 import {
   SlackNotificationSettings,
+  AgentPersonaSelector,
   type SlackChannel,
 } from "@/features/agents/components";
 
@@ -45,6 +46,7 @@ type EditFormState = {
   name: string;
   slug: string;
   systemPrompt: string;
+  personaId: string;
   modelId: string;
   visibility: McpServerVisibility;
   selectedMcpServerIds: string[];
@@ -102,6 +104,7 @@ const EditForm = ({
     name: agent.name,
     slug: agent.slug,
     systemPrompt: agent.systemPrompt,
+    personaId: agent.personaId ?? "",
     modelId: agent.modelId ?? "",
     visibility: FIXED_VISIBILITY,
     selectedMcpServerIds: agent.mcpServers.map((s) => s.id),
@@ -126,9 +129,9 @@ const EditForm = ({
     },
   });
 
-  const updateFormState = (updates: Partial<EditFormState>) => {
+  const updateFormState = useCallback((updates: Partial<EditFormState>) => {
     setFormState((prev) => ({ ...prev, ...updates }));
-  };
+  }, []);
 
   // 全MCPをSelectableMcp形式に変換
   const allMcps = useMemo(
@@ -152,25 +155,21 @@ const EditForm = ({
     return { availableMcps: available, selectedMcps: selected };
   }, [allMcps, formState.selectedMcpServerIds]);
 
-  const handleSelect = useCallback(
-    (mcpId: string) => {
-      updateFormState({
-        selectedMcpServerIds: [...formState.selectedMcpServerIds, mcpId],
-      });
-    },
-    [formState.selectedMcpServerIds],
-  );
+  const handleSelect = useCallback((mcpId: string) => {
+    setFormState((prev) => ({
+      ...prev,
+      selectedMcpServerIds: [...prev.selectedMcpServerIds, mcpId],
+    }));
+  }, []);
 
-  const handleRemove = useCallback(
-    (mcpId: string) => {
-      updateFormState({
-        selectedMcpServerIds: formState.selectedMcpServerIds.filter(
-          (id) => id !== mcpId,
-        ),
-      });
-    },
-    [formState.selectedMcpServerIds],
-  );
+  const handleRemove = useCallback((mcpId: string) => {
+    setFormState((prev) => ({
+      ...prev,
+      selectedMcpServerIds: prev.selectedMcpServerIds.filter(
+        (id) => id !== mcpId,
+      ),
+    }));
+  }, []);
 
   const handleSubmit = () => {
     updateMutation.mutate({
@@ -178,6 +177,7 @@ const EditForm = ({
       name: formState.name,
       slug: formState.slug,
       systemPrompt: formState.systemPrompt,
+      personaId: formState.personaId || null,
       modelId: formState.modelId || DEFAULT_MODEL_ID,
       visibility: formState.visibility,
       mcpServerIds:
@@ -280,6 +280,18 @@ const EditForm = ({
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          {/* キャラクター選択 */}
+          <div className="space-y-2">
+            <Label>キャラクター（性格・口調）</Label>
+            <AgentPersonaSelector
+              selectedPersonaId={formState.personaId || undefined}
+              onPersonaChange={(id) => updateFormState({ personaId: id ?? "" })}
+            />
+            <p className="text-xs text-gray-500">
+              AIのキャラクター（性格・口調）を選択します（任意）
+            </p>
           </div>
 
           {/* システムプロンプト */}
