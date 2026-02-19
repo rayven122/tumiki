@@ -13,6 +13,8 @@ type UseChatPreferencesReturn = {
   setChatModel: (model: string) => void;
   mcpServerIds: string[];
   setMcpServerIds: (ids: string[]) => void;
+  personaId: string | undefined;
+  setPersonaId: (id: string | undefined) => void;
 };
 
 // チャット設定を管理するカスタムフック
@@ -42,10 +44,19 @@ export const useChatPreferences = ({
     [setPreferences, organizationId],
   );
 
+  const setPersonaId = useCallback(
+    (personaId: string | undefined) => {
+      setPreferences((prev) => ({ ...prev, personaId }));
+    },
+    [setPreferences],
+  );
+
   return {
     chatModel: preferences.model,
     setChatModel,
     mcpServerIds: preferences.mcpServerIdsByOrg[organizationId] ?? [],
     setMcpServerIds,
+    personaId: preferences.personaId,
+    setPersonaId,
   };
 };
