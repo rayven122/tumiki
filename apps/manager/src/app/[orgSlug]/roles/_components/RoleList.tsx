@@ -43,25 +43,20 @@ export const RoleList = () => {
     );
   }
 
-  // 権限情報を表示用にフォーマット
-  const formatPermissions = (role: ListRolesOutput[number]) => {
+  // 権限情報を表示用テキストにフォーマット
+  const formatPermissions = (role: ListRolesOutput[number]): string | null => {
     const parts: string[] = [];
 
-    // デフォルト権限（全MCPサーバーに適用）- UI上は「アクセス/管理」で表示
     const defaultFlags: string[] = [];
-    // アクセス権限 = read OR execute
     if (role.defaultRead || role.defaultExecute) defaultFlags.push("アクセス");
-    // 管理権限 = write
     if (role.defaultWrite) defaultFlags.push("管理");
     if (defaultFlags.length > 0) {
       parts.push(`全サーバー: ${defaultFlags.join("/")}`);
     }
 
-    // 特定サーバーへの追加権限
     const mcpPermissions = role.mcpPermissions ?? [];
     if (mcpPermissions.length > 0) {
-      const overrideCount = mcpPermissions.length;
-      parts.push(`+${overrideCount}サーバー追加`);
+      parts.push(`+${mcpPermissions.length}サーバー追加`);
     }
 
     return parts.length > 0 ? parts.join(" / ") : null;
@@ -76,30 +71,30 @@ export const RoleList = () => {
           return (
             <div
               key={role.slug}
-              className="flex items-center justify-between py-4"
+              className="flex items-center justify-between gap-2 py-4"
             >
               {/* 左側: アイコン + ロール名 + slug */}
-              <div className="flex items-center gap-3">
-                <div className="bg-primary/10 flex h-10 w-10 items-center justify-center rounded-full">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="bg-primary/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full">
                   <Shield className="text-primary h-5 w-5" />
                 </div>
-                <div>
-                  <p className="font-medium">{role.name}</p>
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{role.name}</p>
                   <p className="text-muted-foreground flex items-center gap-1 text-sm">
-                    <Tag className="h-3 w-3" />
-                    {role.slug}
+                    <Tag className="h-3 w-3 shrink-0" />
+                    <span className="truncate">{role.slug}</span>
                   </p>
                 </div>
               </div>
 
               {/* 右側: 権限 + 作成日 + ボタン */}
-              <div className="flex items-center gap-4">
+              <div className="flex shrink-0 items-center gap-2 sm:gap-4">
                 {permissionText && (
                   <Badge variant="secondary" className="hidden sm:inline-flex">
                     {permissionText}
                   </Badge>
                 )}
-                <span className="text-muted-foreground text-sm">
+                <span className="text-muted-foreground hidden text-sm sm:block">
                   作成日:{" "}
                   {new Date(role.createdAt).toLocaleDateString("ja-JP", {
                     year: "numeric",

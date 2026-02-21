@@ -21,29 +21,21 @@ import { PermissionSelector, type McpPermission } from "./PermissionSelector";
 import { mapUiPermissionToDb } from "./permissionMapping";
 import { Tag, Shield } from "lucide-react";
 
-/**
- * ロール名からスラッグを自動生成
- * - 英数字とスペース、ハイフン、アンダースコアのみ抽出
- * - スペースとアンダースコアはハイフンに変換
- * - 小文字化、連続ハイフンは1つに、先頭・末尾のハイフンは削除
- * - 日本語のみの場合はタイムスタンプベースのスラッグを生成
- */
+// ロール名からスラッグを自動生成（英数字のみ抽出、日本語のみの場合はタイムスタンプ使用）
 const generateSlugFromName = (name: string): string => {
   if (!name.trim()) return "";
 
-  // 英数字、スペース、ハイフン、アンダースコアのみ抽出
   const alphanumeric = name.replace(/[^a-zA-Z0-9\s\-_]/g, "");
 
   if (!alphanumeric.trim()) {
-    // 日本語のみの場合はタイムスタンプベースのスラッグ
     return `role-${Date.now().toString(36)}`;
   }
 
   return alphanumeric
     .toLowerCase()
-    .replace(/[\s_]+/g, "-") // スペースとアンダースコアをハイフンに
-    .replace(/-+/g, "-") // 連続ハイフンを1つに
-    .replace(/^-|-$/g, ""); // 先頭・末尾のハイフンを削除
+    .replace(/[\s_]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
 };
 
 // フォームで使用するスキーマ（UI用の access/manage 形式）
@@ -113,8 +105,7 @@ export const CreateRoleDialog = ({
       enabled: open,
     });
 
-  // MCPサーバーのオプション形式に変換（iconPathを含む）
-  // McpServer自体のiconPathを優先し、なければテンプレートのiconPathをフォールバック
+  // MCPサーバーのオプション形式に変換（サーバー自身のiconPathを優先、なければテンプレートのiconPathを使用）
   const mcpServerOptions = useMemo(() => {
     return (mcpServers ?? []).map((server) => ({
       id: server.id,
@@ -152,8 +143,6 @@ export const CreateRoleDialog = ({
       return;
     }
 
-    // UI用の access/manage をDB用の read/write/execute に変換
-    // 統一されたマッピングロジックを使用
     const defaultAccess = data.defaultAccess ?? false;
     createMutation.mutate({
       slug: generatedSlug,
@@ -169,7 +158,7 @@ export const CreateRoleDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="max-h-[90vh] overflow-x-hidden overflow-y-auto sm:max-w-lg">
         <DialogHeader className="space-y-3">
           <div className="bg-primary/10 mx-auto flex h-12 w-12 items-center justify-center rounded-full">
             <Shield className="text-primary h-6 w-6" />

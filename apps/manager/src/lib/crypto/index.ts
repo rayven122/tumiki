@@ -51,51 +51,81 @@ const getEncryptionKey = (): Buffer => {
 };
 
 /**
+ * 本番環境かどうかを判定
+ */
+const isProduction = (): boolean => process.env.NODE_ENV === "production";
+
+/**
+ * 環境変数設定エラーかどうかを判定
+ * 設定エラーは開発者が修正する必要があるため、常に詳細を表示する
+ */
+const isConfigurationError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  return error.message.includes("REDIS_ENCRYPTION_KEY");
+};
+
+/**
  * データを暗号化
  */
 export const encrypt = (plaintext: string): string => {
-  const key = getEncryptionKey();
+  try {
+    const key = getEncryptionKey();
 
-  // ランダムなIVを生成
-  const iv = randomBytes(IV_LENGTH);
+    // ランダムなIVを生成
+    const iv = randomBytes(IV_LENGTH);
 
-  // 暗号化器を作成
-  const cipher = createCipheriv(ALGORITHM, key, iv);
+    // 暗号化器を作成
+    const cipher = createCipheriv(ALGORITHM, key, iv);
 
-  // データを暗号化
-  const encrypted = Buffer.concat([
-    cipher.update(plaintext, "utf8"),
-    cipher.final(),
-  ]);
+    // データを暗号化
+    const encrypted = Buffer.concat([
+      cipher.update(plaintext, "utf8"),
+      cipher.final(),
+    ]);
 
-  // 認証タグを取得
-  const authTag = cipher.getAuthTag();
+    // 認証タグを取得
+    const authTag = cipher.getAuthTag();
 
-  // IV + 認証タグ + 暗号文を結合してBase64エンコード
-  const combined = Buffer.concat([iv, authTag, encrypted]);
+    // IV + 認証タグ + 暗号文を結合してBase64エンコード
+    const combined = Buffer.concat([iv, authTag, encrypted]);
 
-  return combined.toString("base64");
+    return combined.toString("base64");
+  } catch (error) {
+    // 環境変数設定エラーは常に詳細を表示（開発者が修正する必要があるため）
+    if (isConfigurationError(error)) {
+      throw error;
+    }
+    // 本番環境では詳細なエラー情報を隠す（暗号化の実装情報漏洩防止）
+    if (isProduction()) {
+      throw new Error("Encryption failed");
+    }
+    throw new Error(
+      `Encryption failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+    );
+  }
 };
 
 /**
  * データを復号化
  */
 export const decrypt = (encryptedData: string): string => {
-  const key = getEncryptionKey();
-
-  // Base64デコード
-  const combined = Buffer.from(encryptedData, "base64");
-
-  // IV、認証タグ、暗号文を分離
-  const iv = combined.subarray(0, IV_LENGTH);
-  const authTag = combined.subarray(IV_LENGTH, IV_LENGTH + AUTH_TAG_LENGTH);
-  const encrypted = combined.subarray(IV_LENGTH + AUTH_TAG_LENGTH);
-
-  // 復号化器を作成
-  const decipher = createDecipheriv(ALGORITHM, key, iv);
-  decipher.setAuthTag(authTag);
-
   try {
+    const key = getEncryptionKey();
+
+    // Base64デコード
+    const combined = Buffer.from(encryptedData, "base64");
+
+    // IV、認証タグ、暗号文を分離
+    const iv = combined.subarray(0, IV_LENGTH);
+    const authTag = combined.subarray(IV_LENGTH, IV_LENGTH + AUTH_TAG_LENGTH);
+    const encrypted = combined.subarray(IV_LENGTH + AUTH_TAG_LENGTH);
+
+    // 復号化器を作成
+    const decipher = createDecipheriv(ALGORITHM, key, iv);
+    decipher.setAuthTag(authTag);
+
     // データを復号化
     const decrypted = Buffer.concat([
       decipher.update(encrypted),
@@ -104,6 +134,14 @@ export const decrypt = (encryptedData: string): string => {
 
     return decrypted.toString("utf8");
   } catch (error) {
+    // 環境変数設定エラーは常に詳細を表示（開発者が修正する必要があるため）
+    if (isConfigurationError(error)) {
+      throw error;
+    }
+    // 本番環境では詳細なエラー情報を隠す（暗号化の実装情報漏洩防止）
+    if (isProduction()) {
+      throw new Error("Decryption failed");
+    }
     throw new Error(
       `Decryption failed: ${error instanceof Error ? error.message : "Unknown error"}`,
     );
