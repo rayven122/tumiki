@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@keycloak/keycloak-admin-client": "^26.0.7",
-    "dotenv-cli": "^8.0.0",
+    "dotenv-cli": "^11.0.0",
     "zod": "catalog:"
   },
   "devDependencies": {
