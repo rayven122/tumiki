@@ -10,7 +10,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "~/auth";
 import { cookies } from "next/headers";
-import { randomBytes } from "crypto";
+import { randomBytes } from "node:crypto";
 
 // Slack OAuth設定
 const SLACK_CLIENT_ID = process.env.SLACK_CLIENT_ID;

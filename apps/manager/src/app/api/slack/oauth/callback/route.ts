@@ -126,15 +126,18 @@ export const GET = async (request: Request) => {
     }
 
     // Bot Tokenを保存（prisma-field-encryptionで自動暗号化）
-    await db.organization.update({
-      where: { id: organization.id },
-      data: {
-        slackBotToken: access_token,
-        slackTeamId: team.id,
-        slackTeamName: team.name,
-        slackConnectedAt: new Date(),
-        slackConnectedById: session.user.id,
-      },
+    // トランザクションを使用してデータ整合性を保証
+    await db.$transaction(async (tx) => {
+      await tx.organization.update({
+        where: { id: organization.id },
+        data: {
+          slackBotToken: access_token,
+          slackTeamId: team.id,
+          slackTeamName: team.name,
+          slackConnectedAt: new Date(),
+          slackConnectedById: session.user.id,
+        },
+      });
     });
 
     // 成功時は設定ページにリダイレクト
