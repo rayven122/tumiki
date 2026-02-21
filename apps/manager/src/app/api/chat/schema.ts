@@ -25,15 +25,14 @@ const chatModelIds = chatModels.map((model) => model.id) as [
 
 export const postRequestBodySchema = z.object({
   id: z.string().cuid(),
-  /// 組織ID
+  // 組織ID
   organizationId: z.string(),
-  // AI SDK 6: メッセージ形式が変更（content → parts、experimental_attachments 廃止）
+  // AI SDK 6: メッセージ形式（content → parts に移行済み）
   message: z.object({
     id: z.string(),
     role: z.enum(["user"]),
     parts: z.array(messagePartSchema).min(1),
-    // AI SDK 6: experimental_attachments は廃止され、parts内のfileタイプに移行
-    // 後方互換性のためオプショナルで残す
+    // 後方互換性のためオプショナルで残す（parts 内の file タイプに移行済み）
     experimental_attachments: z
       .array(
         z.object({
@@ -46,12 +45,12 @@ export const postRequestBodySchema = z.object({
   }),
   // Vercel AI Gateway 形式のモデルID（provider/model-name）
   selectedChatModel: z.enum(chatModelIds),
-  /// チャットの可視性（PRIVATE, ORGANIZATION, PUBLIC）
+  // チャットの可視性
   selectedVisibilityType: z.enum(["PRIVATE", "ORGANIZATION", "PUBLIC"]),
-  /// 選択されたMCPサーバーIDの配列
+  // 選択されたMCPサーバーIDの配列
   selectedMcpServerIds: z.array(z.string()).optional().default([]),
-  /// Coharu が有効かどうか
-  isCoharuEnabled: z.boolean().optional().default(false),
+  // ペルソナID（指定しない場合はデフォルト）
+  personaId: z.string().optional(),
 });
 
 export type PostRequestBody = z.infer<typeof postRequestBodySchema>;

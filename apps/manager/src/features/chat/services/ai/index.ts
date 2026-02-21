@@ -30,15 +30,9 @@ export { entitlementsByUserType } from "./entitlements";
 
 // プロンプト
 export {
-  artifactsPrompt,
-  codePrompt,
-  coharuProfilePrompt,
+  systemPrompt,
   getMcpToolsPrompt,
   getRequestPromptFromHints,
-  regularPrompt,
-  sheetPrompt,
-  systemPrompt,
-  updateDocumentPrompt,
   type RequestHints,
 } from "./prompts";
 

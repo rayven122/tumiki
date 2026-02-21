@@ -77,21 +77,15 @@ type LegacyToolState = "call" | "partial-call" | "result" | "error";
 
 /**
  * DBに保存されているツール状態を AI SDK 6 形式に変換
- * 古い形式からの後方互換性をサポート
+ * 新旧両方の形式をサポート
  */
 const convertToolState = (state: string): ToolState => {
-  // 新しい形式の場合はそのまま返す
-  if (
-    state === "input-streaming" ||
-    state === "input-available" ||
-    state === "output-available" ||
-    state === "output-error"
-  ) {
-    return state as ToolState;
-  }
-
-  // 古い形式からの変換（後方互換性）
   switch (state) {
+    case "input-streaming":
+    case "input-available":
+    case "output-available":
+    case "output-error":
+      return state;
     case "call":
       return "input-available";
     case "partial-call":
@@ -280,7 +274,7 @@ export const POST = async (request: Request) => {
       selectedChatModel,
       selectedVisibilityType,
       selectedMcpServerIds,
-      isCoharuEnabled,
+      personaId,
     } = requestBody;
 
     const session = await auth();
@@ -454,8 +448,8 @@ export const POST = async (request: Request) => {
             selectedChatModel,
             requestHints,
             mcpToolNames,
-            isCoharuEnabled,
-          }),
+            personaId,
+          }).prompt,
           messages: modelMessages,
           stopWhen: stepCountIs(5),
           experimental_activeTools: isReasoningModel ? [] : allActiveToolNames,

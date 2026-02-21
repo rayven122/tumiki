@@ -52,7 +52,7 @@ export const chatRoute = new Hono<HonoEnv>().post("/chat", async (c) => {
     selectedChatModel,
     selectedVisibilityType,
     selectedMcpServerIds,
-    isCoharuEnabled,
+    personaId,
   } = requestBody;
 
   // JWT認証を実行
@@ -199,8 +199,8 @@ export const chatRoute = new Hono<HonoEnv>().post("/chat", async (c) => {
       systemPrompt: systemPrompt({
         selectedChatModel,
         mcpToolNames,
-        isCoharuEnabled,
-      }),
+        personaId,
+      }).prompt,
       mcpToolNames,
       mcpTools,
     });

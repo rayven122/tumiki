@@ -5,7 +5,7 @@ import { Button } from "@tumiki/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@tumiki/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@tumiki/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { CheckCircleFillIcon, RouteIcon } from "./icons";
+import { CheckCircleFillIcon, ChevronDownIcon, RouteIcon } from "./icons";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { EntityIcon } from "@/features/shared/components/EntityIcon";
 import {
@@ -120,6 +120,7 @@ export const CompactMcpSelector = ({
           {totalToolsCount}
         </span>
       )}
+      <ChevronDownIcon />
     </Button>
   );
 

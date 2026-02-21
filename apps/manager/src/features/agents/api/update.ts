@@ -100,6 +100,7 @@ export const updateAgent = async (
       description: input.description,
       iconPath: input.iconPath,
       systemPrompt: input.systemPrompt,
+      personaId: input.personaId,
       modelId: input.modelId,
       visibility: input.visibility,
       mcpServers: mcpServersUpdate,

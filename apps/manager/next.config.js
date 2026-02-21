@@ -13,7 +13,7 @@ const config = {
   // 静的アセットのgzip圧縮を有効化（60-80%のファイルサイズ削減）
   compress: true,
   // Turbopackで解決できないパッケージをサーバー外部パッケージとして指定
-  serverExternalPackages: ["cron-parser"],
+  serverExternalPackages: ["cron-parser", "@tumiki/prompts"],
   // MCP サーバーを有効化（Next.js DevTools用）
   experimental: {
     mcpServer: true,

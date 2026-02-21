@@ -96,23 +96,11 @@ function ChatContent({
     stopSpeaking,
   } = useCoharuContext();
 
-  // Coharu の状態を ref で保持（useChat のコールバック内で最新値を参照するため）
+  // useChat のコールバック内で最新値を参照するための ref
   const isCoharuEnabledRef = useRef(isCoharuEnabled);
+  isCoharuEnabledRef.current = isCoharuEnabled;
   const speakRef = useRef(speak);
-
-  // ref を最新の値で更新
-  useEffect(() => {
-    isCoharuEnabledRef.current = isCoharuEnabled;
-  }, [isCoharuEnabled]);
-
-  useEffect(() => {
-    speakRef.current = speak;
-  }, [speak]);
-
-  // MCPサーバーIDsを ref で保持（useChat のコールバック内で最新値を参照するため）
-  const selectedMcpServerIdsRef = useRef<string[]>([]);
-  // 選択されたモデルIDを ref で保持
-  const selectedChatModelRef = useRef<string>("");
+  speakRef.current = speak;
 
   // ストリーミング中のTTS用状態
   // 蓄積中のテキスト
@@ -126,6 +114,8 @@ function ChatContent({
     setChatModel: setStoredChatModel,
     mcpServerIds: storedMcpServerIds,
     setMcpServerIds: setStoredMcpServerIds,
+    personaId: storedPersonaId,
+    setPersonaId: setStoredPersonaId,
   } = useChatPreferences({ organizationId });
 
   // 既存チャットのモデル変更用ローカル状態（LocalStorageには保存しない）
@@ -138,14 +128,16 @@ function ChatContent({
     ? storedMcpServerIds
     : initialMcpServerIds;
 
-  // ref を最新の値で更新（useChat のコールバック内で最新値を参照するため）
-  useEffect(() => {
-    selectedMcpServerIdsRef.current = selectedMcpServerIds;
-  }, [selectedMcpServerIds]);
+  // ペルソナはLocalStorageの値を常に使用（モデルと同じ管理方式）
+  const selectedPersonaId = storedPersonaId;
 
-  useEffect(() => {
-    selectedChatModelRef.current = selectedChatModel;
-  }, [selectedChatModel]);
+  // useChat のコールバック内で最新値を参照するための ref
+  const selectedMcpServerIdsRef = useRef(selectedMcpServerIds);
+  selectedMcpServerIdsRef.current = selectedMcpServerIds;
+  const selectedPersonaIdRef = useRef(selectedPersonaId);
+  selectedPersonaIdRef.current = selectedPersonaId;
+  const selectedChatModelRef = useRef(selectedChatModel);
+  selectedChatModelRef.current = selectedChatModel;
 
   const { visibilityType } = useChatVisibility({
     chatId: id,
@@ -225,7 +217,7 @@ function ChatContent({
             selectedChatModel: actualModel,
             selectedVisibilityType: visibilityType,
             selectedMcpServerIds: selectedMcpServerIdsRef.current,
-            isCoharuEnabled: isCoharuEnabledRef.current,
+            personaId: selectedPersonaIdRef.current,
             ...request.body,
           },
         };
@@ -350,6 +342,16 @@ function ChatContent({
     [isNewChat, setStoredChatModel],
   );
 
+  // ペルソナ変更ハンドラ（新規チャットのみ変更可能）
+  const handlePersonaChange = useCallback(
+    (id: string | undefined) => {
+      if (isNewChat) {
+        setStoredPersonaId(id);
+      }
+    },
+    [isNewChat, setStoredPersonaId],
+  );
+
   // MCPサーバー選択変更ハンドラ（新規チャットのみ変更可能）
   // 注意: 既存チャットでは UI 側で disabled にしているため、この関数は新規チャット時のみ呼ばれる
   const handleMcpServerSelectionChange = useCallback(
@@ -406,6 +408,8 @@ function ChatContent({
                       onMcpServerSelectionChange={
                         handleMcpServerSelectionChange
                       }
+                      selectedPersonaId={selectedPersonaId}
+                      onPersonaChange={handlePersonaChange}
                       isNewChat={isNewChat}
                     />
 
@@ -436,6 +440,20 @@ function ChatContent({
             </div>
           ) : (
             <>
+              {/* 右上: 公開設定・シェアボタン */}
+              {!isReadonly && (
+                <div className="flex justify-end px-4 pt-2">
+                  <ChatQuickActions
+                    chatId={id}
+                    organizationId={organizationId}
+                    isPersonalOrg={isPersonalOrg}
+                    selectedVisibilityType={initialVisibilityType}
+                    isNewChat={false}
+                    isReadonly={isReadonly}
+                  />
+                </div>
+              )}
+
               <Messages
                 chatId={id}
                 status={status}
@@ -449,42 +467,30 @@ function ChatContent({
 
               <form className="bg-background mx-auto flex w-full flex-col gap-2 px-4 pb-4 md:max-w-3xl md:pb-6">
                 {!isReadonly && (
-                  <>
-                    <MultimodalInput
-                      chatId={id}
-                      orgSlug={orgSlug}
-                      input={input}
-                      setInput={setInput}
-                      sendMessage={sendMessage}
-                      status={status}
-                      stop={stop}
-                      attachments={attachments}
-                      setAttachments={setAttachments}
-                      messages={messages}
-                      setMessages={setMessages}
-                      selectedVisibilityType={visibilityType}
-                      isSpeaking={isSpeaking}
-                      stopSpeaking={stopSpeaking}
-                      session={session}
-                      selectedModelId={selectedChatModel}
-                      onModelChange={handleModelChange}
-                      selectedMcpServerIds={selectedMcpServerIds}
-                      onMcpServerSelectionChange={
-                        handleMcpServerSelectionChange
-                      }
-                      isNewChat={false}
-                    />
-
-                    {/* クイックアクション */}
-                    <ChatQuickActions
-                      chatId={id}
-                      organizationId={organizationId}
-                      isPersonalOrg={isPersonalOrg}
-                      selectedVisibilityType={initialVisibilityType}
-                      isNewChat={false}
-                      isReadonly={isReadonly}
-                    />
-                  </>
+                  <MultimodalInput
+                    chatId={id}
+                    orgSlug={orgSlug}
+                    input={input}
+                    setInput={setInput}
+                    sendMessage={sendMessage}
+                    status={status}
+                    stop={stop}
+                    attachments={attachments}
+                    setAttachments={setAttachments}
+                    messages={messages}
+                    setMessages={setMessages}
+                    selectedVisibilityType={visibilityType}
+                    isSpeaking={isSpeaking}
+                    stopSpeaking={stopSpeaking}
+                    session={session}
+                    selectedModelId={selectedChatModel}
+                    onModelChange={handleModelChange}
+                    selectedMcpServerIds={selectedMcpServerIds}
+                    onMcpServerSelectionChange={handleMcpServerSelectionChange}
+                    selectedPersonaId={selectedPersonaId}
+                    onPersonaChange={handlePersonaChange}
+                    isNewChat={false}
+                  />
                 )}
               </form>
             </>

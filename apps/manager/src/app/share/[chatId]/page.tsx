@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 
 import { getPublicChatById, getMessagesByChatId } from "@/lib/db/queries";
 import { SharedChatMessages } from "./_components/SharedChatMessages";
@@ -78,7 +79,14 @@ export default async function SharedChatPage({ params }: PageProps) {
       <header className="bg-background sticky top-0 z-10 border-b">
         <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4">
           <Link href="/" className="flex items-center gap-2">
-            <span className="text-lg font-semibold">tumiki</span>
+            <Image
+              src="/favicon/logo.svg"
+              alt="Tumiki"
+              width={24}
+              height={24}
+              className="h-6 w-6"
+            />
+            <span className="text-lg font-semibold">Tumiki</span>
           </Link>
           <Button asChild size="sm">
             <Link href="/signin">tumikiで会話を続ける</Link>

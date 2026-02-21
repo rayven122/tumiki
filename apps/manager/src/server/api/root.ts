@@ -23,6 +23,7 @@ import {
 } from "@/features/agents";
 import { dashboardRouter } from "@/features/dashboard/api/router";
 import { toolOutputRouter } from "@/features/chat/api/toolOutput/router";
+import { chatRouter } from "@/features/chat/api/router";
 import { slackIntegrationRouter } from "@/features/slack-integration/api";
 
 /**
@@ -50,6 +51,7 @@ export const appRouter = createTRPCRouter({
   agentExecution: agentExecutionRouter,
   dashboard: dashboardRouter,
   toolOutput: toolOutputRouter,
+  chat: chatRouter,
   slackIntegration: slackIntegrationRouter,
 });
 

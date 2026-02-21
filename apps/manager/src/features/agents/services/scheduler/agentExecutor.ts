@@ -1,5 +1,6 @@
 import { db } from "@tumiki/db";
 import { generateText } from "ai";
+import { loadPersona } from "@tumiki/prompts";
 import { getLanguageModel } from "@/features/chat/services/ai/providers";
 import { getMcpToolsFromServers } from "@/features/chat/services/ai/tools/mcp";
 
@@ -52,6 +53,19 @@ export const executeAgent = async (
         ? await getMcpToolsFromServers(mcpServerIds, agent.organization.id)
         : {};
 
+    // ペルソナとsystemPromptを結合
+    const personaContent = agent.personaId
+      ? loadPersona(agent.personaId).content
+      : undefined;
+    let systemPrompt: string | undefined;
+    if (personaContent && agent.systemPrompt) {
+      systemPrompt = `${personaContent}\n\n${agent.systemPrompt}`;
+    } else if (personaContent) {
+      systemPrompt = personaContent;
+    } else {
+      systemPrompt = agent.systemPrompt ?? undefined;
+    }
+
     // LLMを呼び出し
     const model = agent.modelId
       ? getLanguageModel(agent.modelId)
@@ -59,7 +73,7 @@ export const executeAgent = async (
 
     const result = await generateText({
       model,
-      system: agent.systemPrompt,
+      system: systemPrompt,
       messages: [
         {
           role: "user",
