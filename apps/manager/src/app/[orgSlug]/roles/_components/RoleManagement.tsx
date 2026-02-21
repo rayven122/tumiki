@@ -11,9 +11,9 @@ export const RoleManagement = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   return (
-    <div className="container mx-auto space-y-8 p-6">
+    <div className="container mx-auto space-y-8 p-4 sm:p-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">ロール管理</h1>
+        <h1 className="text-xl font-bold sm:text-3xl">ロール管理</h1>
         <Button onClick={() => setIsCreateDialogOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           ロール作成
