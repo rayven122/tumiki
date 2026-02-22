@@ -29,6 +29,12 @@ export const TIMEOUT_CONFIG = {
   MCP_CONNECTION_MS: 10000, // 10秒
 
   /**
+   * MCPツール実行タイムアウト（ミリ秒）
+   * 外部MCPサーバーへのリクエストが長時間応答しない場合のタイムアウト
+   */
+  MCP_TOOL_CALL_MS: 60000, // 60秒
+
+  /**
    * Graceful Shutdownタイムアウト（ミリ秒）
    * Cloud Runの10秒猶予期間内に収める
    */

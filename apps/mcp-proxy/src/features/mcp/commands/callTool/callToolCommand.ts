@@ -12,12 +12,13 @@ import {
   getMcpConfigForUser,
 } from "../../../../infrastructure/db/repositories/toolRepository.js";
 import { connectToMcpServer } from "../../../../infrastructure/mcp/mcpClientFactory.js";
+import { TIMEOUT_CONFIG } from "../../../../shared/constants/config.js";
 import {
   extractMcpErrorInfo,
   getErrorCodeName,
 } from "../../../../shared/errors/index.js";
 import { wrapMcpError } from "../../../../shared/errors/wrapMcpError.js";
-import { logError, logInfo } from "../../../../shared/logger/index.js";
+import { logError, logInfo, logWarn } from "../../../../shared/logger/index.js";
 import { updateExecutionContext } from "../../middleware/requestLogging/context.js";
 
 /**
@@ -99,16 +100,45 @@ export const callToolCommand = async (
       mcpConfig,
     );
 
-    // 7. ツールを実行
+    // 7. ツールを実行（タイムアウト付き）
     logInfo("Calling tool on MCP server", {
       toolName,
       instanceName,
+      timeoutMs: TIMEOUT_CONFIG.MCP_TOOL_CALL_MS,
     });
 
-    const result = await client.callTool({
+    const toolCallPromise = client.callTool({
       name: toolName,
       arguments: args,
     });
+
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        reject(
+          new Error(
+            `Tool execution timed out after ${TIMEOUT_CONFIG.MCP_TOOL_CALL_MS}ms`,
+          ),
+        );
+      }, TIMEOUT_CONFIG.MCP_TOOL_CALL_MS);
+    });
+
+    let result: unknown;
+    try {
+      result = await Promise.race([toolCallPromise, timeoutPromise]);
+    } catch (error) {
+      // タイムアウトやエラー時も接続をクローズ
+      try {
+        await client.close();
+      } catch (closeError) {
+        logWarn("Failed to close MCP client after error", {
+          closeError:
+            closeError instanceof Error
+              ? closeError.message
+              : String(closeError),
+        });
+      }
+      throw error;
+    }
 
     // 8. 接続をクローズ
     await client.close();
