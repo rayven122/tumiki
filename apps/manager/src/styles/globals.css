@@ -7,6 +7,7 @@
 
 /* include utility classes in @tumiki/ui package */
 @source "../../../../packages/ui/dist/**/*.js";
+@source "../../../../packages/ui/src/**/*.tsx";
 
 @theme {
   --font-sans:
