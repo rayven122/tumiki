@@ -1,26 +1,17 @@
 ---
 name: tumiki-manager-architecture
 description: |
-  manager の Feature-Based Monorepo Architecture ガイドライン。
-  RSC-First + Server Actions + Turborepo パッケージ分割を採用。
-  「manager アーキテクチャ」「Feature 追加」「パッケージ分割」などのリクエスト時にトリガー。
+  managerアプリのFeature-Based Architectureガイドライン。
+  RSC-First + Server Actions + Turborepoパッケージ分割。
 sourcePatterns:
-  - apps/manager/src/app/**/*.{ts,tsx}
-  - apps/manager/src/features/**/*.{ts,tsx}
-  - apps/manager/src/components/**/*.{ts,tsx}
-  - apps/manager/src/hooks/**/*.ts
-  - apps/manager/src/lib/**/*.ts
-  - packages/ui/src/**/*.{ts,tsx}
-  - packages/ai/src/**/*.ts
-  - packages/shared/src/**/*.ts
-  - docs/architecture/manager-features-architecture.md
+  - apps/manager/src/**/*
 ---
 
-# manager アーキテクチャガイドライン
+# Manager Feature-Based Monorepo Architecture
 
-## アーキテクチャ概要
+**Feature-Based + RSC-First + Server Actions**
 
-Feature-Based Architecture + RSC-First + Turborepo パッケージ分割を採用。
+## 設計の特徴
 
 | 要素                         | 採用元            | 目的                     |
 | ---------------------------- | ----------------- | ------------------------ |
@@ -29,48 +20,43 @@ Feature-Based Architecture + RSC-First + Turborepo パッケージ分割を採�
 | Server Actions               | Next.js 15+       | フォーム処理のシンプル化 |
 | パッケージ分割               | Turborepo         | 共通ロジックの再利用     |
 
-## レイヤー構成
+## モノレポ構造
 
 ```text
-app/              ルーティングのみ（features/ のコンポーネントを呼び出す）
-  ↓
-features/         ドメイン単位で完結（components, actions, hooks, api）
-  ↓
-components/       アプリ固有の共通コンポーネント
-hooks/            アプリ固有の共通フック
-lib/              ユーティリティ
-  ↓
-packages/         共有パッケージ（@tumiki/ui, @tumiki/ai, @tumiki/db, ...）
+tumiki/
+├── apps/
+│   ├── manager/              # Next.js フロントエンド
+│   │   └── src/
+│   │       ├── app/          # ルーティング
+│   │       ├── features/     # ドメイン機能
+│   │       ├── components/   # アプリ固有UI
+│   │       ├── hooks/
+│   │       ├── lib/
+│   │       └── config/
+│   │
+│   └── mcp-proxy/            # APIサーバー
+│
+├── packages/
+│   ├── ui/                   # 共通UIコンポーネント
+│   ├── ai/                   # AI SDK統合
+│   ├── shared/               # 共通ユーティリティ
+│   ├── db/                   # Prisma + DB
+│   ├── keycloak/             # 認証
+│   ├── mailer/               # メール
+│   ├── oauth-token-manager/  # OAuthトークン
+│   └── slack/                # Slack統合
+│
+└── tooling/                  # ビルド設定
 ```
 
-## 依存関係ルール
-
-| From          | To                              | 可否        |
-| ------------- | ------------------------------- | ----------- |
-| `app/`        | `features/`                     | ✅ 許可     |
-| `features/`   | `components/`, `hooks/`, `lib/` | ✅ 許可     |
-| `features/`   | `packages/`                     | ✅ 許可     |
-| `features/A`  | `features/B`                    | ❌ **禁止** |
-| `components/` | `features/`                     | ❌ **禁止** |
-| `packages/`   | `apps/`                         | ❌ **禁止** |
-
-Feature 間で共通ロジックが必要な場合:
-
-1. `lib/` または `packages/` に抽出
-2. `app/` レベルで統合
-
-## ディレクトリ構造
-
-### apps/manager 内部
+## apps/manager 内部構造
 
 ```text
 apps/manager/src/
 ├── app/                      # Next.js App Router（ルーティングのみ）
 │   ├── [orgSlug]/
 │   │   ├── agents/
-│   │   │   ├── page.tsx      # Server Component
-│   │   │   └── [agentSlug]/
-│   │   ├── mcp-servers/
+│   │   ├── mcps/
 │   │   ├── dashboard/
 │   │   └── ...
 │   ├── api/
@@ -85,27 +71,19 @@ apps/manager/src/
 │   │   ├── api/              # tRPCルーター
 │   │   ├── types/
 │   │   └── index.ts          # 公開API
-│   ├── mcp-servers/
+│   ├── mcps/
 │   ├── organization/
 │   ├── chat/
 │   └── dashboard/
 │
 ├── components/               # アプリ固有の共通コンポーネント
-│   └── layout/
-│
 ├── hooks/                    # アプリ固有の共通フック
-│
 ├── lib/                      # ユーティリティ
-│   ├── trpc.ts
-│   └── utils.ts
-│
 ├── config/                   # 設定
-│   └── env.ts
-│
 └── types/                    # アプリ固有の型
 ```
 
-### Feature 内部構造
+## Feature 内部構造
 
 ```text
 features/{domain}/
@@ -130,37 +108,35 @@ features/{domain}/
 └── index.ts                  # 公開API
 ```
 
-### packages/ 構造
+## 依存関係ルール
 
 ```text
-packages/
-├── ui/                   # 共通UIコンポーネント（shadcn等）
-├── ai/                   # AI SDK統合
-├── shared/               # 共通ユーティリティ
-├── db/                   # Prisma + DB
-├── keycloak/             # 認証
-├── mailer/               # メール
-├── oauth-token-manager/  # OAuthトークン
-└── slack/                # Slack統合
+app/ → features/ → components/, hooks/, lib/, types/
+           ↓
+    packages/ (@tumiki/ui, @tumiki/ai, @tumiki/db, ...)
 ```
+
+### 禁止される依存
+
+| From          | To           | 理由                                    |
+| ------------- | ------------ | --------------------------------------- |
+| `features/A`  | `features/B` | Feature間の直接依存禁止                 |
+| `packages/`   | `apps/`      | パッケージはアプリに依存しない          |
+| `components/` | `features/`  | 共通コンポーネントはFeatureに依存しない |
+
+### Feature間で共通ロジックが必要な場合
+
+1. **共通化**: `lib/` または `packages/` に抽出
+2. **上位レイヤー**: `app/` レベルで統合
 
 ## Server Components vs Client Components
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│                    Server Components（デフォルト）           │
-│  - app/ 内の page.tsx, layout.tsx                          │
-│  - features/ の一覧表示、カード等                           │
-│  - データ取得、初期レンダリング                              │
-├─────────────────────────────────────────────────────────────┤
-│                    Client Components（'use client'）        │
-│  - @tumiki/ui のインタラクティブUI                          │
-│  - features/ のフォーム、モーダル                           │
-│  - hooks を使用するコンポーネント                            │
-└─────────────────────────────────────────────────────────────┘
-```
+| 種類                     | 用途                          |
+| ------------------------ | ----------------------------- |
+| Server（デフォルト）     | データ取得、一覧表示          |
+| Client（`'use client'`） | フォーム、モーダル、hooks使用 |
 
-## コードパターン
+## コード例
 
 ### Server Component
 
@@ -277,7 +253,7 @@ export const createAgentAction = async (
 };
 ```
 
-### Page（app/）
+### Page
 
 ```typescript
 // app/[orgSlug]/agents/page.tsx
@@ -305,7 +281,7 @@ const AgentsPage = async ({ params }: Props) => {
 export default AgentsPage;
 ```
 
-### Feature index.ts（公開API）
+### Feature index.ts
 
 ```typescript
 // features/agents/index.ts
@@ -357,25 +333,6 @@ export const agentRouter = createTRPCRouter({
 });
 ```
 
-### ルーター統合
-
-```typescript
-// lib/trpc/routers/index.ts
-
-import { createTRPCRouter } from "../trpc";
-import { agentRouter } from "@/features/agents";
-import { mcpServerRouter } from "@/features/mcp-servers";
-import { organizationRouter } from "@/features/organization";
-
-export const appRouter = createTRPCRouter({
-  agent: agentRouter,
-  mcpServer: mcpServerRouter,
-  organization: organizationRouter,
-});
-
-export type AppRouter = typeof appRouter;
-```
-
 ### Server Actions vs tRPC 使い分け
 
 | ユースケース                 | 推奨                               |
@@ -385,25 +342,39 @@ export type AppRouter = typeof appRouter;
 | クライアントからの動的クエリ | tRPC                               |
 | リアルタイム更新             | tRPC + React Query                 |
 
-## 新機能追加手順
+## パッケージ間依存関係
 
-### 新しい Feature の追加
+```text
+apps/manager
+├── @tumiki/ui
+├── @tumiki/ai
+├── @tumiki/shared
+├── @tumiki/db
+└── @tumiki/keycloak
 
-1. `features/{domain}/` ディレクトリ作成
-2. `components/` にUIコンポーネント配置
-3. `actions/` にServer Actions配置
-4. `api/router.ts` にtRPCルーター定義
-5. `index.ts` で公開APIエクスポート
-6. `app/` からのimport設定
-7. テスト追加
+apps/mcp-proxy
+├── @tumiki/ai
+├── @tumiki/shared
+└── @tumiki/db
+```
 
-### 新しいパッケージへの切り出し
+**ルール:**
 
-1. `packages/{name}/` ディレクトリ作成
-2. `package.json` に exports 設定
-3. `src/index.ts` にエントリーポイント作成
-4. `apps/manager/package.json` に依存追加
-5. import パスを更新
+- `apps/` は `packages/` に依存可能
+- `packages/` は `apps/` に依存禁止
+- `packages/` 間は下位パッケージにのみ依存
+
+## Feature 一覧
+
+| Feature        | 説明               | サブ機能                   |
+| -------------- | ------------------ | -------------------------- |
+| `agents`       | AIエージェント管理 | 作成、実行、スケジュール   |
+| `mcps`         | MCPサーバー管理    | 追加、設定、ツール更新     |
+| `organization` | 組織管理           | メンバー、ロール、グループ |
+| `chat`         | チャット機能       | メッセージ、履歴           |
+| `dashboard`    | ダッシュボード     | 統計、アクティビティ       |
+| `notification` | 通知機能           | -                          |
+| `feedback`     | フィードバック     | -                          |
 
 ## ファイル命名規則
 
@@ -417,62 +388,7 @@ export type AppRouter = typeof appRouter;
 | テスト         | 元ファイル名 + .test | `createAgent.test.ts` |
 | EE機能         | 元ファイル名 + .ee   | `create.ee.ts`        |
 
-## テストファイル配置ルール
-
-テストは対象ファイルの近くに `__tests__/` ディレクトリを作成して配置:
-
-```text
-features/agents/
-├── actions/
-│   ├── createAgent.ts
-│   └── __tests__/
-│       └── createAgent.test.ts
-├── components/
-│   ├── AgentCard.tsx
-│   └── __tests__/
-│       └── AgentCard.test.tsx
-```
-
-## Feature 一覧
-
-| Feature        | 説明               | サブ機能                   |
-| -------------- | ------------------ | -------------------------- |
-| `agents`       | AIエージェント管理 | 作成、実行、スケジュール   |
-| `mcp-servers`  | MCPサーバー管理    | 追加、設定、ツール更新     |
-| `organization` | 組織管理           | メンバー、ロール、グループ |
-| `chat`         | チャット機能       | メッセージ、履歴           |
-| `dashboard`    | ダッシュボード     | 統計、アクティビティ       |
-| `notification` | 通知機能           | -                          |
-| `feedback`     | フィードバック     | -                          |
-
-## 移行手順
-
-### フェーズ1: パッケージ作成
-
-1. `packages/ui/` 作成（shadcn移動）
-2. `packages/ai/` 作成
-3. `packages/shared/` 作成
-4. 依存関係設定
-
-### フェーズ2: manager 内部整理
-
-1. `features/` ディレクトリ作成
-2. `components/` 整理（アプリ固有のみ残す）
-3. `hooks/` 整理
-4. `lib/` 整理
-
-### フェーズ3: Feature 移行（1つずつ）
-
-**移行順序:**
-
-1. `notification` - 小規模、依存少ない
-2. `feedback` - 小規模
-3. `dashboard` - 中規模
-4. `agents` - 大規模
-5. `mcp-servers` - 最大規模
-6. `organization` - レガシーAPIとの統合
-
-## 品質チェックリスト
+## チェックリスト
 
 ### Feature 移行完了条件
 
