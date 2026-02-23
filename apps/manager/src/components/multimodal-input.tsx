@@ -374,12 +374,12 @@ function PureMultimodalInput({
               />
             )}
 
-            {status === "submitted" || isSpeaking ? (
+            {status !== "ready" || isSpeaking ? (
               <StopButton
                 stop={stop}
                 setMessages={setMessages}
                 stopSpeaking={stopSpeaking}
-                isGenerating={status === "submitted"}
+                isGenerating={status !== "ready"}
               />
             ) : (
               <SendButton
