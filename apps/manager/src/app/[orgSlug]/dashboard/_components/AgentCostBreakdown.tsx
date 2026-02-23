@@ -107,7 +107,7 @@ export const AgentCostBreakdown = ({ timeRange }: AgentCostBreakdownProps) => {
           {/* 中央に合計コスト */}
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className="text-muted-foreground text-[10px]">合計</span>
-            <span className="tabular-nums text-sm font-semibold">
+            <span className="text-sm font-semibold tabular-nums">
               {formatCost(data.totalCost)}
             </span>
           </div>
@@ -126,14 +126,13 @@ export const AgentCostBreakdown = ({ timeRange }: AgentCostBreakdownProps) => {
                     <div
                       className="h-2 w-2 shrink-0 rounded-[2px]"
                       style={{
-                        backgroundColor:
-                          CHART_COLORS[i % CHART_COLORS.length],
+                        backgroundColor: CHART_COLORS[i % CHART_COLORS.length],
                       }}
                     />
                     <span className="text-muted-foreground min-w-0 flex-1 truncate text-xs">
                       {agent.agentName}
                     </span>
-                    <span className="tabular-nums shrink-0 text-xs font-medium">
+                    <span className="shrink-0 text-xs font-medium tabular-nums">
                       {formatCost(agent.estimatedCost)}
                     </span>
                   </Link>
