@@ -1,60 +1,101 @@
 "use client";
 
+import { useState } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@tumiki/ui/select";
 import { api } from "@/trpc/react";
+import { isEEFeatureAvailable } from "@/features/ee/config";
+import { TIME_RANGE_LABELS, type TimeRange } from "@/features/dashboard/utils";
 import { StatsCards } from "./StatsCards";
 import { RunningAgents } from "./RunningAgents";
 import { RecentExecutions } from "./RecentExecutions";
 import { QuickActions } from "./QuickActions";
 import { ActivityCharts } from "./ActivityCharts";
+import { AgentPerformance } from "./AgentPerformance";
+import { CostTrendChart } from "./CostTrendChart";
+import { AgentCostBreakdown } from "./AgentCostBreakdown";
+import { McpServerHealth } from "./McpServerHealth";
+import { ScheduleTimeline } from "./ScheduleTimeline";
+import { PiiDetectionSection } from "./PiiDetectionSection";
 
 type DashboardClientProps = {
   orgSlug: string;
 };
 
 export const DashboardClient = ({ orgSlug }: DashboardClientProps) => {
-  // 統計データを取得
   const [stats] = api.dashboard.getStats.useSuspenseQuery();
-
-  // 稼働中エージェントを取得
   const [runningAgents] = api.agentExecution.getAllRunning.useSuspenseQuery();
+  const [activityTimeRange, setActivityTimeRange] = useState<TimeRange>("7d");
 
-  // 最近の実行履歴を取得
-  const [recentExecutions] = api.dashboard.getRecentExecutions.useSuspenseQuery(
-    {
-      limit: 5,
-    },
-  );
+  const showPiiDashboard = isEEFeatureAvailable("pii-dashboard");
 
   return (
     <div className="space-y-6">
-      {/* ヘッダー */}
       <div>
-        <h1 className="text-2xl font-bold">ダッシュボード</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          ダッシュボード
+        </h1>
         <p className="text-muted-foreground text-sm">
-          組織の概要とアクティビティを確認できます
+          エージェント {stats.agentCount}台 / MCPサーバー {stats.mcpServerCount}
+          台 / スケジュール {stats.scheduleCount}件
         </p>
       </div>
 
-      {/* 統計カード */}
       <StatsCards stats={stats} />
 
-      {/* アクティビティチャート */}
-      <ActivityCharts />
+      <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
+        {/* メインコンテンツ */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">アクティビティ</h2>
+            <Select
+              value={activityTimeRange}
+              onValueChange={(value: TimeRange) => setActivityTimeRange(value)}
+            >
+              <SelectTrigger className="w-28">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(
+                  Object.entries(TIME_RANGE_LABELS) as [TimeRange, string][]
+                ).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-      {/* 稼働中エージェント */}
-      {runningAgents.length > 0 && (
-        <RunningAgents agents={runningAgents} orgSlug={orgSlug} />
-      )}
+          <ActivityCharts timeRange={activityTimeRange} />
 
-      {/* 最近の実行履歴とクイックアクション */}
-      <div className="grid gap-6 md:grid-cols-3">
-        <div className="md:col-span-2">
-          <RecentExecutions executions={recentExecutions} orgSlug={orgSlug} />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <CostTrendChart timeRange={activityTimeRange} />
+            <AgentCostBreakdown timeRange={activityTimeRange} />
+          </div>
+
+          <RecentExecutions orgSlug={orgSlug} />
+
+          <AgentPerformance timeRange={activityTimeRange} />
         </div>
-        <div>
+
+        {/* サイドバー */}
+        <div className="space-y-4">
           <QuickActions orgSlug={orgSlug} />
+          {runningAgents.length > 0 && (
+            <RunningAgents agents={runningAgents} orgSlug={orgSlug} />
+          )}
+          <ScheduleTimeline />
+          <McpServerHealth />
         </div>
       </div>
+
+      {showPiiDashboard && <PiiDetectionSection />}
     </div>
   );
 };
