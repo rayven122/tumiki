@@ -35,6 +35,7 @@ describe("EE/CE エディション設定", () => {
       expect(isEEFeatureAvailable("group-management")).toBe(false);
       expect(isEEFeatureAvailable("organization-creation")).toBe(false);
       expect(isEEFeatureAvailable("dynamic-search")).toBe(false);
+      expect(isEEFeatureAvailable("pii-dashboard")).toBe(false);
     });
 
     test("getAvailableEEFeaturesが空配列を返す", async () => {
@@ -50,7 +51,7 @@ describe("EE/CE エディション設定", () => {
       const { getAllEEFeatureInfo } = await import("../config");
       const features = getAllEEFeatureInfo();
 
-      expect(features).toHaveLength(5);
+      expect(features).toHaveLength(6);
       expect(features.every((f) => f.available === false)).toBe(true);
     });
   });
@@ -105,7 +106,7 @@ describe("EE/CE エディション設定", () => {
       const { getAllEEFeatureInfo } = await import("../config");
       const features = getAllEEFeatureInfo();
 
-      expect(features).toHaveLength(5);
+      expect(features).toHaveLength(6);
 
       const memberManagement = features.find(
         (f) => f.feature === "member-management",
@@ -123,6 +124,10 @@ describe("EE/CE エディション設定", () => {
       );
       expect(dynamicSearch?.available).toBe(true);
       expect(dynamicSearch?.description).toBe("MCPツールの動的検索機能");
+
+      const piiDashboard = features.find((f) => f.feature === "pii-dashboard");
+      expect(piiDashboard?.available).toBe(true);
+      expect(piiDashboard?.description).toBe("PII検知ダッシュボード表示機能");
     });
   });
 
@@ -150,9 +155,10 @@ describe("EE/CE エディション設定", () => {
       const { getAvailableEEFeatures } = await import("../config");
       const features = getAvailableEEFeatures();
 
-      expect(features).toHaveLength(5);
+      expect(features).toHaveLength(6);
       expect(features).toContain("organization-creation");
       expect(features).toContain("dynamic-search");
+      expect(features).toContain("pii-dashboard");
     });
   });
 

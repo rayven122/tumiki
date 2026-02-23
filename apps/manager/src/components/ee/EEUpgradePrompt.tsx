@@ -35,6 +35,11 @@ const featureMessages: Record<
     description:
       "MCPツールの動的検索機能を利用するにはEnterprise Editionが必要です。",
   },
+  "pii-dashboard": {
+    title: "PII検知ダッシュボード",
+    description:
+      "機密情報検知のダッシュボード表示を利用するにはEnterprise Editionが必要です。",
+  },
 };
 
 /**

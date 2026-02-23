@@ -53,6 +53,14 @@
   --brand-navy: oklch(0.208 0.042 265.755);
   --brand-vermillion: oklch(0.626 0.22 25.89);
   --brand-emerald: oklch(0.588 0.17 164.81);
+
+  /* Dashboard semantic colors */
+  --dashboard-success: oklch(0.648 0.16 164.81);
+  --dashboard-success-muted: oklch(0.917 0.037 164.81);
+  --dashboard-error: oklch(0.626 0.22 25.89);
+  --dashboard-error-muted: oklch(0.95 0.02 25.89);
+  --dashboard-chart-primary: oklch(0.541 0.281 293.009);
+  --dashboard-chart-secondary: oklch(0.811 0.111 293.571);
   --slate-50: oklch(0.984 0.003 247.858);
   --slate-100: oklch(0.968 0.007 247.896);
   --slate-600: oklch(0.554 0.046 257.417);
@@ -100,6 +108,14 @@
   --color-brand-navy: var(--brand-navy);
   --color-brand-vermillion: var(--brand-vermillion);
   --color-brand-emerald: var(--brand-emerald);
+
+  /* Dashboard semantic colors */
+  --color-dashboard-success: var(--dashboard-success);
+  --color-dashboard-success-muted: var(--dashboard-success-muted);
+  --color-dashboard-error: var(--dashboard-error);
+  --color-dashboard-error-muted: var(--dashboard-error-muted);
+  --color-dashboard-chart-primary: var(--dashboard-chart-primary);
+  --color-dashboard-chart-secondary: var(--dashboard-chart-secondary);
   --color-slate-50: var(--slate-50);
   --color-slate-100: var(--slate-100);
   --color-slate-600: var(--slate-600);

@@ -25,7 +25,30 @@ export type EEFeature =
   | "role-management"
   | "group-management"
   | "organization-creation"
-  | "dynamic-search";
+  | "dynamic-search"
+  | "pii-dashboard";
+
+// 全EE機能の一覧
+const ALL_EE_FEATURES: EEFeature[] = [
+  "member-management",
+  "role-management",
+  "group-management",
+  "organization-creation",
+  "dynamic-search",
+  "pii-dashboard",
+];
+
+/**
+ * 機能の説明
+ */
+const FEATURE_DESCRIPTIONS: Record<EEFeature, string> = {
+  "member-management": "組織メンバーの管理機能",
+  "role-management": "ロールベースのアクセス制御機能",
+  "group-management": "グループ管理機能",
+  "organization-creation": "新規組織作成機能",
+  "dynamic-search": "MCPツールの動的検索機能",
+  "pii-dashboard": "PII検知ダッシュボード表示機能",
+};
 
 /**
  * 指定されたEE機能が利用可能かどうかを判定
@@ -45,19 +68,7 @@ export const isEEFeatureAvailable = (feature: EEFeature): boolean => {
  */
 export const getAvailableEEFeatures = (): EEFeature[] => {
   if (!EE_AVAILABLE) return [];
-
-  const features: EEFeature[] = [
-    "member-management",
-    "role-management",
-    "group-management",
-    "dynamic-search",
-  ];
-
-  if (ORG_CREATION_ENABLED) {
-    features.push("organization-creation");
-  }
-
-  return features;
+  return ALL_EE_FEATURES.filter((feature) => isEEFeatureAvailable(feature));
 };
 
 /**
@@ -70,31 +81,11 @@ export type EEFeatureInfo = {
 };
 
 /**
- * 機能の説明
- */
-const FEATURE_DESCRIPTIONS: Record<EEFeature, string> = {
-  "member-management": "組織メンバーの管理機能",
-  "role-management": "ロールベースのアクセス制御機能",
-  "group-management": "グループ管理機能",
-  "organization-creation": "新規組織作成機能",
-  "dynamic-search": "MCPツールの動的検索機能",
-};
-
-/**
  * 全EE機能の情報を取得
  */
-export const getAllEEFeatureInfo = (): EEFeatureInfo[] => {
-  const features: EEFeature[] = [
-    "member-management",
-    "role-management",
-    "group-management",
-    "organization-creation",
-    "dynamic-search",
-  ];
-
-  return features.map((feature) => ({
+export const getAllEEFeatureInfo = (): EEFeatureInfo[] =>
+  ALL_EE_FEATURES.map((feature) => ({
     feature,
     available: isEEFeatureAvailable(feature),
     description: FEATURE_DESCRIPTIONS[feature],
   }));
-};
