@@ -139,5 +139,6 @@ export const getTumikiClaims = async (
     org_id: defaultOrg.id,
     org_slug: defaultOrg.slug,
     roles: userRoles,
+    group_roles: groupRoles, // 組織切り替え時のロール再計算用に保存
   };
 };

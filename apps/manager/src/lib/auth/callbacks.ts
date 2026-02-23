@@ -146,28 +146,23 @@ export const jwtCallback = async ({
   }
 
   if (!account && token.sub && token.tumiki) {
-    // トークンリフレッシュ時にgroup_rolesが取得できた場合のみ再解析
-    // それ以外は既存のtumikiクレームを維持（ロールが消失するのを防ぐ）
-    if (token.keycloakGroupRoles) {
-      const updatedTumiki = await getTumikiClaims(
-        db,
-        token.sub,
-        token.keycloakGroupRoles,
+    // セッション更新（update({})）またはトークンリフレッシュ時
+    // DBから最新のdefaultOrganizationを取得してtumikiクレームを更新
+    // これにより組織切り替え後のセッション更新で正しい組織情報が反映される
+    const groupRoles = token.keycloakGroupRoles ?? token.tumiki.group_roles;
+    const updatedTumiki = await getTumikiClaims(db, token.sub, groupRoles);
+
+    if (!updatedTumiki) {
+      // 組織メンバーシップが見つからない場合はセッションを無効化
+      console.error(
+        `[jwtCallback] Failed to get tumiki claims for user ${token.sub}. Session will be invalidated.`,
       );
-
-      if (!updatedTumiki) {
-        // 組織メンバーシップが見つからない場合はセッションを無効化
-        console.error(
-          `[jwtCallback] Failed to get tumiki claims for user ${token.sub}. Session will be invalidated.`,
-        );
-        return null;
-      }
-
-      token.tumiki = updatedTumiki;
-      // 使用済みのkeycloakGroupRolesをクリア
-      token.keycloakGroupRoles = undefined;
+      return null;
     }
-    // keycloakGroupRolesがない場合は token.tumiki をそのまま維持
+
+    token.tumiki = updatedTumiki;
+    // 使用済みのkeycloakGroupRolesをクリア
+    token.keycloakGroupRoles = undefined;
     return token;
   }
 

@@ -18,6 +18,7 @@ export type TumikiClaims = {
   org_id: string | null; // ユーザーの操作に応じて変更
   org_slug: string | null; // ユーザーの操作に応じて変更
   roles: string[]; // 変更なし
+  group_roles?: string[]; // Keycloakのgroup_rolesを保存（組織切り替え時のロール再計算用）
 };
 
 /**
