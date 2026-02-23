@@ -128,9 +128,7 @@ describe("tokenPricing", () => {
     test("既知のモデルでモデル別単価が適用される", () => {
       // openai/gpt-4o: input=$0.0025/1K, output=$0.01/1K
       // 1000 input = $0.0025, 1000 output = $0.01 => $0.0125 -> $0.01
-      expect(calculateTokenCostByModel("openai/gpt-4o", 1000, 1000)).toBe(
-        0.01,
-      );
+      expect(calculateTokenCostByModel("openai/gpt-4o", 1000, 1000)).toBe(0.01);
     });
 
     test("nullの場合はデフォルト単価で計算される", () => {
@@ -148,9 +146,9 @@ describe("tokenPricing", () => {
     test("GPT-4o-miniの低単価が正しく適用される", () => {
       // openai/gpt-4o-mini: input=$0.00015/1K, output=$0.0006/1K
       // 10000 input = $0.0015, 10000 output = $0.006 => $0.0075 -> $0.01
-      expect(calculateTokenCostByModel("openai/gpt-4o-mini", 10000, 10000)).toBe(
-        0.01,
-      );
+      expect(
+        calculateTokenCostByModel("openai/gpt-4o-mini", 10000, 10000),
+      ).toBe(0.01);
     });
 
     test("Claude Opus 4.5の高単価が正しく適用される", () => {
@@ -162,9 +160,9 @@ describe("tokenPricing", () => {
     });
 
     test("ゼロトークンの場合は0を返す", () => {
-      expect(
-        calculateTokenCostByModel("anthropic/claude-opus-4.5", 0, 0),
-      ).toBe(0);
+      expect(calculateTokenCostByModel("anthropic/claude-opus-4.5", 0, 0)).toBe(
+        0,
+      );
     });
   });
 });

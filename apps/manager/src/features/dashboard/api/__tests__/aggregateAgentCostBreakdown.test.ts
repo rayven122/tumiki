@@ -212,7 +212,14 @@ describe("aggregateAgentCostBreakdown", () => {
 
     test("modelIdがnullのエージェントはデフォルト単価で計算される", () => {
       const agents = [
-        createAgent("a1", "DefaultAgent", "default-agent", ["mcp1"], null, null),
+        createAgent(
+          "a1",
+          "DefaultAgent",
+          "default-agent",
+          ["mcp1"],
+          null,
+          null,
+        ),
       ];
       const mcpTokens = [createMcpTokens("mcp1", 1000, 1000)];
 
