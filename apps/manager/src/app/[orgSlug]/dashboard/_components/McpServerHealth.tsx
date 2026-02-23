@@ -8,8 +8,6 @@ import { Server, Loader2, AlertCircle } from "lucide-react";
 import { api } from "@/trpc/react";
 import { EntityIcon } from "@/features/shared/components/EntityIcon";
 
-type McpServerHealthProps = {};
-
 // ステータスバッジのバリアント定義
 const STATUS_BADGE_CONFIG = {
   RUNNING: { label: "稼働中", variant: "default" },
@@ -24,7 +22,7 @@ const STATUS_BADGE_CONFIG = {
   }
 >;
 
-export const McpServerHealth = ({}: McpServerHealthProps) => {
+export const McpServerHealth = () => {
   const { orgSlug } = useParams<{ orgSlug: string }>();
   const { data, isLoading } = api.dashboard.getMcpServerHealth.useQuery();
 
