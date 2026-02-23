@@ -1,6 +1,6 @@
 import { describe, test, expect } from "vitest";
 import { aggregateAgentCostBreakdown } from "../aggregateAgentCostBreakdown";
-import { calculateTokenCost } from "../tokenPricing";
+import { calculateTokenCostByModel } from "../tokenPricing";
 
 const createAgent = (
   id: string,
@@ -8,12 +8,14 @@ const createAgent = (
   slug: string,
   mcpServerIds: string[],
   iconPath: string | null = null,
+  modelId: string | null = null,
 ) => ({
   id,
   name,
   slug,
   iconPath,
   mcpServerIds,
+  modelId,
 });
 
 const createMcpTokens = (
@@ -48,12 +50,12 @@ describe("aggregateAgentCostBreakdown", () => {
       agentName: "Agent1",
       agentSlug: "agent-1",
       agentIconPath: null,
-      estimatedCost: calculateTokenCost(1000, 2000),
+      estimatedCost: calculateTokenCostByModel(null, 1000, 2000),
       inputTokens: 1000,
       outputTokens: 2000,
       mcpServerCount: 1,
     });
-    expect(result.totalCost).toBe(calculateTokenCost(1000, 2000));
+    expect(result.totalCost).toBe(calculateTokenCostByModel(null, 1000, 2000));
   });
 
   test("共有MCPサーバーのコストが均等割りされる", () => {
@@ -71,7 +73,9 @@ describe("aggregateAgentCostBreakdown", () => {
     expect(result.agents[0]?.outputTokens).toBe(1000);
     expect(result.agents[1]?.inputTokens).toBe(500);
     expect(result.agents[1]?.outputTokens).toBe(1000);
-    expect(result.agents[0]?.estimatedCost).toBe(calculateTokenCost(500, 1000));
+    expect(result.agents[0]?.estimatedCost).toBe(
+      calculateTokenCostByModel(null, 500, 1000),
+    );
   });
 
   test("複数MCPサーバーのコストが合算される", () => {
@@ -87,7 +91,7 @@ describe("aggregateAgentCostBreakdown", () => {
     expect(result.agents[0]?.inputTokens).toBe(3000);
     expect(result.agents[0]?.outputTokens).toBe(4000);
     expect(result.agents[0]?.estimatedCost).toBe(
-      calculateTokenCost(3000, 4000),
+      calculateTokenCostByModel(null, 3000, 4000),
     );
   });
 
@@ -121,7 +125,7 @@ describe("aggregateAgentCostBreakdown", () => {
     // mcp2のトークンは無視される
     expect(result.agents[0]?.inputTokens).toBe(1000);
     expect(result.agents[0]?.outputTokens).toBe(1000);
-    expect(result.totalCost).toBe(calculateTokenCost(1000, 1000));
+    expect(result.totalCost).toBe(calculateTokenCostByModel(null, 1000, 1000));
   });
 
   test("エージェントにMCPサーバーが紐づいていない場合はコスト0", () => {
@@ -141,5 +145,89 @@ describe("aggregateAgentCostBreakdown", () => {
       mcpServerCount: 0,
     });
     expect(result.totalCost).toBe(0);
+  });
+
+  describe("モデル別コスト計算", () => {
+    test("モデルIDが指定されたエージェントはモデル別単価で計算される", () => {
+      const agents = [
+        createAgent(
+          "a1",
+          "OpusAgent",
+          "opus-agent",
+          ["mcp1"],
+          null,
+          "anthropic/claude-opus-4.5",
+        ),
+      ];
+      const mcpTokens = [createMcpTokens("mcp1", 1000, 1000)];
+
+      const result = aggregateAgentCostBreakdown(agents, mcpTokens);
+
+      // Opus 4.5: input=$0.015/1K, output=$0.075/1K
+      // 1000 input = $0.015, 1000 output = $0.075 => $0.09
+      expect(result.agents[0]?.estimatedCost).toBe(0.09);
+      expect(result.totalCost).toBe(0.09);
+    });
+
+    test("異なるモデルのエージェントでtotalCostが正しく合算される", () => {
+      const agents = [
+        createAgent(
+          "a1",
+          "OpusAgent",
+          "opus-agent",
+          ["mcp1"],
+          null,
+          "anthropic/claude-opus-4.5",
+        ),
+        createAgent(
+          "a2",
+          "MiniAgent",
+          "mini-agent",
+          ["mcp2"],
+          null,
+          "openai/gpt-4o-mini",
+        ),
+      ];
+      const mcpTokens = [
+        createMcpTokens("mcp1", 1000, 1000),
+        createMcpTokens("mcp2", 1000, 1000),
+      ];
+
+      const result = aggregateAgentCostBreakdown(agents, mcpTokens);
+
+      const opusCost = calculateTokenCostByModel(
+        "anthropic/claude-opus-4.5",
+        1000,
+        1000,
+      );
+      const miniCost = calculateTokenCostByModel(
+        "openai/gpt-4o-mini",
+        1000,
+        1000,
+      );
+      expect(result.totalCost).toBe(
+        Math.round((opusCost + miniCost) * 100) / 100,
+      );
+    });
+
+    test("modelIdがnullのエージェントはデフォルト単価で計算される", () => {
+      const agents = [
+        createAgent(
+          "a1",
+          "DefaultAgent",
+          "default-agent",
+          ["mcp1"],
+          null,
+          null,
+        ),
+      ];
+      const mcpTokens = [createMcpTokens("mcp1", 1000, 1000)];
+
+      const result = aggregateAgentCostBreakdown(agents, mcpTokens);
+
+      expect(result.agents[0]?.estimatedCost).toBe(
+        calculateTokenCostByModel(null, 1000, 1000),
+      );
+    });
   });
 });

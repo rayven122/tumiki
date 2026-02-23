@@ -30,6 +30,9 @@ const formatTokens = (tokens: number): string =>
 
 const formatCost = (cost: number): string => `$${cost.toFixed(2)}`;
 
+// コストが発生しているエージェントの最大表示件数
+const MAX_DISPLAY = 5;
+
 type AgentCostBreakdownProps = {
   timeRange: TimeRange;
 };
@@ -40,35 +43,46 @@ export const AgentCostBreakdown = ({ timeRange }: AgentCostBreakdownProps) => {
     timeRange,
   });
 
-  const chartData = useMemo(() => {
+  const activeAgents = useMemo(() => {
     if (!data) return [];
-    return data.agents.map((agent, i) => ({
+    return data.agents.filter((a) => a.estimatedCost > 0);
+  }, [data]);
+
+  const topAgents = useMemo(
+    () => activeAgents.slice(0, MAX_DISPLAY),
+    [activeAgents],
+  );
+
+  const chartData = useMemo(() => {
+    return topAgents.map((agent, i) => ({
       name: agent.agentName,
       value: agent.estimatedCost,
       color: CHART_COLORS[i % CHART_COLORS.length],
     }));
-  }, [data]);
+  }, [topAgents]);
 
   const renderContent = () => {
     if (isLoading) {
       return (
-        <div className="flex h-32 items-center justify-center">
+        <div className="flex h-[160px] items-center justify-center">
           <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
         </div>
       );
     }
 
-    if (!data || data.agents.length === 0) {
+    if (!data || topAgents.length === 0) {
       return (
-        <div className="text-muted-foreground flex flex-col items-center justify-center py-8 text-center">
+        <div className="text-muted-foreground flex h-[160px] flex-col items-center justify-center text-center">
           <DollarSign className="mb-2 h-8 w-8 opacity-50" />
           <p className="text-sm">データがありません</p>
         </div>
       );
     }
 
+    const hiddenCount = activeAgents.length - topAgents.length;
+
     return (
-      <div className="flex items-center gap-6">
+      <div className="flex h-[160px] items-center gap-6">
         {/* ドーナツチャート */}
         <div className="relative h-40 w-40 shrink-0">
           <ResponsiveContainer width="100%" height="100%">
@@ -102,7 +116,7 @@ export const AgentCostBreakdown = ({ timeRange }: AgentCostBreakdownProps) => {
         {/* エージェントリスト */}
         <TooltipProvider delayDuration={200}>
           <div className="min-w-0 flex-1 space-y-0.5">
-            {data.agents.map((agent, i) => (
+            {topAgents.map((agent, i) => (
               <Tooltip key={agent.agentId}>
                 <TooltipTrigger asChild>
                   <Link
@@ -133,6 +147,11 @@ export const AgentCostBreakdown = ({ timeRange }: AgentCostBreakdownProps) => {
                 </TooltipContent>
               </Tooltip>
             ))}
+            {hiddenCount > 0 && (
+              <p className="text-muted-foreground px-1 text-[11px]">
+                他 {String(hiddenCount)} エージェント
+              </p>
+            )}
           </div>
         </TooltipProvider>
       </div>

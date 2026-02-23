@@ -301,6 +301,7 @@ export const dashboardRouter = createTRPCRouter({
                 name: true,
                 slug: true,
                 iconPath: true,
+                personaId: true,
                 mcpServers: {
                   where: { deletedAt: null },
                   select: {
@@ -334,6 +335,7 @@ export const dashboardRouter = createTRPCRouter({
           durationMs: e.durationMs,
           createdAt: e.createdAt,
           modelId: e.modelId,
+          personaId: e.agent.personaId,
           scheduleName: e.schedule?.name ?? null,
           chatId: e.chatId,
           mcpServerIcons: e.agent.mcpServers.map((s) => ({
@@ -650,6 +652,7 @@ export const dashboardRouter = createTRPCRouter({
             name: true,
             slug: true,
             iconPath: true,
+            modelId: true,
             mcpServers: {
               where: { deletedAt: null },
               select: { id: true },
@@ -661,6 +664,7 @@ export const dashboardRouter = createTRPCRouter({
       return aggregateAgentCostBreakdown(
         agents.map((a) => ({
           ...a,
+          modelId: a.modelId ?? null,
           mcpServerIds: a.mcpServers.map((s) => s.id),
         })),
         mcpServerTokens.map((t) => ({
