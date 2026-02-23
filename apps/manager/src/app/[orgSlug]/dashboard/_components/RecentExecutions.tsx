@@ -189,9 +189,7 @@ const PersonaCellContent = ({
 
   const persona = personaMap.get(personaId);
   if (!persona) {
-    return (
-      <span className="text-muted-foreground text-xs">{personaId}</span>
-    );
+    return <span className="text-muted-foreground text-xs">{personaId}</span>;
   }
 
   return (
