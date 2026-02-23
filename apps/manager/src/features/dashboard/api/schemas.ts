@@ -56,6 +56,7 @@ export const RecentExecutionSchema = z.object({
   durationMs: z.number().nullable(),
   createdAt: z.date(),
   modelId: z.string().nullable(),
+  personaId: z.string().nullable(),
   scheduleName: z.string().nullable(),
   chatId: z.string().nullable(),
   mcpServerIcons: z.array(McpServerIconSchema),

@@ -301,6 +301,7 @@ export const dashboardRouter = createTRPCRouter({
                 name: true,
                 slug: true,
                 iconPath: true,
+                personaId: true,
                 mcpServers: {
                   where: { deletedAt: null },
                   select: {
@@ -334,6 +335,7 @@ export const dashboardRouter = createTRPCRouter({
           durationMs: e.durationMs,
           createdAt: e.createdAt,
           modelId: e.modelId,
+          personaId: e.agent.personaId,
           scheduleName: e.schedule?.name ?? null,
           chatId: e.chatId,
           mcpServerIcons: e.agent.mcpServers.map((s) => ({
