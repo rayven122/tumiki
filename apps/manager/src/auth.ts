@@ -31,6 +31,7 @@ export const {
   signIn,
   signOut,
 } = NextAuth({
+  trustHost: true,
   providers: [
     Keycloak({
       clientId: keycloakEnv.KEYCLOAK_CLIENT_ID,
