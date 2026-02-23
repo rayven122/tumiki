@@ -46,44 +46,47 @@ import {
   acceptInvitationInputSchema,
   acceptInvitationOutputSchema,
 } from "./acceptInvitation";
-// EE機能: 組織作成（CE版はスタブを使用）
+// EE機能: 組織作成（CE版ビルド時はwebpackが.tsにリダイレクト）
 import {
   createOrganization,
   createOrganizationInputSchema,
   createOrganizationOutputSchema,
-} from "./createOrganization";
-// EE機能: 招待一覧取得（CE版はスタブを使用）
-import { getInvitations, getInvitationsOutputSchema } from "./getInvitations";
-// EE機能: メンバー招待（CE版はスタブを使用）
+} from "./createOrganization.ee";
+// EE機能: 招待一覧取得（CE版ビルド時はwebpackが.tsにリダイレクト）
+import {
+  getInvitations,
+  getInvitationsOutputSchema,
+} from "./getInvitations.ee";
+// EE機能: メンバー招待（CE版ビルド時はwebpackが.tsにリダイレクト）
 import {
   inviteMembers,
   inviteMembersInputSchema,
   inviteMembersOutputSchema,
-} from "./inviteMembers";
-// EE機能: 招待再送信（CE版はスタブを使用）
+} from "./inviteMembers.ee";
+// EE機能: 招待再送信（CE版ビルド時はwebpackが.tsにリダイレクト）
 import {
   resendInvitation,
   resendInvitationInputSchema,
   resendInvitationOutputSchema,
-} from "./resendInvitation";
-// EE機能: 招待キャンセル（CE版はスタブを使用）
+} from "./resendInvitation.ee";
+// EE機能: 招待キャンセル（CE版ビルド時はwebpackが.tsにリダイレクト）
 import {
   cancelInvitation,
   cancelInvitationInputSchema,
   cancelInvitationOutputSchema,
-} from "./cancelInvitation";
-// EE機能: メンバー削除（CE版はスタブを使用）
+} from "./cancelInvitation.ee";
+// EE機能: メンバー削除（CE版ビルド時はwebpackが.tsにリダイレクト）
 import {
   removeMember,
   removeMemberInputSchema,
   removeMemberOutputSchema,
-} from "./removeMember";
-// EE機能: メンバーロール変更（CE版はスタブを使用）
+} from "./removeMember.ee";
+// EE機能: メンバーロール変更（CE版ビルド時はwebpackが.tsにリダイレクト）
 import {
   updateMemberRole,
   updateMemberRoleInputSchema,
   updateMemberRoleOutputSchema,
-} from "./updateMemberRole";
+} from "./updateMemberRole.ee";
 
 /**
  * Organization Router

@@ -45,6 +45,7 @@
     "@trpc/server": "11.8.0",
     "@tumiki/db": "workspace:*",
     "@tumiki/keycloak": "workspace:*",
+    "@tumiki/license": "workspace:*",
     "@tumiki/mailer": "workspace:*",
     "@tumiki/prompts": "workspace:*",
     "@tumiki/shared": "workspace:*",

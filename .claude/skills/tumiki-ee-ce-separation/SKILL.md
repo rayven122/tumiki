@@ -246,12 +246,12 @@ export const inviteMembers = async (params: {
 
 ```typescript
 // organization/index.ts
-// CEスタブからインポート（EE版ビルド時はwebpackが.ee.tsに置換）
+// EE実装からインポート（CE版ビルド時はwebpackが.tsにリダイレクト）
 import {
   inviteMembers,
   inviteMembersInputSchema,
   inviteMembersOutputSchema,
-} from "./inviteMembers"; // ← .ee.tsではなく.tsをインポート
+} from "./inviteMembers.ee"; // ← .ee.tsからインポート
 
 export const organizationRouter = createTRPCRouter({
   inviteMembers: protectedProcedure
@@ -261,6 +261,10 @@ export const organizationRouter = createTRPCRouter({
 });
 ```
 
+**重要**: EE機能は必ず`.ee.ts`からインポートしてください。
+- **EE版/開発環境**: `.ee.ts`（EE実装）が使用される
+- **CE版ビルド**: webpackプラグインが`.ee.ts`を`.ts`（CEスタブ）にリダイレクト
+
 ## webpack プラグイン
 
 ```javascript
@@ -269,15 +273,14 @@ const isEEBuild = process.env.NEXT_PUBLIC_EE_BUILD === "true";
 
 webpack: (config, { isServer }) => {
   if (!isEEBuild) {
-    // CE版ビルド: .ee.ts/.ee.tsx ファイルを空のモジュールに置き換え
-    const eeStubPath = path.resolve(__dirname, "src/lib/ee-stub.js");
-
+    // CE版ビルド: .ee.ts/.ee.tsx を .ts/.tsx にリダイレクト（CEスタブを使用）
     const cePlugin = {
       apply(compiler) {
         compiler.hooks.normalModuleFactory.tap("CEBuildPlugin", (nmf) => {
           nmf.hooks.beforeResolve.tap("CEBuildPlugin", (resolveData) => {
             if (resolveData.request && resolveData.request.includes(".ee")) {
-              resolveData.request = eeStubPath;
+              // .ee.ts → .ts にリダイレクト
+              resolveData.request = resolveData.request.replace(".ee", "");
             }
           });
         });
@@ -287,21 +290,6 @@ webpack: (config, { isServer }) => {
   }
   return config;
 },
-```
-
-## ee-stub.js
-
-```javascript
-// src/lib/ee-stub.js
-/**
- * EE機能のスタブモジュール
- *
- * CE版ビルド時に.ee.tsファイルの代わりに使用される空のモジュール。
- * これにより、CE版ビルドにEEコード（Elastic License 2.0）が含まれない。
- */
-
-// 空のエクスポート
-export {};
 ```
 
 ## 新しいEE機能追加手順

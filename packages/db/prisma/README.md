@@ -545,7 +545,7 @@ erDiagram
   - `updatedAt`: 
 
 ### `McpPermission`
-特定MCPサーバーへの権限設定（参照整合性あり）
+特定MCPサーバーへの権限���定（参照整合性あり）
 
 **Properties**
   - `id`: 

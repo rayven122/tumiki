@@ -35,6 +35,11 @@ const featureMessages: Record<
     description:
       "MCPツールの動的検索機能を利用するにはEnterprise Editionが必要です。",
   },
+  "custom-roles": {
+    title: "カスタムロール",
+    description:
+      "カスタムロールを作成・管理するにはEnterprise Editionが必要です。",
+  },
   "pii-dashboard": {
     title: "PII検知ダッシュボード",
     description:

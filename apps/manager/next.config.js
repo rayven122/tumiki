@@ -4,7 +4,11 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const isEEBuild = process.env.NEXT_PUBLIC_EE_BUILD === "true";
+// EE版ビルドの判定
+// TUMIKI_EDITION=ee または NEXT_PUBLIC_EE_BUILD=true でEE版
+const isEEBuild =
+  process.env.TUMIKI_EDITION === "ee" ||
+  process.env.NEXT_PUBLIC_EE_BUILD === "true";
 
 /** @type {import("next").NextConfig} */
 const config = {
@@ -18,18 +22,11 @@ const config = {
   experimental: {
     mcpServer: true,
   },
-  // CE版ビルド時に.ee.tsファイルを空のモジュールに置き換え
+  // CE版ビルド時に.ee.tsファイルをCEスタブ(.ts)にリダイレクト
   webpack: (config, { isServer }) => {
     if (!isEEBuild) {
-      // CE版ビルド: .ee.ts/.ee.tsx ファイルを空のモジュールに置き換え
-      config.resolve.alias = {
-        ...config.resolve.alias,
-      };
-
-      // .ee.ts/.ee.tsx ファイルを空のモジュールに置き換えるプラグイン
-      // NOTE: Webpack内部型は複雑で不完全なため、ここでは例外的に@type {any}を使用
-      // 将来的にTypeScript化する場合は、カスタム型定義の追加を検討
-      const eeStubPath = path.resolve(__dirname, "src/lib/ee-stub.js");
+      // CE版ビルド: .ee.ts/.ee.tsx ファイルをCEスタブ(.ts/.tsx)にリダイレクト
+      // これにより、EE実装の代わりにFORBIDDENエラーを返すスタブが使用される
       /** @type {any} */
       const cePlugin = {
         /** @param {any} compiler */
@@ -42,11 +39,15 @@ const config = {
                 /** @param {any} resolveData */ (
                   /** @type {any} */ resolveData,
                 ) => {
+                  // .ee.ts → .ts, .ee.tsx → .tsx にリダイレクト
                   if (
                     resolveData.request &&
                     resolveData.request.includes(".ee")
                   ) {
-                    resolveData.request = eeStubPath;
+                    resolveData.request = resolveData.request.replace(
+                      ".ee",
+                      "",
+                    );
                   }
                 },
               );

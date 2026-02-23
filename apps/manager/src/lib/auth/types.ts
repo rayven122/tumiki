@@ -81,7 +81,7 @@ declare module "next-auth/jwt" {
     // アプリケーション固有フィールド
     role?: Role; // DB管理のユーザーロール
 
-    // トークンリフレッシュ時にKeycloakから取得した最新ロール
-    keycloakRoles?: string[];
+    // トークンリフレッシュ時にKeycloakから取得した最新group_roles
+    keycloakGroupRoles?: string[];
   }
 }

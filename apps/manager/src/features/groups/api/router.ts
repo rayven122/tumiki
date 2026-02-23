@@ -21,28 +21,28 @@ import {
   groupRoleOutputSchema,
 } from "@/server/utils/groupSchemas";
 import { listGroups } from "./list";
-// EE機能: グループ作成（CE版はスタブを使用）
-import { createGroup } from "./create";
-// EE機能: グループ削除（CE版はスタブを使用）
-import { deleteGroup } from "./delete";
+// EE機能: グループ作成（CE版ビルド時はwebpackが.tsにリダイレクト）
+import { createGroup } from "./create.ee";
+// EE機能: グループ削除（CE版ビルド時はwebpackが.tsにリダイレクト）
+import { deleteGroup } from "./delete.ee";
 import { getGroupById } from "./getById";
-// EE機能: メンバー追加（CE版はスタブを使用）
-import { addMember } from "./addMember";
-// EE機能: 複数メンバー追加（CE版はスタブを使用）
-import { addMembers } from "./addMembers";
-// EE機能: メンバー削除（CE版はスタブを使用）
-import { removeMember } from "./removeMember";
+// EE機能: メンバー追加（CE版ビルド時はwebpackが.tsにリダイレクト）
+import { addMember } from "./addMember.ee";
+// EE機能: 複数メンバー追加（CE版ビルド時はwebpackが.tsにリダイレクト）
+import { addMembers } from "./addMembers.ee";
+// EE機能: メンバー削除（CE版ビルド時はwebpackが.tsにリダイレクト）
+import { removeMember } from "./removeMember.ee";
 import { getGroupMembers } from "./getGroupMembers";
-// EE機能: グループ移動（CE版はスタブを使用）
-import { moveGroup } from "./move";
-// EE機能: リーダー更新（CE版はスタブを使用）
-import { updateLeader } from "./updateLeader";
-// EE機能: グループ更新（CE版はスタブを使用）
-import { updateGroup } from "./update";
-// EE機能: ロール割り当て（CE版はスタブを使用）
-import { assignRoleToGroup } from "./assignRole";
-// EE機能: ロール解除（CE版はスタブを使用）
-import { removeRoleFromGroup } from "./removeRole";
+// EE機能: グループ移動（CE版ビルド時はwebpackが.tsにリダイレクト）
+import { moveGroup } from "./move.ee";
+// EE機能: リーダー更新（CE版ビルド時はwebpackが.tsにリダイレクト）
+import { updateLeader } from "./updateLeader.ee";
+// EE機能: グループ更新（CE版ビルド時はwebpackが.tsにリダイレクト）
+import { updateGroup } from "./update.ee";
+// EE機能: ロール割り当て（CE版ビルド時はwebpackが.tsにリダイレクト）
+import { assignRoleToGroup } from "./assignRole.ee";
+// EE機能: ロール解除（CE版ビルド時はwebpackが.tsにリダイレクト）
+import { removeRoleFromGroup } from "./removeRole.ee";
 import { listGroupRoles } from "./listRoles";
 import { listAllGroupRoles } from "./listAllRoles";
 import { z } from "zod";

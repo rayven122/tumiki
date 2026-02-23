@@ -1,24 +1,31 @@
 /**
  * EE/CE エディション設定
  *
- * ビルド時に環境変数で判定される。
- * NEXT_PUBLIC_EE_BUILD=true -> EE版
- * 未設定または false -> CE版
+ * @tumiki/license パッケージを使用してライセンス状態を判定。
+ * 環境変数 TUMIKI_EDITION=ee でEE版が有効になる。
+ *
+ * 将来のライセンスキー方式への移行も @tumiki/license で対応可能。
  */
 
-/**
- * EE版が有効かどうか（ビルド時に決定）
- */
-export const EE_AVAILABLE = process.env.NEXT_PUBLIC_EE_BUILD === "true";
+import {
+  isEE as checkIsEE,
+  hasFeature,
+  getEnabledFeatures,
+  type EEFeature as LicenseEEFeature,
+} from "@tumiki/license";
 
 /**
- * 組織作成機能が有効かどうか（EE版のみ）
+ * EE版が有効かどうか
  */
-export const ORG_CREATION_ENABLED =
-  EE_AVAILABLE && process.env.NEXT_PUBLIC_ENABLE_ORG_CREATION === "true";
+export const EE_AVAILABLE = checkIsEE();
 
 /**
- * EE機能の種類
+ * 組織作成機能が有効かどうか
+ */
+export const ORG_CREATION_ENABLED = hasFeature("organization-creation");
+
+/**
+ * EE機能の種類（manager固有の機能名を維持）
  */
 export type EEFeature =
   | "member-management"
@@ -26,28 +33,20 @@ export type EEFeature =
   | "group-management"
   | "organization-creation"
   | "dynamic-search"
+  | "custom-roles"
   | "pii-dashboard";
 
-// 全EE機能の一覧
-const ALL_EE_FEATURES: EEFeature[] = [
-  "member-management",
-  "role-management",
-  "group-management",
-  "organization-creation",
-  "dynamic-search",
-  "pii-dashboard",
-];
-
 /**
- * 機能の説明
+ * ライセンスパッケージの機能名とmanager固有の機能名のマッピング
  */
-const FEATURE_DESCRIPTIONS: Record<EEFeature, string> = {
-  "member-management": "組織メンバーの管理機能",
-  "role-management": "ロールベースのアクセス制御機能",
-  "group-management": "グループ管理機能",
-  "organization-creation": "新規組織作成機能",
-  "dynamic-search": "MCPツールの動的検索機能",
-  "pii-dashboard": "PII検知ダッシュボード表示機能",
+const featureMapping: Record<EEFeature, LicenseEEFeature | null> = {
+  "member-management": null, // EE版なら常に有効
+  "role-management": "custom-roles",
+  "group-management": null, // EE版なら常に有効
+  "organization-creation": "organization-creation",
+  "dynamic-search": "dynamic-search",
+  "custom-roles": "custom-roles",
+  "pii-dashboard": "pii-dashboard",
 };
 
 /**
@@ -56,11 +55,14 @@ const FEATURE_DESCRIPTIONS: Record<EEFeature, string> = {
 export const isEEFeatureAvailable = (feature: EEFeature): boolean => {
   if (!EE_AVAILABLE) return false;
 
-  if (feature === "organization-creation") {
-    return ORG_CREATION_ENABLED;
+  const licenseFeature = featureMapping[feature];
+
+  // マッピングがない機能はEE版なら常に有効
+  if (licenseFeature === null) {
+    return true;
   }
 
-  return true;
+  return hasFeature(licenseFeature);
 };
 
 /**
@@ -68,7 +70,18 @@ export const isEEFeatureAvailable = (feature: EEFeature): boolean => {
  */
 export const getAvailableEEFeatures = (): EEFeature[] => {
   if (!EE_AVAILABLE) return [];
-  return ALL_EE_FEATURES.filter((feature) => isEEFeatureAvailable(feature));
+
+  const allFeatures: EEFeature[] = [
+    "member-management",
+    "role-management",
+    "group-management",
+    "organization-creation",
+    "dynamic-search",
+    "custom-roles",
+    "pii-dashboard",
+  ];
+
+  return allFeatures.filter((feature) => isEEFeatureAvailable(feature));
 };
 
 /**
@@ -81,11 +94,38 @@ export type EEFeatureInfo = {
 };
 
 /**
+ * 機能の説明
+ */
+const FEATURE_DESCRIPTIONS: Record<EEFeature, string> = {
+  "member-management": "組織メンバーの管理機能",
+  "role-management": "ロールベースのアクセス制御機能",
+  "group-management": "グループ管理機能",
+  "organization-creation": "新規組織作成機能",
+  "dynamic-search": "MCPツールの動的検索機能",
+  "custom-roles": "カスタムロール機能",
+  "pii-dashboard": "PII検知ダッシュボード表示機能",
+};
+
+/**
  * 全EE機能の情報を取得
  */
-export const getAllEEFeatureInfo = (): EEFeatureInfo[] =>
-  ALL_EE_FEATURES.map((feature) => ({
+export const getAllEEFeatureInfo = (): EEFeatureInfo[] => {
+  const features: EEFeature[] = [
+    "member-management",
+    "role-management",
+    "group-management",
+    "organization-creation",
+    "dynamic-search",
+    "custom-roles",
+    "pii-dashboard",
+  ];
+
+  return features.map((feature) => ({
     feature,
     available: isEEFeatureAvailable(feature),
     description: FEATURE_DESCRIPTIONS[feature],
   }));
+};
+
+// @tumiki/license の機能も再エクスポート
+export { getEnabledFeatures, hasFeature };

@@ -2,6 +2,45 @@ import type { PrismaTransactionClient } from "@tumiki/db";
 import type { TumikiClaims } from "@/lib/auth/types";
 
 /**
+ * ロールサブグループ名のプレフィックス
+ * Keycloakのグループパス形式: /{slug}/_Owner, /{slug}/_Admin など
+ * ※ slugは組織のスラッグ（groupName）
+ */
+const ROLE_SUBGROUP_PREFIX = "_";
+
+/**
+ * group_rolesパスから組織別ロールを抽出
+ *
+ * @param groupRoles - Keycloakのgroup_rolesクレーム（例: ["/rayven/_Owner", "/acme/_Member"]）
+ * @param orgSlug - 対象の組織スラッグ
+ * @returns 組織に対するロール配列（例: ["Owner"]）、該当なしの場合は空配列
+ */
+export const parseOrgRolesFromGroupPaths = (
+  groupRoles: string[],
+  orgSlug: string,
+): string[] => {
+  // 組織グループパスのプレフィックス（例: "/rayven/"）
+  const orgGroupPrefix = `/${orgSlug}/`;
+
+  return groupRoles
+    .filter((path) => path.startsWith(orgGroupPrefix))
+    .map((path) => {
+      // パスからロールサブグループ名を抽出（例: "/rayven/_Owner" → "_Owner"）
+      const subgroupName = path.slice(orgGroupPrefix.length);
+      // ネストしたパスは無視（スラッシュが含まれている場合は組織直下のサブグループではない）
+      if (subgroupName.includes("/")) {
+        return null;
+      }
+      // プレフィックスを除去してロール名を取得（例: "_Owner" → "Owner"）
+      if (subgroupName.startsWith(ROLE_SUBGROUP_PREFIX)) {
+        return subgroupName.slice(ROLE_SUBGROUP_PREFIX.length);
+      }
+      return null;
+    })
+    .filter((role): role is string => role !== null);
+};
+
+/**
  * 認証用にtumikiクレームを取得
  *
  * JWT callback で使用するために、DBから組織メンバーシップ情報を取得して
@@ -9,17 +48,17 @@ import type { TumikiClaims } from "@/lib/auth/types";
  *
  * ロール決定ロジック:
  * - 個人組織（isPersonal=true）: DBのフラグを見て Owner ロールを自動付与
- * - チーム組織: Keycloakから渡されたロールをそのまま使用
+ * - チーム組織: group_rolesから組織別ロールを抽出（Keycloakグループロールマッピング方式）
  *
  * @param db Prismaクライアント
  * @param userId ユーザーID（Keycloak sub）
- * @param roles Keycloakのroles（ロール配列）- チーム組織で使用
+ * @param groupRoles Keycloakのgroup_roles（グループパス配列）- 組織別ロール解析に使用
  * @returns tumikiクレームまたはnull
  */
 export const getTumikiClaims = async (
   db: PrismaTransactionClient,
   userId: string,
-  roles: string[] | undefined = [],
+  groupRoles: string[] | undefined = [],
 ): Promise<TumikiClaims | null> => {
   // DBからユーザーのdefaultOrganizationと組織メンバーシップを取得
   const user = await db.user.findUnique({
@@ -90,8 +129,10 @@ export const getTumikiClaims = async (
 
   // ロール決定:
   // - 個人組織: Owner ロールのみ（Keycloakグループを作成しないため）
-  // - チーム組織: Keycloakから渡されたロールをそのまま使用
-  const userRoles = isDefaultOrgPersonal ? ["Owner"] : (roles ?? []);
+  // - チーム組織: group_rolesから組織別ロールを抽出
+  const userRoles = isDefaultOrgPersonal
+    ? ["Owner"]
+    : parseOrgRolesFromGroupPaths(groupRoles ?? [], defaultOrg.slug);
 
   return {
     org_slugs: orgSlugs,

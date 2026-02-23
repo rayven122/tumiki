@@ -93,13 +93,15 @@ resource "keycloak_openid_user_realm_role_protocol_mapper" "manager_org_roles" {
 }
 
 # Tumiki Group Roles マッパー
+# 組織別ロール管理のため、full_path=true でグループパスを含める
+# 例: ["/org-rayven/_Owner", "/org-acme/_Member"]
 resource "keycloak_openid_group_membership_protocol_mapper" "manager_group_roles" {
   realm_id  = keycloak_realm.tumiki.id
   client_id = keycloak_openid_client.manager.id
   name      = "Tumiki Group Roles"
 
   claim_name          = "tumiki.group_roles"
-  full_path           = false
+  full_path           = true
   add_to_id_token     = true
   add_to_access_token = true
   add_to_userinfo     = true

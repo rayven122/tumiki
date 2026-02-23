@@ -44,17 +44,17 @@ const refreshAccessToken = async (token: JWT): Promise<JWT | null> => {
       refresh_token?: string;
     };
 
-    // 新しいアクセストークンからKeycloakロールを抽出
-    let keycloakRoles: string[] | undefined;
+    // 新しいアクセストークンからKeycloakのgroup_rolesを抽出
+    let keycloakGroupRoles: string[] | undefined;
     try {
       const decodedToken = decodeJwt(refreshedTokens.access_token);
       const tumikiClaims = decodedToken.tumiki as
         | KeycloakTumikiClaims
         | undefined;
-      keycloakRoles = tumikiClaims?.roles;
+      keycloakGroupRoles = tumikiClaims?.group_roles;
     } catch (decodeError) {
       console.warn(
-        "[refreshAccessToken] Failed to decode access token for roles:",
+        "[refreshAccessToken] Failed to decode access token for group_roles:",
         decodeError,
       );
     }
@@ -66,7 +66,7 @@ const refreshAccessToken = async (token: JWT): Promise<JWT | null> => {
       accessToken: refreshedTokens.access_token,
       expiresAt: Math.floor(Date.now() / 1000) + refreshedTokens.expires_in,
       refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
-      keycloakRoles,
+      keycloakGroupRoles,
     };
   } catch (error) {
     console.error("[refreshAccessToken] Error refreshing token:", error);
@@ -108,11 +108,11 @@ export const jwtCallback = async ({
     token.email = keycloakProfile.email ?? null;
     token.name = keycloakProfile.name ?? null;
 
-    // DBから最新のtumikiクレームを取得
+    // DBから最新のtumikiクレームを取得（group_rolesから組織別ロールを解析）
     const updatedTumiki = await getTumikiClaims(
       db,
       token.sub,
-      keycloakProfile.tumiki?.roles,
+      keycloakProfile.tumiki?.group_roles,
     );
 
     if (!updatedTumiki) {
@@ -146,22 +146,28 @@ export const jwtCallback = async ({
   }
 
   if (!account && token.sub && token.tumiki) {
-    // トークンリフレッシュ時に取得した最新ロールを優先、なければ既存値を使用
-    const roles = token.keycloakRoles ?? token.tumiki.roles;
-
-    // DBから最新のtumikiクレームを取得
-    const updatedTumiki = await getTumikiClaims(db, token.sub, roles);
-
-    if (!updatedTumiki) {
-      // 組織メンバーシップが見つからない場合はセッションを無効化
-      // これにより、ユーザーはサインインページへリダイレクトされる
-      console.error(
-        `[jwtCallback] Failed to get tumiki claims for user ${token.sub}. Session will be invalidated.`,
+    // トークンリフレッシュ時にgroup_rolesが取得できた場合のみ再解析
+    // それ以外は既存のtumikiクレームを維持（ロールが消失するのを防ぐ）
+    if (token.keycloakGroupRoles) {
+      const updatedTumiki = await getTumikiClaims(
+        db,
+        token.sub,
+        token.keycloakGroupRoles,
       );
-      return null;
-    }
 
-    token.tumiki = updatedTumiki;
+      if (!updatedTumiki) {
+        // 組織メンバーシップが見つからない場合はセッションを無効化
+        console.error(
+          `[jwtCallback] Failed to get tumiki claims for user ${token.sub}. Session will be invalidated.`,
+        );
+        return null;
+      }
+
+      token.tumiki = updatedTumiki;
+      // 使用済みのkeycloakGroupRolesをクリア
+      token.keycloakGroupRoles = undefined;
+    }
+    // keycloakGroupRolesがない場合は token.tumiki をそのまま維持
     return token;
   }
 
