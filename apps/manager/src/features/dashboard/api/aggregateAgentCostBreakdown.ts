@@ -90,7 +90,11 @@ export const aggregateAgentCostBreakdown = (
       agentName: agent.name,
       agentSlug: agent.slug,
       agentIconPath: agent.iconPath,
-      estimatedCost: calculateTokenCostByModel(agent.modelId, inputTokens, outputTokens),
+      estimatedCost: calculateTokenCostByModel(
+        agent.modelId,
+        inputTokens,
+        outputTokens,
+      ),
       inputTokens,
       outputTokens,
       mcpServerCount: agent.mcpServerIds.length,
