@@ -1,4 +1,4 @@
-import { calculateTokenCost } from "./tokenPricing";
+import { calculateTokenCostByModel } from "./tokenPricing";
 
 // MCPサーバーごとのトークン集計
 type McpServerTokenSummary = {
@@ -14,6 +14,7 @@ type AgentInput = {
   slug: string;
   iconPath: string | null;
   mcpServerIds: string[];
+  modelId: string | null;
 };
 
 // エージェント別コストアイテム
@@ -35,11 +36,10 @@ type AgentCostBreakdownResult = {
 };
 
 /**
- * エージェント別コスト内訳を集計する純粋関数
+ * エージェント別コスト内訳を集計
  *
- * MCPサーバー経由の按分方式:
- * - 各MCPサーバーのトークンコストを、紐づくエージェント数で均等割り
- * - 各エージェントの合計コストを算出し、コスト降順でソート
+ * 各MCPサーバーのトークンを紐づくエージェント数で均等割りし、
+ * コスト降順でソートして返す。
  */
 export const aggregateAgentCostBreakdown = (
   agents: AgentInput[],
@@ -90,7 +90,7 @@ export const aggregateAgentCostBreakdown = (
       agentName: agent.name,
       agentSlug: agent.slug,
       agentIconPath: agent.iconPath,
-      estimatedCost: calculateTokenCost(inputTokens, outputTokens),
+      estimatedCost: calculateTokenCostByModel(agent.modelId, inputTokens, outputTokens),
       inputTokens,
       outputTokens,
       mcpServerCount: agent.mcpServerIds.length,
@@ -99,10 +99,8 @@ export const aggregateAgentCostBreakdown = (
 
   results.sort((a, b) => b.estimatedCost - a.estimatedCost);
 
-  const totalCost = calculateTokenCost(
-    results.reduce((sum, a) => sum + a.inputTokens, 0),
-    results.reduce((sum, a) => sum + a.outputTokens, 0),
-  );
+  const totalCost = results.reduce((sum, a) => sum + a.estimatedCost, 0);
+  const roundedTotalCost = Math.round(totalCost * 100) / 100;
 
-  return { agents: results, totalCost };
+  return { agents: results, totalCost: roundedTotalCost };
 };
