@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@tumiki/ui/card";
 import { Button } from "@tumiki/ui/button";
@@ -32,6 +32,12 @@ import { ja } from "date-fns/locale";
 import { formatDuration, getPaginationPages } from "@/features/dashboard/utils";
 import { EntityIcon } from "@/features/shared/components/EntityIcon";
 import { ExecutionHistoryModal } from "../../agents/[agentSlug]/_components/ExecutionHistoryModal";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@tumiki/ui/tooltip";
 
 type RecentExecutionsProps = {
   orgSlug: string;
@@ -153,6 +159,58 @@ const SortableHeader = ({
   );
 };
 
+// 性格アイコンの表示（画像パスまたは絵文字）
+const PersonaIcon = ({ icon }: { icon: string }) => {
+  if (icon.startsWith("/")) {
+    return (
+      <img
+        src={icon}
+        alt=""
+        className="h-4 w-4 shrink-0 rounded-full object-cover"
+      />
+    );
+  }
+  return <span className="text-sm leading-none">{icon}</span>;
+};
+
+// 性格セルの表示
+type PersonaCellContentProps = {
+  personaId: string | null;
+  personaMap: Map<string, { name: string; icon?: string }>;
+};
+
+const PersonaCellContent = ({
+  personaId,
+  personaMap,
+}: PersonaCellContentProps) => {
+  if (!personaId) {
+    return <span className="text-muted-foreground text-xs">-</span>;
+  }
+
+  const persona = personaMap.get(personaId);
+  if (!persona) {
+    return (
+      <span className="text-muted-foreground text-xs">{personaId}</span>
+    );
+  }
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="text-muted-foreground flex items-center gap-1 text-xs">
+            {persona.icon && <PersonaIcon icon={persona.icon} />}
+            {persona.name}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top">
+          <p className="text-xs">性格: {persona.name}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
+
 type ExecutionResultForModal = {
   success: boolean;
   executionId: string;
@@ -193,6 +251,12 @@ export const RecentExecutions = ({ orgSlug }: RecentExecutionsProps) => {
     },
     { placeholderData: keepPreviousData },
   );
+
+  const { data: personas } = api.chat.listPersonas.useQuery();
+  const personaMap = useMemo(() => {
+    if (!personas) return new Map<string, { name: string; icon?: string }>();
+    return new Map(personas.map((p) => [p.id, { name: p.name, icon: p.icon }]));
+  }, [personas]);
 
   const handleViewExecution = (execution: Execution) => {
     if (!execution.chatId) return;
@@ -255,6 +319,7 @@ export const RecentExecutions = ({ orgSlug }: RecentExecutionsProps) => {
                     onSort={handleSort}
                   />
                   <TableHead className="min-w-[180px]">エージェント</TableHead>
+                  <TableHead className="whitespace-nowrap">性格</TableHead>
                   <TableHead className="whitespace-nowrap">MCP</TableHead>
                   <TableHead className="whitespace-nowrap">トリガー</TableHead>
                   <TableHead className="whitespace-nowrap">モデル</TableHead>
@@ -300,6 +365,12 @@ export const RecentExecutions = ({ orgSlug }: RecentExecutionsProps) => {
                         </span>
                       </Link>
                     </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      <PersonaCellContent
+                        personaId={execution.personaId}
+                        personaMap={personaMap}
+                      />
+                    </TableCell>
                     <TableCell>
                       <McpServerIcons icons={execution.mcpServerIcons} />
                     </TableCell>
@@ -339,7 +410,7 @@ export const RecentExecutions = ({ orgSlug }: RecentExecutionsProps) => {
                       key={`empty-${String(i)}`}
                       className="hover:bg-transparent"
                     >
-                      <TableCell colSpan={8}>
+                      <TableCell colSpan={9}>
                         <div className="h-8" />
                       </TableCell>
                     </TableRow>
