@@ -6,9 +6,10 @@ import { generateUniqueSlug } from "@tumiki/db/utils/slug";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { KeycloakOrganizationProvider } from "@tumiki/keycloak";
+import { hasFeature } from "@tumiki/license";
 
-// 環境変数チェック
-const isOrgCreationEnabled = process.env.TUMIKI_ENABLE_ORG_CREATION === "true";
+// ライセンスチェック
+const isOrgCreationEnabled = hasFeature("organization-creation");
 
 export const createOrganizationInputSchema = z.object({
   name: z
@@ -41,7 +42,7 @@ type CreateOrganizationInput = {
 /**
  * 組織を作成（EE版・オプション機能）
  *
- * 環境変数 TUMIKI_ENABLE_ORG_CREATION=true で有効化
+ * 環境変数 NEXT_PUBLIC_TUMIKI_EDITION=ee で有効化
  *
  * @param tx Prismaトランザクションクライアント
  * @param input 作成データ
@@ -56,7 +57,7 @@ export const createOrganization = async (
     throw new TRPCError({
       code: "FORBIDDEN",
       message:
-        "組織作成機能は無効化されています。TUMIKI_ENABLE_ORG_CREATION=true で有効化してください。",
+        "組織作成機能は無効化されています。NEXT_PUBLIC_TUMIKI_EDITION=ee で有効化してください。",
     });
   }
 

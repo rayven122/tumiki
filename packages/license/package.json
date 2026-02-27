@@ -1,5 +1,5 @@
 {
-  "name": "@tumiki/keycloak",
+  "name": "@tumiki/license",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -16,15 +16,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint",
     "format": "prettier --check . --ignore-path ../../.gitignore",
-    "test": "vitest",
-    "migrate:role-subgroups": "dotenv -e ../../.env -- tsx src/scripts/migrateOrganizationRoleSubgroups.ts",
-    "migrate:role-subgroups:dry-run": "DRY_RUN=true dotenv -e ../../.env -- tsx src/scripts/migrateOrganizationRoleSubgroups.ts"
-  },
-  "dependencies": {
-    "@keycloak/keycloak-admin-client": "^26.0.7",
-    "@tumiki/db": "workspace:*",
-    "dotenv-cli": "^8.0.0",
-    "zod": "catalog:"
+    "test": "vitest"
   },
   "devDependencies": {
     "@tumiki/eslint-config": "workspace:*",
@@ -32,13 +24,9 @@
     "@tumiki/tsconfig": "workspace:*",
     "@tumiki/vitest-config": "workspace:*",
     "@types/node": "^22.19.10",
-    "@typescript/native-preview": "7.0.0-dev.20250814.1",
-    "@vitest/coverage-v8": "catalog:",
     "eslint": "catalog:",
     "prettier": "catalog:",
-    "tsx": "^4.21.0",
     "typescript": "catalog:",
-    "typescript-eslint": "^8.48.1",
     "vitest": "catalog:"
   },
   "prettier": "@tumiki/prettier-config"

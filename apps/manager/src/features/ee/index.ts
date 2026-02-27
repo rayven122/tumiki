@@ -1,9 +1,9 @@
 /**
  * EE/CE エディション機能
  *
- * ビルド時に環境変数で判定される。
- * NEXT_PUBLIC_EE_BUILD=true -> EE版
- * 未設定または false -> CE版
+ * @tumiki/license パッケージを使用してライセンス状態を判定。
+ * NEXT_PUBLIC_TUMIKI_EDITION=ee -> EE版
+ * 未設定または ce -> CE版
  */
 export {
   EE_AVAILABLE,

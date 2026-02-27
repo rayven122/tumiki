@@ -27,6 +27,7 @@
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@toon-format/toon": "^2.1.0",
     "@tumiki/db": "workspace:*",
+    "@tumiki/license": "workspace:*",
     "@tumiki/oauth-token-manager": "workspace:*",
     "@tumiki/prompts": "workspace:*",
     "@tumiki/shared": "workspace:*",

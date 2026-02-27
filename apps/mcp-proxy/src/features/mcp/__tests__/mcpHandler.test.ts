@@ -1,5 +1,26 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
+import {
+  describe,
+  test,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+  beforeAll,
+  afterAll,
+} from "vitest";
 import { Hono } from "hono";
+import { clearLicenseCache } from "@tumiki/license";
+
+// EE機能（Dynamic Search）を有効化
+beforeAll(() => {
+  vi.stubEnv("NEXT_PUBLIC_TUMIKI_EDITION", "ee");
+  clearLicenseCache();
+});
+
+afterAll(() => {
+  vi.unstubAllEnvs();
+  clearLicenseCache();
+});
 import type { HonoEnv, AuthContext } from "../../../shared/types/honoEnv.js";
 import { AuthType } from "@tumiki/db";
 
@@ -650,110 +671,27 @@ describe("mcpRequestHandler", () => {
     });
   });
 
-  describe("CE版フォールバック（EEモジュールロード失敗）", () => {
-    test("EEモジュールのインポートが失敗した場合はCE版エラーを投げる", async () => {
-      vi.resetModules();
+  describe("CE版フォールバック", () => {
+    test("CE版でメタツールを呼ぶとエラーを投げる", async () => {
+      // CE版に切り替え
+      vi.stubEnv("NEXT_PUBLIC_TUMIKI_EDITION", "ce");
+      clearLicenseCache();
 
-      vi.doMock("../../dynamicSearch/index.ee.js", () => {
-        throw new Error("Cannot find module");
-      });
+      await triggerRequest();
 
-      vi.doMock("@modelcontextprotocol/sdk/server/index.js", () => ({
-        Server: mocks.sdk.serverConstructor,
-      }));
-      vi.doMock("@modelcontextprotocol/sdk/types.js", () => ({
-        InitializeRequestSchema: { method: "initialize" },
-        ListToolsRequestSchema: { method: "tools/list" },
-        CallToolRequestSchema: { method: "tools/call" },
-      }));
-      vi.doMock("@modelcontextprotocol/sdk/server/streamableHttp.js", () => ({
-        StreamableHTTPServerTransport: mocks.sdk.streamableHTTPServerTransport,
-      }));
-      vi.doMock("fetch-to-node", () => ({
-        toReqRes: mocks.utils.toReqRes,
-        toFetchResponse: mocks.utils.toFetchResponse,
-      }));
-      vi.doMock("../commands/callTool/callToolCommand.js", () => ({
-        callToolCommand: mocks.toolExecutor.executeTool,
-      }));
-      vi.doMock("../queries/listTools/listToolsQuery.js", () => ({
-        listToolsQuery: mocks.toolExecutor.getAllowedTools,
-        getInternalToolsForDynamicSearch:
-          mocks.toolExecutor.getInternalToolsForDynamicSearch,
-      }));
-      vi.doMock("../../../shared/errors/index.js", () => ({
-        handleError: mocks.error.handleError,
-        toError: mocks.error.toError,
-        isReAuthRequiredError: mocks.error.isReAuthRequiredError,
-        createReAuthResponse: mocks.error.createReAuthResponse,
-      }));
-      vi.doMock("../middleware/requestLogging/context.js", () => ({
-        getExecutionContext: mocks.utils.getExecutionContext,
-        updateExecutionContext: vi.fn(),
-      }));
-      // dynamicSearch/index.js (CE Facade) のモックは不要
-      vi.doMock("../../../shared/logger/index.js", () => ({
-        logInfo: vi.fn(),
-        logError: vi.fn(),
-        logWarn: vi.fn(),
-      }));
-
-      const { mcpRequestHandler: mcpHandlerCE } = await import(
-        "../mcpRequestHandler.js"
-      );
-
-      // isMetaTool モックは不要（メタツール名はハードコードセットで判定）
-
-      const capturedHandlersCE = new Map<string, HandlerCallback>();
-      mocks.sdk.serverConstructor.mockImplementation(() => ({
-        connect: vi.fn().mockResolvedValue(undefined),
-        setRequestHandler: (
-          schema: { method: string },
-          handler: HandlerCallback,
-        ) => {
-          capturedHandlersCE.set(schema.method, handler);
-        },
-      }));
-
-      const appCE = new Hono<HonoEnv>();
-      appCE.use("/mcp/:mcpServerId", async (c, next) => {
-        const authContext: AuthContext = {
-          authMethod: AuthType.OAUTH,
-          organizationId: "org-123",
-          userId: "user-456",
-          mcpServerId: "server-123",
-          piiMaskingMode: "DISABLED",
-          piiInfoTypes: [],
-          toonConversionEnabled: false,
-        };
-        c.set("authContext", authContext);
-        await next();
-      });
-      appCE.post("/mcp/:mcpServerId", mcpHandlerCE);
-
-      await appCE.request("/mcp/server-123", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          method: "tools/list",
-          id: 1,
-        }),
-      });
-
-      const callHandler = capturedHandlersCE.get("tools/call");
+      const callHandler = capturedHandlers.get("tools/call");
       expect(callHandler).toBeDefined();
 
+      // CE版ではDynamic Search機能が無効なのでエラーになる
       await expect(
         callHandler!({
           params: { name: "search_tools", arguments: { query: "test" } },
         }) as Promise<unknown>,
-      ).rejects.toMatchObject({
-        name: "DomainError",
-        code: "MCP_ERROR",
-      });
+      ).rejects.toThrow("Dynamic Search is not available in Community Edition");
 
-      vi.resetModules();
+      // EE版に戻す
+      vi.stubEnv("NEXT_PUBLIC_TUMIKI_EDITION", "ee");
+      clearLicenseCache();
     });
   });
 

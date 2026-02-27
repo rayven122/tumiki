@@ -158,6 +158,9 @@ importers:
       '@tumiki/keycloak':
         specifier: workspace:*
         version: link:../../packages/keycloak
+      '@tumiki/license':
+        specifier: workspace:*
+        version: link:../../packages/license
       '@tumiki/mailer':
         specifier: workspace:*
         version: link:../../packages/mailer
@@ -468,6 +471,9 @@ importers:
       '@tumiki/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@tumiki/license':
+        specifier: workspace:*
+        version: link:../../packages/license
       '@tumiki/oauth-token-manager':
         specifier: workspace:*
         version: link:../../packages/oauth-token-manager
@@ -620,6 +626,9 @@ importers:
       '@keycloak/keycloak-admin-client':
         specifier: ^26.0.7
         version: 26.4.7
+      '@tumiki/db':
+        specifier: workspace:*
+        version: link:../db
       dotenv-cli:
         specifier: ^8.0.0
         version: 8.0.0
@@ -654,12 +663,45 @@ importers:
       prettier:
         specifier: 'catalog:'
         version: 3.6.2
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
       typescript:
         specifier: 'catalog:'
         version: 5.9.2
       typescript-eslint:
         specifier: ^8.48.1
         version: 8.48.1(eslint@9.32.0(jiti@2.6.1))(typescript@5.9.2)
+      vitest:
+        specifier: 'catalog:'
+        version: 3.2.4(@edge-runtime/vm@3.2.0)(@types/debug@4.1.12)(@types/node@22.19.10)(jiti@2.6.1)(jsdom@27.3.0(bufferutil@4.0.9))(lightningcss@1.30.2)(tsx@4.21.0)
+
+  packages/license:
+    devDependencies:
+      '@tumiki/eslint-config':
+        specifier: workspace:*
+        version: link:../../tooling/eslint
+      '@tumiki/prettier-config':
+        specifier: workspace:*
+        version: link:../../tooling/prettier
+      '@tumiki/tsconfig':
+        specifier: workspace:*
+        version: link:../../tooling/typescript
+      '@tumiki/vitest-config':
+        specifier: workspace:*
+        version: link:../../tooling/vitest
+      '@types/node':
+        specifier: ^22.19.10
+        version: 22.19.10
+      eslint:
+        specifier: 'catalog:'
+        version: 9.32.0(jiti@2.6.1)
+      prettier:
+        specifier: 'catalog:'
+        version: 3.6.2
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.2
       vitest:
         specifier: 'catalog:'
         version: 3.2.4(@edge-runtime/vm@3.2.0)(@types/debug@4.1.12)(@types/node@22.19.10)(jiti@2.6.1)(jsdom@27.3.0(bufferutil@4.0.9))(lightningcss@1.30.2)(tsx@4.21.0)

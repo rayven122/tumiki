@@ -1,36 +1,36 @@
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
-// EE機能: ロール作成（CE版はスタブを使用）
+// EE機能: ロール作成（CE版ビルド時はwebpackが.tsにリダイレクト）
 import {
   createRole,
   createRoleInputSchema,
   createRoleOutputSchema,
-} from "./create";
+} from "./create.ee";
 import { listRoles, listRolesInputSchema, listRolesOutputSchema } from "./list";
 import { getRole, getRoleInputSchema, getRoleOutputSchema } from "./get";
-// EE機能: ロール更新（CE版はスタブを使用）
+// EE機能: ロール更新（CE版ビルド時はwebpackが.tsにリダイレクト）
 import {
   updateRole,
   updateRoleInputSchema,
   updateRoleOutputSchema,
-} from "./update";
-// EE機能: ロール削除（CE版はスタブを使用）
+} from "./update.ee";
+// EE機能: ロール削除（CE版ビルド時はwebpackが.tsにリダイレクト）
 import {
   deleteRole,
   deleteRoleInputSchema,
   deleteRoleOutputSchema,
-} from "./delete";
-// EE機能: 権限追加（CE版はスタブを使用）
+} from "./delete.ee";
+// EE機能: 権限追加（CE版ビルド時はwebpackが.tsにリダイレクト）
 import {
   addPermission,
   addPermissionInputSchema,
   addPermissionOutputSchema,
-} from "./addPermission";
-// EE機能: 権限削除（CE版はスタブを使用）
+} from "./addPermission.ee";
+// EE機能: 権限削除（CE版ビルド時はwebpackが.tsにリダイレクト）
 import {
   removePermission,
   removePermissionInputSchema,
   removePermissionOutputSchema,
-} from "./removePermission";
+} from "./removePermission.ee";
 
 /**
  * v2 Role Router

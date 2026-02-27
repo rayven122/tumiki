@@ -118,20 +118,14 @@ export const getGroupMembers = async (
     return false;
   };
 
-  // すべてのgroupIdが組織のサブグループ、または組織グループ自体であることを確認
-  for (const groupId of input.groupIds) {
+  // 有効なgroupIdのみをフィルタリング（組織のサブグループ、または組織グループ自体）
+  // 削除されたグループや無効なグループIDはスキップ
+  const validGroupIds = input.groupIds.filter((groupId) => {
     // 組織グループ自体のIDは許可
-    if (groupId === organization.id) continue;
-
+    if (groupId === organization.id) return true;
     // サブグループの場合は検証
-    if (!isValidGroup(groupsResult.subgroups, groupId)) {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message:
-          "指定されたグループの中に、この組織に属していないものがあります",
-      });
-    }
-  }
+    return isValidGroup(groupsResult.subgroups, groupId);
+  });
 
   // 組織の全メンバーをDBから取得（効率化）
   // 参加が古い順にソート（createdAt昇順）
@@ -169,7 +163,7 @@ export const getGroupMembers = async (
   // 各グループのメンバーIDをKeycloakから取得
   const membersMap: Record<string, Member[]> = {};
 
-  for (const groupId of input.groupIds) {
+  for (const groupId of validGroupIds) {
     const result = await keycloakProvider.listGroupMembers({ groupId });
 
     if (result.success && result.members) {

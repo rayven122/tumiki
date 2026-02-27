@@ -24,14 +24,20 @@ type InvitationListProps = {
   organization: GetOrganizationBySlugOutput;
 };
 
-export const InvitationList = ({
-  organization: _organization,
-}: InvitationListProps) => {
+export const InvitationList = ({ organization }: InvitationListProps) => {
   const { data: session } = useSession();
+  // 個人組織の場合はAPIを呼び出さない（requireTeam: trueのため）
   const { data: invitations, isLoading } =
-    api.organization.getInvitations.useQuery();
+    api.organization.getInvitations.useQuery(undefined, {
+      enabled: !organization.isPersonal,
+    });
 
   const utils = api.useUtils();
+
+  // 個人組織の場合は招待機能は利用できないため表示しない
+  if (organization.isPersonal) {
+    return null;
+  }
 
   const resendInvitationMutation =
     api.organization.resendInvitation.useMutation({

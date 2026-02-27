@@ -90,7 +90,7 @@ export const DeleteDepartmentConfirmDialog = ({
           <AlertDialogAction
             onClick={handleDelete}
             disabled={deleteMutation.isPending}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            className="bg-destructive hover:bg-destructive/90 text-white"
           >
             {deleteMutation.isPending ? "削除中..." : "削除"}
           </AlertDialogAction>
