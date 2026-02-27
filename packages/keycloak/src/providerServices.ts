@@ -79,7 +79,7 @@ export const getRoleSubgroupId = async (
 /**
  * ユーザーを組織に追加（ロールサブグループ方式）
  *
- * ユーザーを適切なロールサブグループに追加することで、
+ * ユーザーを組織グループ自体と適切なロールサブグループに追加することで、
  * 組織別のロールを管理します。
  */
 export const addMember = async (
@@ -90,14 +90,17 @@ export const addMember = async (
     role: OrganizationRole;
   },
 ): Promise<void> => {
-  // 1. ロールサブグループIDを取得
+  // 1. ユーザーを組織グループ自体に追加（メンバー一覧に表示されるように）
+  await client.addUserToGroup(params.userId, params.externalId);
+
+  // 2. ロールサブグループIDを取得
   const roleSubgroupId = await getRoleSubgroupId(
     client,
     params.externalId,
     params.role,
   );
 
-  // 2. ユーザーをロールサブグループに追加
+  // 3. ユーザーをロールサブグループに追加
   // サブグループにマッピングされたRealm Roleが自動的に継承される
   await client.addUserToGroup(params.userId, roleSubgroupId);
 };
