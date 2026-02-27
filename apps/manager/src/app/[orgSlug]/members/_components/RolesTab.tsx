@@ -5,8 +5,8 @@ import { Plus } from "lucide-react";
 import { Button } from "@tumiki/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@tumiki/ui/card";
 import { EEFeatureGate, EEUpgradePrompt } from "@/components/ee";
-import { RoleList } from "../../roles/_components/RoleList";
-import { CreateRoleDialog } from "../../roles/_components/CreateRoleDialog";
+import { RoleList } from "./roles/RoleList";
+import { CreateRoleDialog } from "./roles/CreateRoleDialog";
 
 export const RolesTab = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
