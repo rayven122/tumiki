@@ -6,6 +6,24 @@ import type { KeycloakGroup } from "@tumiki/keycloak";
 import type { OrganizationInfo } from "@/server/utils/organizationPermissions";
 
 /**
+ * ロールサブグループ名のプレフィックス
+ * 例: _Owner, _Admin, _Member, _Viewer
+ */
+const ROLE_SUBGROUP_PREFIX = "_";
+
+/**
+ * ロールサブグループを再帰的に除外
+ * ロールサブグループはKeycloak内部で権限管理に使用されるため、
+ * org-structure等の部署表示には含めない
+ */
+const filterRoleSubgroups = (group: KeycloakGroup): KeycloakGroup => ({
+  ...group,
+  subGroups: group.subGroups
+    ?.filter((sg) => !sg.name?.startsWith(ROLE_SUBGROUP_PREFIX))
+    .map(filterRoleSubgroups),
+});
+
+/**
  * グループ一覧取得
  *
  * セキュリティ：
@@ -64,10 +82,11 @@ export const listGroups = async (
 
   // 組織グループをルートノードとして返す（subGroupsはKeycloakが自動的に含めている）
   // ルートグループの名前はデータベースの組織名（表示名）を使用
+  // ロールサブグループ（_Owner, _Admin等）は除外
   return [
-    {
+    filterRoleSubgroups({
       ...orgGroupResult.group,
       name: organization.name,
-    },
+    }),
   ];
 };
