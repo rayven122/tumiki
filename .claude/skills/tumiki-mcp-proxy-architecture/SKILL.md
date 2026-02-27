@@ -13,6 +13,12 @@ sourcePatterns:
 
 # mcp-proxy アーキテクチャガイドライン
 
+## デプロイ環境
+
+mcp-proxy は VM 上にデプロイされる。ステートレス設計により水平スケーリングに対応。
+
+※ `infrastructure/mcp/cloudRunAuth.ts` は、外部 MCP サーバーが Cloud Run にホスティングされている場合の IAM 認証用であり、mcp-proxy 自体のデプロイ先とは無関係。
+
 ## レイヤー構成
 
 ```
