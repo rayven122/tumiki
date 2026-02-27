@@ -73,10 +73,9 @@ Tumiki Managerは、オープンソースのCommunity Edition（CE）と商用�
 
 ## 環境変数
 
-| 変数名                            | 説明                 | 値             |
-| --------------------------------- | -------------------- | -------------- |
-| `NEXT_PUBLIC_EE_BUILD`            | EE版ビルドかどうか   | `true`/`false` |
-| `NEXT_PUBLIC_ENABLE_ORG_CREATION` | 組織作成機能の有効化 | `true`/`false` |
+| 変数名           | 説明               | 値        |
+| ---------------- | ------------------ | --------- |
+| `NEXT_PUBLIC_TUMIKI_EDITION` | エディション判定   | `ee`/`ce` |
 
 ## ビルドコマンド
 
@@ -121,24 +120,15 @@ apps/manager/
 
 ```typescript
 // src/features/ee/config.ts
+import { isEE, hasFeature, type EEFeature } from "@tumiki/license";
 
-// ビルド時に決定される定数
-export const EE_AVAILABLE = process.env.NEXT_PUBLIC_EE_BUILD === "true";
-export const ORG_CREATION_ENABLED =
-  EE_AVAILABLE && process.env.NEXT_PUBLIC_ENABLE_ORG_CREATION === "true";
-
-// EE機能の種類
-export type EEFeature =
-  | "member-management" // メンバー招待・削除
-  | "role-management" // ロール変更
-  | "group-management" // グループ管理
-  | "organization-creation"; // 組織作成
+// ビルド時に決定される定数（NEXT_PUBLIC_TUMIKI_EDITION=ee でEE版）
+export const EE_AVAILABLE = isEE();
+export const ORG_CREATION_ENABLED = hasFeature("organization-creation");
 
 // EE機能の利用可否を判定
 export const isEEFeatureAvailable = (feature: EEFeature): boolean => {
-  if (!EE_AVAILABLE) return false;
-  if (feature === "organization-creation") return ORG_CREATION_ENABLED;
-  return true;
+  return hasFeature(feature);
 };
 ```
 
@@ -269,7 +259,7 @@ export const organizationRouter = createTRPCRouter({
 
 ```javascript
 // next.config.js
-const isEEBuild = process.env.NEXT_PUBLIC_EE_BUILD === "true";
+const isEEBuild = process.env.NEXT_PUBLIC_TUMIKI_EDITION === "ee";
 
 webpack: (config, { isServer }) => {
   if (!isEEBuild) {
@@ -446,7 +436,7 @@ grep -r "validateOrganizationAccess" .next/server --include="*.js" | wc -l
 
 1. `.ee.ts` ファイルの構文エラーを確認
 2. EE専用の依存関係が不足していないか確認
-3. `NEXT_PUBLIC_EE_BUILD=true` が設定されているか確認
+3. `NEXT_PUBLIC_TUMIKI_EDITION=ee` が設定されているか確認
 
 ### 型エラーが発生する
 
@@ -457,7 +447,7 @@ grep -r "validateOrganizationAccess" .next/server --include="*.js" | wc -l
 ### FORBIDDEN エラーが返される
 
 1. 正しいビルド（CE/EE）を使用しているか確認
-2. 環境変数 `NEXT_PUBLIC_EE_BUILD` が設定されているか確認
+2. 環境変数 `NEXT_PUBLIC_TUMIKI_EDITION` が設定されているか確認
 3. サーバー再起動が必要か確認
 
 ## 関連ドキュメント
