@@ -51,7 +51,7 @@
     "@tumiki/shared": "workspace:*",
     "@tumiki/slack": "workspace:*",
     "@tumiki/ui": "workspace:*",
-    "@uiw/react-json-view": "2.0.0-alpha.34",
+    "@uiw/react-json-view": "2.0.0-alpha.41",
     "@vercel/functions": "^2.2.13",
     "@xyflow/react": "^12.10.0",
     "ai": "^6.0.103",
