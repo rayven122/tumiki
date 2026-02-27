@@ -5,10 +5,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // EE版ビルドの判定
-// TUMIKI_EDITION=ee または NEXT_PUBLIC_EE_BUILD=true でEE版
-const isEEBuild =
-  process.env.TUMIKI_EDITION === "ee" ||
-  process.env.NEXT_PUBLIC_EE_BUILD === "true";
+// NEXT_PUBLIC_TUMIKI_EDITION=ee でEE版
+const isEEBuild = process.env.NEXT_PUBLIC_TUMIKI_EDITION === "ee";
 
 /** @type {import("next").NextConfig} */
 const config = {

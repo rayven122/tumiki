@@ -17,7 +17,7 @@
  * ```
  *
  * 環境変数:
- * - TUMIKI_EDITION: "ee" または "ce"（デフォルト: "ce"）
+ * - NEXT_PUBLIC_TUMIKI_EDITION: "ee" または "ce"（デフォルト: "ce"）
  * - TUMIKI_LICENSE_KEY: ライセンスキー（将来実装）
  */
 

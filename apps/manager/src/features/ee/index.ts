@@ -2,7 +2,7 @@
  * EE/CE エディション機能
  *
  * @tumiki/license パッケージを使用してライセンス状態を判定。
- * TUMIKI_EDITION=ee -> EE版
+ * NEXT_PUBLIC_TUMIKI_EDITION=ee -> EE版
  * 未設定または ce -> CE版
  */
 export {

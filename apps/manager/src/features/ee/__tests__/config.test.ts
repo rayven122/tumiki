@@ -13,23 +13,23 @@ describe("EE/CE エディション設定", () => {
     clearLicenseCache();
   });
 
-  describe("CE版（TUMIKI_EDITION未設定）", () => {
+  describe("CE版（NEXT_PUBLIC_TUMIKI_EDITION未設定）", () => {
     test("EE_AVAILABLEがfalseを返す", async () => {
-      vi.stubEnv("TUMIKI_EDITION", "");
+      vi.stubEnv("NEXT_PUBLIC_TUMIKI_EDITION", "");
 
       const { EE_AVAILABLE } = await import("../config");
       expect(EE_AVAILABLE).toBe(false);
     });
 
     test("ORG_CREATION_ENABLEDがfalseを返す", async () => {
-      vi.stubEnv("TUMIKI_EDITION", "");
+      vi.stubEnv("NEXT_PUBLIC_TUMIKI_EDITION", "");
 
       const { ORG_CREATION_ENABLED } = await import("../config");
       expect(ORG_CREATION_ENABLED).toBe(false);
     });
 
     test("isEEFeatureAvailableが全機能でfalseを返す", async () => {
-      vi.stubEnv("TUMIKI_EDITION", "");
+      vi.stubEnv("NEXT_PUBLIC_TUMIKI_EDITION", "");
 
       const { isEEFeatureAvailable } = await import("../config");
 
@@ -43,14 +43,14 @@ describe("EE/CE エディション設定", () => {
     });
 
     test("getAvailableEEFeaturesが空配列を返す", async () => {
-      vi.stubEnv("TUMIKI_EDITION", "");
+      vi.stubEnv("NEXT_PUBLIC_TUMIKI_EDITION", "");
 
       const { getAvailableEEFeatures } = await import("../config");
       expect(getAvailableEEFeatures()).toStrictEqual([]);
     });
 
     test("getAllEEFeatureInfoが全機能を無効として返す", async () => {
-      vi.stubEnv("TUMIKI_EDITION", "");
+      vi.stubEnv("NEXT_PUBLIC_TUMIKI_EDITION", "");
 
       const { getAllEEFeatureInfo } = await import("../config");
       const features = getAllEEFeatureInfo();
@@ -60,16 +60,16 @@ describe("EE/CE エディション設定", () => {
     });
   });
 
-  describe("EE版（TUMIKI_EDITION=ee）", () => {
+  describe("EE版（NEXT_PUBLIC_TUMIKI_EDITION=ee）", () => {
     test("EE_AVAILABLEがtrueを返す", async () => {
-      vi.stubEnv("TUMIKI_EDITION", "ee");
+      vi.stubEnv("NEXT_PUBLIC_TUMIKI_EDITION", "ee");
 
       const { EE_AVAILABLE } = await import("../config");
       expect(EE_AVAILABLE).toBe(true);
     });
 
     test("基本的なEE機能が有効", async () => {
-      vi.stubEnv("TUMIKI_EDITION", "ee");
+      vi.stubEnv("NEXT_PUBLIC_TUMIKI_EDITION", "ee");
 
       const { isEEFeatureAvailable } = await import("../config");
 
@@ -81,7 +81,7 @@ describe("EE/CE エディション設定", () => {
     });
 
     test("organization-creationが有効（EEなら全機能有効）", async () => {
-      vi.stubEnv("TUMIKI_EDITION", "ee");
+      vi.stubEnv("NEXT_PUBLIC_TUMIKI_EDITION", "ee");
 
       const { isEEFeatureAvailable, ORG_CREATION_ENABLED } = await import(
         "../config"
@@ -93,7 +93,7 @@ describe("EE/CE エディション設定", () => {
     });
 
     test("getAvailableEEFeaturesが全機能を含む", async () => {
-      vi.stubEnv("TUMIKI_EDITION", "ee");
+      vi.stubEnv("NEXT_PUBLIC_TUMIKI_EDITION", "ee");
 
       const { getAvailableEEFeatures } = await import("../config");
       const features = getAvailableEEFeatures();
@@ -108,7 +108,7 @@ describe("EE/CE エディション設定", () => {
     });
 
     test("getAllEEFeatureInfoが正しい情報を返す", async () => {
-      vi.stubEnv("TUMIKI_EDITION", "ee");
+      vi.stubEnv("NEXT_PUBLIC_TUMIKI_EDITION", "ee");
 
       const { getAllEEFeatureInfo } = await import("../config");
       const features = getAllEEFeatureInfo();
@@ -139,31 +139,6 @@ describe("EE/CE エディション設定", () => {
       const piiDashboard = features.find((f) => f.feature === "pii-dashboard");
       expect(piiDashboard?.available).toBe(true);
       expect(piiDashboard?.description).toBe("PII検知ダッシュボード表示機能");
-    });
-  });
-
-  describe("NEXT_PUBLIC_EE_BUILD対応（クライアントコンポーネント用）", () => {
-    test("NEXT_PUBLIC_EE_BUILD=trueでEE版になる", async () => {
-      vi.stubEnv("TUMIKI_EDITION", "");
-      vi.stubEnv("NEXT_PUBLIC_EE_BUILD", "true");
-
-      const { EE_AVAILABLE, ORG_CREATION_ENABLED, isEEFeatureAvailable } =
-        await import("../config");
-
-      // NEXT_PUBLIC_EE_BUILD=trueなのでEE版として動作
-      expect(EE_AVAILABLE).toBe(true);
-      expect(ORG_CREATION_ENABLED).toBe(true);
-      expect(isEEFeatureAvailable("organization-creation")).toBe(true);
-    });
-
-    test("TUMIKI_EDITION=eeが優先される", async () => {
-      vi.stubEnv("TUMIKI_EDITION", "ee");
-      vi.stubEnv("NEXT_PUBLIC_EE_BUILD", "false");
-
-      const { EE_AVAILABLE } = await import("../config");
-
-      // TUMIKI_EDITION=eeが優先
-      expect(EE_AVAILABLE).toBe(true);
     });
   });
 });

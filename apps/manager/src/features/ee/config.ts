@@ -2,7 +2,7 @@
  * EE/CE エディション設定
  *
  * @tumiki/license パッケージを使用してライセンス状態を判定。
- * 環境変数 TUMIKI_EDITION=ee でEE版が有効になる。
+ * 環境変数 NEXT_PUBLIC_TUMIKI_EDITION=ee でEE版が有効になる。
  *
  * 将来のライセンスキー方式への移行も @tumiki/license で対応可能。
  */

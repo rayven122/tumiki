@@ -42,7 +42,7 @@ type CreateOrganizationInput = {
 /**
  * 組織を作成（EE版・オプション機能）
  *
- * 環境変数 TUMIKI_EDITION=true で有効化
+ * 環境変数 NEXT_PUBLIC_TUMIKI_EDITION=ee で有効化
  *
  * @param tx Prismaトランザクションクライアント
  * @param input 作成データ
@@ -57,7 +57,7 @@ export const createOrganization = async (
     throw new TRPCError({
       code: "FORBIDDEN",
       message:
-        "組織作成機能は無効化されています。TUMIKI_EDITION=true で有効化してください。",
+        "組織作成機能は無効化されています。NEXT_PUBLIC_TUMIKI_EDITION=ee で有効化してください。",
     });
   }
 

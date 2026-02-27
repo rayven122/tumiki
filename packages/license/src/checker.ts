@@ -1,7 +1,7 @@
 /**
  * ライセンスチェッカー
  *
- * 現在の実装: 環境変数 TUMIKI_EDITION で判定
+ * 現在の実装: 環境変数 NEXT_PUBLIC_TUMIKI_EDITION で判定
  * 将来の拡張: ライセンスキー検証を追加可能
  */
 
@@ -14,24 +14,14 @@ let cachedLicenseInfo: LicenseInfo | null = null;
 /**
  * 環境変数からエディションを取得
  *
- * 対応する環境変数（優先順位順）:
- * 1. TUMIKI_EDITION - サーバーサイド用（mcp-proxy等）
- * 2. NEXT_PUBLIC_EE_BUILD - Next.jsクライアント用（manager等）
+ * 環境変数 NEXT_PUBLIC_TUMIKI_EDITION で判定:
+ * - "ee" → Enterprise Edition
+ * - それ以外 → Community Edition（デフォルト）
+ *
+ * NEXT_PUBLIC_ プレフィックスにより、クライアント側でも利用可能
  */
 const getEditionFromEnv = (): Edition => {
-  // サーバーサイド用
-  const tumikiEdition = process.env.TUMIKI_EDITION;
-  if (tumikiEdition === "ee") {
-    return "ee";
-  }
-
-  // Next.jsクライアント用（NEXT_PUBLIC_プレフィックス）
-  const nextPublicEE = process.env.NEXT_PUBLIC_EE_BUILD;
-  if (nextPublicEE === "true") {
-    return "ee";
-  }
-
-  return "ce";
+  return process.env.NEXT_PUBLIC_TUMIKI_EDITION === "ee" ? "ee" : "ce";
 };
 
 /**
@@ -50,7 +40,7 @@ const getEditionFromEnv = (): Edition => {
  *
  * 判定優先順位:
  * 1. ライセンスキー（将来実装）
- * 2. 環境変数 TUMIKI_EDITION
+ * 2. 環境変数 NEXT_PUBLIC_TUMIKI_EDITION
  * 3. デフォルト: CE版
  */
 export const getLicenseInfo = (): LicenseInfo => {

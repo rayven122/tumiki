@@ -18,8 +18,8 @@ describe("License Checker", () => {
   });
 
   describe("CE版（デフォルト）", () => {
-    test("TUMIKI_EDITION未設定の場合はCE版", () => {
-      vi.stubEnv("TUMIKI_EDITION", "");
+    test("NEXT_PUBLIC_TUMIKI_EDITION未設定の場合はCE版", () => {
+      vi.stubEnv("NEXT_PUBLIC_TUMIKI_EDITION", "");
 
       expect(isEE()).toBe(false);
       expect(isCE()).toBe(true);
@@ -27,7 +27,7 @@ describe("License Checker", () => {
     });
 
     test("CE版では機能が無効", () => {
-      vi.stubEnv("TUMIKI_EDITION", "ce");
+      vi.stubEnv("NEXT_PUBLIC_TUMIKI_EDITION", "ce");
 
       expect(hasFeature("organization-creation")).toBe(false);
       expect(hasFeature("dynamic-search")).toBe(false);
@@ -35,7 +35,7 @@ describe("License Checker", () => {
     });
 
     test("getLicenseInfoがCE版の情報を返す", () => {
-      vi.stubEnv("TUMIKI_EDITION", "");
+      vi.stubEnv("NEXT_PUBLIC_TUMIKI_EDITION", "");
 
       const info = getLicenseInfo();
 
@@ -45,8 +45,8 @@ describe("License Checker", () => {
   });
 
   describe("EE版", () => {
-    test("TUMIKI_EDITION=eeでEE版", () => {
-      vi.stubEnv("TUMIKI_EDITION", "ee");
+    test("NEXT_PUBLIC_TUMIKI_EDITION=eeでEE版", () => {
+      vi.stubEnv("NEXT_PUBLIC_TUMIKI_EDITION", "ee");
 
       expect(isEE()).toBe(true);
       expect(isCE()).toBe(false);
@@ -54,7 +54,7 @@ describe("License Checker", () => {
     });
 
     test("EE版では全機能が有効", () => {
-      vi.stubEnv("TUMIKI_EDITION", "ee");
+      vi.stubEnv("NEXT_PUBLIC_TUMIKI_EDITION", "ee");
 
       expect(hasFeature("organization-creation")).toBe(true);
       expect(hasFeature("dynamic-search")).toBe(true);
@@ -62,7 +62,7 @@ describe("License Checker", () => {
     });
 
     test("EE版のgetEnabledFeaturesが現在の機能を返す", () => {
-      vi.stubEnv("TUMIKI_EDITION", "ee");
+      vi.stubEnv("NEXT_PUBLIC_TUMIKI_EDITION", "ee");
 
       const features = getEnabledFeatures();
 
@@ -70,7 +70,7 @@ describe("License Checker", () => {
     });
 
     test("getLicenseInfoがEE版の情報を返す", () => {
-      vi.stubEnv("TUMIKI_EDITION", "ee");
+      vi.stubEnv("NEXT_PUBLIC_TUMIKI_EDITION", "ee");
 
       const info = getLicenseInfo();
 
@@ -81,7 +81,7 @@ describe("License Checker", () => {
 
   describe("キャッシュ", () => {
     test("getLicenseInfoがキャッシュされる", () => {
-      vi.stubEnv("TUMIKI_EDITION", "ee");
+      vi.stubEnv("NEXT_PUBLIC_TUMIKI_EDITION", "ee");
 
       const info1 = getLicenseInfo();
       const info2 = getLicenseInfo();
@@ -90,10 +90,10 @@ describe("License Checker", () => {
     });
 
     test("clearLicenseCacheでキャッシュがクリアされる", () => {
-      vi.stubEnv("TUMIKI_EDITION", "ee");
+      vi.stubEnv("NEXT_PUBLIC_TUMIKI_EDITION", "ee");
       const info1 = getLicenseInfo();
 
-      vi.stubEnv("TUMIKI_EDITION", "ce");
+      vi.stubEnv("NEXT_PUBLIC_TUMIKI_EDITION", "ce");
       clearLicenseCache();
       const info2 = getLicenseInfo();
 
@@ -104,45 +104,12 @@ describe("License Checker", () => {
 
   describe("将来のEE機能", () => {
     test("未実装の機能はEE版でも無効", () => {
-      vi.stubEnv("TUMIKI_EDITION", "ee");
+      vi.stubEnv("NEXT_PUBLIC_TUMIKI_EDITION", "ee");
 
       // audit-log, sso, advanced-analyticsは将来の機能
       expect(hasFeature("audit-log")).toBe(false);
       expect(hasFeature("sso")).toBe(false);
       expect(hasFeature("advanced-analytics")).toBe(false);
-    });
-  });
-
-  describe("NEXT_PUBLIC_EE_BUILD対応（Next.jsクライアント用）", () => {
-    test("NEXT_PUBLIC_EE_BUILD=trueでEE版", () => {
-      vi.stubEnv("TUMIKI_EDITION", "");
-      vi.stubEnv("NEXT_PUBLIC_EE_BUILD", "true");
-
-      expect(isEE()).toBe(true);
-      expect(getEdition()).toBe("ee");
-    });
-
-    test("TUMIKI_EDITION=ceでもNEXT_PUBLIC_EE_BUILD=trueならEE版", () => {
-      vi.stubEnv("TUMIKI_EDITION", "ce");
-      vi.stubEnv("NEXT_PUBLIC_EE_BUILD", "true");
-
-      // TUMIKI_EDITION=ee以外はフォールスルーしてNEXT_PUBLIC_EE_BUILDをチェック
-      expect(isEE()).toBe(true);
-    });
-
-    test("TUMIKI_EDITION=eeはNEXT_PUBLIC_EE_BUILDより優先", () => {
-      vi.stubEnv("TUMIKI_EDITION", "ee");
-      vi.stubEnv("NEXT_PUBLIC_EE_BUILD", "false");
-
-      expect(isEE()).toBe(true);
-    });
-
-    test("両方未設定の場合はCE版", () => {
-      vi.stubEnv("TUMIKI_EDITION", "");
-      vi.stubEnv("NEXT_PUBLIC_EE_BUILD", "");
-
-      expect(isEE()).toBe(false);
-      expect(isCE()).toBe(true);
     });
   });
 });
