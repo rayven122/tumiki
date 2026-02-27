@@ -1,15 +1,12 @@
-import { EEFeatureGate, EEUpgradePrompt } from "@/components/ee";
-import { RoleManagement } from "./_components/RoleManagement";
+import { redirect } from "next/navigation";
 
-const RoleManagementPage = () => {
-  return (
-    <EEFeatureGate
-      feature="role-management"
-      fallback={<EEUpgradePrompt feature="role-management" />}
-    >
-      <RoleManagement />
-    </EEFeatureGate>
-  );
+type RoleManagementPageProps = {
+  params: Promise<{ orgSlug: string }>;
+};
+
+const RoleManagementPage = async ({ params }: RoleManagementPageProps) => {
+  const { orgSlug } = await params;
+  redirect(`/${orgSlug}/members?tab=roles`);
 };
 
 export default RoleManagementPage;
