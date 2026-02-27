@@ -147,10 +147,22 @@ export const jwtCallback = async ({
 
   if (!account && token.sub && token.tumiki) {
     // セッション更新（update({})）またはトークンリフレッシュ時
-    // DBから最新のdefaultOrganizationを取得してtumikiクレームを更新
-    // これにより組織切り替え後のセッション更新で正しい組織情報が反映される
-    const groupRoles = token.keycloakGroupRoles ?? token.tumiki.group_roles;
-    const updatedTumiki = await getTumikiClaims(db, token.sub, groupRoles);
+    // Keycloakからアクセストークンをリフレッシュして最新のgroup_rolesを取得
+    // これにより組織作成後や権限変更後のセッション更新で正しいロール情報が反映される
+    const userId = token.sub; // subは上の条件でチェック済み
+    let groupRoles = token.keycloakGroupRoles ?? token.tumiki.group_roles;
+
+    // update({})時は強制的にトークンをリフレッシュして最新のgroup_rolesを取得
+    if (token.refreshToken) {
+      const refreshedToken = await refreshAccessToken(token);
+      if (refreshedToken) {
+        token = refreshedToken;
+        // リフレッシュで取得した最新のgroup_rolesを使用
+        groupRoles = token.keycloakGroupRoles ?? groupRoles;
+      }
+    }
+
+    const updatedTumiki = await getTumikiClaims(db, userId, groupRoles);
 
     if (!updatedTumiki) {
       // 組織メンバーシップが見つからない場合はセッションを無効化
