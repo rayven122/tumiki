@@ -78,12 +78,16 @@ export const AGENT_EXECUTION_CONFIG = {
  * モデルIDを解決する
  *
  * "auto" または未設定の場合はデフォルトモデルを返す
+ * 大文字小文字を区別しない比較を行う（"AUTO", "Auto", "auto" すべて対応）
  *
  * @param modelId - エージェントに設定されたモデルID
  * @returns 実際に使用するモデルID
  */
 export const resolveModelId = (modelId: string | null | undefined): string => {
-  if (!modelId || modelId === AGENT_EXECUTION_CONFIG.AUTO_MODEL_ID) {
+  if (
+    !modelId ||
+    modelId.toLowerCase() === AGENT_EXECUTION_CONFIG.AUTO_MODEL_ID
+  ) {
     return AGENT_EXECUTION_CONFIG.DEFAULT_MODEL;
   }
   return modelId;
