@@ -6,7 +6,7 @@ packages:
 catalog:
   '@auth/core': 0.37.2
   eslint: ^9.25.1
-  prettier: ^3.5.3
+  prettier: ^3.8.1
   tailwindcss: ^4.1.8
   typescript: ^5.9.3
   zod: ^4.1.13
