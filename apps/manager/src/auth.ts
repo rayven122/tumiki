@@ -37,6 +37,8 @@ export const {
       clientId: keycloakEnv.KEYCLOAK_CLIENT_ID,
       clientSecret: keycloakEnv.KEYCLOAK_CLIENT_SECRET,
       issuer: keycloakEnv.KEYCLOAK_ISSUER,
+      // KeycloakでPKCEが必須設定のため有効化
+      checks: ["pkce", "state"],
       authorization: {
         params: {
           // Keycloakのログイン画面でログイン方法を選択
