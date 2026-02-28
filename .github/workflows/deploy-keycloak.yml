@@ -1,0 +1,71 @@
+name: Deploy Keycloak Configuration
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Plan only (no apply)'
+        type: boolean
+        default: false
+
+concurrency:
+  group: keycloak-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy Keycloak Config
+    runs-on: ubuntu-latest
+    environment: production
+
+    env:
+      TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+
+      - name: Terraform Init
+        working-directory: terraform/keycloak
+        run: terraform init -backend-config=backend-cloud.hcl
+
+      - name: Terraform Validate
+        working-directory: terraform/keycloak
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: terraform/keycloak
+        run: terraform plan -var-file=terraform.tfvars.production -out=tfplan
+
+      - name: Terraform Apply
+        if: ${{ !inputs.dry_run }}
+        working-directory: terraform/keycloak
+        run: terraform apply -auto-approve tfplan
+
+      - name: Notify Slack on Success
+        if: success() && !inputs.dry_run && vars.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ vars.SLACK_WEBHOOK_URL }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          PAYLOAD=$(jq -n --arg text "Keycloak設定デプロイ完了: ${RELEASE_TAG:-manual}" '{"text": $text}')
+          curl -X POST -H 'Content-Type: application/json' -d "$PAYLOAD" "$SLACK_WEBHOOK_URL"
+
+      - name: Notify Slack on Failure
+        if: failure() && vars.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ vars.SLACK_WEBHOOK_URL }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          PAYLOAD=$(jq -n --arg text "Keycloak設定デプロイ失敗: ${RELEASE_TAG:-manual}" '{"text": $text}')
+          curl -X POST -H 'Content-Type: application/json' -d "$PAYLOAD" "$SLACK_WEBHOOK_URL"
