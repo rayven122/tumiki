@@ -16,3 +16,11 @@ export { AvatarModeNavigation } from "./AvatarModeNavigation";
 // Coharu コンポーネント
 export { CoharuViewer } from "./CoharuViewer";
 export { CoharuToggle } from "./CoharuToggle";
+
+// 受付モードコンポーネント
+export { ReceptionMode } from "./ReceptionMode";
+export { ReceptionCameraView } from "./ReceptionCameraView";
+export { ReceptionVoiceButton } from "./ReceptionVoiceButton";
+export { ReceptionViewer } from "./ReceptionViewer";
+export { ReceptionMessages } from "./ReceptionMessages";
+export { ReceptionNavigation } from "./ReceptionNavigation";
