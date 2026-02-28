@@ -30,7 +30,7 @@ vi.mock("../../../../../infrastructure/keycloak/jwtVerifierImpl.js", () => ({
 vi.mock(
   "../../../../../infrastructure/db/repositories/mcpServerRepository.js",
   () => ({
-    getMcpServerBySlug: vi.fn(),
+    getMcpServerBySlugOrId: vi.fn(),
     checkOrganizationMembership: vi.fn(),
   }),
 );
@@ -52,7 +52,7 @@ import { jwtAuthMiddleware } from "../jwtAuth.js";
 import { AuthType } from "@tumiki/db";
 import { verifyKeycloakJWT } from "../../../../../infrastructure/keycloak/jwtVerifierImpl.js";
 import {
-  getMcpServerBySlug,
+  getMcpServerBySlugOrId,
   checkOrganizationMembership,
 } from "../../../../../infrastructure/db/repositories/mcpServerRepository.js";
 import {
@@ -62,7 +62,7 @@ import {
 
 // モック関数を取得
 const mockVerifyKeycloakJWT = vi.mocked(verifyKeycloakJWT);
-const mockGetMcpServerBySlug = vi.mocked(getMcpServerBySlug);
+const mockGetMcpServerBySlugOrId = vi.mocked(getMcpServerBySlugOrId);
 const mockCheckOrganizationMembership = vi.mocked(checkOrganizationMembership);
 const mockGetUserIdFromKeycloakId = vi.mocked(getUserIdFromKeycloakId);
 const mockGetUserIdByEmail = vi.mocked(getUserIdByEmail);
@@ -179,7 +179,7 @@ describe("jwtAuthMiddleware", () => {
     });
 
     test("MCP Serverが見つからない場合は404を返す", async () => {
-      mockGetMcpServerBySlug.mockResolvedValue(null);
+      mockGetMcpServerBySlugOrId.mockResolvedValue(null);
 
       const res = await app.request("/nonexistent-server/test", {
         headers: { Authorization: "Bearer valid-token" },
@@ -191,7 +191,7 @@ describe("jwtAuthMiddleware", () => {
     });
 
     test("削除済みMCP Serverの場合は404を返す", async () => {
-      mockGetMcpServerBySlug.mockResolvedValue({
+      mockGetMcpServerBySlugOrId.mockResolvedValue({
         id: "server-123",
         organizationId: "org-456",
         deletedAt: new Date(),
@@ -211,7 +211,7 @@ describe("jwtAuthMiddleware", () => {
     });
 
     test("MCP Server取得エラーの場合は403を返す", async () => {
-      mockGetMcpServerBySlug.mockRejectedValue(new Error("Database error"));
+      mockGetMcpServerBySlugOrId.mockRejectedValue(new Error("Database error"));
 
       const res = await app.request("/my-server/test", {
         headers: { Authorization: "Bearer valid-token" },
@@ -225,7 +225,7 @@ describe("jwtAuthMiddleware", () => {
     });
 
     test("slugとorganizationIdでMcpServerを検索する", async () => {
-      mockGetMcpServerBySlug.mockResolvedValue({
+      mockGetMcpServerBySlugOrId.mockResolvedValue({
         id: "server-123",
         organizationId: "org-456",
         deletedAt: null,
@@ -241,7 +241,7 @@ describe("jwtAuthMiddleware", () => {
       });
 
       expect(res.status).toBe(200);
-      expect(mockGetMcpServerBySlug).toHaveBeenCalledWith(
+      expect(mockGetMcpServerBySlugOrId).toHaveBeenCalledWith(
         "my-server",
         "org-456",
       );
@@ -263,7 +263,7 @@ describe("jwtAuthMiddleware", () => {
 
     test("Keycloak IDでユーザーを解決する", async () => {
       mockGetUserIdFromKeycloakId.mockResolvedValue("tumiki-user-123");
-      mockGetMcpServerBySlug.mockResolvedValue({
+      mockGetMcpServerBySlugOrId.mockResolvedValue({
         id: "server-123",
         organizationId: "org-456",
         deletedAt: null,
@@ -288,7 +288,7 @@ describe("jwtAuthMiddleware", () => {
     test("Keycloak IDで見つからない場合はemailでフォールバック", async () => {
       mockGetUserIdFromKeycloakId.mockResolvedValue(null);
       mockGetUserIdByEmail.mockResolvedValue("tumiki-user-by-email");
-      mockGetMcpServerBySlug.mockResolvedValue({
+      mockGetMcpServerBySlugOrId.mockResolvedValue({
         id: "server-123",
         organizationId: "org-456",
         deletedAt: null,
@@ -345,7 +345,7 @@ describe("jwtAuthMiddleware", () => {
         },
       });
       mockGetUserIdFromKeycloakId.mockResolvedValue("tumiki-user-123");
-      mockGetMcpServerBySlug.mockResolvedValue({
+      mockGetMcpServerBySlugOrId.mockResolvedValue({
         id: "server-123",
         organizationId: "org-456",
         deletedAt: null,
@@ -406,7 +406,7 @@ describe("jwtAuthMiddleware", () => {
 
       expect(res.status).toBe(403);
       const body = (await res.json()) as ErrorResponse;
-      expect(body.error.message).toContain("slug is required in path");
+      expect(body.error.message).toContain("slug or ID is required in path");
     });
   });
 
@@ -420,7 +420,7 @@ describe("jwtAuthMiddleware", () => {
         },
       });
       mockGetUserIdFromKeycloakId.mockResolvedValue("tumiki-user-123");
-      mockGetMcpServerBySlug.mockResolvedValue({
+      mockGetMcpServerBySlugOrId.mockResolvedValue({
         id: "server-123",
         organizationId: "org-456",
         deletedAt: null,

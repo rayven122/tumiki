@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { normalizeSlug } from "@tumiki/db/utils/slug";
 import { Button } from "@tumiki/ui/button";
 import {
   Dialog,
@@ -77,6 +78,21 @@ export const EditServerDialog = ({
               value={serverName}
               onChange={(e) => setServerName(e.target.value)}
             />
+            <div className="bg-muted rounded-md px-3 py-2">
+              <p className="text-muted-foreground text-xs font-medium">
+                URLエイリアス
+              </p>
+              <p className="font-mono text-sm">
+                {normalizeSlug(serverName) || (
+                  <span className="text-muted-foreground italic">
+                    （自動生成されます）
+                  </span>
+                )}
+              </p>
+              <p className="text-muted-foreground mt-1 text-xs">
+                ※ エイリアスはサーバー名の変更に伴い自動更新されます
+              </p>
+            </div>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="description">説明</Label>

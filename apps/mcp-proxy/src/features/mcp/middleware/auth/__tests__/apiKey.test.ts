@@ -341,7 +341,7 @@ describe("apiKeyAuthMiddleware", () => {
 
       expect(res.status).toBe(403);
       const body = (await res.json()) as ErrorResponse;
-      expect(body.error.message).toContain("MCP Server slug mismatch");
+      expect(body.error.message).toContain("MCP Server slug/ID mismatch");
     });
   });
 
@@ -395,7 +395,7 @@ describe("apiKeyAuthMiddleware", () => {
 
       expect(res.status).toBe(403);
       const body = (await res.json()) as ErrorResponse;
-      expect(body.error.message).toContain("slug is required in path");
+      expect(body.error.message).toContain("slug or ID is required in path");
     });
   });
 

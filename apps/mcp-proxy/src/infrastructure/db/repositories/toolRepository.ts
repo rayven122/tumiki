@@ -10,15 +10,18 @@ import { db } from "@tumiki/db/server";
 /**
  * テンプレートインスタンスとテンプレート情報を複合キーで取得
  *
+ * 無効化されたテンプレートインスタンスは取得できない（NotFoundエラーとなる）
+ *
  * @param mcpServerId - McpServer ID
  * @param normalizedName - インスタンスの正規化名
  * @returns テンプレートインスタンス（テンプレート・ツール・サーバー情報含む）
+ * @throws NotFoundError - インスタンスが見つからない、または無効化されている場合
  */
 export const getTemplateInstanceWithTemplate = async (
   mcpServerId: string,
   normalizedName: string,
 ) => {
-  return db.mcpServerTemplateInstance.findUniqueOrThrow({
+  const instance = await db.mcpServerTemplateInstance.findUniqueOrThrow({
     where: {
       mcpServerId_normalizedName: { mcpServerId, normalizedName },
     },
@@ -35,6 +38,15 @@ export const getTemplateInstanceWithTemplate = async (
       },
     },
   });
+
+  // 無効化されたインスタンスはツール実行不可
+  if (!instance.isEnabled) {
+    throw new Error(
+      `Template instance "${normalizedName}" is disabled and cannot be used`,
+    );
+  }
+
+  return instance;
 };
 
 /**
@@ -99,6 +111,7 @@ export const getToolsWithDynamicSearchFlag = async (
     select: {
       dynamicSearch: true,
       templateInstances: {
+        where: { isEnabled: true },
         select: {
           normalizedName: true,
           allowedTools: {
@@ -131,6 +144,7 @@ export const getTemplateInstanceTools = async (
     where: { id: mcpServerId },
     select: {
       templateInstances: {
+        where: { isEnabled: true },
         select: {
           normalizedName: true,
           allowedTools: {

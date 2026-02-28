@@ -64,10 +64,13 @@ export const apiKeyAuthMiddleware = async (
     );
   }
 
-  // slugが存在しない場合は403を返す
-  const pathSlug = c.req.param("slug");
-  if (!pathSlug) {
-    return c.json(createPermissionDeniedError("slug is required in path"), 403);
+  // slugまたはIDが存在しない場合は403を返す
+  const pathSlugOrId = c.req.param("slug");
+  if (!pathSlugOrId) {
+    return c.json(
+      createPermissionDeniedError("slug or ID is required in path"),
+      403,
+    );
   }
 
   const mcpApiKey = await fetchApiKeyFromDatabase(apiKey);
@@ -82,11 +85,13 @@ export const apiKeyAuthMiddleware = async (
     return c.json(createUnauthorizedError("API key has expired"), 401);
   }
 
-  // api keyのmcpServer.slugとリクエストパスのslugが一致しない場合は403を返す
-  if (mcpApiKey.mcpServer.slug !== pathSlug) {
+  // api keyのmcpServer.slugまたはidとリクエストパスのslugOrIdが一致しない場合は403を返す
+  const isSlugMatch = mcpApiKey.mcpServer.slug === pathSlugOrId;
+  const isIdMatch = mcpApiKey.mcpServer.id === pathSlugOrId;
+  if (!isSlugMatch && !isIdMatch) {
     return c.json(
       createPermissionDeniedError(
-        "MCP Server slug mismatch: You are not authorized to access this MCP server",
+        "MCP Server slug/ID mismatch: You are not authorized to access this MCP server",
       ),
       403,
     );

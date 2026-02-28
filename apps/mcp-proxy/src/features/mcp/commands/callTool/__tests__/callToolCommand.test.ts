@@ -311,6 +311,7 @@ describe("callToolCommand", () => {
 
   const createTemplateInstance = (overrides = {}) => ({
     id: "instance-id-1",
+    isEnabled: true,
     mcpServer: { organizationId: "org-123" },
     mcpServerTemplate: {
       id: "template-1",

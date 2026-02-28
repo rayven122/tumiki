@@ -25,6 +25,7 @@
     "@google-cloud/pubsub": "^5.2.0",
     "@hono/node-server": "^1.19.6",
     "@modelcontextprotocol/sdk": "^1.26.0",
+    "@paralleldrive/cuid2": "^2.3.1",
     "@toon-format/toon": "^2.1.0",
     "@tumiki/db": "workspace:*",
     "@tumiki/license": "workspace:*",

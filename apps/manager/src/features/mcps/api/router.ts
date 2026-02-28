@@ -187,6 +187,7 @@ export const UpdateNameInputV2 = z.object({
 
 export const UpdateNameOutputV2 = z.object({
   id: z.string(),
+  slug: z.string(),
 });
 
 // アイコンパス更新の入力スキーマ

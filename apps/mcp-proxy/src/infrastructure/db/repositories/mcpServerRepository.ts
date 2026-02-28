@@ -6,6 +6,7 @@
  */
 
 import { db, type PiiMaskingMode, type AuthType } from "@tumiki/db/server";
+import { isCuid } from "@paralleldrive/cuid2";
 import { logError, logWarn } from "../../../shared/logger/index.js";
 
 /**
@@ -166,6 +167,72 @@ export const getMcpServerBySlug = async (
   } catch (error) {
     logError("Failed to get McpServer by slug from DB", error as Error, {
       slug,
+      organizationId,
+    });
+    throw error;
+  }
+};
+
+/**
+ * slugまたはIDでMcpServerを取得
+ *
+ * パスパラメータにslugまたはIDのどちらが渡されても対応できるようにする。
+ * CUID形式かどうかを判定し、適切なfindUniqueクエリを使用。
+ *
+ * @param slugOrId - MCP Server のslugまたはID
+ * @param organizationId - 組織ID（slugで検索する場合に使用、IDで検索する場合は結果の検証に使用）
+ * @returns McpServer情報（見つからない場合はnull）
+ */
+export const getMcpServerBySlugOrId = async (
+  slugOrId: string,
+  organizationId: string,
+): Promise<McpServerLookupResult | null> => {
+  try {
+    // CUID形式の場合はIDで検索
+    if (isCuid(slugOrId)) {
+      const mcpServer = await db.mcpServer.findUnique({
+        where: { id: slugOrId },
+        select: mcpServerSelectFields,
+      });
+
+      if (!mcpServer) {
+        logWarn("McpServer not found by ID", { id: slugOrId, organizationId });
+        return null;
+      }
+
+      // IDで見つかった場合、organizationIdが一致するか検証
+      if (mcpServer.organizationId !== organizationId) {
+        logWarn("McpServer organizationId mismatch", {
+          id: slugOrId,
+          expectedOrgId: organizationId,
+          actualOrgId: mcpServer.organizationId,
+        });
+        return null;
+      }
+
+      return mcpServer;
+    }
+
+    // slug形式の場合はslugで検索
+    const mcpServer = await db.mcpServer.findUnique({
+      where: {
+        organizationId_slug: { organizationId, slug: slugOrId },
+      },
+      select: mcpServerSelectFields,
+    });
+
+    if (!mcpServer) {
+      logWarn("McpServer not found by slug", {
+        slug: slugOrId,
+        organizationId,
+      });
+      return null;
+    }
+
+    return mcpServer;
+  } catch (error) {
+    logError("Failed to get McpServer by slug or ID from DB", error as Error, {
+      slugOrId,
       organizationId,
     });
     throw error;

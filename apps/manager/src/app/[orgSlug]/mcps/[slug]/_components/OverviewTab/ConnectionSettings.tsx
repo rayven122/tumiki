@@ -5,6 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@tumiki/ui/card";
 import { Button } from "@tumiki/ui/button";
 import { Input } from "@tumiki/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@tumiki/ui/select";
+import {
   Search,
   Copy,
   ArrowLeft,
@@ -44,6 +51,8 @@ type ConnectionSettingsProps = {
   serverId: McpServerId;
 };
 
+type UrlIdentifierType = "slug" | "id";
+
 export const ConnectionSettings = ({
   server,
   serverId,
@@ -51,6 +60,12 @@ export const ConnectionSettings = ({
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [clientSearchQuery, setClientSearchQuery] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
+  const [urlIdentifier, setUrlIdentifier] = useState<UrlIdentifierType>("slug");
+
+  // URL識別子に応じたパスを取得
+  const getUrlPath = () => {
+    return urlIdentifier === "slug" ? server.slug : serverId;
+  };
 
   // APIキー一覧取得
   const { data: apiKeys } = api.mcpServerAuth.listApiKeys.useQuery({
@@ -84,15 +99,16 @@ export const ConnectionSettings = ({
   const getConfigText = (clientId: string) => {
     const serverUrl = getProxyServerUrl();
     const serverName = normalizeServerName(server.name);
+    const urlPath = getUrlPath();
 
     // Claude Code - ネイティブサポート
     if (clientId === "claude-code") {
-      return `claude mcp add --transport http ${serverName} ${serverUrl}/mcp/${server.slug} --header "tumiki-api-key: ${apiKey}"`;
+      return `claude mcp add --transport http ${serverName} ${serverUrl}/mcp/${urlPath} --header "tumiki-api-key: ${apiKey}"`;
     }
 
     // Claude Desktop - コネクト機能用のシンプルなURL
     if (clientId === "claude-desktop") {
-      return `${serverUrl}/mcp/${server.slug}`;
+      return `${serverUrl}/mcp/${urlPath}`;
     }
 
     // Cursor
@@ -101,7 +117,7 @@ export const ConnectionSettings = ({
         {
           mcpServers: {
             [serverName]: {
-              url: `${serverUrl}/mcp/${server.slug}`,
+              url: `${serverUrl}/mcp/${urlPath}`,
               transport: "http",
               headers: {
                 "tumiki-api-key": apiKey,
@@ -120,7 +136,7 @@ export const ConnectionSettings = ({
         {
           mcpServers: {
             [serverName]: {
-              url: `${serverUrl}/mcp/${server.slug}`,
+              url: `${serverUrl}/mcp/${urlPath}`,
               transport: "http",
               headers: {
                 "tumiki-api-key": apiKey,
@@ -144,7 +160,7 @@ export const ConnectionSettings = ({
               args: [
                 "-y",
                 "mcp-remote@latest",
-                `${serverUrl}/mcp/${server.slug}`,
+                `${serverUrl}/mcp/${urlPath}`,
                 "--header",
                 `tumiki-api-key: ${apiKey}`,
                 "--strategy",
@@ -164,7 +180,7 @@ export const ConnectionSettings = ({
         {
           mcpServers: {
             [serverName]: {
-              url: `${serverUrl}/mcp/${server.slug}`,
+              url: `${serverUrl}/mcp/${urlPath}`,
               transport: "http",
               headers: {
                 "tumiki-api-key": apiKey,
@@ -181,7 +197,7 @@ export const ConnectionSettings = ({
 
     // その他のクライアント用
     return `# HTTP接続設定
-URL: ${serverUrl}/mcp/${server.slug}
+URL: ${serverUrl}/mcp/${urlPath}
 Method: POST
 Headers:
   Content-Type: application/json
@@ -195,7 +211,7 @@ Headers:
       "args": [
         "-y",
         "mcp-remote@latest",
-        "${serverUrl}/mcp/${server.slug}",
+        "${serverUrl}/mcp/${urlPath}",
         "--header",
         "tumiki-api-key: ${apiKey}",
         "--strategy",
@@ -385,24 +401,49 @@ Headers:
             </CardHeader>
             <CardContent className="space-y-4">
               {/* 接続URL情報 */}
-              <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-                <p className="text-xs font-semibold whitespace-nowrap text-gray-700">
-                  接続URL
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <p className="text-xs font-semibold whitespace-nowrap text-gray-700">
+                    接続URL
+                  </p>
+                  <Select
+                    value={urlIdentifier}
+                    onValueChange={(value) =>
+                      setUrlIdentifier(value as UrlIdentifierType)
+                    }
+                  >
+                    <SelectTrigger className="h-7 w-[120px] text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="slug">エイリアス</SelectItem>
+                      <SelectItem value="id">固定ID</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                  <code className="min-w-0 flex-1 overflow-x-auto text-xs text-gray-600">
+                    {makeHttpProxyServerUrl(getUrlPath())}
+                  </code>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 flex-shrink-0"
+                    onClick={async () => {
+                      await copyToClipboard(
+                        makeHttpProxyServerUrl(getUrlPath()),
+                      );
+                      toast.success("接続URLをコピーしました");
+                    }}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-500">
+                  {urlIdentifier === "slug"
+                    ? "※ エイリアスはサーバー名の変更に伴い自動更新されます"
+                    : "※ 固定IDはサーバー名を変更しても変わりません"}
                 </p>
-                <code className="min-w-0 flex-1 overflow-x-auto text-xs text-gray-600">
-                  {makeHttpProxyServerUrl(server.slug)}
-                </code>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 flex-shrink-0"
-                  onClick={async () => {
-                    await copyToClipboard(makeHttpProxyServerUrl(server.slug));
-                    toast.success("接続URLをコピーしました");
-                  }}
-                >
-                  <Copy className="h-3.5 w-3.5" />
-                </Button>
               </div>
 
               {/* 検索バー */}

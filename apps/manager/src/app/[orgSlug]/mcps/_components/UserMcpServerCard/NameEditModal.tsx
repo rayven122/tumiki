@@ -2,6 +2,7 @@ import { useState } from "react";
 import { api } from "@/trpc/react";
 import { toast } from "@/lib/client/toast";
 import { normalizeServerName } from "@tumiki/shared/utils/normalizeServerName";
+import { normalizeSlug } from "@tumiki/db/utils/slug";
 
 import { Button } from "@tumiki/ui/button";
 import {
@@ -70,13 +71,30 @@ export const NameEditModal = ({
             <p className="text-muted-foreground text-xs">
               表示されるサーバー名を設定できます（空白や大文字を含むことができます）
             </p>
-            <div className="bg-muted rounded-md px-3 py-2">
-              <p className="text-muted-foreground text-xs font-medium">
-                MCPサーバー識別子
-              </p>
-              <p className="font-mono text-sm">
-                {normalizeServerName(newName)}
-              </p>
+            <div className="space-y-2">
+              <div className="bg-muted rounded-md px-3 py-2">
+                <p className="text-muted-foreground text-xs font-medium">
+                  MCPサーバー識別子
+                </p>
+                <p className="font-mono text-sm">
+                  {normalizeServerName(newName)}
+                </p>
+              </div>
+              <div className="bg-muted rounded-md px-3 py-2">
+                <p className="text-muted-foreground text-xs font-medium">
+                  URLエイリアス
+                </p>
+                <p className="font-mono text-sm">
+                  {normalizeSlug(newName) || (
+                    <span className="text-muted-foreground italic">
+                      （自動生成されます）
+                    </span>
+                  )}
+                </p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  ※ エイリアスはサーバー名の変更に伴い自動更新されます
+                </p>
+              </div>
             </div>
           </div>
         </div>
