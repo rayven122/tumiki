@@ -9,7 +9,7 @@ import {
 } from "../../../../shared/errors/index.js";
 import { verifyKeycloakJWT } from "../../../../infrastructure/keycloak/jwtVerifierImpl.js";
 import {
-  getMcpServerBySlug,
+  getMcpServerBySlugOrId,
   checkOrganizationMembership,
 } from "../../../../infrastructure/db/repositories/mcpServerRepository.js";
 import {
@@ -77,11 +77,11 @@ export const jwtAuthMiddleware = async (
   // JWT ペイロードをコンテキストに設定
   c.set("jwtPayload", jwtPayload);
 
-  // Step 3: slug の確認
-  const pathSlug = c.req.param("slug");
+  // Step 3: slugまたはIDの確認
+  const pathSlugOrId = c.req.param("slug");
 
-  if (!pathSlug) {
-    return c.json(createPermissionDeniedError("slug is required in path"), 403);
+  if (!pathSlugOrId) {
+    return c.json(createPermissionDeniedError("slug or ID is required in path"), 403);
   }
 
   // Step 4: JWTから organizationId を取得
@@ -128,24 +128,24 @@ export const jwtAuthMiddleware = async (
     );
   }
 
-  // Step 6: slug と organizationId で McpServer を検索
+  // Step 6: slugまたはID と organizationId で McpServer を検索
   let mcpServerId: string;
   let piiMaskingMode: PiiMaskingMode;
   let piiInfoTypes: string[];
   let toonConversionEnabled: boolean;
   try {
-    const mcpServer = await getMcpServerBySlug(pathSlug, orgId);
+    const mcpServer = await getMcpServerBySlugOrId(pathSlugOrId, orgId);
 
     if (!mcpServer) {
       return c.json(
-        createNotFoundError(`MCP Server not found: ${pathSlug}`),
+        createNotFoundError(`MCP Server not found: ${pathSlugOrId}`),
         404,
       );
     }
 
     if (mcpServer.deletedAt) {
       return c.json(
-        createNotFoundError(`MCP Server has been deleted: ${pathSlug}`),
+        createNotFoundError(`MCP Server has been deleted: ${pathSlugOrId}`),
         404,
       );
     }
@@ -155,8 +155,8 @@ export const jwtAuthMiddleware = async (
     piiInfoTypes = mcpServer.piiInfoTypes;
     toonConversionEnabled = mcpServer.toonConversionEnabled;
   } catch (error) {
-    logError("Failed to get McpServer by slug", error as Error, {
-      slug: pathSlug,
+    logError("Failed to get McpServer by slug or ID", error as Error, {
+      slugOrId: pathSlugOrId,
       organizationId: orgId,
     });
     return c.json(
