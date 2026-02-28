@@ -1,7 +1,12 @@
 "use client";
 
-import { DefaultChatTransport } from "ai";
-import type { AgentInfo, Attachment, ChatMessage } from "@/lib/types";
+import { DefaultChatTransport, type DataUIPart } from "ai";
+import type {
+  AgentInfo,
+  Attachment,
+  ChatMessage,
+  CustomUIDataTypes,
+} from "@/lib/types";
 import { useChat } from "@ai-sdk/react";
 import {
   useCallback,
@@ -224,7 +229,9 @@ function ChatContent({
       },
     }),
     onData: (dataPart) => {
-      setDataStream((ds) => (ds ? [...ds, dataPart] : []));
+      setDataStream((ds) =>
+        ds ? [...ds, dataPart as DataUIPart<CustomUIDataTypes>] : [],
+      );
     },
     onFinish: () => {
       mutate(unstable_serialize(getChatHistoryPaginationKey(organizationId)));
