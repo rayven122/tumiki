@@ -12,3 +12,10 @@ export { useThreeScene } from "./useThreeScene";
 export { useVRMLoader } from "./useVRMLoader";
 export { useAnimationManager } from "./useAnimationManager";
 export { CoharuProvider, useCoharuContext } from "./useCoharuContext";
+
+// 受付モードフック
+export { useSTT } from "./useSTT";
+export { useCameraStream } from "./useCameraStream";
+export { useEmotionSync } from "./useEmotionSync";
+export { useConversationGestures } from "./useConversationGestures";
+export { useIdleReset } from "./useIdleReset";
