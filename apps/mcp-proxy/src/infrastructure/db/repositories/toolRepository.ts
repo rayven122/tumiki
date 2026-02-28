@@ -99,6 +99,7 @@ export const getToolsWithDynamicSearchFlag = async (
     select: {
       dynamicSearch: true,
       templateInstances: {
+        where: { isEnabled: true },
         select: {
           normalizedName: true,
           allowedTools: {
@@ -131,6 +132,7 @@ export const getTemplateInstanceTools = async (
     where: { id: mcpServerId },
     select: {
       templateInstances: {
+        where: { isEnabled: true },
         select: {
           normalizedName: true,
           allowedTools: {
