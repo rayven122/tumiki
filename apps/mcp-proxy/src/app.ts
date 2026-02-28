@@ -19,8 +19,24 @@ import { agentExecutorRoute } from "./features/agentExecutor/route.js";
 // Hono アプリケーションの作成
 const app = new Hono<HonoEnv>();
 
-// CORS設定
-app.use("/*", cors());
+/**
+ * CORS設定
+ *
+ * 環境変数 CORS_ALLOWED_ORIGINS でオリジンを制限可能
+ * カンマ区切りで複数指定: "https://tumiki.io,https://app.tumiki.io"
+ * 未設定の場合は全オリジン許可（開発環境用）
+ */
+const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS?.split(",").map((o) =>
+  o.trim(),
+);
+
+app.use(
+  "/*",
+  cors({
+    origin: allowedOrigins ?? "*",
+    credentials: true,
+  }),
+);
 
 // ルート設定
 app.route("/", healthRoute);

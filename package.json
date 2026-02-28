@@ -62,7 +62,7 @@
     "inspector:mcp-proxy": "mcp-inspector --transport http http://localhost:8080/mcp"
   },
   "devDependencies": {
-    "@modelcontextprotocol/inspector": "^0.21.0",
+    "@modelcontextprotocol/inspector": "^0.21.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@typescript/native-preview": "7.0.0-dev.20250814.1",
     "@vitest/coverage-v8": "catalog:",
