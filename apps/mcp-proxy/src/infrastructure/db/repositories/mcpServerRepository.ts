@@ -6,6 +6,7 @@
  */
 
 import { db, type PiiMaskingMode, type AuthType } from "@tumiki/db/server";
+import { isCuid } from "@paralleldrive/cuid2";
 import { logError, logWarn } from "../../../shared/logger/index.js";
 
 /**
@@ -170,43 +171,6 @@ export const getMcpServerBySlug = async (
     });
     throw error;
   }
-};
-
-/**
- * CUID形式かどうかを判定
- *
- * CUIDの特徴:
- * - `c`で始まる
- * - 25文字（cuid v1）または24文字（cuid2）の英数字
- * - 小文字のみ
- * - ハイフンを含まない
- *
- * 誤判定を防ぐため、厳密な長さチェックを行う。
- * slugが `c` で始まる場合でも、CUIDの正確な長さ（24-25文字）でなければslugと判定される。
- *
- * @param value - 判定する文字列
- * @returns CUID形式ならtrue
- */
-const isCuid = (value: string): boolean => {
-  // slugはハイフンを含むことが多いので、ハイフンがあればslugと判定
-  if (value.includes("-")) {
-    return false;
-  }
-
-  // CUIDは小文字のみで構成される（大文字が含まれていればslug）
-  if (value !== value.toLowerCase()) {
-    return false;
-  }
-
-  // CUID v1: 25文字、CUID2: 24文字
-  // slugとの誤判定を防ぐため、厳密な長さチェック
-  const length = value.length;
-  if (length !== 24 && length !== 25) {
-    return false;
-  }
-
-  // `c`で始まり、英数字のみで構成される
-  return /^c[a-z0-9]+$/.test(value);
 };
 
 /**
