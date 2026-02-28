@@ -222,7 +222,10 @@ export const getMcpServerBySlugOrId = async (
     });
 
     if (!mcpServer) {
-      logWarn("McpServer not found by slug", { slug: slugOrId, organizationId });
+      logWarn("McpServer not found by slug", {
+        slug: slugOrId,
+        organizationId,
+      });
       return null;
     }
 

@@ -145,7 +145,8 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
     organizationId: authContext.organizationId,
 
     // リクエスト情報
-    // toolNameが空の場合（tools/listなど）はmethodを使用
+    // toolNameが空文字列の場合（tools/listなど）はmethodにフォールバック
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- 空文字列でもフォールバックしたい
     toolName: executionContext.toolName || executionContext.method || "unknown",
     transportType: executionContext.transportType ?? "STREAMABLE_HTTPS",
     method: executionContext.method ?? "tools/call", // toolExecutorで設定される

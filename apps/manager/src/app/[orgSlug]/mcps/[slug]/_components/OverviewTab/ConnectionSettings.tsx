@@ -430,7 +430,9 @@ Headers:
                     variant="ghost"
                     className="h-7 flex-shrink-0"
                     onClick={async () => {
-                      await copyToClipboard(makeHttpProxyServerUrl(getUrlPath()));
+                      await copyToClipboard(
+                        makeHttpProxyServerUrl(getUrlPath()),
+                      );
                       toast.success("接続URLをコピーしました");
                     }}
                   >

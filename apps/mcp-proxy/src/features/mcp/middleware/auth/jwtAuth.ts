@@ -81,7 +81,10 @@ export const jwtAuthMiddleware = async (
   const pathSlugOrId = c.req.param("slug");
 
   if (!pathSlugOrId) {
-    return c.json(createPermissionDeniedError("slug or ID is required in path"), 403);
+    return c.json(
+      createPermissionDeniedError("slug or ID is required in path"),
+      403,
+    );
   }
 
   // Step 4: JWTから organizationId を取得
