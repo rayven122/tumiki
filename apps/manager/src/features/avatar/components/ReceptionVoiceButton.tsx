@@ -19,6 +19,10 @@ type ReceptionVoiceButtonProps = {
   disabled?: boolean;
   chatId: string;
   orgSlug: string;
+  /** 音声認識の言語コード */
+  lang?: string;
+  /** マイク状態変更コールバック */
+  onListeningChange?: (isListening: boolean) => void;
 };
 
 export const ReceptionVoiceButton = ({
@@ -27,6 +31,8 @@ export const ReceptionVoiceButton = ({
   disabled = false,
   chatId,
   orgSlug,
+  lang = "ja-JP",
+  onListeningChange,
 }: ReceptionVoiceButtonProps) => {
   // 無音タイムアウト時にメッセージを自動送信
   const handleSilenceTimeout = useCallback(
@@ -54,12 +60,17 @@ export const ReceptionVoiceButton = ({
     stopListening,
     resetTranscript,
   } = useSTT({
-    lang: "ja-JP",
+    lang,
     continuous: true,
     interimResults: true,
     silenceTimeout: 2000,
     onSilenceTimeout: handleSilenceTimeout,
   });
+
+  // マイク状態を親に通知
+  useEffect(() => {
+    onListeningChange?.(isListening);
+  }, [isListening, onListeningChange]);
 
   // transcriptをinputに反映
   useEffect(() => {

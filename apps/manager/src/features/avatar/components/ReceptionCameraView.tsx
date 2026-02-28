@@ -12,10 +12,13 @@ import { useCameraStream } from "@/features/avatar/hooks/useCameraStream";
 
 type ReceptionCameraViewProps = {
   className?: string;
+  /** カメラ状態変更コールバック */
+  onStatusChange?: (isActive: boolean) => void;
 };
 
 export const ReceptionCameraView = ({
   className,
+  onStatusChange,
 }: ReceptionCameraViewProps) => {
   const { isActive, videoRef, error, startCamera, stopCamera } =
     useCameraStream({
@@ -32,6 +35,11 @@ export const ReceptionCameraView = ({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // カメラ状態を親に通知
+  useEffect(() => {
+    onStatusChange?.(isActive);
+  }, [isActive, onStatusChange]);
 
   return (
     <div

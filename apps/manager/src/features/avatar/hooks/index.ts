@@ -18,3 +18,4 @@ export { useSTT } from "./useSTT";
 export { useCameraStream } from "./useCameraStream";
 export { useEmotionSync } from "./useEmotionSync";
 export { useConversationGestures } from "./useConversationGestures";
+export { useIdleReset } from "./useIdleReset";
