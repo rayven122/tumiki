@@ -23,6 +23,9 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
+          # レビューコメントを1つに統合し、更新時に上書き
+          use_sticky_comment: "true"
+
           prompt: |
             ## レビュー準備
             以下を読み込み、規約を把握してください：
