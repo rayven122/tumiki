@@ -61,8 +61,9 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
   // 実行コンテキストを取得
   const executionContext = getExecutionContext();
 
-  // toolNameが存在しない場合はログを記録しない（MCP以外のリクエスト）
-  if (!executionContext?.toolName) {
+  // toolNameもmethodも存在しない場合はログを記録しない（MCP以外のリクエスト）
+  // tools/list の場合は toolName が空文字列だが method が設定されているのでログ記録する
+  if (!executionContext?.toolName && !executionContext?.method) {
     return;
   }
 
