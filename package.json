@@ -12,7 +12,7 @@
     "overrides": {
       "tar": ">=7.5.7",
       "undici": ">=6.23.0",
-      "fast-xml-parser": ">=5.3.4"
+      "fast-xml-parser": ">=5.4.1"
     }
   },
   "scripts": {

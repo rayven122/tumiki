@@ -83,9 +83,8 @@ describe("EE/CE エディション設定", () => {
     test("organization-creationが有効（EEなら全機能有効）", async () => {
       vi.stubEnv("NEXT_PUBLIC_TUMIKI_EDITION", "ee");
 
-      const { isEEFeatureAvailable, ORG_CREATION_ENABLED } = await import(
-        "../config"
-      );
+      const { isEEFeatureAvailable, ORG_CREATION_ENABLED } =
+        await import("../config");
 
       // 新しい実装ではEE版なら組織作成も有効
       expect(ORG_CREATION_ENABLED).toBe(true);

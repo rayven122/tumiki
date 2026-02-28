@@ -568,9 +568,8 @@ describe("resetProjectIdCache", () => {
       },
     ]);
 
-    const { maskText, resetProjectIdCache } = await import(
-      "../gcpDlpClient.ee.js"
-    );
+    const { maskText, resetProjectIdCache } =
+      await import("../gcpDlpClient.ee.js");
 
     // 1回目の呼び出し（プロジェクトID初期化）
     await maskText("first call");
