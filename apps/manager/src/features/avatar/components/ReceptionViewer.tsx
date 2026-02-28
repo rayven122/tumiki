@@ -2,7 +2,7 @@
 
 /**
  * 受付モード用 VRM ビューワーコンポーネント
- * 中央配置で感情同期付きのVRMアバター
+ * 中央配置で会話連動ジェスチャー・表情・頷き・瞬き付きのVRMアバター
  */
 
 import { useEffect, useRef, useCallback } from "react";
@@ -11,11 +11,14 @@ import { useAvatarModeThreeScene } from "@/features/avatar/hooks/useAvatarModeTh
 import { useVRMLoader } from "@/features/avatar/hooks/useVRMLoader";
 import { useAnimationManager } from "@/features/avatar/hooks/useAnimationManager";
 import { useCoharuContext } from "@/features/avatar/hooks/useCoharuContext";
-import { useEmotionSync } from "@/features/avatar/hooks/useEmotionSync";
+import { useConversationGestures } from "@/features/avatar/hooks/useConversationGestures";
 import type { UIMessage } from "ai";
+import type { UseChatHelpers } from "@ai-sdk/react";
+import type { ChatMessage } from "@/lib/types";
 
 type ReceptionViewerProps = {
   messages: UIMessage[];
+  status: UseChatHelpers<ChatMessage>["status"];
 };
 
 /**
@@ -39,7 +42,10 @@ const VrmNotFoundFallback = () => {
   );
 };
 
-export const ReceptionViewer = ({ messages }: ReceptionViewerProps) => {
+export const ReceptionViewer = ({
+  messages,
+  status,
+}: ReceptionViewerProps) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const clockRef = useRef<THREE.Clock>(new THREE.Clock());
   const animationIdRef = useRef<number | null>(null);
@@ -52,11 +58,21 @@ export const ReceptionViewer = ({ messages }: ReceptionViewerProps) => {
   // VRM ローダー
   const { vrm, isVrmAvailable, loadDefaultVRM } = useVRMLoader(scene);
 
-  // アニメーション管理
-  const { update: updateAnimation } = useAnimationManager(vrm);
+  // アニメーション管理（ジェスチャー優先再生対応）
+  const {
+    update: updateAnimation,
+    playGesture,
+    clipCount,
+  } = useAnimationManager(vrm);
 
-  // 感情同期
-  const { updateEmotion } = useEmotionSync({ vrm, messages });
+  // 会話連動ジェスチャー（表情・頷き・瞬き・VRMAトリガー）
+  const { updateGestures } = useConversationGestures({
+    vrm,
+    messages,
+    status,
+    playGesture,
+    clipCount,
+  });
 
   // VRM をコンテキストに設定
   useEffect(() => {
@@ -74,10 +90,10 @@ export const ReceptionViewer = ({ messages }: ReceptionViewerProps) => {
     }
   }, [scene, vrm, isVrmAvailable, loadDefaultVRM]);
 
-  // 感情更新コールバック（アニメーションループ内で使用）
-  const updateEmotionCallback = useCallback(() => {
-    updateEmotion();
-  }, [updateEmotion]);
+  // ジェスチャー更新コールバック
+  const updateGesturesCallback = useCallback(() => {
+    updateGestures();
+  }, [updateGestures]);
 
   // アニメーションループ
   useEffect(() => {
@@ -90,17 +106,17 @@ export const ReceptionViewer = ({ messages }: ReceptionViewerProps) => {
 
       const deltaTime = clockRef.current.getDelta();
 
-      // アニメーション更新
+      // VRMAアニメーション更新
       updateAnimation(deltaTime);
 
       // VRM 更新
       vrm.update(deltaTime);
 
-      // リップシンク更新
+      // リップシンク更新（口パク）
       updateLipSync();
 
-      // 感情表現更新
-      updateEmotionCallback();
+      // 会話連動ジェスチャー更新（表情・頷き・瞬き）
+      updateGesturesCallback();
 
       // レンダリング
       renderer.render(scene, camera);
@@ -121,7 +137,7 @@ export const ReceptionViewer = ({ messages }: ReceptionViewerProps) => {
     scene,
     updateAnimation,
     updateLipSync,
-    updateEmotionCallback,
+    updateGesturesCallback,
   ]);
 
   // VRMが利用不可の場合はフォールバックを表示

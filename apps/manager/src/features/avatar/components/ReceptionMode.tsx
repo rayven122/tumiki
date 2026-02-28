@@ -173,7 +173,7 @@ const ReceptionModeContent = ({
           </div>
         }
       >
-        <ReceptionViewer messages={messages} />
+        <ReceptionViewer messages={messages} status={status} />
       </Suspense>
 
       {/* z-20: カメラビュー（左下） */}

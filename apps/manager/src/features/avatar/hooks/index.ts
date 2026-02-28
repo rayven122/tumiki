@@ -17,3 +17,4 @@ export { CoharuProvider, useCoharuContext } from "./useCoharuContext";
 export { useSTT } from "./useSTT";
 export { useCameraStream } from "./useCameraStream";
 export { useEmotionSync } from "./useEmotionSync";
+export { useConversationGestures } from "./useConversationGestures";
