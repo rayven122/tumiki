@@ -177,19 +177,36 @@ export const getMcpServerBySlug = async (
  *
  * CUIDの特徴:
  * - `c`で始まる
- * - 25文字程度の英数字
+ * - 25文字（cuid v1）または24文字（cuid2）の英数字
+ * - 小文字のみ
  * - ハイフンを含まない
+ *
+ * 誤判定を防ぐため、厳密な長さチェックを行う。
+ * slugが `c` で始まる場合でも、CUIDの正確な長さ（24-25文字）でなければslugと判定される。
  *
  * @param value - 判定する文字列
  * @returns CUID形式ならtrue
  */
 const isCuid = (value: string): boolean => {
-  // CUIDは`c`で始まり、20文字以上の英数字で構成される
   // slugはハイフンを含むことが多いので、ハイフンがあればslugと判定
   if (value.includes("-")) {
     return false;
   }
-  return /^c[a-z0-9]{20,}$/i.test(value);
+
+  // CUIDは小文字のみで構成される（大文字が含まれていればslug）
+  if (value !== value.toLowerCase()) {
+    return false;
+  }
+
+  // CUID v1: 25文字、CUID2: 24文字
+  // slugとの誤判定を防ぐため、厳密な長さチェック
+  const length = value.length;
+  if (length !== 24 && length !== 25) {
+    return false;
+  }
+
+  // `c`で始まり、英数字のみで構成される
+  return /^c[a-z0-9]+$/.test(value);
 };
 
 /**

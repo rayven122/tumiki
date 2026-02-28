@@ -145,7 +145,8 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
     organizationId: authContext.organizationId,
 
     // リクエスト情報
-    toolName: executionContext.toolName,
+    // toolNameが空の場合（tools/listなど）はmethodを使用
+    toolName: executionContext.toolName || executionContext.method || "unknown",
     transportType: executionContext.transportType ?? "STREAMABLE_HTTPS",
     method: executionContext.method ?? "tools/call", // toolExecutorで設定される
     httpStatus: c.res.status,

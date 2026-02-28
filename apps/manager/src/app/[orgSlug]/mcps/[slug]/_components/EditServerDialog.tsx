@@ -83,7 +83,11 @@ export const EditServerDialog = ({
                 URLエイリアス
               </p>
               <p className="font-mono text-sm">
-                {normalizeSlug(serverName) || `mcp-${Date.now().toString(36)}`}
+                {normalizeSlug(serverName) || (
+                  <span className="text-muted-foreground italic">
+                    （自動生成されます）
+                  </span>
+                )}
               </p>
               <p className="text-muted-foreground mt-1 text-xs">
                 ※ エイリアスはサーバー名の変更に伴い自動更新されます
