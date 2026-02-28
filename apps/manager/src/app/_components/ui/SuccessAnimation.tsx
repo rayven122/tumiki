@@ -1,5 +1,6 @@
 "use client";
 
+import DOMPurify from "dompurify";
 import { motion } from "framer-motion";
 
 interface SuccessAnimationProps {
@@ -125,7 +126,7 @@ export function SuccessAnimation({
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 1 }}
         className="mb-6 text-lg font-medium text-gray-600"
-        dangerouslySetInnerHTML={{ __html: description }}
+        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(description) }}
       />
 
       {/* Animated blocks effect */}

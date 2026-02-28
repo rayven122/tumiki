@@ -23,6 +23,9 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
+          # レビューコメントを1つに統合し、更新時に上書き
+          use_sticky_comment: "true"
+
           prompt: |
             ## レビュー準備
             以下を読み込み、規約を把握してください：
@@ -37,16 +40,10 @@ jobs:
             3. 各指摘に重要度スコア（1-10）を付与
             4. 改善コード例を提示
 
-          allowed_tools: |
-            mcp__github_inline_comment__create_inline_comment
-            Bash(gh pr comment:*)
-            Bash(gh pr view:*)
-            Bash(gh pr diff:*)
-            Read
-
           track_progress: true
 
           claude_args: |
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr view:*),Bash(gh pr diff:*),Read"
             --append-system-prompt "日本語で回答。規約違反は重要度8以上として報告。
 
             ## レビューフィードバック方法

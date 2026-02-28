@@ -413,9 +413,8 @@ describe("apiKeyAuthMiddleware", () => {
     });
 
     test("データベースエラー時にlogErrorが呼ばれる", async () => {
-      const { logError } = await import(
-        "../../../../../shared/logger/index.js"
-      );
+      const { logError } =
+        await import("../../../../../shared/logger/index.js");
       const dbError = new Error("Database connection failed");
       mockFindUnique.mockRejectedValue(dbError);
 
