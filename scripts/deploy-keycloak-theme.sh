@@ -65,8 +65,11 @@ main() {
 
     # Keycloakキャッシュクリア
     log_info "Keycloakのテーマキャッシュをクリア中..."
-    ssh "$SSH_HOST" "cd /opt/keycloak && docker compose exec -T keycloak /opt/keycloak/bin/kc.sh build" 2>/dev/null || true
-    log_info "キャッシュクリア完了（反映には再ログインが必要な場合があります）"
+    if ssh "$SSH_HOST" "cd /opt/keycloak && docker compose exec -T keycloak /opt/keycloak/bin/kc.sh build" 2>/dev/null; then
+      log_info "キャッシュクリア完了（反映には再ログインが必要な場合があります）"
+    else
+      log_warn "キャッシュクリアに失敗しました（手動での再起動を推奨します）"
+    fi
   fi
 
   echo ""
