@@ -44,7 +44,7 @@
     "@types/nodemailer": "^6.4.21",
     "@types/react": "catalog:react19",
     "@types/react-dom": "catalog:react19",
-    "@typescript/native-preview": "7.0.0-dev.20250814.1",
+    "@typescript/native-preview": "7.0.0-dev.20260301.1",
     "@vitest/coverage-v8": "catalog:",
     "eslint": "catalog:",
     "prettier": "catalog:",

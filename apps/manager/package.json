@@ -132,7 +132,7 @@
     "@types/react": "catalog:react19",
     "@types/react-dom": "catalog:react19",
     "@types/three": "^0.170.0",
-    "@typescript/native-preview": "7.0.0-dev.20250814.1",
+    "@typescript/native-preview": "7.0.0-dev.20260301.1",
     "@vercel/ncc": "^0.38.4",
     "@vitest/coverage-v8": "catalog:",
     "bufferutil": "^4.0.9",
