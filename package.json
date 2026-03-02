@@ -67,7 +67,7 @@
     "@typescript/native-preview": "7.0.0-dev.20250814.1",
     "@vitest/coverage-v8": "catalog:",
     "concurrently": "^9.2.1",
-    "turbo": "^2.8.3",
+    "turbo": "^2.8.12",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }
