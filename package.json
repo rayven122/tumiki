@@ -55,6 +55,8 @@
     "keycloak:prod:logs": "bash docker/prod/deploy.sh logs",
     "keycloak:prod:restart": "bash docker/prod/deploy.sh restart",
     "keycloak:prod:shell": "bash docker/prod/deploy.sh shell",
+    "keycloak:theme:deploy": "bash scripts/deploy-keycloak-theme.sh",
+    "keycloak:theme:dry-run": "bash scripts/deploy-keycloak-theme.sh --dry-run",
     "db:generate": "pnpm --filter @tumiki/db db:generate",
     "verify:stripe": "tsx scripts/verify-stripe-env.ts",
     "stripe:listen": "stripe listen --forward-to localhost:3000/api/webhooks/stripe",
