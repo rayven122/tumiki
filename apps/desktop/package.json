@@ -19,7 +19,7 @@
   "dependencies": {
     "@tumiki/db": "workspace:*",
     "clsx": "^2.1.1",
-    "electron-store": "^10.0.0",
+    "electron-store": "^11.0.2",
     "electron-updater": "^6.3.9",
     "jotai": "^2.10.6",
     "lucide-react": "^0.486.0",
