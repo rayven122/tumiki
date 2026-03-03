@@ -38,7 +38,7 @@ jobs:
 
       - name: Terraform Init
         working-directory: terraform/keycloak
-        run: terraform init -backend-config=backend-cloud.hcl
+        run: terraform init
 
       - name: Terraform Validate
         working-directory: terraform/keycloak

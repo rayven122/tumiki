@@ -2,14 +2,22 @@
 # Tumiki開発環境のKeycloak設定をコードで管理
 #
 # 使用方法:
-#   ローカル開発: terraform init && terraform apply
-#   本番環境:     terraform init -backend-config=backend-cloud.hcl
+#   ローカル開発: TF_WORKSPACE=default terraform init -backend=false && terraform apply
+#   本番環境(CI): terraform init && terraform plan -var-file=terraform.tfvars.production
 #
-# 注意: ローカルと本番でbackendが異なるため、切り替え時は
-#       rm -rf .terraform && terraform init ... が必要
+# 注意: ローカル開発時は -backend=false でCloudバックエンドをスキップ
 
 terraform {
   required_version = ">= 1.9.0"
+
+  # Terraform Cloud backend（CI/CD用）
+  cloud {
+    hostname     = "app.terraform.io"
+    organization = "tumiki"
+    workspaces {
+      name = "keycloak-production"
+    }
+  }
 
   required_providers {
     keycloak = {
