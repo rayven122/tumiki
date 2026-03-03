@@ -108,7 +108,11 @@ case "$COMMAND" in
     ;;
   apply)
     export_tf_vars
-    terraform apply -auto-approve "$@"
+    if [ "$ENV" = "prod" ] || [ "$ENV" = "production" ]; then
+      terraform apply "$@"
+    else
+      terraform apply -auto-approve "$@"
+    fi
     ;;
   destroy)
     export_tf_vars
