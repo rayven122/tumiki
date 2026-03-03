@@ -45,13 +45,14 @@ jobs:
         run: terraform validate
 
       - name: Terraform Plan
+        if: ${{ inputs.dry_run }}
         working-directory: terraform/keycloak
-        run: terraform plan -var-file=terraform.tfvars.production -out=tfplan
+        run: terraform plan -var-file=terraform.tfvars.production
 
       - name: Terraform Apply
         if: ${{ !inputs.dry_run }}
         working-directory: terraform/keycloak
-        run: terraform apply -auto-approve tfplan
+        run: terraform apply -var-file=terraform.tfvars.production -auto-approve
 
       - name: Notify Slack on Success
         if: success() && !inputs.dry_run && vars.SLACK_WEBHOOK_URL != ''
