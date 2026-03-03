@@ -3,7 +3,7 @@
 #
 # 使用方法:
 #   ローカル開発: pnpm keycloak:init && pnpm keycloak:apply
-#   本番環境: pnpm keycloak:prod:init && pnpm keycloak:prod:apply
+#   本番環境: pnpm keycloak:prod:plan && pnpm keycloak:prod:apply
 
 terraform {
   required_version = ">= 1.9.0"

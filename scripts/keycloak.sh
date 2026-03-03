@@ -99,7 +99,7 @@ esac
 
 case "$COMMAND" in
   init)
-    [ "$ENV" = "local" ] && rm -rf .terraform .terraform.lock.hcl 2>/dev/null || true
+    [ "$ENV" = "local" ] && rm -rf .terraform 2>/dev/null || true
     terraform init
     ;;
   plan)
