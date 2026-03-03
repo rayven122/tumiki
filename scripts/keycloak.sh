@@ -116,7 +116,12 @@ case "$COMMAND" in
     ;;
   destroy)
     export_tf_vars
-    terraform destroy -auto-approve "$@"
+    if [ "$ENV" = "prod" ] || [ "$ENV" = "production" ]; then
+      log_warn "本番環境のdestroyはTerraform Cloud UI経由を推奨します"
+      terraform destroy "$@"
+    else
+      terraform destroy -auto-approve "$@"
+    fi
     ;;
   *)
     usage
