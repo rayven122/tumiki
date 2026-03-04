@@ -16,3 +16,6 @@ override.tf.json
 *.auto.tfvars.json
 secret.tfvars
 secrets.tfvars
+
+# Local dev temporary files
+cloud.tf.disabled
