@@ -1,6 +1,7 @@
 /**
  * VRMA アニメーション管理クラス
  * VRM アバターのアニメーション再生を管理
+ * 会話連動ジェスチャーの優先再生をサポート
  */
 
 import * as THREE from "three";
@@ -22,6 +23,8 @@ export class VRMAAnimationManager {
   private clock: THREE.Clock;
   private isRunning = false;
   private animationPaths: readonly string[];
+  // 優先アニメーション再生中フラグ（再生完了後にアイドルに戻る）
+  private isPriorityPlaying = false;
 
   /**
    * @param vrm VRMインスタンス
@@ -69,6 +72,43 @@ export class VRMAAnimationManager {
   }
 
   /**
+   * 読み込み済みアニメーション数を取得
+   */
+  getClipCount(): number {
+    return this.clips.length;
+  }
+
+  /**
+   * 指定インデックスのアニメーションを再生
+   * @param index クリップのインデックス
+   * @param priority trueの場合、再生完了までアイドルループを一時停止
+   * @param fadeIn フェードイン時間（秒）
+   */
+  playAnimationByIndex(
+    index: number,
+    priority = false,
+    fadeIn = 0.3,
+  ): void {
+    if (index < 0 || index >= this.clips.length) return;
+
+    const clip = this.clips[index];
+    if (!clip) return;
+
+    // 現在のアニメーションをフェードアウト
+    if (this.currentAction) {
+      this.currentAction.fadeOut(fadeIn);
+    }
+
+    const action = this.mixer.clipAction(clip);
+    action.setLoop(THREE.LoopOnce, 1);
+    action.clampWhenFinished = true;
+    action.reset().fadeIn(fadeIn).play();
+
+    this.currentAction = action;
+    this.isPriorityPlaying = priority;
+  }
+
+  /**
    * ランダムなアニメーションを再生
    */
   private playRandomAnimation(): void {
@@ -111,13 +151,18 @@ export class VRMAAnimationManager {
     const playNext = () => {
       if (!this.isRunning) return;
 
-      this.playRandomAnimation();
+      // 優先アニメーション再生中はスキップ
+      if (!this.isPriorityPlaying) {
+        this.playRandomAnimation();
+      }
 
       // アニメーション終了を監視して次を再生
       const checkEnd = () => {
         if (!this.isRunning) return;
 
         if (!this.currentAction?.isRunning()) {
+          // 優先再生が終了したらフラグを解除
+          this.isPriorityPlaying = false;
           playNext();
         } else {
           setTimeout(checkEnd, 100);
