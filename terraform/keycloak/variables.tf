@@ -97,6 +97,19 @@ variable "ssl_required" {
   default     = "none"
 }
 
+# テーマ設定
+variable "login_theme" {
+  description = "ログイン画面テーマ"
+  type        = string
+  default     = "tumiki"
+}
+
+variable "account_theme" {
+  description = "アカウント管理画面テーマ"
+  type        = string
+  default     = "tumiki"
+}
+
 # テストユーザー設定
 variable "test_user_email" {
   description = "テストユーザーのメールアドレス"
