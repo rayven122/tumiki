@@ -46,9 +46,11 @@ COPY packages/db/prisma.config.ts ./packages/db/
 COPY packages/db/prisma ./packages/db/prisma
 
 # Prisma postinstall と next build 用のダミー環境変数（実際の接続には使用されない）
+# NEXT_PUBLIC_TUMIKI_EDITION=ee: EE版としてビルド（CE版のwebpackプラグインを無効化）
 RUN printf '%s\n' \
   "DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder" \
   "PRISMA_FIELD_ENCRYPTION_KEY=k1.aesgcm256.FkhfY-sKgaYBJYteXBGudV6g_oBOW1TjU74hbowUl8s=" \
+  "NEXT_PUBLIC_TUMIKI_EDITION=ee" \
   > .env
 
 # Python MCP インストールをスキップ
