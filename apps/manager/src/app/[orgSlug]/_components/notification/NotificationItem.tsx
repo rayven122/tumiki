@@ -3,7 +3,7 @@
 import { formatDistanceToNow } from "date-fns";
 import { ja } from "date-fns/locale";
 import { useRouter } from "next/navigation";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@tumiki/ui/avatar";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 import type { NotificationPriority } from "@tumiki/db/prisma";
@@ -45,10 +45,10 @@ export const NotificationItem = ({
 }: NotificationItemProps) => {
   const router = useRouter();
   const utils = api.useUtils();
-  const markAsRead = api.v2.notification.markAsRead.useMutation({
+  const markAsRead = api.notification.markAsRead.useMutation({
     onSuccess: async () => {
-      await utils.v2.notification.getNotifications.invalidate();
-      await utils.v2.notification.getUnreadCount.invalidate();
+      await utils.notification.getNotifications.invalidate();
+      await utils.notification.getUnreadCount.invalidate();
       onRead?.();
     },
   });

@@ -8,10 +8,8 @@
 export {
   getMcpServerOrganization,
   checkOrganizationMembership,
-  invalidateOrganizationMembershipCache,
-  invalidateMcpServerCache,
   getTemplateInstanceById,
-  invalidateTemplateInstanceCache,
+  getMcpServerBySlug,
 } from "./mcpServerRepository.js";
 
 export type {
@@ -31,8 +29,35 @@ export {
 export { checkPermission } from "./permissionRepository.js";
 
 // ユーザー関連
+export { getUserIdFromKeycloakId, getUserIdByEmail } from "./userRepository.js";
+
+// エージェント関連
 export {
-  getUserIdFromKeycloakId,
-  getUserIdByEmail,
-  invalidateKeycloakUserCache,
-} from "./userRepository.js";
+  findAgentForExecution,
+  updateAgentEstimatedDuration,
+  getAgentNotificationConfig,
+} from "./agentRepository.js";
+
+export type {
+  AgentForExecution,
+  AgentNotificationConfig,
+} from "./agentRepository.js";
+
+// エージェント実行ログ関連
+export {
+  createPendingExecutionLog,
+  updateExecutionLogWithChat,
+  updateExecutionLogSimple,
+} from "./agentExecutionLogRepository.js";
+
+export type {
+  CreatePendingLogParams,
+  UpdateExecutionLogWithChatParams,
+  UpdateExecutionLogSimpleParams,
+  UpdateExecutionLogResult,
+} from "./agentExecutionLogRepository.js";
+
+// 組織関連
+export { getOrganizationSlackConfig } from "./organizationRepository.js";
+
+export type { OrganizationSlackConfig } from "./organizationRepository.js";

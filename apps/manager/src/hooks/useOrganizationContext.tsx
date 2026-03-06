@@ -4,24 +4,29 @@ import { createContext, useContext, type ReactNode } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import { api } from "@/trpc/react";
-import { toast } from "@/utils/client/toast";
+import { toast } from "@/lib/client/toast";
 import { type OrganizationId } from "@/schema/ids";
-import { type getUserOrganizationsOutputSchema } from "@/server/api/routers/v2/organization";
+// 循環依存を回避: barrel file からではなく直接スキーマファイルからインポート
+import { type getUserOrganizationsProtectedOutputSchema } from "@/features/organization/api/schemas";
 import { type z } from "zod";
 import { getSessionInfo } from "~/lib/auth/session-utils";
 
 // tRPCのZod型定義から型を生成
-type Organization = z.infer<typeof getUserOrganizationsOutputSchema>[number];
+type Organization = z.infer<
+  typeof getUserOrganizationsProtectedOutputSchema
+>[number];
+
+type CurrentOrganization = {
+  id: OrganizationId;
+  name: string;
+  isPersonal: boolean;
+  memberCount: number;
+  logoUrl: string | null;
+};
 
 type OrganizationContextType = {
   organizations: Organization[] | undefined;
-  currentOrganization: {
-    id: OrganizationId;
-    name: string;
-    isPersonal: boolean;
-    // isAdmin削除: JWTのrolesで判定（session.user.isOrganizationAdmin）
-    memberCount: number;
-  } | null;
+  currentOrganization: CurrentOrganization | null;
   setCurrentOrganization: (organizationId: OrganizationId) => void;
   isLoading: boolean;
   isSwitching: boolean;
@@ -52,32 +57,32 @@ export const OrganizationProvider = ({
 
   // 認証済みユーザーのみ組織リストを取得（パブリックページでは取得しない）
   const { data: organizations, isLoading } =
-    api.v2.organization.getUserOrganizations.useQuery(undefined, {
+    api.organization.getUserOrganizations.useQuery(undefined, {
       enabled: !isPublicPage && status === "authenticated" && !!session?.user,
       retry: false,
       refetchOnWindowFocus: false,
     });
 
-  // 現在の組織はsessionのorganizationIdから取得
-  // organizationsリストから詳細情報を補完
+  // セッションの組織IDから現在の組織情報を取得
   const { organizationId } = getSessionInfo(session);
-  const currentOrganization = organizationId
-    ? (() => {
-        const org = organizations?.find((o) => o.id === organizationId);
-        if (!org) return null;
-        return {
-          id: org.id,
-          name: org.name,
-          isPersonal: org.isPersonal,
-          // isAdmin削除: JWTのrolesで判定（session.user.tumiki.roles）
-          memberCount: org.memberCount,
-        };
-      })()
-    : null;
+  const currentOrganization = ((): CurrentOrganization | null => {
+    if (!organizationId) return null;
+
+    const org = organizations?.find((o) => o.id === organizationId);
+    if (!org) return null;
+
+    return {
+      id: org.id,
+      name: org.name,
+      isPersonal: org.isPersonal,
+      memberCount: org.memberCount,
+      logoUrl: org.logoUrl,
+    };
+  })();
 
   // デフォルト組織を設定するmutation
   const setDefaultOrgMutation =
-    api.v2.organization.setDefaultOrganization.useMutation({
+    api.organization.setDefaultOrganization.useMutation({
       onSuccess: async (data) => {
         toast.success("組織を切り替えました");
 

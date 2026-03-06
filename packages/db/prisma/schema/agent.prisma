@@ -1,0 +1,121 @@
+/**
+ * @namespace Agent
+ * AIエージェント関連のテーブル
+ */
+
+/// スケジュールのステータス
+/// @namespace Agent
+enum ScheduleStatus {
+  /// 有効
+  ACTIVE
+  /// 一時停止
+  PAUSED
+  /// 無効
+  DISABLED
+}
+
+/// AIエージェント定義
+/// システムプロンプト、MCPサーバー紐付け、定期バッチ設定を管理
+/// @namespace Agent
+model Agent {
+  id           String              @id @default(cuid())
+  /// エージェントの組織内スラグ（URL識別子）
+  slug         String
+  /// エージェント名
+  name         String
+  /// エージェントの説明
+  description  String?
+  /// アイコンパス
+  iconPath     String?
+  /// カスタムシステムプロンプト
+  systemPrompt String              @db.Text
+  /// ペルソナID（null = ペルソナなし）
+  personaId    String?
+  /// 使用するLLMモデルID（例: "anthropic/claude-3.5-haiku"）
+  modelId      String?
+  /// 可視性（共有設定）
+  visibility   McpServerVisibility @default(PRIVATE)
+  /// 推定実行時間（ミリ秒）- 初回は30秒、実行完了後に更新
+  estimatedDurationMs Int @default(30000)
+
+  /// Slack通知を有効化
+  enableSlackNotification    Boolean @default(false)
+  /// 通知先SlackチャンネルID（エージェントごとに設定）
+  slackNotificationChannelId String?
+  /// 通知先Slackチャンネル名（表示用）
+  slackNotificationChannelName String?
+  /// 失敗時のみ通知
+  notifyOnlyOnFailure        Boolean @default(false)
+
+  /// 組織ID
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  /// 作成者ID（作成者削除時はnullに）
+  createdById String?
+  createdBy   User?  @relation("AgentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  /// エージェントに紐づくMCPサーバー（暗黙的多対多）
+  mcpServers McpServer[]
+  /// スケジュール設定（定期バッチ用）
+  schedules AgentSchedule[]
+  /// バッチ実行履歴
+  executionLogs AgentExecutionLog[]
+  /// エージェント実行時のチャット履歴
+  chats Chat[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// 組織内でスラグはユニーク
+  @@unique([organizationId, slug])
+}
+
+/// スケジュール設定（定期バッチ用）
+/// @namespace Agent
+model AgentSchedule {
+  id      String @id @default(cuid())
+  agentId String
+  agent   Agent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  /// スケジュール名
+  name String
+  /// cron式（例: "0 9 * * 1-5" = 平日9時）
+  cronExpression String
+  /// タイムゾーン
+  timezone String @default("Asia/Tokyo")
+  /// スケジュールのステータス
+  status   ScheduleStatus @default(ACTIVE)
+
+  /// バッチ実行履歴
+  executionLogs AgentExecutionLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// バッチ実行履歴（メタデータのみ、詳細はChatに保存）
+/// @namespace Agent
+model AgentExecutionLog {
+  id      String @id @default(cuid())
+  agentId String
+  agent   Agent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  /// スケジュールID（スケジュール実行の場合）
+  scheduleId String?
+  schedule   AgentSchedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+
+  /// チャットID（実行詳細はChatのMessagesに保存）
+  chatId String? @unique
+  chat   Chat?   @relation(fields: [chatId], references: [id], onDelete: SetNull)
+
+  /// 使用したLLMモデルID（例: "anthropic/claude-3.5-haiku"）
+  modelId String?
+
+  /// 成功したかどうか（null = 実行中）
+  success Boolean?
+  /// 実行時間（ミリ秒）
+  durationMs Int?
+
+  createdAt DateTime @default(now())
+}

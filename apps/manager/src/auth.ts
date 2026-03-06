@@ -1,6 +1,6 @@
 import NextAuth from "next-auth";
 import Keycloak from "next-auth/providers/keycloak";
-import { getKeycloakEnv } from "~/utils/env";
+import { getKeycloakEnv } from "~/lib/env";
 import { createCustomAdapter } from "~/lib/auth/adapter";
 import { jwtCallback, sessionCallback } from "~/lib/auth/callbacks";
 import type { KeycloakProfile } from "~/lib/auth/types";
@@ -31,11 +31,14 @@ export const {
   signIn,
   signOut,
 } = NextAuth({
+  trustHost: true,
   providers: [
     Keycloak({
       clientId: keycloakEnv.KEYCLOAK_CLIENT_ID,
       clientSecret: keycloakEnv.KEYCLOAK_CLIENT_SECRET,
       issuer: keycloakEnv.KEYCLOAK_ISSUER,
+      // KeycloakでPKCEが必須設定のため有効化
+      checks: ["pkce", "state"],
       authorization: {
         params: {
           // Keycloakのログイン画面でログイン方法を選択

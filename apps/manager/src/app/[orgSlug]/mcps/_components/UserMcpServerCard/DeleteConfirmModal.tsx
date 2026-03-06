@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { Button } from "@tumiki/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -6,10 +6,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@tumiki/ui/dialog";
 import { AlertTriangleIcon } from "lucide-react";
 import { api } from "@/trpc/react";
-import { toast } from "@/utils/client/toast";
+import { toast } from "@/lib/client/toast";
 import type { McpServerId } from "@/schema/ids";
 
 type DeleteConfirmModalProps = {
@@ -30,7 +30,7 @@ export const DeleteConfirmModal = ({
   isLoading: customIsLoading,
 }: DeleteConfirmModalProps) => {
   const { mutate: deleteServerInstance, isPending } =
-    api.v2.userMcpServer.delete.useMutation({
+    api.userMcpServer.delete.useMutation({
       onSuccess: async () => {
         toast.success(`${serverName}のMCPサーバーを削除しました。`);
         await onSuccess?.();

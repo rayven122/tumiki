@@ -5,8 +5,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { UserMcpServerCard } from "../UserMcpServerCard";
 import type { RouterOutputs } from "@/trpc/react";
 
-type UserMcpServer =
-  RouterOutputs["v2"]["userMcpServer"]["findMcpServers"][number];
+type UserMcpServer = RouterOutputs["userMcpServer"]["findMcpServers"][number];
 
 type SortableServerCardProps = {
   userMcpServer: UserMcpServer;

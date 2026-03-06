@@ -1,15 +1,15 @@
 "use client";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@tumiki/ui/avatar";
+import { Button } from "@tumiki/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@tumiki/ui/dropdown-menu";
 import { Crown, UserMinus, Loader2, MoreVertical } from "lucide-react";
-import type { Member } from "../mock/mockOrgData";
+import type { Member } from "@/features/org-structure/utils/mock/mockOrgData";
 
 type MemberListProps = {
   members: Member[];

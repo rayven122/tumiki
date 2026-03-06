@@ -37,3 +37,13 @@ export const nameValidationSchema = z
     SERVER_NAME_REGEX,
     "名前には英数字、空白、ハイフン、アンダースコア、ドットのみ使用できます",
   );
+
+/**
+ * 日本語を含む名前で使用するバリデーション
+ * 1文字以上100文字以下の制限付き
+ * 日本語（ひらがな、カタカナ、漢字）、英数字、空白、ハイフン、アンダースコア、ドットを許可
+ */
+export const displayNameValidationSchema = z
+  .string()
+  .min(1, "名前を入力してください")
+  .max(100, "名前は100文字以内で入力してください");

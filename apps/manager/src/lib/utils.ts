@@ -1,11 +1,9 @@
-import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
 import type { Document } from "@tumiki/db/prisma";
 import { ChatSDKError, type ErrorCode } from "./errors";
 import { createId } from "@paralleldrive/cuid2";
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+
+// cn関数は @tumiki/ui から再エクスポート
+export { cn } from "@tumiki/ui";
 
 export const fetcher = async <T>(url: string): Promise<T> => {
   const response = await fetch(url);

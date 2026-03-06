@@ -73,6 +73,9 @@ model McpServer {
   /// 稼働中のMCPサーバー名
   /// @zod.string.min(1)
   name         String
+  /// URL用スラッグ（組織内でユニーク）
+  /// @zod.string.min(1).regex(/^[a-z0-9-]+$/)
+  slug         String
   /// サーバーの説明
   description  String
   /// アイコンパス
@@ -92,6 +95,9 @@ model McpServer {
   /// 組織
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
+  /// 作成者（既存データ対応のためオプショナル）
+  createdById String?
+  createdBy   User?   @relation("McpServerCreatedBy", fields: [createdById], references: [id])
   /// 表示順序（ユーザーごと）
   displayOrder   Int          @default(0)
 
@@ -120,12 +126,16 @@ model McpServer {
   mcpPermissions McpPermission[]
   /// チャットで利用される mcp server
   chats Chat[]
+  /// エージェントで利用される mcp server（暗黙的多対多）
+  agents Agent[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   /// 論理削除用のタイムスタンプ
   deletedAt DateTime?
 
+  /// 組織内でスラッグはユニーク
+  @@unique([organizationId, slug])
   @@index([deletedAt])
 }
 

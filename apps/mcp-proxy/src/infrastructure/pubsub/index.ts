@@ -12,14 +12,14 @@ let mcpLogsTopicInstance: Topic | null = null;
 
 /**
  * Pub/Subクライアントを取得
- * 必要な環境変数が設定されていない場合はnullを返す
+ * MCPログが有効な場合にクライアントを返す
  */
 const getPubSubClient = (): PubSub | null => {
   if (pubsubClient) {
     return pubsubClient;
   }
 
-  // BigQueryログが無効な場合はnullを返す
+  // MCPログが無効な場合はnullを返す
   if (!isBigQueryLoggingEnabled()) {
     return null;
   }
@@ -38,12 +38,15 @@ export const getMcpLogsTopic = (): Topic | null => {
     return mcpLogsTopicInstance;
   }
 
+  if (!isBigQueryLoggingEnabled()) {
+    return null;
+  }
+
   const client = getPubSubClient();
   if (!client) {
     return null;
   }
 
-  // PUBSUB_MCP_LOGS_TOPIC は必須（isBigQueryLoggingEnabled で既にチェック済み）
   const topicName = process.env.PUBSUB_MCP_LOGS_TOPIC;
   mcpLogsTopicInstance = client.topic(topicName!);
   return mcpLogsTopicInstance;

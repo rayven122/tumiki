@@ -1,7 +1,12 @@
 "use client";
 
-import { DefaultChatTransport } from "ai";
-import type { Attachment, ChatMessage } from "@/lib/types";
+import { DefaultChatTransport, type DataUIPart } from "ai";
+import type {
+  AgentInfo,
+  Attachment,
+  ChatMessage,
+  CustomUIDataTypes,
+} from "@/lib/types";
 import { useChat } from "@ai-sdk/react";
 import {
   useCallback,
@@ -11,11 +16,10 @@ import {
   lazy,
   Suspense,
 } from "react";
-import useSWR, { useSWRConfig } from "swr";
-import type { Vote } from "@tumiki/db/prisma";
-import { ChatQuickActions } from "./chat/ChatQuickActions";
+import { useSWRConfig } from "swr";
+import { ChatQuickActions } from "@/features/chat";
 import { SuggestedActions } from "./suggested-actions";
-import { fetcher, fetchWithErrorHandlers, generateCUID } from "@/lib/utils";
+import { fetchWithErrorHandlers, generateCUID } from "@/lib/utils";
 import { Artifact } from "./artifact";
 import { MultimodalInput } from "./multimodal-input";
 import { Messages } from "./messages";
@@ -30,12 +34,18 @@ import { useAutoResume } from "@/hooks/use-auto-resume";
 import { ChatSDKError } from "@/lib/errors";
 import type { SessionData } from "~/auth";
 import { useDataStream } from "./data-stream-provider";
-import { CoharuProvider, useCoharuContext } from "@/hooks/coharu";
+import { CoharuProvider, useCoharuContext } from "@/features/avatar/hooks";
 import { useChatPreferences } from "@/hooks/useChatPreferences";
+import { getProxyServerUrl } from "@/lib/url";
+import {
+  isAutoModel,
+  selectModelByTask,
+} from "@/features/chat/services/ai/auto-model-selector";
+import { DEFAULT_CHAT_MODEL } from "@/features/chat/services/ai/index.client";
 
 // CoharuViewer を動的インポート（Three.js のバンドルサイズ最適化）
 const CoharuViewer = lazy(() =>
-  import("@/components/coharu/CoharuViewer").then((mod) => ({
+  import("@/features/avatar/components/CoharuViewer").then((mod) => ({
     default: mod.CoharuViewer,
   })),
 );
@@ -53,6 +63,7 @@ type ChatProps = {
   autoResume: boolean;
   isPersonalOrg: boolean;
   isNewChat?: boolean;
+  agentInfo?: AgentInfo;
 };
 
 export function Chat(props: ChatProps) {
@@ -76,6 +87,7 @@ function ChatContent({
   autoResume,
   isPersonalOrg,
   isNewChat = false,
+  agentInfo,
 }: ChatProps) {
   const { mutate } = useSWRConfig();
   const { setDataStream } = useDataStream();
@@ -89,21 +101,11 @@ function ChatContent({
     stopSpeaking,
   } = useCoharuContext();
 
-  // Coharu の状態を ref で保持（useChat のコールバック内で最新値を参照するため）
+  // useChat のコールバック内で最新値を参照するための ref
   const isCoharuEnabledRef = useRef(isCoharuEnabled);
+  isCoharuEnabledRef.current = isCoharuEnabled;
   const speakRef = useRef(speak);
-
-  // ref を最新の値で更新
-  useEffect(() => {
-    isCoharuEnabledRef.current = isCoharuEnabled;
-  }, [isCoharuEnabled]);
-
-  useEffect(() => {
-    speakRef.current = speak;
-  }, [speak]);
-
-  // MCPサーバーIDsを ref で保持（useChat のコールバック内で最新値を参照するため）
-  const selectedMcpServerIdsRef = useRef<string[]>([]);
+  speakRef.current = speak;
 
   // ストリーミング中のTTS用状態
   // 蓄積中のテキスト
@@ -117,6 +119,8 @@ function ChatContent({
     setChatModel: setStoredChatModel,
     mcpServerIds: storedMcpServerIds,
     setMcpServerIds: setStoredMcpServerIds,
+    personaId: storedPersonaId,
+    setPersonaId: setStoredPersonaId,
   } = useChatPreferences({ organizationId });
 
   // 既存チャットのモデル変更用ローカル状態（LocalStorageには保存しない）
@@ -129,16 +133,25 @@ function ChatContent({
     ? storedMcpServerIds
     : initialMcpServerIds;
 
-  // ref を最新の値で更新（useChat のコールバック内で最新値を参照するため）
-  useEffect(() => {
-    selectedMcpServerIdsRef.current = selectedMcpServerIds;
-  }, [selectedMcpServerIds]);
+  // ペルソナはLocalStorageの値を常に使用（モデルと同じ管理方式）
+  const selectedPersonaId = storedPersonaId;
+
+  // useChat のコールバック内で最新値を参照するための ref
+  const selectedMcpServerIdsRef = useRef(selectedMcpServerIds);
+  selectedMcpServerIdsRef.current = selectedMcpServerIds;
+  const selectedPersonaIdRef = useRef(selectedPersonaId);
+  selectedPersonaIdRef.current = selectedPersonaId;
+  const selectedChatModelRef = useRef(selectedChatModel);
+  selectedChatModelRef.current = selectedChatModel;
 
   const { visibilityType } = useChatVisibility({
     chatId: id,
     initialVisibilityType,
     organizationId,
   });
+
+  // mcp-proxy の URL を取得
+  const mcpProxyUrl = getProxyServerUrl();
 
   const {
     messages,
@@ -154,27 +167,71 @@ function ChatContent({
     experimental_throttle: 100,
     generateId: generateCUID,
     transport: new DefaultChatTransport({
-      api: "/api/chat",
-      fetch: fetchWithErrorHandlers,
+      api: `${mcpProxyUrl}/chat`,
+      fetch: (url, options) => {
+        // mcp-proxy への認証ヘッダーを追加
+        const headers = new Headers(options?.headers);
+        if (session.accessToken) {
+          headers.set("Authorization", `Bearer ${session.accessToken}`);
+        }
+        return fetchWithErrorHandlers(url, {
+          ...options,
+          headers,
+        });
+      },
       prepareSendMessagesRequest(request) {
         const lastMessage = request.messages.at(-1);
+
+        // メッセージからテキストを抽出
+        const messageText =
+          lastMessage?.parts
+            ?.filter(
+              (part): part is { type: "text"; text: string } =>
+                part.type === "text",
+            )
+            .map((part) => part.text)
+            .join("") ?? "";
+
+        // 添付ファイルの有無を判定
+        const hasAttachments =
+          lastMessage?.parts?.some((part) => part.type === "file") ?? false;
+
+        // 自動モデル選択の場合、タスクに応じてモデルを決定
+        const currentModel = selectedChatModelRef.current;
+        const actualModel = isAutoModel(currentModel)
+          ? (() => {
+              try {
+                return selectModelByTask({
+                  messageText,
+                  mcpToolCount: selectedMcpServerIdsRef.current.length,
+                  hasAttachments,
+                  conversationLength: request.messages.length,
+                });
+              } catch {
+                // 自動選択に失敗した場合はデフォルトモデルにフォールバック
+                return DEFAULT_CHAT_MODEL;
+              }
+            })()
+          : currentModel;
 
         return {
           body: {
             id: request.id,
             organizationId,
             message: lastMessage,
-            selectedChatModel,
+            selectedChatModel: actualModel,
             selectedVisibilityType: visibilityType,
             selectedMcpServerIds: selectedMcpServerIdsRef.current,
-            isCoharuEnabled: isCoharuEnabledRef.current,
+            personaId: selectedPersonaIdRef.current,
             ...request.body,
           },
         };
       },
     }),
     onData: (dataPart) => {
-      setDataStream((ds) => (ds ? [...ds, dataPart] : []));
+      setDataStream((ds) =>
+        ds ? [...ds, dataPart as DataUIPart<CustomUIDataTypes>] : [],
+      );
     },
     onFinish: () => {
       mutate(unstable_serialize(getChatHistoryPaginationKey(organizationId)));
@@ -205,11 +262,6 @@ function ChatContent({
       window.history.replaceState({}, "", `/${orgSlug}/chat/${id}`);
     }
   }, [query, sendMessage, hasAppendedQuery, id, orgSlug]);
-
-  const { data: votes } = useSWR<Array<Vote>>(
-    messages.length >= 2 ? `/api/vote?chatId=${id}` : null,
-    fetcher,
-  );
 
   const [attachments, setAttachments] = useState<Array<Attachment>>([]);
   const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
@@ -297,6 +349,16 @@ function ChatContent({
     [isNewChat, setStoredChatModel],
   );
 
+  // ペルソナ変更ハンドラ（新規チャットのみ変更可能）
+  const handlePersonaChange = useCallback(
+    (id: string | undefined) => {
+      if (isNewChat) {
+        setStoredPersonaId(id);
+      }
+    },
+    [isNewChat, setStoredPersonaId],
+  );
+
   // MCPサーバー選択変更ハンドラ（新規チャットのみ変更可能）
   // 注意: 既存チャットでは UI 側で disabled にしているため、この関数は新規チャット時のみ呼ばれる
   const handleMcpServerSelectionChange = useCallback(
@@ -353,6 +415,8 @@ function ChatContent({
                       onMcpServerSelectionChange={
                         handleMcpServerSelectionChange
                       }
+                      selectedPersonaId={selectedPersonaId}
+                      onPersonaChange={handlePersonaChange}
                       isNewChat={isNewChat}
                     />
 
@@ -383,55 +447,57 @@ function ChatContent({
             </div>
           ) : (
             <>
+              {/* 右上: 公開設定・シェアボタン */}
+              {!isReadonly && (
+                <div className="flex justify-end px-4 pt-2">
+                  <ChatQuickActions
+                    chatId={id}
+                    organizationId={organizationId}
+                    isPersonalOrg={isPersonalOrg}
+                    selectedVisibilityType={initialVisibilityType}
+                    isNewChat={false}
+                    isReadonly={isReadonly}
+                  />
+                </div>
+              )}
+
               <Messages
                 chatId={id}
                 status={status}
-                votes={votes}
                 messages={messages}
                 setMessages={setMessages}
                 regenerate={regenerate}
                 isReadonly={isReadonly}
                 isArtifactVisible={isArtifactVisible}
+                agentInfo={agentInfo}
               />
 
               <form className="bg-background mx-auto flex w-full flex-col gap-2 px-4 pb-4 md:max-w-3xl md:pb-6">
                 {!isReadonly && (
-                  <>
-                    <MultimodalInput
-                      chatId={id}
-                      orgSlug={orgSlug}
-                      input={input}
-                      setInput={setInput}
-                      sendMessage={sendMessage}
-                      status={status}
-                      stop={stop}
-                      attachments={attachments}
-                      setAttachments={setAttachments}
-                      messages={messages}
-                      setMessages={setMessages}
-                      selectedVisibilityType={visibilityType}
-                      isSpeaking={isSpeaking}
-                      stopSpeaking={stopSpeaking}
-                      session={session}
-                      selectedModelId={selectedChatModel}
-                      onModelChange={handleModelChange}
-                      selectedMcpServerIds={selectedMcpServerIds}
-                      onMcpServerSelectionChange={
-                        handleMcpServerSelectionChange
-                      }
-                      isNewChat={false}
-                    />
-
-                    {/* クイックアクション */}
-                    <ChatQuickActions
-                      chatId={id}
-                      organizationId={organizationId}
-                      isPersonalOrg={isPersonalOrg}
-                      selectedVisibilityType={initialVisibilityType}
-                      isNewChat={false}
-                      isReadonly={isReadonly}
-                    />
-                  </>
+                  <MultimodalInput
+                    chatId={id}
+                    orgSlug={orgSlug}
+                    input={input}
+                    setInput={setInput}
+                    sendMessage={sendMessage}
+                    status={status}
+                    stop={stop}
+                    attachments={attachments}
+                    setAttachments={setAttachments}
+                    messages={messages}
+                    setMessages={setMessages}
+                    selectedVisibilityType={visibilityType}
+                    isSpeaking={isSpeaking}
+                    stopSpeaking={stopSpeaking}
+                    session={session}
+                    selectedModelId={selectedChatModel}
+                    onModelChange={handleModelChange}
+                    selectedMcpServerIds={selectedMcpServerIds}
+                    onMcpServerSelectionChange={handleMcpServerSelectionChange}
+                    selectedPersonaId={selectedPersonaId}
+                    onPersonaChange={handlePersonaChange}
+                    isNewChat={false}
+                  />
                 )}
               </form>
             </>
@@ -469,7 +535,6 @@ function ChatContent({
         messages={messages}
         setMessages={setMessages}
         regenerate={regenerate}
-        votes={votes}
         isReadonly={isReadonly}
         selectedVisibilityType={visibilityType}
       />

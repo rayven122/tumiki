@@ -2,7 +2,7 @@ import {
   SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "./ui/chat/sidebar";
+} from "@/features/chat/components/Sidebar";
 import Link from "next/link";
 import {
   DropdownMenu,
@@ -13,8 +13,9 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from "./ui/chat/dropdown-menu";
+} from "@tumiki/ui/dropdown-menu";
 import {
+  BotIcon,
   CheckCircleFillIcon,
   GlobeIcon,
   LockIcon,
@@ -25,7 +26,7 @@ import {
 } from "./icons";
 import { memo } from "react";
 import { useChatVisibility } from "@/hooks/use-chat-visibility";
-import type { ChatWithUser } from "./sidebar-history";
+import type { ChatWithUser } from "@/lib/types/chat";
 
 const PureChatItem = ({
   chat,
@@ -60,13 +61,27 @@ const PureChatItem = ({
           href={`/${orgSlug}/chat/${chat.id}`}
           onClick={() => setOpenMobile(false)}
         >
-          <div className="flex flex-col gap-0.5">
-            <span className="truncate">{chat.title}</span>
-            {isOrganizationShared && chat.user.name && (
-              <span className="text-muted-foreground text-xs">
-                {chat.user.name}
-              </span>
+          <div className="flex items-start gap-2">
+            {chat.agent && (
+              <div className="text-muted-foreground mt-0.5 shrink-0">
+                <BotIcon />
+              </div>
             )}
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <span className="truncate">{chat.title}</span>
+              {chat.agent ? (
+                <span className="text-muted-foreground truncate text-xs">
+                  {chat.agent.name}
+                </span>
+              ) : (
+                isOrganizationShared &&
+                chat.user.name && (
+                  <span className="text-muted-foreground text-xs">
+                    {chat.user.name}
+                  </span>
+                )
+              )}
+            </div>
           </div>
         </Link>
       </SidebarMenuButton>
@@ -158,5 +173,6 @@ const PureChatItem = ({
 export const ChatItem = memo(PureChatItem, (prevProps, nextProps) => {
   if (prevProps.isActive !== nextProps.isActive) return false;
   if (prevProps.chat.visibility !== nextProps.chat.visibility) return false;
+  if (prevProps.chat.agent?.id !== nextProps.chat.agent?.id) return false;
   return true;
 });

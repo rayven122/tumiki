@@ -91,7 +91,6 @@ import {
   getInternalToolsForDynamicSearch,
 } from "../../../queries/listTools/listToolsQuery.js";
 import { ReAuthRequiredError } from "@tumiki/oauth-token-manager";
-import { DomainError } from "../../../../../domain/errors/domainError.js";
 
 describe("listToolsQuery", () => {
   const mcpServerId = "server-123";
@@ -312,6 +311,7 @@ describe("callToolCommand", () => {
 
   const createTemplateInstance = (overrides = {}) => ({
     id: "instance-id-1",
+    isEnabled: true,
     mcpServer: { organizationId: "org-123" },
     mcpServerTemplate: {
       id: "template-1",

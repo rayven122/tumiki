@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { api } from "@/trpc/react";
-import { toast } from "@/utils/client/toast";
-import { normalizeServerName } from "@/utils/normalizeServerName";
+import { toast } from "@/lib/client/toast";
+import { normalizeServerName } from "@tumiki/shared/utils/normalizeServerName";
+import { normalizeSlug } from "@tumiki/db/utils/slug";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@tumiki/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -11,9 +12,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from "@tumiki/ui/dialog";
+import { Input } from "@tumiki/ui/input";
+import { Label } from "@tumiki/ui/label";
 import { type McpServerId } from "@/schema/ids";
 
 type NameEditModalProps = {
@@ -32,7 +33,7 @@ export const NameEditModal = ({
   const [newName, setNewName] = useState(initialName);
 
   const { mutate: updateServerName, isPending } =
-    api.v2.userMcpServer.updateName.useMutation({
+    api.userMcpServer.updateName.useMutation({
       onSuccess: async () => {
         await onSuccess?.();
         toast.success("サーバー名を更新しました。");
@@ -70,13 +71,30 @@ export const NameEditModal = ({
             <p className="text-muted-foreground text-xs">
               表示されるサーバー名を設定できます（空白や大文字を含むことができます）
             </p>
-            <div className="bg-muted rounded-md px-3 py-2">
-              <p className="text-muted-foreground text-xs font-medium">
-                MCPサーバー識別子
-              </p>
-              <p className="font-mono text-sm">
-                {normalizeServerName(newName)}
-              </p>
+            <div className="space-y-2">
+              <div className="bg-muted rounded-md px-3 py-2">
+                <p className="text-muted-foreground text-xs font-medium">
+                  MCPサーバー識別子
+                </p>
+                <p className="font-mono text-sm">
+                  {normalizeServerName(newName)}
+                </p>
+              </div>
+              <div className="bg-muted rounded-md px-3 py-2">
+                <p className="text-muted-foreground text-xs font-medium">
+                  URLエイリアス
+                </p>
+                <p className="font-mono text-sm">
+                  {normalizeSlug(newName) || (
+                    <span className="text-muted-foreground italic">
+                      （自動生成されます）
+                    </span>
+                  )}
+                </p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  ※ エイリアスはサーバー名の変更に伴い自動更新されます
+                </p>
+              </div>
             </div>
           </div>
         </div>

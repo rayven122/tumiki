@@ -1,24 +1,39 @@
 ---
 allowed-tools: Bash(git:*), Task, Skill
-description: "Linear Issueから実装・PR作成まで自動実行"
+description: "Linear Issueまたはプロンプトから実装・PR作成まで自動実行"
 ---
 
 ## 引数
 
-- **`<Linear URL または Issue ID>`**: 対象のLinear Issue（必須）
-  - URL形式: `https://linear.app/workspace/issue/XXX-123/issue-title`
-  - ID形式: `XXX-123`
-- **`--no-test`**: テスト作成をスキップ
+以下のいずれかの形式で指定:
+
+1. **Linear Issue指定**（推奨）
+   - URL形式: `https://linear.app/workspace/issue/XXX-123/issue-title`
+   - ID形式: `XXX-123`
+
+2. **プロンプト指定**
+   - 自由形式のタスク説明を直接記述
+   - 例: `/issue-to-pr ユーザー認証機能を追加`
+   - 例: `/issue-to-pr ログイン画面にパスワードリセットリンクを追加する`
 
 ## 実行フロー
 
 ### 1. 実装計画作成
+
+**Linear Issue指定の場合**:
 
 ```
 Skill tool:
 - skill: plan-issue
 - args: <Linear URL または Issue ID>
 ```
+
+**プロンプト指定の場合**:
+
+1. 指定されたプロンプトを分析
+2. 関連するコードを調査（Glob, Grep, Read）
+3. 実装計画を作成してユーザーに提示
+4. ブランチ名を提案: `feat/[簡潔な機能名]` または `fix/[簡潔な修正内容]`
 
 **ユーザーに計画を確認後、次のステップへ**。
 
@@ -65,11 +80,12 @@ Create an agent team for parallel implementation:
 ```
 
 **各implementerの処理:**
+
 1. コード実装
 2. tumiki-code-simplifier（簡素化）
 3. code-quality-enhancer（品質チェック）
 
-### 4. テスト作成（`--no-test`以外）
+### 4. テスト作成
 
 **単一機能の場合**:
 
@@ -96,6 +112,7 @@ Create an agent team for parallel test writing:
 ```
 
 **各unit-test-writerの処理:**
+
 1. テスト作成
 2. tumiki-code-simplifier（簡素化）
 3. code-quality-enhancer（品質チェック）

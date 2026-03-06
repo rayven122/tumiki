@@ -6,26 +6,15 @@
 
 import { getInternalToolsForDynamicSearch } from "../../queries/listTools/listToolsQuery.js";
 import { wrapMcpError } from "../../../../shared/errors/wrapMcpError.js";
-
-// EE機能: Dynamic Search（条件付き動的ロード）
-// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-type DynamicSearchModule = typeof import("../../../dynamicSearch/index.ee.js");
-let dynamicSearchModuleCache: DynamicSearchModule | null = null;
-
-const loadDynamicSearchModule =
-  async (): Promise<DynamicSearchModule | null> => {
-    if (dynamicSearchModuleCache) {
-      return dynamicSearchModuleCache;
-    }
-    try {
-      dynamicSearchModuleCache = await import(
-        "../../../dynamicSearch/index.ee.js"
-      );
-      return dynamicSearchModuleCache;
-    } catch {
-      return null; // CE版では利用不可
-    }
-  };
+import { hasFeature } from "@tumiki/license";
+import {
+  searchTools,
+  describeTools,
+  executeToolDynamic,
+  SearchToolsArgsSchema,
+  DescribeToolsArgsSchema,
+  CallToolRequestParamsSchema,
+} from "../../../dynamicSearch/index.ee.js";
 
 /**
  * ツール実行結果の型
@@ -51,23 +40,13 @@ export const handleMetaTool = async (
   organizationId: string,
   userId: string,
 ): Promise<ToolCallResult> => {
+  // ライセンスチェック
+  if (!hasFeature("dynamic-search")) {
+    throw new Error("Dynamic Search is not available in Community Edition");
+  }
+
   try {
-    // EE版Dynamic Searchモジュールをロード
-    const dynamicSearch = await loadDynamicSearchModule();
-    if (!dynamicSearch) {
-      throw new Error("Dynamic Search is not available in Community Edition");
-    }
-
-    const {
-      searchTools,
-      describeTools,
-      executeToolDynamic,
-      SearchToolsArgsSchema,
-      DescribeToolsArgsSchema,
-      CallToolRequestParamsSchema,
-    } = dynamicSearch;
-
-    // 内部ツール一覧を取得（dynamicSearch が有効でも全ツールを取得）
+    // 内部ツール一覧を取得
     const internalTools = await getInternalToolsForDynamicSearch(mcpServerId);
 
     switch (toolName) {

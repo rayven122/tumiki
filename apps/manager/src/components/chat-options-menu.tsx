@@ -4,14 +4,10 @@ import type React from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Monitor, Star, Sparkles, ChevronDown, Check } from "lucide-react";
-import { Button } from "@/components/ui/chat/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Button } from "@tumiki/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@tumiki/ui/popover";
 import { cn } from "@/lib/utils";
-import { useCoharuContext } from "@/hooks/coharu/useCoharuContext";
+import { useCoharuContext } from "@/features/avatar/hooks/useCoharuContext";
 
 type DisplayMode = "normal" | "coharu" | "avatar";
 
@@ -64,21 +60,17 @@ export const ChatOptionsMenu = ({
 
   // モード選択ハンドラ
   const handleModeSelect = (mode: DisplayMode) => {
+    setOpen(false);
+
     if (mode === "avatar") {
-      // アバターモードへ移動
-      setOpen(false);
-      if (isNewChat) {
-        router.push(`/${orgSlug}/avatar`);
-      } else {
-        router.push(`/${orgSlug}/avatar/${chatId}`);
-      }
-    } else if (mode === "coharu") {
-      setCoharuEnabled(true);
-      setOpen(false);
-    } else {
-      setCoharuEnabled(false);
-      setOpen(false);
+      const path = isNewChat
+        ? `/${orgSlug}/avatar`
+        : `/${orgSlug}/avatar/${chatId}`;
+      router.push(path);
+      return;
     }
+
+    setCoharuEnabled(mode === "coharu");
   };
 
   return (

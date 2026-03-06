@@ -171,3 +171,5 @@ apps/manager/public/coharu/vrm/*.vrm
 apps/manager/public/coharu/vrma/*.vrma
 !apps/manager/public/coharu/vrm/.gitkeep
 !apps/manager/public/coharu/vrma/.gitkeep
+
+.playwright-cli

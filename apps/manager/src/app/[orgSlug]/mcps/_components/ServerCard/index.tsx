@@ -1,8 +1,7 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@tumiki/ui/button";
 import type React from "react";
-import Image from "next/image";
 
 import {
   Card,
@@ -10,22 +9,15 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { LinkifiedText } from "@/components/ui/LinkifiedText";
+} from "@tumiki/ui/card";
+import { Badge } from "@tumiki/ui/badge";
+import { LinkifiedText } from "@/features/shared/components/LinkifiedText";
 import { useState } from "react";
 import { CreateServerModal } from "./CreateServerModal";
-import {
-  Server,
-  Wrench,
-  Building2,
-  Trash2,
-  MoreHorizontal,
-} from "lucide-react";
+import { Wrench, Building2, Trash2, MoreHorizontal } from "lucide-react";
 import { ToolsModal } from "./ToolsModal";
 import type { Prisma } from "@tumiki/db/prisma";
-import { AuthTypeBadge } from "./_components/AuthTypeBadge";
-import { FaviconImage } from "@/components/ui/FaviconImage";
+import { AuthTypeBadge } from "./ServerCardAuthTypeBadge";
 import {
   Dialog,
   DialogContent,
@@ -33,16 +25,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@tumiki/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@tumiki/ui/dropdown-menu";
 import { AlertTriangleIcon } from "lucide-react";
 import { api } from "@/trpc/react";
-import { toast } from "@/utils/client/toast";
+import { toast } from "@/lib/client/toast";
+import { EntityIcon } from "@/features/shared/components/EntityIcon";
 
 type McpServerTemplateWithTools = Prisma.McpServerTemplateGetPayload<{
   include: { mcpTools: true };
@@ -61,10 +54,10 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   const utils = api.useUtils();
-  const deleteTemplateMutation = api.v2.mcpServer.deleteTemplate.useMutation({
+  const deleteTemplateMutation = api.mcpServer.deleteTemplate.useMutation({
     onSuccess: async () => {
       toast.success(`${mcpServer.name}のテンプレートを削除しました。`);
-      await utils.v2.mcpServer.findAll.invalidate();
+      await utils.mcpServer.findAll.invalidate();
       setDeleteModalOpen(false);
     },
     onError: (error) => {
@@ -77,15 +70,6 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
     e.stopPropagation();
     deleteTemplateMutation.mutate({ templateId: mcpServer.id });
   };
-
-  // デフォルトアイコン（ファビコン取得失敗時のフォールバック）
-  const defaultIcon = (
-    <div className="rounded-md bg-gradient-to-br from-blue-500 to-purple-600 p-2">
-      <div className="flex h-8 w-8 items-center justify-center">
-        <Server className="h-4 w-4 text-white" />
-      </div>
-    </div>
-  );
 
   return (
     <Card
@@ -132,24 +116,14 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
       </div>
 
       <CardHeader className="flex flex-row items-center space-y-0 pb-2">
-        <div className="mr-2 rounded-md p-2">
-          {mcpServer.iconPath ? (
-            <Image
-              src={mcpServer.iconPath}
-              alt={mcpServer.name}
-              width={32}
-              height={32}
-            />
-          ) : (
-            <FaviconImage
-              url={mcpServer.url}
-              alt={mcpServer.name}
-              size={32}
-              fallback={defaultIcon}
-              className="rounded-md"
-            />
-          )}
-        </div>
+        <EntityIcon
+          iconPath={mcpServer.iconPath}
+          fallbackUrl={mcpServer.url}
+          type="mcp"
+          size="sm"
+          alt={mcpServer.name}
+          className="mr-2"
+        />
         <div className="min-w-0 flex-1 pr-24">
           <CardTitle className="truncate">{mcpServer.name}</CardTitle>
         </div>

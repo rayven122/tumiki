@@ -19,8 +19,8 @@ import { useLocalStorage, useWindowSize } from "usehooks-ts";
 
 import { ArrowUpIcon, PaperclipIcon, StopIcon } from "./icons";
 import { PreviewAttachment } from "./preview-attachment";
-import { Button } from "./ui/chat/button";
-import { Textarea } from "./ui/chat/textarea";
+import { Button } from "@tumiki/ui/button";
+import { Textarea } from "@tumiki/ui/textarea";
 import equal from "fast-deep-equal";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -31,6 +31,7 @@ import type { SessionData } from "~/auth";
 import { CompactModelSelector } from "./compact-model-selector";
 import { CompactMcpSelector } from "./compact-mcp-selector";
 import { ChatOptionsMenu } from "./chat-options-menu";
+import { PersonaSelector } from "./persona-selector";
 
 type MultimodalInputProps = {
   chatId: string;
@@ -57,6 +58,9 @@ type MultimodalInputProps = {
   /** MCPサーバー選択関連（オプショナル） */
   selectedMcpServerIds?: string[];
   onMcpServerSelectionChange?: (ids: string[]) => void;
+  /** ペルソナ選択関連（オプショナル） */
+  selectedPersonaId?: string;
+  onPersonaChange?: (id: string | undefined) => void;
   /** 新規チャットかどうか */
   isNewChat?: boolean;
 };
@@ -82,6 +86,8 @@ function PureMultimodalInput({
   onModelChange,
   selectedMcpServerIds,
   onMcpServerSelectionChange,
+  selectedPersonaId,
+  onPersonaChange,
   isNewChat = false,
 }: MultimodalInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -353,8 +359,13 @@ function PureMultimodalInput({
             />
           </div>
 
-          {/* 右側: モデル選択 + 送信/停止ボタン */}
+          {/* 右側: ペルソナ + モデル選択 + 送信/停止ボタン */}
           <div className="flex items-center gap-2">
+            <PersonaSelector
+              selectedPersonaId={selectedPersonaId}
+              onPersonaChange={onPersonaChange}
+              disabled={!isNewChat}
+            />
             {session && selectedModelId && (
               <CompactModelSelector
                 session={session}
@@ -363,12 +374,12 @@ function PureMultimodalInput({
               />
             )}
 
-            {status === "submitted" || isSpeaking ? (
+            {status !== "ready" || isSpeaking ? (
               <StopButton
                 stop={stop}
                 setMessages={setMessages}
                 stopSpeaking={stopSpeaking}
-                isGenerating={status === "submitted"}
+                isGenerating={status !== "ready"}
               />
             ) : (
               <SendButton
@@ -395,6 +406,8 @@ export const MultimodalInput = memo(
     if (prevProps.isSpeaking !== nextProps.isSpeaking) return false;
     if (prevProps.selectedModelId !== nextProps.selectedModelId) return false;
     if (!equal(prevProps.selectedMcpServerIds, nextProps.selectedMcpServerIds))
+      return false;
+    if (prevProps.selectedPersonaId !== nextProps.selectedPersonaId)
       return false;
     if (prevProps.isNewChat !== nextProps.isNewChat) return false;
 

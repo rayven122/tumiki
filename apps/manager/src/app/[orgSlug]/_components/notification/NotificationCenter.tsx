@@ -2,12 +2,8 @@
 
 import { Bell } from "lucide-react";
 import { useAtom } from "jotai";
-import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Button } from "@tumiki/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@tumiki/ui/popover";
 import { api } from "@/trpc/react";
 import { notificationPanelOpenAtom } from "@/store/notification";
 import { useAdaptivePolling } from "@/hooks/useAdaptivePolling";
@@ -26,7 +22,7 @@ export const NotificationCenter = () => {
   const pollingInterval = useAdaptivePolling();
 
   // 未読数を取得（アダプティブポーリング）
-  const { data } = api.v2.notification.getUnreadCount.useQuery(undefined, {
+  const { data } = api.notification.getUnreadCount.useQuery(undefined, {
     refetchInterval: pollingInterval || false,
     refetchOnWindowFocus: true,
   });

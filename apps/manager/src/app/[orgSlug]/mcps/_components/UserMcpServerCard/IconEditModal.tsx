@@ -8,11 +8,10 @@ import {
   type DragEvent,
 } from "react";
 import { api } from "@/trpc/react";
-import { toast } from "@/utils/client/toast";
-import Image from "next/image";
+import { toast } from "@/lib/client/toast";
 import { Upload, X } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@tumiki/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -20,13 +19,23 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+} from "@tumiki/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@tumiki/ui/tabs";
 import { type McpServerId } from "@/schema/ids";
 import { McpIconPicker } from "../McpIconPicker";
 import { McpServerIcon } from "../McpServerIcon";
-import { useImageUpload } from "./_hooks/useImageUpload";
+import { useImageUpload } from "./hooks/useImageUpload";
 import { cn } from "@/lib/utils";
+
+// 保存ボタンのラベルを取得（ネストした三項演算子を回避）
+const getSaveButtonLabel = (
+  isUploading: boolean,
+  isPending: boolean,
+): string => {
+  if (isUploading) return "アップロード中...";
+  if (isPending) return "保存中...";
+  return "保存";
+};
 
 type IconEditModalProps = {
   serverInstanceId: McpServerId;
@@ -76,7 +85,7 @@ export const IconEditModal = ({
   }, [localPreviewUrl]);
 
   const { mutate: updateIconPath, isPending } =
-    api.v2.userMcpServer.updateIconPath.useMutation({
+    api.userMcpServer.updateIconPath.useMutation({
       onSuccess: async () => {
         await onSuccess?.();
         toast.success("アイコンを更新しました。");
@@ -186,12 +195,10 @@ export const IconEditModal = ({
           <div className="flex h-16 w-16 items-center justify-center rounded-lg border-2 border-dashed">
             {/* アップロード待ちファイルがある場合はローカルプレビュー */}
             {localPreviewUrl ? (
-              <Image
-                src={localPreviewUrl}
+              <McpServerIcon
+                iconPath={localPreviewUrl}
                 alt="プレビュー"
-                width={48}
-                height={48}
-                className="rounded-md object-cover"
+                size={48}
               />
             ) : (
               <McpServerIcon
@@ -268,12 +275,10 @@ export const IconEditModal = ({
               {/* 選択済み画像のプレビュー（アップロード待ち） */}
               {pendingFile && localPreviewUrl && (
                 <div className="flex items-center gap-3 rounded-md border p-3">
-                  <Image
-                    src={localPreviewUrl}
+                  <McpServerIcon
+                    iconPath={localPreviewUrl}
                     alt="選択画像"
-                    width={40}
-                    height={40}
-                    className="rounded-md object-cover"
+                    size={40}
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">
@@ -305,12 +310,10 @@ export const IconEditModal = ({
                 selectedIconPath &&
                 !selectedIconPath.startsWith("lucide:") && (
                   <div className="flex items-center gap-3 rounded-md border p-3">
-                    <Image
-                      src={selectedIconPath}
+                    <McpServerIcon
+                      iconPath={selectedIconPath}
                       alt="現在の画像"
-                      width={40}
-                      height={40}
-                      className="rounded-md object-cover"
+                      size={40}
                     />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">
@@ -352,11 +355,7 @@ export const IconEditModal = ({
               onClick={() => void handleSave()}
               disabled={isButtonDisabled || !hasChanges}
             >
-              {isUploading
-                ? "アップロード中..."
-                : isPending
-                  ? "保存中..."
-                  : "保存"}
+              {getSaveButtonLabel(isUploading, isPending)}
             </Button>
           </div>
         </DialogFooter>

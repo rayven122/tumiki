@@ -64,7 +64,7 @@ export const GET = async (request: NextRequest) => {
     // currentUrlはトークン交換時に使用するため、環境変数ベースのURLを使用
     const callbackUrl = new URL("/api/oauth/callback", baseUrl);
     callbackUrl.search = request.nextUrl.search;
-    const result = await api.v2.oauth.handleCallback({
+    const result = await api.oauth.handleCallback({
       state,
       currentUrl: callbackUrl.toString(),
     });

@@ -15,12 +15,13 @@ sourcePatterns:
 
 各スキルには `sourcePatterns` が定義されており、対応するソースファイルが変更された場合にスキルの更新が必要になります。
 
-| スキル名 | 対応パターン |
-|----------|-------------|
+| スキル名                         | 対応パターン                                                                                                                                                                                                      |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | tumiki-custom-mcp-server-feature | `packages/db/prisma/schema/userMcpServer.prisma`, `apps/manager/src/server/api/routers/v2/userMcpServer/**`, `apps/manager/src/atoms/integratedFlowAtoms.ts`, `apps/manager/src/app/**/mcps/create-integrated/**` |
-| tumiki-dynamic-search-feature | `apps/mcp-proxy/src/features/dynamicSearch/**`, `apps/mcp-proxy/src/features/mcp/mcpRequestHandler.ts`, `apps/mcp-proxy/src/features/mcp/commands/callTool/callToolCommand.ts` |
-| tumiki-mcp-proxy-architecture | `apps/mcp-proxy/src/domain/**`, `apps/mcp-proxy/src/features/**`, `apps/mcp-proxy/src/infrastructure/**`, `apps/mcp-proxy/src/shared/**` |
-| tumiki-prisma-schema-changes | `packages/db/prisma/schema/*.prisma` |
+| tumiki-dynamic-search-feature    | `apps/mcp-proxy/src/features/dynamicSearch/**`, `apps/mcp-proxy/src/features/mcp/mcpRequestHandler.ts`, `apps/mcp-proxy/src/features/mcp/commands/callTool/**`                                                    |
+| tumiki-ee-ce-separation          | `apps/manager/src/**/*.ee.ts`, `apps/manager/src/features/ee/**`, `apps/manager/next.config.js`, `apps/manager/tsconfig.ce.json`                                                                                  |
+| tumiki-mcp-proxy-architecture    | `apps/mcp-proxy/src/domain/**`, `apps/mcp-proxy/src/features/**`, `apps/mcp-proxy/src/infrastructure/**`, `apps/mcp-proxy/src/shared/**`                                                                          |
+| tumiki-prisma-schema-changes     | `packages/db/prisma/schema/*.prisma`                                                                                                                                                                              |
 
 ## 変更検出の手順
 
@@ -133,13 +134,13 @@ const CreateIntegratedMcpServerInputV2 = z.object({
 
 ### 更新箇所
 
-| セクション | 更新タイミング |
-|-----------|---------------|
-| 主要な開発コマンド | 新しいnpm scriptの追加時 |
-| 開発ガイドライン | コーディング規約の追加・変更時 |
-| 重要なアーキテクチャパターン | 新しいアーキテクチャパターンの導入時 |
-| トラブルシューティング | 新しい問題と解決方法の発見時 |
-| 機能セクション（統合MCP、Dynamic Search等） | 該当機能の変更時 |
+| セクション                                  | 更新タイミング                       |
+| ------------------------------------------- | ------------------------------------ |
+| 主要な開発コマンド                          | 新しいnpm scriptの追加時             |
+| 開発ガイドライン                            | コーディング規約の追加・変更時       |
+| 重要なアーキテクチャパターン                | 新しいアーキテクチャパターンの導入時 |
+| トラブルシューティング                      | 新しい問題と解決方法の発見時         |
+| 機能セクション（統合MCP、Dynamic Search等） | 該当機能の変更時                     |
 
 ## 新しいスキル作成のガイドライン
 
@@ -164,25 +165,32 @@ sourcePatterns:
 # スキル名
 
 ## アーキテクチャ概要
+
 （全体像の説明）
 
 ## コンポーネント構成
+
 （ファイル構成）
 
 ## 型定義
+
 （主要な型）
 
 ## 実装詳細
+
 （コード例付きの詳細説明）
 
 ## 実装チェックリスト
+
 （確認事項）
 
 ## トラブルシューティング
+
 （よくある問題と解決方法）
 ```
 
 **重要**:
+
 - `name` フィールドは必須
 - トリガー条件は `description` に含める（bodyに「このスキルを使用する場面」セクションは不要）
 

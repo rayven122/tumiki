@@ -22,6 +22,8 @@ export type McpExecutionContext = {
   toolName?: string;
   transportType?: TransportType;
   method?: string;
+  /** AIツール呼び出しID（AI SDKが生成、チャットメッセージとの紐付け用） */
+  toolCallId?: string;
   httpStatus?: number;
   errorCode?: number;
   errorMessage?: string;

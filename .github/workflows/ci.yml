@@ -13,11 +13,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NODE_OPTIONS: --max-old-space-size=4096
-      TURBO_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      TURBO_TEAM: ${{ secrets.VERCEL_ORG_ID }}
     steps:
       - name: 📥 Checkout branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: ⚙️ Setup
         uses: ./.github/actions/setup
@@ -31,12 +29,9 @@ jobs:
   lint:
     name: 🔍 Lint
     runs-on: ubuntu-latest
-    env:
-      TURBO_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      TURBO_TEAM: ${{ secrets.VERCEL_ORG_ID }}
     steps:
       - name: 📥 Checkout branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: ⚙️ Setup
         uses: ./.github/actions/setup
@@ -50,12 +45,9 @@ jobs:
   format:
     name: 💅 Format
     runs-on: ubuntu-latest
-    env:
-      TURBO_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      TURBO_TEAM: ${{ secrets.VERCEL_ORG_ID }}
     steps:
       - name: 📥 Checkout branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: ⚙️ Setup
         uses: ./.github/actions/setup
@@ -68,11 +60,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NODE_OPTIONS: --max-old-space-size=4096
-      TURBO_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      TURBO_TEAM: ${{ secrets.VERCEL_ORG_ID }}
     steps:
       - name: 📥 Checkout branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: ⚙️ Setup
         uses: ./.github/actions/setup
@@ -86,12 +76,9 @@ jobs:
   test:
     name: 🧪 Test
     runs-on: ubuntu-latest
-    env:
-      TURBO_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      TURBO_TEAM: ${{ secrets.VERCEL_ORG_ID }}
     steps:
       - name: 📥 Checkout branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: ⚙️ Setup
         uses: ./.github/actions/setup

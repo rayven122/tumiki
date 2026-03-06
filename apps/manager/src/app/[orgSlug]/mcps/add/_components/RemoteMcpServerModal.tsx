@@ -3,33 +3,40 @@
 import { useState } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
 import type { TransportType } from "@tumiki/db/prisma";
+import { normalizeSlug } from "@tumiki/db/utils/slug";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@tumiki/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from "@tumiki/ui/dialog";
+import { Input } from "@tumiki/ui/input";
+import { Label } from "@tumiki/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@tumiki/ui/select";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/components/ui/accordion";
+} from "@tumiki/ui/accordion";
 import { toast } from "react-toastify";
-import { useCreateServerForm } from "@/app/[orgSlug]/mcps/_components/ServerCard/_hooks/useCreateServerForm";
-import { normalizeServerName } from "@/utils/normalizeServerName";
+import { useCreateServerForm } from "@/app/[orgSlug]/mcps/_components/ServerCard/hooks/useCreateServerForm";
+import { normalizeServerName } from "@tumiki/shared/utils/normalizeServerName";
+
+// 名前からslugを生成（日本語などの非ASCII文字はフォールバックでタイムスタンプ生成）
+const generateSlugFromName = (name: string): string => {
+  const normalized = normalizeSlug(name);
+  return normalized || `mcp-${Date.now().toString(36)}`;
+};
 
 type RemoteMcpServerModalProps = {
   open: boolean;
@@ -105,6 +112,8 @@ export const RemoteMcpServerModal = ({
       return;
     }
 
+    const slug = generateSlugFromName(name.trim());
+
     if (authMethod === "oauth") {
       // Client IDとClient Secretの整合性チェック
       if (
@@ -120,6 +129,7 @@ export const RemoteMcpServerModal = ({
       // OAuth認証フロー
       handleOAuthConnect({
         serverName: name.trim(),
+        slug,
         customUrl: url.trim(),
         transportType,
         clientId: clientId.trim() || undefined,
@@ -133,6 +143,7 @@ export const RemoteMcpServerModal = ({
       }
       handleAddWithApiKey({
         serverName: name.trim(),
+        slug,
         authType: "API_KEY",
         customUrl: url.trim(),
         transportType,
@@ -142,6 +153,7 @@ export const RemoteMcpServerModal = ({
       // NONE認証フロー
       handleAddWithApiKey({
         serverName: name.trim(),
+        slug,
         authType: "NONE",
         customUrl: url.trim(),
         transportType,

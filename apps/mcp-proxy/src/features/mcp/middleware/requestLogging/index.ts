@@ -5,3 +5,4 @@ export {
   runWithExecutionContext,
   type McpExecutionContext,
 } from "./context.js";
+export { logMcpRequest, type LogMcpRequestParams } from "./logMcpRequest.js";

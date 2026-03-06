@@ -5,6 +5,7 @@ description: UI実装時のUX心理学原則を活用し、ユーザー体験を
 # UX心理学原則 - UI実装リファレンス
 
 **このスキルを使用する場面：**
+
 - 新規機能のUI/UX設計時
 - ユーザーエンゲージメント向上の施策検討時
 - コンバージョンフローの最適化時
@@ -79,10 +80,10 @@ Tumiki はモバイル第一設計（最大幅428px）のため、以下に特�
 
 ```tsx
 // 最初から30%進んだ状態で開始 → ユーザーは達成感を感じやすい
-<div className="w-full bg-gray-200 rounded-full h-2">
+<div className="h-2 w-full rounded-full bg-gray-200">
   <div
-    className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-    style={{ width: '30%' }}
+    className="h-2 rounded-full bg-blue-500 transition-all duration-300"
+    style={{ width: "30%" }}
   />
 </div>
 ```
@@ -115,9 +116,7 @@ Tumiki はモバイル第一設計（最大幅428px）のため、以下に特�
 ```tsx
 // レビュー数と評価を表示
 <div className="flex items-center gap-2">
-  <div className="flex text-yellow-400">
-    {'★'.repeat(5)}
-  </div>
+  <div className="flex text-yellow-400">{"★".repeat(5)}</div>
   <span className="text-sm text-gray-600">4.8 (1,234件のレビュー)</span>
 </div>
 ```
@@ -129,26 +128,31 @@ Tumiki はモバイル第一設計（最大幅428px）のため、以下に特�
 UI実装時に以下の項目を確認してください：
 
 ### 視覚・認知
+
 - [ ] 視覚的階層は明確か（サイズ・色・余白で優先順位を表現）
 - [ ] 選択肢は適切な数か（モバイル: 2〜3個、デスクトップ: 3〜5個）
 - [ ] 一般的なUIパターンを踏襲しているか
 
 ### モバイル対応
+
 - [ ] タップターゲットは最小44x44px以上か
 - [ ] スマホ画面（428px以下）で表示確認したか
 - [ ] すべてのスタイリングがTailwind CSSクラスで実装されているか
 
 ### パフォーマンス
+
 - [ ] 反応は0.4秒以内か
 - [ ] ローディング時にスケルトンスクリーンを表示しているか
 - [ ] プログレス表示は必要か
 
 ### 意思決定・誘導
+
 - [ ] デフォルト値は最適か（推奨設定をデフォルトに）
 - [ ] 社会的証明を活用できるか（レビュー、利用者数など）
 - [ ] ポジティブなフレーミングになっているか
 
 ### 摩擦・抵抗
+
 - [ ] 重要操作に確認ダイアログを入れたか
 - [ ] 「後で」「スキップ」オプションはあるか
 - [ ] 強制感を与えていないか

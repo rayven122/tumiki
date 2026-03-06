@@ -41,7 +41,7 @@ export const useReauthenticateFromChat = ({
   const [isPending, setIsPending] = useState(false);
 
   const { mutate: reauthenticate } =
-    api.v2.oauth.reauthenticateByMcpServerId.useMutation({
+    api.oauth.reauthenticateByMcpServerId.useMutation({
       onMutate: () => {
         setIsPending(true);
       },

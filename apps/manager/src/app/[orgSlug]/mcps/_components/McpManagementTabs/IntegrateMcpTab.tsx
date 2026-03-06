@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@tumiki/ui/button";
+import { Input } from "@tumiki/ui/input";
+import { Label } from "@tumiki/ui/label";
 import { Loader2, Layers, CheckCircle2 } from "lucide-react";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
@@ -12,6 +12,7 @@ import type {
   McpServerTemplateWithTools,
   SelectableTemplate,
 } from "../IntegrateFromTemplatesModal/types";
+import { normalizeSlug } from "@tumiki/db/utils/slug";
 
 // テンプレートをSelectableTemplate形式に変換
 const convertToSelectableTemplate = (
@@ -46,6 +47,12 @@ const getSelectionMessage = (count: number): string => {
   return `${count}つのテンプレートを統合`;
 };
 
+// 名前からslugを生成（日本語などの非ASCII文字はフォールバックでタイムスタンプ生成）
+const generateSlugFromName = (name: string): string => {
+  const normalized = normalizeSlug(name);
+  return normalized || `integrated-${Date.now().toString(36)}`;
+};
+
 export const IntegrateMcpTab = () => {
   const [name, setName] = useState("");
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
@@ -53,13 +60,13 @@ export const IntegrateMcpTab = () => {
   const utils = api.useUtils();
 
   // テンプレート一覧を取得
-  const { data: mcpServerTemplates } = api.v2.mcpServer.findAll.useQuery();
+  const { data: mcpServerTemplates } = api.mcpServer.findAll.useQuery();
 
   const createMutation =
-    api.v2.userMcpServer.createIntegratedMcpServer.useMutation({
+    api.userMcpServer.createIntegratedMcpServer.useMutation({
       onSuccess: () => {
         toast.success("統合MCPを作成しました");
-        void utils.v2.userMcpServer.findMcpServers.invalidate();
+        void utils.userMcpServer.findMcpServers.invalidate();
         // 状態をリセット
         setName("");
         setSelectedTemplateIds([]);
@@ -128,6 +135,7 @@ export const IntegrateMcpTab = () => {
 
     createMutation.mutate({
       name: serverName,
+      slug: generateSlugFromName(serverName),
       templates,
     });
   };

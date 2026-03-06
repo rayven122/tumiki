@@ -23,7 +23,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/chat/tooltip";
+} from "@tumiki/ui/tooltip";
 
 import { ArrowUpIcon, StopIcon, SummarizeIcon } from "./icons";
 import { artifactDefinitions, type ArtifactKind } from "./artifact";

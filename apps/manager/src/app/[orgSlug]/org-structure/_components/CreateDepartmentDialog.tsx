@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@tumiki/ui/button";
+import { Input } from "@tumiki/ui/input";
+import { Label } from "@tumiki/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -11,18 +11,18 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@tumiki/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@tumiki/ui/select";
 import { Plus } from "lucide-react";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
-import { type Department } from "./mock/mockOrgData";
+import { type Department } from "@/features/org-structure/utils/mock/mockOrgData";
 import { IconPicker } from "./sidebar/IconPicker";
 
 type CreateDepartmentDialogProps = {
@@ -41,14 +41,14 @@ export const CreateDepartmentDialog = ({
 
   const utils = api.useUtils();
 
-  const createMutation = api.v2.group.create.useMutation({
+  const createMutation = api.group.create.useMutation({
     onSuccess: () => {
       setIsOpen(false);
       setName("");
       setParentGroupId(undefined);
       setIcon(undefined);
-      void utils.v2.group.list.invalidate();
-      void utils.v2.group.getMembers.invalidate();
+      void utils.group.list.invalidate();
+      void utils.group.getMembers.invalidate();
       toast.success("部署を作成しました");
     },
     onError: (error) => {

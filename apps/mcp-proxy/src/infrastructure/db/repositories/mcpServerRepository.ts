@@ -1,15 +1,13 @@
 /**
  * McpServer リポジトリ
  *
- * McpServer関連のDBクエリとRedisキャッシュを提供。
+ * McpServer関連のDBクエリを提供。
  * OAuth認証時にMcpServerからorganizationIdを取得するためのサービス。
- * Redis キャッシュで高速化（TTL: 5分）
  */
 
 import { db, type PiiMaskingMode, type AuthType } from "@tumiki/db/server";
-import { getRedisClient } from "../../cache/redis.js";
-import { withCache } from "../../cache/withCache.js";
-import { logDebug, logError, logWarn } from "../../../shared/logger/index.js";
+import { isCuid } from "@paralleldrive/cuid2";
+import { logError, logWarn } from "../../../shared/logger/index.js";
 
 /**
  * McpServer検索結果の型
@@ -28,24 +26,17 @@ export type McpServerLookupResult = {
 };
 
 /**
- * キャッシュ用のシリアライズ型（Date → string）
+ * McpServer検索用の共通select句
  */
-type CachedMcpServerResult = {
-  id: string;
-  organizationId: string;
-  deletedAt: string | null;
-  authType: AuthType;
-  piiMaskingMode: PiiMaskingMode;
-  piiInfoTypes: string[];
-  toonConversionEnabled: boolean;
-};
-
-// キャッシュのTTL（秒）
-const CACHE_TTL_SECONDS = 300; // 5分
-
-// ネガティブキャッシュの有効/無効
-// DISABLE_NEGATIVE_CACHE=true で無効化（開発環境向け）
-const ENABLE_NEGATIVE_CACHE = process.env.DISABLE_NEGATIVE_CACHE !== "true";
+const mcpServerSelectFields = {
+  id: true,
+  organizationId: true,
+  deletedAt: true,
+  authType: true,
+  piiMaskingMode: true,
+  piiInfoTypes: true,
+  toonConversionEnabled: true,
+} as const;
 
 /**
  * McpServerのorganizationIdを取得
@@ -56,72 +47,10 @@ const ENABLE_NEGATIVE_CACHE = process.env.DISABLE_NEGATIVE_CACHE !== "true";
 export const getMcpServerOrganization = async (
   mcpServerId: string,
 ): Promise<McpServerLookupResult | null> => {
-  const cacheKey = `mcpserver:org:${mcpServerId}`;
-  const redis = await getRedisClient();
-
-  return withCache<McpServerLookupResult>({
-    redis,
-    cacheKey,
-    ttlSeconds: CACHE_TTL_SECONDS,
-    fetch: () => getMcpServerFromDB(mcpServerId),
-    serialize: (result) =>
-      JSON.stringify({
-        id: result.id,
-        organizationId: result.organizationId,
-        deletedAt: result.deletedAt ? result.deletedAt.toISOString() : null,
-        authType: result.authType,
-        piiMaskingMode: result.piiMaskingMode,
-        piiInfoTypes: result.piiInfoTypes,
-        toonConversionEnabled: result.toonConversionEnabled,
-      } satisfies CachedMcpServerResult),
-    deserialize: (cached) => {
-      const parsed = JSON.parse(cached) as CachedMcpServerResult;
-      return {
-        id: parsed.id,
-        organizationId: parsed.organizationId,
-        deletedAt: parsed.deletedAt ? new Date(parsed.deletedAt) : null,
-        authType: parsed.authType,
-        piiMaskingMode: parsed.piiMaskingMode,
-        piiInfoTypes: parsed.piiInfoTypes,
-        toonConversionEnabled: parsed.toonConversionEnabled,
-      };
-    },
-    negativeCache: {
-      enabled: ENABLE_NEGATIVE_CACHE,
-      onBypass: () => {
-        logDebug("Negative cache ignored due to DISABLE_NEGATIVE_CACHE");
-      },
-    },
-    onHit: () => {
-      logDebug("McpServer cache hit", { cacheKey });
-    },
-    onReadError: (error) => {
-      logError("Redis cache error", error);
-    },
-    onWriteError: (error) => {
-      logError("Redis cache save error", error);
-    },
-  });
-};
-
-/**
- * DBからMcpServerを取得する内部関数
- */
-const getMcpServerFromDB = async (
-  mcpServerId: string,
-): Promise<McpServerLookupResult | null> => {
   try {
     const mcpServer = await db.mcpServer.findUnique({
       where: { id: mcpServerId },
-      select: {
-        id: true,
-        organizationId: true,
-        deletedAt: true,
-        authType: true,
-        piiMaskingMode: true,
-        piiInfoTypes: true,
-        toonConversionEnabled: true,
-      },
+      select: mcpServerSelectFields,
     });
 
     if (!mcpServer) {
@@ -149,98 +78,17 @@ export const checkOrganizationMembership = async (
   organizationId: string,
   userId: string,
 ): Promise<boolean> => {
-  const cacheKey = `orgmember:${organizationId}:${userId}`;
-  const redis = await getRedisClient();
-
-  const cached = await withCache<boolean>({
-    redis,
-    cacheKey,
-    ttlSeconds: CACHE_TTL_SECONDS,
-    fetch: async () => {
-      const member = await db.organizationMember.findUnique({
-        where: {
-          organizationId_userId: {
-            organizationId,
-            userId,
-          },
-        },
-        select: { id: true },
-      });
-
-      return member !== null;
+  const member = await db.organizationMember.findUnique({
+    where: {
+      organizationId_userId: {
+        organizationId,
+        userId,
+      },
     },
-    serialize: (isMember) => (isMember ? "true" : "false"),
-    deserialize: (cached) => cached === "true",
-    onHit: () => {
-      logDebug("Organization membership cache hit", { cacheKey });
-    },
-    onReadError: (error) => {
-      logError("Redis cache error for membership check", error);
-    },
-    onWriteError: (error) => {
-      logError("Redis cache save error for membership", error);
-    },
+    select: { id: true },
   });
 
-  return cached ?? false;
-};
-
-/**
- * 組織メンバーシップキャッシュを無効化
- *
- * メンバー追加・削除時に呼び出す。
- */
-export const invalidateOrganizationMembershipCache = async (
-  organizationId: string,
-  userId: string,
-): Promise<void> => {
-  const cacheKey = `orgmember:${organizationId}:${userId}`;
-
-  try {
-    const redis = await getRedisClient();
-    if (!redis) {
-      logDebug("Redis not available, skipping membership cache invalidation");
-      return;
-    }
-
-    await redis.del(cacheKey);
-    logDebug("Organization membership cache invalidated", {
-      organizationId,
-      userId,
-    });
-  } catch (error) {
-    logError(
-      "Failed to invalidate organization membership cache",
-      error as Error,
-      { organizationId, userId },
-    );
-  }
-};
-
-/**
- * McpServerキャッシュを無効化
- *
- * McpServer削除・更新時に呼び出す。
- */
-export const invalidateMcpServerCache = async (
-  mcpServerId: string,
-): Promise<void> => {
-  const cacheKey = `mcpserver:org:${mcpServerId}`;
-
-  try {
-    const redis = await getRedisClient();
-    if (!redis) {
-      logDebug("Redis not available, skipping cache invalidation");
-      return;
-    }
-
-    await redis.del(cacheKey);
-    logDebug("McpServer cache invalidated", { mcpServerId });
-  } catch (error) {
-    logError("Failed to invalidate McpServer cache", error as Error, {
-      mcpServerId,
-    });
-  }
+  return member !== null;
 };
 
 /**
@@ -261,40 +109,6 @@ export type TemplateInstanceLookupResult = {
  * @returns インスタンス情報（見つからない場合はnull）
  */
 export const getTemplateInstanceById = async (
-  instanceId: string,
-): Promise<TemplateInstanceLookupResult | null> => {
-  const cacheKey = `template:instance:${instanceId}`;
-  const redis = await getRedisClient();
-
-  return withCache<TemplateInstanceLookupResult>({
-    redis,
-    cacheKey,
-    ttlSeconds: CACHE_TTL_SECONDS,
-    fetch: () => getTemplateInstanceFromDB(instanceId),
-    serialize: (result) => JSON.stringify(result),
-    deserialize: (cached) => JSON.parse(cached) as TemplateInstanceLookupResult,
-    negativeCache: {
-      enabled: ENABLE_NEGATIVE_CACHE,
-      onBypass: () => {
-        logDebug("Negative cache ignored due to DISABLE_NEGATIVE_CACHE");
-      },
-    },
-    onHit: () => {
-      logDebug("Template instance cache hit", { cacheKey });
-    },
-    onReadError: (error) => {
-      logError("Redis cache error for template instance", error);
-    },
-    onWriteError: (error) => {
-      logError("Redis cache save error for template instance", error);
-    },
-  });
-};
-
-/**
- * DBから McpServerTemplateInstance を取得する内部関数
- */
-const getTemplateInstanceFromDB = async (
   instanceId: string,
 ): Promise<TemplateInstanceLookupResult | null> => {
   try {
@@ -323,29 +137,104 @@ const getTemplateInstanceFromDB = async (
 };
 
 /**
- * McpServerTemplateInstance キャッシュを無効化
+ * slugとorganizationIdでMcpServerを取得
  *
- * インスタンス削除・更新時に呼び出す。
+ * パスパラメータがslugに変更されたため、slugからMcpServerを検索する。
+ * 組織内でslugはユニークなので、organizationIdとslugの組み合わせで一意に特定可能。
+ *
+ * @param slug - MCP Server のslug
+ * @param organizationId - 組織ID
+ * @returns McpServer情報（見つからない場合はnull）
  */
-export const invalidateTemplateInstanceCache = async (
-  instanceId: string,
-): Promise<void> => {
-  const cacheKey = `template:instance:${instanceId}`;
-
+export const getMcpServerBySlug = async (
+  slug: string,
+  organizationId: string,
+): Promise<McpServerLookupResult | null> => {
   try {
-    const redis = await getRedisClient();
-    if (!redis) {
-      logDebug(
-        "Redis not available, skipping template instance cache invalidation",
-      );
-      return;
+    const mcpServer = await db.mcpServer.findUnique({
+      where: {
+        organizationId_slug: { organizationId, slug },
+      },
+      select: mcpServerSelectFields,
+    });
+
+    if (!mcpServer) {
+      logWarn("McpServer not found by slug", { slug, organizationId });
+      return null;
     }
 
-    await redis.del(cacheKey);
-    logDebug("Template instance cache invalidated", { instanceId });
+    return mcpServer;
   } catch (error) {
-    logError("Failed to invalidate template instance cache", error as Error, {
-      instanceId,
+    logError("Failed to get McpServer by slug from DB", error as Error, {
+      slug,
+      organizationId,
     });
+    throw error;
+  }
+};
+
+/**
+ * slugまたはIDでMcpServerを取得
+ *
+ * パスパラメータにslugまたはIDのどちらが渡されても対応できるようにする。
+ * CUID形式かどうかを判定し、適切なfindUniqueクエリを使用。
+ *
+ * @param slugOrId - MCP Server のslugまたはID
+ * @param organizationId - 組織ID（slugで検索する場合に使用、IDで検索する場合は結果の検証に使用）
+ * @returns McpServer情報（見つからない場合はnull）
+ */
+export const getMcpServerBySlugOrId = async (
+  slugOrId: string,
+  organizationId: string,
+): Promise<McpServerLookupResult | null> => {
+  try {
+    // CUID形式の場合はIDで検索
+    if (isCuid(slugOrId)) {
+      const mcpServer = await db.mcpServer.findUnique({
+        where: { id: slugOrId },
+        select: mcpServerSelectFields,
+      });
+
+      if (!mcpServer) {
+        logWarn("McpServer not found by ID", { id: slugOrId, organizationId });
+        return null;
+      }
+
+      // IDで見つかった場合、organizationIdが一致するか検証
+      if (mcpServer.organizationId !== organizationId) {
+        logWarn("McpServer organizationId mismatch", {
+          id: slugOrId,
+          expectedOrgId: organizationId,
+          actualOrgId: mcpServer.organizationId,
+        });
+        return null;
+      }
+
+      return mcpServer;
+    }
+
+    // slug形式の場合はslugで検索
+    const mcpServer = await db.mcpServer.findUnique({
+      where: {
+        organizationId_slug: { organizationId, slug: slugOrId },
+      },
+      select: mcpServerSelectFields,
+    });
+
+    if (!mcpServer) {
+      logWarn("McpServer not found by slug", {
+        slug: slugOrId,
+        organizationId,
+      });
+      return null;
+    }
+
+    return mcpServer;
+  } catch (error) {
+    logError("Failed to get McpServer by slug or ID from DB", error as Error, {
+      slugOrId,
+      organizationId,
+    });
+    throw error;
   }
 };

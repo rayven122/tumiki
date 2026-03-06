@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { URL_HEADER_KEY } from "./constants/url";
-import { maintenanceProxy } from "./proxy/maintenanceProxy";
-import { authProxy } from "./proxy/authProxy";
+import { URL_HEADER_KEY } from "./lib/constants/url";
+import { maintenanceProxy } from "./server/lib/proxy/maintenanceProxy";
+import { authProxy } from "./server/lib/proxy/authProxy";
 
 /**
  * メインのプロキシミドルウェア

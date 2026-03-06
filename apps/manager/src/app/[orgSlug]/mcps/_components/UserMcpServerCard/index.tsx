@@ -1,60 +1,77 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useState } from "react";
-import {
-  Trash2Icon,
-  MoreHorizontal,
-  ExternalLink,
-  Wrench,
-  Edit2,
-  RefreshCw,
-  Palette,
-  Layers,
-} from "lucide-react";
-import { ToolsModal } from "../ServerCard/ToolsModal";
+import { Badge } from "@tumiki/ui/badge";
+import { Button } from "@tumiki/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@tumiki/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { DeleteConfirmModal } from "./DeleteConfirmModal";
-import { McpConfigEditModal } from "../../[id]/_components/McpConfigEditModal";
-import { IconEditModal } from "./IconEditModal";
-import { AuthTypeIndicator } from "../ServerCard/_components/AuthTypeIndicator";
-import { cn } from "@/lib/utils";
+} from "@tumiki/ui/dropdown-menu";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
-
-import { type RouterOutputs } from "@/trpc/react";
-import { McpServerIcon } from "../McpServerIcon";
-import { ServerStatusBadge } from "../ServerStatusBadge";
-import { calculateExpirationStatus } from "@/utils/shared/expirationHelpers";
-import { ApiKeyExpirationDisplay } from "./_components/ApiKeyExpirationDisplay";
-import { OAuthTokenExpirationDisplay } from "./_components/OAuthTokenExpirationDisplay";
-import { OAuthEndpointUrl } from "./_components/OAuthEndpointUrl";
-import { ReuseTokenModal } from "./_components/ReuseTokenModal";
-import { useReauthenticateOAuth } from "./_hooks/useReauthenticateOAuth";
+} from "@tumiki/ui/tooltip";
+import { cn } from "@/lib/utils";
 import type { McpServerId } from "@/schema/ids";
+import { type RouterOutputs } from "@/trpc/react";
+import { calculateExpirationStatus } from "@/lib/shared/expirationHelpers";
+import {
+  Edit2,
+  ExternalLink,
+  Layers,
+  MoreHorizontal,
+  Palette,
+  RefreshCw,
+  Trash2Icon,
+  Wrench,
+} from "lucide-react";
+import { useSession } from "next-auth/react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
 
-type UserMcpServer =
-  RouterOutputs["v2"]["userMcpServer"]["findMcpServers"][number];
+import { McpConfigEditModal } from "../../[slug]/_components/McpConfigEditModal";
+import { EntityIcon } from "@/features/shared/components/EntityIcon";
+import { RefreshToolsModal } from "../RefreshToolsModal";
+import { InboundAuthIndicator } from "../ServerCard/ServerCardInboundAuthIndicator";
+import { OutboundApiKeyIndicator } from "../ServerCard/ServerCardOutboundApiKeyIndicator";
+import { OutboundAuthIndicator } from "../ServerCard/ServerCardOutboundAuthIndicator";
+import { OutboundNoneIndicator } from "../ServerCard/ServerCardOutboundNoneIndicator";
+import { ToolsModal } from "../ServerCard/ToolsModal";
+import { ServerStatusBadge } from "../ServerStatusBadge";
+import { DeleteConfirmModal } from "./DeleteConfirmModal";
+import { IconEditModal } from "./IconEditModal";
+import { ApiKeyExpirationDisplay } from "./UserMcpServerApiKeyExpirationDisplay";
+import { FeatureBadges } from "./UserMcpServerFeatureBadges";
+import { ServerMetaInfo } from "./UserMcpServerMetaInfo";
+import { OAuthEndpointUrl } from "./UserMcpServerOAuthEndpointUrl";
+import { ReuseTokenModal } from "./UserMcpServerReuseTokenModal";
+import { useReauthenticateOAuth } from "./hooks/useReauthenticateOAuth";
+
+type UserMcpServer = RouterOutputs["userMcpServer"]["findMcpServers"][number];
 
 type UserMcpServerCardProps = {
   userMcpServer: UserMcpServer;
   revalidate?: () => Promise<void>;
   isSortMode?: boolean;
+};
+
+type ApiKey = UserMcpServer["apiKeys"][number];
+
+/** 最も有効期限が短いAPIキーを取得 */
+const findShortestExpirationApiKey = (apiKeys: ApiKey[]): ApiKey | null => {
+  const keysWithExpiration = apiKeys.filter((key) => key.expiresAt !== null);
+  if (keysWithExpiration.length === 0) return null;
+
+  return keysWithExpiration.reduce((shortest, current) => {
+    // expiresAt は filter で null が除外されているので安全
+    return current.expiresAt! < shortest.expiresAt! ? current : shortest;
+  });
 };
 
 export const UserMcpServerCard = ({
@@ -64,35 +81,31 @@ export const UserMcpServerCard = ({
 }: UserMcpServerCardProps) => {
   const params = useParams<{ orgSlug: string }>();
   const router = useRouter();
+  const { data: session } = useSession();
   const orgSlug = params.orgSlug;
+  const currentUserId = session?.user?.id;
 
+  // モーダル状態
   const [toolsModalOpen, setToolsModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [configEditModalOpen, setConfigEditModalOpen] = useState(false);
   const [iconEditModalOpen, setIconEditModalOpen] = useState(false);
+  const [refreshToolsModalOpen, setRefreshToolsModalOpen] = useState(false);
 
-  // 最初のテンプレートインスタンスを使用（ツール表示用）
-  const firstInstance = userMcpServer.templateInstances[0];
+  // テンプレートインスタンスの取得
+  const { templateInstances } = userMcpServer;
+  const firstInstance = templateInstances[0];
   const tools = firstInstance?.tools ?? [];
   const mcpServer = firstInstance?.mcpServerTemplate ?? null;
+  const mcpServerUrl = mcpServer?.url;
+  const displayTags = mcpServer?.tags ?? [];
 
-  // OAuth未認証のインスタンス一覧を取得（UIで表示用）
-  // カスタムMCPサーバーの場合、どのMCPが認証を必要としているか表示する
-  const unauthenticatedOAuthInstances = userMcpServer.templateInstances.filter(
+  // OAuth関連の状態を計算
+  const unauthenticatedOAuthInstances = templateInstances.filter(
     (instance) => instance.isOAuthAuthenticated === false,
   );
-
-  // OAuth未認証のインスタンスを探す（認証が必要なものを優先）
-  // カスタムMCPサーバーの場合、最初のインスタンスがOAuth非対応（例: Context7 = NONE）でも
-  // 2番目以降にOAuth対応インスタンス（例: Linear MCP）がある場合、そちらを使用する
-  const firstUnauthenticatedOAuthInstance = unauthenticatedOAuthInstances[0];
-
-  // OAuth再認証用のターゲットインスタンス
-  // 未認証OAuthインスタンスがあればそれを使用、なければ最初のインスタンス
   const targetInstanceForReauth =
-    firstUnauthenticatedOAuthInstance ?? firstInstance;
-
-  // AuthTypeIndicator用の未認証インスタンス情報を生成
+    unauthenticatedOAuthInstances[0] ?? firstInstance;
   const unauthenticatedInstancesForDisplay = unauthenticatedOAuthInstances.map(
     (instance) => ({
       templateName: instance.mcpServerTemplate.name,
@@ -113,47 +126,42 @@ export const UserMcpServerCard = ({
     mcpServerTemplateInstanceId: targetInstanceForReauth?.id ?? "",
   });
 
-  // OAuth認証タイプの場合は常に再認証ボタンを表示（MCPサーバー自体のauthTypeを参照）
+  // 認証タイプ判定
   const isOAuthServer = userMcpServer.authType === "OAUTH";
   const isOAuthTemplateServer = mcpServer?.authType === "OAUTH";
 
-  // 編集可能なテンプレートインスタンスを取得（authType !== OAUTH）
-  const editableInstances = userMcpServer.templateInstances.filter(
+  // Outbound認証タイプの判定（テンプレートごとの認証方式）
+  const hasOAuthTemplates = templateInstances.some(
+    (instance) => instance.mcpServerTemplate.authType === "OAUTH",
+  );
+  const hasApiKeyTemplates = templateInstances.some(
+    (instance) => instance.mcpServerTemplate.authType === "API_KEY",
+  );
+  const hasNoneTemplates = templateInstances.some(
+    (instance) => instance.mcpServerTemplate.authType === "NONE",
+  );
+
+  // API_KEYテンプレートの数
+  const apiKeyTemplateCount = templateInstances.filter(
+    (instance) => instance.mcpServerTemplate.authType === "API_KEY",
+  ).length;
+
+  // 編集可能なインスタンス（OAuth以外）
+  const editableInstances = templateInstances.filter(
     (instance) => instance.mcpServerTemplate.authType !== "OAUTH",
   );
   const firstEditableInstance = editableInstances[0];
 
-  // MCPサーバーのURLを取得（ファビコン表示用）
-  const mcpServerUrl = mcpServer?.url;
-
-  const displayTags = mcpServer?.tags ?? [];
-
-  const handleCardClick = () => {
-    if (isSortMode) return; // ソートモード時はクリック無効
-    router.push(`/${orgSlug}/mcps/${userMcpServer.id}`);
-  };
-
-  // 最も有効期限が短いAPIキーを取得（バックエンドで既に有効なキーのみ取得済み）
-  const getShortestExpiringApiKey = () => {
-    const apiKeysWithExpiration = userMcpServer.apiKeys.filter(
-      (key) => key.expiresAt,
-    );
-
-    if (apiKeysWithExpiration.length === 0) return null;
-
-    return apiKeysWithExpiration.reduce((shortest, current) => {
-      if (!shortest.expiresAt) return current;
-      if (!current.expiresAt) return shortest;
-      return current.expiresAt < shortest.expiresAt ? current : shortest;
-    });
-  };
-
-  const shortestApiKey = getShortestExpiringApiKey();
-
-  // APIキーの有効期限状態を計算
+  // APIキーの有効期限状態
+  const shortestApiKey = findShortestExpirationApiKey(userMcpServer.apiKeys);
   const apiKeyStatus = shortestApiKey
     ? calculateExpirationStatus(shortestApiKey.expiresAt)
     : null;
+
+  const handleCardClick = () => {
+    if (isSortMode) return;
+    router.push(`/${orgSlug}/mcps/${userMcpServer.slug}`);
+  };
 
   return (
     <>
@@ -167,23 +175,9 @@ export const UserMcpServerCard = ({
         )}
         onClick={handleCardClick}
       >
-        {/* 右上のバッジとメニュー */}
+        {/* 右上のメニューボタン */}
         {!isSortMode && (
-          <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
-            {/* 認証タイプインジケーター */}
-            <AuthTypeIndicator
-              authType={userMcpServer.authType}
-              apiKeyCount={
-                userMcpServer.authType === "API_KEY"
-                  ? userMcpServer.apiKeys.length
-                  : undefined
-              }
-              isOAuthAuthenticated={userMcpServer.allOAuthAuthenticated}
-              onReauthenticate={handleReauthenticate}
-              isReauthenticating={isReauthenticating}
-              unauthenticatedInstances={unauthenticatedInstancesForDisplay}
-            />
-            {/* メニューボタン */}
+          <div className="absolute top-3 right-3 z-10">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -198,7 +192,7 @@ export const UserMcpServerCard = ({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem asChild>
-                  <Link href={`/${orgSlug}/mcps/${userMcpServer.id}`}>
+                  <Link href={`/${orgSlug}/mcps/${userMcpServer.slug}`}>
                     <ExternalLink className="mr-2 h-4 w-4" />
                     詳細を見る
                   </Link>
@@ -216,6 +210,15 @@ export const UserMcpServerCard = ({
                     再認証
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setRefreshToolsModalOpen(true);
+                  }}
+                >
+                  <Wrench className="mr-2 h-4 w-4" />
+                  ツールを更新
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();
@@ -251,15 +254,15 @@ export const UserMcpServerCard = ({
         )}
 
         <CardHeader className="flex flex-row items-center space-y-0 pb-2">
-          <div className="mr-2 rounded-md p-2">
-            <McpServerIcon
-              iconPath={userMcpServer.iconPath ?? mcpServer?.iconPath}
-              fallbackUrl={mcpServerUrl}
-              alt={userMcpServer.name}
-              size={32}
-            />
-          </div>
-          <div className="min-w-0 flex-1 pr-24">
+          <EntityIcon
+            iconPath={userMcpServer.iconPath ?? mcpServer?.iconPath}
+            fallbackUrl={mcpServerUrl}
+            type="mcp"
+            size="sm"
+            alt={userMcpServer.name}
+            className="mr-2"
+          />
+          <div className="min-w-0 flex-1 pr-10">
             <div className="flex items-center gap-1">
               {userMcpServer.serverType === "CUSTOM" && (
                 <TooltipProvider>
@@ -275,23 +278,49 @@ export const UserMcpServerCard = ({
               )}
               <CardTitle className="truncate">{userMcpServer.name}</CardTitle>
             </div>
-            <div className="mt-1 flex items-center gap-2">
-              <ServerStatusBadge serverStatus={userMcpServer.serverStatus} />
+            {/* 認証インジケーター + 異常時のみステータス表示 */}
+            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+              {userMcpServer.serverStatus !== "RUNNING" && (
+                <ServerStatusBadge serverStatus={userMcpServer.serverStatus} />
+              )}
+              <InboundAuthIndicator
+                authType={userMcpServer.authType}
+                apiKeyCount={
+                  userMcpServer.authType === "API_KEY"
+                    ? userMcpServer.apiKeys.length
+                    : undefined
+                }
+                onApiKeyClick={
+                  userMcpServer.authType === "API_KEY"
+                    ? () => setConfigEditModalOpen(true)
+                    : undefined
+                }
+              />
+              {/* Outbound認証インジケーター（外部サービスへの接続方法） */}
+              {hasOAuthTemplates && (
+                <OutboundAuthIndicator
+                  isAuthenticated={userMcpServer.allOAuthAuthenticated ?? false}
+                  earliestExpiration={userMcpServer.earliestOAuthExpiration}
+                  onReauthenticate={handleReauthenticate}
+                  isReauthenticating={isReauthenticating}
+                  unauthenticatedInstances={unauthenticatedInstancesForDisplay}
+                />
+              )}
+              {hasApiKeyTemplates && (
+                <OutboundApiKeyIndicator
+                  templateCount={apiKeyTemplateCount}
+                  onClick={() => setConfigEditModalOpen(true)}
+                />
+              )}
+              {hasNoneTemplates && <OutboundNoneIndicator />}
             </div>
           </div>
         </CardHeader>
 
         <CardContent className="flex-1 space-y-3">
-          {/* OAuthトークン有効期限を表示（OAuthサーバーのみ） */}
-          {isOAuthServer && userMcpServer.earliestOAuthExpiration && (
-            <OAuthTokenExpirationDisplay
-              expiresAt={userMcpServer.earliestOAuthExpiration}
-            />
-          )}
-
           {/* OAuth接続URLを表示（OAuthサーバーのみ） */}
           {isOAuthServer && (
-            <OAuthEndpointUrl userMcpServerId={userMcpServer.id} />
+            <OAuthEndpointUrl userMcpServerSlug={userMcpServer.slug} />
           )}
 
           {/* ツール一覧を表示するボタン */}
@@ -315,6 +344,24 @@ export const UserMcpServerCard = ({
 
           {/* APIキー有効期限表示 */}
           <ApiKeyExpirationDisplay apiKeyStatus={apiKeyStatus} />
+
+          {/* 機能バッジ（PIIマスキング、Dynamic Search、TOON変換） */}
+          <FeatureBadges
+            piiMaskingMode={userMcpServer.piiMaskingMode}
+            dynamicSearch={userMcpServer.dynamicSearch}
+            toonConversionEnabled={userMcpServer.toonConversionEnabled}
+          />
+
+          {/* メタ情報（最終使用日時、作成者） */}
+          <ServerMetaInfo
+            lastUsedAt={userMcpServer.lastUsedAt}
+            creatorName={userMcpServer.createdBy?.name ?? null}
+            isOwnServer={
+              currentUserId !== undefined &&
+              userMcpServer.createdById === currentUserId
+            }
+            hasCreator={userMcpServer.createdBy !== null}
+          />
 
           {/* カテゴリータグ */}
           <div className="flex flex-wrap gap-1 pt-2">
@@ -399,6 +446,17 @@ export const UserMcpServerCard = ({
           reusableTokens={reusableTokens}
           targetInstanceId={targetInstanceId}
           onNewAuthentication={handleNewAuthentication}
+          onSuccess={revalidate}
+        />
+      )}
+
+      {/* ツール更新モーダル */}
+      {refreshToolsModalOpen && (
+        <RefreshToolsModal
+          open={refreshToolsModalOpen}
+          onOpenChange={setRefreshToolsModalOpen}
+          serverId={userMcpServer.id as McpServerId}
+          serverName={userMcpServer.name}
           onSuccess={revalidate}
         />
       )}

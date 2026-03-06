@@ -188,7 +188,7 @@ cd apps/mcp-proxy && pnpm dev
 
 セットアップが完了したら、以下のドキュメントを参照してください：
 
-- [README.md](./README.md) - プロジェクト概要と開発コマンド
-- [docs/guides/testing-environment.md](./docs/guides/testing-environment.md) - テスト環境の構築
-- [docs/guides/mcp-server-setup.md](./docs/guides/mcp-server-setup.md) - MCPサーバーの追加方法
-- [docs/auth/keycloak/](./docs/auth/keycloak/) - Keycloak認証の詳細
+- [README.md](../README.md) - プロジェクト概要と開発コマンド
+- [環境変数リファレンス](./environment-variables.md) - 環境変数の詳細
+- [権限管理ガイド](./auth/permission-guide.md) - 権限管理システムの詳細
+- [Keycloak DCR設定](./auth/keycloak-dcr-setup.md) - Dynamic Client Registration設定

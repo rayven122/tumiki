@@ -16,7 +16,7 @@ import { db, type Prisma, PiiMaskingMode } from "@tumiki/db/server";
 import { logError, logInfo } from "../../../../shared/logger/index.js";
 import { publishMcpLog } from "../../../../infrastructure/pubsub/mcpLogger.js";
 import { byteLength } from "../../../../shared/utils/byteLength.js";
-import { countTokens } from "../../../../shared/utils/tokenCount.js";
+import { countTokens } from "@tumiki/shared/utils/tokenCount";
 
 /**
  * MCP サーバー request log を記録
@@ -61,8 +61,9 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
   // 実行コンテキストを取得
   const executionContext = getExecutionContext();
 
-  // toolNameが存在しない場合はログを記録しない（MCP以外のリクエスト）
-  if (!executionContext?.toolName) {
+  // toolNameもmethodも存在しない場合はログを記録しない（MCP以外のリクエスト）
+  // tools/list の場合は toolName が空文字列だが method が設定されているのでログ記録する
+  if (!executionContext?.toolName && !executionContext?.method) {
     return;
   }
 
@@ -144,7 +145,9 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
     organizationId: authContext.organizationId,
 
     // リクエスト情報
-    toolName: executionContext.toolName,
+    // toolNameが空文字列の場合（tools/listなど）はmethodにフォールバック
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- 空文字列でもフォールバックしたい
+    toolName: executionContext.toolName || executionContext.method || "unknown",
     transportType: executionContext.transportType ?? "STREAMABLE_HTTPS",
     method: executionContext.method ?? "tools/call", // toolExecutorで設定される
     httpStatus: c.res.status,
@@ -152,6 +155,9 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
     inputBytes,
     outputBytes,
     userAgent: c.req.header("user-agent"),
+
+    // AIツール呼び出しID（チャットメッセージとの紐付け用）
+    toolCallId: executionContext.toolCallId,
 
     // PII検出情報（集計データのみ、詳細はBigQuery）
     piiMaskingMode,

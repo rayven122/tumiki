@@ -28,14 +28,12 @@ const mockRouterPush = vi.fn();
 // tRPC APIのモック
 vi.mock("@/trpc/react", () => ({
   api: {
-    v2: {
-      organization: {
-        getUserOrganizations: {
-          useQuery: () => mockUseQuery(),
-        },
-        setDefaultOrganization: {
-          useMutation: (options: any) => mockUseMutation(options),
-        },
+    organization: {
+      getUserOrganizations: {
+        useQuery: () => mockUseQuery(),
+      },
+      setDefaultOrganization: {
+        useMutation: (options: any) => mockUseMutation(options),
       },
     },
     useUtils: () => mockUseUtils(),
@@ -43,7 +41,7 @@ vi.mock("@/trpc/react", () => ({
 }));
 
 // toastのモック
-vi.mock("@/utils/client/toast", () => ({
+vi.mock("@/lib/client/toast", () => ({
   toast: {
     success: (...args: unknown[]) => mockToastSuccess(...args),
     error: (...args: unknown[]) => mockToastError(...args),
@@ -150,6 +148,7 @@ describe("useOrganizationContext", () => {
       id: "org_1",
       name: "Organization 1",
       isPersonal: false,
+      logoUrl: undefined,
       memberCount: 5,
     });
     expect(result.current.isLoading).toBe(false);

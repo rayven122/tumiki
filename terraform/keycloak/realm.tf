@@ -59,11 +59,6 @@ resource "keycloak_realm" "tumiki" {
   }
 }
 
-# Master Realmへの参照（data source）
-data "keycloak_realm" "master" {
-  realm = "master"
-}
-
 # User Profile設定（firstName/lastNameをオプショナルに）
 resource "keycloak_realm_user_profile" "tumiki" {
   realm_id = keycloak_realm.tumiki.id

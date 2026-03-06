@@ -2,13 +2,13 @@
 
 import type React from "react";
 import { useState, useMemo } from "react";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Input } from "@tumiki/ui/input";
+import { Badge } from "@tumiki/ui/badge";
 import { X, Search, Plus } from "lucide-react";
 
 import { ServerCard } from "../../_components/ServerCard";
 import { api } from "@/trpc/react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@tumiki/ui/card";
 import { RemoteMcpServerModal } from "./RemoteMcpServerModal";
 import type { Prisma } from "@tumiki/db/prisma";
 
@@ -98,7 +98,7 @@ export const ServerList = ({
   );
 
   // MCPサーバーから利用可能なタグを動的に取得
-  const [mcpServers] = api.v2.mcpServer.findAll.useSuspenseQuery();
+  const [mcpServers] = api.mcpServer.findAll.useSuspenseQuery();
 
   // Controlled判定
   const isControlled =

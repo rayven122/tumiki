@@ -1,9 +1,9 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@tumiki/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@tumiki/ui/card";
+import { Badge } from "@tumiki/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,24 +14,30 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+} from "@tumiki/ui/alert-dialog";
 import { Mail, RefreshCw, X, Clock } from "lucide-react";
 import { api } from "@/trpc/react";
 import { getSessionInfo } from "~/lib/auth/session-utils";
-import { type GetOrganizationBySlugOutput } from "@/server/api/routers/organization/getBySlug";
+import { type GetOrganizationBySlugOutput } from "@/features/organization";
 
 type InvitationListProps = {
   organization: GetOrganizationBySlugOutput;
 };
 
-export const InvitationList = ({
-  organization: _organization,
-}: InvitationListProps) => {
+export const InvitationList = ({ organization }: InvitationListProps) => {
   const { data: session } = useSession();
+  // 個人組織の場合はAPIを呼び出さない（requireTeam: trueのため）
   const { data: invitations, isLoading } =
-    api.organization.getInvitations.useQuery();
+    api.organization.getInvitations.useQuery(undefined, {
+      enabled: !organization.isPersonal,
+    });
 
   const utils = api.useUtils();
+
+  // 個人組織の場合は招待機能は利用できないため表示しない
+  if (organization.isPersonal) {
+    return null;
+  }
 
   const resendInvitationMutation =
     api.organization.resendInvitation.useMutation({

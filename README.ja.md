@@ -8,6 +8,13 @@
 
 **AIエージェントとビジネスツールをつなぐAI統合プラットフォーム**
 
+[![CI](https://github.com/rayven122/tumiki/actions/workflows/ci.yml/badge.svg)](https://github.com/rayven122/tumiki/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22.14.0-green)](https://nodejs.org/)
+[![pnpm](https://img.shields.io/badge/pnpm-10.11.0-orange)](https://pnpm.io/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)](https://www.typescriptlang.org/)
+[![Discord](https://img.shields.io/badge/Discord-%E5%8F%82%E5%8A%A0%E3%81%99%E3%82%8B-7289da?logo=discord&logoColor=white)](https://discord.com/invite/gp9SetUmGe)
+
 [English version](README.md)
 
 ---
@@ -38,6 +45,75 @@ AIエージェントチーム環境を、これ一つでシンプルに構築。
 | **アクティビティログの可視化** | 包括的なログ記録ですべてのアクティビティを追跡・分析 |
 | **セキュアな運用**             | 企業レベルのセキュリティで機密データを安全に管理     |
 | **高速セットアップ**           | 専門知識不要で数分でAIエージェントチーム環境を構築   |
+
+## 受賞・特許
+
+### 🏆 NEDO GenIAC Prize 2025
+
+Tumikiは[**NEDO GenIAC Prize**](https://geniac-prize.nedo.go.jp/)の**領域03：生成AIの安全性確保**において受賞しました（2025年10月）。
+
+> _「実運用を見据えた現実的かつ即効性のある提案であり、企業の安全なAI活用を支える標準技術の土台となる可能性を感じさせる」_
+>
+> — GenIAC Prize 審査委員会
+
+**提案内容：** 「MCPサーバーの安全性強化とAI権限制御による統合リスク対策」
+
+### 📜 特許
+
+**特許第7731114号** — 「情報処理システムの管理システム」
+
+- **特許権者：** 株式会社RAYVEN
+- **発明者：** 鈴山 佳宏
+- **出願日：** 2025年4月9日
+- **登録日：** 2025年8月21日
+- **PCT出願：** 出願済み（国際特許出願中）
+
+本特許は、Tumikiで使用されているMCP管理基盤技術のコア技術をカバーしています。
+
+## プロジェクト構成
+
+Tumikiは[Turborepo](https://turbo.build/repo)と[pnpm workspaces](https://pnpm.io/workspaces)で管理されたモノレポです。
+
+```
+tumiki/
+├── apps/
+│   ├── manager/          # Webダッシュボード（Next.js 15 + React 19）
+│   ├── mcp-proxy/        # MCPプロキシサーバー（Hono）
+│   └── desktop/          # デスクトップアプリケーション（Tauri + Electron）
+├── packages/
+│   ├── db/               # データベース層（Prisma ORM + フィールド暗号化）
+│   ├── oauth-token-manager/  # OAuthトークン管理
+│   ├── keycloak/         # Keycloak統合ユーティリティ
+│   ├── mailer/           # メールサービス
+│   ├── slack/            # Slack統合
+│   └── scripts/          # 共有ビルドスクリプト
+├── docker/               # Docker Compose設定
+└── terraform/            # Infrastructure as Code（Keycloak）
+```
+
+### アーキテクチャ概要
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        AIエージェント                             │
+│              （Claude, GPT, カスタムエージェント等）               │
+└─────────────────────────────┬───────────────────────────────────┘
+                              │ MCPプロトコル
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      MCPプロキシサーバー                          │
+│    ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
+│    │   ルーター   │  │    認証     │  │  ロギング   │            │
+│    └─────────────┘  └─────────────┘  └─────────────┘            │
+└─────────────────────────────┬───────────────────────────────────┘
+                              │
+        ┌─────────────────────┼─────────────────────┐
+        ▼                     ▼                     ▼
+   ┌─────────┐          ┌─────────┐          ┌─────────┐
+   │  Slack  │          │  Notion │          │   ...   │
+   └─────────┘          └─────────┘          └─────────┘
+                    ビジネスツール
+```
 
 ## はじめに
 
@@ -75,6 +151,28 @@ pnpm dev
 
 詳細なセットアップ手順については、[docs/SETUP.md](./docs/SETUP.md)を参照してください。
 
+### 利用可能なスクリプト
+
+```bash
+# 開発
+pnpm dev              # すべての開発サーバーを起動
+pnpm build            # すべてのパッケージとアプリをビルド
+pnpm test             # テストを実行
+pnpm typecheck        # TypeScript型チェック
+pnpm lint             # ESLintを実行
+pnpm format           # コードフォーマットをチェック
+
+# Docker
+pnpm docker:up        # コンテナを起動
+pnpm docker:down      # コンテナを停止・削除
+pnpm docker:logs      # コンテナログを表示
+
+# データベース
+cd packages/db
+pnpm db:migrate       # マイグレーションを実行
+pnpm db:studio        # Prisma Studioを開く
+```
+
 ## 技術スタック
 
 ### フロントエンド
@@ -101,13 +199,22 @@ pnpm dev
 
 - [セットアップガイド](./docs/SETUP.md) - 詳細なセットアップ手順
 - [環境変数](./docs/environment-variables.md) - 設定リファレンス
+- [Managerアーキテクチャ](./docs/architecture/manager-features-architecture.md) - 機能ベースアーキテクチャガイド
+
+## コミュニティ
+
+- [Discord](https://discord.com/invite/gp9SetUmGe) - コミュニティに参加してディスカッションやサポートを受ける
+- [GitHub Issues](https://github.com/rayven122/tumiki/issues) - バグ報告と機能リクエスト
 
 ## ライセンス
 
-このプロジェクトはMITライセンスの下で公開されています。詳細は[LICENSE](LICENSE)ファイルを参照してください。
+このプロジェクトはデュアルライセンスです：
 
-一部のファイルはElastic License v2.0 (ELv2)の下でライセンスされています。詳細は[LICENSE.EE](LICENSE.EE)を参照してください。
+- **MITライセンス** - コードベースの大部分。詳細は[LICENSE](LICENSE)を参照。
+- **Elastic License v2.0 (ELv2)** - Enterprise Edition機能（`.ee.ts`拡張子のファイル）。詳細は[LICENSE.EE](LICENSE.EE)を参照。
 
 ## サポート
 
-- [GitHub Issues](https://github.com/rayven122/tumiki/issues) - バグ報告と機能リクエスト
+Tumikiが役立つと思ったら、GitHubで ⭐ をお願いします！
+
+エンタープライズサポートやカスタム統合については、[Discord](https://discord.com/invite/gp9SetUmGe)でお問い合わせください。
