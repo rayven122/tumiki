@@ -84,7 +84,7 @@ RUN pnpm build
 
 # Next.js standalone モードでビルド
 WORKDIR /app/apps/manager
-RUN pnpm with-env next build
+RUN pnpm with-env next build --webpack
 
 # ========================================
 # Stage 4: Production
