@@ -26,7 +26,11 @@ COPY .npmrc ./
 
 # 各パッケージの package.json をコピー（pnpm install のワークスペース解決に必要）
 COPY packages/db/package.json ./packages/db/
+COPY packages/license/package.json ./packages/license/
 COPY packages/oauth-token-manager/package.json ./packages/oauth-token-manager/
+COPY packages/prompts/package.json ./packages/prompts/
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/slack/package.json ./packages/slack/
 COPY apps/mcp-proxy/package.json ./apps/mcp-proxy/
 COPY tooling/typescript/package.json ./tooling/typescript/
 
@@ -49,14 +53,30 @@ FROM dependencies AS build
 
 COPY tooling/typescript ./tooling/typescript
 COPY packages/db ./packages/db
+COPY packages/license ./packages/license
 COPY packages/oauth-token-manager ./packages/oauth-token-manager
+COPY packages/prompts ./packages/prompts
+COPY packages/shared ./packages/shared
+COPY packages/slack ./packages/slack
 COPY apps/mcp-proxy ./apps/mcp-proxy
 
 # 依存関係の順序に従ってビルド
 WORKDIR /app/packages/db
 RUN pnpm db:generate && pnpm build
 
+WORKDIR /app/packages/license
+RUN pnpm build
+
 WORKDIR /app/packages/oauth-token-manager
+RUN pnpm build
+
+WORKDIR /app/packages/prompts
+RUN pnpm build
+
+WORKDIR /app/packages/shared
+RUN pnpm build
+
+WORKDIR /app/packages/slack
 RUN pnpm build
 
 WORKDIR /app/apps/mcp-proxy
@@ -91,7 +111,11 @@ WORKDIR /app
 COPY --chown=nodejs:nodejs package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY --chown=nodejs:nodejs .npmrc ./
 COPY --chown=nodejs:nodejs packages/db/package.json ./packages/db/
+COPY --chown=nodejs:nodejs packages/license/package.json ./packages/license/
 COPY --chown=nodejs:nodejs packages/oauth-token-manager/package.json ./packages/oauth-token-manager/
+COPY --chown=nodejs:nodejs packages/prompts/package.json ./packages/prompts/
+COPY --chown=nodejs:nodejs packages/shared/package.json ./packages/shared/
+COPY --chown=nodejs:nodejs packages/slack/package.json ./packages/slack/
 COPY --chown=nodejs:nodejs apps/mcp-proxy/package.json ./apps/mcp-proxy/
 COPY --chown=nodejs:nodejs tooling/typescript/package.json ./tooling/typescript/
 
@@ -117,7 +141,11 @@ RUN DEST=$(find node_modules/.pnpm -path '*/@prisma+client@*/node_modules' -type
 
 # ビルド成果物
 COPY --from=build --chown=nodejs:nodejs /app/packages/db/dist ./packages/db/dist
+COPY --from=build --chown=nodejs:nodejs /app/packages/license/dist ./packages/license/dist
 COPY --from=build --chown=nodejs:nodejs /app/packages/oauth-token-manager/dist ./packages/oauth-token-manager/dist
+COPY --from=build --chown=nodejs:nodejs /app/packages/prompts/dist ./packages/prompts/dist
+COPY --from=build --chown=nodejs:nodejs /app/packages/shared/dist ./packages/shared/dist
+COPY --from=build --chown=nodejs:nodejs /app/packages/slack/dist ./packages/slack/dist
 COPY --from=build --chown=nodejs:nodejs /app/apps/mcp-proxy/dist ./apps/mcp-proxy/dist
 
 USER nodejs
