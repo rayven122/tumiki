@@ -30,6 +30,9 @@ COPY packages/keycloak/package.json ./packages/keycloak/
 COPY packages/mailer/package.json ./packages/mailer/
 COPY packages/oauth-token-manager/package.json ./packages/oauth-token-manager/
 COPY packages/slack/package.json ./packages/slack/
+COPY packages/license/package.json ./packages/license/
+COPY packages/prompts/package.json ./packages/prompts/
+COPY packages/shared/package.json ./packages/shared/
 COPY packages/ui/package.json ./packages/ui/
 COPY tooling/typescript/package.json ./tooling/typescript/
 COPY tooling/tailwind/package.json ./tooling/tailwind/
@@ -65,6 +68,9 @@ COPY packages/keycloak ./packages/keycloak
 COPY packages/mailer ./packages/mailer
 COPY packages/oauth-token-manager ./packages/oauth-token-manager
 COPY packages/slack ./packages/slack
+COPY packages/license ./packages/license
+COPY packages/prompts ./packages/prompts
+COPY packages/shared ./packages/shared
 COPY packages/ui ./packages/ui
 COPY apps/manager ./apps/manager
 
@@ -82,6 +88,15 @@ WORKDIR /app/packages/oauth-token-manager
 RUN pnpm build
 
 WORKDIR /app/packages/slack
+RUN pnpm build
+
+WORKDIR /app/packages/license
+RUN pnpm build
+
+WORKDIR /app/packages/prompts
+RUN pnpm build
+
+WORKDIR /app/packages/shared
 RUN pnpm build
 
 WORKDIR /app/packages/ui
