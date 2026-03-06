@@ -43,8 +43,8 @@ ENV CI=true
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
   pnpm install --frozen-lockfile --prod=false
 
-# mcp-proxy 依存パッケージのみを順序解決してビルド
-RUN pnpm turbo run build --filter=@tumiki/mcp-proxy^...
+# mcp-proxy の依存に加えて、通知機能で参照する @tumiki/slack もビルド
+RUN pnpm turbo run build --filter=@tumiki/mcp-proxy^... --filter=@tumiki/slack
 
 RUN pnpm --filter @tumiki/mcp-proxy build
 
