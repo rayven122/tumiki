@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.7
+
 # ========================================
 # Tumiki Manager - Cloud Run Dockerfile
 # ========================================
@@ -17,33 +19,23 @@ RUN corepack enable
 WORKDIR /app
 
 # ========================================
-# Stage 2: Dependencies
+# Stage 2: Build
 # ========================================
-FROM base AS dependencies
+FROM base AS build
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY .npmrc ./
-
-# 各パッケージの package.json をコピー（pnpm install のワークスペース解決に必要）
-COPY packages/db/package.json ./packages/db/
-COPY packages/keycloak/package.json ./packages/keycloak/
-COPY packages/mailer/package.json ./packages/mailer/
-COPY packages/oauth-token-manager/package.json ./packages/oauth-token-manager/
-COPY packages/slack/package.json ./packages/slack/
-COPY packages/license/package.json ./packages/license/
-COPY packages/prompts/package.json ./packages/prompts/
-COPY packages/shared/package.json ./packages/shared/
-COPY packages/ui/package.json ./packages/ui/
-COPY tooling/typescript/package.json ./tooling/typescript/
-COPY tooling/tailwind/package.json ./tooling/tailwind/
-COPY tooling/eslint/package.json ./tooling/eslint/
-COPY tooling/prettier/package.json ./tooling/prettier/
-COPY tooling/vitest/package.json ./tooling/vitest/
-COPY apps/manager/package.json ./apps/manager/
-
-# Prisma の postinstall スクリプトに必要な設定とスキーマ
-COPY packages/db/prisma.config.ts ./packages/db/
-COPY packages/db/prisma ./packages/db/prisma
+COPY tooling ./tooling
+COPY packages/db ./packages/db
+COPY packages/keycloak ./packages/keycloak
+COPY packages/mailer ./packages/mailer
+COPY packages/oauth-token-manager ./packages/oauth-token-manager
+COPY packages/slack ./packages/slack
+COPY packages/license ./packages/license
+COPY packages/prompts ./packages/prompts
+COPY packages/shared ./packages/shared
+COPY packages/ui ./packages/ui
+COPY apps/manager ./apps/manager
 
 # Prisma postinstall と next build 用のダミー環境変数（実際の接続には使用されない）
 # NEXT_PUBLIC_TUMIKI_EDITION=ee: EE版としてビルド（CE版のwebpackプラグインを無効化）
@@ -56,60 +48,17 @@ RUN printf '%s\n' \
 # Python MCP インストールをスキップ
 ENV CI=true
 
-RUN pnpm install --frozen-lockfile --prod=false
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+  pnpm install --frozen-lockfile --prod=false
 
-# ========================================
-# Stage 3: Build
-# ========================================
-FROM dependencies AS build
-
-COPY tooling/typescript ./tooling/typescript
-COPY tooling/tailwind ./tooling/tailwind
-COPY packages/db ./packages/db
-COPY packages/keycloak ./packages/keycloak
-COPY packages/mailer ./packages/mailer
-COPY packages/oauth-token-manager ./packages/oauth-token-manager
-COPY packages/slack ./packages/slack
-COPY packages/license ./packages/license
-COPY packages/prompts ./packages/prompts
-COPY packages/shared ./packages/shared
-COPY packages/ui ./packages/ui
-COPY apps/manager ./apps/manager
-
-# 依存関係の順序に従ってビルド
-WORKDIR /app/packages/db
-RUN pnpm db:generate && pnpm build
-
-WORKDIR /app/packages/keycloak
-RUN pnpm build
-
-WORKDIR /app/packages/mailer
-RUN pnpm build
-
-WORKDIR /app/packages/oauth-token-manager
-RUN pnpm build
-
-WORKDIR /app/packages/slack
-RUN pnpm build
-
-WORKDIR /app/packages/license
-RUN pnpm build
-
-WORKDIR /app/packages/prompts
-RUN pnpm build
-
-WORKDIR /app/packages/shared
-RUN pnpm build
-
-WORKDIR /app/packages/ui
-RUN pnpm build
+# manager 依存パッケージのみを順序解決してビルド
+RUN pnpm turbo run build --filter=@tumiki/manager^...
 
 # Next.js standalone モードでビルド
-WORKDIR /app/apps/manager
-RUN pnpm with-env next build --webpack
+RUN pnpm --filter @tumiki/manager with-env next build --webpack
 
 # ========================================
-# Stage 4: Production
+# Stage 3: Production
 # ========================================
 FROM node:24-alpine AS production
 

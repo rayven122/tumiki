@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.7
+
 # ========================================
 # Tumiki MCP Proxy - Cloud Run Dockerfile
 # ========================================
@@ -17,41 +19,13 @@ RUN corepack enable
 WORKDIR /app
 
 # ========================================
-# Stage 2: Dependencies
+# Stage 2: Build
 # ========================================
-FROM base AS dependencies
+FROM base AS build
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY .npmrc ./
-
-# 各パッケージの package.json をコピー（pnpm install のワークスペース解決に必要）
-COPY packages/db/package.json ./packages/db/
-COPY packages/license/package.json ./packages/license/
-COPY packages/oauth-token-manager/package.json ./packages/oauth-token-manager/
-COPY packages/prompts/package.json ./packages/prompts/
-COPY packages/shared/package.json ./packages/shared/
-COPY packages/slack/package.json ./packages/slack/
-COPY apps/mcp-proxy/package.json ./apps/mcp-proxy/
-COPY tooling/typescript/package.json ./tooling/typescript/
-
-# Prisma の postinstall スクリプトに必要な設定とスキーマ
-COPY packages/db/prisma.config.ts ./packages/db/
-COPY packages/db/prisma ./packages/db/prisma
-
-# Prisma postinstall 用のダミー DATABASE_URL（実際の接続には使用されない）
-RUN echo "DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder" > .env
-
-# Python MCP インストールをスキップ
-ENV CI=true
-
-RUN pnpm install --frozen-lockfile --prod=false
-
-# ========================================
-# Stage 3: Build
-# ========================================
-FROM dependencies AS build
-
-COPY tooling/typescript ./tooling/typescript
+COPY tooling ./tooling
 COPY packages/db ./packages/db
 COPY packages/license ./packages/license
 COPY packages/oauth-token-manager ./packages/oauth-token-manager
@@ -60,27 +34,19 @@ COPY packages/shared ./packages/shared
 COPY packages/slack ./packages/slack
 COPY apps/mcp-proxy ./apps/mcp-proxy
 
-# 依存関係の順序に従ってビルド
-WORKDIR /app/packages/db
-RUN pnpm db:generate && pnpm build
+# Prisma postinstall 用のダミー DATABASE_URL（実際の接続には使用されない）
+RUN echo "DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder" > .env
 
-WORKDIR /app/packages/license
-RUN pnpm build
+# Python MCP インストールをスキップ
+ENV CI=true
 
-WORKDIR /app/packages/oauth-token-manager
-RUN pnpm build
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+  pnpm install --frozen-lockfile --prod=false
 
-WORKDIR /app/packages/prompts
-RUN pnpm build
+# mcp-proxy 依存パッケージのみを順序解決してビルド
+RUN pnpm turbo run build --filter=@tumiki/mcp-proxy^...
 
-WORKDIR /app/packages/shared
-RUN pnpm build
-
-WORKDIR /app/packages/slack
-RUN pnpm build
-
-WORKDIR /app/apps/mcp-proxy
-RUN pnpm build
+RUN pnpm --filter @tumiki/mcp-proxy build
 
 # Prisma Client 生成コードをステージング（Production stage でコピー）
 # require.resolve で pnpm シンボリックリンクを自動解決し、@prisma/client と .prisma/client をコピー
@@ -91,7 +57,7 @@ RUN PRISMA_DIR=$(node -e "console.log(require('path').dirname(require.resolve('@
     cp -rL "$MODULES_DIR/.prisma/client" /prisma-generated
 
 # ========================================
-# Stage 4: Production
+# Stage 3: Production
 # ========================================
 FROM node:24-alpine AS production
 
