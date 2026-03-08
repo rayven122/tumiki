@@ -57,8 +57,24 @@ export class McpProcess {
       args,
     });
 
+    // 必要な環境変数のみ継承（セキュリティ対策）
+    const safeEnv: Record<string, string> = {};
+    const allowedEnvKeys = [
+      "PATH",
+      "NODE_ENV",
+      "HOME",
+      "TMPDIR",
+      "LANG",
+      "LC_ALL",
+    ];
+    for (const key of allowedEnvKeys) {
+      if (process.env[key]) {
+        safeEnv[key] = process.env[key];
+      }
+    }
+
     this.process = spawn(command, [...args], {
-      env: { ...process.env, ...this.env },
+      env: { ...safeEnv, ...this.env },
       stdio: ["pipe", "pipe", "pipe"],
     });
 
@@ -85,8 +101,15 @@ export class McpProcess {
     });
 
     this.process.on("error", (err) => {
+      logError("MCP process error", err, { serverName: this.serverName });
       this.status = "stopped";
-      throw new ProcessStartError(this.serverName, err.message);
+      // 未解決のリクエストをreject
+      const error = new ProcessStartError(this.serverName, err.message);
+      for (const { reject, timeout } of this.pendingRequests.values()) {
+        clearTimeout(timeout);
+        reject(error);
+      }
+      this.pendingRequests.clear();
     });
 
     // initializeリクエストで準備完了を確認
@@ -209,7 +232,7 @@ export class McpProcess {
           resolve();
         }, 3000);
 
-        this.process?.on("exit", () => {
+        this.process?.once("exit", () => {
           clearTimeout(timeout);
           resolve();
         });

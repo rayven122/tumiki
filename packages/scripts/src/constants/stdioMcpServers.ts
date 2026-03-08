@@ -1,4 +1,4 @@
-import type { TransportType, McpServerVisibility, AuthType } from "@prisma/client";
+import type { AuthType, McpServerVisibility, TransportType } from "@tumiki/db";
 
 /**
  * STDIO MCP サーバーテンプレート一覧

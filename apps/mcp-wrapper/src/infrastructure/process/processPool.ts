@@ -52,7 +52,12 @@ export class ProcessPool {
 
     // プール満杯なら古いプロセスを削除
     if (this.processes.size >= config.maxProcesses) {
-      await this.evictLRU();
+      const evicted = await this.evictLRU();
+      if (!evicted) {
+        throw new Error(
+          `Process pool is full (${config.maxProcesses}). All processes are busy.`,
+        );
+      }
     }
 
     // 新規プロセス起動
@@ -70,8 +75,9 @@ export class ProcessPool {
 
   /**
    * 最も古い未使用プロセスを削除（LRU）
+   * @returns 削除できた場合はtrue、全プロセスがビジーで削除できなかった場合はfalse
    */
-  private async evictLRU(): Promise<void> {
+  private async evictLRU(): Promise<boolean> {
     let oldest: { key: string; process: McpProcess } | null = null;
 
     for (const [key, mcpProcess] of this.processes) {
@@ -89,8 +95,10 @@ export class ProcessPool {
       });
       await oldest.process.kill();
       this.processes.delete(oldest.key);
+      return true;
     } else {
       logWarn("Cannot evict: all processes are busy");
+      return false;
     }
   }
 
@@ -162,5 +170,20 @@ export class ProcessPool {
   }
 }
 
-// シングルトンインスタンス
-export const processPool = new ProcessPool();
+// シングルトンインスタンス（本番用）
+let _instance: ProcessPool | null = null;
+
+export const getProcessPool = (): ProcessPool => {
+  if (!_instance) {
+    _instance = new ProcessPool();
+  }
+  return _instance;
+};
+
+// テスト用: 新しいインスタンスを作成
+export const createProcessPool = (): ProcessPool => {
+  return new ProcessPool();
+};
+
+// 後方互換性のためのエクスポート
+export const processPool = getProcessPool();

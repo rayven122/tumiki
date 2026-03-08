@@ -74,7 +74,10 @@ const main = async () => {
     await upsertStdioMcpServers();
     process.exit(0);
   } catch (error) {
-    console.error("❌ STDIO MCP サーバーテンプレートの登録に失敗しました:", error);
+    console.error(
+      "❌ STDIO MCP サーバーテンプレートの登録に失敗しました:",
+      error,
+    );
     process.exit(1);
   }
 };
