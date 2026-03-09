@@ -106,12 +106,9 @@ export class ProcessPool {
    * アイドルプロセスのクリーンアップ
    */
   private startCleanupInterval(): void {
-    this.cleanupInterval = setInterval(
-      () => {
-        void this.cleanupIdleProcesses();
-      },
-      60 * 1000,
-    ); // 1分ごとにチェック
+    this.cleanupInterval = setInterval(() => {
+      void this.cleanupIdleProcesses();
+    }, 60 * 1000); // 1分ごとにチェック
   }
 
   private async cleanupIdleProcesses(): Promise<void> {
@@ -174,9 +171,7 @@ export class ProcessPool {
 let _instance: ProcessPool | null = null;
 
 export const getProcessPool = (): ProcessPool => {
-  if (!_instance) {
-    _instance = new ProcessPool();
-  }
+  _instance ??= new ProcessPool();
   return _instance;
 };
 
