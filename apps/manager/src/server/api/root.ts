@@ -25,6 +25,7 @@ import { dashboardRouter } from "@/features/dashboard/api/router";
 import { toolOutputRouter } from "@/features/chat/api/toolOutput/router";
 import { chatRouter } from "@/features/chat/api/router";
 import { slackIntegrationRouter } from "@/features/slack-integration/api";
+import { mcpServerTemplateRouter } from "@/features/mcpServerTemplate/api";
 
 /**
  * This is the primary router for your server.
@@ -41,6 +42,7 @@ export const appRouter = createTRPCRouter({
   userMcpServerRequestLog: userMcpServerRequestLogRouter,
   mcpServerAuth: mcpServerAuthRouter,
   mcpServer: mcpServerRouter,
+  mcpServerTemplate: mcpServerTemplateRouter,
   feedback: feedbackRouter,
   oauth: oauthRouter,
   notification: notificationRouter,
