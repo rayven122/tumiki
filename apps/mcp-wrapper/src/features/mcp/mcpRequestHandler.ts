@@ -21,6 +21,20 @@ export const mcpRequestHandler = async (
 ): Promise<Response> => {
   const serverName = c.req.param("serverName");
 
+  if (!serverName) {
+    return c.json(
+      {
+        jsonrpc: "2.0",
+        id: null,
+        error: {
+          code: JSON_RPC_ERROR_CODES.INVALID_REQUEST,
+          message: "Server name is required",
+        },
+      },
+      400,
+    );
+  }
+
   logInfo("MCP request received", { serverName });
 
   try {
