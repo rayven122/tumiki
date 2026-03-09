@@ -12,9 +12,11 @@ export const createMainWindow = (): BrowserWindow => {
     },
   });
 
-  // 開発環境とプロダクション環境で異なるURLをロード
-  if (process.env.NODE_ENV === "development") {
-    mainWindow.loadURL("http://localhost:5173");
+  // electron-viteが設定する環境変数からrenderer URLを取得
+  const rendererUrl = process.env["ELECTRON_RENDERER_URL"];
+
+  if (rendererUrl) {
+    mainWindow.loadURL(rendererUrl);
     mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
