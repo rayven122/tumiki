@@ -1,0 +1,202 @@
+/**
+ * HTTP ステータスコード付きエラー型
+ */
+export type ErrorWithStatus = {
+  message: string;
+  status?: number;
+  name: string;
+  cause?: unknown;
+};
+
+/**
+ * エラー分類
+ */
+export type ErrorCategory =
+  | "network" // ネットワークエラー
+  | "auth" // 認証エラー (401, 403)
+  | "server" // サーバーエラー (5xx)
+  | "client" // クライアントエラー (4xx)
+  | "timeout" // タイムアウトエラー
+  | "unknown"; // 不明なエラー
+
+/**
+ * エラーメッセージを取得
+ * 将来的に国際化対応する際は、i18nライブラリを使用して翻訳を提供する
+ * @param category エラーカテゴリ
+ * @returns エラーメッセージ
+ */
+const getErrorMessage = (category: ErrorCategory): string => {
+  const messages: Record<ErrorCategory, string> = {
+    network: "ネットワーク接続に失敗しました",
+    timeout: "リクエストがタイムアウトしました",
+    auth: "認証に失敗しました",
+    server: "サーバーエラーが発生しました",
+    client: "リクエストが無効です",
+    unknown: "予期しないエラーが発生しました",
+  };
+  return messages[category];
+};
+
+/**
+ * エラー情報
+ */
+export type ErrorInfo = {
+  category: ErrorCategory;
+  message: string;
+  status?: number;
+  shouldRetry: boolean;
+};
+
+/**
+ * エラーをHTTPステータス付きエラーに変換
+ */
+export const toErrorWithStatus = (error: unknown): ErrorWithStatus => {
+  if (error && typeof error === "object" && error !== null) {
+    const obj = error as Record<string, unknown>;
+
+    // ステータスコードの安全な変換
+    let status: number | undefined;
+    if ("status" in obj) {
+      if (typeof obj.status === "number") {
+        status = obj.status;
+      } else if (typeof obj.status === "string" && !isNaN(Number(obj.status))) {
+        status = Number(obj.status);
+      }
+    }
+
+    return {
+      message: typeof obj.message === "string" ? obj.message : String(error),
+      status,
+      name: typeof obj.name === "string" ? obj.name : "Error",
+      cause: "cause" in obj ? obj.cause : undefined,
+    };
+  }
+
+  return {
+    message: String(error),
+    name: "Error",
+  };
+};
+
+/**
+ * エラーを分類
+ */
+export const classifyError = (error: unknown): ErrorInfo => {
+  const errorWithStatus = toErrorWithStatus(error);
+  const { message, status } = errorWithStatus;
+
+  // ネットワークエラー（fetch関連）
+  if (
+    message.includes("fetch") ||
+    message.includes("network") ||
+    message.includes("Failed to fetch")
+  ) {
+    return {
+      category: "network",
+      message: getErrorMessage("network"),
+      shouldRetry: true,
+    };
+  }
+
+  // タイムアウトエラー
+  if (message.includes("timeout") || message.includes("aborted")) {
+    return {
+      category: "timeout",
+      message: getErrorMessage("timeout"),
+      shouldRetry: true,
+    };
+  }
+
+  // HTTPステータスコードによる分類
+  if (status !== undefined) {
+    // 認証エラー
+    if (status === 401 || status === 403) {
+      return {
+        category: "auth",
+        message: getErrorMessage("auth"),
+        status,
+        shouldRetry: false,
+      };
+    }
+
+    // サーバーエラー
+    if (status >= 500) {
+      return {
+        category: "server",
+        message: getErrorMessage("server"),
+        status,
+        shouldRetry: true,
+      };
+    }
+
+    // クライアントエラー
+    if (status >= 400) {
+      return {
+        category: "client",
+        message: getErrorMessage("client"),
+        status,
+        shouldRetry: false,
+      };
+    }
+  }
+
+  // 不明なエラー
+  return {
+    category: "unknown",
+    message: message || getErrorMessage("unknown"),
+    status,
+    shouldRetry: false,
+  };
+};
+
+/**
+ * エラーのリトライ判定
+ */
+export const shouldRetryError = (
+  error: unknown,
+  failureCount: number,
+  maxRetries = 3,
+): boolean => {
+  const errorInfo = classifyError(error);
+
+  // リトライ不可なエラー
+  if (!errorInfo.shouldRetry) {
+    return false;
+  }
+
+  // リトライ回数超過
+  if (failureCount >= maxRetries) {
+    return false;
+  }
+
+  return true;
+};
+
+/**
+ * リトライ遅延時間を計算（指数バックオフ）
+ */
+export const calculateRetryDelay = (attemptIndex: number): number => {
+  return Math.min(1000 * 2 ** attemptIndex, 30000);
+};
+
+/**
+ * エラーをログに記録
+ */
+export const logError = (error: unknown, context?: string): ErrorWithStatus => {
+  const errorWithStatus = toErrorWithStatus(error);
+  const errorInfo = classifyError(error);
+
+  if (process.env.NODE_ENV === "development") {
+    // センシティブ情報を完全に除外してログ出力
+    console.error(`[${errorInfo.category}] ${context || "Error"}:`, {
+      message: errorInfo.message,
+      status: errorInfo.status,
+      // originalErrorは完全に除外（センシティブ情報漏洩リスクを回避）
+    });
+  } else {
+    // 本番環境では最小限のログのみ
+    console.error(`Error: ${errorInfo.message}`);
+  }
+
+  return errorWithStatus;
+};
