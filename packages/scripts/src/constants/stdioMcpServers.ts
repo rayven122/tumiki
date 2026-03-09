@@ -10,6 +10,7 @@ import type { AuthType, McpServerVisibility, TransportType } from "@tumiki/db";
  * - @modelcontextprotocol/* - https://www.npmjs.com/search?q=@modelcontextprotocol
  */
 
+// eslint-disable-next-line @typescript-eslint/consistent-type-definitions
 export type StdioMcpServer = {
   name: string;
   description: string;
