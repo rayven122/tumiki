@@ -185,7 +185,7 @@ export const LogsAnalyticsTab = ({
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="h-64 w-full">
-              <BarChart data={chartData}>
+              <BarChart data={chartData as typeof chartData extends (infer T)[] ? T[] : never}>
                 <CartesianGrid vertical={false} />
                 <XAxis
                   dataKey={timeRange === "24h" ? "hour" : "day"}
@@ -199,8 +199,10 @@ export const LogsAnalyticsTab = ({
                 <ChartTooltip
                   content={
                     <ChartTooltipContent
-                      labelFormatter={(value: string | number) =>
-                        timeRange === "24h" ? `${value}時` : String(value)
+                      labelFormatter={(value: React.ReactNode) =>
+                        timeRange === "24h"
+                          ? `${String(value)}時`
+                          : String(value)
                       }
                     />
                   }
