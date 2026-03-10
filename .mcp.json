@@ -1,11 +1,5 @@
 {
   "mcpServers": {
-    "playwright": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["@playwright/mcp@latest"],
-      "env": {}
-    },
     "serena": {
       "type": "stdio",
       "command": "uvx",
@@ -40,11 +34,7 @@
     },
     "postgres": {
       "command": "uv",
-      "args": [
-        "run",
-        "postgres-mcp",
-        "--access-mode=unrestricted"
-      ],
+      "args": ["run", "postgres-mcp", "--access-mode=unrestricted"],
       "env": {
         "DATABASE_URI": "${DATABASE_URL}"
       }

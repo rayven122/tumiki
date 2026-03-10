@@ -9,7 +9,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@tumiki/ui/alert-dialog";
 
 export type MoveOperation = {
   groupId: string;

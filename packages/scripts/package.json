@@ -15,12 +15,17 @@
     "./upsertMcpTools": {
       "types": "./dist/upsertMcpTools.d.ts",
       "default": "./dist/upsertMcpTools.js"
+    },
+    "./upsertStdioMcpServers": {
+      "types": "./dist/upsertStdioMcpServers.d.ts",
+      "default": "./dist/upsertStdioMcpServers.js"
     }
   },
   "scripts": {
     "dev": "tsc --watch",
     "build": "tsc",
     "upsertAll": "pnpm with-env tsx src/upsertAll.ts",
+    "upsertStdioMcpServers": "pnpm with-env tsx src/upsertStdioMcpServers.ts",
     "delete-orgs": "pnpm with-env tsx src/deleteAllOrganizations.ts",
     "security:scan:mcp": "pnpm with-env tsx src/security-scan-mcp.ts",
     "with-env": "dotenv -e ../../.env --",
@@ -31,8 +36,9 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.25.2",
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "@tumiki/db": "workspace:*",
+    "@tumiki/shared": "workspace:*",
     "google-auth-library": "^10.5.0",
     "uuid": "^13.0.0",
     "zod": "catalog:"
@@ -44,8 +50,10 @@
     "@tumiki/vitest-config": "workspace:*",
     "@typescript/native-preview": "7.0.0-dev.20250814.1",
     "@vitest/coverage-v8": "catalog:",
+    "dotenv-cli": "^11.0.0",
     "eslint": "catalog:",
     "prettier": "catalog:",
+    "tsx": "^4.21.0",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },

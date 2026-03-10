@@ -2,7 +2,7 @@ import type { RouterOutputs } from "@/trpc/react";
 import type { DragEndEvent } from "@dnd-kit/core";
 
 export type UserMcpServer =
-  RouterOutputs["v2"]["userMcpServer"]["findMcpServers"][number];
+  RouterOutputs["userMcpServer"]["findMcpServers"][number];
 
 export type SortableServerHookReturn = {
   servers: UserMcpServer[];

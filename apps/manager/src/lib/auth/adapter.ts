@@ -1,7 +1,8 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import type { AdapterUser } from "@auth/core/adapters";
 import { db } from "@tumiki/db/server";
-import { createUserWithOrganization } from "~/server/api/routers/v2/user/createUserWithOrganization";
+// 循環依存を回避: trpc.ts → ~/auth → adapter.ts → @/features/user → userRouter → trpc.ts
+import { createUserWithOrganization } from "@/features/user/api/createUserWithOrganization";
 
 /**
  * Keycloak profileSubフィールドを含む拡張AdapterUser型

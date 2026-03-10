@@ -1,26 +1,21 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Button } from "@/components/ui/chat/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Button } from "@tumiki/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@tumiki/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@tumiki/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { CheckCircleFillIcon, RouteIcon } from "./icons";
+import { CheckCircleFillIcon, ChevronDownIcon, RouteIcon } from "./icons";
 import { api, type RouterOutputs } from "~/trpc/react";
-import { McpServerIcon } from "@/app/[orgSlug]/mcps/_components/McpServerIcon";
-import { useSetAtom } from "jotai";
-import { mcpServerMapAtom, type McpServerInfo } from "@/atoms/mcpServerMapAtom";
+import { EntityIcon } from "@/features/shared/components/EntityIcon";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/chat/tooltip";
+  countEnabledTools,
+  countTotalToolsForSelectedServers,
+  getServerIconPath,
+  getServerFallbackUrl,
+} from "@/features/mcps/utils/mcpServerUtils";
 
-type OfficialServer =
-  RouterOutputs["v2"]["userMcpServer"]["findMcpServers"][number];
+type OfficialServer = RouterOutputs["userMcpServer"]["findMcpServers"][number];
 
 type CompactMcpSelectorProps = {
   selectedMcpServerIds: string[];
@@ -36,7 +31,6 @@ export const CompactMcpSelector = ({
   disabled = false,
 }: CompactMcpSelectorProps) => {
   const [open, setOpen] = useState(false);
-  const setMcpServerMap = useSetAtom(mcpServerMapAtom);
 
   const handleOpenChange = (newOpen: boolean) => {
     if (disabled) return;
@@ -44,23 +38,7 @@ export const CompactMcpSelector = ({
   };
 
   const { data: mcpServers, isLoading } =
-    api.v2.userMcpServer.findMcpServers.useQuery();
-
-  // MCPサーバー情報をatomに反映
-  // 注: setMcpServerMapはJotaiのセッターで安定した参照を持つため依存配列から除外
-  useEffect(() => {
-    if (mcpServers) {
-      const map: Record<string, McpServerInfo> = {};
-      for (const server of mcpServers) {
-        map[server.id] = {
-          name: server.name,
-          iconPath: server.iconPath ?? undefined,
-        };
-      }
-      setMcpServerMap(map);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mcpServers]);
+    api.userMcpServer.findMcpServers.useQuery();
 
   // 存在しないサーバーIDをクリーンアップ
   // localStorageに保存された古いIDが残っている場合、利用可能なサーバーが読み込まれた後に削除
@@ -95,20 +73,11 @@ export const CompactMcpSelector = ({
   const selectedCount = validSelectedIds.length;
 
   // 選択されたサーバーのツール数を計算（メモ化で不要な再計算を防止）
-  const totalToolsCount = useMemo(() => {
-    return availableServers
-      .filter((server) => selectedMcpServerIds.includes(server.id))
-      .reduce(
-        (total, server) =>
-          total +
-          server.templateInstances.reduce(
-            (count, instance) =>
-              count + instance.tools.filter((tool) => tool.isEnabled).length,
-            0,
-          ),
-        0,
-      );
-  }, [availableServers, selectedMcpServerIds]);
+  const totalToolsCount = useMemo(
+    () =>
+      countTotalToolsForSelectedServers(availableServers, selectedMcpServerIds),
+    [availableServers, selectedMcpServerIds],
+  );
 
   const handleToggleServer = (serverId: string) => {
     const isSelected = selectedMcpServerIds.includes(serverId);
@@ -151,6 +120,7 @@ export const CompactMcpSelector = ({
           {totalToolsCount}
         </span>
       )}
+      <ChevronDownIcon />
     </Button>
   );
 
@@ -220,17 +190,9 @@ export const CompactMcpSelector = ({
             >
               {availableServers.map((server) => {
                 const isSelected = selectedMcpServerIds.includes(server.id);
-                const enabledToolsCount = server.templateInstances.reduce(
-                  (count, instance) =>
-                    count +
-                    instance.tools.filter((tool) => tool.isEnabled).length,
-                  0,
-                );
-                // アイコンパスとフォールバックURLを取得
-                const firstTemplate =
-                  server.templateInstances[0]?.mcpServerTemplate;
-                const iconPath = server.iconPath ?? firstTemplate?.iconPath;
-                const fallbackUrl = firstTemplate?.url;
+                const enabledToolsCount = countEnabledTools(server);
+                const iconPath = getServerIconPath(server);
+                const fallbackUrl = getServerFallbackUrl(server);
 
                 return (
                   <button
@@ -246,14 +208,13 @@ export const CompactMcpSelector = ({
                     )}
                   >
                     <div className="flex min-w-0 flex-1 items-center gap-3">
-                      <div className="bg-muted flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded">
-                        <McpServerIcon
-                          iconPath={iconPath}
-                          fallbackUrl={fallbackUrl}
-                          alt={server.name}
-                          size={20}
-                        />
-                      </div>
+                      <EntityIcon
+                        iconPath={iconPath}
+                        fallbackUrl={fallbackUrl}
+                        type="mcp"
+                        size="sm"
+                        alt={server.name}
+                      />
                       <div className="min-w-0 flex-1 text-left">
                         <div className="flex items-center gap-1.5">
                           <span className="truncate text-sm font-medium">

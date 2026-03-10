@@ -5,9 +5,9 @@ description: |
   MCPサーバーのツール検索・実行機能の理解と開発に使用。
   「Dynamic Search」「メタツール」「search_tools」などのリクエスト時にトリガー。
 sourcePatterns:
-  - apps/mcp-proxy/src/services/dynamicSearch/**
-  - apps/mcp-proxy/src/handlers/mcpHandler.ts
-  - apps/mcp-proxy/src/services/toolExecutor.ts
+  - apps/mcp-proxy/src/features/dynamicSearch/**
+  - apps/mcp-proxy/src/features/mcp/mcpRequestHandler.ts
+  - apps/mcp-proxy/src/features/mcp/commands/callTool/callToolCommand.ts
 ---
 
 # Dynamic Search 機能 - 開発リファレンス
@@ -47,7 +47,7 @@ Dynamic Searchは、MCPサーバーのツール発見を最適化するための
 ## コンポーネント構成
 
 ```
-apps/mcp-proxy/src/services/dynamicSearch/
+apps/mcp-proxy/src/features/dynamicSearch/
 ├── index.ts                    # CE Facade（スタブ）
 ├── index.ee.ts                 # EEエントリーポイント
 ├── types.ee.ts                 # 型定義（EE）
@@ -207,8 +207,8 @@ export const isMetaTool = (toolName: string): boolean => {
 import { generateObject } from "ai";
 import { z } from "zod";
 
-import { gateway, DYNAMIC_SEARCH_MODEL } from "../../libs/ai/index.js";
-import { logError, logInfo } from "../../libs/logger/index.js";
+import { gateway, DYNAMIC_SEARCH_MODEL } from "../../infrastructure/ai/index.js";
+import { logError, logInfo } from "../../shared/logger/index.js";
 import type { SearchToolsArgs, SearchResult, Tool } from "./types.ee.js";
 
 const searchResultSchema = z.object({
@@ -268,7 +268,7 @@ ${toolDescriptions}
 ### AIモデル設定
 
 ```typescript
-// libs/ai/provider.ts
+// infrastructure/ai/provider.ts
 export const DYNAMIC_SEARCH_MODEL = "anthropic/claude-3.5-haiku";
 ```
 
@@ -325,9 +325,10 @@ export const newTool = async (
 export { newTool } from "./newTool.ee.js";
 ```
 
-### 5. mcpHandler.tsに処理追加
+### 5. handleMetaTool.tsに処理追加
 
 ```typescript
+// features/mcp/commands/callTool/handleMetaTool.ts
 case "new_tool":
   const result = await newTool(args as NewToolArgs, internalTools);
   return { content: [{ type: "text", text: JSON.stringify(result) }] };
@@ -401,7 +402,7 @@ export type DescribeToolsResult = {
 - [ ] `mcpHandler.ts`に処理を追加
 - [ ] 単体テスト（`*.ee.test.ts`）を作成（100%カバレッジ）
 - [ ] `pnpm typecheck`で型エラーなし
-- [ ] `EE_BUILD=true pnpm test`でテスト成功
+- [ ] `pnpm test`でテスト成功
 
 ### Dynamic Search有効化設定時
 

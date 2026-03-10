@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { CrossIcon } from "./icons";
-import { Button } from "./ui/chat/button";
+import { Button } from "@tumiki/ui/button";
 import { initialArtifactData, useArtifact } from "@/hooks/use-artifact";
 
 function PureArtifactCloseButton() {

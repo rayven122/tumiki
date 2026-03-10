@@ -1,8 +1,9 @@
 # Keycloak Terraform変数定義
 
 # Keycloak接続設定
+# 本番環境: Terraform Cloud ワークスペース変数 TF_VAR_keycloak_url で設定
 variable "keycloak_url" {
-  description = "Keycloak サーバーURL"
+  description = "Keycloak サーバーURL（本番: Terraform Cloud変数で上書き）"
   type        = string
   default     = "http://localhost:8443"
 }
@@ -63,6 +64,7 @@ variable "manager_redirect_uris" {
   type        = list(string)
   default = [
     "http://localhost:3000/*",
+    "https://localhost:3000/*",
     "http://localhost:3001/*",
     "https://manager.tumiki.cloud/*"
   ]
@@ -73,6 +75,7 @@ variable "manager_web_origins" {
   type        = list(string)
   default = [
     "http://localhost:3000",
+    "https://localhost:3000",
     "http://localhost:3001",
     "https://manager.tumiki.cloud"
   ]
@@ -92,6 +95,19 @@ variable "ssl_required" {
   description = "SSL要求レベル（none/external/all）"
   type        = string
   default     = "none"
+}
+
+# テーマ設定
+variable "login_theme" {
+  description = "ログイン画面テーマ"
+  type        = string
+  default     = "tumiki"
+}
+
+variable "account_theme" {
+  description = "アカウント管理画面テーマ"
+  type        = string
+  default     = "tumiki"
 }
 
 # テストユーザー設定

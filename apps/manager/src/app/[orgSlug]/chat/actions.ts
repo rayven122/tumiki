@@ -7,7 +7,7 @@ import {
   updateChatVisiblityById,
 } from "@/lib/db/queries";
 import type { VisibilityType } from "@/components/visibility-selector";
-import { getTitleModel } from "@/lib/ai/providers";
+import { getTitleModel } from "@/features/chat/services/ai";
 
 export const generateTitleFromUserMessage = async ({
   message,

@@ -1,12 +1,67 @@
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// EE版ビルドの判定
+// NEXT_PUBLIC_TUMIKI_EDITION=ee でEE版
+const isEEBuild = process.env.NEXT_PUBLIC_TUMIKI_EDITION === "ee";
+
 /** @type {import("next").NextConfig} */
 const config = {
+  // Docker / Cloud Run 用にスタンドアロンモードで出力
+  output: "standalone",
   // React Strict Mode を無効化
   reactStrictMode: false,
+  // Docker ビルド時にテスト関連ファイルを除外した tsconfig.build.json を使用
+  typescript: {
+    tsconfigPath: "./tsconfig.build.json",
+  },
   // 静的アセットのgzip圧縮を有効化（60-80%のファイルサイズ削減）
   compress: true,
+  // Turbopackで解決できないパッケージをサーバー外部パッケージとして指定
+  serverExternalPackages: ["cron-parser", "@tumiki/prompts"],
   // MCP サーバーを有効化（Next.js DevTools用）
   experimental: {
     mcpServer: true,
+  },
+  // CE版ビルド時に.ee.tsファイルをCEスタブ(.ts)にリダイレクト
+  webpack: (config, { isServer }) => {
+    if (!isEEBuild) {
+      // CE版ビルド: .ee.ts/.ee.tsx ファイルをCEスタブ(.ts/.tsx)にリダイレクト
+      // これにより、EE実装の代わりにFORBIDDENエラーを返すスタブが使用される
+      /** @type {any} */
+      const cePlugin = {
+        /** @param {any} compiler */
+        apply(/** @type {any} */ compiler) {
+          compiler.hooks.normalModuleFactory.tap(
+            "CEBuildPlugin",
+            /** @param {any} nmf */ (/** @type {any} */ nmf) => {
+              nmf.hooks.beforeResolve.tap(
+                "CEBuildPlugin",
+                /** @param {any} resolveData */ (
+                  /** @type {any} */ resolveData,
+                ) => {
+                  // .ee.ts → .ts, .ee.tsx → .tsx にリダイレクト
+                  if (
+                    resolveData.request &&
+                    resolveData.request.includes(".ee")
+                  ) {
+                    resolveData.request = resolveData.request.replace(
+                      ".ee",
+                      "",
+                    );
+                  }
+                },
+              );
+            },
+          );
+        },
+      };
+      config.plugins.push(cePlugin);
+    }
+    return config;
   },
   // Coharu VRM/VRMA ファイルの長期キャッシュ設定
   async headers() {

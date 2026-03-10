@@ -159,10 +159,7 @@ const checkResourceAccess = async (
   const resource = await db.resource.findFirst({
     where: {
       id: resourceId,
-      OR: [
-        { ownerId: userId },
-        { sharedWith: { some: { userId } } },
-      ],
+      OR: [{ ownerId: userId }, { sharedWith: { some: { userId } } }],
     },
   });
   return !!resource;
@@ -200,14 +197,14 @@ import { TRPCError } from "@trpc/server";
 
 // エラーコードの使い分け
 throw new TRPCError({
-  code: "BAD_REQUEST",      // 400: 入力が不正
-  code: "UNAUTHORIZED",     // 401: 認証が必要
-  code: "FORBIDDEN",        // 403: 権限がない
-  code: "NOT_FOUND",        // 404: リソースが存在しない
-  code: "CONFLICT",         // 409: 競合（重複等）
+  code: "BAD_REQUEST", // 400: 入力が不正
+  code: "UNAUTHORIZED", // 401: 認証が必要
+  code: "FORBIDDEN", // 403: 権限がない
+  code: "NOT_FOUND", // 404: リソースが存在しない
+  code: "CONFLICT", // 409: 競合（重複等）
   code: "INTERNAL_SERVER_ERROR", // 500: サーバーエラー
   message: "ユーザー向けメッセージ",
-  cause: originalError,     // オリジナルエラーを保持
+  cause: originalError, // オリジナルエラーを保持
 });
 ```
 

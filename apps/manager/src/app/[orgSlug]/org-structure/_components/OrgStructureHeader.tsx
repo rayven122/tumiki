@@ -1,18 +1,18 @@
 "use client";
 
 import { useMemo } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@tumiki/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@tumiki/ui/tooltip";
 import { Save, ArrowDownUp } from "lucide-react";
 import { toast } from "sonner";
-import { detectOrphanedDepartments } from "./utils/validation";
-import type { DepartmentNodeType } from "./nodes/DepartmentNode";
-import type { DepartmentEdgeType } from "./edges/DepartmentEdge";
+import { detectOrphanedDepartments } from "@/features/org-structure/utils/validation";
+import type { DepartmentNodeType } from "@/features/org-structure/components/nodes/DepartmentNode";
+import type { DepartmentEdgeType } from "@/features/org-structure/components/edges/DepartmentEdge";
 
 type OrgStructureHeaderProps = {
   nodes: DepartmentNodeType[];

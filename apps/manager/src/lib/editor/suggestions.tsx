@@ -9,7 +9,7 @@ import { createRoot } from "react-dom/client";
 
 import { Suggestion as PreviewSuggestion } from "@/components/suggestion";
 import type { Suggestion } from "@tumiki/db/prisma";
-import type { ArtifactKind } from "@/components/artifact";
+import type { ArtifactKind } from "@/lib/types";
 
 export interface UISuggestion extends Suggestion {
   selectionStart: number;

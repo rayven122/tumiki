@@ -9,10 +9,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@tumiki/ui/alert-dialog";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
-import type { Department } from "./mock/mockOrgData";
+import type { Department } from "@/features/org-structure/utils/mock/mockOrgData";
 
 type DeleteDepartmentConfirmDialogProps = {
   organizationId: string;
@@ -33,11 +33,11 @@ export const DeleteDepartmentConfirmDialog = ({
 }: DeleteDepartmentConfirmDialogProps) => {
   const utils = api.useUtils();
 
-  const deleteMutation = api.v2.group.delete.useMutation({
+  const deleteMutation = api.group.delete.useMutation({
     onSuccess: () => {
       onClose();
-      void utils.v2.group.list.invalidate();
-      void utils.v2.group.getMembers.invalidate();
+      void utils.group.list.invalidate();
+      void utils.group.getMembers.invalidate();
       toast.success("部署を削除しました");
     },
     onError: (error) => {
@@ -90,7 +90,7 @@ export const DeleteDepartmentConfirmDialog = ({
           <AlertDialogAction
             onClick={handleDelete}
             disabled={deleteMutation.isPending}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            className="bg-destructive hover:bg-destructive/90 text-white"
           >
             {deleteMutation.isPending ? "削除中..." : "削除"}
           </AlertDialogAction>

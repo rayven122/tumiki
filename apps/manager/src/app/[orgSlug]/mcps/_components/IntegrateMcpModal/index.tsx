@@ -8,15 +8,20 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from "@tumiki/ui/dialog";
+import { Button } from "@tumiki/ui/button";
+import { Input } from "@tumiki/ui/input";
+import { Label } from "@tumiki/ui/label";
 import { Loader2, Layers } from "lucide-react";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
-import { DragDropContainer } from "./DragDropContainer";
-import type { SelectableMcp, UserMcpServer } from "./types";
+import {
+  McpDragDropSelector,
+  convertToSelectableMcp,
+  type UserMcpServer,
+  type SelectableMcp,
+} from "@/features/mcps/components/mcp-selector";
+import { normalizeSlug } from "@tumiki/db/utils/slug";
 
 type IntegrateMcpModalProps = {
   open: boolean;
@@ -24,31 +29,7 @@ type IntegrateMcpModalProps = {
   userServers: UserMcpServer[];
 };
 
-// ユーザーサーバーをSelectableMcp形式に変換
-const convertToSelectableMcp = (server: UserMcpServer): SelectableMcp => {
-  // 全templateInstancesのツール数を合計
-  const toolCount = server.templateInstances.reduce(
-    (sum, instance) => sum + instance.tools.length,
-    0,
-  );
-
-  // アイコンパス: server.iconPath がなければテンプレートのアイコンを使用
-  const iconPath =
-    server.iconPath ??
-    server.templateInstances[0]?.mcpServerTemplate.iconPath ??
-    null;
-
-  return {
-    id: server.id,
-    name: server.name,
-    description: server.description ?? "",
-    iconPath,
-    toolCount,
-    templateInstances: server.templateInstances,
-  };
-};
-
-// デフォルト名を生成（nameValidationSchemaに準拠: 英数字、空白、ハイフン、アンダースコア、ドットのみ）
+// デフォルト名を生成
 const generateDefaultName = (selectedMcps: SelectableMcp[]): string => {
   if (selectedMcps.length === 0) return "Integrated-MCP";
   if (selectedMcps.length <= 2) {
@@ -56,6 +37,13 @@ const generateDefaultName = (selectedMcps: SelectableMcp[]): string => {
   }
   const firstName = selectedMcps[0]?.name ?? "";
   return `${firstName} and ${selectedMcps.length - 1} MCPs`;
+};
+
+// 名前からslugを生成（日本語などの非ASCII文字はフォールバックでnanoid生成）
+const generateSlugFromName = (name: string): string => {
+  const normalized = normalizeSlug(name);
+  // 正規化後に空文字になった場合（日本語名など）はタイムスタンプベースのスラグを生成
+  return normalized || `integrated-${Date.now().toString(36)}`;
 };
 
 export const IntegrateMcpModal = ({
@@ -69,12 +57,10 @@ export const IntegrateMcpModal = ({
   const utils = api.useUtils();
 
   const createMutation =
-    api.v2.userMcpServer.createIntegratedMcpServer.useMutation({
+    api.userMcpServer.createIntegratedMcpServer.useMutation({
       onSuccess: () => {
         toast.success("統合MCPを作成しました");
-        // キャッシュを更新
-        void utils.v2.userMcpServer.findMcpServers.invalidate();
-        // モーダルを閉じて状態をリセット
+        void utils.userMcpServer.findMcpServers.invalidate();
         handleClose();
       },
       onError: (error) => {
@@ -90,21 +76,15 @@ export const IntegrateMcpModal = ({
     [userServers],
   );
 
-  // 選択済みMCPと未選択MCPを分離（Setで検索をO(1)に最適化）
+  // 選択済みMCPと未選択MCPを分離
   const { availableMcps, selectedMcps } = useMemo(() => {
     const selectedSet = new Set(selectedMcpIds);
-    const selectedMap = new Map<string, SelectableMcp>();
-    const available: SelectableMcp[] = [];
-
-    for (const mcp of allMcps) {
-      if (selectedSet.has(mcp.id)) {
-        selectedMap.set(mcp.id, mcp);
-      } else {
-        available.push(mcp);
-      }
-    }
-
-    // 選択順序を維持（selectedMcpIdsの順序でMapから取得）
+    const selectedMap = new Map(
+      allMcps
+        .filter((mcp) => selectedSet.has(mcp.id))
+        .map((mcp) => [mcp.id, mcp]),
+    );
+    const available = allMcps.filter((mcp) => !selectedSet.has(mcp.id));
     const selected = selectedMcpIds
       .map((id) => selectedMap.get(id))
       .filter((mcp): mcp is SelectableMcp => mcp !== undefined);
@@ -135,22 +115,19 @@ export const IntegrateMcpModal = ({
       return;
     }
 
-    // サーバー名（未入力時はデフォルト名を使用）
     const serverName = name.trim() || generateDefaultName(selectedMcps);
 
-    // 選択したMCPのtemplateInstancesから作成データを構築
-    // toolIdsを省略することで、バックエンドがテンプレートの全ツールを自動選択
     const templates = selectedMcps.flatMap((mcp) =>
       mcp.templateInstances.map((instance) => ({
         mcpServerTemplateId: instance.mcpServerTemplate.id,
         normalizedName:
           instance.normalizedName || instance.mcpServerTemplate.name,
-        // envVarsは既存のものを自動使用（省略）
       })),
     );
 
     createMutation.mutate({
       name: serverName,
+      slug: generateSlugFromName(serverName),
       templates,
     });
   };
@@ -188,11 +165,14 @@ export const IntegrateMcpModal = ({
           </div>
 
           {/* ドラッグ&ドロップエリア */}
-          <DragDropContainer
+          <McpDragDropSelector
             availableMcps={availableMcps}
             selectedMcps={selectedMcps}
             onSelect={handleSelect}
             onRemove={handleRemove}
+            availableLabel="利用可能なMCP"
+            selectedLabel="統合するMCP"
+            selectedCountLabel={`(${selectedMcps.length}/2以上)`}
           />
         </div>
 

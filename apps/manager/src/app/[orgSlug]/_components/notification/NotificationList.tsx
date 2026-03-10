@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@tumiki/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@tumiki/ui/tabs";
 import { api } from "@/trpc/react";
 import { NotificationItem } from "./NotificationItem";
 import { Loader2 } from "lucide-react";
@@ -26,7 +26,7 @@ export const NotificationList = ({ onClose }: { onClose?: () => void }) => {
 
   // 通知一覧を取得（ポーリング）
   const { data, isLoading, isFetchingNextPage, fetchNextPage } =
-    api.v2.notification.getNotifications.useInfiniteQuery(
+    api.notification.getNotifications.useInfiniteQuery(
       {
         limit: PAGE_SIZE,
         isRead: filter === "unread" ? false : undefined,
@@ -39,10 +39,10 @@ export const NotificationList = ({ onClose }: { onClose?: () => void }) => {
     );
 
   // すべて既読にする
-  const markAllAsRead = api.v2.notification.markAllAsRead.useMutation({
+  const markAllAsRead = api.notification.markAllAsRead.useMutation({
     onSuccess: async () => {
-      await utils.v2.notification.getNotifications.invalidate();
-      await utils.v2.notification.getUnreadCount.invalidate();
+      await utils.notification.getNotifications.invalidate();
+      await utils.notification.getUnreadCount.invalidate();
     },
   });
 

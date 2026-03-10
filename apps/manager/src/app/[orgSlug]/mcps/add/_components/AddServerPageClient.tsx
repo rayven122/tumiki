@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@tumiki/ui/button";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 

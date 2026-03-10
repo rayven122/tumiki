@@ -6,16 +6,16 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
+} from "@tumiki/ui/dialog";
+import { Input } from "@tumiki/ui/input";
+import { Label } from "@tumiki/ui/label";
+import { Separator } from "@tumiki/ui/separator";
 import type { Prisma } from "@tumiki/db/prisma";
-import { useServerConfigForm } from "./_hooks/useServerConfigForm";
-import { AuthMethodTabs } from "./_components/AuthMethodTabs";
-import { ServerInfoSection } from "./_components/ServerInfoSection";
-import { FormActions } from "./_components/FormActions";
-import { LoadingOverlay } from "./_components/LoadingOverlay";
+import { useServerConfigForm } from "./hooks/useServerConfigForm";
+import { AuthMethodTabs } from "./ServerCardAuthMethodTabs";
+import { ServerInfoSection } from "./ServerCardServerInfoSection";
+import { FormActions } from "./ServerCardFormActions";
+import { LoadingOverlay } from "./ServerCardLoadingOverlay";
 
 type McpServerTemplate = Prisma.McpServerTemplateGetPayload<object>;
 

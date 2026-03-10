@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { EEFeatureGate, EEUpgradePrompt } from "@/components/ee";
 import { getSessionInfo } from "@/lib/auth/session-utils";
 import { redirect } from "next/navigation";
 import { OrgStructureClient } from "./_components/OrgStructureClient";
@@ -28,5 +29,12 @@ export default async function OrgStructurePage({
     redirect("/onboarding");
   }
 
-  return <OrgStructureClient organizationId={organizationId} />;
+  return (
+    <EEFeatureGate
+      feature="group-management"
+      fallback={<EEUpgradePrompt feature="group-management" />}
+    >
+      <OrgStructureClient organizationId={organizationId} />
+    </EEFeatureGate>
+  );
 }

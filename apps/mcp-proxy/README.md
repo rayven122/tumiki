@@ -5,7 +5,7 @@
 ## 概要
 
 - **複数Remote MCP統合**: 名前空間ベースルーティング、マルチトランスポート対応
-- **ステートレス設計**: Cloud Run対応、水平スケール可能
+- **ステートレス設計**: 水平スケール可能
 - **HTTP Transport**: クライアント向けHTTPインターフェース（JSON-RPC over HTTP）
 - **APIキー認証**: データベースベース検証
 - **構造化ログ**: Cloud Logging/BigQuery自動連携
@@ -13,13 +13,13 @@
 ## アーキテクチャ特性
 
 - **完全ステートレス**: 接続プールなし、リクエストごとに接続を作成・破棄
-- **キャッシュレス**: インメモリキャッシュなし、シンプルで予測可能な動作
-- **Cloud Run最適化**: スケールtoゼロ、水平スケール、マルチインスタンス対応
+- **設定キャッシュ無効化中**: 現在は設定キャッシュを使用せず、常にDBから直接取得
+- **本番環境最適化**: 水平スケール、マルチインスタンス対応
 
 ## インフラストラクチャ機能
 
-- **レート制限**: Cloud Armor（Load Balancer経由）またはAPI Gatewayにて実施
-- **可観測性**: Cloud LoggingおよびCloud Traceにて実施
+- **レート制限**: Load Balancer経由またはAPI Gatewayにて実施
+- **可観測性**: 構造化ログにて実施
 
 ## 技術スタック
 
@@ -149,8 +149,8 @@ curl -X POST http://localhost:8080/mcp/dev-instance-id \
 このプロキシサーバーは以下のトランスポートを使用してリモートMCPサーバーに接続します：
 
 - **Streamable HTTP**: 最新のMCPプロトコル（推奨）
-- **SSE (Server-Sent Events)**: レガシーサポート（HTTPからの自動フォールバック）
-- **Stdio**: ローカルプロセス起動
+- **SSE (Server-Sent Events)**: レガシーサポート（明示的にSSEを設定した場合のみ）
+- **Stdio**: 現在未サポート（設定時はエラー）
 
 ## 環境変数
 
@@ -165,36 +165,9 @@ DEV_MODE=false  # true で認証バイパス + Context7固定接続
 # データベース
 DATABASE_URL=postgresql://...
 
-# Redis（キャッシュ）
-UPSTASH_REDIS_REST_URL=https://...
-UPSTASH_REDIS_REST_TOKEN=...
-
-# キャッシュ暗号化
-REDIS_ENCRYPTION_KEY=64文字の16進数文字列  # 32バイト（256ビット）の暗号化キー
-
 # ログ設定
 LOG_LEVEL=info  # info, warn, error, debug
 ```
-
-### キャッシュ暗号化キーの生成
-
-Redis に保存されるキャッシュデータ（MCP サーバー設定、API キー、環境変数等）は AES-256-GCM で暗号化されます。
-
-新しい暗号化キーを生成：
-
-```bash
-# Node.js を使用
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-
-# または openssl を使用
-openssl rand -hex 32
-```
-
-⚠️ **セキュリティ上の注意:**
-
-- **開発環境と本番環境で異なるキーを使用してください**
-- **キーは厳重に管理し、決してリポジトリにコミットしないでください**
-- **キーを変更すると既存のキャッシュは復号化できなくなりますが、自動的にクリアされます**
 
 ## MCPサーバー設定
 
@@ -326,51 +299,24 @@ Authorization: Bearer tumiki_live_abc123...
 
 ## デプロイ
 
-### Cloud Run（推奨）
+### VMホスティング
 
-本番環境での推奨デプロイ方法です。
+本番環境ではVMにデプロイしています。
 
-#### カスタムドメイン（Staging/Production環境のみ）
-
-Staging/Production環境には自動的にカスタムドメインが設定されます：
-
-| 環境       | Cloud Runサービス              | カスタムドメイン                  | URL形式                                            |
-| ---------- | ------------------------------ | --------------------------------- | -------------------------------------------------- |
-| Preview    | `tumiki-mcp-proxy-pr-{PR番号}` | なし                              | `https://tumiki-mcp-proxy-pr-{PR番号}-*.a.run.app` |
-| Staging    | `tumiki-mcp-proxy-staging`     | `https://stg-server.tumiki.cloud` | `https://tumiki-mcp-proxy-staging-*.a.run.app`     |
-| Production | `tumiki-mcp-proxy-production`  | `https://server.tumiki.cloud`     | `https://server.tumiki.cloud`                      |
-
-**Preview環境**: 各PRごとに独立したCloud Runサービスが作成されます（例: PR #372 → `tumiki-mcp-proxy-pr-372`）
-
-- PRクローズ時に自動的にCloud Runサービスが削除されます
-
-**Staging/Production**: 初回デプロイ時にGitHub Actionsが自動的にカスタムドメインを設定します。
-
-詳細は [Cloud Run カスタムドメイン設定](../../docs/cloudrun-custom-domain.md) を参照。
-
-#### GitHub Actions経由（自動）
-
-- **Preview**: Pull Request作成時に自動デプロイ
-- **Staging**: `main` ブランチへマージ時に自動デプロイ
-- **Production**: `v*` タグプッシュ時に自動デプロイ
-
-#### ローカルから手動デプロイ
+#### Dockerイメージのビルド
 
 ```bash
-# Docker イメージのビルドとプッシュ
-docker build -t asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki/mcp-proxy:staging-latest \
+# Docker イメージのビルド
+docker build -t mcp-proxy:latest \
   -f apps/mcp-proxy/Dockerfile .
-docker push asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki/mcp-proxy:staging-latest
-
-# Cloud Run へデプロイ
-gcloud run deploy tumiki-mcp-proxy-staging \
-  --image=asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki/mcp-proxy:staging-latest \
-  --region=asia-northeast1
 ```
 
-#### 詳細ガイド
+#### 本番サーバー起動
 
-詳細なセットアップ手順、運用管理、トラブルシューティングについては、[Cloud Run デプロイメントガイド](../../docs/cloudrun-mcp-proxy-deployment.md)を参照してください。
+```bash
+# サーバー起動
+pnpm start
+```
 
 ## アーキテクチャ
 

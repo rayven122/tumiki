@@ -3,191 +3,71 @@ name: 🔍 Claude Code Review
 on:
   pull_request:
     types: [opened, synchronize]
-    # Optional: Only run on specific file changes
-    # paths:
-    #   - "src/**/*.ts"
-    #   - "src/**/*.tsx"
-    #   - "src/**/*.js"
-    #   - "src/**/*.jsx"
 
 jobs:
   claude-review:
-    name: 📝 Code Review Assistant
-    # Optional: Filter by PR author
-    # if: |
-    #   github.event.pull_request.user.login == 'external-contributor' ||
-    #   github.event.pull_request.user.login == 'new-developer' ||
-    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
+    name: 📝 Code Review
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read
+      pull-requests: write
       issues: read
       id-token: write
 
     steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 1
 
-      - name: 🔍 Run Claude Code Review
-        id: claude-review
-        uses: anthropics/claude-code-action@beta
+      - uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
-          # Optional: Specify model (defaults to Claude Sonnet 4, uncomment for Claude Opus 4)
-          # model: "claude-opus-4-20250514"
+          # レビューコメントを1つに統合し、更新時に上書き
+          use_sticky_comment: "true"
 
-          # Direct prompt for automated review (no @claude mention needed)
-          direct_prompt: |
-            ## 第1段階: 詳細なコード分析
+          prompt: |
+            ## レビュー準備
+            以下を読み込み、規約を把握してください：
+            - `CLAUDE.md`
+            - `.claude/rules/typescript.md`
+            - `.claude/rules/testing.md`
+            - `.claude/rules/frontend.md`
 
-            このプルリクエストを以下の観点から徹底的にレビューしてください：
+            ## レビュー実施
+            1. 規約違反を最優先でチェック
+            2. コード品質・設計原則・バグ・セキュリティを確認
+            3. 各指摘に重要度スコア（1-10）を付与
+            4. 改善コード例を提示
 
-            ### 1. コード品質とベストプラクティス
-            - 可読性と保守性
-            - 命名規約の一貫性
-            - コードの重複（DRY原則）
-            - 複雑性の評価
+          track_progress: true
 
-            ### 2. 設計原則の遵守
-            - **SOLID原則**: 単一責任、開放閉鎖、リスコフ置換、インターフェース分離、依存性逆転
-            - **KISS原則**: シンプルさの維持
-            - **YAGNI原則**: 不要な機能の実装を避ける
-            - **DRY原則**: コードの重複を避ける
+          claude_args: |
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr view:*),Bash(gh pr diff:*),Read"
+            --append-system-prompt "日本語で回答。規約違反は重要度8以上として報告。
 
-            ### 3. 潜在的なバグとエラーハンドリング
-            - エッジケースの考慮
-            - エラーハンドリングの適切性
-            - nullやundefinedの処理
-            - 型安全性（TypeScriptの場合）
+            ## レビューフィードバック方法
+            - 具体的な問題はインラインコメント（mcp__github_inline_comment__create_inline_comment）を使用
+            - 全体的な評価はPRコメント（gh pr comment）を使用
 
-            ### 4. パフォーマンスとスケーラビリティ
-            - アルゴリズムの効率性
-            - 不要な再レンダリング（Reactの場合）
-            - データベースクエリの最適化
-            - メモリリークの可能性
+            ## 出力フォーマット
 
-            ### 5. セキュリティ
-            - インジェクション攻撃への対策
-            - 認証・認可の適切性
-            - 機密情報の取り扱い
-            - 依存関係の脆弱性
+            ### 🤖 Claude Code Review
 
-            ### 6. テストとドキュメント
-            - テストカバレッジの十分性
-            - エッジケースのテスト
-            - ドキュメントの更新
+            **総合評価**: ✅ 承認可能 / ⚠️ 改善推奨 / ❌ 要修正
 
-            ## 第2段階: 自己評価と改善提案の優先順位付け
+            **重要度分布**: 🔴 緊急(8-10): X件 / 🟡 重要(5-7): X件 / 🟢 軽微(1-4): X件
 
-            上記の分析を行った後、以下を実施してください：
-
-            1. **各指摘事項に重要度スコアを付与**（1-10）
-               - 10: 緊急対応必須（本番環境に影響）
-               - 7-9: 重要（マージ前に修正推奨）
-               - 4-6: 中程度（改善推奨）
-               - 1-3: 軽微（将来的な改善案）
-
-            2. **具体的な改善コードの提示**
-               - 問題のあるコードの引用
-               - 改善後のコード例
-               - なぜその改善が必要かの説明
-
-            3. **全体的な評価**
-               - このPRの強み
-               - 改善が必要な主要領域
-               - 次のステップの推奨事項
-
-          # Add custom instructions for Japanese language support with review history management
-          custom_instructions: |
-            以下のガイドラインに従ってください：
-            - 全てのコメントと回答を日本語で記述してください
-            - 建設的で実践的なフィードバックを提供してください
-            - 技術的な用語は適切な日本語または英語で説明してください
-
-            レビュー結果は必ず以下の形式で出力してください：
-
-            ## 🤖 Claude Code Review
-
-            ### 📝 最新のレビュー結果
-            **日時**: {現在の日時をYYYY-MM-DD HH:mm形式で記載}
-            **コミット**: {レビュー対象のコミットハッシュ（最初の7文字）}
-            **総合評価**: {以下から選択: ✅ 承認可能 / ⚠️ 改善推奨 / ❌ 要修正}
-
-            ### 📊 レビューサマリー
-            **重要度スコア分布**:
-            - 🔴 緊急（8-10）: {件数}件
-            - 🟡 重要（5-7）: {件数}件
-            - 🟢 軽微（1-4）: {件数}件
-
-            **主な指摘事項** （重要度順）:
-            {最も重要な3-5件の指摘を重要度スコアと共に記載}
-
-            ### 🔍 詳細分析
-
-            #### 1. 設計原則の評価
-            - **SOLID原則**: {遵守度を5段階で評価 ⭐⭐⭐⭐⭐}
-            - **DRY/KISS/YAGNI**: {遵守度を5段階で評価 ⭐⭐⭐⭐⭐}
-            - **具体的な改善点**: {違反があれば具体例を記載}
-
-            #### 2. 重要な指摘事項（重要度8以上）
-            {各項目について以下の形式で記載:}
+            ### 指摘事項
 
             **🔴 [重要度: X/10] 問題の概要**
-            - **ファイル**: `path/to/file.ts:行番号`
-            - **現在のコード**:
-            ```typescript
-            // 問題のあるコード
-            ```
-            - **改善案**:
-            ```typescript
-            // 改善後のコード
-            ```
-            - **理由**: {なぜこの変更が必要か}
-
-            #### 3. 改善推奨事項（重要度5-7）
-            {同様の形式で記載、ただし簡潔に}
-
-            #### 4. 軽微な提案（重要度1-4）
-            {リスト形式で簡潔に記載}
+            - ファイル: path/to/file.ts:行番号
+            - 現在のコード: ...
+            - 改善案: ...
+            - 理由: ...
 
             ### ✨ 良い点
-            {このPRの優れている点を2-3個挙げる}
+            - ...
 
             ### 🎯 次のアクション
-            {開発者が取るべき具体的な行動を優先順位付きで記載}
-
-            ### 📈 品質メトリクス
-            - **コード品質スコア**: {10点満点}
-            - **保守性**: {高/中/低}
-            - **テストカバレッジへの影響**: {改善/維持/低下}
-            - **パフォーマンスへの影響**: {改善/影響なし/懸念あり}
-            - **セキュリティリスク**: {なし/低/中/高}
-
-          # Use sticky comments to make Claude reuse the same comment on subsequent pushes to the same PR
-          use_sticky_comment: true
-
-          # Optional: Customize review based on file types
-          # direct_prompt: |
-          #   Review this PR focusing on:
-          #   - For TypeScript files: Type safety and proper interface usage
-          #   - For API endpoints: Security, input validation, and error handling
-          #   - For React components: Performance, accessibility, and best practices
-          #   - For tests: Coverage, edge cases, and test quality
-
-          # Optional: Different prompts for different authors
-          # direct_prompt: |
-          #   ${{ github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR' &&
-          #   'Welcome! Please review this PR from a first-time contributor. Be encouraging and provide detailed explanations for any suggestions.' ||
-          #   'Please provide a thorough code review focusing on our coding standards and best practices.' }}
-
-          # Optional: Add specific tools for running tests or linting
-          # allowed_tools: "Bash(npm run test),Bash(npm run lint),Bash(npm run typecheck)"
-
-          # Optional: Skip review for certain conditions
-          # if: |
-          #   !contains(github.event.pull_request.title, '[skip-review]') &&
-          #   !contains(github.event.pull_request.title, '[WIP]')
+            1. ..."

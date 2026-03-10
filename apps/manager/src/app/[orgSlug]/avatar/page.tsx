@@ -6,8 +6,8 @@
 import { auth } from "~/auth";
 import { api } from "@/trpc/server";
 import { generateCUID } from "@/lib/utils";
-import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
-import { AvatarModeChat } from "@/components/avatar-mode";
+import { DEFAULT_CHAT_MODEL } from "@/features/chat/services/ai";
+import { AvatarModeChat } from "@/features/avatar/components";
 
 type PageProps = {
   params: Promise<{ orgSlug: string }>;

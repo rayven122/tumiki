@@ -40,6 +40,10 @@ model McpServerRequestLog {
   /// ユーザーエージェント（最大512文字に制限）
   userAgent String? @db.VarChar(512)
 
+  /// AIツール呼び出しID（AI SDKが生成、チャットメッセージとの紐付け用）
+  /// チャットのMessage.partsからBigQueryのresponseBodyを参照するために使用
+  toolCallId String? @db.VarChar(64)
+
   /// PIIマスキングモード（DISABLEDの場合はマスキング無効）
   /// MCPサーバー設定のpiiMaskingModeをそのまま記録
   piiMaskingMode PiiMaskingMode @default(DISABLED)
@@ -67,4 +71,6 @@ model McpServerRequestLog {
   @@index([mcpServerId, createdAt])
   @@index([organizationId, createdAt])
   @@index([userId, createdAt])
+  /// toolCallIdでの検索用インデックス（チャットメッセージからの参照）
+  @@index([toolCallId])
 }

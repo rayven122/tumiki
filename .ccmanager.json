@@ -1,0 +1,9 @@
+{
+  "worktree_base_dir": "../",
+  "session_prefix": "tumiki",
+  "post_create_commands": [
+    "ln -sf $(git rev-parse --show-toplevel)/../tumiki-main/.env .env",
+    "pnpm install"
+  ],
+  "default_prompt": "/issue-to-pr"
+}

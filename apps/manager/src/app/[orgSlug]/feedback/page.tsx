@@ -1,5 +1,5 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FeedbackForm } from "./_components/FeedbackForm";
+import { Card, CardContent, CardHeader, CardTitle } from "@tumiki/ui/card";
+import { FeedbackForm } from "@/features/feedback/components/FeedbackForm";
 
 const FeedbackPage = async () => {
   return (

@@ -7,15 +7,22 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
+} from "@tumiki/ui/dialog";
+import { Separator } from "@tumiki/ui/separator";
 import type { Prisma } from "@tumiki/db/prisma";
-import { useCreateServerForm } from "./_hooks/useCreateServerForm";
-import { ServerInfoSection } from "./_components/ServerInfoSection";
-import { ServerNameInput } from "./_components/ServerNameInput";
-import { AuthMethodTabs } from "./_components/AuthMethodTabs";
-import { FormActions } from "./_components/FormActions";
-import { LoadingOverlay } from "./_components/LoadingOverlay";
+import { normalizeSlug } from "@tumiki/db/utils/slug";
+import { useCreateServerForm } from "./hooks/useCreateServerForm";
+import { ServerInfoSection } from "./ServerCardServerInfoSection";
+import { ServerNameInput } from "./ServerCardServerNameInput";
+import { AuthMethodTabs } from "./ServerCardAuthMethodTabs";
+import { FormActions } from "./ServerCardFormActions";
+import { LoadingOverlay } from "./ServerCardLoadingOverlay";
+
+// 名前からslugを生成（日本語などの非ASCII文字はフォールバックでタイムスタンプ生成）
+const generateSlugFromName = (name: string): string => {
+  const normalized = normalizeSlug(name);
+  return normalized || `mcp-${Date.now().toString(36)}`;
+};
 
 type McpServerTemplate = Prisma.McpServerTemplateGetPayload<object>;
 
@@ -49,14 +56,17 @@ export const CreateServerModal = ({
   };
 
   const handleSubmit = () => {
+    const slug = generateSlugFromName(serverName);
     if (mcpServer.authType === "OAUTH") {
       handleOAuthConnect({
         serverName,
+        slug,
         mcpServerTemplateId: mcpServer.id,
       });
     } else {
       handleAddWithApiKey({
         serverName,
+        slug,
         authType: mcpServer.authType,
         mcpServerTemplateId: mcpServer.id,
         envVars,

@@ -5,60 +5,30 @@ import { ChevronDownIcon, ChevronRightIcon, KeyIcon } from "lucide-react";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { TypingIndicator } from "./typing-indicator";
-import { useAtomValue } from "jotai";
-import { mcpServerMapAtom, resolveServerName } from "@/atoms/mcpServerMapAtom";
 import { useReauthenticateFromChat } from "@/hooks/useReauthenticateFromChat";
-
-// AI SDK 6 のツール状態
-type ToolState =
-  | "input-streaming"
-  | "input-available"
-  | "output-available"
-  | "output-error";
+import { useToolOutput } from "@/hooks/useToolOutput";
+import { parseToolName } from "@/features/mcps/utils/mcpToolName";
+import {
+  detectErrorFromOutput,
+  extractAuthError,
+} from "@/features/mcps/utils/mcpToolError";
+import { type ToolState } from "@/features/chat";
 
 type McpToolCallProps = {
-  toolName: string; // "Linear MCP__linear__list_teams" or "Linear MCP__search_tools"
+  toolName: string; // "linear-mcp__linear__list_teams" or "linear-mcp__search_tools"
+  toolCallId: string;
   state: ToolState;
   input?: unknown;
   output?: unknown;
-};
-
-/**
- * ツール名からMCPサーバーIDと表示用ツール名を抽出
- *
- * 形式: "{mcpServerId}__{normalizedName}__{toolName}" または "{mcpServerId}__{metaToolName}"
- *
- * @example
- * "cm7qwxyz123__linear__list_teams" → { serverId: "cm7qwxyz123", displayToolName: "list_teams" }
- * "cm7qwxyz123__search_tools" → { serverId: "cm7qwxyz123", displayToolName: "search_tools" }
- */
-const parseToolName = (
-  fullToolName: string,
-): { serverId: string; displayToolName: string } => {
-  const parts = fullToolName.split("__");
-
-  if (parts.length >= 3) {
-    // {mcpServerId}__{normalizedName}__{toolName} 形式
-    // 最初がサーバーID、残りの最後がツール名
-    return {
-      serverId: parts[0] ?? "",
-      displayToolName: parts.slice(2).join("__"),
-    };
-  }
-
-  if (parts.length === 2) {
-    // {mcpServerId}__{metaToolName} 形式（Dynamic Search メタツール）
-    return {
-      serverId: parts[0] ?? "",
-      displayToolName: parts[1] ?? "",
-    };
-  }
-
-  // フォールバック: パースできない場合はそのまま表示
-  return {
-    serverId: "",
-    displayToolName: fullToolName,
-  };
+  /** BigQuery参照（outputがBigQueryに保存されている場合） */
+  outputRef?: string;
+  /**
+   * コンパクトモード（エージェント実行モーダル用）
+   * - 再認証バナーを非表示
+   * - outputRef フェッチを無効化
+   * @default false
+   */
+  compact?: boolean;
 };
 
 /**
@@ -120,80 +90,6 @@ const JsonPreview = ({
 };
 
 /**
- * 認証エラー情報の型
- */
-type AuthErrorInfo = {
-  requiresReauth: boolean;
-  mcpServerId: string;
-};
-
-/**
- * 出力から認証エラー情報を抽出する
- * 再認証が必要な場合はmcpServerIdを含むオブジェクトを返す
- *
- * requiresReauth: true が設定されている場合は errorType に関係なく
- * 認証エラーとして扱う（401エラーやReAuthRequiredエラーに対応）
- */
-const extractAuthError = (output: unknown): AuthErrorInfo | null => {
-  if (!output || typeof output !== "object") return null;
-
-  const obj = output as {
-    isError?: boolean;
-    errorType?: string;
-    requiresReauth?: boolean;
-    mcpServerId?: string;
-  };
-
-  // requiresReauth: true があれば認証エラーとして扱う
-  if (
-    obj.isError === true &&
-    obj.requiresReauth === true &&
-    typeof obj.mcpServerId === "string"
-  ) {
-    return {
-      requiresReauth: true,
-      mcpServerId: obj.mcpServerId,
-    };
-  }
-
-  return null;
-};
-
-/**
- * 出力からエラー状態を検出する
- * MCPエラーは以下の形式で返される:
- * - { content: [...], isError: true }
- * - "Failed to execute tool..." (文字列形式のエラー)
- */
-const detectErrorFromOutput = (output: unknown): boolean => {
-  // オブジェクト形式: { isError: true }
-  if (output && typeof output === "object") {
-    const outputObj = output as { isError?: boolean };
-    if (outputObj.isError === true) return true;
-  }
-
-  // 文字列形式: エラーメッセージを含む場合
-  if (typeof output === "string") {
-    const lowerOutput = output.toLowerCase();
-    // エラーを示すキーワードをチェック
-    if (
-      lowerOutput.includes("failed to execute") ||
-      lowerOutput.includes("failed to connect") ||
-      lowerOutput.includes("mcp error") ||
-      lowerOutput.includes("oauth token not found") ||
-      lowerOutput.includes("user needs to authenticate") ||
-      lowerOutput.includes("unauthorized") ||
-      lowerOutput.includes("timed out") ||
-      lowerOutput.includes("timeout")
-    ) {
-      return true;
-    }
-  }
-
-  return false;
-};
-
-/**
  * 再認証バナーコンポーネント
  * UX原則: 視覚的階層、認知負荷の軽減、ポジティブなフレーミング
  */
@@ -252,31 +148,45 @@ const ReauthBanner = ({
  */
 export const McpToolCall = ({
   toolName,
+  toolCallId,
   state,
   input,
-  output,
+  output: directOutput,
+  outputRef,
+  compact = false,
 }: McpToolCallProps) => {
-  const mcpServerMap = useAtomValue(mcpServerMapAtom);
   const pathname = usePathname();
-  const { serverId, displayToolName } = parseToolName(toolName);
-  const serverName = resolveServerName(mcpServerMap, serverId);
+  const { serverSlug, displayToolName } = parseToolName(toolName);
   const isLoading = state === "input-streaming" || state === "input-available";
+
+  // outputRefがある場合、展開時にBigQueryからフェッチ（compactモードでは無効）
+  const [shouldFetch, setShouldFetch] = useState(false);
+  const {
+    output: fetchedOutput,
+    isLoading: isFetchingOutput,
+    error: fetchError,
+  } = useToolOutput({
+    toolCallId: outputRef,
+    enabled: !compact && shouldFetch && !!outputRef,
+  });
+
+  // 実際に使用するoutput（直接渡されたものまたはフェッチしたもの）
+  const output = directOutput ?? fetchedOutput;
 
   // stateが"output-available"でも、outputにisError:trueがあればエラーとして扱う
   const outputHasError = detectErrorFromOutput(output);
 
-  // 認証エラー情報を抽出（再認証ボタン表示用）
-  const authError = extractAuthError(output);
+  // 認証エラー情報を抽出（再認証ボタン表示用、compactモードでは無効）
+  const authError = compact ? null : extractAuthError(output);
 
   // 実際に表示する状態（outputのisErrorでオーバーライド）
   const displayState: ToolState =
     state === "output-available" && outputHasError ? "output-error" : state;
 
-  // 再認証後に戻るURL（チャット画面）
+  // 再認証後に戻るURL（チャット画面、compactモードでは使用しない）
   // パスから orgSlug と chatId を抽出: /[orgSlug]/chat/[chatId]
-  const redirectTo = pathname?.match(/^\/([^/]+)\/chat\/([^/]+)/)
-    ? pathname
-    : null;
+  const redirectTo =
+    !compact && pathname?.match(/^\/([^/]+)\/chat\/([^/]+)/) ? pathname : null;
 
   return (
     <div
@@ -285,13 +195,13 @@ export const McpToolCall = ({
         isLoading && "animate-pulse",
       )}
     >
-      {/* ヘッダー: サーバー名 > ツール名 */}
+      {/* ヘッダー: サーバーslug > ツール名 */}
       <div className="flex items-center gap-2">
         <StateIcon state={displayState} />
-        {serverName && (
+        {serverSlug && (
           <>
             <span className="text-muted-foreground text-sm font-medium">
-              {serverName}
+              {serverSlug}
             </span>
             <span className="text-muted-foreground/50">&gt;</span>
           </>
@@ -307,11 +217,44 @@ export const McpToolCall = ({
       )}
 
       {/* 結果（出力）- エラーでない場合のみ表示 */}
-      {displayState === "output-available" &&
-        output !== undefined &&
-        output !== null && (
-          <JsonPreview data={output} label="結果" defaultExpanded={false} />
-        )}
+      {displayState === "output-available" && (
+        <>
+          {/* outputRefがある場合はオンデマンドフェッチ（compactモードでは非表示） */}
+          {!compact &&
+            outputRef &&
+            !output &&
+            !isFetchingOutput &&
+            !fetchError && (
+              <div className="mt-2">
+                <button
+                  type="button"
+                  onClick={() => setShouldFetch(true)}
+                  className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
+                >
+                  <ChevronRightIcon className="size-3" />
+                  結果を読み込む
+                </button>
+              </div>
+            )}
+          {/* フェッチ中（compactモードでは非表示） */}
+          {!compact && isFetchingOutput && (
+            <div className="text-muted-foreground mt-2 flex items-center gap-1 text-xs">
+              <TypingIndicator size="sm" />
+              <span>結果を読み込み中...</span>
+            </div>
+          )}
+          {/* フェッチエラー（compactモードでは非表示） */}
+          {!compact && fetchError && (
+            <div className="mt-2 text-xs text-red-600">
+              結果の読み込みに失敗しました: {fetchError.message}
+            </div>
+          )}
+          {/* 結果表示 */}
+          {output !== undefined && output !== null && (
+            <JsonPreview data={output} label="結果" defaultExpanded={false} />
+          )}
+        </>
+      )}
 
       {/* 認証エラー時の再認証バナー */}
       {displayState === "output-error" && authError && redirectTo && (

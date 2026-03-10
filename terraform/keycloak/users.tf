@@ -15,6 +15,11 @@ resource "keycloak_user" "admin_test" {
     value     = var.test_user_password
     temporary = false
   }
+
+  # Keycloak User Profile設定でfirstName/lastNameが読み取り専用の場合は無視
+  lifecycle {
+    ignore_changes = [first_name, last_name]
+  }
 }
 
 # テストユーザーにOwnerロールを割り当て

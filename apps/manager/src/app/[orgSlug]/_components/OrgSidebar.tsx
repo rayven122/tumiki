@@ -7,24 +7,25 @@ import {
   LayoutDashboard,
   Settings,
   Users,
-  Shield,
   ChevronLeft,
   MessageSquare,
   List,
   Network,
   Bot,
+  Sparkles,
 } from "lucide-react";
 import { useAtom } from "jotai";
 import { sidebarOpenAtom } from "@/store/sidebar";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useSidebarActions } from "@/hooks/useSidebarActions";
+import { isEEFeatureAvailable } from "@/features/ee";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { ChatHistoryList } from "@/components/chat/ChatHistoryList";
+} from "@tumiki/ui/tooltip";
+import { ChatHistoryList } from "@/features/chat";
 
 type OrgSidebarProps = {
   orgSlug: string;
@@ -50,9 +51,11 @@ export const OrgSidebar = ({
   const { closeSidebar } = useSidebarActions(isMobile, setIsOpen);
 
   // チャット画面かどうかを判定
+  // pathname はエンコード済み（%40など）、orgSlug はデコード済み（@など）なのでデコードして比較
+  const decodedPathname = decodeURIComponent(pathname);
   const isChatPage =
-    pathname.startsWith(`/${orgSlug}/chat`) ||
-    pathname.startsWith(`/${orgSlug}/avatar`);
+    decodedPathname.startsWith(`/${orgSlug}/chat`) ||
+    decodedPathname.startsWith(`/${orgSlug}/avatar`);
 
   // 現在のチャットIDを取得（/chat/[id] または /avatar/[id] の場合）
   // 型ガードで安全に取得
@@ -66,14 +69,21 @@ export const OrgSidebar = ({
       name: "ダッシュボード",
       href: `/${orgSlug}/dashboard`,
       icon: LayoutDashboard,
-      show: !isPersonal, // 個人組織では非表示
-      disabled: true,
-      comingSoon: true,
+      show: true, // 全組織で表示
+      disabled: false,
+    },
+    {
+      name: "AIエージェント",
+      href: `/${orgSlug}/agents`,
+      icon: Bot,
+      show: true, // 全組織で表示
+      disabled: false,
+      beta: true,
     },
     {
       name: "AIチャット",
       href: `/${orgSlug}/chat`,
-      icon: Bot,
+      icon: Sparkles,
       show: true, // 全組織で表示
       disabled: false,
       beta: true,
@@ -97,22 +107,16 @@ export const OrgSidebar = ({
       name: "メンバー管理",
       href: `/${orgSlug}/members`,
       icon: Users,
-      show: !isPersonal && isAdmin, // 個人組織では非表示、管理者のみ表示
+      // 個人組織では非表示、管理者のみ表示、EE機能が有効な場合のみ表示
+      show: !isPersonal && isAdmin && isEEFeatureAvailable("member-management"),
       disabled: false,
     },
     {
       name: "組織構造",
       href: `/${orgSlug}/org-structure`,
       icon: Network,
-      show: !isPersonal && isAdmin, // 個人組織では非表示、管理者のみ表示
-      disabled: false,
-      beta: true,
-    },
-    {
-      name: "ロール・権限",
-      href: `/${orgSlug}/roles`,
-      icon: Shield,
-      show: !isPersonal && isAdmin, // 個人組織では非表示、管理者のみ表示
+      // 個人組織では非表示、管理者のみ表示、EE機能が有効な場合のみ表示
+      show: !isPersonal && isAdmin && isEEFeatureAvailable("group-management"),
       disabled: false,
       beta: true,
     },
@@ -120,7 +124,7 @@ export const OrgSidebar = ({
       name: "設定",
       href: `/${orgSlug}/settings`,
       icon: Settings,
-      show: !isPersonal, // 個人組織では非表示
+      show: true, // 全組織で表示（Slack連携など）
       disabled: false,
     },
     {
@@ -174,10 +178,13 @@ export const OrgSidebar = ({
               <nav className="grid gap-1 px-4">
                 {navigation.map((item) => {
                   const Icon = item.icon;
-                  const isActive = pathname === item.href;
+                  const isActive = decodedPathname === item.href;
                   const isDisabled = item.disabled;
                   const isBeta = "beta" in item && item.beta;
-                  const tooltipText = item.comingSoon ? "近日公開" : item.name;
+                  const tooltipText =
+                    "comingSoon" in item && item.comingSoon
+                      ? "近日公開"
+                      : item.name;
 
                   const linkContent = (
                     <>

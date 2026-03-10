@@ -1,7 +1,7 @@
 import Script from "next/script";
 
 import { Chat } from "@/components/chat";
-import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
+import { DEFAULT_CHAT_MODEL } from "@/features/chat/services/ai";
 import { generateCUID } from "@/lib/utils";
 import { DataStreamHandler } from "@/components/data-stream-handler";
 import { DataStreamProvider } from "@/components/data-stream-provider";

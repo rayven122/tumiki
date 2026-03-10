@@ -1,5 +1,5 @@
 import { TerminalWindowIcon, LoaderIcon, CrossSmallIcon } from "./icons";
-import { Button } from "./ui/chat/button";
+import { Button } from "@tumiki/ui/button";
 import {
   type Dispatch,
   type SetStateAction,
@@ -156,6 +156,7 @@ export function Console({ consoleOutputs, setConsoleOutputs }: ConsoleProps) {
                           src={content.value}
                           alt="output"
                           className="w-full max-w-(--breakpoint-toast-mobile) rounded-md"
+                          referrerPolicy="no-referrer"
                         />
                       </picture>
                     ) : (

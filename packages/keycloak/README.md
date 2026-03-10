@@ -585,7 +585,7 @@ Error: Group not found
 - [Keycloak Admin REST API](https://www.keycloak.org/docs-api/latest/rest-api/index.html)
 - [Protocol Mappers](https://www.keycloak.org/docs/latest/server_admin/#_protocol-mappers)
 - [Tumiki認証設計](../../docs/auth/keycloak-jwt-claims-design.md)
-- [権限管理](../../docs/auth/permission-management.md)
+- [権限管理ガイド](../../docs/auth/permission-guide.md)
 
 ## ライセンス
 

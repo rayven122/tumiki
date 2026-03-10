@@ -12,14 +12,13 @@ import { McpToolCall } from "./mcp-tool-call";
 import { Weather, type WeatherAtLocation } from "./weather";
 import { MessageReasoning } from "./message-reasoning";
 import { Response } from "./response";
+import { SlackNotificationAlert } from "@/app/[orgSlug]/agents/[agentSlug]/_components/SlackNotificationAlert";
 import { sanitizeText } from "@/lib/utils";
-
-// AI SDK 6 のツール状態
-type ToolState =
-  | "input-streaming"
-  | "input-available"
-  | "output-available"
-  | "output-error";
+import {
+  type ToolState,
+  type SlackNotificationPart,
+  mapDynamicToolState,
+} from "@/features/chat";
 
 type MessagePartsProps = {
   message: UIMessage;
@@ -28,21 +27,6 @@ type MessagePartsProps = {
   compact?: boolean;
   /** 読み取り専用 */
   isReadonly?: boolean;
-};
-
-/**
- * dynamic-tool の状態をマッピング
- */
-const mapDynamicToolState = (state: string): ToolState => {
-  switch (state) {
-    case "output-available":
-      return "output-available";
-    case "error":
-      return "output-error";
-    case "pending":
-    default:
-      return "input-available";
-  }
 };
 
 /**
@@ -66,14 +50,18 @@ const ToolPartRenderer = ({
       state: string;
       input?: unknown;
       output?: unknown;
+      outputRef?: string;
     };
 
     return (
       <McpToolCall
         toolName={dynamicToolPart.toolName}
+        toolCallId={dynamicToolPart.toolCallId}
         state={mapDynamicToolState(dynamicToolPart.state)}
         input={dynamicToolPart.input}
         output={dynamicToolPart.output}
+        outputRef={dynamicToolPart.outputRef}
+        compact={compact}
       />
     );
   }
@@ -118,6 +106,7 @@ const ToolPartRenderer = ({
       state: string;
       input?: unknown;
       output?: unknown;
+      outputRef?: string;
     };
     const toolName = type.replace("tool-", "");
 
@@ -128,9 +117,12 @@ const ToolPartRenderer = ({
       return (
         <McpToolCall
           toolName={toolName}
+          toolCallId={toolPart.toolCallId}
           state={toolPart.state as ToolState}
           input={toolPart.input}
           output={toolPart.output}
+          outputRef={toolPart.outputRef}
+          compact={compact}
         />
       );
     }
@@ -275,6 +267,22 @@ export const MessageParts = ({
               key={key}
               part={part as { type: string; [key: string]: unknown }}
               compact={compact}
+            />
+          );
+        }
+
+        // Slack通知パート（DBから取得したカスタムパーツタイプ）
+        // コンパクト表示（アバターモード）では省略
+        // NOTE: AISDKのUIMessageパーツ型には含まれないためstring比較
+        if ((type as string) === "slack-notification" && !compact) {
+          const slackPart = part as unknown as SlackNotificationPart;
+          return (
+            <SlackNotificationAlert
+              key={key}
+              success={slackPart.success}
+              channelName={slackPart.channelName}
+              errorMessage={slackPart.errorMessage}
+              userAction={slackPart.userAction}
             />
           );
         }

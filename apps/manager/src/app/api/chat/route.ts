@@ -9,7 +9,17 @@ import {
   type UIMessageStreamWriter,
 } from "ai";
 import { auth } from "~/auth";
-import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
+import {
+  type RequestHints,
+  systemPrompt,
+  getLanguageModel,
+  entitlementsByUserType,
+} from "@/features/chat/services/ai";
+import { createDocument } from "@/features/chat/services/ai/tools/create-document";
+import { updateDocument } from "@/features/chat/services/ai/tools/update-document";
+import { requestSuggestions } from "@/features/chat/services/ai/tools/request-suggestions";
+import { getWeather } from "@/features/chat/services/ai/tools/get-weather";
+import { getMcpToolsFromServers } from "@/features/chat/services/ai/tools/mcp";
 import {
   createStreamId,
   deleteChatById,
@@ -21,15 +31,9 @@ import {
   saveMessages,
   updateChatMcpServers,
 } from "@/lib/db/queries";
+import { convertOutputsToRefs } from "@/lib/db/tool-output-utils";
 import { generateCUID } from "@/lib/utils";
-import { createDocument } from "@/lib/ai/tools/create-document";
-import { updateDocument } from "@/lib/ai/tools/update-document";
-import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
-import { getWeather } from "@/lib/ai/tools/get-weather";
-import { getMcpToolsFromServers } from "@/lib/ai/tools/mcp";
 import { isProductionEnvironment } from "@/lib/constants";
-import { getLanguageModel } from "@/lib/ai/providers";
-import { entitlementsByUserType } from "@/lib/ai/entitlements";
 import { postRequestBodySchema, type PostRequestBody } from "./schema";
 import { geolocation } from "@vercel/functions";
 import { createResumableStreamContext } from "resumable-stream";
@@ -73,21 +77,15 @@ type LegacyToolState = "call" | "partial-call" | "result" | "error";
 
 /**
  * DBに保存されているツール状態を AI SDK 6 形式に変換
- * 古い形式からの後方互換性をサポート
+ * 新旧両方の形式をサポート
  */
 const convertToolState = (state: string): ToolState => {
-  // 新しい形式の場合はそのまま返す
-  if (
-    state === "input-streaming" ||
-    state === "input-available" ||
-    state === "output-available" ||
-    state === "output-error"
-  ) {
-    return state as ToolState;
-  }
-
-  // 古い形式からの変換（後方互換性）
   switch (state) {
+    case "input-streaming":
+    case "input-available":
+    case "output-available":
+    case "output-error":
+      return state;
     case "call":
       return "input-available";
     case "partial-call":
@@ -276,7 +274,7 @@ export const POST = async (request: Request) => {
       selectedChatModel,
       selectedVisibilityType,
       selectedMcpServerIds,
-      isCoharuEnabled,
+      personaId,
     } = requestBody;
 
     const session = await auth();
@@ -450,8 +448,8 @@ export const POST = async (request: Request) => {
             selectedChatModel,
             requestHints,
             mcpToolNames,
-            isCoharuEnabled,
-          }),
+            personaId,
+          }).prompt,
           messages: modelMessages,
           stopWhen: stepCountIs(5),
           experimental_activeTools: isReasoningModel ? [] : allActiveToolNames,
@@ -498,7 +496,10 @@ export const POST = async (request: Request) => {
                   id: msg.id,
                   chatId: id,
                   role: "assistant" as const,
-                  parts: msg.parts as unknown as Array<{
+                  // ツールoutputをBigQuery参照に変換（outputは保存せずoutputRefのみ）
+                  parts: convertOutputsToRefs(
+                    msg.parts as unknown[],
+                  ) as unknown as Array<{
                     text: string;
                     type: string;
                   }>,
