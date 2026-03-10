@@ -210,9 +210,7 @@ export const LogsAnalyticsTab = ({
                           typeof value === "string" || typeof value === "number"
                             ? String(value)
                             : "";
-                        return timeRange === "24h"
-                          ? `${strValue}時`
-                          : strValue;
+                        return timeRange === "24h" ? `${strValue}時` : strValue;
                       }}
                     />
                   }

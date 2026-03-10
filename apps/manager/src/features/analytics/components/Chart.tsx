@@ -241,7 +241,7 @@ const ChartTooltipContent = ({
                     item.name,
                     item,
                     index,
-                     
+
                     item.payload,
                   )
                 ) : (
