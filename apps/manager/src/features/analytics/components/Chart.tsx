@@ -154,7 +154,15 @@ const ChartTooltipContent = ({
     }
 
     const [item] = payload;
-    const key = `${labelKey ?? item?.dataKey ?? item?.name ?? "value"}`;
+    const dataKey =
+      typeof item?.dataKey === "string" || typeof item?.dataKey === "number"
+        ? item.dataKey
+        : "";
+    const itemName =
+      typeof item?.name === "string" || typeof item?.name === "number"
+        ? item.name
+        : "";
+    const key = `${labelKey ?? dataKey ?? itemName ?? "value"}`;
     const itemConfig = getPayloadConfigFromPayload(config, item, key);
     const value =
       !labelKey && typeof label === "string"
@@ -200,9 +208,21 @@ const ChartTooltipContent = ({
       {!nestLabel ? tooltipLabel : null}
       <div className="grid gap-1.5">
         {payload
-          .filter((item: RechartsPrimitive.TooltipPayloadEntry) => item.type !== "none")
+          .filter(
+            (item: RechartsPrimitive.TooltipPayloadEntry) =>
+              item.type !== "none",
+          )
           .map((item: RechartsPrimitive.TooltipPayloadEntry, index: number) => {
-            const key = `${nameKey ?? item.name ?? item.dataKey ?? "value"}`;
+            const itemDataKey =
+              typeof item.dataKey === "string" ||
+              typeof item.dataKey === "number"
+                ? item.dataKey
+                : "";
+            const itemName =
+              typeof item.name === "string" || typeof item.name === "number"
+                ? item.name
+                : "";
+            const key = `${nameKey ?? itemName ?? itemDataKey ?? "value"}`;
             const itemConfig = getPayloadConfigFromPayload(config, item, key);
             const indicatorColor =
               color ?? (item.payload as { fill?: string }).fill ?? item.color;
@@ -221,7 +241,7 @@ const ChartTooltipContent = ({
                     item.name,
                     item,
                     index,
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+                     
                     item.payload,
                   )
                 ) : (
