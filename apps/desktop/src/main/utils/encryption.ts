@@ -587,15 +587,15 @@ export const decryptToken = (encryptedText: string): string => {
       const strategy = getDecryptionStrategy(prefix);
       return strategy.decrypt(data);
     } catch (error) {
-      // エラーログから機密情報を除外（errorオブジェクトにはスタックトレースや
-      // 暗号化データが含まれる可能性があるため、メッセージのみをログ出力）
       const errorMessage =
         error instanceof Error ? error.message : "Unknown decryption error";
       logger.error(`Decryption failed with strategy "${prefix}"`, {
         message: errorMessage,
       });
-      // フォールバック戦略で試す
-      return createFallbackEncryptionStrategy().decrypt(data);
+      // プレフィックスと異なる戦略でのフォールバックは、データ不整合を招くため行わない
+      throw new Error(
+        `Failed to decrypt token with strategy "${prefix}": ${errorMessage}`,
+      );
     }
   }
 
@@ -610,7 +610,7 @@ export const decryptToken = (encryptedText: string): string => {
     }
   }
 
-  // 最後の手段としてフォールバックで復号化
+  // フォールバックで復号化を試みる（古い形式のみ）
   return createFallbackEncryptionStrategy().decrypt(encryptedText);
 };
 
@@ -755,15 +755,15 @@ export const decryptTokenAsync = async (
       const strategy = getAsyncDecryptionStrategy(prefix);
       return await strategy.decrypt(data);
     } catch (error) {
-      // エラーログから機密情報を除外（errorオブジェクトにはスタックトレースや
-      // 暗号化データが含まれる可能性があるため、メッセージのみをログ出力）
       const errorMessage =
         error instanceof Error ? error.message : "Unknown decryption error";
       logger.error(`Decryption failed with strategy "${prefix}"`, {
         message: errorMessage,
       });
-      // フォールバック戦略で試す
-      return await createAsyncFallbackEncryptionStrategy().decrypt(data);
+      // プレフィックスと異なる戦略でのフォールバックは、データ不整合を招くため行わない
+      throw new Error(
+        `Failed to decrypt token with strategy "${prefix}": ${errorMessage}`,
+      );
     }
   }
 
@@ -778,6 +778,6 @@ export const decryptTokenAsync = async (
     }
   }
 
-  // 最後の手段としてフォールバックで復号化
+  // フォールバックで復号化を試みる（古い形式のみ）
   return await createAsyncFallbackEncryptionStrategy().decrypt(encryptedText);
 };

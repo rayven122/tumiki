@@ -26,7 +26,6 @@
     "@trpc/react-query": "catalog:",
     "@tumiki/db": "workspace:*",
     "clsx": "^2.1.1",
-    "electron-store": "^10.0.0",
     "electron-updater": "^6.3.9",
     "jotai": "^2.18.0",
     "lucide-react": "^0.486.0",

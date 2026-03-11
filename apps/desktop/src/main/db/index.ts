@@ -194,47 +194,29 @@ const createConnectionManager = (): ConnectionManager => {
 
       // 既に接続中の場合は同じPromiseを返す（競合状態を回避）
       if (connectionPromise) {
-        try {
-          return await connectionPromise;
-        } catch (error) {
-          // 失敗したPromiseをクリアして再試行可能にする
-          connectionPromise = null;
-          throw error;
-        }
+        return connectionPromise;
       }
 
-      // 新しい接続を作成
-      connectionPromise = (async () => {
-        const currentPromise = connectionPromise;
-        try {
-          const client = await createConnectionWithRetry();
-          // 接続成功時にクロージャ内の変数に保存
+      // 新しい接続を作成（Promiseチェーンでミューテックスを実現）
+      connectionPromise = createConnectionWithRetry()
+        .then((client) => {
           prisma = client;
           return client;
-        } catch (error) {
+        })
+        .catch((error) => {
           const err = toError(error);
           logger.error("Failed to create database connection after retries", {
             error: err.message,
             stack: err.stack,
           });
-          // エラー時も確実にprismaをクリアして、再接続を確実にする
           prisma = undefined;
           throw err;
-        } finally {
-          // 現在のPromiseと一致する場合のみクリア（競合状態を防ぐ）
-          if (connectionPromise === currentPromise) {
-            connectionPromise = null;
-          }
-        }
-      })();
+        })
+        .finally(() => {
+          connectionPromise = null;
+        });
 
-      try {
-        return await connectionPromise;
-      } catch (error) {
-        // 失敗したPromiseをクリアして再試行可能にする
-        connectionPromise = null;
-        throw error;
-      }
+      return connectionPromise;
     },
 
     /**
@@ -271,7 +253,6 @@ const connectionManager = createConnectionManager();
 
 /**
  * データベース接続を取得
- * @deprecated 直接 connectionManager.getConnection() を使用することを推奨
  */
 export const getDb = async (): Promise<PrismaClient> => {
   return connectionManager.getConnection();

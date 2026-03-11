@@ -41,45 +41,17 @@ export const createTRPCClient = () => {
         // SuperJSON を使用したデータシリアライゼーション
         transformer: superjson,
 
-        // フェッチオプション
+        // フェッチオプション（AbortSignal.timeoutでタイムアウト管理）
         fetch: async (url, options) => {
-          // タイムアウト設定
-          const controller = new AbortController();
-
-          // 型ガード: optionsがRequestInit互換かどうかを検証
-          const isRequestInit = (
-            opt: unknown,
-          ): opt is RequestInit | undefined => {
-            return (
-              opt === undefined ||
-              opt === null ||
-              (typeof opt === "object" && opt !== null)
-            );
-          };
-
-          // optionsの型安全な変換
-          const baseOptions = isRequestInit(options) ? options : undefined;
+          const baseOptions =
+            options && typeof options === "object" ? options : undefined;
           const fetchOptions: RequestInit = {
             ...baseOptions,
-            signal: controller.signal,
+            signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
           };
 
-          // Promise.raceで確実なタイムアウト処理
-          const fetchPromise = fetch(url, fetchOptions);
-
-          const timeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => {
-              controller.abort();
-              reject(
-                new Error(
-                  `Request timeout after ${REQUEST_TIMEOUT_MS / 1000} seconds`,
-                ),
-              );
-            }, REQUEST_TIMEOUT_MS);
-          });
-
           try {
-            const response = await Promise.race([fetchPromise, timeoutPromise]);
+            const response = await fetch(url, fetchOptions);
 
             // エラーレスポンスの処理とエラー伝播
             if (!response.ok) {
@@ -94,7 +66,6 @@ export const createTRPCClient = () => {
 
             return response;
           } catch (error) {
-            // エラー分類を使用した統一されたログ記録
             const errorInfo = classifyError(error);
             logError(error, `tRPC ${errorInfo.category} error`);
             throw error;
