@@ -13,19 +13,9 @@
     "strict": true,
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@/*": ["../manager/src/*"],
-      "~/*": ["../manager/src/*"]
+      "@/*": ["./src/renderer/*"]
     }
   },
-  "include": ["src/**/*", "../manager/src/**/*"],
-  "exclude": [
-    "node_modules",
-    "dist-electron",
-    "out",
-    "../manager/src/**/*.test.ts",
-    "../manager/src/**/*.test.tsx",
-    "../manager/src/**/*.spec.ts",
-    "../manager/src/**/*.spec.tsx",
-    "../manager/src/**/__tests__/**/*"
-  ]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist-electron", "out"]
 }

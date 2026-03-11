@@ -5,7 +5,6 @@ import { setupAuthIpc } from "./ipc/auth";
 import * as logger from "./utils/logger";
 
 let mainWindow: BrowserWindow | null = null;
-let isQuitting = false;
 
 const createWindow = (): void => {
   mainWindow = createMainWindow();
@@ -47,17 +46,8 @@ app.on("window-all-closed", () => {
   }
 });
 
-// アプリケーション終了前にデータベース接続をクリーンアップ
-app.on("before-quit", async (event) => {
-  // 既にクリーンアップ処理中の場合は何もしない
-  if (isQuitting) {
-    return;
-  }
-
-  // イベントをキャンセルして非同期処理を完了させる
-  event.preventDefault();
-  isQuitting = true;
-
+// アプリケーション終了時にデータベース接続をクリーンアップ
+app.on("will-quit", async () => {
   try {
     await closeDb();
     logger.info("Database connection closed successfully");
@@ -66,8 +56,5 @@ app.on("before-quit", async (event) => {
       "Failed to close database during app quit",
       error instanceof Error ? error : { error },
     );
-  } finally {
-    // データベースのクローズ処理が完了したら、アプリを終了
-    app.quit();
   }
 });

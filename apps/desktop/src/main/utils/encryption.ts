@@ -118,6 +118,10 @@ const validateFilePermissions = async (
 /**
  * 暗号化キーを取得または生成
  * safeStorageが利用できない環境用のフォールバック機能
+ *
+ * セキュリティ上の制限: マスターキーはファイルシステムに保存されるため、
+ * 同一デバイス上でファイルアクセス権を持つ攻撃者には暗号化の保護が効かない。
+ * 可能な限りsafeStorage（OS提供のキーストア）を優先して使用すること。
  */
 const getOrCreateEncryptionKey = async (): Promise<Buffer> => {
   const userDataPath = app.getPath("userData");

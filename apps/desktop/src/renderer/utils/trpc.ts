@@ -2,7 +2,7 @@ import { createTRPCReact } from "@trpc/react-query";
 import { httpBatchLink } from "@trpc/client";
 import superjson from "superjson";
 import type { AppRouter } from "@/server/api/root";
-import { logError, toErrorWithStatus, classifyError } from "./errorHandling";
+import { logError, toErrorWithStatus } from "./errorHandling";
 
 // リクエストタイムアウト設定（ミリ秒）
 // デスクトップアプリケーションでは30秒が適切なタイムアウト時間
@@ -64,8 +64,7 @@ export const createTRPCClient = () => {
 
             return response;
           } catch (error) {
-            const errorInfo = classifyError(error);
-            logError(error, `tRPC ${errorInfo.category} error`);
+            logError(error, "tRPC request error");
             throw error;
           }
         },

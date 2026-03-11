@@ -34,6 +34,7 @@ describe("setupAuthIpc", () => {
   const mockDbAuthToken = {
     findFirst: vi.fn(),
     create: vi.fn(),
+    delete: vi.fn(),
     deleteMany: vi.fn(),
   };
 
@@ -98,7 +99,7 @@ describe("setupAuthIpc", () => {
       expect(result).toBeNull();
     });
 
-    test("有効期限切れのトークンの場合はnullを返す", async () => {
+    test("有効期限切れのトークンの場合はnullを返し、DBから削除する", async () => {
       const expiredToken = {
         id: "token-id",
         accessToken: "encrypted:test-access-token",
@@ -109,11 +110,15 @@ describe("setupAuthIpc", () => {
       };
 
       mockDbAuthToken.findFirst.mockResolvedValue(expiredToken);
+      mockDbAuthToken.delete.mockResolvedValue(expiredToken);
 
       const handler = mockIpcHandlers.get("auth:getToken");
       const result = await handler!({} as IpcMainInvokeEvent);
 
       expect(result).toBeNull();
+      expect(mockDbAuthToken.delete).toHaveBeenCalledWith({
+        where: { id: "token-id" },
+      });
     });
 
     test("復号化されたトークンが空の場合はnullを返す", async () => {

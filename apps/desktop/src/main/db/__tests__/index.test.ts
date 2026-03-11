@@ -25,7 +25,7 @@ vi.mock("../../../../prisma/generated/client", () => {
   } | null = null;
 
   return {
-    PrismaClient: function () {
+    PrismaClient: vi.fn(() => {
       if (!instance) {
         instance = {
           $connect: vi.fn().mockResolvedValue(undefined),
@@ -34,7 +34,7 @@ vi.mock("../../../../prisma/generated/client", () => {
         };
       }
       return instance;
-    },
+    }),
   };
 });
 
@@ -64,34 +64,42 @@ let mockPrismaClient: {
   $queryRaw: ReturnType<typeof vi.fn>;
 };
 
+/**
+ * 各describeブロック共通のbeforeEachセットアップ
+ * モジュールリセット → モックインスタンス取得 → モジュール再インポート → モック設定
+ */
+const setupBeforeEach = async () => {
+  // タイマーを実タイマーに戻してからモジュールをリセット
+  vi.useRealTimers();
+
+  // モジュールをリセットしてシングルトンを完全にクリア
+  vi.resetModules();
+
+  // 新しいモックインスタンスへの参照を取得
+  const { PrismaClient } = await import(
+    "../../../../prisma/generated/client"
+  );
+  mockPrismaClient = new PrismaClient() as unknown as typeof mockPrismaClient;
+
+  // モジュールを再インポート
+  const dbModule = await import("../index");
+  getDb = dbModule.getDb;
+  initializeDb = dbModule.initializeDb;
+  closeDb = dbModule.closeDb;
+
+  // モックの動作を設定（モックをクリアしてから設定）
+  mockPrismaClient.$connect.mockClear();
+  mockPrismaClient.$disconnect.mockClear();
+  mockPrismaClient.$queryRaw.mockClear();
+
+  mockPrismaClient.$connect.mockResolvedValue(undefined);
+  mockPrismaClient.$disconnect.mockResolvedValue(undefined);
+  mockPrismaClient.$queryRaw.mockResolvedValue([{ 1: 1 }]);
+};
+
 describe("getDb", () => {
   beforeEach(async () => {
-    // タイマーを実タイマーに戻してからモジュールをリセット
-    vi.useRealTimers();
-
-    // モジュールをリセットしてシングルトンを完全にクリア
-    vi.resetModules();
-
-    // 新しいモックインスタンスへの参照を取得
-    const { PrismaClient } = await import(
-      "../../../../prisma/generated/client"
-    );
-    mockPrismaClient = new PrismaClient() as unknown as typeof mockPrismaClient;
-
-    // モジュールを再インポート
-    const dbModule = await import("../index");
-    getDb = dbModule.getDb;
-    initializeDb = dbModule.initializeDb;
-    closeDb = dbModule.closeDb;
-
-    // モックの動作を設定（モックをクリアしてから設定）
-    mockPrismaClient.$connect.mockClear();
-    mockPrismaClient.$disconnect.mockClear();
-    mockPrismaClient.$queryRaw.mockClear();
-
-    mockPrismaClient.$connect.mockResolvedValue(undefined);
-    mockPrismaClient.$disconnect.mockResolvedValue(undefined);
-    mockPrismaClient.$queryRaw.mockResolvedValue([{ 1: 1 }]);
+    await setupBeforeEach();
   });
 
   test("データベース接続を取得できる", async () => {
@@ -197,32 +205,7 @@ describe("getDb", () => {
 
 describe("initializeDb", () => {
   beforeEach(async () => {
-    // タイマーを実タイマーに戻してからモジュールをリセット
-    vi.useRealTimers();
-
-    // モジュールをリセットしてシングルトンを完全にクリア
-    vi.resetModules();
-
-    // 新しいモックインスタンスへの参照を取得
-    const { PrismaClient } = await import(
-      "../../../../prisma/generated/client"
-    );
-    mockPrismaClient = new PrismaClient() as unknown as typeof mockPrismaClient;
-
-    // モジュールを再インポート
-    const dbModule = await import("../index");
-    getDb = dbModule.getDb;
-    initializeDb = dbModule.initializeDb;
-    closeDb = dbModule.closeDb;
-
-    // モックの動作を設定（モックをクリアしてから設定）
-    mockPrismaClient.$connect.mockClear();
-    mockPrismaClient.$disconnect.mockClear();
-    mockPrismaClient.$queryRaw.mockClear();
-
-    mockPrismaClient.$connect.mockResolvedValue(undefined);
-    mockPrismaClient.$disconnect.mockResolvedValue(undefined);
-    mockPrismaClient.$queryRaw.mockResolvedValue([{ 1: 1 }]);
+    await setupBeforeEach();
   });
 
   test("データベースを初期化できる", async () => {
@@ -253,32 +236,7 @@ describe("initializeDb", () => {
 
 describe("closeDb", () => {
   beforeEach(async () => {
-    // タイマーを実タイマーに戻してからモジュールをリセット
-    vi.useRealTimers();
-
-    // モジュールをリセットしてシングルトンを完全にクリア
-    vi.resetModules();
-
-    // 新しいモックインスタンスへの参照を取得
-    const { PrismaClient } = await import(
-      "../../../../prisma/generated/client"
-    );
-    mockPrismaClient = new PrismaClient() as unknown as typeof mockPrismaClient;
-
-    // モジュールを再インポート
-    const dbModule = await import("../index");
-    getDb = dbModule.getDb;
-    initializeDb = dbModule.initializeDb;
-    closeDb = dbModule.closeDb;
-
-    // モックの動作を設定（モックをクリアしてから設定）
-    mockPrismaClient.$connect.mockClear();
-    mockPrismaClient.$disconnect.mockClear();
-    mockPrismaClient.$queryRaw.mockClear();
-
-    mockPrismaClient.$connect.mockResolvedValue(undefined);
-    mockPrismaClient.$disconnect.mockResolvedValue(undefined);
-    mockPrismaClient.$queryRaw.mockResolvedValue([{ 1: 1 }]);
+    await setupBeforeEach();
   });
 
   test("データベース接続をクローズできる", async () => {
@@ -324,32 +282,7 @@ describe("closeDb", () => {
 
 describe("エラー回復", () => {
   beforeEach(async () => {
-    // タイマーを実タイマーに戻してからモジュールをリセット
-    vi.useRealTimers();
-
-    // モジュールをリセットしてシングルトンを完全にクリア
-    vi.resetModules();
-
-    // 新しいモックインスタンスへの参照を取得
-    const { PrismaClient } = await import(
-      "../../../../prisma/generated/client"
-    );
-    mockPrismaClient = new PrismaClient() as unknown as typeof mockPrismaClient;
-
-    // モジュールを再インポート
-    const dbModule = await import("../index");
-    getDb = dbModule.getDb;
-    initializeDb = dbModule.initializeDb;
-    closeDb = dbModule.closeDb;
-
-    // モックの動作を設定（モックをクリアしてから設定）
-    mockPrismaClient.$connect.mockClear();
-    mockPrismaClient.$disconnect.mockClear();
-    mockPrismaClient.$queryRaw.mockClear();
-
-    mockPrismaClient.$connect.mockResolvedValue(undefined);
-    mockPrismaClient.$disconnect.mockResolvedValue(undefined);
-    mockPrismaClient.$queryRaw.mockResolvedValue([{ 1: 1 }]);
+    await setupBeforeEach();
   });
 
   test("接続失敗後に再試行で成功できる", async () => {
@@ -387,32 +320,7 @@ describe("エラー回復", () => {
 
 describe("toError ユーティリティ関数の動作", () => {
   beforeEach(async () => {
-    // タイマーを実タイマーに戻してからモジュールをリセット
-    vi.useRealTimers();
-
-    // モジュールをリセットしてシングルトンを完全にクリア
-    vi.resetModules();
-
-    // 新しいモックインスタンスへの参照を取得
-    const { PrismaClient } = await import(
-      "../../../../prisma/generated/client"
-    );
-    mockPrismaClient = new PrismaClient() as unknown as typeof mockPrismaClient;
-
-    // モジュールを再インポート
-    const dbModule = await import("../index");
-    getDb = dbModule.getDb;
-    initializeDb = dbModule.initializeDb;
-    closeDb = dbModule.closeDb;
-
-    // モックの動作を設定（モックをクリアしてから設定）
-    mockPrismaClient.$connect.mockClear();
-    mockPrismaClient.$disconnect.mockClear();
-    mockPrismaClient.$queryRaw.mockClear();
-
-    mockPrismaClient.$connect.mockResolvedValue(undefined);
-    mockPrismaClient.$disconnect.mockResolvedValue(undefined);
-    mockPrismaClient.$queryRaw.mockResolvedValue([{ 1: 1 }]);
+    await setupBeforeEach();
   });
 
   test("Error オブジェクトをそのまま返す", async () => {
