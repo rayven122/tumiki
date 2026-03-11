@@ -43,10 +43,8 @@ export const createTRPCClient = () => {
 
         // フェッチオプション（AbortSignal.timeoutでタイムアウト管理）
         fetch: async (url, options) => {
-          const baseOptions =
-            options && typeof options === "object" ? options : undefined;
           const fetchOptions: RequestInit = {
-            ...baseOptions,
+            ...options,
             signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
           };
 

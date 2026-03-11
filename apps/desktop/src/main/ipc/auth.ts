@@ -1,7 +1,7 @@
 import { ipcMain } from "electron";
 import { z } from "zod";
 import { getDb } from "../db";
-import { encryptTokenAsync, decryptTokenAsync } from "../utils/encryption";
+import { encryptToken, decryptToken } from "../utils/encryption";
 import type { AuthTokenData } from "../../types/auth";
 import * as logger from "../utils/logger";
 
@@ -54,14 +54,15 @@ export const setupAuthIpc = (): void => {
         return null;
       }
 
-      // トークン期限チェック
+      // トークン期限チェック（期限切れの場合はDBから削除）
       if (new Date() > token.expiresAt) {
-        logger.debug("Token expired, returning null");
+        logger.debug("Token expired, deleting from database");
+        await db.authToken.delete({ where: { id: token.id } });
         return null;
       }
 
       // 暗号化されたトークンを非同期で復号化
-      const decryptedToken = await decryptTokenAsync(token.accessToken);
+      const decryptedToken = await decryptToken(token.accessToken);
 
       // 復号化されたトークンの有効性検証
       if (!decryptedToken || decryptedToken.length === 0) {
@@ -90,8 +91,8 @@ export const setupAuthIpc = (): void => {
       // 新しいトークンを非同期で暗号化して保存
       const newToken = await db.authToken.create({
         data: {
-          accessToken: await encryptTokenAsync(validatedData.accessToken),
-          refreshToken: await encryptTokenAsync(validatedData.refreshToken),
+          accessToken: await encryptToken(validatedData.accessToken),
+          refreshToken: await encryptToken(validatedData.refreshToken),
           expiresAt: validatedData.expiresAt,
         },
       });

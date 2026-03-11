@@ -1,22 +1,8 @@
 import { safeStorage, app } from "electron";
-import {
-  randomBytes,
-  scryptSync,
-  createCipheriv,
-  createDecipheriv,
-} from "crypto";
+import { randomBytes, createCipheriv, createDecipheriv, scrypt } from "crypto";
+import { promisify } from "util";
 import { join } from "path";
-import {
-  existsSync,
-  readFileSync,
-  writeFileSync,
-  mkdirSync,
-  statSync,
-  renameSync,
-  unlinkSync,
-  accessSync,
-  constants as fsConstants,
-} from "fs";
+import { existsSync } from "fs";
 import {
   readFile,
   writeFile,
@@ -42,20 +28,13 @@ const ENCRYPTION_PREFIX = {
   FALLBACK: "fallback",
 } as const;
 
-/**
- * 暗号化戦略のインターフェース
- */
-type EncryptionStrategy = {
-  encrypt: (plainText: string) => string;
-  decrypt: (encryptedText: string) => string;
-  isAvailable: () => boolean;
-  getPrefix: () => string;
-};
+// scryptの非同期版
+const scryptAsync = promisify(scrypt);
 
 /**
- * 非同期暗号化戦略のインターフェース
+ * 暗号化戦略の型
  */
-type AsyncEncryptionStrategy = {
+type EncryptionStrategy = {
   encrypt: (plainText: string) => Promise<string>;
   decrypt: (encryptedText: string) => Promise<string>;
   isAvailable: () => boolean;
@@ -68,17 +47,11 @@ type AsyncEncryptionStrategy = {
  * @returns 有効なキーの場合true
  */
 const isValidEncryptionKey = (key: Buffer): boolean => {
-  // キーの長さが正しいかチェック
   if (key.length !== KEY_LENGTH) {
     return false;
   }
 
-  // 全バイトがゼロでないかチェック（初期化されていないキーを除外）
-  if (key.every((byte) => byte === 0)) {
-    return false;
-  }
-
-  // 全バイトが同じ値でないかチェック（無効なキーを除外）
+  // 全バイトが同じ値でないかチェック（ゼロ埋め・無効なキーを除外）
   const firstByte = key[0];
   if (key.every((byte) => byte === firstByte)) {
     return false;
@@ -88,155 +61,57 @@ const isValidEncryptionKey = (key: Buffer): boolean => {
 };
 
 /**
- * ファイル権限を検証（同期版 - 後方互換性のため残す）
+ * ファイル権限を検証
  * @param filePath ファイルパス
  * @param expectedPermissions 期待されるパーミッション（8進数文字列）- Unix系のみ
  * @throws {Error} 権限が一致しない場合
  */
-const validateFilePermissions = (
-  filePath: string,
-  expectedPermissions: string,
-): void => {
-  try {
-    const stats = statSync(filePath);
-
-    if (process.platform === "win32") {
-      // Windows環境でのセキュリティチェック
-      // NTFS ACLの完全な検証はNode.jsでは困難だが、基本的なアクセス制御を確認
-      // 注意: Windows環境ではUnixスタイルの権限モデル(chmod 600)が適用されないため、
-      // 代わりにアクセス権限とファイルパスの検証を行う
-      try {
-        // 現在のユーザーが読み書き可能かチェック
-        accessSync(filePath, fsConstants.R_OK | fsConstants.W_OK);
-      } catch {
-        throw new Error(
-          `Insufficient file access permissions on Windows. Path: ${filePath}`,
-        );
-      }
-
-      // ファイルがユーザーデータディレクトリ内にあることを確認
-      // これにより、暗号化キーがユーザー固有の保護されたディレクトリに保存されることを保証
-      const userDataPath = app.getPath("userData");
-      if (!filePath.startsWith(userDataPath)) {
-        throw new Error(
-          `Encryption key file must be in user data directory for security. Path: ${filePath}`,
-        );
-      }
-
-      // Windows環境でのセキュリティに関する情報をログ出力
-      logger.debug("Windows security check passed for encryption key file", {
-        path: filePath,
-        userDataPath,
-      });
-    } else {
-      // Unix系環境での権限チェック
-      const permissions = stats.mode & parseInt("777", 8);
-      const expected = parseInt(expectedPermissions, 8);
-
-      if (permissions !== expected) {
-        throw new Error(
-          `File has unsafe permissions: ${permissions.toString(8)}. Expected: ${expectedPermissions}. Path: ${filePath}`,
-        );
-      }
-    }
-
-    // ファイルサイズの検証（キーファイルは正確にKEY_LENGTHバイトであるべき）
-    if (stats.size !== KEY_LENGTH) {
-      throw new Error(
-        `Encryption key file has invalid size: ${stats.size} bytes. Expected: ${KEY_LENGTH} bytes`,
-      );
-    }
-  } catch (error) {
-    // ENOENT エラーの場合は再スロー（ファイルが存在しない）
-    if (
-      error &&
-      typeof error === "object" &&
-      "code" in error &&
-      error.code === "ENOENT"
-    ) {
-      throw error;
-    }
-
-    // その他のエラー（権限エラーなど）も再スロー
-    throw error;
-  }
-};
-
-/**
- * ファイル権限を検証（非同期版）
- * @param filePath ファイルパス
- * @param expectedPermissions 期待されるパーミッション（8進数文字列）- Unix系のみ
- * @throws {Error} 権限が一致しない場合
- */
-const validateFilePermissionsAsync = async (
+const validateFilePermissions = async (
   filePath: string,
   expectedPermissions: string,
 ): Promise<void> => {
-  try {
-    const stats = await stat(filePath);
+  const stats = await stat(filePath);
 
-    if (process.platform === "win32") {
-      // Windows環境でのセキュリティチェック
-      // NTFS ACLの完全な検証はNode.jsでは困難だが、基本的なアクセス制御を確認
-      // 注意: Windows環境ではUnixスタイルの権限モデル(chmod 600)が適用されないため、
-      // 代わりにアクセス権限とファイルパスの検証を行う
-      try {
-        // 現在のユーザーが読み書き可能かチェック
-        await access(
-          filePath,
-          fsPromiseConstants.R_OK | fsPromiseConstants.W_OK,
-        );
-      } catch {
-        throw new Error(
-          `Insufficient file access permissions on Windows. Path: ${filePath}`,
-        );
-      }
-
-      // ファイルがユーザーデータディレクトリ内にあることを確認
-      // これにより、暗号化キーがユーザー固有の保護されたディレクトリに保存されることを保証
-      const userDataPath = app.getPath("userData");
-      if (!filePath.startsWith(userDataPath)) {
-        throw new Error(
-          `Encryption key file must be in user data directory for security. Path: ${filePath}`,
-        );
-      }
-
-      // Windows環境でのセキュリティに関する情報をログ出力
-      logger.debug("Windows security check passed for encryption key file", {
-        path: filePath,
-        userDataPath,
-      });
-    } else {
-      // Unix系環境での権限チェック
-      const permissions = stats.mode & parseInt("777", 8);
-      const expected = parseInt(expectedPermissions, 8);
-
-      if (permissions !== expected) {
-        throw new Error(
-          `File has unsafe permissions: ${permissions.toString(8)}. Expected: ${expectedPermissions}. Path: ${filePath}`,
-        );
-      }
-    }
-
-    // ファイルサイズの検証（キーファイルは正確にKEY_LENGTHバイトであるべき）
-    if (stats.size !== KEY_LENGTH) {
+  if (process.platform === "win32") {
+    // Windows環境でのセキュリティチェック
+    // NTFS ACLの完全な検証はNode.jsでは困難だが、基本的なアクセス制御を確認
+    try {
+      await access(filePath, fsPromiseConstants.R_OK | fsPromiseConstants.W_OK);
+    } catch {
       throw new Error(
-        `Encryption key file has invalid size: ${stats.size} bytes. Expected: ${KEY_LENGTH} bytes`,
+        `Insufficient file access permissions on Windows. Path: ${filePath}`,
       );
     }
-  } catch (error) {
-    // ENOENT エラーの場合は再スロー（ファイルが存在しない）
-    if (
-      error &&
-      typeof error === "object" &&
-      "code" in error &&
-      error.code === "ENOENT"
-    ) {
-      throw error;
+
+    // ファイルがユーザーデータディレクトリ内にあることを確認
+    const userDataPath = app.getPath("userData");
+    if (!filePath.startsWith(userDataPath)) {
+      throw new Error(
+        `Encryption key file must be in user data directory for security. Path: ${filePath}`,
+      );
     }
 
-    // その他のエラー（権限エラーなど）も再スロー
-    throw error;
+    logger.debug("Windows security check passed for encryption key file", {
+      path: filePath,
+      userDataPath,
+    });
+  } else {
+    // Unix系環境での権限チェック
+    const permissions = stats.mode & parseInt("777", 8);
+    const expected = parseInt(expectedPermissions, 8);
+
+    if (permissions !== expected) {
+      throw new Error(
+        `File has unsafe permissions: ${permissions.toString(8)}. Expected: ${expectedPermissions}. Path: ${filePath}`,
+      );
+    }
+  }
+
+  // ファイルサイズの検証（キーファイルは正確にKEY_LENGTHバイトであるべき）
+  if (stats.size !== KEY_LENGTH) {
+    throw new Error(
+      `Encryption key file has invalid size: ${stats.size} bytes. Expected: ${KEY_LENGTH} bytes`,
+    );
   }
 };
 
@@ -244,126 +119,16 @@ const validateFilePermissionsAsync = async (
  * 暗号化キーを取得または生成
  * safeStorageが利用できない環境用のフォールバック機能
  */
-const getOrCreateEncryptionKey = (): Buffer => {
+const getOrCreateEncryptionKey = async (): Promise<Buffer> => {
   const userDataPath = app.getPath("userData");
-  // より明示的なファイル名を使用
   const keyPath = join(userDataPath, "tumiki-encryption.key");
 
   // 既存のキーファイルが存在する場合は読み込む
   if (existsSync(keyPath)) {
     try {
-      // ファイル権限とサイズの検証
-      validateFilePermissions(keyPath, "600");
-
-      // キーファイルを読み込み
-      const key = readFileSync(keyPath);
-
-      // キーの整合性をチェック
-      if (!isValidEncryptionKey(key)) {
-        throw new Error("Encryption key file is corrupted or invalid");
-      }
-
-      return key;
-    } catch (error) {
-      // ENOENT エラーの場合は新規作成フローに進む
-      if (
-        error &&
-        typeof error === "object" &&
-        "code" in error &&
-        error.code === "ENOENT"
-      ) {
-        // ファイルが存在しない場合は新規作成フローに進む
-      } else {
-        // セキュリティエラーは致命的なのでログに記録して再スロー
-        logger.error(
-          "Encryption key validation failed",
-          error instanceof Error ? error : { error },
-        );
-        throw error;
-      }
-    }
-  }
-
-  // 新しいキーを生成
-  const key = randomBytes(KEY_LENGTH);
-
-  // キーの整合性を確認（生成されたキーが有効であることを保証）
-  if (!isValidEncryptionKey(key)) {
-    throw new Error("Failed to generate valid encryption key");
-  }
-
-  // userDataディレクトリが存在しない場合は作成（所有者のみアクセス可能）
-  if (!existsSync(userDataPath)) {
-    mkdirSync(userDataPath, { recursive: true, mode: 0o700 });
-
-    // ディレクトリ権限の検証（Unix系のみ）
-    // WindowsではNTFS ACLが使用されるため、Unix権限モデルは適用されない
-    if (process.platform !== "win32") {
-      const dirStats = statSync(userDataPath);
-      const dirPermissions = dirStats.mode & parseInt("777", 8);
-      if (dirPermissions !== parseInt("700", 8)) {
-        throw new Error(
-          `User data directory has unsafe permissions: ${dirPermissions.toString(8)}. Expected: 700`,
-        );
-      }
-    }
-  }
-
-  // アトミックな書き込み（一時ファイル経由）
-  // これにより、書き込み中のファイル破損を防ぐ
-  const tempPath = keyPath + ".tmp";
-
-  try {
-    // 一時ファイルに書き込み
-    writeFileSync(tempPath, key, { mode: 0o600 });
-
-    // 一時ファイルの権限とサイズを検証
-    validateFilePermissions(tempPath, "600");
-
-    // アトミックにリネーム（POSIX仕様ではrenameはアトミック操作）
-    renameSync(tempPath, keyPath);
-
-    // 最終的なファイルの権限とサイズを検証
-    validateFilePermissions(keyPath, "600");
-  } catch (error) {
-    // エラー時は一時ファイルをクリーンアップ
-    if (existsSync(tempPath)) {
-      try {
-        unlinkSync(tempPath);
-      } catch (cleanupError) {
-        logger.error(
-          "Failed to cleanup temporary key file",
-          cleanupError instanceof Error
-            ? cleanupError
-            : { error: cleanupError },
-        );
-      }
-    }
-    throw error;
-  }
-
-  return key;
-};
-
-/**
- * 暗号化キーを取得または生成（非同期版）
- * safeStorageが利用できない環境用のフォールバック機能
- */
-const getOrCreateEncryptionKeyAsync = async (): Promise<Buffer> => {
-  const userDataPath = app.getPath("userData");
-  // より明示的なファイル名を使用
-  const keyPath = join(userDataPath, "tumiki-encryption.key");
-
-  // 既存のキーファイルが存在する場合は読み込む
-  if (existsSync(keyPath)) {
-    try {
-      // ファイル権限とサイズの検証
-      await validateFilePermissionsAsync(keyPath, "600");
-
-      // キーファイルを読み込み
+      await validateFilePermissions(keyPath, "600");
       const key = await readFile(keyPath);
 
-      // キーの整合性をチェック
       if (!isValidEncryptionKey(key)) {
         throw new Error("Encryption key file is corrupted or invalid");
       }
@@ -379,7 +144,6 @@ const getOrCreateEncryptionKeyAsync = async (): Promise<Buffer> => {
       ) {
         // ファイルが存在しない場合は新規作成フローに進む
       } else {
-        // セキュリティエラーは致命的なのでログに記録して再スロー
         logger.error(
           "Encryption key validation failed",
           error instanceof Error ? error : { error },
@@ -392,7 +156,6 @@ const getOrCreateEncryptionKeyAsync = async (): Promise<Buffer> => {
   // 新しいキーを生成
   const key = randomBytes(KEY_LENGTH);
 
-  // キーの整合性を確認（生成されたキーが有効であることを保証）
   if (!isValidEncryptionKey(key)) {
     throw new Error("Failed to generate valid encryption key");
   }
@@ -402,7 +165,6 @@ const getOrCreateEncryptionKeyAsync = async (): Promise<Buffer> => {
     await mkdir(userDataPath, { recursive: true, mode: 0o700 });
 
     // ディレクトリ権限の検証（Unix系のみ）
-    // WindowsではNTFS ACLが使用されるため、Unix権限モデルは適用されない
     if (process.platform !== "win32") {
       const dirStats = await stat(userDataPath);
       const dirPermissions = dirStats.mode & parseInt("777", 8);
@@ -415,23 +177,14 @@ const getOrCreateEncryptionKeyAsync = async (): Promise<Buffer> => {
   }
 
   // アトミックな書き込み（一時ファイル経由）
-  // これにより、書き込み中のファイル破損を防ぐ
   const tempPath = keyPath + ".tmp";
 
   try {
-    // 一時ファイルに書き込み
     await writeFile(tempPath, key, { mode: 0o600 });
-
-    // 一時ファイルの権限とサイズを検証
-    await validateFilePermissionsAsync(tempPath, "600");
-
-    // アトミックにリネーム（POSIX仕様ではrenameはアトミック操作）
+    await validateFilePermissions(tempPath, "600");
     await rename(tempPath, keyPath);
-
-    // 最終的なファイルの権限とサイズを検証
-    await validateFilePermissionsAsync(keyPath, "600");
+    await validateFilePermissions(keyPath, "600");
   } catch (error) {
-    // エラー時は一時ファイルをクリーンアップ
     if (existsSync(tempPath)) {
       try {
         await unlink(tempPath);
@@ -457,11 +210,11 @@ const getOrCreateEncryptionKeyAsync = async (): Promise<Buffer> => {
 const createSafeStorageStrategy = (): EncryptionStrategy => ({
   isAvailable: () => safeStorage.isEncryptionAvailable(),
   getPrefix: () => ENCRYPTION_PREFIX.SAFE_STORAGE,
-  encrypt: (plainText: string): string => {
+  encrypt: async (plainText: string): Promise<string> => {
     const encryptedBuffer = safeStorage.encryptString(plainText);
     return encryptedBuffer.toString("base64");
   },
-  decrypt: (encryptedText: string): string => {
+  decrypt: async (encryptedText: string): Promise<string> => {
     const encryptedBuffer = Buffer.from(encryptedText, "base64");
     return safeStorage.decryptString(encryptedBuffer);
   },
@@ -472,37 +225,28 @@ const createSafeStorageStrategy = (): EncryptionStrategy => ({
  * safeStorageが使えない環境用の代替実装
  */
 const createFallbackEncryptionStrategy = (): EncryptionStrategy => ({
-  isAvailable: () => true, // 常に利用可能
+  isAvailable: () => true,
   getPrefix: () => ENCRYPTION_PREFIX.FALLBACK,
-  encrypt: (plainText: string): string => {
-    // ソルトとIVを生成
+  encrypt: async (plainText: string): Promise<string> => {
     const salt = randomBytes(SALT_LENGTH);
     const iv = randomBytes(IV_LENGTH);
 
-    // キーを取得
-    const masterKey = getOrCreateEncryptionKey();
+    const masterKey = await getOrCreateEncryptionKey();
+    const key = (await scryptAsync(masterKey, salt, KEY_LENGTH)) as Buffer;
 
-    // scryptで鍵を導出
-    const key = scryptSync(masterKey, salt, KEY_LENGTH);
-
-    // 暗号化
     const cipher = createCipheriv(ALGORITHM, key, iv);
     const encrypted = Buffer.concat([
       cipher.update(plainText, "utf8"),
       cipher.final(),
     ]);
-
-    // 認証タグを取得
     const authTag = cipher.getAuthTag();
 
-    // salt + iv + authTag + encrypted を結合
     const result = Buffer.concat([salt, iv, authTag, encrypted]);
     return result.toString("base64");
   },
-  decrypt: (encryptedText: string): string => {
+  decrypt: async (encryptedText: string): Promise<string> => {
     const data = Buffer.from(encryptedText, "base64");
 
-    // salt, iv, authTag, encrypted を分離
     const salt = data.subarray(0, SALT_LENGTH);
     const iv = data.subarray(SALT_LENGTH, SALT_LENGTH + IV_LENGTH);
     const authTag = data.subarray(
@@ -511,13 +255,9 @@ const createFallbackEncryptionStrategy = (): EncryptionStrategy => ({
     );
     const encrypted = data.subarray(SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH);
 
-    // キーを取得
-    const masterKey = getOrCreateEncryptionKey();
+    const masterKey = await getOrCreateEncryptionKey();
+    const key = (await scryptAsync(masterKey, salt, KEY_LENGTH)) as Buffer;
 
-    // scryptで鍵を導出
-    const key = scryptSync(masterKey, salt, KEY_LENGTH);
-
-    // 復号化
     const decipher = createDecipheriv(ALGORITHM, key, iv);
     decipher.setAuthTag(authTag);
 
@@ -532,7 +272,6 @@ const createFallbackEncryptionStrategy = (): EncryptionStrategy => ({
 
 /**
  * 利用可能な暗号化戦略を取得
- * SafeStorageが利用可能ならそれを、そうでなければフォールバックを返す
  */
 const getEncryptionStrategy = (): EncryptionStrategy => {
   const safeStorageStrategy = createSafeStorageStrategy();
@@ -558,25 +297,23 @@ const getDecryptionStrategy = (prefix: string): EncryptionStrategy => {
 
 /**
  * トークンを暗号化
- * 利用可能な最適な暗号化戦略を使用
  * @param plainText 暗号化する平文
  * @returns Base64エンコードされた暗号化テキスト（プレフィックス付き）
  */
-export const encryptToken = (plainText: string): string => {
+export const encryptToken = async (plainText: string): Promise<string> => {
   const strategy = getEncryptionStrategy();
-  const encrypted = strategy.encrypt(plainText);
-  // プレフィックスを付けて暗号化方式を識別
+  const encrypted = await strategy.encrypt(plainText);
   return `${strategy.getPrefix()}:${encrypted}`;
 };
 
 /**
  * トークンを復号化
- * 暗号化方式のプレフィックスに基づいて適切な復号化戦略を使用
  * @param encryptedText Base64エンコードされた暗号化テキスト（プレフィックス付き）
  * @returns 復号化された平文
  */
-export const decryptToken = (encryptedText: string): string => {
-  // プレフィックスを抽出
+export const decryptToken = async (
+  encryptedText: string,
+): Promise<string> => {
   const separatorIndex = encryptedText.indexOf(":");
 
   if (separatorIndex > 0) {
@@ -585,174 +322,6 @@ export const decryptToken = (encryptedText: string): string => {
 
     try {
       const strategy = getDecryptionStrategy(prefix);
-      return strategy.decrypt(data);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown decryption error";
-      logger.error(`Decryption failed with strategy "${prefix}"`, {
-        message: errorMessage,
-      });
-      // プレフィックスと異なる戦略でのフォールバックは、データ不整合を招くため行わない
-      throw new Error(
-        `Failed to decrypt token with strategy "${prefix}": ${errorMessage}`,
-      );
-    }
-  }
-
-  // 古い形式（プレフィックスなし）のサポート
-  // safeStorageで試してみる
-  const safeStorageStrategy = createSafeStorageStrategy();
-  if (safeStorageStrategy.isAvailable()) {
-    try {
-      return safeStorageStrategy.decrypt(encryptedText);
-    } catch {
-      // safeStorageで失敗した場合はフォールバックを試す
-    }
-  }
-
-  // フォールバックで復号化を試みる（古い形式のみ）
-  return createFallbackEncryptionStrategy().decrypt(encryptedText);
-};
-
-/**
- * 非同期版フォールバック暗号化戦略
- * ファイルI/Oを非同期で実行し、UI応答性を向上
- */
-const createAsyncFallbackEncryptionStrategy = (): AsyncEncryptionStrategy => ({
-  isAvailable: () => true, // 常に利用可能
-  getPrefix: () => ENCRYPTION_PREFIX.FALLBACK,
-  encrypt: async (plainText: string): Promise<string> => {
-    // ソルトとIVを生成
-    const salt = randomBytes(SALT_LENGTH);
-    const iv = randomBytes(IV_LENGTH);
-
-    // キーを非同期で取得
-    const masterKey = await getOrCreateEncryptionKeyAsync();
-
-    // scryptで鍵を導出
-    const key = scryptSync(masterKey, salt, KEY_LENGTH);
-
-    // 暗号化
-    const cipher = createCipheriv(ALGORITHM, key, iv);
-    const encrypted = Buffer.concat([
-      cipher.update(plainText, "utf8"),
-      cipher.final(),
-    ]);
-
-    // 認証タグを取得
-    const authTag = cipher.getAuthTag();
-
-    // salt + iv + authTag + encrypted を結合
-    const result = Buffer.concat([salt, iv, authTag, encrypted]);
-    return result.toString("base64");
-  },
-  decrypt: async (encryptedText: string): Promise<string> => {
-    const data = Buffer.from(encryptedText, "base64");
-
-    // salt, iv, authTag, encrypted を分離
-    const salt = data.subarray(0, SALT_LENGTH);
-    const iv = data.subarray(SALT_LENGTH, SALT_LENGTH + IV_LENGTH);
-    const authTag = data.subarray(
-      SALT_LENGTH + IV_LENGTH,
-      SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH,
-    );
-    const encrypted = data.subarray(SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH);
-
-    // キーを非同期で取得
-    const masterKey = await getOrCreateEncryptionKeyAsync();
-
-    // scryptで鍵を導出
-    const key = scryptSync(masterKey, salt, KEY_LENGTH);
-
-    // 復号化
-    const decipher = createDecipheriv(ALGORITHM, key, iv);
-    decipher.setAuthTag(authTag);
-
-    const decrypted = Buffer.concat([
-      decipher.update(encrypted),
-      decipher.final(),
-    ]);
-
-    return decrypted.toString("utf8");
-  },
-});
-
-/**
- * 利用可能な非同期暗号化戦略を取得
- * SafeStorageが利用可能ならそれを、そうでなければ非同期フォールバックを返す
- */
-const getAsyncEncryptionStrategy = (): AsyncEncryptionStrategy => {
-  const safeStorageStrategy = createSafeStorageStrategy();
-  if (safeStorageStrategy.isAvailable()) {
-    // SafeStorage戦略を非同期ラッパーで包む
-    return {
-      isAvailable: safeStorageStrategy.isAvailable,
-      getPrefix: safeStorageStrategy.getPrefix,
-      encrypt: async (plainText: string) =>
-        Promise.resolve(safeStorageStrategy.encrypt(plainText)),
-      decrypt: async (encryptedText: string) =>
-        Promise.resolve(safeStorageStrategy.decrypt(encryptedText)),
-    };
-  }
-  return createAsyncFallbackEncryptionStrategy();
-};
-
-/**
- * プレフィックスから適切な非同期復号化戦略を取得
- */
-const getAsyncDecryptionStrategy = (
-  prefix: string,
-): AsyncEncryptionStrategy => {
-  switch (prefix) {
-    case ENCRYPTION_PREFIX.SAFE_STORAGE: {
-      const safeStorageStrategy = createSafeStorageStrategy();
-      return {
-        isAvailable: safeStorageStrategy.isAvailable,
-        getPrefix: safeStorageStrategy.getPrefix,
-        encrypt: async (plainText: string) =>
-          Promise.resolve(safeStorageStrategy.encrypt(plainText)),
-        decrypt: async (encryptedText: string) =>
-          Promise.resolve(safeStorageStrategy.decrypt(encryptedText)),
-      };
-    }
-    case ENCRYPTION_PREFIX.FALLBACK:
-      return createAsyncFallbackEncryptionStrategy();
-    default:
-      throw new Error(`Unknown encryption prefix: ${prefix}`);
-  }
-};
-
-/**
- * トークンを非同期で暗号化
- * ファイルI/Oを非同期で実行し、UI応答性を向上
- * @param plainText 暗号化する平文
- * @returns Base64エンコードされた暗号化テキスト（プレフィックス付き）
- */
-export const encryptTokenAsync = async (plainText: string): Promise<string> => {
-  const strategy = getAsyncEncryptionStrategy();
-  const encrypted = await strategy.encrypt(plainText);
-  // プレフィックスを付けて暗号化方式を識別
-  return `${strategy.getPrefix()}:${encrypted}`;
-};
-
-/**
- * トークンを非同期で復号化
- * ファイルI/Oを非同期で実行し、UI応答性を向上
- * @param encryptedText Base64エンコードされた暗号化テキスト（プレフィックス付き）
- * @returns 復号化された平文
- */
-export const decryptTokenAsync = async (
-  encryptedText: string,
-): Promise<string> => {
-  // プレフィックスを抽出
-  const separatorIndex = encryptedText.indexOf(":");
-
-  if (separatorIndex > 0) {
-    const prefix = encryptedText.substring(0, separatorIndex);
-    const data = encryptedText.substring(separatorIndex + 1);
-
-    try {
-      const strategy = getAsyncDecryptionStrategy(prefix);
       return await strategy.decrypt(data);
     } catch (error) {
       const errorMessage =
@@ -760,7 +329,6 @@ export const decryptTokenAsync = async (
       logger.error(`Decryption failed with strategy "${prefix}"`, {
         message: errorMessage,
       });
-      // プレフィックスと異なる戦略でのフォールバックは、データ不整合を招くため行わない
       throw new Error(
         `Failed to decrypt token with strategy "${prefix}": ${errorMessage}`,
       );
@@ -768,16 +336,14 @@ export const decryptTokenAsync = async (
   }
 
   // 古い形式（プレフィックスなし）のサポート
-  // safeStorageで試してみる
   const safeStorageStrategy = createSafeStorageStrategy();
   if (safeStorageStrategy.isAvailable()) {
     try {
-      return safeStorageStrategy.decrypt(encryptedText);
+      return await safeStorageStrategy.decrypt(encryptedText);
     } catch {
       // safeStorageで失敗した場合はフォールバックを試す
     }
   }
 
-  // フォールバックで復号化を試みる（古い形式のみ）
-  return await createAsyncFallbackEncryptionStrategy().decrypt(encryptedText);
+  return await createFallbackEncryptionStrategy().decrypt(encryptedText);
 };

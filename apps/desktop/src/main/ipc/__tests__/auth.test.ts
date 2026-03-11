@@ -27,7 +27,7 @@ vi.mock("../../utils/logger");
 // テスト対象のインポート（モックの後に行う）
 import { setupAuthIpc } from "../auth";
 import { getDb } from "../../db";
-import { encryptTokenAsync, decryptTokenAsync } from "../../utils/encryption";
+import { encryptToken, decryptToken } from "../../utils/encryption";
 import type { AuthTokenData } from "../../../types/auth";
 
 describe("setupAuthIpc", () => {
@@ -50,11 +50,11 @@ describe("setupAuthIpc", () => {
     } as never);
 
     // encryption モックのセットアップ
-    vi.mocked(encryptTokenAsync).mockImplementation((plainText: string) =>
+    vi.mocked(encryptToken).mockImplementation((plainText: string) =>
       Promise.resolve(`encrypted:${plainText}`),
     );
 
-    vi.mocked(decryptTokenAsync).mockImplementation((encryptedText: string) => {
+    vi.mocked(decryptToken).mockImplementation((encryptedText: string) => {
       if (encryptedText.startsWith("encrypted:")) {
         return Promise.resolve(encryptedText.replace("encrypted:", ""));
       }

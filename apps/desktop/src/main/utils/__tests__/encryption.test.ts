@@ -21,9 +21,9 @@ vi.mock("electron", () => ({
 }));
 
 // テスト対象のインポート（モックの後に行う）
-import { encryptTokenAsync, decryptTokenAsync } from "../encryption";
+import { encryptToken, decryptToken } from "../encryption";
 
-describe("encryptTokenAsync", () => {
+describe("encryptToken", () => {
   const testUserDataPath = join(tmpdir(), "tumiki-test-encryption");
 
   beforeEach(() => {
@@ -42,7 +42,7 @@ describe("encryptTokenAsync", () => {
 
   test("トークンを正常に暗号化できる", async () => {
     const plainText = "test-access-token-12345";
-    const encrypted = await encryptTokenAsync(plainText);
+    const encrypted = await encryptToken(plainText);
 
     // 暗号化されたテキストが存在する
     expect(encrypted).toBeTruthy();
@@ -57,7 +57,7 @@ describe("encryptTokenAsync", () => {
 
   test("暗号化されたトークンにプレフィックスが含まれる", async () => {
     const plainText = "test-token";
-    const encrypted = await encryptTokenAsync(plainText);
+    const encrypted = await encryptToken(plainText);
 
     // フォールバック戦略の場合は "fallback:" プレフィックス
     expect(encrypted).toMatch(/^(safe|fallback):/);
@@ -65,15 +65,15 @@ describe("encryptTokenAsync", () => {
 
   test("同じテキストでも異なる暗号化結果になる（ソルトとIVがランダム）", async () => {
     const plainText = "test-token";
-    const encrypted1 = await encryptTokenAsync(plainText);
-    const encrypted2 = await encryptTokenAsync(plainText);
+    const encrypted1 = await encryptToken(plainText);
+    const encrypted2 = await encryptToken(plainText);
 
     // 同じ平文でも暗号化結果は異なる（ソルトとIVがランダム）
     expect(encrypted1).not.toBe(encrypted2);
   });
 
   test("空文字列を暗号化できる", async () => {
-    const encrypted = await encryptTokenAsync("");
+    const encrypted = await encryptToken("");
 
     expect(encrypted).toBeTruthy();
     expect(encrypted).toContain(":");
@@ -81,7 +81,7 @@ describe("encryptTokenAsync", () => {
 
   test("長いトークンを暗号化できる", async () => {
     const longToken = "a".repeat(1000);
-    const encrypted = await encryptTokenAsync(longToken);
+    const encrypted = await encryptToken(longToken);
 
     expect(encrypted).toBeTruthy();
     expect(encrypted).toContain(":");
@@ -90,7 +90,7 @@ describe("encryptTokenAsync", () => {
   test("特殊文字を含むトークンを暗号化できる", async () => {
     const specialToken =
       'token-with-special-chars: !@#$%^&*()_+-={}[]|\\:";<>?,./';
-    const encrypted = await encryptTokenAsync(specialToken);
+    const encrypted = await encryptToken(specialToken);
 
     expect(encrypted).toBeTruthy();
     expect(encrypted).toContain(":");
@@ -98,7 +98,7 @@ describe("encryptTokenAsync", () => {
 
   test("暗号化キーファイルが作成される", async () => {
     const plainText = "test-token";
-    await encryptTokenAsync(plainText);
+    await encryptToken(plainText);
 
     const keyPath = join(testUserDataPath, "tumiki-encryption.key");
     expect(existsSync(keyPath)).toBe(true);
@@ -109,12 +109,12 @@ describe("encryptTokenAsync", () => {
     const plainText2 = "second-token";
 
     // 1回目の暗号化でキーファイル作成
-    await encryptTokenAsync(plainText1);
+    await encryptToken(plainText1);
     const keyPath = join(testUserDataPath, "tumiki-encryption.key");
     const keyStats1 = existsSync(keyPath);
 
     // 2回目の暗号化では既存キーを再利用
-    await encryptTokenAsync(plainText2);
+    await encryptToken(plainText2);
     const keyStats2 = existsSync(keyPath);
 
     expect(keyStats1).toBe(true);
@@ -122,7 +122,7 @@ describe("encryptTokenAsync", () => {
   });
 });
 
-describe("decryptTokenAsync", () => {
+describe("decryptToken", () => {
   const testUserDataPath = join(tmpdir(), "tumiki-test-encryption");
 
   beforeEach(() => {
@@ -139,8 +139,8 @@ describe("decryptTokenAsync", () => {
 
   test("暗号化されたトークンを正常に復号化できる", async () => {
     const plainText = "test-access-token-12345";
-    const encrypted = await encryptTokenAsync(plainText);
-    const decrypted = await decryptTokenAsync(encrypted);
+    const encrypted = await encryptToken(plainText);
+    const decrypted = await decryptToken(encrypted);
 
     expect(decrypted).toBe(plainText);
   });
@@ -155,19 +155,19 @@ describe("decryptTokenAsync", () => {
     ];
 
     for (const token of tokens) {
-      const encrypted = await encryptTokenAsync(token);
-      const decrypted = await decryptTokenAsync(encrypted);
+      const encrypted = await encryptToken(token);
+      const decrypted = await decryptToken(encrypted);
       expect(decrypted).toBe(token);
     }
   });
 
   test("異なる暗号化結果でも正しく復号化できる", async () => {
     const plainText = "test-token";
-    const encrypted1 = await encryptTokenAsync(plainText);
-    const encrypted2 = await encryptTokenAsync(plainText);
+    const encrypted1 = await encryptToken(plainText);
+    const encrypted2 = await encryptToken(plainText);
 
-    const decrypted1 = await decryptTokenAsync(encrypted1);
-    const decrypted2 = await decryptTokenAsync(encrypted2);
+    const decrypted1 = await decryptToken(encrypted1);
+    const decrypted2 = await decryptToken(encrypted2);
 
     expect(decrypted1).toBe(plainText);
     expect(decrypted2).toBe(plainText);
@@ -176,35 +176,35 @@ describe("decryptTokenAsync", () => {
   test("不正なプレフィックスの場合はエラーをスロー", async () => {
     const invalidEncrypted = "invalid-prefix:some-data";
 
-    await expect(decryptTokenAsync(invalidEncrypted)).rejects.toThrow();
+    await expect(decryptToken(invalidEncrypted)).rejects.toThrow();
   });
 
   test("不正なBase64データの場合はエラーをスロー", async () => {
     const invalidEncrypted = "fallback:invalid-base64-data!!!";
 
-    await expect(decryptTokenAsync(invalidEncrypted)).rejects.toThrow();
+    await expect(decryptToken(invalidEncrypted)).rejects.toThrow();
   });
 
   test("空の暗号化データの場合はエラーをスロー", async () => {
     const invalidEncrypted = "fallback:";
 
-    await expect(decryptTokenAsync(invalidEncrypted)).rejects.toThrow();
+    await expect(decryptToken(invalidEncrypted)).rejects.toThrow();
   });
 
   test("切り詰められた暗号化データの場合はエラーをスロー", async () => {
     const plainText = "test-token";
-    const encrypted = await encryptTokenAsync(plainText);
+    const encrypted = await encryptToken(plainText);
     const [prefix, data] = encrypted.split(":");
 
     // データの一部のみを使用
     const truncated = `${prefix}:${data?.substring(0, 10) ?? ""}`;
 
-    await expect(decryptTokenAsync(truncated)).rejects.toThrow();
+    await expect(decryptToken(truncated)).rejects.toThrow();
   });
 
   test("改ざんされた暗号化データの場合はエラーをスロー", async () => {
     const plainText = "test-token";
-    const encrypted = await encryptTokenAsync(plainText);
+    const encrypted = await encryptToken(plainText);
     const [prefix, data] = encrypted.split(":");
 
     // データを改ざん
@@ -212,7 +212,7 @@ describe("decryptTokenAsync", () => {
       (data?.substring(0, (data?.length ?? 0) - 10) ?? "") + "XXXXXXXXXX";
     const tampered = `${prefix}:${tamperedData}`;
 
-    await expect(decryptTokenAsync(tampered)).rejects.toThrow();
+    await expect(decryptToken(tampered)).rejects.toThrow();
   });
 });
 
@@ -233,7 +233,7 @@ describe("暗号化キーの管理", () => {
 
   test("暗号化キーファイルが適切な権限で作成される", async () => {
     const plainText = "test-token";
-    await encryptTokenAsync(plainText);
+    await encryptToken(plainText);
 
     const keyPath = join(testUserDataPath, "tumiki-encryption.key");
     expect(existsSync(keyPath)).toBe(true);
@@ -250,14 +250,14 @@ describe("暗号化キーの管理", () => {
 
     // すべてのトークンを暗号化
     for (const token of tokens) {
-      encrypted.push(await encryptTokenAsync(token));
+      encrypted.push(await encryptToken(token));
     }
 
     // すべての暗号化されたトークンを復号化
     for (let i = 0; i < tokens.length; i++) {
       const encryptedToken = encrypted[i];
       if (encryptedToken) {
-        const decrypted = await decryptTokenAsync(encryptedToken);
+        const decrypted = await decryptToken(encryptedToken);
         expect(decrypted).toBe(tokens[i]);
       }
     }

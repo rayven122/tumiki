@@ -4,7 +4,7 @@ import { Provider } from "jotai";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { App } from "./App";
 import { trpc, createTRPCClient } from "./utils/trpc";
-import { shouldRetryQuery, calculateRetryDelay } from "./utils/queryRetry";
+import { shouldRetryError, calculateRetryDelay } from "./utils/errorHandling";
 import "./styles/globals.css";
 
 const rootElement = document.getElementById("root");
@@ -30,7 +30,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       // リトライ戦略（utility関数を使用）
-      retry: shouldRetryQuery,
+      retry: (failureCount, error) => shouldRetryError(error, failureCount, 3),
       retryDelay: calculateRetryDelay,
       // ステイル時間（環境変数で設定可能、デフォルト5分）
       staleTime: QUERY_STALE_TIME_MS,

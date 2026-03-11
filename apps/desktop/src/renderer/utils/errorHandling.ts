@@ -52,23 +52,28 @@ export type ErrorInfo = {
  */
 export const toErrorWithStatus = (error: unknown): ErrorWithStatus => {
   if (error && typeof error === "object" && error !== null) {
-    const obj = error as Record<string, unknown>;
-
     // ステータスコードの安全な変換
     let status: number | undefined;
-    if ("status" in obj) {
-      if (typeof obj.status === "number") {
-        status = obj.status;
-      } else if (typeof obj.status === "string" && !isNaN(Number(obj.status))) {
-        status = Number(obj.status);
+    if ("status" in error) {
+      const rawStatus = (error as { status: unknown }).status;
+      if (typeof rawStatus === "number") {
+        status = rawStatus;
+      } else if (typeof rawStatus === "string" && !isNaN(Number(rawStatus))) {
+        status = Number(rawStatus);
       }
     }
 
     return {
-      message: typeof obj.message === "string" ? obj.message : String(error),
+      message:
+        "message" in error && typeof error.message === "string"
+          ? error.message
+          : String(error),
       status,
-      name: typeof obj.name === "string" ? obj.name : "Error",
-      cause: "cause" in obj ? obj.cause : undefined,
+      name:
+        "name" in error && typeof error.name === "string"
+          ? error.name
+          : "Error",
+      cause: "cause" in error ? error.cause : undefined,
     };
   }
 
