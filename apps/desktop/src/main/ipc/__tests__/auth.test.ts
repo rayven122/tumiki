@@ -383,13 +383,13 @@ describe("setupAuthIpc", () => {
       expect(result).toBe(false);
     });
 
-    test("データベースエラーの場合はfalseを返す（安全側に倒す）", async () => {
+    test("データベースエラーの場合はエラーをスローする", async () => {
       mockDbAuthToken.findFirst.mockRejectedValue(new Error("Database error"));
 
       const handler = mockIpcHandlers.get("auth:isAuthenticated");
-      const result = await handler!({} as IpcMainInvokeEvent);
-
-      expect(result).toBe(false);
+      await expect(handler!({} as IpcMainInvokeEvent)).rejects.toThrow(
+        "認証状態の確認に失敗しました",
+      );
     });
   });
 });

@@ -191,7 +191,7 @@ export const logError = (error: unknown, context?: string): ErrorWithStatus => {
   const errorWithStatus = toErrorWithStatus(error);
   const errorInfo = classifyError(error);
 
-  if (process.env.NODE_ENV === "development") {
+  if (import.meta.env.DEV) {
     // センシティブ情報を完全に除外してログ出力
     console.error(`[${errorInfo.category}] ${context || "Error"}:`, {
       message: errorInfo.message,
@@ -199,8 +199,11 @@ export const logError = (error: unknown, context?: string): ErrorWithStatus => {
       // originalErrorは完全に除外（センシティブ情報漏洩リスクを回避）
     });
   } else {
-    // 本番環境では最小限のログのみ
-    console.error(`Error: ${errorInfo.message}`);
+    // 本番環境でも診断に必要な情報を含める
+    console.error(`[${errorInfo.category}] ${context || "Error"}:`, {
+      message: errorInfo.message,
+      status: errorInfo.status,
+    });
   }
 
   return errorWithStatus;

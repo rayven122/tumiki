@@ -64,9 +64,10 @@ export const setupAuthIpc = (): void => {
       // 暗号化されたトークンを非同期で復号化
       const decryptedToken = await decryptToken(token.accessToken);
 
-      // 復号化されたトークンの有効性検証
+      // 復号化されたトークンの有効性検証（破損トークンはDBから削除）
       if (!decryptedToken || decryptedToken.length === 0) {
-        logger.warn("Decrypted token is invalid or empty");
+        logger.warn("Decrypted token is invalid or empty, deleting corrupted token");
+        await db.authToken.delete({ where: { id: token.id } });
         return null;
       }
 
@@ -160,8 +161,9 @@ export const setupAuthIpc = (): void => {
         "Failed to check authentication status",
         error instanceof Error ? error : { error },
       );
-      // 認証状態確認失敗時は安全側に倒してfalseを返す
-      return false;
+      // DB障害等のインフラエラーはcallerに伝播し、適切なエラー表示を促す
+      // silentにfalseを返すと原因特定が困難になるため
+      throw new Error("認証状態の確認に失敗しました");
     }
   });
 };

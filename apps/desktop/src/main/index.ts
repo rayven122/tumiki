@@ -47,14 +47,21 @@ app.on("window-all-closed", () => {
 });
 
 // アプリケーション終了時にデータベース接続をクリーンアップ
-app.on("will-quit", async () => {
-  try {
-    await closeDb();
-    logger.info("Database connection closed successfully");
-  } catch (error) {
-    logger.error(
-      "Failed to close database during app quit",
-      error instanceof Error ? error : { error },
-    );
-  }
+// Electronはasyncイベントハンドラを待たないため、preventDefaultで終了を遅延
+app.on("will-quit", (event) => {
+  event.preventDefault();
+  closeDb()
+    .then(() => {
+      logger.info("Database connection closed successfully");
+    })
+    .catch((error) => {
+      logger.error(
+        "Failed to close database during app quit",
+        error instanceof Error ? error : { error },
+      );
+    })
+    .finally(() => {
+      // クリーンアップ完了後にアプリケーションを終了
+      app.exit();
+    });
 });

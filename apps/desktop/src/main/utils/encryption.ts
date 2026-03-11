@@ -123,7 +123,14 @@ const validateFilePermissions = async (
  * 同一デバイス上でファイルアクセス権を持つ攻撃者には暗号化の保護が効かない。
  * 可能な限りsafeStorage（OS提供のキーストア）を優先して使用すること。
  */
+// メモリキャッシュ：初回読み込み後はディスクI/Oを回避
+let cachedEncryptionKey: Buffer | null = null;
+
 const getOrCreateEncryptionKey = async (): Promise<Buffer> => {
+  if (cachedEncryptionKey) {
+    return cachedEncryptionKey;
+  }
+
   const userDataPath = app.getPath("userData");
   const keyPath = join(userDataPath, "tumiki-encryption.key");
 
@@ -137,6 +144,7 @@ const getOrCreateEncryptionKey = async (): Promise<Buffer> => {
         throw new Error("Encryption key file is corrupted or invalid");
       }
 
+      cachedEncryptionKey = key;
       return key;
     } catch (error) {
       // ENOENT エラーの場合は新規作成フローに進む
@@ -204,6 +212,7 @@ const getOrCreateEncryptionKey = async (): Promise<Buffer> => {
     throw error;
   }
 
+  cachedEncryptionKey = key;
   return key;
 };
 
@@ -282,6 +291,9 @@ const getEncryptionStrategy = (): EncryptionStrategy => {
   if (safeStorageStrategy.isAvailable()) {
     return safeStorageStrategy;
   }
+  logger.warn(
+    "safeStorage not available, using fallback file-based encryption",
+  );
   return createFallbackEncryptionStrategy();
 };
 
@@ -340,14 +352,27 @@ export const decryptToken = async (
   }
 
   // 古い形式（プレフィックスなし）のサポート
+  logger.warn("Decrypting token without prefix (legacy format)");
   const safeStorageStrategy = createSafeStorageStrategy();
   if (safeStorageStrategy.isAvailable()) {
     try {
       return await safeStorageStrategy.decrypt(encryptedText);
-    } catch {
-      // safeStorageで失敗した場合はフォールバックを試す
+    } catch (safeStorageError) {
+      logger.warn("safeStorage decryption failed for legacy format, trying fallback", {
+        message:
+          safeStorageError instanceof Error
+            ? safeStorageError.message
+            : String(safeStorageError),
+      });
     }
   }
 
   return await createFallbackEncryptionStrategy().decrypt(encryptedText);
+};
+
+/**
+ * 暗号化キーのメモリキャッシュをクリア（テスト用）
+ */
+export const _resetEncryptionKeyCache = (): void => {
+  cachedEncryptionKey = null;
 };

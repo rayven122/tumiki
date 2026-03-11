@@ -81,8 +81,9 @@ const rotateLogFileAsync = async (): Promise<void> => {
   try {
     const stats = await stat(logFilePath);
     shouldRotate = stats.size >= MAX_LOG_SIZE;
-  } catch {
-    // statが失敗した場合はローテーションをスキップ
+  } catch (statError) {
+    // logger自体の再帰呼び出しを避けるためconsole.errorを使用
+    console.error("Failed to stat log file for rotation check:", statError);
     return;
   }
 

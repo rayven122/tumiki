@@ -21,7 +21,7 @@ vi.mock("electron", () => ({
 }));
 
 // テスト対象のインポート（モックの後に行う）
-import { encryptToken, decryptToken } from "../encryption";
+import { encryptToken, decryptToken, _resetEncryptionKeyCache } from "../encryption";
 
 describe("encryptToken", () => {
   const testUserDataPath = join(tmpdir(), "tumiki-test-encryption");
@@ -38,6 +38,8 @@ describe("encryptToken", () => {
     if (existsSync(testUserDataPath)) {
       rmSync(testUserDataPath, { recursive: true, force: true });
     }
+    // メモリキャッシュをリセット
+    _resetEncryptionKeyCache();
   });
 
   test("トークンを正常に暗号化できる", async () => {
@@ -220,6 +222,8 @@ describe("暗号化キーの管理", () => {
   const testUserDataPath = join(tmpdir(), "tumiki-test-encryption");
 
   beforeEach(() => {
+    // 前のdescribeのキャッシュが残っている可能性があるためリセット
+    _resetEncryptionKeyCache();
     if (!existsSync(testUserDataPath)) {
       mkdirSync(testUserDataPath, { recursive: true });
     }
@@ -229,6 +233,8 @@ describe("暗号化キーの管理", () => {
     if (existsSync(testUserDataPath)) {
       rmSync(testUserDataPath, { recursive: true, force: true });
     }
+    // メモリキャッシュをリセット
+    _resetEncryptionKeyCache();
   });
 
   test("暗号化キーファイルが適切な権限で作成される", async () => {

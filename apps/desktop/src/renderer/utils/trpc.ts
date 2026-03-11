@@ -30,11 +30,10 @@ export const createTRPCClient = () => {
               authorization: token ? `Bearer ${token}` : "",
             };
           } catch (error) {
-            // トークン取得失敗時はログを記録し、認証なしでリクエストを継続
+            // IPC障害等でトークン取得に失敗した場合はエラーを伝播
+            // 未認証リクエストを黙って送信すると原因特定が困難になるため
             logError(error, "Failed to get auth token");
-            return {
-              authorization: "",
-            };
+            throw error;
           }
         },
 
@@ -42,10 +41,17 @@ export const createTRPCClient = () => {
         transformer: superjson,
 
         // フェッチオプション（AbortSignal.timeoutでタイムアウト管理）
+        // caller側のsignal（React Queryのキャンセル等）とtimeoutを両立
         fetch: async (url, options) => {
+          const signals: AbortSignal[] = [
+            AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+          ];
+          if (options?.signal) {
+            signals.push(options.signal);
+          }
           const fetchOptions: RequestInit = {
             ...options,
-            signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+            signal: AbortSignal.any(signals),
           };
 
           try {
