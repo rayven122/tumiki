@@ -383,6 +383,9 @@ export const decryptToken = async (encryptedText: string): Promise<string> => {
  * 暗号化キーのメモリキャッシュをクリア（テスト用）
  */
 export const _resetEncryptionKeyCache = (): void => {
+  if (process.env.NODE_ENV !== "test") {
+    throw new Error("_resetEncryptionKeyCache はテスト環境でのみ使用できます");
+  }
   cachedEncryptionKey = null;
   cachedEncryptionStrategy = null;
 };

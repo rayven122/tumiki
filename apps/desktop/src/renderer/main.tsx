@@ -4,7 +4,11 @@ import { Provider } from "jotai";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { App } from "./App";
 import { trpc, createTRPCClient } from "./utils/trpc";
-import { shouldRetryError, calculateRetryDelay } from "./utils/errorHandling";
+import {
+  shouldRetryError,
+  calculateRetryDelay,
+  logError,
+} from "./utils/errorHandling";
 import "./styles/globals.css";
 
 const rootElement = document.getElementById("root");
@@ -50,7 +54,7 @@ const queryClient = new QueryClient({
       networkMode: "offlineFirst",
       // グローバル Mutation エラーハンドラー
       onError: (error) => {
-        console.error("Mutation error:", error);
+        logError(error, "Mutation error");
         // TODO: ユーザーへの通知（トースト等）
       },
     },

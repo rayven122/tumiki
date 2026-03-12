@@ -2,7 +2,7 @@ import { createTRPCReact } from "@trpc/react-query";
 import { httpBatchLink } from "@trpc/client";
 import superjson from "superjson";
 import type { AppRouter } from "@/server/api/root";
-import { logError, toErrorWithStatus } from "./errorHandling";
+import { logError } from "./errorHandling";
 
 // リクエストタイムアウト設定（ミリ秒）
 // デスクトップアプリケーションでは30秒が適切なタイムアウト時間
@@ -54,25 +54,7 @@ export const createTRPCClient = () => {
             signal: AbortSignal.any(signals),
           };
 
-          try {
-            const response = await fetch(url, fetchOptions);
-
-            // エラーレスポンスの処理とエラー伝播
-            if (!response.ok) {
-              const errorWithStatus = toErrorWithStatus({
-                message: `HTTP ${response.status}: ${response.statusText}`,
-                status: response.status,
-                name: "HTTPError",
-              });
-              logError(errorWithStatus, "tRPC request failed");
-              throw errorWithStatus;
-            }
-
-            return response;
-          } catch (error) {
-            logError(error, "tRPC request error");
-            throw error;
-          }
+          return fetch(url, fetchOptions);
         },
       }),
     ],
