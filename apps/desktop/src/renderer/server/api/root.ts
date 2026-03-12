@@ -8,5 +8,6 @@ import superjson from "superjson";
  */
 const t = initTRPC.create({ transformer: superjson });
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- 型推論のためにのみ使用
 const _placeholderRouter = t.router({});
 export type AppRouter = typeof _placeholderRouter;

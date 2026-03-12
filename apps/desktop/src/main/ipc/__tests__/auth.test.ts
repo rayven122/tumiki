@@ -203,7 +203,6 @@ describe("setupAuthIpc", () => {
       expect(mockDbAuthToken.deleteMany).toHaveBeenCalledWith({
         where: {
           id: { not: "new-token-id" },
-          createdAt: { lt: mockNewToken.createdAt },
         },
       });
     });
