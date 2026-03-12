@@ -76,9 +76,7 @@ const setupBeforeEach = async () => {
   vi.resetModules();
 
   // 新しいモックインスタンスへの参照を取得
-  const { PrismaClient } = await import(
-    "../../../../prisma/generated/client"
-  );
+  const { PrismaClient } = await import("../../../../prisma/generated/client");
   mockPrismaClient = new PrismaClient() as unknown as typeof mockPrismaClient;
 
   // モジュールを再インポート

@@ -2,7 +2,6 @@ import { ipcMain } from "electron";
 import { z } from "zod";
 import { getDb } from "../db";
 import { encryptToken, decryptToken } from "../utils/encryption";
-import type { AuthTokenData } from "../../types/auth";
 import * as logger from "../utils/logger";
 
 /**
@@ -66,7 +65,9 @@ export const setupAuthIpc = (): void => {
 
       // 復号化されたトークンの有効性検証（破損トークンはDBから削除）
       if (!decryptedToken || decryptedToken.length === 0) {
-        logger.warn("Decrypted token is invalid or empty, deleting corrupted token");
+        logger.warn(
+          "Decrypted token is invalid or empty, deleting corrupted token",
+        );
         await db.authToken.delete({ where: { id: token.id } });
         return null;
       }
@@ -82,7 +83,8 @@ export const setupAuthIpc = (): void => {
   });
 
   // トークン保存
-  ipcMain.handle("auth:saveToken", async (_, tokenData: AuthTokenData) => {
+  // IPC通信はプロセス間境界のため、引数はunknownとして受け取りZodでバリデーションする
+  ipcMain.handle("auth:saveToken", async (_, tokenData: unknown) => {
     try {
       // 入力データのバリデーション
       const validatedData = authTokenSchema.parse(tokenData);

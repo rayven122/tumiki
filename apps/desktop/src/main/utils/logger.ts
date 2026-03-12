@@ -5,8 +5,8 @@
 
 import { app } from "electron";
 import { join } from "path";
-import { existsSync, mkdirSync, appendFileSync } from "fs";
-import { stat, rename, unlink } from "fs/promises";
+import { existsSync, mkdirSync } from "fs";
+import { appendFile, stat, rename, unlink } from "fs/promises";
 
 export type LogLevel = "info" | "warn" | "error" | "debug";
 
@@ -150,25 +150,20 @@ const rotateLogFileAsync = async (): Promise<void> => {
 };
 
 /**
- * ログをファイルに書き込む
+ * ログをファイルに書き込む（非同期）
+ * メインプロセスをブロックしないよう非同期I/Oを使用
  */
 const writeToLogFile = (entry: StructuredLogEntry): void => {
-  try {
-    const logFilePath = getLogFilePath();
-    const logLine = JSON.stringify(entry) + "\n";
+  const logFilePath = getLogFilePath();
+  const logLine = JSON.stringify(entry) + "\n";
 
-    // ログファイルに書き込み（所有者のみ読み書き可能）
-    appendFileSync(logFilePath, logLine, { encoding: "utf8", mode: 0o600 });
-
-    // ローテーションチェックを非同期で実行（バックグラウンド処理）
-    // 結果を待たずに即座に返す
-    void rotateLogFileAsync().catch((error) => {
-      console.error("Failed to rotate log file:", error);
+  // 非同期でファイルに書き込み（メインプロセスをブロックしない）
+  void appendFile(logFilePath, logLine, { encoding: "utf8", mode: 0o600 })
+    .then(() => rotateLogFileAsync())
+    .catch((error) => {
+      // ログファイルへの書き込みに失敗してもアプリを停止しない
+      console.error("Failed to write to log file:", error);
     });
-  } catch (error) {
-    // ログファイルへの書き込みに失敗してもアプリを停止しない
-    console.error("Failed to write to log file:", error);
-  }
 };
 
 /**

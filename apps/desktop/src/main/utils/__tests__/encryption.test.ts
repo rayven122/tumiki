@@ -21,7 +21,11 @@ vi.mock("electron", () => ({
 }));
 
 // テスト対象のインポート（モックの後に行う）
-import { encryptToken, decryptToken, _resetEncryptionKeyCache } from "../encryption";
+import {
+  encryptToken,
+  decryptToken,
+  _resetEncryptionKeyCache,
+} from "../encryption";
 
 describe("encryptToken", () => {
   const testUserDataPath = join(tmpdir(), "tumiki-test-encryption");

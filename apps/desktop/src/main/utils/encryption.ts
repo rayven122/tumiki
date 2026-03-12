@@ -284,17 +284,25 @@ const createFallbackEncryptionStrategy = (): EncryptionStrategy => ({
 });
 
 /**
- * 利用可能な暗号化戦略を取得
+ * 利用可能な暗号化戦略を取得（初回判定後はキャッシュ）
  */
+let cachedEncryptionStrategy: EncryptionStrategy | null = null;
+
 const getEncryptionStrategy = (): EncryptionStrategy => {
+  if (cachedEncryptionStrategy) {
+    return cachedEncryptionStrategy;
+  }
+
   const safeStorageStrategy = createSafeStorageStrategy();
   if (safeStorageStrategy.isAvailable()) {
-    return safeStorageStrategy;
+    cachedEncryptionStrategy = safeStorageStrategy;
+    return cachedEncryptionStrategy;
   }
   logger.warn(
     "safeStorage not available, using fallback file-based encryption",
   );
-  return createFallbackEncryptionStrategy();
+  cachedEncryptionStrategy = createFallbackEncryptionStrategy();
+  return cachedEncryptionStrategy;
 };
 
 /**
@@ -327,9 +335,7 @@ export const encryptToken = async (plainText: string): Promise<string> => {
  * @param encryptedText Base64エンコードされた暗号化テキスト（プレフィックス付き）
  * @returns 復号化された平文
  */
-export const decryptToken = async (
-  encryptedText: string,
-): Promise<string> => {
+export const decryptToken = async (encryptedText: string): Promise<string> => {
   const separatorIndex = encryptedText.indexOf(":");
 
   if (separatorIndex > 0) {
@@ -358,12 +364,15 @@ export const decryptToken = async (
     try {
       return await safeStorageStrategy.decrypt(encryptedText);
     } catch (safeStorageError) {
-      logger.warn("safeStorage decryption failed for legacy format, trying fallback", {
-        message:
-          safeStorageError instanceof Error
-            ? safeStorageError.message
-            : String(safeStorageError),
-      });
+      logger.warn(
+        "safeStorage decryption failed for legacy format, trying fallback",
+        {
+          message:
+            safeStorageError instanceof Error
+              ? safeStorageError.message
+              : String(safeStorageError),
+        },
+      );
     }
   }
 
@@ -375,4 +384,5 @@ export const decryptToken = async (
  */
 export const _resetEncryptionKeyCache = (): void => {
   cachedEncryptionKey = null;
+  cachedEncryptionStrategy = null;
 };

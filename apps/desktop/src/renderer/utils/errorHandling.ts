@@ -88,9 +88,29 @@ export const toErrorWithStatus = (error: unknown): ErrorWithStatus => {
  */
 export const classifyError = (error: unknown): ErrorInfo => {
   const errorWithStatus = toErrorWithStatus(error);
-  const { message, status } = errorWithStatus;
+  const { name, message, status } = errorWithStatus;
 
-  // ネットワークエラー（fetch関連）
+  // エラー名ベースの分類（メッセージ文字列より安定）
+  // TypeErrorはfetch失敗時にブラウザが投げる標準エラー
+  if (name === "TypeError" || name === "NetworkError") {
+    return {
+      category: "network",
+      message: getErrorMessage("network"),
+      shouldRetry: true,
+    };
+  }
+
+  // AbortError: AbortSignal.timeout() や AbortController.abort() で発生
+  // TimeoutError: 一部環境でのタイムアウトエラー
+  if (name === "AbortError" || name === "TimeoutError") {
+    return {
+      category: "timeout",
+      message: getErrorMessage("timeout"),
+      shouldRetry: true,
+    };
+  }
+
+  // エラー名で判定できない場合のフォールバック（メッセージベース）
   if (
     message.includes("fetch") ||
     message.includes("network") ||
@@ -103,7 +123,6 @@ export const classifyError = (error: unknown): ErrorInfo => {
     };
   }
 
-  // タイムアウトエラー
   if (message.includes("timeout") || message.includes("aborted")) {
     return {
       category: "timeout",

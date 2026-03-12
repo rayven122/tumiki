@@ -131,7 +131,7 @@ type ConnectionManager = {
  * - シングルトンパターン: 単一のPrismaClientインスタンスを再利用
  * - ミューテックス: connectionPromiseで同時接続要求を制御
  * - リトライ: 指数バックオフで一時的な障害に対応
- * - タイムアウト: 30秒で接続をタイムアウト
+ * - タイムアウト: 10秒で接続をタイムアウト（環境変数DESKTOP_DB_TIMEOUT_MSで変更可能）
  */
 const createConnectionManager = (): ConnectionManager => {
   // シングルトンインスタンス
