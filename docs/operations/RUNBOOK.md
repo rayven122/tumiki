@@ -74,8 +74,12 @@ PRISMA_FIELD_ENCRYPTION_KEY=k1.aesgcm256.xxx
 # 設定同期
 SYNC_INTERVAL_MS=1800000  # 30分（デフォルト）
 
-# ロギング
+# ロギングバックエンド
+LOGGING_BACKEND=file  # file | pubsub | both（デフォルト: file）
 LOGGING_STRATEGY=file  # file | postgres | both（デフォルト: file）
+
+# Pub/Sub設定（LOGGING_BACKEND=pubsub または both の場合）
+PUBSUB_MCP_LOGS_TOPIC=projects/xxx/topics/mcp-logs
 
 # PIIマスキング
 ENABLE_GCP_DLP=false  # デフォルト: false（Regexベース）

@@ -19,37 +19,60 @@
 
 #### タスク
 
-##### 1.1 Pub/Sub削除、ローカルファイルロギングへの切り替え
-- **ファイル**: `apps/mcp-proxy/src/infrastructure/pubsub/mcpLogger.ts`
+##### 1.1 ロギングバックエンドの柔軟化（Pub/Sub + ローカルファイル両対応）
+- **ファイル**: `apps/mcp-proxy/src/infrastructure/logging/mcpLogger.ts`（リネーム）
 - **変更内容**:
   ```typescript
-  // Before: Pub/Sub経由でBigQueryに送信
-  await pubsub.topic(TOPIC_NAME).publishMessage({ data: Buffer.from(JSON.stringify(log)) });
+  // 環境変数で柔軟に選択可能
+  const LOGGING_BACKEND = process.env.LOGGING_BACKEND || 'file'; // 'file' | 'pubsub' | 'both'
 
-  // After: ローカルファイル + PostgreSQL（統計のみ）
-  // 1. ローカルファイル（メイン、全データ）
-  await appendFile('/var/log/tumiki/audit.jsonl', JSON.stringify({
-    timestamp, userId, organizationId, mcpServerSlug, toolName,
-    status, durationMs,
-    request: maskedRequest,   // ✅ 全ペイロード保存
-    response: maskedResponse, // ✅ 全ペイロード保存
-    error
-  }));
+  export const logMcpRequest = async (log: McpRequestLog) => {
+    const maskedLog = {
+      timestamp: log.timestamp,
+      userId: log.userId,
+      organizationId: log.organizationId,
+      mcpServerSlug: log.mcpServerSlug,
+      toolName: log.toolName,
+      status: log.status,
+      durationMs: log.durationMs,
+      request: await maskPii(log.request),
+      response: await maskPii(log.response),
+      error: log.error,
+    };
 
-  // 2. PostgreSQL（統計・メタデータのみ、ペイロード除外）
-  if (process.env.LOGGING_STRATEGY === 'postgres' || process.env.LOGGING_STRATEGY === 'both') {
-    await prisma.mcpServerRequestLog.create({
-      data: {
-        timestamp, userId, organizationId, mcpServerSlug, toolName,
-        status, durationMs,
-        // ❌ request, response は保存しない（ストレージ節約）
-      }
-    });
-  }
+    // 1. ローカルファイル（オンプレ環境向け）
+    if (LOGGING_BACKEND === 'file' || LOGGING_BACKEND === 'both') {
+      await appendFile('/var/log/tumiki/audit.jsonl', JSON.stringify(maskedLog) + '\n');
+    }
+
+    // 2. Pub/Sub → BigQuery（GCP環境向け）
+    if (LOGGING_BACKEND === 'pubsub' || LOGGING_BACKEND === 'both') {
+      await pubsub.topic(TOPIC_NAME).publishMessage({
+        data: Buffer.from(JSON.stringify(maskedLog))
+      });
+    }
+
+    // 3. PostgreSQL統計（オプション、ペイロード除外）
+    if (process.env.LOGGING_STRATEGY === 'postgres' || process.env.LOGGING_STRATEGY === 'both') {
+      await prisma.mcpServerRequestLog.create({
+        data: {
+          timestamp: maskedLog.timestamp,
+          userId: maskedLog.userId,
+          organizationId: maskedLog.organizationId,
+          mcpServerSlug: maskedLog.mcpServerSlug,
+          toolName: maskedLog.toolName,
+          status: maskedLog.status,
+          durationMs: maskedLog.durationMs,
+          // ❌ request, response は保存しない（ストレージ節約）
+        }
+      });
+    }
+  };
   ```
 - **環境変数**:
+  - `LOGGING_BACKEND=file` (デフォルト、オンプレ環境) | `pubsub` (GCP環境) | `both` (ハイブリッド)
   - `LOGGING_STRATEGY=file` (デフォルト) | `postgres` | `both`
-  - `ENABLE_BIGQUERY_LOGGING=false` で制御
+  - `PUBSUB_MCP_LOGS_TOPIC` (Pub/Sub使用時のみ必要)
 
 ##### 1.2 GCP DLPをオプション化、Regexベースをデフォルトに
 - **ファイル**: `apps/mcp-proxy/src/infrastructure/piiMasking/index.ts`
@@ -110,21 +133,22 @@
 
 ##### 1.4 package.json依存関係整理
 - **ファイル**: `apps/mcp-proxy/package.json`
-- **変更**:
+- **変更**: GCP関連パッケージをoptionalDependenciesに移動
   ```json
   {
     "dependencies": {
-      "@google-cloud/pubsub": "削除",
-      // GCP DLPはオプション機能として残す
-      "@google-cloud/dlp": "optionalDependenciesに移動",
-      "google-auth-library": "optionalDependenciesに移動"
+      // GCP関連をoptionalDependenciesに移動
     },
     "optionalDependencies": {
-      "@google-cloud/dlp": "^5.0.0",
-      "google-auth-library": "^9.0.0"
+      "@google-cloud/pubsub": "^4.0.0",     // Pub/Sub使用時のみ
+      "@google-cloud/dlp": "^5.0.0",        // GCP DLP使用時のみ
+      "google-auth-library": "^9.0.0"       // Cloud Run Auth使用時のみ
     }
   }
   ```
+- **理由**: 顧客環境に応じて必要なパッケージのみインストール
+  - オンプレ環境: optionalDependenciesをスキップ
+  - GCP環境: optionalDependenciesを含める
 
 ##### 1.5 環境変数による動作モード制御
 - **ファイル**: `apps/mcp-proxy/src/shared/constants/config.ts`
@@ -133,17 +157,26 @@
   export const DEPLOYMENT_MODE = process.env.DEPLOYMENT_MODE || 'self-hosted'; // 'self-hosted' | 'cloud'
 
   export const FEATURES = {
-    BIGQUERY_LOGGING: DEPLOYMENT_MODE === 'cloud',
+    // ロギングバックエンド
+    FILE_LOGGING: LOGGING_BACKEND === 'file' || LOGGING_BACKEND === 'both',
+    PUBSUB_LOGGING: LOGGING_BACKEND === 'pubsub' || LOGGING_BACKEND === 'both',
+    POSTGRES_LOGGING: LOGGING_STRATEGY === 'postgres' || LOGGING_STRATEGY === 'both',
+
+    // PIIマスキング
     GCP_DLP: process.env.ENABLE_GCP_DLP === 'true', // オプション機能
+
+    // 認証
     CLOUD_RUN_AUTH: process.env.USE_CLOUD_RUN_AUTH === 'true', // オプション機能
+
+    // 設定同期
     SYNC_WITH_MANAGER: DEPLOYMENT_MODE === 'self-hosted',
-    LOCAL_AUDIT_LOG: true, // 常に有効
-    POSTGRES_LOGGING: process.env.LOGGING_STRATEGY === 'postgres' || process.env.LOGGING_STRATEGY === 'both',
   };
   ```
 
 #### 検証
-- [ ] Pub/Sub削除後もログがローカルファイルに保存されることを確認
+- [ ] ローカルファイルロギング（LOGGING_BACKEND=file）が正常動作することを確認
+- [ ] Pub/Subロギング（LOGGING_BACKEND=pubsub）が正常動作することを確認
+- [ ] ハイブリッドロギング（LOGGING_BACKEND=both）が正常動作することを確認
 - [ ] PostgreSQL統計ログ（ペイロード除外）が正常に保存されることを確認
 - [ ] Regex PIIマスキングの精度テスト（Email、電話番号、クレジットカード）
 - [ ] GCP DLPオプション（ENABLE_GCP_DLP=true）が正常動作することを確認
