@@ -12,9 +12,10 @@ vi.mock("electron", () => ({
     handle: (channel: string, handler: (...args: unknown[]) => unknown) => {
       mockIpcHandlers.set(
         channel,
-        handler as typeof mockIpcHandlers extends Map<string, infer H>
-          ? H
-          : never,
+        handler as (
+          event: IpcMainInvokeEvent,
+          ...args: unknown[]
+        ) => Promise<unknown>,
       );
     },
   },
