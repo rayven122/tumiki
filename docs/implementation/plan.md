@@ -19,19 +19,39 @@
 
 #### タスク
 
-##### 1.1 Pub/Sub削除、PostgreSQL直接保存への切り替え
+##### 1.1 Pub/Sub削除、ローカルファイルロギングへの切り替え
 - **ファイル**: `apps/mcp-proxy/src/infrastructure/pubsub/mcpLogger.ts`
 - **変更内容**:
   ```typescript
   // Before: Pub/Sub経由でBigQueryに送信
   await pubsub.topic(TOPIC_NAME).publishMessage({ data: Buffer.from(JSON.stringify(log)) });
 
-  // After: PostgreSQL直接保存
-  await prisma.mcpServerRequestLog.create({ data: log });
-  ```
-- **環境変数**: `ENABLE_BIGQUERY_LOGGING=false` で制御
+  // After: ローカルファイル + PostgreSQL（統計のみ）
+  // 1. ローカルファイル（メイン、全データ）
+  await appendFile('/var/log/tumiki/audit.jsonl', JSON.stringify({
+    timestamp, userId, organizationId, mcpServerSlug, toolName,
+    status, durationMs,
+    request: maskedRequest,   // ✅ 全ペイロード保存
+    response: maskedResponse, // ✅ 全ペイロード保存
+    error
+  }));
 
-##### 1.2 GCP DLP削除、Regexベース実装への置換
+  // 2. PostgreSQL（統計・メタデータのみ、ペイロード除外）
+  if (process.env.LOGGING_STRATEGY === 'postgres' || process.env.LOGGING_STRATEGY === 'both') {
+    await prisma.mcpServerRequestLog.create({
+      data: {
+        timestamp, userId, organizationId, mcpServerSlug, toolName,
+        status, durationMs,
+        // ❌ request, response は保存しない（ストレージ節約）
+      }
+    });
+  }
+  ```
+- **環境変数**:
+  - `LOGGING_STRATEGY=file` (デフォルト) | `postgres` | `both`
+  - `ENABLE_BIGQUERY_LOGGING=false` で制御
+
+##### 1.2 GCP DLPをオプション化、Regexベースをデフォルトに
 - **ファイル**: `apps/mcp-proxy/src/infrastructure/piiMasking/index.ts`
 - **実装内容**:
   ```typescript
@@ -49,25 +69,59 @@
     }
     return masked;
   };
+
+  // PIIマスキング（環境変数で切り替え）
+  export const maskPii = async (text: string): Promise<string> => {
+    if (process.env.ENABLE_GCP_DLP === 'true') {
+      // GCP DLP使用（高精度、GCP環境向け）
+      return await maskWithGcpDlp(text);
+    } else {
+      // Regexベース（デフォルト、オンプレ環境向け）
+      return maskPiiWithRegex(text);
+    }
+  };
   ```
+- **環境変数**:
+  - `ENABLE_GCP_DLP=false` (デフォルト、Regexベース)
+  - `GCP_DLP_PROJECT_ID=xxx` (GCP DLP使用時のみ必要)
 - **設定ファイル**: `config/pii-patterns.json` で拡張可能
 
-##### 1.3 Cloud Run Auth削除
+##### 1.3 Cloud Run Authをオプション化
 - **ファイル**: `apps/mcp-proxy/src/infrastructure/mcp/cloudRunAuth.ts`
-- **変更**: 完全削除または条件分岐で無効化
-- **影響範囲**: `authHeaderInjector.ts` の Cloud Run IAM 分岐削除
+- **変更**: 環境変数で無効化可能に
+- **実装**:
+  ```typescript
+  // 環境変数
+  USE_CLOUD_RUN_AUTH=false  // Self-hosted版: false、Cloud Run版: true
+
+  // authHeaderInjector.ts
+  const injectAuthHeaders = async (url: string) => {
+    const headers: Record<string, string> = {};
+
+    if (process.env.USE_CLOUD_RUN_AUTH === 'true') {
+      // Cloud Run IAM認証
+      headers['Authorization'] = `Bearer ${await getCloudRunIdToken(url)}`;
+    }
+
+    return headers;
+  };
+  ```
+- **環境変数**: `USE_CLOUD_RUN_AUTH=false` (デフォルト、Self-hosted版)
 
 ##### 1.4 package.json依存関係整理
 - **ファイル**: `apps/mcp-proxy/package.json`
-- **削除**:
+- **変更**:
   ```json
   {
     "dependencies": {
-      "@google-cloud/dlp": "削除",
-      "@google-cloud/pubsub": "削除"
+      "@google-cloud/pubsub": "削除",
+      // GCP DLPはオプション機能として残す
+      "@google-cloud/dlp": "optionalDependenciesに移動",
+      "google-auth-library": "optionalDependenciesに移動"
     },
     "optionalDependencies": {
-      "google-auth-library": "移動（将来のハイブリッドモード用）"
+      "@google-cloud/dlp": "^5.0.0",
+      "google-auth-library": "^9.0.0"
     }
   }
   ```
@@ -80,17 +134,20 @@
 
   export const FEATURES = {
     BIGQUERY_LOGGING: DEPLOYMENT_MODE === 'cloud',
-    GCP_DLP: DEPLOYMENT_MODE === 'cloud',
-    CLOUD_RUN_AUTH: DEPLOYMENT_MODE === 'cloud',
+    GCP_DLP: process.env.ENABLE_GCP_DLP === 'true', // オプション機能
+    CLOUD_RUN_AUTH: process.env.USE_CLOUD_RUN_AUTH === 'true', // オプション機能
     SYNC_WITH_MANAGER: DEPLOYMENT_MODE === 'self-hosted',
-    LOCAL_AUDIT_LOG: DEPLOYMENT_MODE === 'self-hosted',
+    LOCAL_AUDIT_LOG: true, // 常に有効
+    POSTGRES_LOGGING: process.env.LOGGING_STRATEGY === 'postgres' || process.env.LOGGING_STRATEGY === 'both',
   };
   ```
 
 #### 検証
-- [ ] Pub/Sub削除後もログがPostgreSQLに保存されることを確認
+- [ ] Pub/Sub削除後もログがローカルファイルに保存されることを確認
+- [ ] PostgreSQL統計ログ（ペイロード除外）が正常に保存されることを確認
 - [ ] Regex PIIマスキングの精度テスト（Email、電話番号、クレジットカード）
-- [ ] Cloud Run Auth削除後も認証が正常動作することを確認
+- [ ] GCP DLPオプション（ENABLE_GCP_DLP=true）が正常動作することを確認
+- [ ] Cloud Run Authオプション（USE_CLOUD_RUN_AUTH=false）で無効化されることを確認
 
 ---
 

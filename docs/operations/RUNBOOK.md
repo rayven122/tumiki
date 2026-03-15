@@ -74,6 +74,16 @@ PRISMA_FIELD_ENCRYPTION_KEY=k1.aesgcm256.xxx
 # 設定同期
 SYNC_INTERVAL_MS=1800000  # 30分（デフォルト）
 
+# ロギング
+LOGGING_STRATEGY=file  # file | postgres | both（デフォルト: file）
+
+# PIIマスキング
+ENABLE_GCP_DLP=false  # デフォルト: false（Regexベース）
+GCP_DLP_PROJECT_ID=xxx  # GCP DLP使用時のみ必要
+
+# Cloud Run Auth（通常は不要）
+USE_CLOUD_RUN_AUTH=false  # デフォルト: false
+
 # SIEM連携
 SIEM_TYPE=splunk  # splunk | qradar | none
 SIEM_ENDPOINT=https://splunk.example.com:8088/services/collector
