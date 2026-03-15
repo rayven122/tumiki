@@ -147,21 +147,22 @@ const getOrCreateEncryptionKey = async (): Promise<Buffer> => {
       cachedEncryptionKey = key;
       return key;
     } catch (error) {
-      // ENOENT エラーの場合は新規作成フローに進む
+      // ENOENT 以外のエラー（権限エラー、ファイル破損等）は再スロー
       if (
-        error &&
-        typeof error === "object" &&
-        "code" in error &&
-        error.code === "ENOENT"
+        !(
+          error &&
+          typeof error === "object" &&
+          "code" in error &&
+          error.code === "ENOENT"
+        )
       ) {
-        // ファイルが存在しない場合は新規作成フローに進む
-      } else {
         logger.error(
           "Encryption key validation failed",
           error instanceof Error ? error : { error },
         );
         throw error;
       }
+      // ENOENT: ファイルが存在しないため新規作成フローに進む
     }
   }
 
