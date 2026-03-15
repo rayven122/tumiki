@@ -1,0 +1,27 @@
+# Cloudflare Tunnel 設定ファイル
+#
+# セットアップ手順:
+#   1. Cloudflare Tunnel を作成:
+#      cloudflared tunnel create tumiki-staging
+#   2. このファイルを config.yaml にコピーして <tunnel-id> を置き換え
+#   3. credentials.json を同じディレクトリに配置
+#   4. Cloudflare Dashboard で DNS レコードを追加
+
+tunnel: <tunnel-id>
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  # Manager アプリケーション
+  - hostname: stg.tumiki.cloud
+    service: http://manager:8080
+
+  # MCP Proxy API
+  - hostname: mcp-stg.tumiki.cloud
+    service: http://mcp-proxy:8080
+
+  # Keycloak 認証サーバー
+  - hostname: auth-stg.tumiki.cloud
+    service: http://keycloak:8080
+
+  # キャッチオール（404）
+  - service: http_status:404

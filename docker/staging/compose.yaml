@@ -1,0 +1,152 @@
+# Tumiki ステージング環境 Docker Compose
+#
+# 構成:
+#   - Manager: https://stg.tumiki.cloud
+#   - MCP Proxy: https://mcp-stg.tumiki.cloud
+#   - Keycloak: https://auth-stg.tumiki.cloud
+#
+# 使用方法:
+#   1. .env ファイルを作成（.env.example を参照）
+#   2. Cloudflare Tunnel を作成して認証情報を取得
+#   3. docker compose up -d
+
+services:
+  # PostgreSQL データベース
+  db:
+    image: postgres:16-alpine
+    container_name: tumiki-staging-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-tumiki}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-tumiki}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-tumiki}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  # Keycloak 認証サーバー
+  keycloak:
+    extends:
+      file: ../keycloak/base.yaml
+      service: keycloak-base
+    container_name: tumiki-staging-keycloak
+    restart: unless-stopped
+    environment:
+      # 管理者認証情報
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USERNAME}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      # PostgreSQL 接続設定
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      # Keycloak 設定
+      KC_HOSTNAME: https://auth-stg.tumiki.cloud
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
+    command: ["start"]
+    expose:
+      - "8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  # Manager アプリケーション
+  manager:
+    image: ghcr.io/rayven122/tumiki-manager:${MANAGER_IMAGE_TAG:-main}
+    container_name: tumiki-staging-manager
+    restart: unless-stopped
+    environment:
+      # Node.js 環境
+      NODE_ENV: production
+      PORT: 8080
+      # データベース
+      DATABASE_URL: postgresql://${DB_USER:-tumiki}:${DB_PASSWORD}@db:5432/${DB_NAME:-tumiki}
+      PRISMA_FIELD_ENCRYPTION_KEY: ${PRISMA_FIELD_ENCRYPTION_KEY}
+      # Keycloak 認証
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      KEYCLOAK_ISSUER: https://auth-stg.tumiki.cloud/realms/tumiki
+      # アプリケーション設定
+      NEXT_PUBLIC_TUMIKI_EDITION: ${TUMIKI_EDITION:-ee}
+    expose:
+      - "8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - app-network
+
+  # MCP Proxy
+  mcp-proxy:
+    image: ghcr.io/rayven122/tumiki-mcp-proxy:${MCP_PROXY_IMAGE_TAG:-main}
+    container_name: tumiki-staging-mcp-proxy
+    restart: unless-stopped
+    environment:
+      # Node.js 環境
+      NODE_ENV: production
+      PORT: 8080
+      # データベース
+      DATABASE_URL: postgresql://${DB_USER:-tumiki}:${DB_PASSWORD}@db:5432/${DB_NAME:-tumiki}
+      PRISMA_FIELD_ENCRYPTION_KEY: ${PRISMA_FIELD_ENCRYPTION_KEY}
+      # オプション: Pub/Sub ログ送信
+      PUBSUB_MCP_LOGS_TOPIC: ${PUBSUB_MCP_LOGS_TOPIC:-}
+    expose:
+      - "8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - app-network
+
+  # Cloudflare Tunnel
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: tumiki-staging-cloudflared
+    restart: unless-stopped
+    command: tunnel --config /etc/cloudflared/config.yaml run
+    volumes:
+      - ./cloudflared/config.yaml:/etc/cloudflared/config.yaml:ro
+      - ./cloudflared/credentials.json:/etc/cloudflared/credentials.json:ro
+    depends_on:
+      manager:
+        condition: service_healthy
+      mcp-proxy:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    networks:
+      - app-network
+
+volumes:
+  db-data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge
