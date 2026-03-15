@@ -10,7 +10,7 @@
 
 | フェーズ | 期間 | 工数（人日） | 備考 |
 |---------|------|-------------|------|
-| Phase 1: Google Cloud依存削除 | 2週間 | 10人日 | コア機能変更 |
+| Phase 1: Google Cloud依存のOptional化 | 2週間 | 10人日 | コア機能変更 |
 | Phase 2: 設定同期API実装 | 2週間 | 10人日 | Manager + Proxy両方 |
 | Phase 3: Docker環境整備 | 1週間 | 5人日 | インフラ構築 |
 | Phase 4: 監査ログ・SIEM連携 | 1週間 | 5人日 | 外部連携 |
@@ -20,7 +20,7 @@
 
 ---
 
-## Phase 1: Google Cloud依存削除とローカル化（10人日）
+## Phase 1: Google Cloud依存のOptional化とローカル環境対応（10人日）
 
 ### 1.1 ロギングバックエンドの柔軟化（3人日）
 
@@ -352,7 +352,7 @@
 
 | 週 | フェーズ | 累積工数 | マイルストーン |
 |----|---------|---------|--------------|
-| **Week 1-2** | Phase 1 | 10人日 | Google Cloud依存削除完了 |
+| **Week 1-2** | Phase 1 | 10人日 | Google Cloud依存のOptional化完了 |
 | **Week 3-4** | Phase 2 | 20人日 | 設定同期API実装完了 |
 | **Week 5** | Phase 3 | 25人日 | Docker環境整備完了 |
 | **Week 6** | Phase 4 | 30人日 | 監査ログ・SIEM連携完了 |

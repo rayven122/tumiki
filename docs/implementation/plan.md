@@ -13,9 +13,9 @@
 
 ## 実装フェーズ
 
-### Phase 1: Google Cloud依存削除とローカル化（2週間）
+### Phase 1: Google Cloud依存のOptional化とローカル環境対応（2週間）
 
-**目的**: mcp-proxyをオンプレ環境で動作可能にする
+**目的**: mcp-proxyをオンプレ環境で動作可能にしつつ、GCPサービスもオプショナルで利用可能にする
 
 #### タスク
 
@@ -632,7 +632,7 @@
 
 | フェーズ | 期間 | 完了基準 |
 |---------|------|---------|
-| Phase 1 | Week 1-2 | Google Cloud依存削除、テスト100%パス |
+| Phase 1 | Week 1-2 | Google Cloud依存のOptional化、テスト100%パス |
 | Phase 2 | Week 3-4 | 設定同期API実装、同期動作確認 |
 | Phase 3 | Week 5 | docker-compose起動成功、セットアップ時間<30分 |
 | Phase 4 | Week 6 | SIEM連携動作確認 |
@@ -643,6 +643,6 @@
 
 ## 次のステップ
 
-1. Phase 1開始: Google Cloud依存削除
+1. Phase 1開始: Google Cloud依存のOptional化
 2. 並行作業: Manager側設定同期API設計
 3. 週次レビュー: 各フェーズ完了時にセキュリティ観点でレビュー
