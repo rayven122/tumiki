@@ -141,6 +141,7 @@ describe("decryptToken", () => {
     if (existsSync(testUserDataPath)) {
       rmSync(testUserDataPath, { recursive: true, force: true });
     }
+    _resetEncryptionKeyCache();
   });
 
   test("暗号化されたトークンを正常に復号化できる", async () => {
