@@ -152,14 +152,17 @@ const rotateLogFileAsync = async (): Promise<void> => {
 /**
  * ログをファイルに書き込む（非同期）
  * メインプロセスをブロックしないよう非同期I/Oを使用
+ * 書き込み前にローテーションをチェックし、サイズ超過を防止
  */
 const writeToLogFile = (entry: StructuredLogEntry): void => {
   const logFilePath = getLogFilePath();
   const logLine = JSON.stringify(entry) + "\n";
 
-  // 非同期でファイルに書き込み（メインプロセスをブロックしない）
-  void appendFile(logFilePath, logLine, { encoding: "utf8", mode: 0o600 })
-    .then(() => rotateLogFileAsync())
+  // ローテーションチェック → 書き込みの順で実行
+  void rotateLogFileAsync()
+    .then(() =>
+      appendFile(logFilePath, logLine, { encoding: "utf8", mode: 0o600 }),
+    )
     .catch((error) => {
       // ログファイルへの書き込みに失敗してもアプリを停止しない
       console.error("Failed to write to log file:", error);

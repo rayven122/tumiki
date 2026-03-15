@@ -210,20 +210,11 @@ export const logError = (error: unknown, context?: string): ErrorWithStatus => {
   const errorWithStatus = toErrorWithStatus(error);
   const errorInfo = classifyError(error);
 
-  if (import.meta.env.DEV) {
-    // センシティブ情報を完全に除外してログ出力
-    console.error(`[${errorInfo.category}] ${context || "Error"}:`, {
-      message: errorInfo.message,
-      status: errorInfo.status,
-      // originalErrorは完全に除外（センシティブ情報漏洩リスクを回避）
-    });
-  } else {
-    // 本番環境でも診断に必要な情報を含める
-    console.error(`[${errorInfo.category}] ${context || "Error"}:`, {
-      message: errorInfo.message,
-      status: errorInfo.status,
-    });
-  }
+  // センシティブ情報を除外し、診断に必要な情報のみ出力
+  console.error(`[${errorInfo.category}] ${context || "Error"}:`, {
+    message: errorInfo.message,
+    status: errorInfo.status,
+  });
 
   return errorWithStatus;
 };

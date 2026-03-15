@@ -48,7 +48,11 @@ app.on("window-all-closed", () => {
 
 // アプリケーション終了時にデータベース接続をクリーンアップ
 // Electronはasyncイベントハンドラを待たないため、preventDefaultで終了を遅延
+// app.exit() が再度 will-quit を発火するため、フラグで無限ループを防止
+let isQuitting = false;
 app.on("will-quit", (event) => {
+  if (isQuitting) return;
+  isQuitting = true;
   event.preventDefault();
   closeDb()
     .then(() => {
@@ -61,7 +65,6 @@ app.on("will-quit", (event) => {
       );
     })
     .finally(() => {
-      // クリーンアップ完了後にアプリケーションを終了
       app.exit();
     });
 });
