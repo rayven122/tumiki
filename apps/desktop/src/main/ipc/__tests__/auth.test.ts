@@ -48,7 +48,7 @@ describe("setupAuthIpc", () => {
       authToken: mockDbAuthToken,
       $connect: vi.fn(),
       $disconnect: vi.fn(),
-    } as never);
+    } as unknown as Awaited<ReturnType<typeof getDb>>);
 
     // encryption モックのセットアップ
     vi.mocked(encryptToken).mockImplementation((plainText: string) =>
