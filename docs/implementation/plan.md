@@ -115,7 +115,7 @@
 - **実装**:
   ```typescript
   // 環境変数
-  USE_CLOUD_RUN_AUTH=false  // Self-hosted版: false、Cloud Run版: true
+  USE_CLOUD_RUN_AUTH=false  // Self-hosted版: false、クラウド版: true
 
   // authHeaderInjector.ts
   const injectAuthHeaders = async (url: string) => {
