@@ -16,8 +16,18 @@ concurrency:
 
 jobs:
   publish:
-    name: 📦 Docker Publish
+    name: 📦 Docker Publish (${{ matrix.app }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app:
+          - name: manager
+            image: ghcr.io/rayven122/tumiki-manager
+            dockerfile: apps/manager/Dockerfile
+          - name: mcp-proxy
+            image: ghcr.io/rayven122/tumiki-mcp-proxy
+            dockerfile: apps/mcp-proxy/Dockerfile
     steps:
       - uses: actions/checkout@v4
 
@@ -35,7 +45,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/rayven122/tumiki-mcp-proxy
+          images: ${{ matrix.app.image }}
           tags: |
             type=ref,event=branch
             type=sha,prefix=sha-,format=short
@@ -47,10 +57,10 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: apps/mcp-proxy/Dockerfile
+          file: ${{ matrix.app.dockerfile }}
           push: true
           platforms: linux/amd64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.app.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app.name }}
