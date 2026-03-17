@@ -39,5 +39,11 @@
 
 ## 実装後の必須アクション
 
-1. **品質チェック**: `quality-check` スキルを参照
-2. **tumiki-code-simplifier実行**
+**⚠️ CRITICAL: コミット・PR作成前に必ず実行すること**
+
+1. **品質チェック**: `quality-check` スキルを必ず実行
+   - `pnpm format:fix` - コードフォーマット自動修正
+   - `pnpm lint:fix` - Lintエラー自動修正
+   - `pnpm typecheck` - TypeScript型チェック
+   - CIで失敗する前にローカルで必ず実行する
+2. **tumiki-code-simplifier実行**: コード簡素化
