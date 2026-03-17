@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "PORT=3100 pnpm with-env next dev --turbopack",
     "build": "pnpm with-env next build --turbopack",
-    "start": "pnpm with-env next start",
+    "start": "PORT=3100 pnpm with-env next start",
     "clean": "git clean -xdf .cache .next .turbo node_modules",
     "typecheck": "tsc --noEmit",
     "with-env": "dotenv -e ../../.env --",
