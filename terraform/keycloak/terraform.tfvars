@@ -24,6 +24,19 @@ manager_web_origins = [
   "https://manager.tumiki.cloud"
 ]
 
+# Registry Appクライアント設定
+registry_client_id = "tumiki-registry"
+registry_redirect_uris = [
+  "http://localhost:3100/*",
+  "https://localhost:3100/*",
+  "https://registry.tumiki.cloud/*"
+]
+registry_web_origins = [
+  "http://localhost:3100",
+  "https://localhost:3100",
+  "https://registry.tumiki.cloud"
+]
+
 # MCP Proxyクライアント設定
 proxy_client_id = "tumiki-proxy"
 proxy_redirect_uris = [
@@ -35,3 +48,7 @@ proxy_redirect_uris = [
 test_user_email      = "admin@tumiki.local"
 test_user_first_name = "Admin"
 test_user_last_name  = "User"
+
+# テーマ設定（開発環境ではデフォルトテーマを使用）
+login_theme   = ""
+account_theme = ""
