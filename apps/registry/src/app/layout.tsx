@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+import { ClientProvider } from "./_components/ClientProvider";
+
 export const metadata: Metadata = {
   title: "Tumiki Registry",
   description: "Tumiki Registry App",
@@ -9,7 +11,9 @@ export const metadata: Metadata = {
 const RootLayout = ({ children }: Readonly<{ children: React.ReactNode }>) => {
   return (
     <html lang="ja">
-      <body>{children}</body>
+      <body>
+        <ClientProvider>{children}</ClientProvider>
+      </body>
     </html>
   );
 };

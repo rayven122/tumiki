@@ -3,7 +3,8 @@
   "compilerOptions": {
     "verbatimModuleSyntax": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "~/*": ["./src/*"]
     }
   },
   "include": [
