@@ -68,7 +68,7 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@vitest/coverage-v8": "catalog:",
     "concurrently": "^9.2.1",
-    "turbo": "^2.8.14",
+    "turbo": "^2.8.17",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }
