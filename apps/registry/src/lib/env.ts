@@ -21,9 +21,13 @@ export const getKeycloakEnv = () => {
   const isCI = process.env.CI === "true" || process.env.VERCEL === "1";
 
   const result = keycloakEnvSchema.safeParse({
+    // Registry専用の環境変数を優先、なければManager用の環境変数にフォールバック
     KEYCLOAK_CLIENT_ID:
-      process.env.KEYCLOAK_CLIENT_ID ?? (isCI ? "dummy-client-id" : undefined),
+      process.env.REGISTRY_KEYCLOAK_CLIENT_ID ??
+      process.env.KEYCLOAK_CLIENT_ID ??
+      (isCI ? "dummy-client-id" : undefined),
     KEYCLOAK_CLIENT_SECRET:
+      process.env.REGISTRY_KEYCLOAK_CLIENT_SECRET ??
       process.env.KEYCLOAK_CLIENT_SECRET ??
       (isCI ? "dummy-client-secret" : undefined),
     KEYCLOAK_ISSUER:
