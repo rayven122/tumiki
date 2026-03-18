@@ -1,9 +1,9 @@
-import React from "react";
+import type { JSX } from "react";
 import { useAtomValue } from "jotai";
 import { mcpServersAtom } from "../store/atoms";
 import { Activity, Server, AlertCircle } from "lucide-react";
 
-export const Dashboard = (): React.ReactElement => {
+export const Dashboard = (): JSX.Element => {
   const servers = useAtomValue(mcpServersAtom);
 
   const stats = {

@@ -1,0 +1,220 @@
+/**
+ * HTTP ステータスコード付きエラー型
+ */
+export type ErrorWithStatus = {
+  message: string;
+  status?: number;
+  name: string;
+  cause?: unknown;
+};
+
+/**
+ * エラー分類
+ */
+export type ErrorCategory =
+  | "network" // ネットワークエラー
+  | "auth" // 認証エラー (401, 403)
+  | "server" // サーバーエラー (5xx)
+  | "client" // クライアントエラー (4xx)
+  | "timeout" // タイムアウトエラー
+  | "unknown"; // 不明なエラー
+
+/**
+ * エラーメッセージを取得
+ * 将来的に国際化対応する際は、i18nライブラリを使用して翻訳を提供する
+ * @param category エラーカテゴリ
+ * @returns エラーメッセージ
+ */
+const getErrorMessage = (category: ErrorCategory): string => {
+  const messages: Record<ErrorCategory, string> = {
+    network: "ネットワーク接続に失敗しました",
+    timeout: "リクエストがタイムアウトしました",
+    auth: "認証に失敗しました",
+    server: "サーバーエラーが発生しました",
+    client: "リクエストが無効です",
+    unknown: "予期しないエラーが発生しました",
+  };
+  return messages[category];
+};
+
+/**
+ * エラー情報
+ */
+export type ErrorInfo = {
+  category: ErrorCategory;
+  message: string;
+  status?: number;
+  shouldRetry: boolean;
+};
+
+/**
+ * エラーをHTTPステータス付きエラーに変換
+ */
+export const toErrorWithStatus = (error: unknown): ErrorWithStatus => {
+  if (error && typeof error === "object" && error !== null) {
+    // ステータスコードの安全な変換
+    let status: number | undefined;
+    if ("status" in error) {
+      const rawStatus = (error as { status: unknown }).status;
+      if (typeof rawStatus === "number") {
+        status = rawStatus;
+      } else if (typeof rawStatus === "string" && !isNaN(Number(rawStatus))) {
+        status = Number(rawStatus);
+      }
+    }
+
+    return {
+      message:
+        "message" in error && typeof error.message === "string"
+          ? error.message
+          : String(error),
+      status,
+      name:
+        "name" in error && typeof error.name === "string"
+          ? error.name
+          : "Error",
+      cause: "cause" in error ? error.cause : undefined,
+    };
+  }
+
+  return {
+    message: String(error),
+    name: "Error",
+  };
+};
+
+/**
+ * エラーを分類
+ */
+export const classifyError = (error: unknown): ErrorInfo => {
+  const errorWithStatus = toErrorWithStatus(error);
+  const { name, message, status } = errorWithStatus;
+
+  // エラー名ベースの分類（メッセージ文字列より安定）
+  // TypeErrorはfetch失敗時にブラウザが投げる標準エラー
+  if (name === "TypeError" || name === "NetworkError") {
+    return {
+      category: "network",
+      message: getErrorMessage("network"),
+      shouldRetry: true,
+    };
+  }
+
+  // AbortError: AbortSignal.timeout() や AbortController.abort() で発生
+  // TimeoutError: 一部環境でのタイムアウトエラー
+  if (name === "AbortError" || name === "TimeoutError") {
+    return {
+      category: "timeout",
+      message: getErrorMessage("timeout"),
+      shouldRetry: true,
+    };
+  }
+
+  // エラー名で判定できない場合のフォールバック（メッセージベース）
+  if (
+    message.includes("fetch") ||
+    message.includes("network") ||
+    message.includes("Failed to fetch")
+  ) {
+    return {
+      category: "network",
+      message: getErrorMessage("network"),
+      shouldRetry: true,
+    };
+  }
+
+  if (message.includes("timeout") || message.includes("aborted")) {
+    return {
+      category: "timeout",
+      message: getErrorMessage("timeout"),
+      shouldRetry: true,
+    };
+  }
+
+  // HTTPステータスコードによる分類
+  if (status !== undefined) {
+    // 認証エラー
+    if (status === 401 || status === 403) {
+      return {
+        category: "auth",
+        message: getErrorMessage("auth"),
+        status,
+        shouldRetry: false,
+      };
+    }
+
+    // サーバーエラー
+    if (status >= 500) {
+      return {
+        category: "server",
+        message: getErrorMessage("server"),
+        status,
+        shouldRetry: true,
+      };
+    }
+
+    // クライアントエラー
+    if (status >= 400) {
+      return {
+        category: "client",
+        message: getErrorMessage("client"),
+        status,
+        shouldRetry: false,
+      };
+    }
+  }
+
+  // 不明なエラー
+  return {
+    category: "unknown",
+    message: message || getErrorMessage("unknown"),
+    status,
+    shouldRetry: false,
+  };
+};
+
+/**
+ * エラーのリトライ判定
+ */
+export const shouldRetryError = (
+  error: unknown,
+  failureCount: number,
+  maxRetries = 3,
+): boolean => {
+  const errorInfo = classifyError(error);
+
+  // リトライ不可なエラー
+  if (!errorInfo.shouldRetry) {
+    return false;
+  }
+
+  // リトライ回数超過
+  if (failureCount >= maxRetries) {
+    return false;
+  }
+
+  return true;
+};
+
+/**
+ * リトライ遅延時間を計算（指数バックオフ）
+ */
+export const calculateRetryDelay = (attemptIndex: number): number => {
+  return Math.min(1000 * 2 ** attemptIndex, 30000);
+};
+
+/**
+ * エラーをログに記録
+ */
+export const logError = (error: unknown, context?: string): ErrorWithStatus => {
+  const errorWithStatus = toErrorWithStatus(error);
+  const errorInfo = classifyError(error);
+
+  // センシティブ情報を除外し、診断に必要な情報のみ出力
+  console.error(`[${errorInfo.category}] ${context || "Error"}:`, {
+    message: errorInfo.message,
+    status: errorInfo.status,
+  });
+
+  return errorWithStatus;
+};

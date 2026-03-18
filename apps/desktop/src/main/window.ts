@@ -6,15 +6,17 @@ export const createMainWindow = (): BrowserWindow => {
     width: 1200,
     height: 800,
     webPreferences: {
-      preload: join(__dirname, "../preload/index.js"),
+      preload: join(__dirname, "../preload/index.cjs"),
       nodeIntegration: false,
       contextIsolation: true,
     },
   });
 
-  // 開発環境とプロダクション環境で異なるURLをロード
-  if (process.env.NODE_ENV === "development") {
-    mainWindow.loadURL("http://localhost:5173");
+  // electron-viteが設定する環境変数からrenderer URLを取得
+  const rendererUrl = process.env["ELECTRON_RENDERER_URL"];
+
+  if (rendererUrl) {
+    mainWindow.loadURL(rendererUrl);
     mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(join(__dirname, "../renderer/index.html"));

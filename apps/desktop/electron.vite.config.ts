@@ -11,6 +11,14 @@ export default defineConfig({
         input: {
           index: resolve(__dirname, "src/main/index.ts"),
         },
+        output: {
+          format: "cjs",
+        },
+        external: [
+          "electron",
+          /^\.prisma\/desktop-client/,
+          /prisma\/generated\/client/,
+        ],
       },
     },
   },
@@ -21,6 +29,9 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, "src/preload/index.ts"),
+        },
+        output: {
+          format: "cjs",
         },
       },
     },
