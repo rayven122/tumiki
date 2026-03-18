@@ -1,0 +1,19 @@
+{
+  "extends": "@tumiki/tsconfig/nextjs.json",
+  "compilerOptions": {
+    "verbatimModuleSyntax": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.cjs",
+    "**/*.js",
+    ".next/types/**/*.ts",
+    "postcss.config.mjs"
+  ],
+  "exclude": ["node_modules", "coverage"]
+}
