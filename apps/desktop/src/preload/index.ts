@@ -19,6 +19,21 @@ const api = {
       ipcRenderer.invoke("auth:clearToken"),
     isAuthenticated: (): Promise<boolean> =>
       ipcRenderer.invoke("auth:isAuthenticated"),
+    login: (): Promise<void> => ipcRenderer.invoke("auth:login"),
+    logout: (): Promise<void> => ipcRenderer.invoke("auth:logout"),
+    onCallbackSuccess: (callback: () => void): (() => void) => {
+      const listener = (): void => callback();
+      ipcRenderer.on("auth:callbackSuccess", listener);
+      return () => ipcRenderer.removeListener("auth:callbackSuccess", listener);
+    },
+    onCallbackError: (callback: (error: string) => void): (() => void) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        error: string,
+      ): void => callback(error);
+      ipcRenderer.on("auth:callbackError", listener);
+      return () => ipcRenderer.removeListener("auth:callbackError", listener);
+    },
   },
 };
 

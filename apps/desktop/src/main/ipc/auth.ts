@@ -1,6 +1,7 @@
 import { ipcMain } from "electron";
 import { z } from "zod";
 import { getDb } from "../db";
+import { getOAuthManager } from "../index";
 import { encryptToken, decryptToken } from "../utils/encryption";
 import * as logger from "../utils/logger";
 
@@ -140,6 +141,52 @@ export const setupAuthIpc = (): void => {
         error instanceof Error ? error : { error },
       );
       throw new Error("認証トークンの削除に失敗しました");
+    }
+  });
+
+  // ログイン（OAuth認証フロー開始）
+  ipcMain.handle("auth:login", async () => {
+    try {
+      const oauthManager = getOAuthManager();
+      if (!oauthManager) {
+        throw new Error(
+          "OAuth認証が設定されていません（環境変数を確認してください）",
+        );
+      }
+      await oauthManager.startAuthFlow();
+      logger.info("Auth login flow started");
+    } catch (error) {
+      logger.error(
+        "Failed to start auth login",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error(
+        error instanceof Error ? error.message : "ログインの開始に失敗しました",
+      );
+    }
+  });
+
+  // ログアウト
+  ipcMain.handle("auth:logout", async () => {
+    try {
+      const oauthManager = getOAuthManager();
+      if (!oauthManager) {
+        // OAuthManagerがなくてもローカルのトークンは削除する
+        const db = await getDb();
+        await db.authToken.deleteMany({});
+        logger.info("Auth tokens cleared (OAuth not configured)");
+        return;
+      }
+      await oauthManager.logout();
+      logger.info("Auth logout completed");
+    } catch (error) {
+      logger.error(
+        "Failed to logout",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error(
+        error instanceof Error ? error.message : "ログアウトに失敗しました",
+      );
     }
   });
 

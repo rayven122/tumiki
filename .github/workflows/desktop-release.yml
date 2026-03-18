@@ -1,0 +1,234 @@
+name: Desktop Release
+
+on:
+  push:
+    tags:
+      - "desktop-v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "リリースタグ (例: desktop-v0.1.0)"
+        required: true
+        type: string
+
+jobs:
+  # macOS用ビルド
+  build-macos:
+    name: 🍎 macOS ビルド
+    runs-on: macos-latest
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.11.0
+
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: 📦 Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: 🔧 Build database package
+        run: pnpm --filter @tumiki/db build
+
+      - name: 🔧 Generate Prisma client for desktop
+        run: |
+          cd apps/desktop
+          pnpm db:generate
+
+      - name: 🔨 Build Electron app
+        run: |
+          cd apps/desktop
+          pnpm build
+        env:
+          # Keycloak認証用の環境変数（ビルド時に埋め込み）
+          KEYCLOAK_ISSUER: ${{ secrets.KEYCLOAK_ISSUER }}
+          DESKTOP_KEYCLOAK_CLIENT_ID: ${{ secrets.DESKTOP_KEYCLOAK_CLIENT_ID }}
+          DESKTOP_KEYCLOAK_CLIENT_SECRET: ${{ secrets.DESKTOP_KEYCLOAK_CLIENT_SECRET }}
+
+      - name: 📦 Package for macOS (x64 + arm64)
+        run: |
+          cd apps/desktop
+          pnpm build:release
+        env:
+          # Keycloak認証用の環境変数（build:releaseが内部でpnpm buildを再実行するため必要）
+          KEYCLOAK_ISSUER: ${{ secrets.KEYCLOAK_ISSUER }}
+          DESKTOP_KEYCLOAK_CLIENT_ID: ${{ secrets.DESKTOP_KEYCLOAK_CLIENT_ID }}
+          DESKTOP_KEYCLOAK_CLIENT_SECRET: ${{ secrets.DESKTOP_KEYCLOAK_CLIENT_SECRET }}
+          # 将来的にコード署名を有効化する場合:
+          # Apple Developer証明書が必要です
+          # CSC_LINK: ${{ secrets.MACOS_CERTIFICATE }}
+          # CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          # 公証を有効にする場合:
+          # APPLE_ID: ${{ secrets.APPLE_ID }}
+          # APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📤 Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-builds
+          path: |
+            apps/desktop/out/*.dmg
+            apps/desktop/out/*.zip
+          retention-days: 7
+
+  # GitHub Releaseの作成
+  create-release:
+    name: 📢 GitHub Release 作成
+    needs: [build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 📥 Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-builds
+          path: artifacts/
+
+      - name: 📋 Extract version from tag
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
+          VERSION="${TAG#desktop-v}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+
+      - name: 📝 Generate release notes
+        id: release_notes
+        run: |
+          cat > release_notes.md << 'EOF'
+          ## Tumiki Desktop ${{ steps.version.outputs.version }}
+
+          ### ダウンロード
+
+          **macOS:**
+          - Intel Mac: `Tumiki-${{ steps.version.outputs.version }}-x64.dmg`
+          - Apple Silicon (M1/M2/M3): `Tumiki-${{ steps.version.outputs.version }}-arm64.dmg`
+          - ZIP版（両アーキテクチャ対応）: `Tumiki-${{ steps.version.outputs.version }}-mac.zip`
+
+          ### インストール方法
+
+          1. お使いのMacに対応したDMGファイルをダウンロード
+          2. DMGファイルを開き、TumikiをApplicationsフォルダにドラッグ
+          3. 初回起動時にセキュリティ警告が表示された場合:
+             - システム設定 > プライバシーとセキュリティ > 「このまま開く」をクリック
+
+          ### システム要件
+
+          - macOS 11.0 (Big Sur) 以降
+          - Intel または Apple Silicon プロセッサ
+
+          ### 注意事項
+
+          - このバージョンは署名・公証されていません
+          - 将来のバージョンでApple公証に対応予定です
+
+          ---
+
+          🤖 このリリースは自動生成されました
+          EOF
+
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          cat release_notes.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: 🚀 Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Tumiki Desktop v${{ steps.version.outputs.version }}
+          body: ${{ steps.release_notes.outputs.notes }}
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/**/*.dmg
+            artifacts/**/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Slack通知
+  notify:
+    name: 📢 Slack通知
+    needs: [create-release]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 📋 Extract version from tag
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
+          VERSION="${TAG#desktop-v}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+
+      - name: 📨 Send Slack notification
+        if: ${{ vars.SLACK_ENABLED == 'true' }}
+        continue-on-error: true
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          payload: |
+            {
+              "text": "${{ needs.create-release.result == 'success' && '✅' || '❌' }} Tumiki Desktop Release",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "${{ needs.create-release.result == 'success' && '✅' || '❌' }} Tumiki Desktop v${{ steps.version.outputs.version }} リリース"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*タグ:*\n${{ steps.version.outputs.tag }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*ステータス:*\n${{ needs.create-release.result }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*実行者:*\n${{ github.actor }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Commit:*\n${{ github.sha }}"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "<https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.tag }}|リリースページを見る>"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
