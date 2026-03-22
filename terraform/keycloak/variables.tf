@@ -90,6 +90,27 @@ variable "proxy_redirect_uris" {
   ]
 }
 
+# Desktop App クライアント設定
+variable "desktop_client_id" {
+  description = "Desktop App クライアントID"
+  type        = string
+  default     = "tumiki-desktop"
+}
+
+variable "desktop_client_secret" {
+  description = "Desktop App クライアントシークレット（環境変数 TF_VAR_desktop_client_secret で設定）"
+  type        = string
+  sensitive   = true
+}
+
+variable "desktop_redirect_uris" {
+  description = "Desktop App リダイレクトURI一覧"
+  type        = list(string)
+  default = [
+    "tumiki-desktop://auth/callback"
+  ]
+}
+
 # セキュリティ設定
 variable "ssl_required" {
   description = "SSL要求レベル（none/external/all）"

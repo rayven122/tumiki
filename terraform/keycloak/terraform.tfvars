@@ -31,6 +31,9 @@ proxy_redirect_uris = [
   "http://localhost:6274/*"
 ]
 
+# テーマ設定（tumikiテーマはloginのみ提供、accountはデフォルトを使用）
+account_theme = "keycloak.v3"
+
 # テストユーザー設定
 test_user_email      = "admin@tumiki.local"
 test_user_first_name = "Admin"
