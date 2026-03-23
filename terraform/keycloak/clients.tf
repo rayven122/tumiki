@@ -169,7 +169,8 @@ resource "keycloak_openid_client" "desktop" {
 
   # リダイレクトURI設定（カスタムURLスキーム）
   valid_redirect_uris = var.desktop_redirect_uris
-  web_origins         = []
+  # カスタムURLスキーム（tumiki-desktop://）のみ使用するため、CORS設定は不要
+  web_origins = []
 }
 
 # Desktop クライアントのデフォルトスコープ設定

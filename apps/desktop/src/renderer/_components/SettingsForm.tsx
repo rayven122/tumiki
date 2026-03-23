@@ -10,6 +10,9 @@ export const SettingsForm = (): React.ReactElement => {
   const [authError, setAuthError] = useState<string | null>(null);
   const [authSuccess, setAuthSuccess] = useState<string | null>(null);
   const loginTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loginSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const logoutSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -37,8 +40,6 @@ export const SettingsForm = (): React.ReactElement => {
     checkAuthStatus();
 
     // 認証コールバックイベントリスナー
-    let successTimerId: ReturnType<typeof setTimeout> | null = null;
-
     const cleanupSuccess = window.electronAPI.auth.onCallbackSuccess(() => {
       if (loginTimeoutRef.current) {
         clearTimeout(loginTimeoutRef.current);
@@ -49,8 +50,12 @@ export const SettingsForm = (): React.ReactElement => {
       setAuthSuccess("ログインに成功しました");
       setAuthError(null);
       // 3秒後に成功メッセージを消す
-      if (successTimerId) clearTimeout(successTimerId);
-      successTimerId = setTimeout(() => setAuthSuccess(null), 3000);
+      if (loginSuccessTimeoutRef.current)
+        clearTimeout(loginSuccessTimeoutRef.current);
+      loginSuccessTimeoutRef.current = setTimeout(
+        () => setAuthSuccess(null),
+        3000,
+      );
     });
 
     const cleanupError = window.electronAPI.auth.onCallbackError((error) => {
@@ -61,8 +66,9 @@ export const SettingsForm = (): React.ReactElement => {
     return () => {
       cleanupSuccess();
       cleanupError();
-      if (successTimerId) clearTimeout(successTimerId);
       if (loginTimeoutRef.current) clearTimeout(loginTimeoutRef.current);
+      if (loginSuccessTimeoutRef.current)
+        clearTimeout(loginSuccessTimeoutRef.current);
       if (logoutSuccessTimeoutRef.current)
         clearTimeout(logoutSuccessTimeoutRef.current);
       if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);

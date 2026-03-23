@@ -85,6 +85,7 @@ describe("setupAuthIpc", () => {
         id: "token-id",
         accessToken: "encrypted:test-access-token",
         refreshToken: "encrypted:test-refresh-token",
+        idToken: null,
         expiresAt: new Date(Date.now() + 3600000), // 1時間後
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -97,9 +98,34 @@ describe("setupAuthIpc", () => {
 
       const result = await handler!({} as IpcMainInvokeEvent);
 
-      expect(result).toBe("test-access-token");
+      expect(result).toStrictEqual({
+        accessToken: "test-access-token",
+        idToken: null,
+      });
       expect(mockDbAuthToken.findFirst).toHaveBeenCalledWith({
         orderBy: { createdAt: "desc" },
+      });
+    });
+
+    test("idTokenが存在する場合はidTokenも含めて返す", async () => {
+      const mockToken = {
+        id: "token-id",
+        accessToken: "encrypted:test-access-token",
+        refreshToken: "encrypted:test-refresh-token",
+        idToken: "encrypted:test-id-token",
+        expiresAt: new Date(Date.now() + 3600000),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      mockDbAuthToken.findFirst.mockResolvedValue(mockToken);
+
+      const handler = mockIpcHandlers.get("auth:getToken");
+      const result = await handler!({} as IpcMainInvokeEvent);
+
+      expect(result).toStrictEqual({
+        accessToken: "test-access-token",
+        idToken: "test-id-token",
       });
     });
 

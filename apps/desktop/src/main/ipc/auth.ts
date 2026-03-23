@@ -63,10 +63,10 @@ export const setupAuthIpc = (): void => {
       }
 
       // 暗号化されたトークンを非同期で復号化
-      const decryptedToken = await decryptToken(token.accessToken);
+      const decryptedAccessToken = await decryptToken(token.accessToken);
 
       // 復号化されたトークンの有効性検証（破損トークンはDBから削除）
-      if (!decryptedToken || decryptedToken.length === 0) {
+      if (!decryptedAccessToken || decryptedAccessToken.length === 0) {
         logger.warn(
           "Decrypted token is invalid or empty, deleting corrupted token",
         );
@@ -74,7 +74,11 @@ export const setupAuthIpc = (): void => {
         return null;
       }
 
-      return decryptedToken;
+      const decryptedIdToken = token.idToken
+        ? await decryptToken(token.idToken)
+        : null;
+
+      return { accessToken: decryptedAccessToken, idToken: decryptedIdToken };
     } catch (error) {
       logger.error(
         "Failed to get auth token",

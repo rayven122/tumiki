@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { AuthTokenData } from "../types/auth";
+import type { AuthTokenData, AuthTokenResult } from "../types/auth";
 
 // Electron APIを安全に公開
 const api = {
@@ -12,7 +12,8 @@ const api = {
 
   // 認証関連 API
   auth: {
-    getToken: (): Promise<string | null> => ipcRenderer.invoke("auth:getToken"),
+    getToken: (): Promise<AuthTokenResult | null> =>
+      ipcRenderer.invoke("auth:getToken"),
     saveToken: (tokenData: AuthTokenData): Promise<{ success: boolean }> =>
       ipcRenderer.invoke("auth:saveToken", tokenData),
     clearToken: (): Promise<{ success: boolean }> =>

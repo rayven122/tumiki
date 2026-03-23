@@ -298,7 +298,9 @@ export class OAuthManager {
       } else {
         logger.error("Failed to logout", { error });
       }
-      throw new Error("ログアウトに失敗しました");
+      throw error instanceof Error
+        ? error
+        : new Error("ログアウトに失敗しました");
     }
   }
 

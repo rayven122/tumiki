@@ -37,10 +37,9 @@ mac:
       arch: [x64, arm64]
     - target: zip
       arch: [x64, arm64]
-  hardenedRuntime: true
+  # 署名・公証を有効化する際に true に変更すること
+  hardenedRuntime: false
   gatekeeperAssess: false
-  entitlements: null
-  entitlementsInherit: null
   # 将来的にコード署名を有効化する場合の設定:
   # コード署名には Apple Developer Program への登録が必要です
   # identity: "Developer ID Application: Your Name (TEAM_ID)"
