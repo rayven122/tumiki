@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, powerMonitor } from "electron";
 import { createMainWindow } from "./window";
 import { initializeDb, closeDb } from "./db";
 import { setupAuthIpc } from "./ipc/auth";
@@ -118,6 +118,16 @@ app
       if (mainWindow) {
         if (mainWindow.isMinimized()) mainWindow.restore();
         mainWindow.focus();
+      }
+    });
+
+    // スリープ復帰時にトークンの有効期限を再チェック
+    powerMonitor.on("resume", () => {
+      const manager = getOAuthManager();
+      if (manager) {
+        manager.initialize().catch((error) => {
+          logger.error("Failed to re-initialize OAuth after resume", { error });
+        });
       }
     });
 

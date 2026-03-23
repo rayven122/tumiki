@@ -160,7 +160,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: 🚀 Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: Tumiki Desktop v${{ steps.version.outputs.version }}
@@ -201,7 +201,7 @@ jobs:
       - name: 📨 Send Slack notification
         if: ${{ vars.SLACK_ENABLED == 'true' }}
         continue-on-error: true
-        uses: slackapi/slack-github-action@v2.0.0
+        uses: slackapi/slack-github-action@485a9d42d3a73031f12ec201c457e2162c45d02d # v2.0.0
         with:
           payload: |
             {

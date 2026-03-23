@@ -282,15 +282,6 @@ export class OAuthManager {
       // ローカルのトークンを削除
       await db.authToken.deleteMany({});
 
-      // 自動リフレッシュタイマーをクリア
-      if (this.refreshTimerId) {
-        clearTimeout(this.refreshTimerId);
-        this.refreshTimerId = null;
-      }
-
-      // セッションをクリア
-      this.currentSession = null;
-
       logger.info("Logout completed successfully");
     } catch (error) {
       if (error instanceof Error) {
@@ -301,6 +292,13 @@ export class OAuthManager {
       throw error instanceof Error
         ? error
         : new Error("ログアウトに失敗しました");
+    } finally {
+      // 例外発生時もタイマーとセッションを確実にクリア
+      if (this.refreshTimerId) {
+        clearTimeout(this.refreshTimerId);
+        this.refreshTimerId = null;
+      }
+      this.currentSession = null;
     }
   }
 
