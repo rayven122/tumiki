@@ -11,6 +11,7 @@ import * as logger from "../utils/logger";
 const authTokenSchema = z.object({
   accessToken: z.string().min(1, "アクセストークンは空にできません"),
   refreshToken: z.string().min(1, "リフレッシュトークンは空にできません"),
+  idToken: z.string().min(1).optional(),
   expiresAt: z.preprocess(
     (val) => {
       // 文字列の場合はDateオブジェクトに変換
@@ -98,6 +99,9 @@ export const setupAuthIpc = (): void => {
           data: {
             accessToken: await encryptToken(validatedData.accessToken),
             refreshToken: await encryptToken(validatedData.refreshToken),
+            idToken: validatedData.idToken
+              ? await encryptToken(validatedData.idToken)
+              : null,
             expiresAt: validatedData.expiresAt,
           },
         });

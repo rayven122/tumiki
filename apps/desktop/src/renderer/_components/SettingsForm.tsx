@@ -13,6 +13,15 @@ export const SettingsForm = (): React.ReactElement => {
   const logoutSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  const errorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // エラーメッセージを設定し、10秒後に自動クリアする
+  const showAuthError = (message: string): void => {
+    setAuthError(message);
+    setAuthSuccess(null);
+    if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
+    errorTimeoutRef.current = setTimeout(() => setAuthError(null), 10000);
+  };
 
   // 認証状態を確認
   useEffect(() => {
@@ -46,8 +55,7 @@ export const SettingsForm = (): React.ReactElement => {
 
     const cleanupError = window.electronAPI.auth.onCallbackError((error) => {
       setIsLoading(false);
-      setAuthError(`ログインに失敗しました: ${error}`);
-      setAuthSuccess(null);
+      showAuthError(`ログインに失敗しました: ${error}`);
     });
 
     return () => {
@@ -57,6 +65,7 @@ export const SettingsForm = (): React.ReactElement => {
       if (loginTimeoutRef.current) clearTimeout(loginTimeoutRef.current);
       if (logoutSuccessTimeoutRef.current)
         clearTimeout(logoutSuccessTimeoutRef.current);
+      if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
     };
   }, []);
 
@@ -91,8 +100,7 @@ export const SettingsForm = (): React.ReactElement => {
         () => {
           setIsLoading((current) => {
             if (current) {
-              setAuthError("認証がタイムアウトしました。再度お試しください。");
-              setAuthSuccess(null);
+              showAuthError("認証がタイムアウトしました。再度お試しください。");
             }
             return false;
           });
@@ -101,7 +109,7 @@ export const SettingsForm = (): React.ReactElement => {
       );
     } catch (error) {
       setIsLoading(false);
-      setAuthError(
+      showAuthError(
         error instanceof Error ? error.message : "ログインに失敗しました",
       );
     }
@@ -126,7 +134,7 @@ export const SettingsForm = (): React.ReactElement => {
       );
     } catch (error) {
       setIsLoading(false);
-      setAuthError(
+      showAuthError(
         error instanceof Error ? error.message : "ログアウトに失敗しました",
       );
     }

@@ -2,7 +2,7 @@ import { randomBytes, createHash } from "crypto";
 
 /**
  * PKCEのcode_verifierを生成
- * RFC 7636に準拠した43-128文字のランダム文字列
+ * 32バイトランダムデータをBase64 URL-safeエンコードした43文字の固定長文字列（RFC 7636準拠）
  */
 export const generateCodeVerifier = (): string => {
   // 32バイト（256ビット）のランダムデータを生成

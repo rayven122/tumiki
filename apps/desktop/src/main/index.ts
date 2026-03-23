@@ -100,7 +100,7 @@ app
     if (keycloakEnv) {
       oauthManager = new OAuthManager({
         issuer: keycloakEnv.KEYCLOAK_ISSUER,
-        clientId: keycloakEnv.KEYCLOAK_CLIENT_ID,
+        clientId: keycloakEnv.KEYCLOAK_DESKTOP_CLIENT_ID,
         redirectUri: `${PROTOCOL}://${CALLBACK_PATH}`,
       });
       await oauthManager.initialize();

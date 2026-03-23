@@ -216,6 +216,27 @@ describe("OAuthManager", () => {
       expect(mockDbAuthToken.deleteMany).toHaveBeenCalledWith({});
     });
 
+    test("idTokenが存在する場合はid_token_hintを含めてログアウトする", async () => {
+      const mockToken = {
+        id: "token-id",
+        refreshToken: "encrypted:refresh-token",
+        idToken: "encrypted:id-token",
+        createdAt: new Date(),
+      };
+      mockDbAuthToken.findFirst.mockResolvedValue(mockToken);
+      mockDbAuthToken.deleteMany.mockResolvedValue({ count: 1 });
+      mockLogout.mockResolvedValue(undefined);
+
+      const manager = createOAuthManager();
+      await manager.logout();
+
+      expect(mockLogout).toHaveBeenCalledWith({
+        refreshToken: "refresh-token",
+        idToken: "id-token",
+      });
+      expect(mockDbAuthToken.deleteMany).toHaveBeenCalledWith({});
+    });
+
     test("トークンが存在しない場合でもローカルを削除する", async () => {
       mockDbAuthToken.findFirst.mockResolvedValue(null);
       mockDbAuthToken.deleteMany.mockResolvedValue({ count: 0 });
