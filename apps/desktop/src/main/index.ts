@@ -7,7 +7,7 @@ import { getKeycloakEnvOptional } from "./utils/env";
 import * as logger from "./utils/logger";
 
 const PROTOCOL = "tumiki-desktop";
-const CALLBACK_PATH = "/auth/callback";
+const CALLBACK_PATH = "auth/callback";
 
 // シングルインスタンスロック（Windows/Linuxでsecond-instanceイベントに必要）
 const gotTheLock = app.requestSingleInstanceLock();
@@ -35,18 +35,9 @@ const createWindow = (): void => {
  * カスタムURLスキーム（tumiki-desktop://）のコールバックを処理
  */
 const handleDeepLink = async (url: string): Promise<void> => {
-  try {
-    const parsedUrl = new URL(url);
-    if (
-      parsedUrl.protocol !== `${PROTOCOL}:` ||
-      parsedUrl.hostname !== "" ||
-      parsedUrl.pathname !== CALLBACK_PATH
-    ) {
-      logger.warn("Received unknown deep link", { url });
-      return;
-    }
-  } catch {
-    logger.warn("Received invalid deep link URL", { url });
+  const expectedPrefix = `${PROTOCOL}://${CALLBACK_PATH}`;
+  if (!url.startsWith(expectedPrefix)) {
+    logger.warn("Received unknown deep link", { url });
     return;
   }
 

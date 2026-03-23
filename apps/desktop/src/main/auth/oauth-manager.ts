@@ -148,15 +148,22 @@ export class OAuthManager {
     // 有効期限を計算（現在時刻 + expires_in秒）
     const expiresAt = new Date(Date.now() + tokenResponse.expires_in * 1000);
 
-    // トークンを暗号化して保存（アトミックにcreate+delete）
+    // トークンを暗号化（トランザクション外で実行し、タイムアウトを回避）
+    const encryptedAccessToken = await encryptToken(tokenResponse.access_token);
+    const encryptedRefreshToken = await encryptToken(
+      tokenResponse.refresh_token,
+    );
+    const encryptedIdToken = tokenResponse.id_token
+      ? await encryptToken(tokenResponse.id_token)
+      : null;
+
+    // 暗号化済みトークンを保存（アトミックにcreate+delete）
     await db.$transaction(async (tx) => {
       const newToken = await tx.authToken.create({
         data: {
-          accessToken: await encryptToken(tokenResponse.access_token),
-          refreshToken: await encryptToken(tokenResponse.refresh_token),
-          idToken: tokenResponse.id_token
-            ? await encryptToken(tokenResponse.id_token)
-            : null,
+          accessToken: encryptedAccessToken,
+          refreshToken: encryptedRefreshToken,
+          idToken: encryptedIdToken,
           expiresAt,
         },
       });

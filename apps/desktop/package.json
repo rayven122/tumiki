@@ -6,7 +6,7 @@
   "main": "dist-electron/main/index.cjs",
   "scripts": {
     "dev": "pnpm with-env electron-vite dev",
-    "build": "electron-vite build",
+    "build": "pnpm with-env electron-vite build",
     "preview": "electron-vite preview",
     "start": "electron-vite preview",
     "clean": "git clean -xdf .cache .turbo node_modules dist-electron out",
