@@ -31,12 +31,12 @@ const tokenResponseSchema = z.object({
  */
 export type TokenResponse = z.infer<typeof tokenResponseSchema>;
 
-/**
- * Keycloakクライアント
- */
 /** fetchリクエストのタイムアウト（ミリ秒） */
 const FETCH_TIMEOUT_MS = 10_000;
 
+/**
+ * Keycloakクライアント
+ */
 export class KeycloakClient {
   private readonly config: KeycloakConfig;
 
