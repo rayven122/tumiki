@@ -7,7 +7,7 @@ import { getKeycloakEnvOptional } from "./utils/env";
 import * as logger from "./utils/logger";
 
 const PROTOCOL = "tumiki-desktop";
-const CALLBACK_PATH = "/auth/callback";
+const CALLBACK_PATH = "auth/callback";
 
 let mainWindow: BrowserWindow | null = null;
 let oauthManager: OAuthManager | null = null;
