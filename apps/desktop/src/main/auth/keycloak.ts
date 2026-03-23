@@ -34,6 +34,9 @@ export type TokenResponse = z.infer<typeof tokenResponseSchema>;
 /**
  * Keycloakクライアント
  */
+/** fetchリクエストのタイムアウト（ミリ秒） */
+const FETCH_TIMEOUT_MS = 10_000;
+
 export class KeycloakClient {
   private readonly config: KeycloakConfig;
 
@@ -89,6 +92,7 @@ export class KeycloakClient {
           redirect_uri: this.config.redirectUri,
           code_verifier: codeVerifier,
         }),
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       });
 
       if (!response.ok) {
@@ -131,6 +135,7 @@ export class KeycloakClient {
           client_id: this.config.clientId,
           refresh_token: refreshToken,
         }),
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       });
 
       if (!response.ok) {
@@ -181,6 +186,7 @@ export class KeycloakClient {
           "Content-Type": "application/x-www-form-urlencoded",
         },
         body,
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       });
 
       if (!response.ok) {
