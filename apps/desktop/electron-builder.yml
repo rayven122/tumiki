@@ -44,7 +44,8 @@ mac:
       arch: [x64, arm64]
     - target: zip
       arch: [x64, arm64]
-  # 署名・公証を有効化する際に true に変更すること
+  # TODO: コード署名・公証の実装時に true に変更する（Apple Developer Program登録後）
+  # 現時点では署名なし（WIP）のため意図的に false を設定
   hardenedRuntime: false
   gatekeeperAssess: false
   # 将来的にコード署名を有効化する場合の設定:
