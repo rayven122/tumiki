@@ -37,7 +37,10 @@ const createWindow = (): void => {
 const handleDeepLink = async (url: string): Promise<void> => {
   try {
     const parsedUrl = new URL(url);
-    if (parsedUrl.protocol !== `${PROTOCOL}:` || parsedUrl.pathname !== CALLBACK_PATH) {
+    if (
+      parsedUrl.protocol !== `${PROTOCOL}:` ||
+      parsedUrl.pathname !== CALLBACK_PATH
+    ) {
       logger.warn("Received unknown deep link", { url });
       return;
     }
