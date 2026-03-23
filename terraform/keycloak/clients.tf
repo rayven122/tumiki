@@ -25,6 +25,13 @@ locals {
     keycloak_openid_client_scope.tumiki_claims.name,
   ])
 
+  # Desktop クライアント用デフォルトスコープ
+  desktop_default_scopes = concat(local.base_scopes, [
+    "profile",
+    "email",
+    keycloak_openid_client_scope.tumiki_claims.name,
+  ])
+
   # Proxy クライアント用オプショナルスコープ
   proxy_optional_scopes = [
     "address",
@@ -169,5 +176,5 @@ resource "keycloak_openid_client" "desktop" {
 resource "keycloak_openid_client_default_scopes" "desktop_default_scopes" {
   realm_id       = keycloak_realm.tumiki.id
   client_id      = keycloak_openid_client.desktop.id
-  default_scopes = local.manager_default_scopes
+  default_scopes = local.desktop_default_scopes
 }

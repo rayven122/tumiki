@@ -10,6 +10,9 @@ export const SettingsForm = (): React.ReactElement => {
   const [authError, setAuthError] = useState<string | null>(null);
   const [authSuccess, setAuthSuccess] = useState<string | null>(null);
   const loginTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const logoutSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   // 認証状態を確認
   useEffect(() => {
@@ -48,6 +51,8 @@ export const SettingsForm = (): React.ReactElement => {
       cleanupError();
       if (successTimerId) clearTimeout(successTimerId);
       if (loginTimeoutRef.current) clearTimeout(loginTimeoutRef.current);
+      if (logoutSuccessTimeoutRef.current)
+        clearTimeout(logoutSuccessTimeoutRef.current);
     };
   }, []);
 
@@ -109,7 +114,12 @@ export const SettingsForm = (): React.ReactElement => {
       setIsLoading(false);
       setAuthSuccess("ログアウトしました");
       // 3秒後に成功メッセージを消す
-      setTimeout(() => setAuthSuccess(null), 3000);
+      if (logoutSuccessTimeoutRef.current)
+        clearTimeout(logoutSuccessTimeoutRef.current);
+      logoutSuccessTimeoutRef.current = setTimeout(
+        () => setAuthSuccess(null),
+        3000,
+      );
     } catch (error) {
       setIsLoading(false);
       setAuthError(

@@ -10,25 +10,6 @@ const keycloakEnvSchema = z.object({
 });
 
 /**
- * Keycloak環境変数を検証して取得
- * 環境変数が未設定または不正な場合はエラーをスロー
- */
-export const getKeycloakEnv = () => {
-  const result = keycloakEnvSchema.safeParse({
-    KEYCLOAK_ISSUER: process.env.KEYCLOAK_ISSUER,
-    KEYCLOAK_CLIENT_ID: process.env.KEYCLOAK_DESKTOP_CLIENT_ID,
-  });
-
-  if (!result.success) {
-    throw new Error(
-      `Keycloak environment variables validation failed: ${result.error.message}`,
-    );
-  }
-
-  return result.data;
-};
-
-/**
  * Keycloak環境変数をオプショナルで取得
  * 環境変数が未設定または不正な場合はnullを返す
  */

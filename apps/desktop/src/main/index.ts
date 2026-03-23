@@ -39,6 +39,7 @@ const handleDeepLink = async (url: string): Promise<void> => {
     const parsedUrl = new URL(url);
     if (
       parsedUrl.protocol !== `${PROTOCOL}:` ||
+      parsedUrl.hostname !== "" ||
       parsedUrl.pathname !== CALLBACK_PATH
     ) {
       logger.warn("Received unknown deep link", { url });
@@ -156,6 +157,7 @@ app.on("will-quit", (event) => {
   if (isQuitting) return;
   isQuitting = true;
   event.preventDefault();
+  oauthManager?.stopAutoRefresh();
   closeDb()
     .then(() => {
       logger.info("Database connection closed successfully");
