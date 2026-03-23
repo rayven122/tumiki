@@ -37,7 +37,7 @@ const createOAuthManager = (): OAuthManager =>
   new OAuthManager({
     issuer: "https://keycloak.example.com/realms/test",
     clientId: "test-client",
-    redirectUri: "tumiki-desktop:///auth/callback",
+    redirectUri: "tumiki-desktop://auth/callback",
   });
 
 describe("OAuthManager", () => {
@@ -126,7 +126,7 @@ describe("OAuthManager", () => {
         | undefined;
       const state = authUrlCallArgs?.state ?? "";
 
-      const callbackUrl = `tumiki-desktop:///auth/callback?code=auth-code&state=${state}`;
+      const callbackUrl = `tumiki-desktop://auth/callback?code=auth-code&state=${state}`;
       await manager.handleAuthCallback(callbackUrl);
 
       expect(mockExchangeCodeForToken).toHaveBeenCalledWith(
@@ -149,7 +149,7 @@ describe("OAuthManager", () => {
 
       await expect(
         manager.handleAuthCallback(
-          `tumiki-desktop:///auth/callback?state=${state}`,
+          `tumiki-desktop://auth/callback?state=${state}`,
         ),
       ).rejects.toThrow("認可コードが見つかりません");
     });
@@ -160,7 +160,7 @@ describe("OAuthManager", () => {
 
       await expect(
         manager.handleAuthCallback(
-          "tumiki-desktop:///auth/callback?code=auth-code&state=wrong-state",
+          "tumiki-desktop://auth/callback?code=auth-code&state=wrong-state",
         ),
       ).rejects.toThrow("stateパラメータが一致しません");
     });
@@ -171,7 +171,7 @@ describe("OAuthManager", () => {
 
       await expect(
         manager.handleAuthCallback(
-          "tumiki-desktop:///auth/callback?code=auth-code&state=some-state",
+          "tumiki-desktop://auth/callback?code=auth-code&state=some-state",
         ),
       ).rejects.toThrow("認証セッションが存在しません");
     });
@@ -190,7 +190,7 @@ describe("OAuthManager", () => {
 
       await expect(
         manager.handleAuthCallback(
-          `tumiki-desktop:///auth/callback?code=auth-code&state=${state}`,
+          `tumiki-desktop://auth/callback?code=auth-code&state=${state}`,
         ),
       ).rejects.toThrow("認証セッションの有効期限が切れています");
     });

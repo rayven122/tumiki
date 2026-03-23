@@ -1,7 +1,7 @@
 import { ipcMain } from "electron";
 import { z } from "zod";
 import { getDb } from "../db";
-import { getOAuthManager } from "../index";
+import { getOAuthManager } from "../auth/manager-registry";
 import { encryptToken, decryptToken } from "../utils/encryption";
 import * as logger from "../utils/logger";
 

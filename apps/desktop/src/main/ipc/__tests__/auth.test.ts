@@ -25,9 +25,9 @@ vi.mock("../../db");
 vi.mock("../../utils/encryption");
 vi.mock("../../utils/logger");
 
-// index.tsのOAuthManager参照をモック
+// manager-registryのOAuthManager参照をモック
 const mockGetOAuthManager = vi.fn().mockReturnValue(null);
-vi.mock("../../index", () => ({
+vi.mock("../../auth/manager-registry", () => ({
   getOAuthManager: () => mockGetOAuthManager(),
 }));
 

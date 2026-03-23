@@ -3,6 +3,10 @@ import { createMainWindow } from "./window";
 import { initializeDb, closeDb } from "./db";
 import { setupAuthIpc } from "./ipc/auth";
 import { OAuthManager } from "./auth/oauth-manager";
+import {
+  getOAuthManager,
+  setOAuthManager,
+} from "./auth/manager-registry";
 import { getKeycloakEnvOptional } from "./utils/env";
 import * as logger from "./utils/logger";
 
@@ -16,12 +20,6 @@ if (!gotTheLock) {
 }
 
 let mainWindow: BrowserWindow | null = null;
-let oauthManager: OAuthManager | null = null;
-
-/**
- * OAuthManagerを取得（IPC等から参照するためのアクセサ）
- */
-export const getOAuthManager = (): OAuthManager | null => oauthManager;
 
 const createWindow = (): void => {
   mainWindow = createMainWindow();
@@ -41,7 +39,8 @@ const handleDeepLink = async (url: string): Promise<void> => {
     return;
   }
 
-  if (!oauthManager) {
+  const manager = getOAuthManager();
+  if (!manager) {
     logger.error("OAuthManager not initialized when handling deep link");
     mainWindow?.webContents.send(
       "auth:callbackError",
@@ -51,7 +50,7 @@ const handleDeepLink = async (url: string): Promise<void> => {
   }
 
   try {
-    await oauthManager.handleAuthCallback(url);
+    await manager.handleAuthCallback(url);
     mainWindow?.webContents.send("auth:callbackSuccess");
     logger.info("Deep link auth callback handled successfully");
   } catch (error) {
@@ -89,12 +88,13 @@ app
     // OAuthManager初期化（環境変数が設定されている場合のみ）
     const keycloakEnv = getKeycloakEnvOptional();
     if (keycloakEnv) {
-      oauthManager = new OAuthManager({
+      const manager = new OAuthManager({
         issuer: keycloakEnv.KEYCLOAK_ISSUER,
         clientId: keycloakEnv.KEYCLOAK_DESKTOP_CLIENT_ID,
         redirectUri: `${PROTOCOL}://${CALLBACK_PATH}`,
       });
-      await oauthManager.initialize();
+      setOAuthManager(manager);
+      await manager.initialize();
       logger.info("OAuthManager initialized");
     } else {
       logger.warn("Keycloak environment variables not set, OAuth disabled");
@@ -148,7 +148,7 @@ app.on("will-quit", (event) => {
   if (isQuitting) return;
   isQuitting = true;
   event.preventDefault();
-  oauthManager?.stopAutoRefresh();
+  getOAuthManager()?.stopAutoRefresh();
   closeDb()
     .then(() => {
       logger.info("Database connection closed successfully");
