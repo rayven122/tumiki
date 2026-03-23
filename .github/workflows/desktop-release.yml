@@ -16,6 +16,11 @@ jobs:
   build-macos:
     name: 🍎 macOS ビルド
     runs-on: macos-latest
+    env:
+      # Keycloak認証用の環境変数（ビルド時に埋め込み）
+      # Public Clientのためclient_secretは不要（PKCEで保護）
+      KEYCLOAK_ISSUER: ${{ secrets.KEYCLOAK_ISSUER }}
+      KEYCLOAK_DESKTOP_CLIENT_ID: ${{ secrets.KEYCLOAK_DESKTOP_CLIENT_ID }}
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v4
@@ -56,19 +61,12 @@ jobs:
         run: |
           cd apps/desktop
           pnpm build
-        env:
-          # Keycloak認証用の環境変数（ビルド時に埋め込み）
-          # Public Clientのためclient_secretは不要（PKCEで保護）
-          KEYCLOAK_ISSUER: ${{ secrets.KEYCLOAK_ISSUER }}
-          KEYCLOAK_DESKTOP_CLIENT_ID: ${{ secrets.KEYCLOAK_DESKTOP_CLIENT_ID }}
 
       - name: 📦 Package for macOS (x64 + arm64)
         run: |
           cd apps/desktop
           pnpm build:release
         env:
-          KEYCLOAK_ISSUER: ${{ secrets.KEYCLOAK_ISSUER }}
-          KEYCLOAK_DESKTOP_CLIENT_ID: ${{ secrets.KEYCLOAK_DESKTOP_CLIENT_ID }}
           # 将来的にコード署名を有効化する場合:
           # Apple Developer証明書が必要です
           # CSC_LINK: ${{ secrets.MACOS_CERTIFICATE }}

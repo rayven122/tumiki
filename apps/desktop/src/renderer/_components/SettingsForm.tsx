@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAtom } from "jotai";
 import { appConfigAtom } from "../store/atoms";
 import { LogIn, LogOut, CheckCircle, XCircle } from "lucide-react";
@@ -9,6 +9,7 @@ export const SettingsForm = (): React.ReactElement => {
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authSuccess, setAuthSuccess] = useState<string | null>(null);
+  const loginTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 認証状態を確認
   useEffect(() => {
@@ -46,6 +47,7 @@ export const SettingsForm = (): React.ReactElement => {
       cleanupSuccess();
       cleanupError();
       if (successTimerId) clearTimeout(successTimerId);
+      if (loginTimeoutRef.current) clearTimeout(loginTimeoutRef.current);
     };
   }, []);
 
@@ -75,7 +77,8 @@ export const SettingsForm = (): React.ReactElement => {
       // ブラウザが開かれたことを通知
       setAuthSuccess("ブラウザでKeycloakログインページを開きました");
       // 5分後にコールバックが来ない場合はタイムアウト
-      setTimeout(
+      if (loginTimeoutRef.current) clearTimeout(loginTimeoutRef.current);
+      loginTimeoutRef.current = setTimeout(
         () => {
           setIsLoading((current) => {
             if (current) {
@@ -254,9 +257,7 @@ export const SettingsForm = (): React.ReactElement => {
           </div>
 
           <div className="border-t border-gray-200 pt-4">
-            <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
-              設定を保存
-            </button>
+            <p className="text-xs text-gray-500">設定は自動的に保存されます</p>
           </div>
         </div>
       </div>
