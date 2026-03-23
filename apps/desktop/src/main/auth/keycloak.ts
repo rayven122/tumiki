@@ -38,7 +38,11 @@ export class KeycloakClient {
 
   constructor(config: KeycloakConfig) {
     const validated = keycloakConfigSchema.parse(config);
-    this.config = validated;
+    // issuerの末尾スラッシュを正規化してURL結合時の重複を防止
+    this.config = {
+      ...validated,
+      issuer: validated.issuer.replace(/\/$/, ""),
+    };
   }
 
   /**
@@ -158,19 +162,24 @@ export class KeycloakClient {
     refreshToken: string;
     idToken?: string;
   }): Promise<void> {
-    const { refreshToken } = params;
+    const { refreshToken, idToken } = params;
     const logoutUrl = `${this.config.issuer}/protocol/openid-connect/logout`;
 
     try {
+      const body = new URLSearchParams({
+        client_id: this.config.clientId,
+        refresh_token: refreshToken,
+      });
+      if (idToken) {
+        body.set("id_token_hint", idToken);
+      }
+
       const response = await fetch(logoutUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
-        body: new URLSearchParams({
-          client_id: this.config.clientId,
-          refresh_token: refreshToken,
-        }),
+        body,
       });
 
       if (!response.ok) {

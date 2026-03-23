@@ -160,7 +160,6 @@ export class OAuthManager {
     await db.authToken.deleteMany({
       where: {
         id: { not: newToken.id },
-        createdAt: { lt: newToken.createdAt },
       },
     });
 

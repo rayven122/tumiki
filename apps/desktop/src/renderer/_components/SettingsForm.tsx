@@ -24,13 +24,16 @@ export const SettingsForm = (): React.ReactElement => {
     checkAuthStatus();
 
     // 認証コールバックイベントリスナー
+    let successTimerId: ReturnType<typeof setTimeout> | null = null;
+
     const cleanupSuccess = window.electronAPI.auth.onCallbackSuccess(() => {
       setIsAuthenticated(true);
       setIsLoading(false);
       setAuthSuccess("ログインに成功しました");
       setAuthError(null);
       // 3秒後に成功メッセージを消す
-      setTimeout(() => setAuthSuccess(null), 3000);
+      if (successTimerId) clearTimeout(successTimerId);
+      successTimerId = setTimeout(() => setAuthSuccess(null), 3000);
     });
 
     const cleanupError = window.electronAPI.auth.onCallbackError((error) => {
@@ -42,6 +45,7 @@ export const SettingsForm = (): React.ReactElement => {
     return () => {
       cleanupSuccess();
       cleanupError();
+      if (successTimerId) clearTimeout(successTimerId);
     };
   }, []);
 
@@ -70,6 +74,19 @@ export const SettingsForm = (): React.ReactElement => {
       await window.electronAPI.auth.login();
       // ブラウザが開かれたことを通知
       setAuthSuccess("ブラウザでKeycloakログインページを開きました");
+      // 5分後にコールバックが来ない場合はタイムアウト
+      setTimeout(
+        () => {
+          setIsLoading((current) => {
+            if (current) {
+              setAuthError("認証がタイムアウトしました。再度お試しください。");
+              setAuthSuccess(null);
+            }
+            return false;
+          });
+        },
+        5 * 60 * 1000,
+      );
     } catch (error) {
       setIsLoading(false);
       setAuthError(

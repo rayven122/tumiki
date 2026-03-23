@@ -6,9 +6,7 @@ import { z } from "zod";
  */
 const keycloakEnvSchema = z.object({
   KEYCLOAK_ISSUER: z.string().url("KEYCLOAK_ISSUER must be a valid URL"),
-  KEYCLOAK_CLIENT_ID: z
-    .string()
-    .min(1, "KEYCLOAK_DESKTOP_CLIENT_ID is required"),
+  KEYCLOAK_CLIENT_ID: z.string().min(1, "KEYCLOAK_CLIENT_ID is required"),
 });
 
 /**
