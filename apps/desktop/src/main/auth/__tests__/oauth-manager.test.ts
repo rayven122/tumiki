@@ -56,6 +56,9 @@ describe("OAuthManager", () => {
       authToken: mockDbAuthToken,
       $connect: vi.fn(),
       $disconnect: vi.fn(),
+      $transaction: vi.fn((fn: (tx: unknown) => Promise<unknown>) =>
+        fn({ authToken: mockDbAuthToken }),
+      ),
     } as unknown as Awaited<ReturnType<typeof getDb>>);
 
     vi.mocked(encryptToken).mockImplementation((plainText: string) =>

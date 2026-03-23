@@ -51,11 +51,17 @@ describe("setupAuthIpc", () => {
     vi.clearAllMocks();
 
     // getDb モックのセットアップ
-    vi.mocked(getDb).mockResolvedValue({
+    const mockDb = {
       authToken: mockDbAuthToken,
       $connect: vi.fn(),
       $disconnect: vi.fn(),
-    } as unknown as Awaited<ReturnType<typeof getDb>>);
+      $transaction: vi.fn((fn: (tx: unknown) => Promise<unknown>) =>
+        fn({ authToken: mockDbAuthToken }),
+      ),
+    };
+    vi.mocked(getDb).mockResolvedValue(
+      mockDb as unknown as Awaited<ReturnType<typeof getDb>>,
+    );
 
     // encryption モックのセットアップ
     vi.mocked(encryptToken).mockImplementation((plainText: string) =>

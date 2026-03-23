@@ -92,20 +92,22 @@ export const setupAuthIpc = (): void => {
 
       const db = await getDb();
 
-      // 新しいトークンを非同期で暗号化して保存
-      const newToken = await db.authToken.create({
-        data: {
-          accessToken: await encryptToken(validatedData.accessToken),
-          refreshToken: await encryptToken(validatedData.refreshToken),
-          expiresAt: validatedData.expiresAt,
-        },
-      });
+      // 新しいトークンを暗号化して保存（アトミックにcreate+delete）
+      await db.$transaction(async (tx) => {
+        const newToken = await tx.authToken.create({
+          data: {
+            accessToken: await encryptToken(validatedData.accessToken),
+            refreshToken: await encryptToken(validatedData.refreshToken),
+            expiresAt: validatedData.expiresAt,
+          },
+        });
 
-      // 最新のトークンのみ残し、古いトークンを削除
-      await db.authToken.deleteMany({
-        where: {
-          id: { not: newToken.id },
-        },
+        // 最新のトークンのみ残し、古いトークンを削除
+        await tx.authToken.deleteMany({
+          where: {
+            id: { not: newToken.id },
+          },
+        });
       });
 
       logger.info("Auth token saved successfully");

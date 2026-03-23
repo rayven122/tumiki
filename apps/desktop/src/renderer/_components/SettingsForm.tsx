@@ -20,8 +20,8 @@ export const SettingsForm = (): React.ReactElement => {
       try {
         const authenticated = await window.electronAPI.auth.isAuthenticated();
         setIsAuthenticated(authenticated);
-      } catch (error) {
-        console.error("Failed to check auth status:", error);
+      } catch {
+        // 認証状態チェック失敗時はsilentに未認証として扱う
       }
     };
 
@@ -31,6 +31,10 @@ export const SettingsForm = (): React.ReactElement => {
     let successTimerId: ReturnType<typeof setTimeout> | null = null;
 
     const cleanupSuccess = window.electronAPI.auth.onCallbackSuccess(() => {
+      if (loginTimeoutRef.current) {
+        clearTimeout(loginTimeoutRef.current);
+        loginTimeoutRef.current = null;
+      }
       setIsAuthenticated(true);
       setIsLoading(false);
       setAuthSuccess("ログインに成功しました");

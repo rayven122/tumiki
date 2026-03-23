@@ -21,6 +21,7 @@ export type KeycloakConfig = z.infer<typeof keycloakConfigSchema>;
 const tokenResponseSchema = z.object({
   access_token: z.string(),
   refresh_token: z.string(),
+  id_token: z.string().optional(),
   expires_in: z.number(),
   token_type: z.string(),
 });

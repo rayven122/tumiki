@@ -140,6 +140,7 @@ export class OAuthManager {
   private async saveToken(tokenResponse: {
     access_token: string;
     refresh_token: string;
+    id_token?: string;
     expires_in: number;
   }): Promise<void> {
     const db = await getDb();
@@ -147,20 +148,25 @@ export class OAuthManager {
     // 有効期限を計算（現在時刻 + expires_in秒）
     const expiresAt = new Date(Date.now() + tokenResponse.expires_in * 1000);
 
-    // トークンを暗号化して保存
-    const newToken = await db.authToken.create({
-      data: {
-        accessToken: await encryptToken(tokenResponse.access_token),
-        refreshToken: await encryptToken(tokenResponse.refresh_token),
-        expiresAt,
-      },
-    });
+    // トークンを暗号化して保存（アトミックにcreate+delete）
+    await db.$transaction(async (tx) => {
+      const newToken = await tx.authToken.create({
+        data: {
+          accessToken: await encryptToken(tokenResponse.access_token),
+          refreshToken: await encryptToken(tokenResponse.refresh_token),
+          idToken: tokenResponse.id_token
+            ? await encryptToken(tokenResponse.id_token)
+            : null,
+          expiresAt,
+        },
+      });
 
-    // 古いトークンを削除
-    await db.authToken.deleteMany({
-      where: {
-        id: { not: newToken.id },
-      },
+      // 古いトークンを削除
+      await tx.authToken.deleteMany({
+        where: {
+          id: { not: newToken.id },
+        },
+      });
     });
 
     logger.info("Token saved successfully");
@@ -256,11 +262,14 @@ export class OAuthManager {
       });
 
       if (token) {
-        // リフレッシュトークンを復号化
+        // トークンを復号化
         const refreshToken = await decryptToken(token.refreshToken);
+        const idToken = token.idToken
+          ? await decryptToken(token.idToken)
+          : undefined;
 
         // Keycloakからログアウト
-        await this.keycloakClient.logout({ refreshToken });
+        await this.keycloakClient.logout({ refreshToken, idToken });
       }
 
       // ローカルのトークンを削除
