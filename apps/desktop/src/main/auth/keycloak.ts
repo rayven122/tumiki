@@ -7,7 +7,6 @@ import * as logger from "../utils/logger";
 const keycloakConfigSchema = z.object({
   issuer: z.string().url(),
   clientId: z.string().min(1),
-  clientSecret: z.string().min(1),
   redirectUri: z.string().min(1),
 });
 
@@ -81,7 +80,6 @@ export class KeycloakClient {
         body: new URLSearchParams({
           grant_type: "authorization_code",
           client_id: this.config.clientId,
-          client_secret: this.config.clientSecret,
           code,
           redirect_uri: this.config.redirectUri,
           code_verifier: codeVerifier,
@@ -126,7 +124,6 @@ export class KeycloakClient {
         body: new URLSearchParams({
           grant_type: "refresh_token",
           client_id: this.config.clientId,
-          client_secret: this.config.clientSecret,
           refresh_token: refreshToken,
         }),
       });
@@ -172,7 +169,6 @@ export class KeycloakClient {
         },
         body: new URLSearchParams({
           client_id: this.config.clientId,
-          client_secret: this.config.clientSecret,
           refresh_token: refreshToken,
         }),
       });

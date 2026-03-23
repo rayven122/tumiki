@@ -48,19 +48,17 @@ jobs:
           pnpm build
         env:
           # Keycloak認証用の環境変数（ビルド時に埋め込み）
+          # Public Clientのためclient_secretは不要（PKCEで保護）
           KEYCLOAK_ISSUER: ${{ secrets.KEYCLOAK_ISSUER }}
           KEYCLOAK_DESKTOP_CLIENT_ID: ${{ secrets.KEYCLOAK_DESKTOP_CLIENT_ID }}
-          KEYCLOAK_DESKTOP_CLIENT_SECRET: ${{ secrets.KEYCLOAK_DESKTOP_CLIENT_SECRET }}
 
       - name: 📦 Package for macOS (x64 + arm64)
         run: |
           cd apps/desktop
           pnpm build:release
         env:
-          # Keycloak認証用の環境変数（build:releaseが内部でpnpm buildを再実行するため必要）
           KEYCLOAK_ISSUER: ${{ secrets.KEYCLOAK_ISSUER }}
           KEYCLOAK_DESKTOP_CLIENT_ID: ${{ secrets.KEYCLOAK_DESKTOP_CLIENT_ID }}
-          KEYCLOAK_DESKTOP_CLIENT_SECRET: ${{ secrets.KEYCLOAK_DESKTOP_CLIENT_SECRET }}
           # 将来的にコード署名を有効化する場合:
           # Apple Developer証明書が必要です
           # CSC_LINK: ${{ secrets.MACOS_CERTIFICATE }}

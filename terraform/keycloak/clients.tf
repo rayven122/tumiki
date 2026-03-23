@@ -148,9 +148,8 @@ resource "keycloak_openid_client" "desktop" {
   name        = "Tumiki Desktop Application"
   description = "Electron Desktop Application"
 
-  enabled       = true
-  access_type   = "CONFIDENTIAL"
-  client_secret = var.desktop_client_secret
+  enabled     = true
+  access_type = "PUBLIC"
 
   # 認証フロー設定
   standard_flow_enabled        = true

@@ -97,12 +97,6 @@ variable "desktop_client_id" {
   default     = "tumiki-desktop"
 }
 
-variable "desktop_client_secret" {
-  description = "Desktop App クライアントシークレット（環境変数 TF_VAR_desktop_client_secret で設定）"
-  type        = string
-  sensitive   = true
-}
-
 variable "desktop_redirect_uris" {
   description = "Desktop App リダイレクトURI一覧"
   type        = list(string)

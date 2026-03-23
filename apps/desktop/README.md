@@ -116,31 +116,27 @@ pnpm build:release    # リリース用パッケージング
 
 詳細は [electron-builder.yml](./electron-builder.yml) と [.github/workflows/desktop-release.yml](../../.github/workflows/desktop-release.yml) を参照。
 
-```
-
 ## プロジェクト構造
 
 ```
-
 apps/desktop/
 ├── src/
-│ ├── main/ # Electronメインプロセス
-│ │ ├── index.ts # エントリーポイント
-│ │ └── window.ts # ウィンドウ管理
-│ ├── preload/ # Preloadスクリプト
-│ │ └── index.ts # ContextBridge設定
-│ ├── renderer/ # Reactレンダラープロセス
-│ │ ├── index.html # HTMLエントリーポイント
-│ │ ├── main.tsx # Reactエントリーポイント
-│ │ ├── App.tsx # ルートコンポーネント
-│ │ └── styles/ # Tailwind CSS
-│ └── shared/ # 共通型定義
-│ └── types.ts
-├── resources/ # アプリケーションリソース
+│   ├── main/              # Electronメインプロセス
+│   │   ├── index.ts       # エントリーポイント
+│   │   └── window.ts      # ウィンドウ管理
+│   ├── preload/           # Preloadスクリプト
+│   │   └── index.ts       # ContextBridge設定
+│   ├── renderer/          # Reactレンダラープロセス
+│   │   ├── index.html     # HTMLエントリーポイント
+│   │   ├── main.tsx       # Reactエントリーポイント
+│   │   ├── App.tsx        # ルートコンポーネント
+│   │   └── styles/        # Tailwind CSS
+│   └── shared/            # 共通型定義
+│       └── types.ts
+├── resources/             # アプリケーションリソース
 ├── electron.vite.config.ts
 ├── tsconfig.json
 └── package.json
-
 ```
 
 ## 技術スタック
@@ -170,4 +166,3 @@ tumikiプロジェクトの標準に準拠：
 - テスト: Vitest使用、カバレッジ100%目標
 
 詳細は [プロジェクトルートのCLAUDE.md](../../CLAUDE.md) を参照。
-```

@@ -10,7 +10,6 @@ const createConfig = (
 ): KeycloakConfig => ({
   issuer: "https://keycloak.example.com/realms/test",
   clientId: "test-client",
-  clientSecret: "test-secret",
   redirectUri: "tumiki-desktop:///auth/callback",
   ...overrides,
 });

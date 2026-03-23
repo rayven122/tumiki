@@ -7,7 +7,13 @@ import { getKeycloakEnvOptional } from "./utils/env";
 import * as logger from "./utils/logger";
 
 const PROTOCOL = "tumiki-desktop";
-const CALLBACK_PATH = "auth/callback";
+const CALLBACK_PATH = "/auth/callback";
+
+// シングルインスタンスロック（Windows/Linuxでsecond-instanceイベントに必要）
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+}
 
 let mainWindow: BrowserWindow | null = null;
 let oauthManager: OAuthManager | null = null;
@@ -29,8 +35,14 @@ const createWindow = (): void => {
  * カスタムURLスキーム（tumiki-desktop://）のコールバックを処理
  */
 const handleDeepLink = async (url: string): Promise<void> => {
-  if (!url.startsWith(`${PROTOCOL}://${CALLBACK_PATH}`)) {
-    logger.warn("Received unknown deep link", { url });
+  try {
+    const parsedUrl = new URL(url);
+    if (parsedUrl.protocol !== `${PROTOCOL}:` || parsedUrl.pathname !== CALLBACK_PATH) {
+      logger.warn("Received unknown deep link", { url });
+      return;
+    }
+  } catch {
+    logger.warn("Received invalid deep link URL", { url });
     return;
   }
 
@@ -85,7 +97,6 @@ app
       oauthManager = new OAuthManager({
         issuer: keycloakEnv.KEYCLOAK_ISSUER,
         clientId: keycloakEnv.KEYCLOAK_CLIENT_ID,
-        clientSecret: keycloakEnv.KEYCLOAK_CLIENT_SECRET,
         redirectUri: `${PROTOCOL}://${CALLBACK_PATH}`,
       });
       await oauthManager.initialize();
