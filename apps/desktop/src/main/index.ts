@@ -3,10 +3,7 @@ import { createMainWindow } from "./window";
 import { initializeDb, closeDb } from "./db";
 import { setupAuthIpc } from "./ipc/auth";
 import { OAuthManager } from "./auth/oauth-manager";
-import {
-  getOAuthManager,
-  setOAuthManager,
-} from "./auth/manager-registry";
+import { getOAuthManager, setOAuthManager } from "./auth/manager-registry";
 import { getKeycloakEnvOptional } from "./utils/env";
 import * as logger from "./utils/logger";
 
@@ -70,7 +67,9 @@ const handleDeepLink = async (url: string): Promise<void> => {
 // macOS: アプリが既に起動している場合のディープリンク処理
 app.on("open-url", (event, url) => {
   event.preventDefault();
-  handleDeepLink(url);
+  handleDeepLink(url).catch((error) => {
+    logger.error("Unhandled error in open-url handler", { error });
+  });
 });
 
 // カスタムURLスキームを登録
@@ -110,7 +109,9 @@ app
       // argv末尾にURLが含まれる
       const deepLinkUrl = argv.find((arg) => arg.startsWith(`${PROTOCOL}://`));
       if (deepLinkUrl) {
-        handleDeepLink(deepLinkUrl);
+        handleDeepLink(deepLinkUrl).catch((error) => {
+          logger.error("Unhandled error in second-instance handler", { error });
+        });
       }
 
       // 既存ウィンドウをフォーカス
