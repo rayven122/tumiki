@@ -249,13 +249,6 @@ export class OAuthManager {
   }
 
   /**
-   * トークンを手動でリフレッシュ（外部から呼ばれる）
-   */
-  async refreshToken(): Promise<void> {
-    await this.refreshTokenInternal();
-  }
-
-  /**
    * ログアウト処理
    * Keycloakとローカルの両方からログアウト
    */

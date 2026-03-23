@@ -17,7 +17,8 @@ jobs:
     name: 🍎 macOS ビルド
     runs-on: macos-latest
     env:
-      # Keycloak認証用の環境変数（ビルド時に埋め込み）
+      # Keycloak認証用の環境変数（ビルド時にバイナリへ埋め込み）
+      # 値を変更した場合は新しいリリースビルドが必要
       # Public Clientのためclient_secretは不要（PKCEで保護）
       KEYCLOAK_ISSUER: ${{ secrets.KEYCLOAK_ISSUER }}
       KEYCLOAK_DESKTOP_CLIENT_ID: ${{ secrets.KEYCLOAK_DESKTOP_CLIENT_ID }}
@@ -93,6 +94,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v4
@@ -180,24 +184,6 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - name: 📥 Checkout
-        uses: actions/checkout@v4
-
-      - name: 📋 Extract version from tag
-        id: version
-        env:
-          INPUT_TAG: ${{ inputs.tag }}
-          EVENT_NAME: ${{ github.event_name }}
-        run: |
-          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            TAG="$INPUT_TAG"
-          else
-            TAG="${GITHUB_REF#refs/tags/}"
-          fi
-          VERSION="${TAG#desktop-v}"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-
       - name: 📨 Send Slack notification
         if: ${{ vars.SLACK_ENABLED == 'true' }}
         continue-on-error: true
@@ -211,7 +197,7 @@ jobs:
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": "${{ needs.create-release.result == 'success' && '✅' || '❌' }} Tumiki Desktop v${{ steps.version.outputs.version }} リリース"
+                    "text": "${{ needs.create-release.result == 'success' && '✅' || '❌' }} Tumiki Desktop v${{ needs.create-release.outputs.version }} リリース"
                   }
                 },
                 {
@@ -219,7 +205,7 @@ jobs:
                   "fields": [
                     {
                       "type": "mrkdwn",
-                      "text": "*タグ:*\n${{ steps.version.outputs.tag }}"
+                      "text": "*タグ:*\n${{ needs.create-release.outputs.tag }}"
                     },
                     {
                       "type": "mrkdwn",
@@ -239,7 +225,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "<https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.tag }}|リリースページを見る>"
+                    "text": "<https://github.com/${{ github.repository }}/releases/tag/${{ needs.create-release.outputs.tag }}|リリースページを見る>"
                   }
                 }
               ]
