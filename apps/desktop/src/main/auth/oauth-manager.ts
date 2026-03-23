@@ -37,7 +37,14 @@ export class OAuthManager {
    */
   async startAuthFlow(): Promise<void> {
     try {
-      // 既存のセッションをクリア
+      // 既存セッションが有効期間内なら重複起動を拒否
+      if (this.currentSession) {
+        const sessionAge =
+          Date.now() - this.currentSession.createdAt.getTime();
+        if (sessionAge < 5 * 60 * 1000) {
+          throw new Error("認証フローが既に進行中です");
+        }
+      }
       this.currentSession = null;
 
       // PKCE パラメータを生成

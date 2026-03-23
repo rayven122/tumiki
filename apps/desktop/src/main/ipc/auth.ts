@@ -97,15 +97,24 @@ export const setupAuthIpc = (): void => {
 
       const db = await getDb();
 
-      // 新しいトークンを暗号化して保存（アトミックにcreate+delete）
+      // トークンを暗号化（トランザクション外で実行し、タイムアウトを回避）
+      const encryptedAccessToken = await encryptToken(
+        validatedData.accessToken,
+      );
+      const encryptedRefreshToken = await encryptToken(
+        validatedData.refreshToken,
+      );
+      const encryptedIdToken = validatedData.idToken
+        ? await encryptToken(validatedData.idToken)
+        : null;
+
+      // 暗号化済みトークンを保存（アトミックにcreate+delete）
       await db.$transaction(async (tx) => {
         const newToken = await tx.authToken.create({
           data: {
-            accessToken: await encryptToken(validatedData.accessToken),
-            refreshToken: await encryptToken(validatedData.refreshToken),
-            idToken: validatedData.idToken
-              ? await encryptToken(validatedData.idToken)
-              : null,
+            accessToken: encryptedAccessToken,
+            refreshToken: encryptedRefreshToken,
+            idToken: encryptedIdToken,
             expiresAt: validatedData.expiresAt,
           },
         });

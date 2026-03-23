@@ -41,6 +41,12 @@ describe("PKCE", () => {
       const challenge2 = generateCodeChallenge("verifier-b");
       expect(challenge1).not.toBe(challenge2);
     });
+
+    test("RFC 7636 Appendix B準拠のSHA-256 Base64urlエンコードを生成する", () => {
+      const verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
+      const challenge = generateCodeChallenge(verifier);
+      expect(challenge).toBe("E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM");
+    });
   });
 
   describe("generateState", () => {

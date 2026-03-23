@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
+import type React from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAtom } from "jotai";
 import { appConfigAtom } from "../store/atoms";
 import { LogIn, LogOut, CheckCircle, XCircle } from "lucide-react";
