@@ -54,7 +54,7 @@
     "@uiw/react-json-view": "2.0.0-alpha.41",
     "@vercel/functions": "^2.2.13",
     "@xyflow/react": "^12.10.0",
-    "ai": "^6.0.111",
+    "ai": "^6.0.137",
     "classnames": "^2.5.1",
     "codemirror": "^6.0.2",
     "cron-parser": "^5.5.0",
