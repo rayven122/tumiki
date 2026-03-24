@@ -12,7 +12,8 @@ node_modules
 prisma/db.sqlite
 prisma/db.sqlite-journal
 db.sqlite
-*.db
+**/prisma/*.db
+**/prisma/*.db-journal
 *.db-journal
 
 # next.js

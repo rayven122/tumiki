@@ -38,7 +38,12 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' }}
         env:
           INPUT_TAG: ${{ inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
+          if [[ "$REF_NAME" != "main" ]]; then
+            echo "::error::workflow_dispatch は main ブランチからのみ実行可能です (現在: $REF_NAME)"
+            exit 1
+          fi
           if [[ ! "$INPUT_TAG" =~ ^desktop-v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
             echo "::error::Invalid tag format: $INPUT_TAG (expected: desktop-vX.Y.Z or desktop-vX.Y.Z-suffix)"
             exit 1
@@ -148,16 +153,19 @@ jobs:
 
       - name: 📝 Generate release notes
         id: release_notes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          cat > release_notes.md << 'EOF'
-## Tumiki Desktop ${{ steps.version.outputs.version }}
+          cat > release_notes.md << EOF
+## Tumiki Desktop ${VERSION}
 
 ### ダウンロード
 
 **macOS:**
-- Intel Mac: `Tumiki-${{ steps.version.outputs.version }}-x64.dmg`
-- Apple Silicon (M1/M2/M3): `Tumiki-${{ steps.version.outputs.version }}-arm64.dmg`
-- ZIP版（両アーキテクチャ対応）: `Tumiki-${{ steps.version.outputs.version }}-mac.zip`
+- Intel Mac DMG: \`Tumiki-${VERSION}-x64.dmg\`
+- Apple Silicon DMG (M1/M2/M3): \`Tumiki-${VERSION}-arm64.dmg\`
+- Intel Mac ZIP: \`Tumiki-${VERSION}-x64-mac.zip\`
+- Apple Silicon ZIP: \`Tumiki-${VERSION}-arm64-mac.zip\`
 
 ### インストール方法
 
@@ -174,7 +182,7 @@ jobs:
 ### 注意事項
 
 - このバージョンは署名・公証されていません
-- `hardenedRuntime` が無効のため、**内部利用・検証用途に限定**してください
+- \`hardenedRuntime\` が無効のため、**内部利用・検証用途に限定**してください
 - OAuth認証トークンのセキュリティを確保するには公証対応版をお待ちください
 - 将来のバージョンでApple公証に対応予定です
 
@@ -208,6 +216,7 @@ EOF
   notify:
     name: 📢 Slack通知
     needs: [build-macos, create-release]
+    # キャンセル時も含め、常に通知を送信する（ビルド失敗・キャンセルの把握のため）
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5

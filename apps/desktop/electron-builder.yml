@@ -104,6 +104,8 @@ dmg:
 #   teamId: ${APPLE_TEAM_ID}
 
 # electron-updater の自動アップデート機能で使用（--publish never 時は無視される）
+# 注意: owner/repo がハードコードされているため、フォーク先で自動アップデートを
+# 有効化する場合は値の変更が必要
 publish:
   provider: github
   owner: rayven122
