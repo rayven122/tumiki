@@ -34,8 +34,7 @@ vi.mock("../../auth/manager-registry", () => ({
 // テスト対象のインポート（モックの後に行う）
 import { setupAuthIpc } from "../auth";
 import { getDb } from "../../db";
-import { encryptToken, decryptToken } from "../../utils/encryption";
-import type { AuthTokenData } from "../../../types/auth";
+import { decryptToken } from "../../utils/encryption";
 
 describe("setupAuthIpc", () => {
   const mockDbAuthToken = {
@@ -64,10 +63,6 @@ describe("setupAuthIpc", () => {
     );
 
     // encryption モックのセットアップ
-    vi.mocked(encryptToken).mockImplementation((plainText: string) =>
-      Promise.resolve(`encrypted:${plainText}`),
-    );
-
     vi.mocked(decryptToken).mockImplementation((encryptedText: string) => {
       if (encryptedText.startsWith("encrypted:")) {
         return Promise.resolve(encryptedText.replace("encrypted:", ""));
@@ -186,161 +181,6 @@ describe("setupAuthIpc", () => {
       await expect(handler!({} as IpcMainInvokeEvent)).rejects.toThrow(
         "認証トークンの取得に失敗しました",
       );
-    });
-  });
-
-  describe("auth:saveToken", () => {
-    test("有効なトークンを保存できる", async () => {
-      const tokenData: AuthTokenData = {
-        accessToken: "new-access-token",
-        refreshToken: "new-refresh-token",
-        expiresAt: new Date(Date.now() + 3600000), // 1時間後
-      };
-
-      const mockNewToken = {
-        id: "new-token-id",
-        accessToken: "encrypted:new-access-token",
-        refreshToken: "encrypted:new-refresh-token",
-        expiresAt: tokenData.expiresAt,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      mockDbAuthToken.create.mockResolvedValue(mockNewToken);
-      mockDbAuthToken.deleteMany.mockResolvedValue({ count: 0 });
-
-      const handler = mockIpcHandlers.get("auth:saveToken");
-      const result = await handler!({} as IpcMainInvokeEvent, tokenData);
-
-      expect(result).toStrictEqual({ success: true });
-      expect(mockDbAuthToken.create).toHaveBeenCalled();
-      expect(mockDbAuthToken.deleteMany).toHaveBeenCalled();
-    });
-
-    test("古いトークンを削除する", async () => {
-      const tokenData: AuthTokenData = {
-        accessToken: "new-access-token",
-        refreshToken: "new-refresh-token",
-        expiresAt: new Date(Date.now() + 3600000),
-      };
-
-      const mockNewToken = {
-        id: "new-token-id",
-        accessToken: "encrypted:new-access-token",
-        refreshToken: "encrypted:new-refresh-token",
-        expiresAt: tokenData.expiresAt,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      mockDbAuthToken.create.mockResolvedValue(mockNewToken);
-      mockDbAuthToken.deleteMany.mockResolvedValue({ count: 2 });
-
-      const handler = mockIpcHandlers.get("auth:saveToken");
-      await handler!({} as IpcMainInvokeEvent, tokenData);
-
-      expect(mockDbAuthToken.deleteMany).toHaveBeenCalledWith({
-        where: {
-          id: { not: "new-token-id" },
-        },
-      });
-    });
-
-    test("アクセストークンが空の場合はエラーをスロー", async () => {
-      const invalidTokenData = {
-        accessToken: "",
-        refreshToken: "refresh-token",
-        expiresAt: new Date(Date.now() + 3600000),
-      };
-
-      const handler = mockIpcHandlers.get("auth:saveToken");
-
-      await expect(
-        handler!({} as IpcMainInvokeEvent, invalidTokenData),
-      ).rejects.toThrow("トークンデータが無効です");
-    });
-
-    test("リフレッシュトークンが空の場合はエラーをスロー", async () => {
-      const invalidTokenData = {
-        accessToken: "access-token",
-        refreshToken: "",
-        expiresAt: new Date(Date.now() + 3600000),
-      };
-
-      const handler = mockIpcHandlers.get("auth:saveToken");
-
-      await expect(
-        handler!({} as IpcMainInvokeEvent, invalidTokenData),
-      ).rejects.toThrow("トークンデータが無効です");
-    });
-
-    test("有効期限が過去の場合はエラーをスロー", async () => {
-      const invalidTokenData = {
-        accessToken: "access-token",
-        refreshToken: "refresh-token",
-        expiresAt: new Date(Date.now() - 1000),
-      };
-
-      const handler = mockIpcHandlers.get("auth:saveToken");
-
-      await expect(
-        handler!({} as IpcMainInvokeEvent, invalidTokenData),
-      ).rejects.toThrow("トークンデータが無効です");
-    });
-
-    test("有効期限が1分未満の場合はエラーをスロー", async () => {
-      const invalidTokenData = {
-        accessToken: "access-token",
-        refreshToken: "refresh-token",
-        expiresAt: new Date(Date.now() + 30000), // 30秒後
-      };
-
-      const handler = mockIpcHandlers.get("auth:saveToken");
-
-      await expect(
-        handler!({} as IpcMainInvokeEvent, invalidTokenData),
-      ).rejects.toThrow("トークンデータが無効です");
-    });
-
-    test("文字列の有効期限をDateオブジェクトに変換できる", async () => {
-      const tokenData = {
-        accessToken: "access-token",
-        refreshToken: "refresh-token",
-        expiresAt: new Date(Date.now() + 3600000).toISOString(), // 文字列として渡す
-      };
-
-      const mockNewToken = {
-        id: "new-token-id",
-        accessToken: "encrypted:access-token",
-        refreshToken: "encrypted:refresh-token",
-        expiresAt: new Date(tokenData.expiresAt),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      mockDbAuthToken.create.mockResolvedValue(mockNewToken);
-      mockDbAuthToken.deleteMany.mockResolvedValue({ count: 0 });
-
-      const handler = mockIpcHandlers.get("auth:saveToken");
-      const result = await handler!({} as IpcMainInvokeEvent, tokenData);
-
-      expect(result).toStrictEqual({ success: true });
-    });
-
-    test("データベースエラーの場合はエラーをスロー", async () => {
-      const tokenData: AuthTokenData = {
-        accessToken: "access-token",
-        refreshToken: "refresh-token",
-        expiresAt: new Date(Date.now() + 3600000),
-      };
-
-      mockDbAuthToken.create.mockRejectedValue(new Error("Database error"));
-
-      const handler = mockIpcHandlers.get("auth:saveToken");
-
-      await expect(
-        handler!({} as IpcMainInvokeEvent, tokenData),
-      ).rejects.toThrow("認証トークンの保存に失敗しました");
     });
   });
 

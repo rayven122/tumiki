@@ -95,9 +95,7 @@ describe("OAuthManager", () => {
       );
 
       const manager = createOAuthManager();
-      await expect(manager.startAuthFlow()).rejects.toThrow(
-        "認証フローの開始に失敗しました",
-      );
+      await expect(manager.startAuthFlow()).rejects.toThrow("Failed to open");
     });
   });
 

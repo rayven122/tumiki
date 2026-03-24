@@ -83,6 +83,30 @@ app.on("open-url", (event, url) => {
   });
 });
 
+// Windows/Linux: second-instanceイベントでディープリンクを処理
+// Electronの仕様上、readyイベント前に登録する必要がある
+app.on("second-instance", (_event, argv) => {
+  // argv末尾にURLが含まれる
+  const deepLinkUrl = argv.find((arg) => {
+    try {
+      return new URL(arg).protocol === `${PROTOCOL}:`;
+    } catch {
+      return false;
+    }
+  });
+  if (deepLinkUrl) {
+    handleDeepLink(deepLinkUrl).catch((error) => {
+      logger.error("Unhandled error in second-instance handler", { error });
+    });
+  }
+
+  // 既存ウィンドウをフォーカス
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
+});
+
 // カスタムURLスキームを登録
 if (!app.isDefaultProtocolClient(PROTOCOL)) {
   app.setAsDefaultProtocolClient(PROTOCOL);
@@ -114,29 +138,6 @@ app
     setupAuthIpc();
 
     createWindow();
-
-    // Windows/Linux: second-instanceイベントでディープリンクを処理
-    app.on("second-instance", (_event, argv) => {
-      // argv末尾にURLが含まれる
-      const deepLinkUrl = argv.find((arg) => {
-        try {
-          return new URL(arg).protocol === `${PROTOCOL}:`;
-        } catch {
-          return false;
-        }
-      });
-      if (deepLinkUrl) {
-        handleDeepLink(deepLinkUrl).catch((error) => {
-          logger.error("Unhandled error in second-instance handler", { error });
-        });
-      }
-
-      // 既存ウィンドウをフォーカス
-      if (mainWindow) {
-        if (mainWindow.isMinimized()) mainWindow.restore();
-        mainWindow.focus();
-      }
-    });
 
     // スリープ復帰時にトークンの有効期限を再チェック
     powerMonitor.on("resume", () => {

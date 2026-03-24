@@ -1,43 +1,8 @@
 import { ipcMain } from "electron";
-import { z } from "zod";
 import { getDb } from "../db";
 import { getOAuthManager } from "../auth/manager-registry";
-import { encryptToken, decryptToken } from "../utils/encryption";
+import { decryptToken } from "../utils/encryption";
 import * as logger from "../utils/logger";
-
-/**
- * 認証トークンデータのバリデーションスキーマ
- */
-const authTokenSchema = z.object({
-  accessToken: z.string().min(1, "アクセストークンは空にできません"),
-  refreshToken: z.string().min(1, "リフレッシュトークンは空にできません"),
-  idToken: z.string().min(1).optional(),
-  expiresAt: z.preprocess(
-    (val) => {
-      // 文字列の場合はDateオブジェクトに変換
-      if (typeof val === "string") {
-        return new Date(val);
-      }
-      return val;
-    },
-    z
-      .date()
-      .refine((date) => !isNaN(date.getTime()), {
-        message: "無効な日付形式です",
-      })
-      .refine(
-        (date) => {
-          // 相対時間ベースのバリデーション: 有効期限が現在時刻から最低1分以上未来である必要がある
-          const now = new Date();
-          const minValidDuration = 60 * 1000; // 1分（ミリ秒）
-          return date.getTime() - now.getTime() > minValidDuration;
-        },
-        {
-          message: "有効期限は現在時刻から最低1分以上未来である必要があります",
-        },
-      ),
-  ),
-});
 
 /**
  * 認証関連の IPC ハンドラーを設定
@@ -88,65 +53,6 @@ export const setupAuthIpc = (): void => {
     }
   });
 
-  // トークン保存
-  // IPC通信はプロセス間境界のため、引数はunknownとして受け取りZodでバリデーションする
-  ipcMain.handle("auth:saveToken", async (_, tokenData: unknown) => {
-    try {
-      // 入力データのバリデーション
-      const validatedData = authTokenSchema.parse(tokenData);
-
-      const db = await getDb();
-
-      // トークンを暗号化（トランザクション外で実行し、タイムアウトを回避）
-      const encryptedAccessToken = await encryptToken(
-        validatedData.accessToken,
-      );
-      const encryptedRefreshToken = await encryptToken(
-        validatedData.refreshToken,
-      );
-      const encryptedIdToken = validatedData.idToken
-        ? await encryptToken(validatedData.idToken)
-        : null;
-
-      // 暗号化済みトークンを保存（アトミックにcreate+delete）
-      await db.$transaction(async (tx) => {
-        const newToken = await tx.authToken.create({
-          data: {
-            accessToken: encryptedAccessToken,
-            refreshToken: encryptedRefreshToken,
-            idToken: encryptedIdToken,
-            expiresAt: validatedData.expiresAt,
-          },
-        });
-
-        // 最新のトークンのみ残し、古いトークンを削除
-        await tx.authToken.deleteMany({
-          where: {
-            id: { not: newToken.id },
-          },
-        });
-      });
-
-      logger.info("Auth token saved successfully");
-      return { success: true };
-    } catch (error) {
-      // Zodバリデーションエラーの処理
-      if (error instanceof z.ZodError) {
-        const validationErrors = error.issues
-          .map((issue) => issue.message)
-          .join(", ");
-        logger.error("Token validation failed", { errors: validationErrors });
-        throw new Error(`トークンデータが無効です: ${validationErrors}`);
-      }
-
-      logger.error(
-        "Failed to save auth token",
-        error instanceof Error ? error : { error },
-      );
-      throw new Error("認証トークンの保存に失敗しました");
-    }
-  });
-
   // トークン削除（ログアウト時）
   ipcMain.handle("auth:clearToken", async () => {
     try {
@@ -179,9 +85,9 @@ export const setupAuthIpc = (): void => {
         "Failed to start auth login",
         error instanceof Error ? error : { error },
       );
-      throw new Error(
-        error instanceof Error ? error.message : "ログインの開始に失敗しました",
-      );
+      throw error instanceof Error
+        ? error
+        : new Error("ログインの開始に失敗しました");
     }
   });
 
@@ -203,9 +109,9 @@ export const setupAuthIpc = (): void => {
         "Failed to logout",
         error instanceof Error ? error : { error },
       );
-      throw new Error(
-        error instanceof Error ? error.message : "ログアウトに失敗しました",
-      );
+      throw error instanceof Error
+        ? error
+        : new Error("ログアウトに失敗しました");
     }
   });
 
