@@ -90,7 +90,7 @@ jobs:
           cd apps/desktop
           pnpm build:release
         env:
-          # 将来的にコード署名を有効化する場合:
+          # TODO(#934): コード署名・公証の実装時に有効化する
           # Apple Developer証明書が必要です
           # CSC_LINK: ${{ secrets.MACOS_CERTIFICATE }}
           # CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
@@ -263,4 +263,4 @@ EOF
                 }
               ]
             }')
-          curl -s -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$SLACK_WEBHOOK_URL"
+          curl -s --fail-with-body -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$SLACK_WEBHOOK_URL"

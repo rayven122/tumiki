@@ -103,6 +103,7 @@ dmg:
 # notarize:
 #   teamId: ${APPLE_TEAM_ID}
 
+# electron-updater の自動アップデート機能で使用（--publish never 時は無視される）
 publish:
   provider: github
   owner: rayven122

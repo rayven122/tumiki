@@ -53,7 +53,7 @@ pnpm build:release    # macOS用パッケージング（out/に出力）
    ```bash
    # package.json のバージョンを更新
    cd apps/desktop
-   npm version patch  # または minor, major
+   pnpm version patch  # または minor, major
    ```
 
 2. **リリースタグの作成とプッシュ**
@@ -67,8 +67,9 @@ pnpm build:release    # macOS用パッケージング（out/に出力）
 3. **自動ビルドとリリース**
    - GitHub Actions が自動的にトリガーされます
    - macOS用のアプリケーションがビルドされます（x64とarm64）
-   - GitHub Releaseが自動作成されます
+   - GitHub Release が**ドラフト**として自動作成されます
    - DMGとZIPファイルがアップロードされます
+   - **リリースページでドラフトを確認し、手動で公開してください**
 
 4. **手動リリース（必要な場合）**
 
