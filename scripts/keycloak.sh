@@ -51,6 +51,8 @@ export_tf_vars() {
   export TF_VAR_keycloak_admin_password="${KEYCLOAK_ADMIN_PASSWORD}"
   export TF_VAR_manager_client_id="${KEYCLOAK_CLIENT_ID}"
   export TF_VAR_manager_client_secret="${KEYCLOAK_CLIENT_SECRET}"
+  export TF_VAR_registry_client_id="${REGISTRY_KEYCLOAK_CLIENT_ID:-tumiki-registry}"
+  export TF_VAR_registry_client_secret="${REGISTRY_KEYCLOAK_CLIENT_SECRET:-dev-registry-secret-change-in-production}"
   export TF_VAR_proxy_client_secret="${KEYCLOAK_PROXY_CLIENT_SECRET}"
   export TF_VAR_test_user_password="${KEYCLOAK_TEST_USER_PASSWORD}"
   export TF_VAR_smtp_host="${SMTP_HOST}"
