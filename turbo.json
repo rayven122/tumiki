@@ -4,7 +4,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**"]
+      "outputs": ["dist/**", "build/**", "out/**", "dist-electron/**", ".next/**"]
     },
     "dev": {
       "dependsOn": ["^build"],
@@ -30,6 +30,13 @@
     "@tumiki/mcp-proxy#typecheck": {
       "dependsOn": ["^build"],
       "outputs": []
+    },
+    "@tumiki/desktop#typecheck": {
+      "dependsOn": ["^build", "db:generate"],
+      "outputs": []
+    },
+    "@tumiki/desktop#db:generate": {
+      "outputs": ["prisma/generated/**"]
     },
     "test": {
       "dependsOn": ["^build"],

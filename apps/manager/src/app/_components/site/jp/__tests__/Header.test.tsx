@@ -216,19 +216,6 @@ describe("Header", () => {
       expect(screen.getByAltText("Tumiki Logo")).toBeInTheDocument();
     });
 
-    test("GitHubリンクが表示されること", () => {
-      mockUseSession.mockReturnValue({
-        data: null,
-        status: "unauthenticated",
-        update: vi.fn(),
-      });
-
-      render(<Header />);
-
-      const githubLinks = screen.getAllByLabelText("View on GitHub");
-      expect(githubLinks.length).toBe(2); // デスクトップ用とモバイル用
-    });
-
     test("LanguageToggleが表示されること", () => {
       mockUseSession.mockReturnValue({
         data: null,

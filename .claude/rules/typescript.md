@@ -7,7 +7,7 @@ globs: ["**/*.ts", "**/*.tsx"]
 | ルール         | 説明                                |
 | -------------- | ----------------------------------- |
 | `any`禁止      | `unknown`またはジェネリック型を使用 |
-| `type`のみ     | `interface`禁止                     |
+| `type`のみ     | `interface`禁止（`declare global`でのdeclaration mergingは例外） |
 | アロー関数     | `function`禁止                      |
 | 日本語コメント | コード内のコメントは日本語          |
 
