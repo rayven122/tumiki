@@ -44,7 +44,7 @@ mac:
       arch: [x64, arm64]
     - target: zip
       arch: [x64, arm64]
-  # TODO: コード署名・公証の実装時に true に変更する（Apple Developer Program登録後）
+  # TODO(#934): コード署名・公証の実装時に true に変更する（Apple Developer Program登録後）
   # 現時点では署名なし（WIP）のため意図的に false を設定
   # セキュリティリスク: falseの場合、DYLD_INSERT_LIBRARIESによるコードインジェクションや
   # デバッガアタッチが可能。メモリ内のOAuthトークンが攻撃対象となりうるため、

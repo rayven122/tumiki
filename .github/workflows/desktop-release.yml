@@ -150,43 +150,44 @@ jobs:
         id: release_notes
         run: |
           cat > release_notes.md << 'EOF'
-          ## Tumiki Desktop ${{ steps.version.outputs.version }}
+## Tumiki Desktop ${{ steps.version.outputs.version }}
 
-          ### ダウンロード
+### ダウンロード
 
-          **macOS:**
-          - Intel Mac: `Tumiki-${{ steps.version.outputs.version }}-x64.dmg`
-          - Apple Silicon (M1/M2/M3): `Tumiki-${{ steps.version.outputs.version }}-arm64.dmg`
-          - ZIP版（両アーキテクチャ対応）: `Tumiki-${{ steps.version.outputs.version }}-mac.zip`
+**macOS:**
+- Intel Mac: `Tumiki-${{ steps.version.outputs.version }}-x64.dmg`
+- Apple Silicon (M1/M2/M3): `Tumiki-${{ steps.version.outputs.version }}-arm64.dmg`
+- ZIP版（両アーキテクチャ対応）: `Tumiki-${{ steps.version.outputs.version }}-mac.zip`
 
-          ### インストール方法
+### インストール方法
 
-          1. お使いのMacに対応したDMGファイルをダウンロード
-          2. DMGファイルを開き、TumikiをApplicationsフォルダにドラッグ
-          3. 初回起動時にセキュリティ警告が表示された場合:
-             - システム設定 > プライバシーとセキュリティ > 「このまま開く」をクリック
+1. お使いのMacに対応したDMGファイルをダウンロード
+2. DMGファイルを開き、TumikiをApplicationsフォルダにドラッグ
+3. 初回起動時にセキュリティ警告が表示された場合:
+   - システム設定 > プライバシーとセキュリティ > 「このまま開く」をクリック
 
-          ### システム要件
+### システム要件
 
-          - macOS 11.0 (Big Sur) 以降
-          - Intel または Apple Silicon プロセッサ
+- macOS 11.0 (Big Sur) 以降
+- Intel または Apple Silicon プロセッサ
 
-          ### 注意事項
+### 注意事項
 
-          - このバージョンは署名・公証されていません
-          - `hardenedRuntime` が無効のため、**内部利用・検証用途に限定**してください
-          - OAuth認証トークンのセキュリティを確保するには公証対応版をお待ちください
-          - 将来のバージョンでApple公証に対応予定です
+- このバージョンは署名・公証されていません
+- `hardenedRuntime` が無効のため、**内部利用・検証用途に限定**してください
+- OAuth認証トークンのセキュリティを確保するには公証対応版をお待ちください
+- 将来のバージョンでApple公証に対応予定です
 
-          ---
+---
 
-          🤖 このリリースは自動生成されました
-          EOF
+🤖 このリリースは自動生成されました
+EOF
 
+          DELIMITER=$(openssl rand -hex 8)
           {
-            echo "notes<<EOF"
+            echo "notes<<${DELIMITER}"
             cat release_notes.md
-            echo "EOF"
+            echo "${DELIMITER}"
           } >> "$GITHUB_OUTPUT"
 
       - name: 🚀 Create GitHub Release
@@ -206,7 +207,7 @@ jobs:
   # Slack通知
   notify:
     name: 📢 Slack通知
-    needs: [create-release]
+    needs: [build-macos, create-release]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -216,6 +217,7 @@ jobs:
         continue-on-error: true
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          BUILD_RESULT: ${{ needs.build-macos.result }}
           RELEASE_RESULT: ${{ needs.create-release.result }}
           RELEASE_VERSION: ${{ needs.create-release.outputs.version }}
           RELEASE_TAG: ${{ needs.create-release.outputs.tag }}
@@ -223,12 +225,13 @@ jobs:
           COMMIT_SHA: ${{ github.sha }}
           REPOSITORY: ${{ github.repository }}
         run: |
-          STATUS_EMOJI=$([ "$RELEASE_RESULT" = "success" ] && echo "✅" || echo "❌")
+          OVERALL_RESULT=$([ "$BUILD_RESULT" = "success" ] && [ "$RELEASE_RESULT" = "success" ] && echo "success" || echo "failure")
+          STATUS_EMOJI=$([ "$OVERALL_RESULT" = "success" ] && echo "✅" || echo "❌")
           PAYLOAD=$(jq -n \
             --arg emoji "$STATUS_EMOJI" \
             --arg version "$RELEASE_VERSION" \
             --arg tag "$RELEASE_TAG" \
-            --arg result "$RELEASE_RESULT" \
+            --arg result "$OVERALL_RESULT" \
             --arg actor "$ACTOR" \
             --arg sha "$COMMIT_SHA" \
             --arg repo "$REPOSITORY" \
