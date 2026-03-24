@@ -27,10 +27,6 @@ const tseslintConfigs = tseslint.config(
         "error",
         { checksVoidReturn: { attributes: false } },
       ],
-      // Next-Auth と jose パッケージの型定義の問題により一時的に無効化
-      "@typescript-eslint/no-unsafe-assignment": "off",
-      "@typescript-eslint/no-unsafe-member-access": "off",
-      "@typescript-eslint/no-unsafe-call": "off",
     },
   },
   {

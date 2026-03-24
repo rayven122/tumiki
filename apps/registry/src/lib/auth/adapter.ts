@@ -23,7 +23,9 @@ export const createCustomAdapter = () => {
      * ユーザー作成
      * profileSubカスタムフィールドを使用してKeycloak subを直接User.idとして使用
      */
-    async createUser(data: AdapterUserWithProfileSub): Promise<AdapterUser> {
+    createUser: async (
+      data: AdapterUserWithProfileSub,
+    ): Promise<AdapterUser> => {
       // profileSubカスタムフィールドからKeycloak subを取得
       const profileSub = data.profileSub;
 

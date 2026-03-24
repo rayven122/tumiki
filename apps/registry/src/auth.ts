@@ -14,15 +14,12 @@ import "~/lib/auth/types";
 export type { Session as SessionReturnType } from "next-auth";
 
 /**
- * SessionData型 - Keycloak互換の型エイリアス
- * @deprecated Session型を直接使用してください
- */
-export type { Session as SessionData } from "next-auth";
-
-/**
  * Auth.js メイン設定
  * JWT戦略でKeycloak access tokenを保持
  */
+const { KEYCLOAK_CLIENT_ID, KEYCLOAK_CLIENT_SECRET, KEYCLOAK_ISSUER } =
+  getKeycloakEnv();
+
 export const {
   handlers: { GET, POST },
   auth,
@@ -32,9 +29,9 @@ export const {
   trustHost: true,
   providers: [
     Keycloak({
-      clientId: getKeycloakEnv().KEYCLOAK_CLIENT_ID,
-      clientSecret: getKeycloakEnv().KEYCLOAK_CLIENT_SECRET,
-      issuer: getKeycloakEnv().KEYCLOAK_ISSUER,
+      clientId: KEYCLOAK_CLIENT_ID,
+      clientSecret: KEYCLOAK_CLIENT_SECRET,
+      issuer: KEYCLOAK_ISSUER,
       // KeycloakでPKCEが必須設定のため有効化
       checks: ["pkce", "state"],
       authorization: {

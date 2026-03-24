@@ -7,6 +7,20 @@ import { db } from "@tumiki/db/server";
 import { getTumikiClaims } from "./get-tumiki-claims";
 import { getKeycloakEnv } from "~/lib/env";
 import { decodeJwt } from "jose";
+import { z } from "zod";
+
+// Keycloak JWTペイロードのZodスキーマ（unsafe キャストを排除するためのバリデーション用）
+const keycloakTumikiClaimsSchema = z.object({
+  group_roles: z.array(z.string()),
+  roles: z.array(z.string()),
+});
+
+const keycloakJWTPayloadSchema = z.object({
+  sub: z.string().optional(),
+  email: z.string().optional(),
+  name: z.string().optional(),
+  tumiki: keycloakTumikiClaimsSchema.optional(),
+});
 
 /**
  * Keycloak からアクセストークンをリフレッシュ
@@ -46,11 +60,10 @@ const refreshAccessToken = async (token: JWT): Promise<JWT | null> => {
     // 新しいアクセストークンからKeycloakのgroup_rolesを抽出
     let keycloakGroupRoles: string[] | undefined;
     try {
-      const decodedToken = decodeJwt(
-        refreshedTokens.access_token,
-      ) as KeycloakJWTPayload;
-      const tumikiClaims = decodedToken.tumiki;
-      keycloakGroupRoles = tumikiClaims?.group_roles;
+      const decodedToken = keycloakJWTPayloadSchema.parse(
+        decodeJwt(refreshedTokens.access_token),
+      );
+      keycloakGroupRoles = decodedToken.tumiki?.group_roles;
     } catch (decodeError) {
       console.warn(
         "[refreshAccessToken] Failed to decode access token for group_roles:",
@@ -93,7 +106,7 @@ export const jwtCallback = async ({
   user?: User | AdapterUser;
 }): Promise<JWT | null> => {
   if (user) {
-    token.sub = user.id!;
+    token.sub = user.id ?? user.email ?? "";
     token.role = (user as { role?: Role }).role ?? "USER";
   }
 
@@ -150,7 +163,8 @@ export const jwtCallback = async ({
     let groupRoles = token.keycloakGroupRoles ?? token.tumiki.group_roles;
 
     // update({})時は強制的にトークンをリフレッシュして最新のgroup_rolesを取得
-    if (token.refreshToken) {
+    // shouldRefreshが既にtrueで上でリフレッシュ済みの場合はスキップ（ダブルリフレッシュ防止）
+    if (token.refreshToken && !shouldRefresh) {
       const refreshedToken = await refreshAccessToken(token);
       if (refreshedToken) {
         token = refreshedToken;

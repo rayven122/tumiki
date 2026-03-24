@@ -49,6 +49,6 @@ test_user_email      = "admin@tumiki.local"
 test_user_first_name = "Admin"
 test_user_last_name  = "User"
 
-# テーマ設定（開発環境ではデフォルトテーマを使用）
-login_theme   = ""
-account_theme = ""
+# テーマ設定（tumikiカスタムテーマを使用）
+login_theme   = "tumiki"
+account_theme = "tumiki"
