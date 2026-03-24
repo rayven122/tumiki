@@ -26,6 +26,10 @@ KEYCLOAK_ADMIN_PASSWORD=admin123
 KEYCLOAK_CLIENT_ID=tumiki-manager
 KEYCLOAK_CLIENT_SECRET=tumiki-manager-secret-change-in-production
 
+# 必須: Registry Appクライアント設定
+REGISTRY_KEYCLOAK_CLIENT_ID=tumiki-registry
+REGISTRY_KEYCLOAK_CLIENT_SECRET=tumiki-registry-secret-change-in-production
+
 # 任意: Google OAuth設定（空の場合はGoogle IdPを設定しない）
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
@@ -50,7 +54,8 @@ pnpm keycloak:apply     # Keycloak設定を適用
 Terraformにより以下が自動セットアップされます：
 
 - **Tumiki Realm**の作成
-- **Manager App用OIDCクライアント**の作成
+- **Manager App用OIDCクライアント**の作成（ポート3000）
+- **Registry App用OIDCクライアント**の作成（ポート3100）
 - **MCP Proxy用OIDCクライアント**の作成
 - **テストユーザー**の作成
 - **カスタムクレーム設定**
@@ -74,9 +79,13 @@ Terraformにより以下が自動セットアップされます：
 - ユーザー名: `.env` の `KEYCLOAK_ADMIN_USERNAME`（デフォルト: `admin`）
 - パスワード: `.env` の `KEYCLOAK_ADMIN_PASSWORD`（デフォルト: `admin123`）
 
-### Manager App用クライアント
+### Manager App用クライアント（ポート3000）
 - Client ID: `.env` の `KEYCLOAK_CLIENT_ID`（デフォルト: `tumiki-manager`）
 - Client Secret: `.env` の `KEYCLOAK_CLIENT_SECRET`
+
+### Registry App用クライアント（ポート3100）
+- Client ID: `.env` の `REGISTRY_KEYCLOAK_CLIENT_ID`（デフォルト: `tumiki-registry`）
+- Client Secret: `.env` の `REGISTRY_KEYCLOAK_CLIENT_SECRET`
 
 ### MCP Proxy用クライアント
 - Client ID: `tumiki-proxy`（terraform.tfvars で設定）
