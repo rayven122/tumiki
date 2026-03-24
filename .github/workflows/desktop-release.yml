@@ -11,11 +11,19 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # macOS用ビルド
   build-macos:
     name: 🍎 macOS ビルド
     runs-on: macos-latest
+    timeout-minutes: 30
     env:
       # Keycloak認証用の環境変数（ビルド時にバイナリへ埋め込み）
       # 値を変更した場合は新しいリリースビルドが必要
@@ -33,6 +41,17 @@ jobs:
         run: |
           if [[ ! "$INPUT_TAG" =~ ^desktop-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::Invalid tag format: $INPUT_TAG (expected: desktop-vX.Y.Z)"
+            exit 1
+          fi
+
+      - name: ✅ Verify tag exists
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          git fetch --tags
+          if ! git tag -l "$INPUT_TAG" | grep -q .; then
+            echo "::error::Tag $INPUT_TAG does not exist in the repository"
             exit 1
           fi
 
@@ -92,6 +111,7 @@ jobs:
     name: 📢 GitHub Release 作成
     needs: [build-macos]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
     outputs:
@@ -170,7 +190,7 @@ jobs:
           name: Tumiki Desktop v${{ steps.version.outputs.version }}
           body: ${{ steps.release_notes.outputs.notes }}
           draft: false
-          prerelease: false
+          prerelease: ${{ contains(steps.version.outputs.tag, '-rc') || contains(steps.version.outputs.tag, '-beta') || contains(steps.version.outputs.tag, '-alpha') }}
           files: |
             artifacts/**/*.dmg
             artifacts/**/*.zip
@@ -183,52 +203,55 @@ jobs:
     needs: [create-release]
     if: always()
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: 📨 Send Slack notification
         if: ${{ vars.SLACK_ENABLED == 'true' }}
         continue-on-error: true
-        uses: slackapi/slack-github-action@485a9d42d3a73031f12ec201c457e2162c45d02d # v2.0.0
-        with:
-          payload: |
-            {
-              "text": "${{ needs.create-release.result == 'success' && '✅' || '❌' }} Tumiki Desktop Release",
-              "blocks": [
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          RELEASE_RESULT: ${{ needs.create-release.result }}
+          RELEASE_VERSION: ${{ needs.create-release.outputs.version }}
+          RELEASE_TAG: ${{ needs.create-release.outputs.tag }}
+          ACTOR: ${{ github.actor }}
+          COMMIT_SHA: ${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          STATUS_EMOJI=$([ "$RELEASE_RESULT" = "success" ] && echo "✅" || echo "❌")
+          PAYLOAD=$(jq -n \
+            --arg emoji "$STATUS_EMOJI" \
+            --arg version "$RELEASE_VERSION" \
+            --arg tag "$RELEASE_TAG" \
+            --arg result "$RELEASE_RESULT" \
+            --arg actor "$ACTOR" \
+            --arg sha "$COMMIT_SHA" \
+            --arg repo "$REPOSITORY" \
+            '{
+              text: "\($emoji) Tumiki Desktop Release",
+              blocks: [
                 {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "${{ needs.create-release.result == 'success' && '✅' || '❌' }} Tumiki Desktop v${{ needs.create-release.outputs.version }} リリース"
+                  type: "header",
+                  text: {
+                    type: "plain_text",
+                    text: "\($emoji) Tumiki Desktop v\($version) リリース"
                   }
                 },
                 {
-                  "type": "section",
-                  "fields": [
-                    {
-                      "type": "mrkdwn",
-                      "text": "*タグ:*\n${{ needs.create-release.outputs.tag }}"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*ステータス:*\n${{ needs.create-release.result }}"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*実行者:*\n${{ github.actor }}"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Commit:*\n${{ github.sha }}"
-                    }
+                  type: "section",
+                  fields: [
+                    { type: "mrkdwn", text: "*タグ:*\n\($tag)" },
+                    { type: "mrkdwn", text: "*ステータス:*\n\($result)" },
+                    { type: "mrkdwn", text: "*実行者:*\n\($actor)" },
+                    { type: "mrkdwn", text: "*Commit:*\n\($sha)" }
                   ]
                 },
                 {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "<https://github.com/${{ github.repository }}/releases/tag/${{ needs.create-release.outputs.tag }}|リリースページを見る>"
+                  type: "section",
+                  text: {
+                    type: "mrkdwn",
+                    text: "<https://github.com/\($repo)/releases/tag/\($tag)|リリースページを見る>"
                   }
                 }
               ]
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+            }')
+          curl -s -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$SLACK_WEBHOOK_URL"

@@ -48,8 +48,7 @@ pnpm test:coverage
 pnpm clean
 
 # リリースビルド
-pnpm build:mac        # macOS用ビルド
-pnpm build:release    # リリース用パッケージング
+pnpm build:release    # macOS用パッケージング（out/に出力）
 ```
 
 ## リリース手順
