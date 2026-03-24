@@ -101,9 +101,7 @@ export class KeycloakClient {
           status: response.status,
           error: errorText,
         });
-        throw new Error(
-          `トークン取得に失敗しました: ${response.status} ${errorText}`,
-        );
+        throw new Error(`トークン取得に失敗しました（${response.status}）`);
       }
 
       const data = await response.json();
@@ -145,7 +143,7 @@ export class KeycloakClient {
           error: errorText,
         });
         throw new Error(
-          `トークンリフレッシュに失敗しました: ${response.status} ${errorText}`,
+          `トークンリフレッシュに失敗しました（${response.status}）`,
         );
       }
 
