@@ -2,7 +2,6 @@ import type { Session, User, Account, Profile } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import type { Role } from "@tumiki/db/server";
 import type { AdapterUser } from "@auth/core/adapters";
-import type { KeycloakJWTPayload } from "./types";
 import { db } from "@tumiki/db/server";
 import { getTumikiClaims } from "./get-tumiki-claims";
 import { getKeycloakEnv } from "~/lib/env";
@@ -20,6 +19,13 @@ const keycloakJWTPayloadSchema = z.object({
   email: z.string().optional(),
   name: z.string().optional(),
   tumiki: keycloakTumikiClaimsSchema.optional(),
+});
+
+// トークンリフレッシュレスポンスのZodスキーマ
+const refreshedTokensSchema = z.object({
+  access_token: z.string(),
+  expires_in: z.number(),
+  refresh_token: z.string().optional(),
 });
 
 /**
@@ -51,11 +57,7 @@ const refreshAccessToken = async (token: JWT): Promise<JWT | null> => {
       return null;
     }
 
-    const refreshedTokens = (await response.json()) as {
-      access_token: string;
-      expires_in: number;
-      refresh_token?: string;
-    };
+    const refreshedTokens = refreshedTokensSchema.parse(await response.json());
 
     // 新しいアクセストークンからKeycloakのgroup_rolesを抽出
     let keycloakGroupRoles: string[] | undefined;
@@ -115,8 +117,8 @@ export const jwtCallback = async ({
     token.expiresAt = account.expires_at;
     token.refreshToken = account.refresh_token;
 
-    const keycloakProfile = profile as KeycloakJWTPayload;
-    token.sub = keycloakProfile.sub;
+    const keycloakProfile = keycloakJWTPayloadSchema.parse(profile);
+    token.sub = keycloakProfile.sub ?? "";
     token.email = keycloakProfile.email ?? null;
     token.name = keycloakProfile.name ?? null;
 
@@ -162,12 +164,12 @@ export const jwtCallback = async ({
     const userId = token.sub; // subは上の条件でチェック済み
     let groupRoles = token.keycloakGroupRoles ?? token.tumiki.group_roles;
 
-    // update({})時は強制的にトークンをリフレッシュして最新のgroup_rolesを取得
+    // session.update({})時のみリフレッシュを実行（forceRefreshフラグで制御）
     // shouldRefreshが既にtrueで上でリフレッシュ済みの場合はスキップ（ダブルリフレッシュ防止）
-    if (token.refreshToken && !shouldRefresh) {
+    if (token.refreshToken && !shouldRefresh && token.forceRefresh) {
       const refreshedToken = await refreshAccessToken(token);
       if (refreshedToken) {
-        token = refreshedToken;
+        token = { ...refreshedToken, forceRefresh: false };
         // リフレッシュで取得した最新のgroup_rolesを使用
         groupRoles = token.keycloakGroupRoles ?? groupRoles;
       }

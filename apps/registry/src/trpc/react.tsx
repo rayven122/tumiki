@@ -15,10 +15,10 @@ let clientQueryClientSingleton: QueryClient | undefined = undefined;
 
 const getQueryClient = () => {
   if (typeof window === "undefined") {
-    // Server: always make a new query client
+    // サーバー: 毎回新しいクエリクライアントを生成する
     return createQueryClient();
   }
-  // Browser: use singleton pattern to keep the same query client
+  // ブラウザ: シングルトンパターンで同一のクエリクライアントを使い回す
   clientQueryClientSingleton ??= createQueryClient();
 
   return clientQueryClientSingleton;
@@ -27,14 +27,14 @@ const getQueryClient = () => {
 export const api = createTRPCReact<AppRouter>();
 
 /**
- * Inference helper for inputs.
+ * 入力型の推論ヘルパー。
  *
  * @example type HelloInput = RouterInputs['example']['hello']
  */
 export type RouterInputs = inferRouterInputs<AppRouter>;
 
 /**
- * Inference helper for outputs.
+ * 出力型の推論ヘルパー。
  *
  * @example type HelloOutput = RouterOutputs['example']['hello']
  */

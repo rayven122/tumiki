@@ -5,9 +5,9 @@ import {
 } from "@/server/api/trpc";
 
 /**
- * This is the primary router for your server.
+ * サーバーのメインルーター。
  *
- * All routers added in /api/routers should be manually added here.
+ * /api/routers に追加したルーターはすべてここに手動で追加すること。
  */
 export const appRouter = createTRPCRouter({
   // ダミールーター（型推論のため）
@@ -16,11 +16,11 @@ export const appRouter = createTRPCRouter({
   }),
 });
 
-// export type definition of API
+// APIの型定義をエクスポート
 export type AppRouter = typeof appRouter;
 
 /**
- * Create a server-side caller for the tRPC API.
+ * tRPC APIのサーバーサイド呼び出し元を生成する。
  * @example
  * const trpc = createCaller(createContext);
  * const res = await trpc.post.all();

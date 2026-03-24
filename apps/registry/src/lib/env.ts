@@ -20,6 +20,18 @@ export const getKeycloakEnv = () => {
   // CI環境ではダミー値を使用
   const isCI = process.env.CI === "true" || process.env.VERCEL === "1";
 
+  // REGISTRY_KEYCLOAK_ が未設定の場合はManager用変数にフォールバック（警告）
+  if (!process.env.REGISTRY_KEYCLOAK_CLIENT_ID) {
+    console.warn(
+      "[env] REGISTRY_KEYCLOAK_CLIENT_ID が未設定です。KEYCLOAK_CLIENT_ID にフォールバックします",
+    );
+  }
+  if (!process.env.REGISTRY_KEYCLOAK_CLIENT_SECRET) {
+    console.warn(
+      "[env] REGISTRY_KEYCLOAK_CLIENT_SECRET が未設定です。KEYCLOAK_CLIENT_SECRET にフォールバックします",
+    );
+  }
+
   const result = keycloakEnvSchema.safeParse({
     // Registry専用の環境変数を優先、なければManager用の環境変数にフォールバック
     KEYCLOAK_CLIENT_ID:

@@ -44,6 +44,7 @@ export type KeycloakProfile = KeycloakJWTPayload & {
  */
 declare module "next-auth" {
   // Session型を完全に上書き（email, name, imageをnull許容型に）
+  // NextAuth型拡張のため interface を使用（declaration mergingには interface が必須）
   interface Session {
     user: {
       id: string;
@@ -59,6 +60,7 @@ declare module "next-auth" {
     accessToken?: string;
   }
 
+  // NextAuth型拡張のため interface を使用（declaration mergingには interface が必須）
   interface User {
     role?: Role;
     profileSub?: string; // Keycloak subをカスタムフィールドとして保持
@@ -66,6 +68,7 @@ declare module "next-auth" {
 }
 
 declare module "next-auth/jwt" {
+  // NextAuth型拡張のため interface を使用（declaration mergingには interface が必須）
   interface JWT {
     // Keycloak JWTペイロード（可能な限り元の構造を保持）
     sub?: string; // Keycloak user ID
@@ -84,5 +87,8 @@ declare module "next-auth/jwt" {
 
     // トークンリフレッシュ時にKeycloakから取得した最新group_roles
     keycloakGroupRoles?: string[];
+
+    // session.update({})時のみリフレッシュを強制するフラグ
+    forceRefresh?: boolean;
   }
 }
