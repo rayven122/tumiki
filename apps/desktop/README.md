@@ -28,21 +28,14 @@ pnpm build
 pnpm start
 
 # 型チェック
-pnpm typecheck      # 通常版（tsc）
-pnpm typecheck:dev  # 高速版（tsgo）
+pnpm typecheck
 
-# リント
+# リント・フォーマット
 pnpm lint
-pnpm lint:fix
-
-# フォーマット
 pnpm format
-pnpm format:fix
 
 # テスト
 pnpm test
-pnpm test:watch
-pnpm test:coverage
 
 # クリーンアップ
 pnpm clean
@@ -140,7 +133,7 @@ apps/desktop/
 
 ## 技術スタック
 
-- **Electron**: v34.x
+- **Electron**: v40.x
 - **React**: v19 (catalog:react19)
 - **TypeScript**: v5.x (catalog)
 - **Vite**: electron-vite v4.x

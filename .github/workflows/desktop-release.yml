@@ -24,15 +24,15 @@ jobs:
     name: 🍎 macOS ビルド
     runs-on: macos-latest
     timeout-minutes: 30
-    env:
-      # Keycloak認証用の環境変数（ビルド時にバイナリへ埋め込み）
-      # 値を変更した場合は新しいリリースビルドが必要
-      # Public Clientのためclient_secretは不要（PKCEで保護）
-      KEYCLOAK_ISSUER: ${{ secrets.KEYCLOAK_ISSUER }}
-      KEYCLOAK_DESKTOP_CLIENT_ID: ${{ secrets.KEYCLOAK_DESKTOP_CLIENT_ID }}
+    # OAuth統合実装後に有効化する環境変数（ビルド時にバイナリへ埋め込み）:
+    # env:
+    #   KEYCLOAK_ISSUER: ${{ secrets.KEYCLOAK_ISSUER }}
+    #   KEYCLOAK_DESKTOP_CLIENT_ID: ${{ secrets.KEYCLOAK_DESKTOP_CLIENT_ID }}
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
 
       - name: ✅ Validate tag format
         if: ${{ github.event_name == 'workflow_dispatch' }}
@@ -77,6 +77,9 @@ jobs:
           cd apps/desktop
           pnpm db:generate
 
+      - name: 📄 Create .env file
+        run: cp .env.example .env
+
       - name: 🔨 Build Electron app
         run: |
           cd apps/desktop
@@ -119,6 +122,8 @@ jobs:
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
 
       - name: 📥 Download macOS artifacts
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
@@ -169,6 +174,8 @@ jobs:
           ### 注意事項
 
           - このバージョンは署名・公証されていません
+          - `hardenedRuntime` が無効のため、**内部利用・検証用途に限定**してください
+          - OAuth認証トークンのセキュリティを確保するには公証対応版をお待ちください
           - 将来のバージョンでApple公証に対応予定です
 
           ---
@@ -188,7 +195,7 @@ jobs:
           tag_name: ${{ steps.version.outputs.tag }}
           name: Tumiki Desktop v${{ steps.version.outputs.version }}
           body: ${{ steps.release_notes.outputs.notes }}
-          draft: false
+          draft: true
           prerelease: ${{ contains(steps.version.outputs.tag, '-rc') || contains(steps.version.outputs.tag, '-beta') || contains(steps.version.outputs.tag, '-alpha') }}
           files: |
             artifacts/**/*.dmg
