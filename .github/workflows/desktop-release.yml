@@ -44,21 +44,21 @@ jobs:
             exit 1
           fi
 
-      - name: 📥 Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-        with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
-
       - name: ✅ Verify tag exists
         if: ${{ github.event_name == 'workflow_dispatch' }}
         env:
           INPUT_TAG: ${{ inputs.tag }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
-          git fetch --tags
-          if ! git tag -l "$INPUT_TAG" | grep -q .; then
+          if ! git ls-remote --tags "https://github.com/${GITHUB_REPOSITORY}.git" "$INPUT_TAG" | grep -q .; then
             echo "::error::Tag $INPUT_TAG does not exist in the repository"
             exit 1
           fi
+
+      - name: 📥 Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
 
       - name: ⚙️ Setup pnpm
         uses: pnpm/action-setup@02f6c237bd2518259fed6c71566509edfb3f2b74 # v4
