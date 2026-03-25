@@ -29,11 +29,6 @@ jobs:
     #   KEYCLOAK_ISSUER: ${{ secrets.KEYCLOAK_ISSUER }}
     #   KEYCLOAK_DESKTOP_CLIENT_ID: ${{ secrets.KEYCLOAK_DESKTOP_CLIENT_ID }}
     steps:
-      - name: 📥 Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-        with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
-
       - name: ✅ Validate tag format
         if: ${{ github.event_name == 'workflow_dispatch' }}
         env:
@@ -48,6 +43,11 @@ jobs:
             echo "::error::Invalid tag format: $INPUT_TAG (expected: desktop-vX.Y.Z or desktop-vX.Y.Z-suffix)"
             exit 1
           fi
+
+      - name: 📥 Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
 
       - name: ✅ Verify tag exists
         if: ${{ github.event_name == 'workflow_dispatch' }}
