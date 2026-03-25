@@ -156,40 +156,42 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          cat > release_notes.md << EOF
-## Tumiki Desktop ${VERSION}
+          cat > release_notes.md <<'EOF'
+          ## Tumiki Desktop REPLACE_VERSION
 
-### ダウンロード
+          ### ダウンロード
 
-**macOS:**
-- Intel Mac DMG: \`Tumiki-${VERSION}-x64.dmg\`
-- Apple Silicon DMG (M1/M2/M3): \`Tumiki-${VERSION}-arm64.dmg\`
-- Intel Mac ZIP: \`Tumiki-${VERSION}-x64-mac.zip\`
-- Apple Silicon ZIP: \`Tumiki-${VERSION}-arm64-mac.zip\`
+          **macOS:**
+          - Intel Mac DMG: `Tumiki-REPLACE_VERSION-x64.dmg`
+          - Apple Silicon DMG (M1/M2/M3): `Tumiki-REPLACE_VERSION-arm64.dmg`
+          - Intel Mac ZIP: `Tumiki-REPLACE_VERSION-x64-mac.zip`
+          - Apple Silicon ZIP: `Tumiki-REPLACE_VERSION-arm64-mac.zip`
 
-### インストール方法
+          ### インストール方法
 
-1. お使いのMacに対応したDMGファイルをダウンロード
-2. DMGファイルを開き、TumikiをApplicationsフォルダにドラッグ
-3. 初回起動時にセキュリティ警告が表示された場合:
-   - システム設定 > プライバシーとセキュリティ > 「このまま開く」をクリック
+          1. お使いのMacに対応したDMGファイルをダウンロード
+          2. DMGファイルを開き、TumikiをApplicationsフォルダにドラッグ
+          3. 初回起動時にセキュリティ警告が表示された場合:
+             - システム設定 > プライバシーとセキュリティ > 「このまま開く」をクリック
 
-### システム要件
+          ### システム要件
 
-- macOS 11.0 (Big Sur) 以降
-- Intel または Apple Silicon プロセッサ
+          - macOS 11.0 (Big Sur) 以降
+          - Intel または Apple Silicon プロセッサ
 
-### 注意事項
+          ### 注意事項
 
-- このバージョンは署名・公証されていません
-- \`hardenedRuntime\` が無効のため、**内部利用・検証用途に限定**してください
-- OAuth認証トークンのセキュリティを確保するには公証対応版をお待ちください
-- 将来のバージョンでApple公証に対応予定です
+          - このバージョンは署名・公証されていません
+          - `hardenedRuntime` が無効のため、**内部利用・検証用途に限定**してください
+          - OAuth認証トークンのセキュリティを確保するには公証対応版をお待ちください
+          - 将来のバージョンでApple公証に対応予定です
 
----
+          ---
 
-🤖 このリリースは自動生成されました
-EOF
+          🤖 このリリースは自動生成されました
+          EOF
+          sed -i'' 's/REPLACE_VERSION/'"${VERSION}"'/g' release_notes.md
+          sed -i'' 's/^          //' release_notes.md
 
           DELIMITER=$(openssl rand -hex 8)
           {
