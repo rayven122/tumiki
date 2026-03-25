@@ -22,7 +22,7 @@ jobs:
   # macOS用ビルド
   build-macos:
     name: 🍎 macOS ビルド
-    runs-on: macos-latest
+    runs-on: macos-15
     timeout-minutes: 30
     # OAuth統合実装後に有効化する環境変数（ビルド時にバイナリへ埋め込み）:
     # env:
