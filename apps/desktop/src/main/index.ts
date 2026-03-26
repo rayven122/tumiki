@@ -1,8 +1,21 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, powerMonitor } from "electron";
 import { createMainWindow } from "./window";
 import { initializeDb, closeDb } from "./db";
 import { setupAuthIpc } from "./ipc/auth";
+import { OAuthManager } from "./auth/oauth-manager";
+import { getOAuthManager, setOAuthManager } from "./auth/manager-registry";
+import { getKeycloakEnvOptional } from "./utils/env";
 import * as logger from "./utils/logger";
+
+const PROTOCOL = "tumiki-desktop";
+const CALLBACK_HOST = "auth";
+const CALLBACK_PATHNAME = "/callback";
+
+// シングルインスタンスロック（Windows/Linuxでsecond-instanceイベントに必要）
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+}
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -14,6 +27,91 @@ const createWindow = (): void => {
   });
 };
 
+/**
+ * カスタムURLスキーム（tumiki-desktop://）のコールバックを処理
+ */
+const handleDeepLink = async (url: string): Promise<void> => {
+  let isValidCallback = false;
+  try {
+    const parsed = new URL(url);
+    isValidCallback =
+      parsed.protocol === `${PROTOCOL}:` &&
+      parsed.hostname === CALLBACK_HOST &&
+      parsed.pathname === CALLBACK_PATHNAME;
+  } catch {
+    logger.warn("Received malformed deep link URL", { url });
+    return;
+  }
+  if (!isValidCallback) {
+    logger.warn("Received unknown deep link", { url });
+    return;
+  }
+
+  const manager = getOAuthManager();
+  if (!manager) {
+    logger.error("OAuthManager not initialized when handling deep link");
+    mainWindow?.webContents.send(
+      "auth:callbackError",
+      "認証マネージャーが初期化されていません",
+    );
+    return;
+  }
+
+  try {
+    await manager.handleAuthCallback(url);
+    mainWindow?.webContents.send("auth:callbackSuccess");
+    logger.info("Deep link auth callback handled successfully");
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "認証コールバックに失敗しました";
+    mainWindow?.webContents.send("auth:callbackError", message);
+    logger.error("Deep link auth callback failed", { error });
+  }
+
+  // コールバック後にウィンドウをフォーカス
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
+};
+
+// macOS: アプリが既に起動している場合のディープリンク処理
+app.on("open-url", (event, url) => {
+  event.preventDefault();
+  handleDeepLink(url).catch((error) => {
+    logger.error("Unhandled error in open-url handler", { error });
+  });
+});
+
+// Windows/Linux: second-instanceイベントでディープリンクを処理
+// Electronの仕様上、readyイベント前に登録する必要がある
+app.on("second-instance", (_event, argv) => {
+  // argv末尾にURLが含まれる
+  const deepLinkUrl = argv.find((arg) => {
+    try {
+      return new URL(arg).protocol === `${PROTOCOL}:`;
+    } catch {
+      return false;
+    }
+  });
+  if (deepLinkUrl) {
+    handleDeepLink(deepLinkUrl).catch((error) => {
+      logger.error("Unhandled error in second-instance handler", { error });
+    });
+  }
+
+  // 既存ウィンドウをフォーカス
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
+});
+
+// カスタムURLスキームを登録
+if (!app.isDefaultProtocolClient(PROTOCOL)) {
+  app.setAsDefaultProtocolClient(PROTOCOL);
+}
+
 // アプリケーション準備完了時
 app
   .whenReady()
@@ -21,10 +119,35 @@ app
     // データベース初期化
     await initializeDb();
 
+    // OAuthManager初期化（環境変数が設定されている場合のみ）
+    const keycloakEnv = getKeycloakEnvOptional();
+    if (keycloakEnv) {
+      const manager = new OAuthManager({
+        issuer: keycloakEnv.KEYCLOAK_ISSUER,
+        clientId: keycloakEnv.KEYCLOAK_DESKTOP_CLIENT_ID,
+        redirectUri: `${PROTOCOL}://${CALLBACK_HOST}${CALLBACK_PATHNAME}`,
+      });
+      setOAuthManager(manager);
+      await manager.initialize();
+      logger.info("OAuthManager initialized");
+    } else {
+      logger.warn("Keycloak environment variables not set, OAuth disabled");
+    }
+
     // IPC ハンドラー登録
     setupAuthIpc();
 
     createWindow();
+
+    // スリープ復帰時にトークンの有効期限を再チェック
+    powerMonitor.on("resume", () => {
+      const manager = getOAuthManager();
+      if (manager) {
+        manager.initialize().catch((error) => {
+          logger.error("Failed to re-initialize OAuth after resume", { error });
+        });
+      }
+    });
 
     app.on("activate", () => {
       // macOSでDockアイコンクリック時、ウィンドウがなければ作成
@@ -54,6 +177,7 @@ app.on("will-quit", (event) => {
   if (isQuitting) return;
   isQuitting = true;
   event.preventDefault();
+  getOAuthManager()?.stopAutoRefresh();
   closeDb()
     .then(() => {
       logger.info("Database connection closed successfully");

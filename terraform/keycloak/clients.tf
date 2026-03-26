@@ -32,6 +32,13 @@ locals {
     keycloak_openid_client_scope.tumiki_claims.name,
   ])
 
+  # Desktop クライアント用デフォルトスコープ
+  desktop_default_scopes = concat(local.base_scopes, [
+    "profile",
+    "email",
+    keycloak_openid_client_scope.tumiki_claims.name,
+  ])
+
   # Proxy クライアント用オプショナルスコープ
   proxy_optional_scopes = [
     "address",
@@ -181,4 +188,40 @@ resource "keycloak_openid_client_optional_scopes" "proxy_optional_scopes" {
   realm_id        = keycloak_realm.tumiki.id
   client_id       = keycloak_openid_client.proxy.id
   optional_scopes = local.proxy_optional_scopes
+}
+
+# =============================================================================
+# tumiki-desktop クライアント
+# =============================================================================
+
+# Desktop Electron Application用のOIDCクライアント
+resource "keycloak_openid_client" "desktop" {
+  realm_id    = keycloak_realm.tumiki.id
+  client_id   = var.desktop_client_id
+  name        = "Tumiki Desktop Application"
+  description = "Electron Desktop Application"
+
+  enabled     = true
+  access_type = "PUBLIC"
+
+  # 認証フロー設定
+  standard_flow_enabled        = true
+  implicit_flow_enabled        = false
+  direct_access_grants_enabled = false
+  service_accounts_enabled     = false
+
+  # PKCE設定
+  pkce_code_challenge_method = "S256"
+
+  # リダイレクトURI設定（カスタムURLスキーム）
+  valid_redirect_uris = var.desktop_redirect_uris
+  # カスタムURLスキーム（tumiki-desktop://）のみ使用するため、CORS設定は不要
+  web_origins = []
+}
+
+# Desktop クライアントのデフォルトスコープ設定
+resource "keycloak_openid_client_default_scopes" "desktop_default_scopes" {
+  realm_id       = keycloak_realm.tumiki.id
+  client_id      = keycloak_openid_client.desktop.id
+  default_scopes = local.desktop_default_scopes
 }

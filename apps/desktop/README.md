@@ -28,20 +28,28 @@ pnpm build
 pnpm start
 
 # 型チェック
-pnpm typecheck
+pnpm typecheck      # 通常版（tsc）
+pnpm typecheck:dev  # 高速版（tsgo）
 
-# リント・フォーマット
+# リント
 pnpm lint
+pnpm lint:fix
+
+# フォーマット
 pnpm format
+pnpm format:fix
 
 # テスト
 pnpm test
+pnpm test:watch
+pnpm test:coverage
 
 # クリーンアップ
 pnpm clean
 
 # リリースビルド
-pnpm build:release    # macOS用パッケージング（out/に出力）
+pnpm build:mac        # macOS用ビルド
+pnpm build:release    # リリース用パッケージング
 ```
 
 ## リリース手順
@@ -53,7 +61,7 @@ pnpm build:release    # macOS用パッケージング（out/に出力）
    ```bash
    # package.json のバージョンを更新
    cd apps/desktop
-   pnpm version patch  # または minor, major
+   npm version patch  # または minor, major
    ```
 
 2. **リリースタグの作成とプッシュ**
@@ -67,9 +75,8 @@ pnpm build:release    # macOS用パッケージング（out/に出力）
 3. **自動ビルドとリリース**
    - GitHub Actions が自動的にトリガーされます
    - macOS用のアプリケーションがビルドされます（x64とarm64）
-   - GitHub Release が**ドラフト**として自動作成されます
+   - GitHub Releaseが自動作成されます
    - DMGとZIPファイルがアップロードされます
-   - **リリースページでドラフトを確認し、手動で公開してください**
 
 4. **手動リリース（必要な場合）**
 
@@ -134,7 +141,7 @@ apps/desktop/
 
 ## 技術スタック
 
-- **Electron**: v40.x
+- **Electron**: v34.x
 - **React**: v19 (catalog:react19)
 - **TypeScript**: v5.x (catalog)
 - **Vite**: electron-vite v4.x

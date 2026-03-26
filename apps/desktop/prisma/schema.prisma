@@ -13,6 +13,7 @@ model AuthToken {
   id           String   @id @default(uuid())
   accessToken  String   // 暗号化されたアクセストークン
   refreshToken String   // 暗号化されたリフレッシュトークン
+  idToken      String?  // 暗号化されたIDトークン（OIDCログアウト用）
   expiresAt    DateTime // トークンの有効期限
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

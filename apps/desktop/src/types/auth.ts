@@ -1,8 +1,7 @@
 /**
- * 認証トークンデータ型
+ * auth:getToken の返却型
  */
-export type AuthTokenData = {
+export type AuthTokenResult = {
   accessToken: string;
-  refreshToken: string;
-  expiresAt: Date;
+  idToken: string | null;
 };

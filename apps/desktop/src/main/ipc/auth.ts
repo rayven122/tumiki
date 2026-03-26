@@ -1,41 +1,30 @@
 import { ipcMain } from "electron";
-import { z } from "zod";
 import { getDb } from "../db";
-import { encryptToken, decryptToken } from "../utils/encryption";
+import { getOAuthManager } from "../auth/manager-registry";
+import { decryptToken } from "../utils/encryption";
 import * as logger from "../utils/logger";
 
 /**
- * 認証トークンデータのバリデーションスキーマ
+ * DBから有効なトークンを取得（期限切れの場合は削除してnullを返す）
  */
-const authTokenSchema = z.object({
-  accessToken: z.string().min(1, "アクセストークンは空にできません"),
-  refreshToken: z.string().min(1, "リフレッシュトークンは空にできません"),
-  expiresAt: z.preprocess(
-    (val) => {
-      // 文字列の場合はDateオブジェクトに変換
-      if (typeof val === "string") {
-        return new Date(val);
-      }
-      return val;
-    },
-    z
-      .date()
-      .refine((date) => !isNaN(date.getTime()), {
-        message: "無効な日付形式です",
-      })
-      .refine(
-        (date) => {
-          // 相対時間ベースのバリデーション: 有効期限が現在時刻から最低1分以上未来である必要がある
-          const now = new Date();
-          const minValidDuration = 60 * 1000; // 1分（ミリ秒）
-          return date.getTime() - now.getTime() > minValidDuration;
-        },
-        {
-          message: "有効期限は現在時刻から最低1分以上未来である必要があります",
-        },
-      ),
-  ),
-});
+const findValidToken = async () => {
+  const db = await getDb();
+  const token = await db.authToken.findFirst({
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (!token) {
+    return null;
+  }
+
+  if (new Date() > token.expiresAt) {
+    logger.debug("Token expired, deleting from database");
+    await db.authToken.delete({ where: { id: token.id } });
+    return null;
+  }
+
+  return token;
+};
 
 /**
  * 認証関連の IPC ハンドラーを設定
@@ -44,86 +33,36 @@ export const setupAuthIpc = (): void => {
   // 認証トークン取得
   ipcMain.handle("auth:getToken", async () => {
     try {
-      const db = await getDb();
-      const token = await db.authToken.findFirst({
-        orderBy: { createdAt: "desc" },
-      });
+      const token = await findValidToken();
 
       if (!token) {
         return null;
       }
 
-      // トークン期限チェック（期限切れの場合はDBから削除）
-      if (new Date() > token.expiresAt) {
-        logger.debug("Token expired, deleting from database");
-        await db.authToken.delete({ where: { id: token.id } });
-        return null;
-      }
-
       // 暗号化されたトークンを非同期で復号化
-      const decryptedToken = await decryptToken(token.accessToken);
+      const decryptedAccessToken = await decryptToken(token.accessToken);
 
       // 復号化されたトークンの有効性検証（破損トークンはDBから削除）
-      if (!decryptedToken || decryptedToken.length === 0) {
+      if (!decryptedAccessToken || decryptedAccessToken.length === 0) {
         logger.warn(
           "Decrypted token is invalid or empty, deleting corrupted token",
         );
+        const db = await getDb();
         await db.authToken.delete({ where: { id: token.id } });
         return null;
       }
 
-      return decryptedToken;
+      const decryptedIdToken = token.idToken
+        ? await decryptToken(token.idToken)
+        : null;
+
+      return { accessToken: decryptedAccessToken, idToken: decryptedIdToken };
     } catch (error) {
       logger.error(
         "Failed to get auth token",
         error instanceof Error ? error : { error },
       );
       throw new Error("認証トークンの取得に失敗しました");
-    }
-  });
-
-  // トークン保存
-  // IPC通信はプロセス間境界のため、引数はunknownとして受け取りZodでバリデーションする
-  ipcMain.handle("auth:saveToken", async (_, tokenData: unknown) => {
-    try {
-      // 入力データのバリデーション
-      const validatedData = authTokenSchema.parse(tokenData);
-
-      const db = await getDb();
-
-      // 新しいトークンを非同期で暗号化して保存
-      const newToken = await db.authToken.create({
-        data: {
-          accessToken: await encryptToken(validatedData.accessToken),
-          refreshToken: await encryptToken(validatedData.refreshToken),
-          expiresAt: validatedData.expiresAt,
-        },
-      });
-
-      // 最新のトークンのみ残し、古いトークンを削除
-      await db.authToken.deleteMany({
-        where: {
-          id: { not: newToken.id },
-        },
-      });
-
-      logger.info("Auth token saved successfully");
-      return { success: true };
-    } catch (error) {
-      // Zodバリデーションエラーの処理
-      if (error instanceof z.ZodError) {
-        const validationErrors = error.issues
-          .map((issue) => issue.message)
-          .join(", ");
-        logger.error("Token validation failed", { errors: validationErrors });
-        throw new Error(`トークンデータが無効です: ${validationErrors}`);
-      }
-
-      logger.error(
-        "Failed to save auth token",
-        error instanceof Error ? error : { error },
-      );
-      throw new Error("認証トークンの保存に失敗しました");
     }
   });
 
@@ -143,20 +82,57 @@ export const setupAuthIpc = (): void => {
     }
   });
 
+  // ログイン（OAuth認証フロー開始）
+  ipcMain.handle("auth:login", async () => {
+    try {
+      const oauthManager = getOAuthManager();
+      if (!oauthManager) {
+        throw new Error(
+          "OAuth認証が設定されていません（環境変数を確認してください）",
+        );
+      }
+      await oauthManager.startAuthFlow();
+      logger.info("Auth login flow started");
+    } catch (error) {
+      logger.error(
+        "Failed to start auth login",
+        error instanceof Error ? error : { error },
+      );
+      throw error instanceof Error
+        ? error
+        : new Error("ログインの開始に失敗しました");
+    }
+  });
+
+  // ログアウト
+  ipcMain.handle("auth:logout", async () => {
+    try {
+      const oauthManager = getOAuthManager();
+      if (!oauthManager) {
+        // OAuthManagerがなくてもローカルのトークンは削除する
+        const db = await getDb();
+        await db.authToken.deleteMany({});
+        logger.info("Auth tokens cleared (OAuth not configured)");
+        return;
+      }
+      await oauthManager.logout();
+      logger.info("Auth logout completed");
+    } catch (error) {
+      logger.error(
+        "Failed to logout",
+        error instanceof Error ? error : { error },
+      );
+      throw error instanceof Error
+        ? error
+        : new Error("ログアウトに失敗しました");
+    }
+  });
+
   // 認証状態確認
   ipcMain.handle("auth:isAuthenticated", async () => {
     try {
-      const db = await getDb();
-      const token = await db.authToken.findFirst({
-        orderBy: { createdAt: "desc" },
-      });
-
-      if (!token) {
-        return false;
-      }
-
-      // トークンが有効期限内か確認
-      return new Date() <= token.expiresAt;
+      const token = await findValidToken();
+      return token !== null;
     } catch (error) {
       logger.error(
         "Failed to check authentication status",

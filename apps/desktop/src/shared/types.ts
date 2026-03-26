@@ -1,12 +1,3 @@
-import type { ElectronAPI } from "../preload";
-
-// グローバルなWindow型を拡張
-declare global {
-  interface Window {
-    electronAPI: ElectronAPI;
-  }
-}
-
 // MCPサーバー型定義
 export type McpServer = {
   id: string;
@@ -24,5 +15,3 @@ export type AppConfig = {
   autoStart: boolean;
   minimizeToTray: boolean;
 };
-
-export {};
