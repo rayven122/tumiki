@@ -212,7 +212,7 @@ export const SettingsForm = (): React.ReactElement => {
             <>
               <button
                 disabled
-                className="flex items-center space-x-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white opacity-50 cursor-not-allowed"
+                className="flex cursor-not-allowed items-center space-x-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white opacity-50"
               >
                 <LogIn size={16} />
                 <span>ログイン中...</span>
