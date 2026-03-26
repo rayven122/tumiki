@@ -26,6 +26,7 @@ export class OAuthManager {
   private keycloakClient: KeycloakClient;
   private currentSession: OAuthSession | null = null;
   private refreshTimerId: NodeJS.Timeout | null = null;
+  private isRefreshing = false;
 
   constructor(config: KeycloakConfig) {
     this.keycloakClient = new KeycloakClient(config);
@@ -110,10 +111,14 @@ export class OAuthManager {
         throw new Error("認証セッションの有効期限が切れています");
       }
 
+      // 検証通過後、即座にセッションをクリアして二重コールバックを防止
+      const { codeVerifier } = this.currentSession;
+      this.currentSession = null;
+
       // 認可コードをトークンと交換
       const tokenResponse = await this.keycloakClient.exchangeCodeForToken({
         code,
-        codeVerifier: this.currentSession.codeVerifier,
+        codeVerifier,
       });
 
       // トークンを暗号化して保存
@@ -122,9 +127,6 @@ export class OAuthManager {
       // 自動リフレッシュを開始
       this.startAutoRefresh(tokenResponse.expires_in);
 
-      // セッションをクリア
-      this.currentSession = null;
-
       logger.info("Auth callback handled successfully");
     } catch (error) {
       if (error instanceof Error) {
@@ -132,7 +134,6 @@ export class OAuthManager {
       } else {
         logger.error("Failed to handle auth callback", { error });
       }
-      this.currentSession = null;
       throw error;
     }
   }
@@ -289,7 +290,16 @@ export class OAuthManager {
         ? error
         : new Error("ログアウトに失敗しました");
     } finally {
-      // 例外発生時もタイマーとセッションを確実にクリア
+      // 例外発生時もローカルトークン・タイマー・セッションを確実にクリア
+      try {
+        const db = await getDb();
+        await db.authToken.deleteMany({});
+      } catch (cleanupError) {
+        logger.error(
+          "Failed to clear local tokens during logout",
+          cleanupError instanceof Error ? cleanupError : { cleanupError },
+        );
+      }
       if (this.refreshTimerId) {
         clearTimeout(this.refreshTimerId);
         this.refreshTimerId = null;
@@ -314,6 +324,12 @@ export class OAuthManager {
    * アプリ起動時に既存のトークンがあれば自動リフレッシュを開始
    */
   async initialize(): Promise<void> {
+    // リフレッシュ中の重複実行を防止（スリープ復帰の連続発火対策）
+    if (this.isRefreshing) {
+      logger.info("Token refresh already in progress, skipping initialize");
+      return;
+    }
+
     try {
       const db = await getDb();
       const token = await db.authToken.findFirst({
@@ -328,6 +344,7 @@ export class OAuthManager {
       // トークンが有効期限内かチェック
       if (new Date() > token.expiresAt) {
         logger.info("Existing token expired, attempting refresh");
+        this.isRefreshing = true;
         try {
           await this.refreshTokenInternal();
         } catch (error) {
@@ -341,6 +358,8 @@ export class OAuthManager {
           }
           // リフレッシュ失敗時はトークンを削除
           await db.authToken.deleteMany({});
+        } finally {
+          this.isRefreshing = false;
         }
         return;
       }

@@ -262,6 +262,9 @@ export const getDb = async (): Promise<PrismaClient> => {
  * SQLiteテーブルを自動作成（CREATE TABLE IF NOT EXISTS）
  * ElectronアプリではユーザーごとにuserDataパスが異なるため、
  * ビルド時のdb pushでは対応できない。起動時に自動でスキーマを適用する。
+ *
+ * 注意: このSQL定義はprisma/schema.prismaと手動で同期が必要。
+ * スキーマ変更時は両方を更新すること。
  */
 const ensureSchema = async (db: PrismaClient): Promise<void> => {
   await db.$executeRawUnsafe(`
