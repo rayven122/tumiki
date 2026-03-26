@@ -89,6 +89,15 @@ describe("OAuthManager", () => {
       );
     });
 
+    test("既存セッションがあれば破棄して新しいフローを開始する", async () => {
+      const manager = createOAuthManager();
+      await manager.startAuthFlow();
+      await manager.startAuthFlow();
+
+      // 2回目の呼び出しでもブラウザが開かれる
+      expect(shell.openExternal).toHaveBeenCalledTimes(2);
+    });
+
     test("shell.openExternalが失敗した場合はエラーをスローする", async () => {
       vi.mocked(shell.openExternal).mockRejectedValueOnce(
         new Error("Failed to open"),

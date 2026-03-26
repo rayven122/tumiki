@@ -122,6 +122,17 @@ export const SettingsForm = (): React.ReactElement => {
     }
   };
 
+  // ログインキャンセルハンドラー
+  const handleCancelLogin = (): void => {
+    if (loginTimeoutRef.current) {
+      clearTimeout(loginTimeoutRef.current);
+      loginTimeoutRef.current = null;
+    }
+    setIsLoading(false);
+    setAuthSuccess(null);
+    setAuthError(null);
+  };
+
   // ログアウトハンドラー
   const handleLogout = async (): Promise<void> => {
     setIsLoading(true);
@@ -197,14 +208,29 @@ export const SettingsForm = (): React.ReactElement => {
               <LogOut size={16} />
               <span>{isLoading ? "ログアウト中..." : "ログアウト"}</span>
             </button>
+          ) : isLoading ? (
+            <>
+              <button
+                disabled
+                className="flex items-center space-x-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white opacity-50 cursor-not-allowed"
+              >
+                <LogIn size={16} />
+                <span>ログイン中...</span>
+              </button>
+              <button
+                onClick={handleCancelLogin}
+                className="flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                キャンセル
+              </button>
+            </>
           ) : (
             <button
               onClick={handleLogin}
-              disabled={isLoading}
-              className="flex items-center space-x-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex items-center space-x-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
             >
               <LogIn size={16} />
-              <span>{isLoading ? "ログイン中..." : "ログイン"}</span>
+              <span>ログイン</span>
             </button>
           )}
         </div>

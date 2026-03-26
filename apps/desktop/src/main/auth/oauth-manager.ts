@@ -36,14 +36,11 @@ export class OAuthManager {
    * 外部ブラウザでKeycloakログインページを開く
    */
   async startAuthFlow(): Promise<void> {
-    // 既存セッションが有効期間内なら重複起動を拒否（具体的エラーを保持するためtry外）
+    // 既存セッションがあれば破棄して再開始（ブラウザタブを閉じた場合等に対応）
     if (this.currentSession) {
-      const sessionAge = Date.now() - this.currentSession.createdAt.getTime();
-      if (sessionAge < 5 * 60 * 1000) {
-        throw new Error("認証フローが既に進行中です");
-      }
+      logger.info("Existing auth session found, discarding and restarting");
+      this.currentSession = null;
     }
-    this.currentSession = null;
 
     try {
       // PKCE パラメータを生成
