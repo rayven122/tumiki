@@ -259,12 +259,58 @@ export const getDb = async (): Promise<PrismaClient> => {
 };
 
 /**
+ * SQLiteテーブルを自動作成（CREATE TABLE IF NOT EXISTS）
+ * ElectronアプリではユーザーごとにuserDataパスが異なるため、
+ * ビルド時のdb pushでは対応できない。起動時に自動でスキーマを適用する。
+ */
+const ensureSchema = async (db: PrismaClient): Promise<void> => {
+  await db.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "auth_tokens" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "accessToken" TEXT NOT NULL,
+      "refreshToken" TEXT NOT NULL,
+      "idToken" TEXT,
+      "expiresAt" DATETIME NOT NULL,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL
+    )
+  `);
+
+  await db.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "log_sync_queue" (
+      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      "serverId" TEXT NOT NULL,
+      "logEntry" TEXT NOT NULL,
+      "syncStatus" TEXT NOT NULL DEFAULT 'pending',
+      "retryCount" INTEGER NOT NULL DEFAULT 0,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "syncedAt" DATETIME
+    )
+  `);
+
+  // インデックス作成
+  await db.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS "log_sync_queue_syncStatus_serverId_idx"
+    ON "log_sync_queue" ("syncStatus", "serverId")
+  `);
+  await db.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS "log_sync_queue_serverId_idx"
+    ON "log_sync_queue" ("serverId")
+  `);
+
+  logger.debug("Database schema ensured");
+};
+
+/**
  * データベース初期化
- * アプリケーション起動時に接続を確立し、接続状態を確認
+ * アプリケーション起動時に接続を確立し、スキーマを適用して接続状態を確認
  */
 export const initializeDb = async (): Promise<void> => {
   try {
     const db = await connectionManager.getConnection();
+
+    // テーブルが存在しない場合は自動作成
+    await ensureSchema(db);
 
     // データベース接続を確認（簡単なクエリを実行）
     await db.$queryRaw`SELECT 1`;

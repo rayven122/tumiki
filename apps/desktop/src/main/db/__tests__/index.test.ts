@@ -22,6 +22,7 @@ vi.mock("../../../../prisma/generated/client", () => {
     $connect: ReturnType<typeof vi.fn>;
     $disconnect: ReturnType<typeof vi.fn>;
     $queryRaw: ReturnType<typeof vi.fn>;
+    $executeRawUnsafe: ReturnType<typeof vi.fn>;
   } | null = null;
 
   return {
@@ -31,6 +32,7 @@ vi.mock("../../../../prisma/generated/client", () => {
           $connect: vi.fn().mockResolvedValue(undefined),
           $disconnect: vi.fn().mockResolvedValue(undefined),
           $queryRaw: vi.fn().mockResolvedValue([{ 1: 1 }]),
+          $executeRawUnsafe: vi.fn().mockResolvedValue(0),
         };
       }
       return instance;
@@ -62,6 +64,7 @@ let mockPrismaClient: {
   $connect: ReturnType<typeof vi.fn>;
   $disconnect: ReturnType<typeof vi.fn>;
   $queryRaw: ReturnType<typeof vi.fn>;
+  $executeRawUnsafe: ReturnType<typeof vi.fn>;
 };
 
 /**
@@ -89,10 +92,12 @@ const setupBeforeEach = async () => {
   mockPrismaClient.$connect.mockClear();
   mockPrismaClient.$disconnect.mockClear();
   mockPrismaClient.$queryRaw.mockClear();
+  mockPrismaClient.$executeRawUnsafe.mockClear();
 
   mockPrismaClient.$connect.mockResolvedValue(undefined);
   mockPrismaClient.$disconnect.mockResolvedValue(undefined);
   mockPrismaClient.$queryRaw.mockResolvedValue([{ 1: 1 }]);
+  mockPrismaClient.$executeRawUnsafe.mockResolvedValue(0);
 };
 
 describe("getDb", () => {
@@ -210,7 +215,15 @@ describe("initializeDb", () => {
     await initializeDb();
 
     expect(mockPrismaClient.$connect).toHaveBeenCalled();
+    expect(mockPrismaClient.$executeRawUnsafe).toHaveBeenCalled();
     expect(mockPrismaClient.$queryRaw).toHaveBeenCalled();
+  });
+
+  test("初期化時にスキーマを適用する", async () => {
+    await initializeDb();
+
+    // CREATE TABLE IF NOT EXISTS が4回呼ばれる（2テーブル + 2インデックス）
+    expect(mockPrismaClient.$executeRawUnsafe).toHaveBeenCalledTimes(4);
   });
 
   test("初期化時に接続確認クエリを実行する", async () => {
@@ -221,6 +234,14 @@ describe("initializeDb", () => {
 
   test("接続失敗時はエラーをスロー", async () => {
     mockPrismaClient.$connect.mockRejectedValue(new Error("Connection failed"));
+
+    await expect(initializeDb()).rejects.toThrow();
+  });
+
+  test("スキーマ適用失敗時はエラーをスロー", async () => {
+    mockPrismaClient.$executeRawUnsafe.mockRejectedValue(
+      new Error("Schema migration failed"),
+    );
 
     await expect(initializeDb()).rejects.toThrow();
   });
