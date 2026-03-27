@@ -220,6 +220,7 @@ describe("OAuthManager", () => {
       expect(mockLogout).toHaveBeenCalledWith({
         refreshToken: "refresh-token",
       });
+      expect(mockDbAuthToken.deleteMany).toHaveBeenCalledTimes(1);
       expect(mockDbAuthToken.deleteMany).toHaveBeenCalledWith({});
     });
 
@@ -241,6 +242,7 @@ describe("OAuthManager", () => {
         refreshToken: "refresh-token",
         idToken: "id-token",
       });
+      expect(mockDbAuthToken.deleteMany).toHaveBeenCalledTimes(1);
       expect(mockDbAuthToken.deleteMany).toHaveBeenCalledWith({});
     });
 
@@ -252,6 +254,7 @@ describe("OAuthManager", () => {
       await manager.logout();
 
       expect(mockLogout).not.toHaveBeenCalled();
+      expect(mockDbAuthToken.deleteMany).toHaveBeenCalledTimes(1);
       expect(mockDbAuthToken.deleteMany).toHaveBeenCalledWith({});
     });
   });

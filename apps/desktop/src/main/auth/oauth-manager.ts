@@ -215,6 +215,12 @@ export class OAuthManager {
    * トークンをリフレッシュ（内部用）
    */
   private async refreshTokenInternal(): Promise<void> {
+    if (this.isRefreshing) {
+      logger.info("Token refresh already in progress, skipping");
+      return;
+    }
+
+    this.isRefreshing = true;
     try {
       const db = await getDb();
 
@@ -249,6 +255,8 @@ export class OAuthManager {
         logger.error("Failed to refresh token", { error });
       }
       throw error;
+    } finally {
+      this.isRefreshing = false;
     }
   }
 
@@ -275,9 +283,6 @@ export class OAuthManager {
         // Keycloakからログアウト
         await this.keycloakClient.logout({ refreshToken, idToken });
       }
-
-      // ローカルのトークンを削除
-      await db.authToken.deleteMany({});
 
       logger.info("Logout completed successfully");
     } catch (error) {
@@ -344,7 +349,6 @@ export class OAuthManager {
       // トークンが有効期限内かチェック
       if (new Date() > token.expiresAt) {
         logger.info("Existing token expired, attempting refresh");
-        this.isRefreshing = true;
         try {
           await this.refreshTokenInternal();
         } catch (error) {
@@ -358,8 +362,6 @@ export class OAuthManager {
           }
           // リフレッシュ失敗時はトークンを削除
           await db.authToken.deleteMany({});
-        } finally {
-          this.isRefreshing = false;
         }
         return;
       }
