@@ -52,11 +52,8 @@ export const setupAuthIpc = (): void => {
         return null;
       }
 
-      const decryptedIdToken = token.idToken
-        ? await decryptToken(token.idToken)
-        : null;
-
-      return { accessToken: decryptedAccessToken, idToken: decryptedIdToken };
+      // idTokenはmainプロセス内（ログアウト時）でのみ使用し、レンダラーには返さない
+      return { accessToken: decryptedAccessToken };
     } catch (error) {
       logger.error(
         "Failed to get auth token",
@@ -66,20 +63,10 @@ export const setupAuthIpc = (): void => {
     }
   });
 
-  // トークン削除（ログアウト時）
-  ipcMain.handle("auth:clearToken", async () => {
-    try {
-      const db = await getDb();
-      await db.authToken.deleteMany({});
-      logger.info("Auth token cleared");
-      return { success: true };
-    } catch (error) {
-      logger.error(
-        "Failed to clear auth token",
-        error instanceof Error ? error : { error },
-      );
-      throw new Error("認証トークンの削除に失敗しました");
-    }
+  // 認証フローキャンセル
+  ipcMain.handle("auth:cancelLogin", () => {
+    const oauthManager = getOAuthManager();
+    oauthManager?.cancelAuthFlow();
   });
 
   // ログイン（OAuth認証フロー開始）

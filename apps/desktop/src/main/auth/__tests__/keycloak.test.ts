@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
+import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 
 vi.mock("../../utils/logger");
 
@@ -17,6 +17,10 @@ const createConfig = (
 describe("KeycloakClient", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   describe("createKeycloakClient", () => {
@@ -95,8 +99,6 @@ describe("KeycloakClient", () => {
       expect(body.get("grant_type")).toBe("authorization_code");
       expect(body.get("code")).toBe("auth-code");
       expect(body.get("code_verifier")).toBe("verifier");
-
-      vi.unstubAllGlobals();
     });
 
     test("トークン取得に失敗した場合はエラーをスローする", async () => {
@@ -117,8 +119,6 @@ describe("KeycloakClient", () => {
           codeVerifier: "verifier",
         }),
       ).rejects.toThrow("トークン取得に失敗しました");
-
-      vi.unstubAllGlobals();
     });
   });
 
@@ -148,8 +148,6 @@ describe("KeycloakClient", () => {
       const body = fetchCall?.[1]?.body as URLSearchParams;
       expect(body.get("grant_type")).toBe("refresh_token");
       expect(body.get("refresh_token")).toBe("old-refresh-token");
-
-      vi.unstubAllGlobals();
     });
 
     test("リフレッシュに失敗した場合はエラーをスローする", async () => {
@@ -167,8 +165,6 @@ describe("KeycloakClient", () => {
       await expect(
         client.refreshToken("expired-refresh-token"),
       ).rejects.toThrow("トークンリフレッシュに失敗しました");
-
-      vi.unstubAllGlobals();
     });
   });
 
@@ -186,8 +182,6 @@ describe("KeycloakClient", () => {
       expect(fetchCall?.[0]).toBe(
         "https://keycloak.example.com/realms/test/protocol/openid-connect/logout",
       );
-
-      vi.unstubAllGlobals();
     });
 
     test("ログアウトリクエストが失敗してもエラーをスローしない", async () => {
@@ -204,8 +198,6 @@ describe("KeycloakClient", () => {
       await expect(
         client.logout({ refreshToken: "refresh-token" }),
       ).resolves.not.toThrow();
-
-      vi.unstubAllGlobals();
     });
 
     test("ネットワークエラーでもエラーをスローしない", async () => {
@@ -218,8 +210,34 @@ describe("KeycloakClient", () => {
       await expect(
         client.logout({ refreshToken: "refresh-token" }),
       ).resolves.not.toThrow();
+    });
 
-      vi.unstubAllGlobals();
+    test("TypeErrorはプログラミングエラーとして再スローする", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockRejectedValue(new TypeError("Invalid URL")),
+      );
+
+      const client = createKeycloakClient(createConfig());
+      await expect(
+        client.logout({ refreshToken: "refresh-token" }),
+      ).rejects.toThrow(TypeError);
+    });
+
+    test("リクエストボディにclient_idとrefresh_tokenが含まれる", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
+
+      const client = createKeycloakClient(createConfig());
+      await client.logout({
+        refreshToken: "refresh-token",
+        idToken: "id-token",
+      });
+
+      const fetchCall = vi.mocked(fetch).mock.calls[0];
+      const body = fetchCall?.[1]?.body as URLSearchParams;
+      expect(body.get("client_id")).toBe("test-client");
+      expect(body.get("refresh_token")).toBe("refresh-token");
+      expect(body.get("id_token_hint")).toBe("id-token");
     });
   });
 });

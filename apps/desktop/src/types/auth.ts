@@ -3,5 +3,4 @@
  */
 export type AuthTokenResult = {
   accessToken: string;
-  idToken: string | null;
 };

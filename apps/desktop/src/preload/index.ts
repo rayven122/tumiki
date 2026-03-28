@@ -16,9 +16,8 @@ const api = {
       ipcRenderer.invoke("auth:getToken"),
     isAuthenticated: (): Promise<boolean> =>
       ipcRenderer.invoke("auth:isAuthenticated"),
-    clearToken: (): Promise<{ success: boolean }> =>
-      ipcRenderer.invoke("auth:clearToken"),
     login: (): Promise<void> => ipcRenderer.invoke("auth:login"),
+    cancelLogin: (): Promise<void> => ipcRenderer.invoke("auth:cancelLogin"),
     logout: (): Promise<void> => ipcRenderer.invoke("auth:logout"),
     onCallbackSuccess: (callback: () => void): (() => void) => {
       const listener = (): void => callback();

@@ -129,6 +129,8 @@ export const SettingsForm = (): React.ReactElement => {
       clearTimeout(loginTimeoutRef.current);
       loginTimeoutRef.current = null;
     }
+    // mainプロセスの認証セッションもクリア
+    window.electronAPI.auth.cancelLogin();
     setIsLoading(false);
     setAuthSuccess(null);
     setAuthError(null);

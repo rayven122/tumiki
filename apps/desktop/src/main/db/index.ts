@@ -280,13 +280,16 @@ const ensureSchema = async (db: PrismaClient): Promise<void> => {
   `);
 
   // 既存DBへのidTokenカラム追加（アップグレード対応）
-  // ALTER TABLEは既にカラムが存在する場合エラーになるため、try-catchで無視
   try {
     await db.$executeRawUnsafe(
       `ALTER TABLE "auth_tokens" ADD COLUMN "idToken" TEXT`,
     );
-  } catch {
-    // カラムが既に存在する場合は無視
+  } catch (error) {
+    // SQLiteの「duplicate column name」エラーのみ無視し、その他は再スロー
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.includes("duplicate column")) {
+      throw error;
+    }
   }
 
   await db.$executeRawUnsafe(`

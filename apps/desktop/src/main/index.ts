@@ -122,22 +122,31 @@ app
     // OAuthManager初期化（環境変数が設定されている場合のみ）
     const keycloakEnv = getKeycloakEnvOptional();
     if (keycloakEnv) {
-      const manager = createOAuthManager({
-        issuer: keycloakEnv.KEYCLOAK_ISSUER,
-        clientId: keycloakEnv.KEYCLOAK_DESKTOP_CLIENT_ID,
-        redirectUri: `${PROTOCOL}://${CALLBACK_HOST}${CALLBACK_PATHNAME}`,
-      });
+      const manager = createOAuthManager(
+        {
+          issuer: keycloakEnv.KEYCLOAK_ISSUER,
+          clientId: keycloakEnv.KEYCLOAK_DESKTOP_CLIENT_ID,
+          redirectUri: `${PROTOCOL}://${CALLBACK_HOST}${CALLBACK_PATHNAME}`,
+        },
+        {
+          onAuthExpired: () => {
+            mainWindow?.webContents.send(
+              "auth:callbackError",
+              "認証セッションの有効期限が切れました。再度ログインしてください。",
+            );
+          },
+        },
+      );
       setOAuthManager(manager);
       try {
         await manager.initialize();
         logger.info("OAuthManager initialized");
       } catch (error) {
-        logger.warn(
-          "OAuthManager initialization failed, continuing without auth",
-          {
-            error: error instanceof Error ? error.message : error,
-          },
-        );
+        logger.error("OAuthManager initialization failed", {
+          error: error instanceof Error ? error.message : error,
+        });
+        // 初期化失敗時はマネージャーを無効化して一貫性を保つ
+        setOAuthManager(null);
       }
     } else {
       logger.warn("Keycloak environment variables not set, OAuth disabled");

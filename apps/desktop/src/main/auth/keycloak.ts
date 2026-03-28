@@ -19,11 +19,11 @@ export type KeycloakConfig = z.infer<typeof keycloakConfigSchema>;
  * トークンレスポンスのスキーマ
  */
 const tokenResponseSchema = z.object({
-  access_token: z.string(),
-  refresh_token: z.string(),
+  access_token: z.string().min(1),
+  refresh_token: z.string().min(1),
   id_token: z.string().optional(),
   expires_in: z.number().int().positive(),
-  token_type: z.string(),
+  token_type: z.string().min(1),
 });
 
 /**
@@ -110,10 +110,8 @@ export const createKeycloakClient = (
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
         logger.error("Token exchange failed", {
           status: response.status,
-          error: errorText,
         });
         throw new Error(`トークン取得に失敗しました（${response.status}）`);
       }
@@ -151,10 +149,8 @@ export const createKeycloakClient = (
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
         logger.error("Token refresh failed", {
           status: response.status,
-          error: errorText,
         });
         throw new Error(
           `トークンリフレッシュに失敗しました（${response.status}）`,
@@ -201,22 +197,22 @@ export const createKeycloakClient = (
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
         logger.warn("Logout request failed", {
           status: response.status,
-          error: errorText,
         });
         // ログアウト失敗はエラーをスローせず、警告ログのみ
       }
 
       logger.info("Successfully logged out from Keycloak");
     } catch (error) {
-      if (error instanceof Error) {
-        logger.error("Failed to logout from Keycloak", error);
-      } else {
-        logger.error("Failed to logout from Keycloak", { error });
+      // プログラミングエラー（URL構築失敗等）は再スローして検知可能にする
+      if (error instanceof TypeError) {
+        throw error;
       }
-      // ログアウトエラーは握りつぶす（ローカルのトークン削除は別途実行される）
+      // ネットワークエラー・タイムアウト等は警告ログのみ（ローカルのトークン削除は別途実行される）
+      logger.warn("Keycloak logout request failed", {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   };
 

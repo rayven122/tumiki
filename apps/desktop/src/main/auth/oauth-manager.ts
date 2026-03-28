@@ -32,16 +32,34 @@ const SESSION_TIMEOUT_MS = 5 * 60 * 1000;
 export type OAuthManager = {
   startAuthFlow: () => Promise<void>;
   handleAuthCallback: (url: string) => Promise<void>;
+  cancelAuthFlow: () => void;
   logout: () => Promise<void>;
   stopAutoRefresh: () => void;
   initialize: () => Promise<void>;
 };
 
 /**
+ * OAuthManager作成時のオプション
+ */
+export type OAuthManagerOptions = {
+  /** 認証セッション失効時のコールバック（リフレッシュ失敗等） */
+  onAuthExpired?: () => void;
+};
+
+/** 自動リフレッシュのリトライ設定 */
+const AUTO_REFRESH_RETRY = {
+  MAX_ATTEMPTS: 3,
+  INITIAL_DELAY_MS: 10_000,
+} as const;
+
+/**
  * OAuth認証マネージャーを作成
  * Keycloak認証フローを管理
  */
-export const createOAuthManager = (config: KeycloakConfig): OAuthManager => {
+export const createOAuthManager = (
+  config: KeycloakConfig,
+  options: OAuthManagerOptions = {},
+): OAuthManager => {
   const keycloakClient: KeycloakClient = createKeycloakClient(config);
   let currentSession: OAuthSession | null = null;
   let refreshTimerId: NodeJS.Timeout | null = null;
@@ -91,7 +109,7 @@ export const createOAuthManager = (config: KeycloakConfig): OAuthManager => {
 
   /**
    * トークンの自動リフレッシュを開始
-   * 有効期限の5分前にリフレッシュを実行
+   * 有効期限の5分前にリフレッシュを実行（失敗時はリトライ）
    */
   const startAutoRefresh = (expiresIn: number): void => {
     // 既存のタイマーをクリア
@@ -103,15 +121,41 @@ export const createOAuthManager = (config: KeycloakConfig): OAuthManager => {
     const refreshDelay = Math.max((expiresIn - 5 * 60) * 1000, 60 * 1000);
 
     refreshTimerId = setTimeout(async () => {
-      try {
-        await refreshTokenInternal();
-      } catch (error) {
-        if (error instanceof Error) {
-          logger.error("Auto refresh failed", error);
-        } else {
-          logger.error("Auto refresh failed", { error });
+      const { MAX_ATTEMPTS, INITIAL_DELAY_MS } = AUTO_REFRESH_RETRY;
+
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        try {
+          await refreshTokenInternal();
+          return; // 成功
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          logger.error(
+            `Auto refresh attempt ${attempt}/${MAX_ATTEMPTS} failed`,
+            { error: message },
+          );
+
+          if (attempt < MAX_ATTEMPTS) {
+            const delay = INITIAL_DELAY_MS * Math.pow(2, attempt - 1);
+            await new Promise((resolve) => setTimeout(resolve, delay));
+          }
         }
       }
+
+      // 全リトライ失敗 — セッション失効を通知
+      logger.error("Auto refresh exhausted all retries, session expired");
+      try {
+        const db = await getDb();
+        await db.authToken.deleteMany({});
+      } catch (cleanupError) {
+        logger.error("Failed to clear expired tokens", {
+          error:
+            cleanupError instanceof Error
+              ? cleanupError.message
+              : String(cleanupError),
+        });
+      }
+      options.onAuthExpired?.();
     }, refreshDelay);
 
     logger.info(`Auto refresh scheduled in ${refreshDelay / 1000} seconds`);
@@ -394,9 +438,21 @@ export const createOAuthManager = (config: KeycloakConfig): OAuthManager => {
     }
   };
 
+  /**
+   * 認証フローをキャンセル
+   * UIからキャンセルされた場合にセッションをクリア
+   */
+  const cancelAuthFlow = (): void => {
+    if (currentSession) {
+      currentSession = null;
+      logger.info("Auth flow cancelled");
+    }
+  };
+
   return {
     startAuthFlow,
     handleAuthCallback,
+    cancelAuthFlow,
     logout,
     stopAutoRefresh,
     initialize,

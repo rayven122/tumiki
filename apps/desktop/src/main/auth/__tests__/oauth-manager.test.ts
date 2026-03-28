@@ -169,6 +169,17 @@ describe("OAuthManager", () => {
       ).rejects.toThrow("認可コードが見つかりません");
     });
 
+    test("stateパラメータが見つからない場合はエラーをスローする", async () => {
+      const manager = createTestOAuthManager();
+      await manager.startAuthFlow();
+
+      await expect(
+        manager.handleAuthCallback(
+          "tumiki-desktop://auth/callback?code=auth-code",
+        ),
+      ).rejects.toThrow("stateパラメータが見つかりません");
+    });
+
     test("stateが一致しない場合はエラーをスローする", async () => {
       const manager = createTestOAuthManager();
       await manager.startAuthFlow();
@@ -339,6 +350,28 @@ describe("OAuthManager", () => {
       await manager.initialize();
 
       expect(mockDbAuthToken.deleteMany).toHaveBeenCalledWith({});
+    });
+  });
+
+  describe("cancelAuthFlow", () => {
+    test("セッションをクリアして認証コールバックを無効化する", async () => {
+      const manager = createTestOAuthManager();
+      await manager.startAuthFlow();
+
+      // セッションをキャンセル
+      manager.cancelAuthFlow();
+
+      // キャンセル後のコールバックはセッション不在エラーになる
+      await expect(
+        manager.handleAuthCallback(
+          "tumiki-desktop://auth/callback?code=auth-code&state=some-state",
+        ),
+      ).rejects.toThrow("認証セッションが存在しません");
+    });
+
+    test("セッションが存在しない場合でもエラーにならない", () => {
+      const manager = createTestOAuthManager();
+      expect(() => manager.cancelAuthFlow()).not.toThrow();
     });
   });
 

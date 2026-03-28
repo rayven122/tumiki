@@ -95,32 +95,9 @@ describe("setupAuthIpc", () => {
 
       expect(result).toStrictEqual({
         accessToken: "test-access-token",
-        idToken: null,
       });
       expect(mockDbAuthToken.findFirst).toHaveBeenCalledWith({
         orderBy: { createdAt: "desc" },
-      });
-    });
-
-    test("idTokenが存在する場合はidTokenも含めて返す", async () => {
-      const mockToken = {
-        id: "token-id",
-        accessToken: "encrypted:test-access-token",
-        refreshToken: "encrypted:test-refresh-token",
-        idToken: "encrypted:test-id-token",
-        expiresAt: new Date(Date.now() + 3600000),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      mockDbAuthToken.findFirst.mockResolvedValue(mockToken);
-
-      const handler = mockIpcHandlers.get("auth:getToken");
-      const result = await handler!({} as IpcMainInvokeEvent);
-
-      expect(result).toStrictEqual({
-        accessToken: "test-access-token",
-        idToken: "test-id-token",
       });
     });
 
@@ -184,34 +161,25 @@ describe("setupAuthIpc", () => {
     });
   });
 
-  describe("auth:clearToken", () => {
-    test("すべてのトークンを削除できる", async () => {
-      mockDbAuthToken.deleteMany.mockResolvedValue({ count: 3 });
+  describe("auth:cancelLogin", () => {
+    test("OAuthManagerが設定されている場合は認証フローをキャンセルする", async () => {
+      const mockCancelAuthFlow = vi.fn();
+      mockGetOAuthManager.mockReturnValue({
+        cancelAuthFlow: mockCancelAuthFlow,
+      });
 
-      const handler = mockIpcHandlers.get("auth:clearToken");
-      const result = await handler!({} as IpcMainInvokeEvent);
+      const handler = mockIpcHandlers.get("auth:cancelLogin");
+      expect(handler).toBeDefined();
 
-      expect(result).toStrictEqual({ success: true });
-      expect(mockDbAuthToken.deleteMany).toHaveBeenCalledWith({});
+      await handler!({} as IpcMainInvokeEvent);
+      expect(mockCancelAuthFlow).toHaveBeenCalled();
     });
 
-    test("トークンが存在しない場合でも成功する", async () => {
-      mockDbAuthToken.deleteMany.mockResolvedValue({ count: 0 });
+    test("OAuthManagerが未設定でもエラーにならない", () => {
+      mockGetOAuthManager.mockReturnValue(null);
 
-      const handler = mockIpcHandlers.get("auth:clearToken");
-      const result = await handler!({} as IpcMainInvokeEvent);
-
-      expect(result).toStrictEqual({ success: true });
-    });
-
-    test("データベースエラーの場合はエラーをスロー", async () => {
-      mockDbAuthToken.deleteMany.mockRejectedValue(new Error("Database error"));
-
-      const handler = mockIpcHandlers.get("auth:clearToken");
-
-      await expect(handler!({} as IpcMainInvokeEvent)).rejects.toThrow(
-        "認証トークンの削除に失敗しました",
-      );
+      const handler = mockIpcHandlers.get("auth:cancelLogin");
+      expect(() => handler!({} as IpcMainInvokeEvent)).not.toThrow();
     });
   });
 
