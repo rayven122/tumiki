@@ -1,0 +1,112 @@
+appId: com.tumiki.desktop
+productName: Tumiki
+copyright: Copyright © 2025-2026 Tumiki
+
+directories:
+  output: out
+  buildResources: resources
+
+files:
+  - dist-electron/**/*
+  - prisma/generated/**/*
+  - package.json
+  - "!**/*.{ts,tsx,map}"
+  - "!**/tsconfig*.json"
+  - "!**/*.test.*"
+  - "!**/__tests__/**"
+  - "!.turbo/**"
+  - "!.cache/**"
+
+# 依存関係を自動的にバンドル
+# Prismaクライアントとネイティブモジュール、レンダラーファイルをasarから除外
+asarUnpack:
+  - "**/*.node"
+  - "**/prisma/generated/**/*"
+  - "dist-electron/renderer/**/*"
+
+# node_modulesの処理方法を指定
+# モノレポ構成のため、ネイティブモジュールのリビルドをスキップ
+npmRebuild: false
+nodeGypRebuild: false
+
+# OAuth認証コールバック用URLスキーム（Info.plistに登録）
+protocols:
+  - name: "Tumiki Desktop"
+    schemes:
+      - tumiki-desktop
+    role: Viewer
+
+# macOS設定
+mac:
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+    - target: zip
+      arch: [x64, arm64]
+  # TODO(#934): コード署名・公証の実装時に true に変更する（Apple Developer Program登録後）
+  # 現時点では署名なし（WIP）のため意図的に false を設定
+  # セキュリティリスク: falseの場合、DYLD_INSERT_LIBRARIESによるコードインジェクションや
+  # デバッガアタッチが可能。メモリ内のOAuthトークンが攻撃対象となりうるため、
+  # Apple Developer Program登録後は速やかに true に変更すること
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  # 将来的にコード署名を有効化する場合の設定:
+  # コード署名には Apple Developer Program への登録が必要です
+  # identity: "Developer ID Application: Your Name (TEAM_ID)"
+  # signIgnore:
+  #   - "node_modules"
+
+dmg:
+  title: "${productName} ${version}"
+  icon: null
+  background: null
+  writeUpdateInfo: false
+  window:
+    width: 540
+    height: 380
+  contents:
+    - x: 410
+      y: 190
+      type: link
+      path: /Applications
+    - x: 130
+      y: 190
+      type: file
+
+# Windows設定（将来対応）
+# win:
+#   target:
+#     - target: nsis
+#       arch: [x64]
+#   icon: resources/icon.ico
+
+# Linux設定（将来対応）
+# linux:
+#   target:
+#     - target: AppImage
+#       arch: [x64]
+#   category: Development
+#   icon: resources/icon.png
+
+# 公証設定（将来対応）
+# macOS 公証（Notarization）を有効にする場合:
+# 1. Apple Developer Program への登録が必要
+# 2. App-specific パスワードの生成が必要
+# 3. 以下の環境変数を設定:
+#    - APPLE_ID: Apple ID メールアドレス
+#    - APPLE_APP_SPECIFIC_PASSWORD: App-specific パスワード
+#    - APPLE_TEAM_ID: Team ID
+#
+# afterSign: scripts/notarize.js
+#
+# notarize:
+#   teamId: ${APPLE_TEAM_ID}
+
+# electron-updater の自動アップデート機能で使用（--publish never 時は無視される）
+# 注意: owner/repo がハードコードされているため、フォーク先で自動アップデートを
+# 有効化する場合は値の変更が必要
+publish:
+  provider: github
+  owner: rayven122
+  repo: tumiki

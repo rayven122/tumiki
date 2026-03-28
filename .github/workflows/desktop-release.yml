@@ -1,0 +1,275 @@
+name: Desktop Release
+
+on:
+  push:
+    tags:
+      - "desktop-v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "リリースタグ (例: desktop-v0.1.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # macOS用ビルド
+  build-macos:
+    name: 🍎 macOS ビルド
+    runs-on: macos-15
+    timeout-minutes: 30
+    # OAuth統合実装後に有効化する環境変数（ビルド時にバイナリへ埋め込み）:
+    # env:
+    #   KEYCLOAK_ISSUER: ${{ secrets.KEYCLOAK_ISSUER }}
+    #   KEYCLOAK_DESKTOP_CLIENT_ID: ${{ secrets.KEYCLOAK_DESKTOP_CLIENT_ID }}
+    steps:
+      - name: ✅ Validate tag format
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [[ "$REF_NAME" != "main" ]]; then
+            echo "::error::workflow_dispatch は main ブランチからのみ実行可能です (現在: $REF_NAME)"
+            exit 1
+          fi
+          if [[ ! "$INPUT_TAG" =~ ^desktop-v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+            echo "::error::Invalid tag format: $INPUT_TAG (expected: desktop-vX.Y.Z or desktop-vX.Y.Z-suffix)"
+            exit 1
+          fi
+
+      - name: ✅ Verify tag exists
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          if ! git ls-remote --tags "https://github.com/${GITHUB_REPOSITORY}.git" "$INPUT_TAG" | grep -q .; then
+            echo "::error::Tag $INPUT_TAG does not exist in the repository"
+            exit 1
+          fi
+
+      - name: 📥 Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+
+      - name: ⚙️ Setup pnpm
+        uses: pnpm/action-setup@02f6c237bd2518259fed6c71566509edfb3f2b74 # v4
+        with:
+          version: 10.11.0
+
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: 📦 Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: 🔧 Build database package
+        run: pnpm --filter @tumiki/db build
+
+      - name: 🔧 Generate Prisma client for desktop
+        run: |
+          cd apps/desktop
+          pnpm db:generate
+
+      - name: 📄 Create .env file
+        run: cp .env.example .env
+
+      - name: 🔨 Build Electron app
+        run: |
+          cd apps/desktop
+          pnpm build
+
+      - name: 📦 Package for macOS (x64 + arm64)
+        run: |
+          cd apps/desktop
+          pnpm build:release
+        # TODO: コード署名・公証の実装時に以下のenvを有効化する
+        # env:
+        #   CSC_LINK: ${{ secrets.MACOS_CERTIFICATE }}
+        #   CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        #   APPLE_ID: ${{ secrets.APPLE_ID }}
+        #   APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        #   APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: 📤 Upload artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: macos-builds
+          path: |
+            apps/desktop/out/*.dmg
+            apps/desktop/out/*.zip
+          retention-days: 7
+
+  # GitHub Releaseの作成
+  create-release:
+    name: 📢 GitHub Release 作成
+    needs: [build-macos]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+
+      - name: 📥 Download macOS artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: macos-builds
+          path: artifacts/
+
+      - name: 📋 Extract version from tag
+        id: version
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            TAG="$INPUT_TAG"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
+          VERSION="${TAG#desktop-v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: 📝 Generate release notes
+        id: release_notes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          cat > release_notes.md <<'EOF'
+          ## Tumiki Desktop REPLACE_VERSION
+
+          ### ダウンロード
+
+          **macOS:**
+          - Intel Mac DMG: `Tumiki-REPLACE_VERSION-x64.dmg`
+          - Apple Silicon DMG (M1/M2/M3): `Tumiki-REPLACE_VERSION-arm64.dmg`
+          - Intel Mac ZIP: `Tumiki-REPLACE_VERSION-x64-mac.zip`
+          - Apple Silicon ZIP: `Tumiki-REPLACE_VERSION-arm64-mac.zip`
+
+          ### インストール方法
+
+          1. お使いのMacに対応したDMGファイルをダウンロード
+          2. DMGファイルを開き、TumikiをApplicationsフォルダにドラッグ
+          3. 初回起動時にセキュリティ警告が表示された場合:
+             - システム設定 > プライバシーとセキュリティ > 「このまま開く」をクリック
+
+          ### システム要件
+
+          - macOS 11.0 (Big Sur) 以降
+          - Intel または Apple Silicon プロセッサ
+
+          ### 注意事項
+
+          - このバージョンは署名・公証されていません
+          - `hardenedRuntime` が無効のため、**内部利用・検証用途に限定**してください
+          - OAuth認証トークンのセキュリティを確保するには公証対応版をお待ちください
+          - 将来のバージョンでApple公証に対応予定です
+
+          ---
+
+          🤖 このリリースは自動生成されました
+          EOF
+          sed -i'' 's/REPLACE_VERSION/'"${VERSION}"'/g' release_notes.md
+          sed -i'' 's/^          //' release_notes.md
+
+          DELIMITER=$(openssl rand -hex 8)
+          {
+            echo "notes<<${DELIMITER}"
+            cat release_notes.md
+            echo "${DELIMITER}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: 🚀 Create GitHub Release
+        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Tumiki Desktop v${{ steps.version.outputs.version }}
+          body: ${{ steps.release_notes.outputs.notes }}
+          draft: true
+          prerelease: ${{ contains(steps.version.outputs.tag, '-rc') || contains(steps.version.outputs.tag, '-beta') || contains(steps.version.outputs.tag, '-alpha') }}
+          files: |
+            artifacts/**/*.dmg
+            artifacts/**/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Slack通知
+  notify:
+    name: 📢 Slack通知
+    needs: [build-macos, create-release]
+    # キャンセル時も含め、常に通知を送信する（ビルド失敗・キャンセルの把握のため）
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 📨 Send Slack notification
+        if: ${{ vars.SLACK_ENABLED == 'true' }}
+        continue-on-error: true
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          BUILD_RESULT: ${{ needs.build-macos.result }}
+          RELEASE_RESULT: ${{ needs.create-release.result }}
+          RELEASE_VERSION: ${{ needs.create-release.outputs.version }}
+          RELEASE_TAG: ${{ needs.create-release.outputs.tag }}
+          ACTOR: ${{ github.actor }}
+          COMMIT_SHA: ${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          OVERALL_RESULT=$([ "$BUILD_RESULT" = "success" ] && [ "$RELEASE_RESULT" = "success" ] && echo "success" || echo "failure")
+          STATUS_EMOJI=$([ "$OVERALL_RESULT" = "success" ] && echo "✅" || echo "❌")
+          PAYLOAD=$(jq -n \
+            --arg emoji "$STATUS_EMOJI" \
+            --arg version "$RELEASE_VERSION" \
+            --arg tag "$RELEASE_TAG" \
+            --arg result "$OVERALL_RESULT" \
+            --arg actor "$ACTOR" \
+            --arg sha "$COMMIT_SHA" \
+            --arg repo "$REPOSITORY" \
+            '{
+              text: "\($emoji) Tumiki Desktop Release",
+              blocks: [
+                {
+                  type: "header",
+                  text: {
+                    type: "plain_text",
+                    text: "\($emoji) Tumiki Desktop v\($version) リリース"
+                  }
+                },
+                {
+                  type: "section",
+                  fields: [
+                    { type: "mrkdwn", text: "*タグ:*\n\($tag)" },
+                    { type: "mrkdwn", text: "*ステータス:*\n\($result)" },
+                    { type: "mrkdwn", text: "*実行者:*\n\($actor)" },
+                    { type: "mrkdwn", text: "*Commit:*\n\($sha)" }
+                  ]
+                },
+                {
+                  type: "section",
+                  text: {
+                    type: "mrkdwn",
+                    text: "<https://github.com/\($repo)/releases/tag/\($tag)|リリースページを見る>"
+                  }
+                }
+              ]
+            }')
+          curl -s --fail-with-body -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$SLACK_WEBHOOK_URL"

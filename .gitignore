@@ -12,6 +12,9 @@ node_modules
 prisma/db.sqlite
 prisma/db.sqlite-journal
 db.sqlite
+**/prisma/*.db
+**/prisma/*.db-journal
+*.db-journal
 
 # next.js
 .next/
@@ -66,6 +69,7 @@ apps/manager/mcp
 
 # Electron
 dist-electron/
+apps/desktop/out/
 *.app
 *.dmg
 *.exe
