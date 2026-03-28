@@ -35,7 +35,7 @@ const useTimeouts = () => {
 
 export const SettingsForm = (): React.ReactElement => {
   const [config, setConfig] = useAtom(appConfigAtom);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authSuccess, setAuthSuccess] = useState<string | null>(null);
@@ -146,7 +146,7 @@ export const SettingsForm = (): React.ReactElement => {
   const handleCancelLogin = (): void => {
     timeouts.clear("login");
     // mainプロセスの認証セッションもクリア
-    window.electronAPI.auth.cancelLogin();
+    void window.electronAPI.auth.cancelLogin();
     setIsLoading(false);
     setAuthSuccess(null);
     setAuthError(null);
@@ -182,7 +182,9 @@ export const SettingsForm = (): React.ReactElement => {
 
         {/* 認証状態表示 */}
         <div className="mb-4 flex items-center space-x-2">
-          {isAuthenticated ? (
+          {isAuthenticated === null ? (
+            <span className="text-sm text-gray-500">認証状態を確認中...</span>
+          ) : isAuthenticated ? (
             <>
               <CheckCircle className="text-green-600" size={20} />
               <span className="text-sm font-medium text-green-600">
@@ -241,7 +243,8 @@ export const SettingsForm = (): React.ReactElement => {
           ) : (
             <button
               onClick={handleLogin}
-              className="flex items-center space-x-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              disabled={isAuthenticated === null}
+              className="flex items-center space-x-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <LogIn size={16} />
               <span>ログイン</span>

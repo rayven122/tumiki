@@ -47,6 +47,14 @@ const handleDeepLink = async (url: string): Promise<void> => {
     return;
   }
 
+  // ウィンドウが閉じられていた場合は再作成（コールバックがサイレントに失われるのを防止）
+  if (!mainWindow) {
+    logger.info(
+      "mainWindow is null during deep link callback, creating window",
+    );
+    createWindow();
+  }
+
   const manager = getOAuthManager();
   if (!manager) {
     logger.error("OAuthManager not initialized when handling deep link");
