@@ -38,8 +38,7 @@ const api = {
         message: string,
       ): void => callback(message);
       ipcRenderer.on("auth:sessionExpired", listener);
-      return () =>
-        ipcRenderer.removeListener("auth:sessionExpired", listener);
+      return () => ipcRenderer.removeListener("auth:sessionExpired", listener);
     },
   },
 };

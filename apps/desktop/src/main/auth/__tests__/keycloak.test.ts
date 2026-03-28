@@ -118,7 +118,9 @@ describe("KeycloakClient", () => {
           code: "auth-code",
           codeVerifier: "verifier",
         }),
-      ).rejects.toThrow("トークン取得に失敗しました（レスポンス解析エラー: 200）");
+      ).rejects.toThrow(
+        "トークン取得に失敗しました（レスポンス解析エラー: 200）",
+      );
     });
 
     test("トークン取得に失敗した場合はエラーをスローする", async () => {
