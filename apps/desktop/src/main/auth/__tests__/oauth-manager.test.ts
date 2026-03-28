@@ -153,6 +153,38 @@ describe("OAuthManager", () => {
       expect(mockDbAuthToken.create).toHaveBeenCalled();
     });
 
+    test("OAuthエラーレスポンスの場合はエラーをスローする", async () => {
+      const manager = createTestOAuthManager();
+      await manager.startAuthFlow();
+
+      const authUrlCallArgs = mockGenerateAuthUrl.mock.calls[0]?.[0] as
+        | { state: string }
+        | undefined;
+      const state = authUrlCallArgs?.state ?? "";
+
+      await expect(
+        manager.handleAuthCallback(
+          `tumiki-desktop://auth/callback?error=access_denied&error_description=User+cancelled&state=${state}`,
+        ),
+      ).rejects.toThrow("認証エラー: User cancelled");
+    });
+
+    test("OAuthエラーレスポンスでdescriptionがない場合はerrorコードをメッセージに使用する", async () => {
+      const manager = createTestOAuthManager();
+      await manager.startAuthFlow();
+
+      const authUrlCallArgs = mockGenerateAuthUrl.mock.calls[0]?.[0] as
+        | { state: string }
+        | undefined;
+      const state = authUrlCallArgs?.state ?? "";
+
+      await expect(
+        manager.handleAuthCallback(
+          `tumiki-desktop://auth/callback?error=server_error&state=${state}`,
+        ),
+      ).rejects.toThrow("認証エラー: server_error");
+    });
+
     test("認可コードがない場合はエラーをスローする", async () => {
       const manager = createTestOAuthManager();
       await manager.startAuthFlow();

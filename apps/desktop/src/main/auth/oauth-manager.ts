@@ -279,6 +279,14 @@ export const createOAuthManager = (
       const code = parsedUrl.searchParams.get("code");
       const state = parsedUrl.searchParams.get("state");
 
+      // OAuthエラーレスポンスの検証（RFC 6749）
+      const oauthError = parsedUrl.searchParams.get("error");
+      if (oauthError) {
+        const description =
+          parsedUrl.searchParams.get("error_description") ?? oauthError;
+        throw new Error(`認証エラー: ${description}`);
+      }
+
       // パラメータの検証
       if (!code) {
         throw new Error("認可コードが見つかりません");

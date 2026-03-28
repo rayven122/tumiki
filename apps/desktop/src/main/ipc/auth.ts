@@ -44,7 +44,7 @@ export const setupAuthIpc = (): void => {
       const decryptedAccessToken = await decryptToken(token.accessToken);
 
       // 復号化されたトークンの有効性検証（破損トークンはDBから削除）
-      if (!decryptedAccessToken || decryptedAccessToken.length === 0) {
+      if (!decryptedAccessToken) {
         logger.warn(
           "Decrypted token is invalid or empty, deleting corrupted token",
         );

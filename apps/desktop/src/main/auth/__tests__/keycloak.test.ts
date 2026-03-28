@@ -101,6 +101,26 @@ describe("KeycloakClient", () => {
       expect(body.get("code_verifier")).toBe("verifier");
     });
 
+    test("レスポンスがJSONでない場合はレスポンス解析エラーをスローする", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: () => Promise.reject(new SyntaxError("Unexpected token <")),
+        }),
+      );
+
+      const client = createKeycloakClient(createConfig());
+
+      await expect(
+        client.exchangeCodeForToken({
+          code: "auth-code",
+          codeVerifier: "verifier",
+        }),
+      ).rejects.toThrow("トークン取得に失敗しました（レスポンス解析エラー: 200）");
+    });
+
     test("トークン取得に失敗した場合はエラーをスローする", async () => {
       vi.stubGlobal(
         "fetch",
@@ -148,6 +168,23 @@ describe("KeycloakClient", () => {
       const body = fetchCall?.[1]?.body as URLSearchParams;
       expect(body.get("grant_type")).toBe("refresh_token");
       expect(body.get("refresh_token")).toBe("old-refresh-token");
+    });
+
+    test("リフレッシュレスポンスがJSONでない場合はレスポンス解析エラーをスローする", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: () => Promise.reject(new SyntaxError("Unexpected token <")),
+        }),
+      );
+
+      const client = createKeycloakClient(createConfig());
+
+      await expect(client.refreshToken("refresh-token")).rejects.toThrow(
+        "トークンリフレッシュに失敗しました（レスポンス解析エラー: 200）",
+      );
     });
 
     test("リフレッシュに失敗した場合はエラーをスローする", async () => {

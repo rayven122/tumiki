@@ -116,7 +116,14 @@ export const createKeycloakClient = (
         throw new Error(`トークン取得に失敗しました（${response.status}）`);
       }
 
-      const data = await response.json();
+      let data: unknown;
+      try {
+        data = await response.json();
+      } catch {
+        throw new Error(
+          `トークン取得に失敗しました（レスポンス解析エラー: ${response.status}）`,
+        );
+      }
       return tokenResponseSchema.parse(data);
     } catch (error) {
       if (error instanceof Error) {
@@ -157,7 +164,14 @@ export const createKeycloakClient = (
         );
       }
 
-      const data = await response.json();
+      let data: unknown;
+      try {
+        data = await response.json();
+      } catch {
+        throw new Error(
+          `トークンリフレッシュに失敗しました（レスポンス解析エラー: ${response.status}）`,
+        );
+      }
       return tokenResponseSchema.parse(data);
     } catch (error) {
       if (error instanceof Error) {
