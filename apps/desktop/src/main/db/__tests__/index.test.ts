@@ -22,7 +22,7 @@ vi.mock("../../../../prisma/generated/client", () => {
     $connect: ReturnType<typeof vi.fn>;
     $disconnect: ReturnType<typeof vi.fn>;
     $queryRaw: ReturnType<typeof vi.fn>;
-    $executeRawUnsafe: ReturnType<typeof vi.fn>;
+    $executeRaw: ReturnType<typeof vi.fn>;
   } | null = null;
 
   return {
@@ -32,7 +32,7 @@ vi.mock("../../../../prisma/generated/client", () => {
           $connect: vi.fn().mockResolvedValue(undefined),
           $disconnect: vi.fn().mockResolvedValue(undefined),
           $queryRaw: vi.fn().mockResolvedValue([{ 1: 1 }]),
-          $executeRawUnsafe: vi.fn().mockResolvedValue(0),
+          $executeRaw: vi.fn().mockResolvedValue(0),
         };
       }
       return instance;
@@ -64,7 +64,7 @@ let mockPrismaClient: {
   $connect: ReturnType<typeof vi.fn>;
   $disconnect: ReturnType<typeof vi.fn>;
   $queryRaw: ReturnType<typeof vi.fn>;
-  $executeRawUnsafe: ReturnType<typeof vi.fn>;
+  $executeRaw: ReturnType<typeof vi.fn>;
 };
 
 /**
@@ -92,12 +92,22 @@ const setupBeforeEach = async () => {
   mockPrismaClient.$connect.mockClear();
   mockPrismaClient.$disconnect.mockClear();
   mockPrismaClient.$queryRaw.mockClear();
-  mockPrismaClient.$executeRawUnsafe.mockClear();
+  mockPrismaClient.$executeRaw.mockClear();
 
   mockPrismaClient.$connect.mockResolvedValue(undefined);
   mockPrismaClient.$disconnect.mockResolvedValue(undefined);
-  mockPrismaClient.$queryRaw.mockResolvedValue([{ 1: 1 }]);
-  mockPrismaClient.$executeRawUnsafe.mockResolvedValue(0);
+  // $queryRawはPRAGMA table_info（ensureSchema）とSELECT 1（initializeDb）の両方で使用
+  // PRAGMA呼び出し時はidTokenカラムを含む結果を返す（カラム追加済み想定）
+  mockPrismaClient.$queryRaw.mockResolvedValue([
+    { name: "id" },
+    { name: "accessToken" },
+    { name: "refreshToken" },
+    { name: "idToken" },
+    { name: "expiresAt" },
+    { name: "createdAt" },
+    { name: "updatedAt" },
+  ]);
+  mockPrismaClient.$executeRaw.mockResolvedValue(0);
 };
 
 describe("getDb", () => {
@@ -215,15 +225,16 @@ describe("initializeDb", () => {
     await initializeDb();
 
     expect(mockPrismaClient.$connect).toHaveBeenCalled();
-    expect(mockPrismaClient.$executeRawUnsafe).toHaveBeenCalled();
+    expect(mockPrismaClient.$executeRaw).toHaveBeenCalled();
     expect(mockPrismaClient.$queryRaw).toHaveBeenCalled();
   });
 
   test("初期化時にスキーマを適用する", async () => {
     await initializeDb();
 
-    // CREATE TABLE IF NOT EXISTS（2テーブル） + ALTER TABLE（1回） + CREATE INDEX（2回）
-    expect(mockPrismaClient.$executeRawUnsafe).toHaveBeenCalledTimes(5);
+    // CREATE TABLE IF NOT EXISTS（2テーブル） + CREATE INDEX（2回） = 4回
+    // idTokenカラムが既に存在する場合はALTER TABLEは実行されない
+    expect(mockPrismaClient.$executeRaw).toHaveBeenCalledTimes(4);
   });
 
   test("初期化時に接続確認クエリを実行する", async () => {
@@ -239,7 +250,7 @@ describe("initializeDb", () => {
   });
 
   test("スキーマ適用失敗時はエラーをスロー", async () => {
-    mockPrismaClient.$executeRawUnsafe.mockRejectedValue(
+    mockPrismaClient.$executeRaw.mockRejectedValue(
       new Error("Schema migration failed"),
     );
 

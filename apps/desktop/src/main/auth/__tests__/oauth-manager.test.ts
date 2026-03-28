@@ -375,6 +375,105 @@ describe("OAuthManager", () => {
     });
   });
 
+  describe("logout - エッジケース", () => {
+    test("Keycloakログアウト失敗時もローカルトークンは削除される", async () => {
+      const mockToken = {
+        id: "token-id",
+        refreshToken: "encrypted:refresh-token",
+        createdAt: new Date(),
+      };
+      mockDbAuthToken.findFirst.mockResolvedValue(mockToken);
+      mockDbAuthToken.deleteMany.mockResolvedValue({ count: 1 });
+      mockLogout.mockRejectedValue(new Error("Keycloak logout failed"));
+
+      const manager = createTestOAuthManager();
+      await expect(manager.logout()).rejects.toThrow("Keycloak logout failed");
+
+      // Keycloakログアウトが失敗しても、finallyブロックでローカルトークンは削除される
+      expect(mockDbAuthToken.deleteMany).toHaveBeenCalledWith({});
+    });
+  });
+
+  describe("startAutoRefresh - リトライ", () => {
+    test("リトライ後にリフレッシュが成功する", async () => {
+      // expiresAt: 70秒後 → refreshDelay = max((70 - 300) * 1000, 60_000) = 60_000
+      const mockToken = {
+        id: "token-id",
+        refreshToken: "encrypted:refresh-token",
+        expiresAt: new Date(Date.now() + 70_000),
+        createdAt: new Date(),
+      };
+      mockDbAuthToken.findFirst.mockResolvedValue(mockToken);
+
+      const manager = createTestOAuthManager();
+      await manager.initialize();
+
+      // initialize後にモックを設定（initialize時のrefreshTokenは呼ばれない）
+      mockRefreshToken.mockClear();
+      const tokenResponse = {
+        access_token: "new-access",
+        refresh_token: "new-refresh",
+        expires_in: 3600,
+        token_type: "Bearer",
+      };
+      // 1回目: 失敗、2回目: 成功（次のautoRefreshは3300秒後なので発火しない）
+      mockRefreshToken
+        .mockRejectedValueOnce(new Error("Temporary failure"))
+        .mockResolvedValueOnce(tokenResponse);
+      mockDbAuthToken.create.mockResolvedValue({
+        id: "new-token-id",
+        createdAt: new Date(),
+      });
+      mockDbAuthToken.deleteMany.mockResolvedValue({ count: 1 });
+
+      // autoRefreshタイマーを発火（60秒）
+      await vi.advanceTimersByTimeAsync(60_000);
+      // リトライ間のバックオフ待機（10秒）
+      await vi.advanceTimersByTimeAsync(10_000);
+
+      expect(mockRefreshToken).toHaveBeenCalledTimes(2);
+    });
+
+    test("全リトライ失敗後にonAuthExpiredが呼ばれトークンが削除される", async () => {
+      const onAuthExpired = vi.fn();
+      // expiresAt: 70秒後 → refreshDelay = 60_000
+      const mockToken = {
+        id: "token-id",
+        refreshToken: "encrypted:refresh-token",
+        expiresAt: new Date(Date.now() + 70_000),
+        createdAt: new Date(),
+      };
+      mockDbAuthToken.findFirst.mockResolvedValue(mockToken);
+      mockDbAuthToken.deleteMany.mockResolvedValue({ count: 1 });
+
+      const manager = createOAuthManager(
+        {
+          issuer: "https://keycloak.example.com/realms/test",
+          clientId: "test-client",
+          redirectUri: "tumiki-desktop://auth/callback",
+        },
+        { onAuthExpired },
+      );
+      await manager.initialize();
+
+      // initialize後にモックを設定
+      mockRefreshToken.mockClear();
+      mockRefreshToken.mockRejectedValue(new Error("Refresh failed"));
+
+      // autoRefreshタイマーを発火（60秒）
+      await vi.advanceTimersByTimeAsync(60_000);
+      // リトライ1回目のバックオフ（10秒）
+      await vi.advanceTimersByTimeAsync(10_000);
+      // リトライ2回目のバックオフ（20秒）
+      await vi.advanceTimersByTimeAsync(20_000);
+
+      expect(mockRefreshToken).toHaveBeenCalledTimes(3);
+      expect(onAuthExpired).toHaveBeenCalledTimes(1);
+      // トークンがクリーンアップされている
+      expect(mockDbAuthToken.deleteMany).toHaveBeenCalledWith({});
+    });
+  });
+
   describe("stopAutoRefresh", () => {
     test("タイマーが設定されていなくてもエラーにならない", () => {
       const manager = createTestOAuthManager();

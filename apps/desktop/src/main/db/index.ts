@@ -267,7 +267,7 @@ export const getDb = async (): Promise<PrismaClient> => {
  * スキーマ変更時は両方を更新すること。
  */
 const ensureSchema = async (db: PrismaClient): Promise<void> => {
-  await db.$executeRawUnsafe(`
+  await db.$executeRaw`
     CREATE TABLE IF NOT EXISTS "auth_tokens" (
       "id" TEXT NOT NULL PRIMARY KEY,
       "accessToken" TEXT NOT NULL,
@@ -275,24 +275,23 @@ const ensureSchema = async (db: PrismaClient): Promise<void> => {
       "idToken" TEXT,
       "expiresAt" DATETIME NOT NULL,
       "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "updatedAt" DATETIME NOT NULL
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
-  `);
+  `;
 
   // 既存DBへのidTokenカラム追加（アップグレード対応）
-  try {
-    await db.$executeRawUnsafe(
-      `ALTER TABLE "auth_tokens" ADD COLUMN "idToken" TEXT`,
-    );
-  } catch (error) {
-    // SQLiteの「duplicate column name」エラーのみ無視し、その他は再スロー
-    const message = error instanceof Error ? error.message : String(error);
-    if (!message.includes("duplicate column")) {
-      throw error;
-    }
+  // PRAGMA table_infoでカラム存在を確認してからALTER TABLEを実行
+  const columns = await db.$queryRaw<{ name: string }[]>`
+    PRAGMA table_info("auth_tokens")
+  `;
+  const hasIdToken = columns.some((col) => col.name === "idToken");
+  if (!hasIdToken) {
+    await db.$executeRaw`
+      ALTER TABLE "auth_tokens" ADD COLUMN "idToken" TEXT
+    `;
   }
 
-  await db.$executeRawUnsafe(`
+  await db.$executeRaw`
     CREATE TABLE IF NOT EXISTS "log_sync_queue" (
       "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
       "serverId" TEXT NOT NULL,
@@ -302,17 +301,17 @@ const ensureSchema = async (db: PrismaClient): Promise<void> => {
       "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       "syncedAt" DATETIME
     )
-  `);
+  `;
 
   // インデックス作成
-  await db.$executeRawUnsafe(`
+  await db.$executeRaw`
     CREATE INDEX IF NOT EXISTS "log_sync_queue_syncStatus_serverId_idx"
     ON "log_sync_queue" ("syncStatus", "serverId")
-  `);
-  await db.$executeRawUnsafe(`
+  `;
+  await db.$executeRaw`
     CREATE INDEX IF NOT EXISTS "log_sync_queue_serverId_idx"
     ON "log_sync_queue" ("serverId")
-  `);
+  `;
 
   logger.debug("Database schema ensured");
 };
