@@ -33,9 +33,8 @@ export const SettingsForm = (): React.ReactElement => {
       try {
         const authenticated = await window.electronAPI.auth.isAuthenticated();
         setIsAuthenticated(authenticated);
-      } catch (error) {
+      } catch {
         showAuthError("認証状態の確認に失敗しました");
-        console.error("Auth status check failed:", error);
       }
     };
 

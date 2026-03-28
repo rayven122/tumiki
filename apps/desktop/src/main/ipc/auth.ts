@@ -1,4 +1,5 @@
 import { ipcMain } from "electron";
+import type { AuthToken } from "../../../prisma/generated/client";
 import { getDb } from "../db";
 import { getOAuthManager } from "../auth/manager-registry";
 import { decryptToken } from "../utils/encryption";
@@ -7,7 +8,7 @@ import * as logger from "../utils/logger";
 /**
  * DBから有効なトークンを取得（期限切れの場合は削除してnullを返す）
  */
-const findValidToken = async () => {
+const findValidToken = async (): Promise<AuthToken | null> => {
   const db = await getDb();
   const token = await db.authToken.findFirst({
     orderBy: { createdAt: "desc" },

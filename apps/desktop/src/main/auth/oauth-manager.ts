@@ -123,46 +123,86 @@ export const createOAuthManager = (
     refreshTimerId = setTimeout(async () => {
       const { MAX_ATTEMPTS, INITIAL_DELAY_MS } = AUTO_REFRESH_RETRY;
 
-      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-        try {
-          await refreshTokenInternal();
-          return; // 成功
-        } catch (error) {
-          const message =
-            error instanceof Error ? error.message : String(error);
-          logger.error(
-            `Auto refresh attempt ${attempt}/${MAX_ATTEMPTS} failed`,
-            { error: message },
-          );
+      // リトライループ全体でisRefreshingを保持し、
+      // リトライ間の待機中にinitialize()が並行実行されるのを防止
+      isRefreshing = true;
+      try {
+        for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+          try {
+            await doRefresh();
+            return; // 成功
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : String(error);
+            logger.error(
+              `Auto refresh attempt ${attempt}/${MAX_ATTEMPTS} failed`,
+              { error: message },
+            );
 
-          if (attempt < MAX_ATTEMPTS) {
-            const delay = INITIAL_DELAY_MS * Math.pow(2, attempt - 1);
-            await new Promise((resolve) => setTimeout(resolve, delay));
+            if (attempt < MAX_ATTEMPTS) {
+              const delay = INITIAL_DELAY_MS * Math.pow(2, attempt - 1);
+              await new Promise((resolve) => setTimeout(resolve, delay));
+            }
           }
         }
-      }
 
-      // 全リトライ失敗 — セッション失効を通知
-      logger.error("Auto refresh exhausted all retries, session expired");
-      try {
-        const db = await getDb();
-        await db.authToken.deleteMany({});
-      } catch (cleanupError) {
-        logger.error("Failed to clear expired tokens", {
-          error:
-            cleanupError instanceof Error
-              ? cleanupError.message
-              : String(cleanupError),
-        });
+        // 全リトライ失敗 — セッション失効を通知
+        logger.error("Auto refresh exhausted all retries, session expired");
+        try {
+          const db = await getDb();
+          await db.authToken.deleteMany({});
+        } catch (cleanupError) {
+          logger.error("Failed to clear expired tokens", {
+            error:
+              cleanupError instanceof Error
+                ? cleanupError.message
+                : String(cleanupError),
+          });
+        }
+        options.onAuthExpired?.();
+      } finally {
+        isRefreshing = false;
       }
-      options.onAuthExpired?.();
     }, refreshDelay);
 
     logger.info(`Auto refresh scheduled in ${refreshDelay / 1000} seconds`);
   };
 
   /**
+   * トークンリフレッシュのコア処理
+   * isRefreshingフラグの管理は呼び出し元が担当
+   */
+  const doRefresh = async (): Promise<void> => {
+    const db = await getDb();
+
+    // 最新のトークンを取得
+    const token = await db.authToken.findFirst({
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (!token) {
+      logger.warn("No token found for refresh");
+      return;
+    }
+
+    // リフレッシュトークンを復号化
+    const refreshToken = await decryptToken(token.refreshToken);
+
+    // トークンをリフレッシュ
+    const tokenResponse = await keycloakClient.refreshToken(refreshToken);
+
+    // 新しいトークンを保存
+    await saveToken(tokenResponse);
+
+    // 次回のリフレッシュをスケジュール
+    startAutoRefresh(tokenResponse.expires_in);
+
+    logger.info("Token refreshed successfully");
+  };
+
+  /**
    * トークンをリフレッシュ（内部用）
+   * isRefreshingガードで重複実行を防止
    */
   const refreshTokenInternal = async (): Promise<void> => {
     if (isRefreshing) {
@@ -172,31 +212,7 @@ export const createOAuthManager = (
 
     isRefreshing = true;
     try {
-      const db = await getDb();
-
-      // 最新のトークンを取得
-      const token = await db.authToken.findFirst({
-        orderBy: { createdAt: "desc" },
-      });
-
-      if (!token) {
-        logger.warn("No token found for refresh");
-        return;
-      }
-
-      // リフレッシュトークンを復号化
-      const refreshToken = await decryptToken(token.refreshToken);
-
-      // トークンをリフレッシュ
-      const tokenResponse = await keycloakClient.refreshToken(refreshToken);
-
-      // 新しいトークンを保存
-      await saveToken(tokenResponse);
-
-      // 次回のリフレッシュをスケジュール
-      startAutoRefresh(tokenResponse.expires_in);
-
-      logger.info("Token refreshed successfully");
+      await doRefresh();
     } catch (error) {
       if (error instanceof Error) {
         logger.error("Failed to refresh token", error);
