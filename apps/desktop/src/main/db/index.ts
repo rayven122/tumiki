@@ -279,6 +279,16 @@ const ensureSchema = async (db: PrismaClient): Promise<void> => {
     )
   `);
 
+  // 既存DBへのidTokenカラム追加（アップグレード対応）
+  // ALTER TABLEは既にカラムが存在する場合エラーになるため、try-catchで無視
+  try {
+    await db.$executeRawUnsafe(
+      `ALTER TABLE "auth_tokens" ADD COLUMN "idToken" TEXT`,
+    );
+  } catch {
+    // カラムが既に存在する場合は無視
+  }
+
   await db.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS "log_sync_queue" (
       "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,

@@ -2,7 +2,7 @@ import { app, BrowserWindow, powerMonitor } from "electron";
 import { createMainWindow } from "./window";
 import { initializeDb, closeDb } from "./db";
 import { setupAuthIpc } from "./ipc/auth";
-import { OAuthManager } from "./auth/oauth-manager";
+import { createOAuthManager } from "./auth/oauth-manager";
 import { getOAuthManager, setOAuthManager } from "./auth/manager-registry";
 import { getKeycloakEnvOptional } from "./utils/env";
 import * as logger from "./utils/logger";
@@ -122,14 +122,23 @@ app
     // OAuthManager初期化（環境変数が設定されている場合のみ）
     const keycloakEnv = getKeycloakEnvOptional();
     if (keycloakEnv) {
-      const manager = new OAuthManager({
+      const manager = createOAuthManager({
         issuer: keycloakEnv.KEYCLOAK_ISSUER,
         clientId: keycloakEnv.KEYCLOAK_DESKTOP_CLIENT_ID,
         redirectUri: `${PROTOCOL}://${CALLBACK_HOST}${CALLBACK_PATHNAME}`,
       });
       setOAuthManager(manager);
-      await manager.initialize();
-      logger.info("OAuthManager initialized");
+      try {
+        await manager.initialize();
+        logger.info("OAuthManager initialized");
+      } catch (error) {
+        logger.warn(
+          "OAuthManager initialization failed, continuing without auth",
+          {
+            error: error instanceof Error ? error.message : error,
+          },
+        );
+      }
     } else {
       logger.warn("Keycloak environment variables not set, OAuth disabled");
     }
@@ -145,6 +154,10 @@ app
       if (manager) {
         manager.initialize().catch((error) => {
           logger.error("Failed to re-initialize OAuth after resume", { error });
+          mainWindow?.webContents.send(
+            "auth:callbackError",
+            "スリープ復帰後の認証状態の復元に失敗しました",
+          );
         });
       }
     });

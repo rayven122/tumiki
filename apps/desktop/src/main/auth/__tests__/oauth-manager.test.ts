@@ -11,30 +11,38 @@ vi.mock("../../db");
 vi.mock("../../utils/encryption");
 vi.mock("../../utils/logger");
 
-// KeycloakClientのモック
-const mockExchangeCodeForToken = vi.fn();
-const mockRefreshToken = vi.fn();
-const mockLogout = vi.fn();
-const mockGenerateAuthUrl = vi
-  .fn()
-  .mockReturnValue("https://keycloak.example.com/auth");
+// KeycloakClientのモック（vi.hoistedでvi.mock factory内から参照可能にする）
+const {
+  mockExchangeCodeForToken,
+  mockRefreshToken,
+  mockLogout,
+  mockGenerateAuthUrl,
+} = vi.hoisted(() => ({
+  mockExchangeCodeForToken: vi.fn(),
+  mockRefreshToken: vi.fn(),
+  mockLogout: vi.fn(),
+  mockGenerateAuthUrl: vi
+    .fn()
+    .mockReturnValue("https://keycloak.example.com/auth"),
+}));
 
 vi.mock("../keycloak", () => ({
-  KeycloakClient: vi.fn().mockImplementation(() => ({
+  createKeycloakClient: vi.fn().mockReturnValue({
     generateAuthUrl: mockGenerateAuthUrl,
     exchangeCodeForToken: mockExchangeCodeForToken,
     refreshToken: mockRefreshToken,
     logout: mockLogout,
-  })),
+  }),
 }));
 
 import { shell } from "electron";
-import { OAuthManager } from "../oauth-manager";
+import { createOAuthManager } from "../oauth-manager";
+import type { OAuthManager } from "../oauth-manager";
 import { getDb } from "../../db";
 import { encryptToken, decryptToken } from "../../utils/encryption";
 
-const createOAuthManager = (): OAuthManager =>
-  new OAuthManager({
+const createTestOAuthManager = (): OAuthManager =>
+  createOAuthManager({
     issuer: "https://keycloak.example.com/realms/test",
     clientId: "test-client",
     redirectUri: "tumiki-desktop://auth/callback",
@@ -75,7 +83,7 @@ describe("OAuthManager", () => {
 
   describe("startAuthFlow", () => {
     test("外部ブラウザで認証URLを開く", async () => {
-      const manager = createOAuthManager();
+      const manager = createTestOAuthManager();
       await manager.startAuthFlow();
 
       expect(mockGenerateAuthUrl).toHaveBeenCalledWith(
@@ -90,7 +98,7 @@ describe("OAuthManager", () => {
     });
 
     test("既存セッションがあれば破棄して新しいフローを開始する", async () => {
-      const manager = createOAuthManager();
+      const manager = createTestOAuthManager();
       await manager.startAuthFlow();
       await manager.startAuthFlow();
 
@@ -103,7 +111,7 @@ describe("OAuthManager", () => {
         new Error("Failed to open"),
       );
 
-      const manager = createOAuthManager();
+      const manager = createTestOAuthManager();
       await expect(manager.startAuthFlow()).rejects.toThrow("Failed to open");
     });
   });
@@ -123,7 +131,7 @@ describe("OAuthManager", () => {
       });
       mockDbAuthToken.deleteMany.mockResolvedValue({ count: 0 });
 
-      const manager = createOAuthManager();
+      const manager = createTestOAuthManager();
       // まず認証フローを開始してセッションを作成
       await manager.startAuthFlow();
 
@@ -146,7 +154,7 @@ describe("OAuthManager", () => {
     });
 
     test("認可コードがない場合はエラーをスローする", async () => {
-      const manager = createOAuthManager();
+      const manager = createTestOAuthManager();
       await manager.startAuthFlow();
 
       const authUrlCallArgs = mockGenerateAuthUrl.mock.calls[0]?.[0] as
@@ -162,7 +170,7 @@ describe("OAuthManager", () => {
     });
 
     test("stateが一致しない場合はエラーをスローする", async () => {
-      const manager = createOAuthManager();
+      const manager = createTestOAuthManager();
       await manager.startAuthFlow();
 
       await expect(
@@ -173,7 +181,7 @@ describe("OAuthManager", () => {
     });
 
     test("セッションが存在しない場合はエラーをスローする", async () => {
-      const manager = createOAuthManager();
+      const manager = createTestOAuthManager();
       // startAuthFlowを呼ばずにコールバックを処理
 
       await expect(
@@ -184,7 +192,7 @@ describe("OAuthManager", () => {
     });
 
     test("セッション有効期限（5分）を超えた場合はエラーをスローする", async () => {
-      const manager = createOAuthManager();
+      const manager = createTestOAuthManager();
       await manager.startAuthFlow();
 
       const authUrlCallArgs = mockGenerateAuthUrl.mock.calls[0]?.[0] as
@@ -214,7 +222,7 @@ describe("OAuthManager", () => {
       mockDbAuthToken.deleteMany.mockResolvedValue({ count: 1 });
       mockLogout.mockResolvedValue(undefined);
 
-      const manager = createOAuthManager();
+      const manager = createTestOAuthManager();
       await manager.logout();
 
       expect(mockLogout).toHaveBeenCalledWith({
@@ -235,7 +243,7 @@ describe("OAuthManager", () => {
       mockDbAuthToken.deleteMany.mockResolvedValue({ count: 1 });
       mockLogout.mockResolvedValue(undefined);
 
-      const manager = createOAuthManager();
+      const manager = createTestOAuthManager();
       await manager.logout();
 
       expect(mockLogout).toHaveBeenCalledWith({
@@ -250,7 +258,7 @@ describe("OAuthManager", () => {
       mockDbAuthToken.findFirst.mockResolvedValue(null);
       mockDbAuthToken.deleteMany.mockResolvedValue({ count: 0 });
 
-      const manager = createOAuthManager();
+      const manager = createTestOAuthManager();
       await manager.logout();
 
       expect(mockLogout).not.toHaveBeenCalled();
@@ -268,7 +276,7 @@ describe("OAuthManager", () => {
       };
       mockDbAuthToken.findFirst.mockResolvedValue(mockToken);
 
-      const manager = createOAuthManager();
+      const manager = createTestOAuthManager();
       await manager.initialize();
 
       // 自動リフレッシュが設定されたことを確認（stopAutoRefreshでクリアできる）
@@ -278,7 +286,7 @@ describe("OAuthManager", () => {
     test("トークンが存在しない場合は何もしない", async () => {
       mockDbAuthToken.findFirst.mockResolvedValue(null);
 
-      const manager = createOAuthManager();
+      const manager = createTestOAuthManager();
       await manager.initialize();
 
       expect(mockRefreshToken).not.toHaveBeenCalled();
@@ -309,7 +317,7 @@ describe("OAuthManager", () => {
       });
       mockDbAuthToken.deleteMany.mockResolvedValue({ count: 1 });
 
-      const manager = createOAuthManager();
+      const manager = createTestOAuthManager();
       await manager.initialize();
 
       expect(mockRefreshToken).toHaveBeenCalledWith("refresh-token");
@@ -327,7 +335,7 @@ describe("OAuthManager", () => {
       mockRefreshToken.mockRejectedValue(new Error("Refresh failed"));
       mockDbAuthToken.deleteMany.mockResolvedValue({ count: 1 });
 
-      const manager = createOAuthManager();
+      const manager = createTestOAuthManager();
       await manager.initialize();
 
       expect(mockDbAuthToken.deleteMany).toHaveBeenCalledWith({});
@@ -336,7 +344,7 @@ describe("OAuthManager", () => {
 
   describe("stopAutoRefresh", () => {
     test("タイマーが設定されていなくてもエラーにならない", () => {
-      const manager = createOAuthManager();
+      const manager = createTestOAuthManager();
       expect(() => manager.stopAutoRefresh()).not.toThrow();
     });
   });

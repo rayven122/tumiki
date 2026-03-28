@@ -2,7 +2,7 @@ import { describe, test, expect, vi, beforeEach } from "vitest";
 
 vi.mock("../../utils/logger");
 
-import { KeycloakClient } from "../keycloak";
+import { createKeycloakClient } from "../keycloak";
 import type { KeycloakConfig } from "../keycloak";
 
 const createConfig = (
@@ -19,28 +19,28 @@ describe("KeycloakClient", () => {
     vi.clearAllMocks();
   });
 
-  describe("constructor", () => {
+  describe("createKeycloakClient", () => {
     test("有効な設定でインスタンスを作成できる", () => {
-      const client = new KeycloakClient(createConfig());
+      const client = createKeycloakClient(createConfig());
       expect(client).toBeDefined();
     });
 
     test("issuerがURLでない場合はエラーをスローする", () => {
-      expect(
-        () => new KeycloakClient(createConfig({ issuer: "invalid" })),
+      expect(() =>
+        createKeycloakClient(createConfig({ issuer: "invalid" })),
       ).toThrow();
     });
 
     test("clientIdが空の場合はエラーをスローする", () => {
-      expect(
-        () => new KeycloakClient(createConfig({ clientId: "" })),
+      expect(() =>
+        createKeycloakClient(createConfig({ clientId: "" })),
       ).toThrow();
     });
   });
 
   describe("generateAuthUrl", () => {
     test("正しいOAuth認証URLを生成する", () => {
-      const client = new KeycloakClient(createConfig());
+      const client = createKeycloakClient(createConfig());
       const url = client.generateAuthUrl({
         codeChallenge: "test-challenge",
         state: "test-state",
@@ -79,7 +79,7 @@ describe("KeycloakClient", () => {
         }),
       );
 
-      const client = new KeycloakClient(createConfig());
+      const client = createKeycloakClient(createConfig());
       const result = await client.exchangeCodeForToken({
         code: "auth-code",
         codeVerifier: "verifier",
@@ -109,7 +109,7 @@ describe("KeycloakClient", () => {
         }),
       );
 
-      const client = new KeycloakClient(createConfig());
+      const client = createKeycloakClient(createConfig());
 
       await expect(
         client.exchangeCodeForToken({
@@ -139,7 +139,7 @@ describe("KeycloakClient", () => {
         }),
       );
 
-      const client = new KeycloakClient(createConfig());
+      const client = createKeycloakClient(createConfig());
       const result = await client.refreshToken("old-refresh-token");
 
       expect(result).toStrictEqual(mockResponse);
@@ -162,7 +162,7 @@ describe("KeycloakClient", () => {
         }),
       );
 
-      const client = new KeycloakClient(createConfig());
+      const client = createKeycloakClient(createConfig());
 
       await expect(
         client.refreshToken("expired-refresh-token"),
@@ -176,7 +176,7 @@ describe("KeycloakClient", () => {
     test("Keycloakからログアウトできる", async () => {
       vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
 
-      const client = new KeycloakClient(createConfig());
+      const client = createKeycloakClient(createConfig());
       // ログアウトはエラーをスローしない
       await expect(
         client.logout({ refreshToken: "refresh-token" }),
@@ -200,7 +200,7 @@ describe("KeycloakClient", () => {
         }),
       );
 
-      const client = new KeycloakClient(createConfig());
+      const client = createKeycloakClient(createConfig());
       await expect(
         client.logout({ refreshToken: "refresh-token" }),
       ).resolves.not.toThrow();
@@ -214,7 +214,7 @@ describe("KeycloakClient", () => {
         vi.fn().mockRejectedValue(new Error("Network error")),
       );
 
-      const client = new KeycloakClient(createConfig());
+      const client = createKeycloakClient(createConfig());
       await expect(
         client.logout({ refreshToken: "refresh-token" }),
       ).resolves.not.toThrow();

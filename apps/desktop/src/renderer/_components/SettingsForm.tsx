@@ -1,5 +1,5 @@
 import type React from "react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useAtom } from "jotai";
 import { appConfigAtom } from "../store/atoms";
 import { LogIn, LogOut, CheckCircle, XCircle } from "lucide-react";
@@ -20,12 +20,12 @@ export const SettingsForm = (): React.ReactElement => {
   const errorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // エラーメッセージを設定し、10秒後に自動クリアする
-  const showAuthError = (message: string): void => {
+  const showAuthError = useCallback((message: string): void => {
     setAuthError(message);
     setAuthSuccess(null);
     if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
     errorTimeoutRef.current = setTimeout(() => setAuthError(null), 10000);
-  };
+  }, []);
 
   // 認証状態を確認
   useEffect(() => {
@@ -75,7 +75,7 @@ export const SettingsForm = (): React.ReactElement => {
         clearTimeout(logoutSuccessTimeoutRef.current);
       if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
     };
-  }, []);
+  }, [showAuthError]);
 
   const handleThemeChange = (e: React.ChangeEvent<HTMLSelectElement>): void => {
     setConfig({ ...config, theme: e.target.value as "light" | "dark" });

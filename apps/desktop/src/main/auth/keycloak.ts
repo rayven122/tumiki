@@ -22,7 +22,7 @@ const tokenResponseSchema = z.object({
   access_token: z.string(),
   refresh_token: z.string(),
   id_token: z.string().optional(),
-  expires_in: z.number(),
+  expires_in: z.number().int().positive(),
   token_type: z.string(),
 });
 
@@ -35,31 +35,45 @@ export type TokenResponse = z.infer<typeof tokenResponseSchema>;
 const FETCH_TIMEOUT_MS = 10_000;
 
 /**
- * Keycloakクライアント
+ * KeycloakClient型
  */
-export class KeycloakClient {
-  private readonly config: KeycloakConfig;
+export type KeycloakClient = {
+  generateAuthUrl: (params: { codeChallenge: string; state: string }) => string;
+  exchangeCodeForToken: (params: {
+    code: string;
+    codeVerifier: string;
+  }) => Promise<TokenResponse>;
+  refreshToken: (refreshToken: string) => Promise<TokenResponse>;
+  logout: (params: { refreshToken: string; idToken?: string }) => Promise<void>;
+};
 
-  constructor(config: KeycloakConfig) {
-    const validated = keycloakConfigSchema.parse(config);
-    // issuerの末尾スラッシュを正規化してURL結合時の重複を防止
-    this.config = {
-      ...validated,
-      issuer: validated.issuer.replace(/\/$/, ""),
-    };
-  }
+/**
+ * Keycloakクライアントを作成
+ */
+export const createKeycloakClient = (
+  config: KeycloakConfig,
+): KeycloakClient => {
+  const validated = keycloakConfigSchema.parse(config);
+  // issuerの末尾スラッシュを正規化してURL結合時の重複を防止
+  const normalizedConfig: KeycloakConfig = {
+    ...validated,
+    issuer: validated.issuer.replace(/\/$/, ""),
+  };
 
   /**
    * 認証URLを生成（OAuth 2.0 + PKCE）
    */
-  generateAuthUrl(params: { codeChallenge: string; state: string }): string {
+  const generateAuthUrl = (params: {
+    codeChallenge: string;
+    state: string;
+  }): string => {
     const { codeChallenge, state } = params;
     const authUrl = new URL(
-      `${this.config.issuer}/protocol/openid-connect/auth`,
+      `${normalizedConfig.issuer}/protocol/openid-connect/auth`,
     );
 
-    authUrl.searchParams.set("client_id", this.config.clientId);
-    authUrl.searchParams.set("redirect_uri", this.config.redirectUri);
+    authUrl.searchParams.set("client_id", normalizedConfig.clientId);
+    authUrl.searchParams.set("redirect_uri", normalizedConfig.redirectUri);
     authUrl.searchParams.set("response_type", "code");
     authUrl.searchParams.set("scope", "openid profile email");
     authUrl.searchParams.set("state", state);
@@ -67,17 +81,17 @@ export class KeycloakClient {
     authUrl.searchParams.set("code_challenge_method", "S256");
 
     return authUrl.toString();
-  }
+  };
 
   /**
    * 認可コードをアクセストークンと交換
    */
-  async exchangeCodeForToken(params: {
+  const exchangeCodeForToken = async (params: {
     code: string;
     codeVerifier: string;
-  }): Promise<TokenResponse> {
+  }): Promise<TokenResponse> => {
     const { code, codeVerifier } = params;
-    const tokenUrl = `${this.config.issuer}/protocol/openid-connect/token`;
+    const tokenUrl = `${normalizedConfig.issuer}/protocol/openid-connect/token`;
 
     try {
       const response = await fetch(tokenUrl, {
@@ -87,9 +101,9 @@ export class KeycloakClient {
         },
         body: new URLSearchParams({
           grant_type: "authorization_code",
-          client_id: this.config.clientId,
+          client_id: normalizedConfig.clientId,
           code,
-          redirect_uri: this.config.redirectUri,
+          redirect_uri: normalizedConfig.redirectUri,
           code_verifier: codeVerifier,
         }),
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
@@ -114,13 +128,13 @@ export class KeycloakClient {
       }
       throw error;
     }
-  }
+  };
 
   /**
    * リフレッシュトークンを使用してアクセストークンを更新
    */
-  async refreshToken(refreshToken: string): Promise<TokenResponse> {
-    const tokenUrl = `${this.config.issuer}/protocol/openid-connect/token`;
+  const refreshToken = async (token: string): Promise<TokenResponse> => {
+    const tokenUrl = `${normalizedConfig.issuer}/protocol/openid-connect/token`;
 
     try {
       const response = await fetch(tokenUrl, {
@@ -130,8 +144,8 @@ export class KeycloakClient {
         },
         body: new URLSearchParams({
           grant_type: "refresh_token",
-          client_id: this.config.clientId,
-          refresh_token: refreshToken,
+          client_id: normalizedConfig.clientId,
+          refresh_token: token,
         }),
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       });
@@ -157,25 +171,24 @@ export class KeycloakClient {
       }
       throw error;
     }
-  }
+  };
 
   /**
    * Keycloakからログアウト
    */
-  async logout(params: {
+  const logout = async (params: {
     refreshToken: string;
     idToken?: string;
-  }): Promise<void> {
-    const { refreshToken, idToken } = params;
-    const logoutUrl = `${this.config.issuer}/protocol/openid-connect/logout`;
+  }): Promise<void> => {
+    const logoutUrl = `${normalizedConfig.issuer}/protocol/openid-connect/logout`;
 
     try {
       const body = new URLSearchParams({
-        client_id: this.config.clientId,
-        refresh_token: refreshToken,
+        client_id: normalizedConfig.clientId,
+        refresh_token: params.refreshToken,
       });
-      if (idToken) {
-        body.set("id_token_hint", idToken);
+      if (params.idToken) {
+        body.set("id_token_hint", params.idToken);
       }
 
       const response = await fetch(logoutUrl, {
@@ -205,5 +218,7 @@ export class KeycloakClient {
       }
       // ログアウトエラーは握りつぶす（ローカルのトークン削除は別途実行される）
     }
-  }
-}
+  };
+
+  return { generateAuthUrl, exchangeCodeForToken, refreshToken, logout };
+};

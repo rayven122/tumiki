@@ -1,5 +1,10 @@
 import { shell } from "electron";
-import { KeycloakClient, type KeycloakConfig } from "./keycloak";
+import {
+  createKeycloakClient,
+  type KeycloakClient,
+  type KeycloakConfig,
+  type TokenResponse,
+} from "./keycloak";
 import {
   generateCodeVerifier,
   generateCodeChallenge,
@@ -18,135 +23,36 @@ type OAuthSession = {
   createdAt: Date;
 };
 
+/** セッション有効期限（ミリ秒） */
+const SESSION_TIMEOUT_MS = 5 * 60 * 1000;
+
 /**
- * OAuth認証マネージャー
+ * OAuthManager型
+ */
+export type OAuthManager = {
+  startAuthFlow: () => Promise<void>;
+  handleAuthCallback: (url: string) => Promise<void>;
+  logout: () => Promise<void>;
+  stopAutoRefresh: () => void;
+  initialize: () => Promise<void>;
+};
+
+/**
+ * OAuth認証マネージャーを作成
  * Keycloak認証フローを管理
  */
-export class OAuthManager {
-  private keycloakClient: KeycloakClient;
-  private currentSession: OAuthSession | null = null;
-  private refreshTimerId: NodeJS.Timeout | null = null;
-  private isRefreshing = false;
-
-  constructor(config: KeycloakConfig) {
-    this.keycloakClient = new KeycloakClient(config);
-  }
-
-  /**
-   * 認証フローを開始
-   * 外部ブラウザでKeycloakログインページを開く
-   */
-  async startAuthFlow(): Promise<void> {
-    // 既存セッションがあれば破棄して再開始（ブラウザタブを閉じた場合等に対応）
-    if (this.currentSession) {
-      logger.info("Existing auth session found, discarding and restarting");
-      this.currentSession = null;
-    }
-
-    try {
-      // PKCE パラメータを生成
-      const codeVerifier = generateCodeVerifier();
-      const codeChallenge = generateCodeChallenge(codeVerifier);
-      const state = generateState();
-
-      // セッション情報を保存
-      this.currentSession = {
-        state,
-        codeVerifier,
-        createdAt: new Date(),
-      };
-
-      // 認証URLを生成
-      const authUrl = this.keycloakClient.generateAuthUrl({
-        codeChallenge,
-        state,
-      });
-
-      // 外部ブラウザで認証URLを開く
-      await shell.openExternal(authUrl);
-
-      logger.info("Auth flow started, opened browser for authentication");
-    } catch (error) {
-      if (error instanceof Error) {
-        logger.error("Failed to start auth flow", error);
-      } else {
-        logger.error("Failed to start auth flow", { error });
-      }
-      this.currentSession = null;
-      throw error;
-    }
-  }
-
-  /**
-   * 認証コールバックを処理
-   * カスタムURLスキーム（tumiki-desktop://）から呼ばれる
-   */
-  async handleAuthCallback(url: string): Promise<void> {
-    try {
-      const parsedUrl = new URL(url);
-      const code = parsedUrl.searchParams.get("code");
-      const state = parsedUrl.searchParams.get("state");
-
-      // パラメータの検証
-      if (!code) {
-        throw new Error("認可コードが見つかりません");
-      }
-
-      if (!state) {
-        throw new Error("stateパラメータが見つかりません");
-      }
-
-      // セッションの検証
-      if (!this.currentSession) {
-        throw new Error("認証セッションが存在しません");
-      }
-
-      if (this.currentSession.state !== state) {
-        throw new Error("stateパラメータが一致しません（CSRF攻撃の可能性）");
-      }
-
-      // セッションの有効期限チェック（5分）
-      const sessionAge = Date.now() - this.currentSession.createdAt.getTime();
-      if (sessionAge > 5 * 60 * 1000) {
-        throw new Error("認証セッションの有効期限が切れています");
-      }
-
-      // 検証通過後、即座にセッションをクリアして二重コールバックを防止
-      const { codeVerifier } = this.currentSession;
-      this.currentSession = null;
-
-      // 認可コードをトークンと交換
-      const tokenResponse = await this.keycloakClient.exchangeCodeForToken({
-        code,
-        codeVerifier,
-      });
-
-      // トークンを暗号化して保存
-      await this.saveToken(tokenResponse);
-
-      // 自動リフレッシュを開始
-      this.startAutoRefresh(tokenResponse.expires_in);
-
-      logger.info("Auth callback handled successfully");
-    } catch (error) {
-      if (error instanceof Error) {
-        logger.error("Failed to handle auth callback", error);
-      } else {
-        logger.error("Failed to handle auth callback", { error });
-      }
-      throw error;
-    }
-  }
+export const createOAuthManager = (config: KeycloakConfig): OAuthManager => {
+  const keycloakClient: KeycloakClient = createKeycloakClient(config);
+  let currentSession: OAuthSession | null = null;
+  let refreshTimerId: NodeJS.Timeout | null = null;
+  let isRefreshing = false;
 
   /**
    * トークンを暗号化してデータベースに保存
    */
-  private async saveToken(tokenResponse: {
-    access_token: string;
-    refresh_token: string;
-    id_token?: string;
-    expires_in: number;
-  }): Promise<void> {
+  const saveToken = async (
+    tokenResponse: Omit<TokenResponse, "token_type">,
+  ): Promise<void> => {
     const db = await getDb();
 
     // 有効期限を計算（現在時刻 + expires_in秒）
@@ -181,24 +87,24 @@ export class OAuthManager {
     });
 
     logger.info("Token saved successfully");
-  }
+  };
 
   /**
    * トークンの自動リフレッシュを開始
    * 有効期限の5分前にリフレッシュを実行
    */
-  private startAutoRefresh(expiresIn: number): void {
+  const startAutoRefresh = (expiresIn: number): void => {
     // 既存のタイマーをクリア
-    if (this.refreshTimerId) {
-      clearTimeout(this.refreshTimerId);
+    if (refreshTimerId) {
+      clearTimeout(refreshTimerId);
     }
 
     // 有効期限の5分前にリフレッシュ（最低でも60秒後）
     const refreshDelay = Math.max((expiresIn - 5 * 60) * 1000, 60 * 1000);
 
-    this.refreshTimerId = setTimeout(async () => {
+    refreshTimerId = setTimeout(async () => {
       try {
-        await this.refreshTokenInternal();
+        await refreshTokenInternal();
       } catch (error) {
         if (error instanceof Error) {
           logger.error("Auto refresh failed", error);
@@ -209,18 +115,18 @@ export class OAuthManager {
     }, refreshDelay);
 
     logger.info(`Auto refresh scheduled in ${refreshDelay / 1000} seconds`);
-  }
+  };
 
   /**
    * トークンをリフレッシュ（内部用）
    */
-  private async refreshTokenInternal(): Promise<void> {
-    if (this.isRefreshing) {
+  const refreshTokenInternal = async (): Promise<void> => {
+    if (isRefreshing) {
       logger.info("Token refresh already in progress, skipping");
       return;
     }
 
-    this.isRefreshing = true;
+    isRefreshing = true;
     try {
       const db = await getDb();
 
@@ -238,14 +144,13 @@ export class OAuthManager {
       const refreshToken = await decryptToken(token.refreshToken);
 
       // トークンをリフレッシュ
-      const tokenResponse =
-        await this.keycloakClient.refreshToken(refreshToken);
+      const tokenResponse = await keycloakClient.refreshToken(refreshToken);
 
       // 新しいトークンを保存
-      await this.saveToken(tokenResponse);
+      await saveToken(tokenResponse);
 
       // 次回のリフレッシュをスケジュール
-      this.startAutoRefresh(tokenResponse.expires_in);
+      startAutoRefresh(tokenResponse.expires_in);
 
       logger.info("Token refreshed successfully");
     } catch (error) {
@@ -256,15 +161,121 @@ export class OAuthManager {
       }
       throw error;
     } finally {
-      this.isRefreshing = false;
+      isRefreshing = false;
     }
-  }
+  };
+
+  /**
+   * 認証フローを開始
+   * 外部ブラウザでKeycloakログインページを開く
+   */
+  const startAuthFlow = async (): Promise<void> => {
+    // 既存セッションがあれば破棄して再開始（ブラウザタブを閉じた場合等に対応）
+    if (currentSession) {
+      logger.info("Existing auth session found, discarding and restarting");
+      currentSession = null;
+    }
+
+    try {
+      // PKCE パラメータを生成
+      const codeVerifier = generateCodeVerifier();
+      const codeChallenge = generateCodeChallenge(codeVerifier);
+      const state = generateState();
+
+      // セッション情報を保存
+      currentSession = {
+        state,
+        codeVerifier,
+        createdAt: new Date(),
+      };
+
+      // 認証URLを生成
+      const authUrl = keycloakClient.generateAuthUrl({
+        codeChallenge,
+        state,
+      });
+
+      // 外部ブラウザで認証URLを開く
+      await shell.openExternal(authUrl);
+
+      logger.info("Auth flow started, opened browser for authentication");
+    } catch (error) {
+      if (error instanceof Error) {
+        logger.error("Failed to start auth flow", error);
+      } else {
+        logger.error("Failed to start auth flow", { error });
+      }
+      currentSession = null;
+      throw error;
+    }
+  };
+
+  /**
+   * 認証コールバックを処理
+   * カスタムURLスキーム（tumiki-desktop://）から呼ばれる
+   */
+  const handleAuthCallback = async (url: string): Promise<void> => {
+    try {
+      const parsedUrl = new URL(url);
+      const code = parsedUrl.searchParams.get("code");
+      const state = parsedUrl.searchParams.get("state");
+
+      // パラメータの検証
+      if (!code) {
+        throw new Error("認可コードが見つかりません");
+      }
+
+      if (!state) {
+        throw new Error("stateパラメータが見つかりません");
+      }
+
+      // セッションの検証
+      if (!currentSession) {
+        throw new Error("認証セッションが存在しません");
+      }
+
+      if (currentSession.state !== state) {
+        throw new Error("stateパラメータが一致しません（CSRF攻撃の可能性）");
+      }
+
+      // セッションの有効期限チェック
+      const sessionAge = Date.now() - currentSession.createdAt.getTime();
+      if (sessionAge > SESSION_TIMEOUT_MS) {
+        throw new Error("認証セッションの有効期限が切れています");
+      }
+
+      // 検証通過後、即座にセッションをクリアして二重コールバックを防止
+      const { codeVerifier } = currentSession;
+      currentSession = null;
+
+      // 認可コードをトークンと交換
+      const tokenResponse = await keycloakClient.exchangeCodeForToken({
+        code,
+        codeVerifier,
+      });
+
+      // トークンを暗号化して保存
+      await saveToken(tokenResponse);
+
+      // 自動リフレッシュを開始
+      startAutoRefresh(tokenResponse.expires_in);
+
+      logger.info("Auth callback handled successfully");
+    } catch (error) {
+      if (error instanceof Error) {
+        logger.error("Failed to handle auth callback", error);
+      } else {
+        logger.error("Failed to handle auth callback", { error });
+      }
+      throw error;
+    }
+  };
 
   /**
    * ログアウト処理
    * Keycloakとローカルの両方からログアウト
    */
-  async logout(): Promise<void> {
+  const logout = async (): Promise<void> => {
     try {
       const db = await getDb();
 
@@ -281,7 +292,7 @@ export class OAuthManager {
           : undefined;
 
         // Keycloakからログアウト
-        await this.keycloakClient.logout({ refreshToken, idToken });
+        await keycloakClient.logout({ refreshToken, idToken });
       }
 
       logger.info("Logout completed successfully");
@@ -305,32 +316,32 @@ export class OAuthManager {
           cleanupError instanceof Error ? cleanupError : { cleanupError },
         );
       }
-      if (this.refreshTimerId) {
-        clearTimeout(this.refreshTimerId);
-        this.refreshTimerId = null;
+      if (refreshTimerId) {
+        clearTimeout(refreshTimerId);
+        refreshTimerId = null;
       }
-      this.currentSession = null;
+      currentSession = null;
     }
-  }
+  };
 
   /**
    * 自動リフレッシュを停止
    */
-  stopAutoRefresh(): void {
-    if (this.refreshTimerId) {
-      clearTimeout(this.refreshTimerId);
-      this.refreshTimerId = null;
+  const stopAutoRefresh = (): void => {
+    if (refreshTimerId) {
+      clearTimeout(refreshTimerId);
+      refreshTimerId = null;
       logger.info("Auto refresh stopped");
     }
-  }
+  };
 
   /**
    * 認証状態を初期化
    * アプリ起動時に既存のトークンがあれば自動リフレッシュを開始
    */
-  async initialize(): Promise<void> {
+  const initialize = async (): Promise<void> => {
     // リフレッシュ中の重複実行を防止（スリープ復帰の連続発火対策）
-    if (this.isRefreshing) {
+    if (isRefreshing) {
       logger.info("Token refresh already in progress, skipping initialize");
       return;
     }
@@ -350,7 +361,7 @@ export class OAuthManager {
       if (new Date() > token.expiresAt) {
         logger.info("Existing token expired, attempting refresh");
         try {
-          await this.refreshTokenInternal();
+          await refreshTokenInternal();
         } catch (error) {
           if (error instanceof Error) {
             logger.warn("Failed to refresh expired token", {
@@ -370,7 +381,7 @@ export class OAuthManager {
       const expiresIn = Math.floor(
         (token.expiresAt.getTime() - Date.now()) / 1000,
       );
-      this.startAutoRefresh(expiresIn);
+      startAutoRefresh(expiresIn);
 
       logger.info("OAuth manager initialized with existing token");
     } catch (error) {
@@ -379,6 +390,15 @@ export class OAuthManager {
       } else {
         logger.error("Failed to initialize OAuth manager", { error });
       }
+      throw error;
     }
-  }
-}
+  };
+
+  return {
+    startAuthFlow,
+    handleAuthCallback,
+    logout,
+    stopAutoRefresh,
+    initialize,
+  };
+};

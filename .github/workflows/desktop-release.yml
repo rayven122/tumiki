@@ -157,10 +157,11 @@ jobs:
           🤖 このリリースは自動生成されました
           EOF
 
+          DELIMITER=$(openssl rand -hex 8)
           {
-            echo "notes<<EOF"
+            echo "notes<<${DELIMITER}"
             cat release_notes.md
-            echo "EOF"
+            echo "${DELIMITER}"
           } >> "$GITHUB_OUTPUT"
 
       - name: 🚀 Create GitHub Release
@@ -169,7 +170,7 @@ jobs:
           tag_name: ${{ steps.version.outputs.tag }}
           name: Tumiki Desktop v${{ steps.version.outputs.version }}
           body: ${{ steps.release_notes.outputs.notes }}
-          draft: false
+          draft: true
           prerelease: false
           files: |
             artifacts/**/*.dmg

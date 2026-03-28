@@ -222,8 +222,8 @@ describe("initializeDb", () => {
   test("初期化時にスキーマを適用する", async () => {
     await initializeDb();
 
-    // CREATE TABLE IF NOT EXISTS が4回呼ばれる（2テーブル + 2インデックス）
-    expect(mockPrismaClient.$executeRawUnsafe).toHaveBeenCalledTimes(4);
+    // CREATE TABLE IF NOT EXISTS（2テーブル） + ALTER TABLE（1回） + CREATE INDEX（2回）
+    expect(mockPrismaClient.$executeRawUnsafe).toHaveBeenCalledTimes(5);
   });
 
   test("初期化時に接続確認クエリを実行する", async () => {
