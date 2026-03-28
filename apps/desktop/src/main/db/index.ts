@@ -263,8 +263,12 @@ export const getDb = async (): Promise<PrismaClient> => {
  * ElectronアプリではユーザーごとにuserDataパスが異なるため、
  * ビルド時のdb pushでは対応できない。起動時に自動でスキーマを適用する。
  *
- * 注意: このSQL定義はprisma/schema.prismaと手動で同期が必要。
- * スキーマ変更時は両方を更新すること。
+ * ⚠️ 二重管理: このSQL定義は apps/desktop/prisma/schema.prisma と手動で同期が必要。
+ * スキーマ変更手順:
+ *   1. prisma/schema.prisma を変更
+ *   2. この関数内のSQLを同じ内容に更新
+ *   3. 既存ユーザー向けのALTER TABLE（マイグレーション）を追加
+ *   4. pnpm prisma generate で型を再生成
  */
 const ensureSchema = async (db: PrismaClient): Promise<void> => {
   await db.$executeRaw`

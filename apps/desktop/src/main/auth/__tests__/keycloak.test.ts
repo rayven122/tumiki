@@ -173,10 +173,7 @@ describe("KeycloakClient", () => {
       vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
 
       const client = createKeycloakClient(createConfig());
-      // ログアウトはエラーをスローしない
-      await expect(
-        client.logout({ refreshToken: "refresh-token" }),
-      ).resolves.not.toThrow();
+      await client.logout({ refreshToken: "refresh-token" });
 
       const fetchCall = vi.mocked(fetch).mock.calls[0];
       expect(fetchCall?.[0]).toBe(
@@ -195,9 +192,8 @@ describe("KeycloakClient", () => {
       );
 
       const client = createKeycloakClient(createConfig());
-      await expect(
-        client.logout({ refreshToken: "refresh-token" }),
-      ).resolves.not.toThrow();
+      // エラーなしで完了すればOK
+      await client.logout({ refreshToken: "refresh-token" });
     });
 
     test("ネットワークエラーでもエラーをスローしない", async () => {
@@ -207,9 +203,8 @@ describe("KeycloakClient", () => {
       );
 
       const client = createKeycloakClient(createConfig());
-      await expect(
-        client.logout({ refreshToken: "refresh-token" }),
-      ).resolves.not.toThrow();
+      // エラーなしで完了すればOK
+      await client.logout({ refreshToken: "refresh-token" });
     });
 
     test("TypeErrorはプログラミングエラーとして再スローする", async () => {

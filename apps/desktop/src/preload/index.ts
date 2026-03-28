@@ -32,6 +32,15 @@ const api = {
       ipcRenderer.on("auth:callbackError", listener);
       return () => ipcRenderer.removeListener("auth:callbackError", listener);
     },
+    onSessionExpired: (callback: (message: string) => void): (() => void) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        message: string,
+      ): void => callback(message);
+      ipcRenderer.on("auth:sessionExpired", listener);
+      return () =>
+        ipcRenderer.removeListener("auth:sessionExpired", listener);
+    },
   },
 };
 

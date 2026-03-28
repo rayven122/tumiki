@@ -1,3 +1,5 @@
+export type { AuthToken } from "../../prisma/generated/client";
+
 /**
  * auth:getToken の返却型
  */

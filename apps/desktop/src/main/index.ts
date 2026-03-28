@@ -131,7 +131,7 @@ app
         {
           onAuthExpired: () => {
             mainWindow?.webContents.send(
-              "auth:callbackError",
+              "auth:sessionExpired",
               "認証セッションの有効期限が切れました。再度ログインしてください。",
             );
           },
@@ -164,7 +164,7 @@ app
         manager.initialize().catch((error) => {
           logger.error("Failed to re-initialize OAuth after resume", { error });
           mainWindow?.webContents.send(
-            "auth:callbackError",
+            "auth:sessionExpired",
             "スリープ復帰後の認証状態の復元に失敗しました",
           );
         });

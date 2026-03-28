@@ -1,5 +1,5 @@
 import { ipcMain } from "electron";
-import type { AuthToken } from "../../../prisma/generated/client";
+import type { AuthToken } from "../../types/auth";
 import { getDb } from "../db";
 import { getOAuthManager } from "../auth/manager-registry";
 import { decryptToken } from "../utils/encryption";

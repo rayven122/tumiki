@@ -1,8 +1,37 @@
 import type React from "react";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useAtom } from "jotai";
 import { appConfigAtom } from "../store/atoms";
 import { LogIn, LogOut, CheckCircle, XCircle } from "lucide-react";
+
+/**
+ * タイムアウトIDを管理し、アンマウント時に全てクリアするフック
+ */
+const useTimeouts = () => {
+  const refs = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  const set = useCallback((key: string, callback: () => void, ms: number) => {
+    const existing = refs.current.get(key);
+    if (existing) clearTimeout(existing);
+    refs.current.set(key, setTimeout(callback, ms));
+  }, []);
+
+  const clear = useCallback((key: string) => {
+    const existing = refs.current.get(key);
+    if (existing) {
+      clearTimeout(existing);
+      refs.current.delete(key);
+    }
+  }, []);
+
+  const clearAll = useCallback(() => {
+    for (const id of refs.current.values()) clearTimeout(id);
+    refs.current.clear();
+  }, []);
+
+  // オブジェクト参照を安定化し、依存配列に含めても再レンダリングを誘発しない
+  return useMemo(() => ({ set, clear, clearAll }), [set, clear, clearAll]);
+};
 
 export const SettingsForm = (): React.ReactElement => {
   const [config, setConfig] = useAtom(appConfigAtom);
@@ -10,22 +39,17 @@ export const SettingsForm = (): React.ReactElement => {
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authSuccess, setAuthSuccess] = useState<string | null>(null);
-  const loginTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const loginSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-  const logoutSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-  const errorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timeouts = useTimeouts();
 
   // エラーメッセージを設定し、10秒後に自動クリアする
-  const showAuthError = useCallback((message: string): void => {
-    setAuthError(message);
-    setAuthSuccess(null);
-    if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
-    errorTimeoutRef.current = setTimeout(() => setAuthError(null), 10000);
-  }, []);
+  const showAuthError = useCallback(
+    (message: string): void => {
+      setAuthError(message);
+      setAuthSuccess(null);
+      timeouts.set("error", () => setAuthError(null), 10000);
+    },
+    [timeouts],
+  );
 
   // 認証状態を確認
   useEffect(() => {
@@ -42,21 +66,13 @@ export const SettingsForm = (): React.ReactElement => {
 
     // 認証コールバックイベントリスナー
     const cleanupSuccess = window.electronAPI.auth.onCallbackSuccess(() => {
-      if (loginTimeoutRef.current) {
-        clearTimeout(loginTimeoutRef.current);
-        loginTimeoutRef.current = null;
-      }
+      timeouts.clear("login");
       setIsAuthenticated(true);
       setIsLoading(false);
       setAuthSuccess("ログインに成功しました");
       setAuthError(null);
       // 3秒後に成功メッセージを消す
-      if (loginSuccessTimeoutRef.current)
-        clearTimeout(loginSuccessTimeoutRef.current);
-      loginSuccessTimeoutRef.current = setTimeout(
-        () => setAuthSuccess(null),
-        3000,
-      );
+      timeouts.set("loginSuccess", () => setAuthSuccess(null), 3000);
     });
 
     const cleanupError = window.electronAPI.auth.onCallbackError((error) => {
@@ -64,17 +80,21 @@ export const SettingsForm = (): React.ReactElement => {
       showAuthError(`ログインに失敗しました: ${error}`);
     });
 
+    // セッション失効（バックグラウンドリフレッシュ失敗時）
+    const cleanupSessionExpired = window.electronAPI.auth.onSessionExpired(
+      (message) => {
+        setIsAuthenticated(false);
+        showAuthError(message);
+      },
+    );
+
     return () => {
       cleanupSuccess();
       cleanupError();
-      if (loginTimeoutRef.current) clearTimeout(loginTimeoutRef.current);
-      if (loginSuccessTimeoutRef.current)
-        clearTimeout(loginSuccessTimeoutRef.current);
-      if (logoutSuccessTimeoutRef.current)
-        clearTimeout(logoutSuccessTimeoutRef.current);
-      if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
+      cleanupSessionExpired();
+      timeouts.clearAll();
     };
-  }, [showAuthError]);
+  }, [showAuthError, timeouts]);
 
   const handleThemeChange = (e: React.ChangeEvent<HTMLSelectElement>): void => {
     setConfig({ ...config, theme: e.target.value as "light" | "dark" });
@@ -102,8 +122,8 @@ export const SettingsForm = (): React.ReactElement => {
       // ブラウザが開かれたことを通知
       setAuthSuccess("ブラウザでKeycloakログインページを開きました");
       // 5分後にコールバックが来ない場合はタイムアウト
-      if (loginTimeoutRef.current) clearTimeout(loginTimeoutRef.current);
-      loginTimeoutRef.current = setTimeout(
+      timeouts.set(
+        "login",
         () => {
           setIsLoading((current) => {
             if (current) {
@@ -124,10 +144,7 @@ export const SettingsForm = (): React.ReactElement => {
 
   // ログインキャンセルハンドラー
   const handleCancelLogin = (): void => {
-    if (loginTimeoutRef.current) {
-      clearTimeout(loginTimeoutRef.current);
-      loginTimeoutRef.current = null;
-    }
+    timeouts.clear("login");
     // mainプロセスの認証セッションもクリア
     window.electronAPI.auth.cancelLogin();
     setIsLoading(false);
@@ -146,12 +163,7 @@ export const SettingsForm = (): React.ReactElement => {
       setIsLoading(false);
       setAuthSuccess("ログアウトしました");
       // 3秒後に成功メッセージを消す
-      if (logoutSuccessTimeoutRef.current)
-        clearTimeout(logoutSuccessTimeoutRef.current);
-      logoutSuccessTimeoutRef.current = setTimeout(
-        () => setAuthSuccess(null),
-        3000,
-      );
+      timeouts.set("logoutSuccess", () => setAuthSuccess(null), 3000);
     } catch (error) {
       setIsLoading(false);
       showAuthError(

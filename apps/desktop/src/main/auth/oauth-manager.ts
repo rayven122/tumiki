@@ -181,8 +181,7 @@ export const createOAuthManager = (
     });
 
     if (!token) {
-      logger.warn("No token found for refresh");
-      return;
+      throw new Error("リフレッシュ対象のトークンが存在しません");
     }
 
     // リフレッシュトークンを復号化
@@ -304,7 +303,9 @@ export const createOAuthManager = (
         throw new Error("認証セッションの有効期限が切れています");
       }
 
-      // 検証通過後、即座にセッションをクリアして二重コールバックを防止
+      // 検証通過後、即座にセッションをクリアして二重コールバック・リプレイ攻撃を防止
+      // 認可コードは一度しか使えないため、トークン交換が失敗しても再利用できない
+      // 失敗時はユーザーに再ログインを促す仕様（セキュリティ上の意図的な設計）
       const { codeVerifier } = currentSession;
       currentSession = null;
 
