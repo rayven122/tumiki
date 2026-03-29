@@ -6,7 +6,7 @@
   "main": "dist-electron/main/index.cjs",
   "scripts": {
     "dev": "pnpm with-env electron-vite dev",
-    "build": "pnpm with-env electron-vite build",
+    "build": "electron-vite build",
     "preview": "electron-vite preview",
     "start": "electron-vite preview",
     "clean": "git clean -xdf .cache .turbo node_modules dist-electron out",
@@ -18,8 +18,7 @@
     "db:generate": "prisma generate --schema=./prisma/schema.prisma",
     "db:push": "prisma db push --schema=./prisma/schema.prisma",
     "db:migrate": "prisma migrate dev --schema=./prisma/schema.prisma",
-    "db:studio": "prisma studio --schema=./prisma/schema.prisma",
-    "build:release": "electron-builder --config electron-builder.yml --publish never"
+    "db:studio": "prisma studio --schema=./prisma/schema.prisma"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
@@ -63,7 +62,6 @@
     "prettier": "catalog:",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "prisma": "^6.19.0",
-    "prisma-markdown": "^2.0.0",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "typescript-eslint": "^8.48.1",
