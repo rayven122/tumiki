@@ -152,4 +152,6 @@ jobs:
         working-directory: apps/desktop
         env:
           DESKTOP_DATABASE_URL: file:/tmp/desktop-ci.db
-        run: pnpm prisma migrate status --schema=./prisma/schema.prisma
+        run: |
+          pnpm prisma migrate deploy --schema=./prisma/schema.prisma
+          pnpm prisma migrate status --schema=./prisma/schema.prisma

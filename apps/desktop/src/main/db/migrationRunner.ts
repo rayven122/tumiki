@@ -27,8 +27,14 @@ const getMigrationsDir = (): string => {
 const splitSql = (sql: string): string[] =>
   sql
     .split(";")
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0 && !s.startsWith("--"));
+    .map((s) =>
+      s
+        .split("\n")
+        .filter((line) => !line.trim().startsWith("--"))
+        .join("\n")
+        .trim(),
+    )
+    .filter((s) => s.length > 0);
 
 /**
  * Prismaマイグレーションをアプリ起動時に適用

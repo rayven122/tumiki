@@ -24,8 +24,6 @@ type OAuthSession = {
   createdAt: Date;
 };
 
-/** セッション有効期限（ミリ秒）。UIと共有 */
-const SESSION_TIMEOUT_MS = AUTH_SESSION_TIMEOUT_MS;
 
 /**
  * OAuthManager型
@@ -308,7 +306,7 @@ export const createOAuthManager = (
 
       // セッションの有効期限チェック
       const sessionAge = Date.now() - currentSession.createdAt.getTime();
-      if (sessionAge > SESSION_TIMEOUT_MS) {
+      if (sessionAge > AUTH_SESSION_TIMEOUT_MS) {
         throw new Error("認証セッションの有効期限が切れています");
       }
 
@@ -346,9 +344,8 @@ export const createOAuthManager = (
    * Keycloakとローカルの両方からログアウト
    */
   const logout = async (): Promise<void> => {
+    const db = await getDb();
     try {
-      const db = await getDb();
-
       // 最新のトークンを取得
       const token = await db.authToken.findFirst({
         orderBy: { createdAt: "desc" },
@@ -378,7 +375,6 @@ export const createOAuthManager = (
     } finally {
       // 例外発生時もローカルトークン・タイマー・セッションを確実にクリア
       try {
-        const db = await getDb();
         await db.authToken.deleteMany({});
       } catch (cleanupError) {
         logger.error("Failed to clear local tokens during logout", {
