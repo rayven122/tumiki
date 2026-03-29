@@ -2,7 +2,7 @@ import type { JSX } from "react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAtomValue } from "jotai";
-import { ArrowLeft, Send, Sparkles, Check } from "lucide-react";
+import { ArrowLeft, Send, Sparkles, Check, Play } from "lucide-react";
 import { themeAtom } from "../store/atoms";
 import { TOOLS } from "../data/mock";
 
@@ -25,6 +25,8 @@ export const ConnectorAuto = (): JSX.Element => {
     description: string;
     paths: { ai: string; path: string }[];
   } | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   /** 送信ハンドラ（モック: 2回目のメッセージでコネクタ生成） */
   const handleSend = () => {
@@ -249,48 +251,145 @@ export const ConnectorAuto = (): JSX.Element => {
               </p>
             </div>
 
-            {/* 接続パス */}
-            <div className="mb-3">
-              <span
-                className="text-[10px]"
-                style={{ color: "var(--text-subtle)" }}
-              >
-                接続パス
-              </span>
-              {generatedConnector.paths.map((p) => (
-                <div
-                  key={p.ai}
-                  className="mt-1 flex items-center gap-2 text-[9px]"
+            {/* ボタン群 */}
+            {!saved ? (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSaved(true)}
+                  className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-medium transition-colors hover:opacity-90"
+                  style={{
+                    backgroundColor: "var(--btn-primary-bg)",
+                    color: "var(--btn-primary-text)",
+                  }}
                 >
+                  <Check size={14} /> 保存する
+                </button>
+                <button
+                  onClick={() => setTesting(true)}
+                  className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs transition-colors hover:opacity-80"
+                  style={{
+                    border: "1px solid var(--border)",
+                    color: "var(--text-muted)",
+                  }}
+                >
+                  <Play size={14} /> 検証する
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* 保存完了 */}
+                <div
+                  className="flex items-center gap-2 rounded-lg px-3 py-2"
+                  style={{
+                    backgroundColor: "rgba(52,211,153,0.08)",
+                    border: "1px solid rgba(52,211,153,0.2)",
+                  }}
+                >
+                  <Check
+                    size={14}
+                    style={{ color: "var(--badge-success-text)" }}
+                  />
                   <span
-                    className="w-14 shrink-0"
-                    style={{ color: "var(--text-muted)" }}
+                    className="text-xs"
+                    style={{ color: "var(--badge-success-text)" }}
                   >
-                    {p.ai}
+                    コネクタを保存しました
                   </span>
-                  <code
-                    className="flex-1 truncate rounded px-1.5 py-0.5 font-mono"
+                </div>
+
+                {/* 接続パス（保存後に表示） */}
+                <div>
+                  <span
+                    className="text-[10px]"
+                    style={{ color: "var(--text-subtle)" }}
+                  >
+                    接続パス
+                  </span>
+                  {generatedConnector.paths.map((p) => (
+                    <div
+                      key={p.ai}
+                      className="mt-1 flex items-center gap-2 text-[9px]"
+                    >
+                      <span
+                        className="w-14 shrink-0"
+                        style={{ color: "var(--text-muted)" }}
+                      >
+                        {p.ai}
+                      </span>
+                      <code
+                        className="flex-1 truncate rounded px-1.5 py-0.5 font-mono"
+                        style={{
+                          backgroundColor: "var(--bg-input)",
+                          color: "var(--text-secondary)",
+                        }}
+                      >
+                        {p.path}
+                      </code>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setTesting(true)}
+                    className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs transition-colors hover:opacity-80"
                     style={{
-                      backgroundColor: "var(--bg-input)",
-                      color: "var(--text-secondary)",
+                      border: "1px solid var(--border)",
+                      color: "var(--text-muted)",
                     }}
                   >
-                    {p.path}
-                  </code>
+                    <Play size={14} /> 検証する
+                  </button>
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
 
-            {/* 作成ボタン */}
-            <button
-              className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-medium transition-colors hover:opacity-90"
-              style={{
-                backgroundColor: "var(--btn-primary-bg)",
-                color: "var(--btn-primary-text)",
-              }}
-            >
-              <Check size={14} /> 作成する
-            </button>
+            {/* 検証パネル */}
+            {testing && (
+              <div
+                className="mt-3 rounded-lg p-3"
+                style={{
+                  border: "1px solid var(--border)",
+                  backgroundColor: "var(--bg-input)",
+                }}
+              >
+                <div className="mb-2 flex items-center gap-2">
+                  <Play size={12} style={{ color: "var(--badge-warn-text)" }} />
+                  <span
+                    className="text-[10px] font-medium"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    検証結果
+                  </span>
+                </div>
+                <div className="space-y-1.5 font-mono text-[9px]">
+                  <div className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    <span style={{ color: "var(--text-secondary)" }}>
+                      Slack / send_message → 200 OK (142ms)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    <span style={{ color: "var(--text-secondary)" }}>
+                      GitHub / list_repos → 200 OK (210ms)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    <span style={{ color: "var(--text-secondary)" }}>
+                      Notion / create_page → 200 OK (95ms)
+                    </span>
+                  </div>
+                </div>
+                <div
+                  className="mt-2 text-[9px]"
+                  style={{ color: "var(--badge-success-text)" }}
+                >
+                  全ツールの接続を確認しました
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
