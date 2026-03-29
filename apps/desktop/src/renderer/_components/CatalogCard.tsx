@@ -1,3 +1,4 @@
+import React from "react";
 import type { McpCatalogItem } from "../constants/mcpCatalog";
 import { Server, Wrench } from "lucide-react";
 

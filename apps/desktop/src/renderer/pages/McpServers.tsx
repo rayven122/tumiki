@@ -166,12 +166,15 @@ export const McpServers = (): React.ReactElement => {
 
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
               {/* カスタムMCP追加カード */}
-              <div className="flex min-h-[280px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 transition-colors hover:border-purple-400 hover:bg-purple-50">
+              <button
+                type="button"
+                className="flex min-h-[280px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 transition-colors hover:border-purple-400 hover:bg-purple-50"
+              >
                 <Plus className="mb-2 h-12 w-12 text-gray-400" />
                 <p className="text-center text-sm font-medium text-gray-600">
                   カスタムMCPを追加
                 </p>
-              </div>
+              </button>
 
               {filteredItems.map((item) => (
                 <CatalogCard key={item.id} item={item} />
