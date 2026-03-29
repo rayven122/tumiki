@@ -14,6 +14,9 @@ export const appConfigAtom = atom<AppConfig>({
 // 現在選択中のサーバー
 export const selectedServerAtom = atom<string | null>(null);
 
+// サイドバーの開閉状態
+export const sidebarOpenAtom = atom(true);
+
 // テーマ派生atom（読み書き可能）
 export const themeAtom = atom(
   (get) => get(appConfigAtom).theme,
