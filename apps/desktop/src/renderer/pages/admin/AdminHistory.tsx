@@ -210,7 +210,7 @@ export const AdminHistory = (): JSX.Element => {
 
         {/* テーブルヘッダー */}
         <div
-          className="grid grid-cols-[80px_80px_90px_90px_1fr_85px_56px] items-center gap-2 px-5 py-2 text-[10px]"
+          className="grid grid-cols-[80px_80px_90px_120px_1fr_85px_56px] items-center gap-2 px-5 py-2 text-[10px]"
           style={{
             borderBottom: "1px solid var(--border)",
             color: "var(--text-subtle)",
@@ -232,7 +232,7 @@ export const AdminHistory = (): JSX.Element => {
             <Link
               key={item.id}
               to={`/history/${item.id}`} /* 詳細は共通の履歴詳細を使用 */
-              className="grid grid-cols-[80px_80px_90px_90px_1fr_85px_56px] items-center gap-2 px-5 py-2.5 text-xs transition-colors hover:opacity-90"
+              className="grid grid-cols-[80px_80px_90px_120px_1fr_85px_56px] items-center gap-2 px-5 py-2.5 text-xs transition-colors hover:opacity-90"
               style={{
                 borderBottom: "1px solid var(--border-subtle)",
                 backgroundColor: isErrorRow(item.status)
