@@ -1,6 +1,7 @@
 import type { JSX } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAtom } from "jotai";
+import { CURRENT_USER } from "../data/mock";
 import {
   Home,
   Wrench,
@@ -201,21 +202,23 @@ export const Sidebar = (): JSX.Element => {
           })}
         </div>
 
-        {/* 管理セクション */}
-        <div
-          className="mt-2 space-y-0.5 pt-2"
-          style={{ borderTop: "1px solid var(--border)" }}
-        >
-          {isOpen && (
-            <div
-              className="px-3 pt-1 pb-1 text-[10px] font-medium tracking-wider uppercase"
-              style={{ color: "var(--text-subtle)" }}
-            >
-              管理
-            </div>
-          )}
-          {adminNav.map(renderLink)}
-        </div>
+        {/* 管理セクション（Admin/Managerのみ表示） */}
+        {(CURRENT_USER.role === "Admin" || CURRENT_USER.role === "Manager") && (
+          <div
+            className="mt-2 space-y-0.5 pt-2"
+            style={{ borderTop: "1px solid var(--border)" }}
+          >
+            {isOpen && (
+              <div
+                className="px-3 pt-1 pb-1 text-[10px] font-medium tracking-wider uppercase"
+                style={{ color: "var(--text-subtle)" }}
+              >
+                管理
+              </div>
+            )}
+            {adminNav.map(renderLink)}
+          </div>
+        )}
 
         {/* 通知リンク */}
         <div
