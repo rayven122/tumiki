@@ -2,7 +2,7 @@ import type { JSX } from "react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAtomValue } from "jotai";
-import { Search, ArrowRight, Check } from "lucide-react";
+import { Search, Plus, Settings } from "lucide-react";
 import { themeAtom } from "../store/atoms";
 import { TOOLS, CATEGORIES } from "../data/mock";
 import type { ToolStatus } from "../data/mock";
@@ -12,6 +12,15 @@ const statusDotColor: Record<ToolStatus, string> = {
   active: "bg-emerald-400",
   degraded: "bg-amber-400",
   down: "bg-red-400",
+};
+
+/** カードの共通スタイル */
+const cardStyle: React.CSSProperties = {
+  borderWidth: 1,
+  borderStyle: "solid",
+  borderColor: "var(--border)",
+  backgroundColor: "var(--bg-card)",
+  boxShadow: "var(--shadow-card)",
 };
 
 export const ToolCatalog = (): JSX.Element => {
@@ -33,10 +42,7 @@ export const ToolCatalog = (): JSX.Element => {
   const unapprovedTools = allFiltered.filter((t) => !t.approved);
 
   return (
-    <div
-      className="min-h-screen space-y-6 p-6"
-      style={{ backgroundColor: "var(--bg-app)" }}
-    >
+    <div className="space-y-6 p-6">
       {/* ヘッダー */}
       <div>
         <h1
@@ -96,61 +102,80 @@ export const ToolCatalog = (): JSX.Element => {
         </select>
       </div>
 
-      {/* 承認済みセクション */}
+      {/* 承認済みセクション（カードグリッド） */}
       {approvedTools.length > 0 && (
         <div>
-          <h2
-            className="mb-3 text-sm font-medium"
-            style={{ color: "var(--text-muted)" }}
+          <div
+            className="mb-4 flex items-center justify-between pb-2"
+            style={{
+              borderBottomWidth: 1,
+              borderBottomStyle: "solid",
+              borderBottomColor: "var(--border)",
+            }}
           >
-            利用中のツール
-          </h2>
-          <div className="space-y-2">
+            <h2
+              className="text-sm font-medium"
+              style={{ color: "var(--text-muted)" }}
+            >
+              利用中のツール
+            </h2>
+            <span
+              className="text-[10px]"
+              style={{ color: "var(--text-subtle)" }}
+            >
+              {approvedTools.length}件
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
             {approvedTools.map((tool) => (
               <Link
                 key={tool.id}
                 to={`/tools/${tool.id}`}
-                className="flex items-center justify-between rounded-lg px-4 py-3 transition hover:opacity-90"
-                style={{
-                  borderWidth: 1,
-                  borderStyle: "solid",
-                  borderColor: "var(--border)",
-                  backgroundColor: "var(--bg-card)",
-                }}
+                className="rounded-xl p-4 transition-all hover:-translate-y-0.5 hover:shadow-lg"
+                style={cardStyle}
               >
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <img
-                      src={theme === "dark" ? tool.logoDark : tool.logoLight}
-                      alt={tool.name}
-                      className="h-8 w-8 rounded-md"
-                    />
-                    <span
-                      className={`absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full ${statusDotColor[tool.status]}`}
-                    />
-                  </div>
-                  <div>
-                    <span
-                      className="text-sm"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {tool.name}
-                    </span>
-                    <span
-                      className="ml-2 text-xs"
-                      style={{ color: "var(--text-subtle)" }}
-                    >
-                      {tool.category}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Check size={14} className="text-emerald-400" />
+                {/* ロゴ + ステータスドット */}
+                <div className="mb-3 flex items-start justify-between">
+                  <img
+                    src={theme === "dark" ? tool.logoDark : tool.logoLight}
+                    alt={tool.name}
+                    className="h-8 w-8 rounded-lg"
+                  />
                   <span
-                    className="text-xs"
+                    className={`h-2 w-2 rounded-full ${statusDotColor[tool.status]}`}
+                  />
+                </div>
+                {/* 名前 */}
+                <div
+                  className="mb-1 text-sm font-medium"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {tool.name}
+                </div>
+                {/* カテゴリ */}
+                <div
+                  className="mb-3 text-[10px] leading-relaxed"
+                  style={{ color: "var(--text-subtle)" }}
+                >
+                  {tool.category}
+                </div>
+                {/* フッター */}
+                <div className="flex items-center justify-between">
+                  <span
+                    className="font-mono text-[9px]"
                     style={{ color: "var(--text-subtle)" }}
                   >
-                    利用中
+                    {tool.operations.length} tools
+                  </span>
+                  <span
+                    className="flex items-center gap-1 rounded-md px-2.5 py-1 text-[10px] font-medium"
+                    style={{
+                      backgroundColor: "var(--bg-card-hover)",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    <Settings size={10} />
+                    管理
                   </span>
                 </div>
               </Link>
@@ -159,53 +184,62 @@ export const ToolCatalog = (): JSX.Element => {
         </div>
       )}
 
-      {/* 申請可能セクション */}
+      {/* 申請可能セクション（LP風カード） */}
       {unapprovedTools.length > 0 && (
         <div>
-          <h2
-            className="mb-3 text-sm font-medium"
-            style={{ color: "var(--text-muted)" }}
+          <div
+            className="mb-4 flex items-center justify-between pb-2"
+            style={{
+              borderBottomWidth: 1,
+              borderBottomStyle: "solid",
+              borderBottomColor: "var(--border)",
+            }}
           >
-            申請可能なツール
-          </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <h2
+              className="text-sm font-medium"
+              style={{ color: "var(--text-muted)" }}
+            >
+              申請可能なツール
+            </h2>
+            <span
+              className="text-[10px]"
+              style={{ color: "var(--text-subtle)" }}
+            >
+              {unapprovedTools.length}件
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
             {unapprovedTools.map((tool) => (
               <div
                 key={tool.id}
-                className="space-y-4 rounded-xl p-5"
-                style={{
-                  borderWidth: 1,
-                  borderStyle: "solid",
-                  borderColor: "var(--border)",
-                  backgroundColor: "var(--bg-card)",
-                  boxShadow: "var(--shadow-card)",
-                }}
+                className="rounded-xl p-4 transition-all hover:-translate-y-0.5 hover:shadow-lg"
+                style={cardStyle}
               >
-                {/* カードヘッダー */}
-                <div className="flex items-center gap-3">
+                {/* ロゴ */}
+                <div className="mb-3">
                   <img
                     src={theme === "dark" ? tool.logoDark : tool.logoLight}
                     alt={tool.name}
-                    className="h-10 w-10 rounded-lg"
+                    className="h-8 w-8 rounded-lg"
                   />
-                  <div>
-                    <h3
-                      className="text-sm font-medium"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {tool.name}
-                    </h3>
-                    <p
-                      className="text-xs"
-                      style={{ color: "var(--text-muted)" }}
-                    >
-                      {tool.description}
-                    </p>
-                  </div>
+                </div>
+                {/* 名前 */}
+                <div
+                  className="mb-1 text-sm font-medium"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {tool.name}
+                </div>
+                {/* 説明 */}
+                <div
+                  className="mb-3 text-[10px] leading-relaxed"
+                  style={{ color: "var(--text-subtle)" }}
+                >
+                  {tool.description}
                 </div>
 
                 {/* 追加情報 */}
-                <div className="space-y-2 text-xs">
+                <div className="mb-3 space-y-1.5 text-[10px]">
                   <div className="flex justify-between">
                     <span style={{ color: "var(--text-subtle)" }}>
                       カテゴリ
@@ -216,9 +250,7 @@ export const ToolCatalog = (): JSX.Element => {
                   </div>
                   {tool.requiredApproval && (
                     <div className="flex justify-between">
-                      <span style={{ color: "var(--text-subtle)" }}>
-                        必要な承認
-                      </span>
+                      <span style={{ color: "var(--text-subtle)" }}>承認</span>
                       <span style={{ color: "var(--text-secondary)" }}>
                         {tool.requiredApproval}
                       </span>
@@ -226,9 +258,7 @@ export const ToolCatalog = (): JSX.Element => {
                   )}
                   {tool.availableDepartments && (
                     <div className="flex justify-between">
-                      <span style={{ color: "var(--text-subtle)" }}>
-                        対象部署
-                      </span>
+                      <span style={{ color: "var(--text-subtle)" }}>対象</span>
                       <span style={{ color: "var(--text-secondary)" }}>
                         {tool.availableDepartments}
                       </span>
@@ -236,14 +266,17 @@ export const ToolCatalog = (): JSX.Element => {
                   )}
                 </div>
 
-                {/* 申請ボタン */}
+                {/* 申請ボタン（LP風の白ボタン） */}
                 <Link
                   to="/requests/new"
-                  className="flex items-center gap-1 text-xs hover:opacity-80"
-                  style={{ color: "var(--text-muted)" }}
+                  className="flex w-full items-center justify-center gap-1 rounded-md py-1.5 text-[10px] font-medium transition hover:opacity-90"
+                  style={{
+                    backgroundColor: "var(--text-primary)",
+                    color: "var(--bg-card)",
+                  }}
                 >
-                  利用を申請
-                  <ArrowRight size={12} />
+                  <Plus size={10} />
+                  申請
                 </Link>
               </div>
             ))}

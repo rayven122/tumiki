@@ -14,21 +14,21 @@ const statusConfig: Record<
       backgroundColor: "var(--badge-warn-bg)",
       color: "var(--badge-warn-text)",
     },
-    label: "\u{1F7E1} 審査中",
+    label: "審査中",
   },
   approved: {
     style: {
       backgroundColor: "var(--badge-success-bg)",
       color: "var(--badge-success-text)",
     },
-    label: "\u2705 承認済み",
+    label: "承認済み",
   },
   rejected: {
     style: {
       backgroundColor: "var(--badge-error-bg)",
       color: "var(--badge-error-text)",
     },
-    label: "\u{1F534} 却下",
+    label: "却下",
   },
 };
 
@@ -60,17 +60,55 @@ const buildSteps = (request: (typeof REQUESTS)[number]): Step[] => {
   return steps;
 };
 
-/** ステップの色 */
-const stepColor = (status: Step["status"]): string => {
-  if (status === "done") return "bg-emerald-400";
-  if (status === "current") return "bg-amber-400";
-  return "bg-zinc-600";
+/** ステップのドット色（CSS変数ベース） */
+const stepDotStyle = (status: Step["status"]): React.CSSProperties => {
+  if (status === "done")
+    return { backgroundColor: "var(--badge-success-text)" };
+  if (status === "current")
+    return { backgroundColor: "var(--badge-warn-text)" };
+  return { backgroundColor: "var(--text-subtle)" };
 };
 
-const stepTextColor = (status: Step["status"]): string => {
-  if (status === "done") return "text-emerald-400";
-  if (status === "current") return "text-amber-400";
-  return "text-zinc-600";
+/** ステップのラベル色 */
+const stepLabelStyle = (status: Step["status"]): React.CSSProperties => {
+  if (status === "done") return { color: "var(--badge-success-text)" };
+  if (status === "current") return { color: "var(--badge-warn-text)" };
+  return { color: "var(--text-subtle)" };
+};
+
+/** コネクタの色 */
+const connectorStyle = (
+  current: Step["status"],
+  next: Step["status"],
+): React.CSSProperties => {
+  if (current === "done" && (next === "done" || next === "current"))
+    return { backgroundColor: "var(--badge-success-text)", opacity: 0.4 };
+  return { backgroundColor: "var(--text-subtle)", opacity: 0.3 };
+};
+
+/** 承認者ステータスの色 */
+const approverStatusStyle = (
+  status: string,
+): { style: React.CSSProperties; label: string } => {
+  switch (status) {
+    case "approved":
+      return {
+        style: { color: "var(--badge-success-text)" },
+        label: "承認済み",
+      };
+    case "rejected":
+      return {
+        style: { color: "var(--badge-error-text)" },
+        label: "却下",
+      };
+    case "pending":
+      return {
+        style: { color: "var(--badge-warn-text)" },
+        label: "審査中",
+      };
+    default:
+      return { style: { color: "var(--text-subtle)" }, label: "待機中" };
+  }
 };
 
 // 申請詳細ページ
@@ -80,10 +118,7 @@ export const RequestDetail = (): JSX.Element => {
 
   if (!request) {
     return (
-      <div
-        className="min-h-screen p-6"
-        style={{ backgroundColor: "var(--bg-app)" }}
-      >
+      <div className="p-6">
         <p style={{ color: "var(--text-secondary)" }}>申請が見つかりません</p>
       </div>
     );
@@ -93,10 +128,7 @@ export const RequestDetail = (): JSX.Element => {
   const steps = buildSteps(request);
 
   return (
-    <div
-      className="min-h-screen space-y-6 p-6"
-      style={{ backgroundColor: "var(--bg-app)" }}
-    >
+    <div className="space-y-4 p-6">
       {/* 戻るリンク */}
       <Link
         to="/requests"
@@ -110,13 +142,13 @@ export const RequestDetail = (): JSX.Element => {
       {/* タイトル + ステータス */}
       <div className="flex items-center gap-3">
         <h1
-          className="text-xl font-semibold"
+          className="text-lg font-semibold"
           style={{ color: "var(--text-primary)" }}
         >
           申請詳細
         </h1>
         <span
-          className="rounded-full px-2.5 py-0.5 text-xs font-medium"
+          className="rounded-full px-2.5 py-0.5 text-[10px] font-medium"
           style={status.style}
         >
           {status.label}
@@ -127,9 +159,7 @@ export const RequestDetail = (): JSX.Element => {
       <div
         className="space-y-4 rounded-xl p-6"
         style={{
-          borderWidth: 1,
-          borderStyle: "solid",
-          borderColor: "var(--border)",
+          border: "1px solid var(--border)",
           backgroundColor: "var(--bg-card)",
           boxShadow: "var(--shadow-card)",
         }}
@@ -142,35 +172,49 @@ export const RequestDetail = (): JSX.Element => {
         </h2>
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div className="space-y-1">
-            <p style={{ color: "var(--text-muted)" }}>申請日</p>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              申請日
+            </p>
             <p style={{ color: "var(--text-secondary)" }}>{request.date}</p>
           </div>
           <div className="space-y-1">
-            <p style={{ color: "var(--text-muted)" }}>対象ツール</p>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              対象ツール
+            </p>
             <p style={{ color: "var(--text-secondary)" }}>{request.tool}</p>
           </div>
           <div className="space-y-1">
-            <p style={{ color: "var(--text-muted)" }}>申請種別</p>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              申請種別
+            </p>
             <p style={{ color: "var(--text-secondary)" }}>{request.type}</p>
           </div>
           <div className="space-y-1">
-            <p style={{ color: "var(--text-muted)" }}>希望権限</p>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              希望権限
+            </p>
             <p style={{ color: "var(--text-secondary)" }}>
               {request.requestedPermissions.join(", ")}
             </p>
           </div>
           <div className="space-y-1">
-            <p style={{ color: "var(--text-muted)" }}>希望操作</p>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              希望操作
+            </p>
             <p style={{ color: "var(--text-secondary)" }}>
               {request.requestedOperations.join(", ")}
             </p>
           </div>
           <div className="space-y-1">
-            <p style={{ color: "var(--text-muted)" }}>利用期間</p>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              利用期間
+            </p>
             <p style={{ color: "var(--text-secondary)" }}>{request.period}</p>
           </div>
           <div className="col-span-2 space-y-1">
-            <p style={{ color: "var(--text-muted)" }}>利用目的</p>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              利用目的
+            </p>
             <p style={{ color: "var(--text-secondary)" }}>{request.purpose}</p>
           </div>
         </div>
@@ -180,9 +224,7 @@ export const RequestDetail = (): JSX.Element => {
       <div
         className="space-y-4 rounded-xl p-6"
         style={{
-          borderWidth: 1,
-          borderStyle: "solid",
-          borderColor: "var(--border)",
+          border: "1px solid var(--border)",
           backgroundColor: "var(--bg-card)",
           boxShadow: "var(--shadow-card)",
         }}
@@ -193,79 +235,115 @@ export const RequestDetail = (): JSX.Element => {
         >
           承認状況
         </h2>
-        <div className="flex items-center gap-2">
+
+        {/* ビジュアルステッパー */}
+        <div className="flex items-start">
           {steps.map((step, i) => (
-            <div key={step.label} className="flex items-center gap-2">
-              {/* ステップ */}
+            <div key={step.label} className="flex items-start">
               <div className="flex flex-col items-center gap-1.5">
+                {/* ドット */}
                 <div
-                  className={`h-3 w-3 rounded-full ${stepColor(step.status)}`}
-                />
-                <span className={`text-xs ${stepTextColor(step.status)}`}>
+                  className="flex h-5 w-5 items-center justify-center rounded-full"
+                  style={{
+                    ...stepDotStyle(step.status),
+                    opacity: step.status === "waiting" ? 0.4 : 1,
+                  }}
+                >
+                  {step.status === "done" && (
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                      <path
+                        d="M2.5 5L4.5 7L7.5 3"
+                        stroke="white"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
+                  {step.status === "current" && (
+                    <div className="h-2 w-2 rounded-full bg-white" />
+                  )}
+                </div>
+                {/* ラベル */}
+                <span
+                  className="text-[10px] whitespace-nowrap"
+                  style={stepLabelStyle(step.status)}
+                >
                   {step.label}
                 </span>
               </div>
-              {/* コネクタ */}
+              {/* コネクタライン */}
               {i < steps.length - 1 && (
-                <div className="mb-5 h-px w-12 bg-zinc-700" />
+                <div
+                  className="mt-2.5 h-px w-10 shrink-0"
+                  style={connectorStyle(
+                    step.status,
+                    steps[i + 1]?.status ?? "waiting",
+                  )}
+                />
               )}
             </div>
           ))}
         </div>
 
         {/* 承認者一覧 */}
-        <div className="mt-4 space-y-2">
-          {request.approvers.map((approver) => (
-            <div
-              key={approver.name}
-              className="flex items-center justify-between text-sm"
-            >
-              <div>
-                <span style={{ color: "var(--text-secondary)" }}>
-                  {approver.name}
-                </span>
-                <span className="ml-2" style={{ color: "var(--text-subtle)" }}>
-                  {approver.department}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                {approver.date && (
+        <div
+          className="mt-2 space-y-2 pt-4"
+          style={{ borderTop: "1px solid var(--border)" }}
+        >
+          {request.approvers.map((approver) => {
+            const approverStatus = approverStatusStyle(approver.status);
+            return (
+              <div
+                key={approver.name}
+                className="flex items-center justify-between text-sm"
+              >
+                <div>
+                  <span style={{ color: "var(--text-secondary)" }}>
+                    {approver.name}
+                  </span>
                   <span
-                    className="text-xs"
+                    className="ml-2 text-xs"
                     style={{ color: "var(--text-subtle)" }}
                   >
-                    {approver.date}
+                    {approver.department}
                   </span>
-                )}
-                <span
-                  className={`text-xs ${
-                    approver.status === "approved"
-                      ? "text-emerald-400"
-                      : approver.status === "rejected"
-                        ? "text-red-400"
-                        : approver.status === "pending"
-                          ? "text-amber-400"
-                          : "text-zinc-600"
-                  }`}
-                >
-                  {approver.status === "approved"
-                    ? "承認済み"
-                    : approver.status === "rejected"
-                      ? "却下"
-                      : approver.status === "pending"
-                        ? "審査中"
-                        : "待機中"}
-                </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {approver.date && (
+                    <span
+                      className="text-xs"
+                      style={{ color: "var(--text-subtle)" }}
+                    >
+                      {approver.date}
+                    </span>
+                  )}
+                  <span className="text-xs" style={approverStatus.style}>
+                    {approverStatus.label}
+                  </span>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
-      {/* コメント（却下理由） */}
+      {/* 却下理由 */}
       {request.rejectReason && (
-        <div className="space-y-2 rounded-xl border border-red-400/20 bg-red-400/[0.03] p-6">
-          <h2 className="text-sm font-medium text-red-400">却下理由</h2>
+        <div
+          className="space-y-2 rounded-xl p-6"
+          style={{
+            border: "1px solid var(--badge-error-bg)",
+            backgroundColor: "var(--bg-card)",
+            boxShadow: "var(--shadow-card)",
+          }}
+        >
+          <h2
+            className="text-sm font-medium"
+            style={{ color: "var(--badge-error-text)" }}
+          >
+            却下理由
+          </h2>
           <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
             {request.rejectReason}
           </p>
@@ -274,7 +352,13 @@ export const RequestDetail = (): JSX.Element => {
 
       {/* 取り消しボタン（pending時のみ） */}
       {request.status === "pending" && (
-        <button className="rounded-lg border border-red-400/30 px-4 py-2 text-sm text-red-400 hover:border-red-400/50">
+        <button
+          className="rounded-lg px-4 py-2 text-sm transition-colors hover:opacity-80"
+          style={{
+            border: "1px solid var(--badge-error-bg)",
+            color: "var(--badge-error-text)",
+          }}
+        >
           申請を取り消す
         </button>
       )}

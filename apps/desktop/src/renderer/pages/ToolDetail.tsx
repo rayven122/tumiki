@@ -4,7 +4,7 @@ import { useAtomValue } from "jotai";
 import { ArrowLeft, ExternalLink, Shield } from "lucide-react";
 import { themeAtom } from "../store/atoms";
 import { TOOLS, HISTORY } from "../data/mock";
-import type { ToolStatus } from "../data/mock";
+import type { ToolStatus, HistoryStatus } from "../data/mock";
 
 /** ステータスバッジの表示定義 */
 const statusBadge: Record<
@@ -34,6 +34,26 @@ const statusBadge: Record<
   },
 };
 
+/** 履歴ステータスのpillスタイル */
+const historyStatusPill: Record<
+  HistoryStatus,
+  { bg: string; text: string; label: string }
+> = {
+  success: { bg: "bg-emerald-400/10", text: "text-emerald-400", label: "成功" },
+  timeout: { bg: "bg-amber-400/10", text: "text-amber-400", label: "遅延" },
+  blocked: { bg: "bg-red-400/10", text: "text-red-400", label: "拒否" },
+  error: { bg: "bg-red-400/10", text: "text-red-400", label: "エラー" },
+};
+
+/** カードの共通スタイル */
+const cardStyle: React.CSSProperties = {
+  borderWidth: 1,
+  borderStyle: "solid",
+  borderColor: "var(--border)",
+  backgroundColor: "var(--bg-card)",
+  boxShadow: "var(--shadow-card)",
+};
+
 export const ToolDetail = (): JSX.Element => {
   const theme = useAtomValue(themeAtom);
   const { toolId } = useParams<{ toolId: string }>();
@@ -42,10 +62,7 @@ export const ToolDetail = (): JSX.Element => {
   // ツールが見つからない場合
   if (!tool) {
     return (
-      <div
-        className="min-h-screen p-6"
-        style={{ backgroundColor: "var(--bg-app)" }}
-      >
+      <div className="p-6">
         <Link
           to="/tools"
           className="flex items-center gap-1 text-sm hover:opacity-80"
@@ -73,10 +90,7 @@ export const ToolDetail = (): JSX.Element => {
   const hasLockedOperations = tool.operations.some((op) => !op.allowed);
 
   return (
-    <div
-      className="min-h-screen space-y-6 p-6"
-      style={{ backgroundColor: "var(--bg-app)" }}
-    >
+    <div className="space-y-6 p-6">
       {/* 戻るリンク */}
       <Link
         to="/tools"
@@ -116,16 +130,7 @@ export const ToolDetail = (): JSX.Element => {
       </div>
 
       {/* 基本情報 */}
-      <div
-        className="rounded-xl p-5"
-        style={{
-          borderWidth: 1,
-          borderStyle: "solid",
-          borderColor: "var(--border)",
-          backgroundColor: "var(--bg-card)",
-          boxShadow: "var(--shadow-card)",
-        }}
-      >
+      <div className="rounded-xl p-6" style={cardStyle}>
         <h2
           className="mb-4 text-sm font-medium"
           style={{ color: "var(--text-primary)" }}
@@ -172,17 +177,8 @@ export const ToolDetail = (): JSX.Element => {
         </div>
       </div>
 
-      {/* あなたの権限 */}
-      <div
-        className="rounded-xl p-5"
-        style={{
-          borderWidth: 1,
-          borderStyle: "solid",
-          borderColor: "var(--border)",
-          backgroundColor: "var(--bg-card)",
-          boxShadow: "var(--shadow-card)",
-        }}
-      >
+      {/* あなたの権限（LP風トグル表示） */}
+      <div className="rounded-xl p-6" style={cardStyle}>
         <div className="mb-4 flex items-center gap-2">
           <Shield size={14} style={{ color: "var(--text-muted)" }} />
           <h2
@@ -192,6 +188,8 @@ export const ToolDetail = (): JSX.Element => {
             あなたの権限
           </h2>
         </div>
+
+        {/* LP風のグリッド表示 */}
         <div
           className="overflow-hidden rounded-lg"
           style={{
@@ -200,69 +198,59 @@ export const ToolDetail = (): JSX.Element => {
             borderColor: "var(--border)",
           }}
         >
-          <table className="w-full text-sm">
-            <thead>
-              <tr
+          {tool.operations.map((op, idx) => (
+            <div
+              key={op.name}
+              className="flex items-center gap-3 px-4 py-2.5"
+              style={{
+                backgroundColor: "var(--bg-card)",
+                ...(idx < tool.operations.length - 1
+                  ? {
+                      borderBottomWidth: 1,
+                      borderBottomStyle: "solid" as const,
+                      borderBottomColor: "var(--border-subtle)",
+                    }
+                  : {}),
+              }}
+            >
+              {/* ON/OFF ドット */}
+              <span
+                className={`h-2 w-2 shrink-0 rounded-full ${op.allowed ? "bg-emerald-400" : "bg-zinc-700"}`}
+              />
+              {/* 操作名 */}
+              <span
+                className="w-36 shrink-0 font-mono text-xs"
                 style={{
-                  borderBottomWidth: 1,
-                  borderBottomStyle: "solid",
-                  borderBottomColor: "var(--border)",
-                  backgroundColor: "var(--bg-card-hover)",
+                  color: op.allowed
+                    ? "var(--text-secondary)"
+                    : "var(--text-subtle)",
                 }}
               >
-                <th
-                  className="px-4 py-2 text-left text-xs font-medium"
-                  style={{ color: "var(--text-muted)" }}
-                >
-                  操作
-                </th>
-                <th
-                  className="px-4 py-2 text-left text-xs font-medium"
-                  style={{ color: "var(--text-muted)" }}
-                >
-                  説明
-                </th>
-                <th
-                  className="px-4 py-2 text-center text-xs font-medium"
-                  style={{ color: "var(--text-muted)" }}
-                >
-                  状態
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {tool.operations.map((op) => (
-                <tr
-                  key={op.name}
-                  style={{
-                    borderBottomWidth: 1,
-                    borderBottomStyle: "solid",
-                    borderBottomColor: "var(--border-subtle)",
-                  }}
-                >
-                  <td
-                    className="px-4 py-2 font-mono text-xs"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {op.name}
-                  </td>
-                  <td
-                    className="px-4 py-2 text-xs"
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    {op.description}
-                  </td>
-                  <td className="px-4 py-2 text-center text-xs">
-                    {op.allowed ? (
-                      <span className="text-emerald-400">可</span>
-                    ) : (
-                      <span style={{ color: "var(--text-subtle)" }}>不可</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                {op.name}
+              </span>
+              {/* 説明 */}
+              <span
+                className="flex-1 text-xs"
+                style={{
+                  color: op.allowed
+                    ? "var(--text-muted)"
+                    : "var(--text-subtle)",
+                }}
+              >
+                {op.description}
+              </span>
+              {/* ステータスラベル */}
+              <span
+                className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                  op.allowed
+                    ? "bg-emerald-400/10 text-emerald-400"
+                    : "bg-zinc-700/30 text-zinc-500"
+                }`}
+              >
+                {op.allowed ? "許可" : "不可"}
+              </span>
+            </div>
+          ))}
         </div>
 
         {hasLockedOperations && (
@@ -281,71 +269,62 @@ export const ToolDetail = (): JSX.Element => {
         )}
       </div>
 
-      {/* 利用統計 */}
-      <div
-        className="rounded-xl p-5"
-        style={{
-          borderWidth: 1,
-          borderStyle: "solid",
-          borderColor: "var(--border)",
-          backgroundColor: "var(--bg-card)",
-          boxShadow: "var(--shadow-card)",
-        }}
-      >
+      {/* 利用統計（目立つデザイン） */}
+      <div className="rounded-xl p-6" style={cardStyle}>
         <h2
           className="mb-4 text-sm font-medium"
           style={{ color: "var(--text-primary)" }}
         >
           利用統計（今月）
         </h2>
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-              総リクエスト数
-            </p>
-            <p
-              className="mt-1 text-2xl font-semibold"
-              style={{ color: "var(--text-primary)" }}
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            {
+              label: "総リクエスト",
+              value: tool.stats.requests.toLocaleString(),
+              suffix: "",
+            },
+            {
+              label: "成功率",
+              value: tool.stats.successRate.toString(),
+              suffix: "%",
+            },
+            {
+              label: "平均応答",
+              value: tool.stats.avgLatency.toString(),
+              suffix: "ms",
+            },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              className="rounded-lg p-3 text-center"
+              style={{ backgroundColor: "var(--bg-card-hover)" }}
             >
-              {tool.stats.requests}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-              成功率
-            </p>
-            <p
-              className="mt-1 text-2xl font-semibold"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {tool.stats.successRate}%
-            </p>
-          </div>
-          <div>
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-              平均応答時間
-            </p>
-            <p
-              className="mt-1 text-2xl font-semibold"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {tool.stats.avgLatency}ms
-            </p>
-          </div>
+              <p
+                className="text-2xl font-semibold"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {stat.value}
+                <span
+                  className="ml-0.5 text-sm font-normal"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  {stat.suffix}
+                </span>
+              </p>
+              <p
+                className="mt-1 text-[10px]"
+                style={{ color: "var(--text-subtle)" }}
+              >
+                {stat.label}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* 最近の操作 */}
-      <div
-        className="rounded-xl p-5"
-        style={{
-          borderWidth: 1,
-          borderStyle: "solid",
-          borderColor: "var(--border)",
-          backgroundColor: "var(--bg-card)",
-          boxShadow: "var(--shadow-card)",
-        }}
-      >
+      {/* 最近の操作（pillバッジ） */}
+      <div className="rounded-xl p-6" style={cardStyle}>
         <h2
           className="mb-4 text-sm font-medium"
           style={{ color: "var(--text-primary)" }}
@@ -353,45 +332,51 @@ export const ToolDetail = (): JSX.Element => {
           最近の操作
         </h2>
         {toolHistory.length > 0 ? (
-          <div className="space-y-3">
-            {toolHistory.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center justify-between text-sm"
-              >
-                <div className="flex items-center gap-3">
-                  <span
-                    className="text-xs"
-                    style={{ color: "var(--text-subtle)" }}
-                  >
-                    {item.datetime}
-                  </span>
-                  <span
-                    className="font-mono text-xs"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {item.operation}
-                  </span>
-                  <span
-                    className="text-xs"
-                    style={{ color: "var(--text-subtle)" }}
-                  >
-                    {item.detail}
-                  </span>
-                </div>
-                <span
-                  className={
-                    item.status === "success"
-                      ? "text-emerald-400"
-                      : item.status === "timeout"
-                        ? "text-amber-400"
-                        : "text-red-400"
-                  }
+          <div className="space-y-2">
+            {toolHistory.map((item) => {
+              const pill = historyStatusPill[item.status];
+              return (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between rounded-lg px-3 py-2"
+                  style={{ backgroundColor: "var(--bg-card-hover)" }}
                 >
-                  {item.latency}
-                </span>
-              </div>
-            ))}
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="text-xs"
+                      style={{ color: "var(--text-subtle)" }}
+                    >
+                      {item.datetime}
+                    </span>
+                    <span
+                      className="font-mono text-xs"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      {item.operation}
+                    </span>
+                    <span
+                      className="text-xs"
+                      style={{ color: "var(--text-subtle)" }}
+                    >
+                      {item.detail}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="font-mono text-xs"
+                      style={{ color: "var(--text-subtle)" }}
+                    >
+                      {item.latency}
+                    </span>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${pill.bg} ${pill.text}`}
+                    >
+                      {pill.label}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ) : (
           <p className="text-sm" style={{ color: "var(--text-subtle)" }}>

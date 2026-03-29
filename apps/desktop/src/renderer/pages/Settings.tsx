@@ -8,7 +8,7 @@ import {
 } from "../data/mock";
 import type { NotificationSetting } from "../data/mock";
 
-/** トグルスイッチ */
+/** トグルスイッチ（CSS変数ベース） */
 const Toggle = ({
   enabled,
   onToggle,
@@ -18,7 +18,12 @@ const Toggle = ({
 }): JSX.Element => (
   <button
     onClick={onToggle}
-    className={`relative h-5 w-9 rounded-full transition-colors ${enabled ? "bg-emerald-500" : "bg-zinc-700"}`}
+    className="relative h-5 w-9 rounded-full transition-colors"
+    style={{
+      backgroundColor: enabled
+        ? "var(--badge-success-text)"
+        : "var(--text-subtle)",
+    }}
   >
     <div
       className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${enabled ? "left-[18px]" : "left-0.5"}`}
@@ -86,12 +91,9 @@ export const SettingsPage = (): JSX.Element => {
   );
 
   return (
-    <div
-      className="min-h-screen space-y-6 p-6"
-      style={{ backgroundColor: "var(--bg-app)" }}
-    >
+    <div className="space-y-4 p-6">
       <h1
-        className="text-xl font-semibold"
+        className="text-lg font-semibold"
         style={{ color: "var(--text-primary)" }}
       >
         設定
@@ -101,9 +103,7 @@ export const SettingsPage = (): JSX.Element => {
       <div
         className="space-y-5 rounded-xl p-6"
         style={{
-          borderWidth: 1,
-          borderStyle: "solid",
-          borderColor: "var(--border)",
+          border: "1px solid var(--border)",
           backgroundColor: "var(--bg-card)",
           boxShadow: "var(--shadow-card)",
         }}
@@ -116,37 +116,49 @@ export const SettingsPage = (): JSX.Element => {
         </h2>
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div className="space-y-1">
-            <p style={{ color: "var(--text-muted)" }}>氏名</p>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              氏名
+            </p>
             <p style={{ color: "var(--text-secondary)" }}>
               {CURRENT_USER.name}
             </p>
           </div>
           <div className="space-y-1">
-            <p style={{ color: "var(--text-muted)" }}>メールアドレス</p>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              メールアドレス
+            </p>
             <p style={{ color: "var(--text-secondary)" }}>
               {CURRENT_USER.email}
             </p>
           </div>
           <div className="space-y-1">
-            <p style={{ color: "var(--text-muted)" }}>部署</p>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              部署
+            </p>
             <p style={{ color: "var(--text-secondary)" }}>
               {CURRENT_USER.department}
             </p>
           </div>
           <div className="space-y-1">
-            <p style={{ color: "var(--text-muted)" }}>ロール</p>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              ロール
+            </p>
             <p style={{ color: "var(--text-secondary)" }}>
               {CURRENT_USER.role}
             </p>
           </div>
           <div className="space-y-1">
-            <p style={{ color: "var(--text-muted)" }}>社員ID</p>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              社員ID
+            </p>
             <p style={{ color: "var(--text-secondary)" }}>
               {CURRENT_USER.employeeId}
             </p>
           </div>
           <div className="space-y-1">
-            <p style={{ color: "var(--text-muted)" }}>最終ログイン</p>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              最終ログイン
+            </p>
             <p style={{ color: "var(--text-secondary)" }}>
               {CURRENT_USER.lastLogin}
             </p>
@@ -156,11 +168,7 @@ export const SettingsPage = (): JSX.Element => {
         {/* 権限サマリー */}
         <div
           className="space-y-3 pt-4"
-          style={{
-            borderTopWidth: 1,
-            borderTopStyle: "solid",
-            borderTopColor: "var(--border)",
-          }}
+          style={{ borderTop: "1px solid var(--border)" }}
         >
           <h3
             className="text-xs font-medium"
@@ -171,11 +179,7 @@ export const SettingsPage = (): JSX.Element => {
           <div className="flex gap-4 text-sm">
             <div
               className="rounded-lg px-4 py-2.5"
-              style={{
-                borderWidth: 1,
-                borderStyle: "solid",
-                borderColor: "var(--border)",
-              }}
+              style={{ border: "1px solid var(--border)" }}
             >
               <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                 承認済みツール
@@ -191,11 +195,7 @@ export const SettingsPage = (): JSX.Element => {
               <div
                 key={perm}
                 className="rounded-lg px-4 py-2.5"
-                style={{
-                  borderWidth: 1,
-                  borderStyle: "solid",
-                  borderColor: "var(--border)",
-                }}
+                style={{ border: "1px solid var(--border)" }}
               >
                 <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                   {perm}
@@ -216,9 +216,7 @@ export const SettingsPage = (): JSX.Element => {
       <div
         className="space-y-5 rounded-xl p-6"
         style={{
-          borderWidth: 1,
-          borderStyle: "solid",
-          borderColor: "var(--border)",
+          border: "1px solid var(--border)",
           backgroundColor: "var(--bg-card)",
           boxShadow: "var(--shadow-card)",
         }}
@@ -234,13 +232,7 @@ export const SettingsPage = (): JSX.Element => {
           items={emailSettings}
           onToggle={toggleEmail}
         />
-        <div
-          style={{
-            borderTopWidth: 1,
-            borderTopStyle: "solid",
-            borderTopColor: "var(--border)",
-          }}
-        />
+        <div style={{ borderTop: "1px solid var(--border)" }} />
         <NotificationSection
           title="ポータル内通知"
           items={portalSettings}
@@ -250,7 +242,7 @@ export const SettingsPage = (): JSX.Element => {
 
       {/* 保存ボタン */}
       <button
-        className="rounded-lg px-4 py-2 text-sm font-medium hover:opacity-90"
+        className="rounded-lg px-4 py-2 text-sm font-medium transition-colors hover:opacity-90"
         style={{
           backgroundColor: "var(--btn-primary-bg)",
           color: "var(--btn-primary-text)",

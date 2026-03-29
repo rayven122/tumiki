@@ -1,29 +1,52 @@
 import type { JSX } from "react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { Activity, Download } from "lucide-react";
 import { HISTORY, type HistoryStatus } from "../data/mock";
 
-/** ステータスの表示ラベルとカラーを返す */
-const statusDisplay = (
+/** ステータスバッジの設定を返す */
+const statusBadge = (
   status: HistoryStatus,
-): { label: string; className: string } => {
-  switch (status) {
-    case "success":
-      return { label: "✅ 成功", className: "text-emerald-400" };
-    case "timeout":
-      return { label: "⚠️ タイムアウト", className: "text-amber-400" };
-    case "blocked":
-      return { label: "🔴 権限不足", className: "text-red-400" };
-    case "error":
-      return { label: "🔴 エラー", className: "text-red-400" };
-  }
+): { bg: string; text: string; label: string } => {
+  const config = {
+    success: {
+      bg: "var(--badge-success-bg)",
+      text: "var(--badge-success-text)",
+      label: "成功",
+    },
+    timeout: {
+      bg: "var(--badge-warn-bg)",
+      text: "var(--badge-warn-text)",
+      label: "タイムアウト",
+    },
+    blocked: {
+      bg: "var(--badge-error-bg)",
+      text: "var(--badge-error-text)",
+      label: "ブロック",
+    },
+    error: {
+      bg: "var(--badge-error-bg)",
+      text: "var(--badge-error-text)",
+      label: "エラー",
+    },
+  };
+  return config[status];
+};
+
+/** 行がエラー系かどうか判定 */
+const isErrorRow = (status: HistoryStatus): boolean =>
+  status === "blocked" || status === "error";
+
+/** セレクトの共通スタイル */
+const selectStyle = {
+  borderWidth: 1,
+  borderStyle: "solid" as const,
+  borderColor: "var(--border)",
+  backgroundColor: "var(--bg-card)",
+  color: "var(--text-secondary)",
 };
 
 export const HistoryList = (): JSX.Element => {
-  // 期間フィルタ（装飾的）
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-
   // セレクトフィルタ
   const [toolFilter, setToolFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -47,274 +70,271 @@ export const HistoryList = (): JSX.Element => {
   const successCount = filtered.filter((h) => h.status === "success").length;
   const successRate = total > 0 ? Math.round((successCount / total) * 100) : 0;
   const blockedCount = filtered.filter((h) => h.status === "blocked").length;
+  const timeoutCount = filtered.filter((h) => h.status === "timeout").length;
 
   return (
-    <div
-      className="min-h-screen p-6"
-      style={{ backgroundColor: "var(--bg-app)" }}
-    >
+    <div className="space-y-4 p-6">
       {/* ヘッダー */}
-      <div className="mb-6">
+      <div>
         <h1
-          className="text-2xl font-bold"
+          className="text-lg font-semibold"
           style={{ color: "var(--text-primary)" }}
         >
           操作履歴
         </h1>
-        <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+        <p className="mt-1 text-xs" style={{ color: "var(--text-secondary)" }}>
           あなたのAIエージェント操作の記録
         </p>
       </div>
 
-      {/* 期間フィルタ */}
-      <div className="mb-4 flex items-center gap-3">
-        <label className="text-xs" style={{ color: "var(--text-muted)" }}>
-          期間
-        </label>
-        <input
-          type="date"
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          className="rounded-lg px-3 py-1.5 text-sm outline-none focus:border-white/20"
-          style={{
-            borderWidth: 1,
-            borderStyle: "solid",
-            borderColor: "var(--border)",
-            backgroundColor: "var(--bg-card)",
-            color: "var(--text-secondary)",
-          }}
-        />
-        <span style={{ color: "var(--text-muted)" }}>〜</span>
-        <input
-          type="date"
-          value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
-          className="rounded-lg px-3 py-1.5 text-sm outline-none focus:border-white/20"
-          style={{
-            borderWidth: 1,
-            borderStyle: "solid",
-            borderColor: "var(--border)",
-            backgroundColor: "var(--bg-card)",
-            color: "var(--text-secondary)",
-          }}
-        />
-      </div>
-
-      {/* セレクトフィルタ */}
-      <div className="mb-4 flex items-center gap-3">
-        <select
-          value={toolFilter}
-          onChange={(e) => setToolFilter(e.target.value)}
-          className="rounded-lg px-3 py-1.5 text-sm outline-none"
-          style={{
-            borderWidth: 1,
-            borderStyle: "solid",
-            borderColor: "var(--border)",
-            backgroundColor: "var(--bg-card)",
-            color: "var(--text-secondary)",
-          }}
-        >
-          <option value="all">すべてのツール</option>
-          {tools.map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-lg px-3 py-1.5 text-sm outline-none"
-          style={{
-            borderWidth: 1,
-            borderStyle: "solid",
-            borderColor: "var(--border)",
-            backgroundColor: "var(--bg-card)",
-            color: "var(--text-secondary)",
-          }}
-        >
-          <option value="all">すべてのステータス</option>
-          <option value="success">成功</option>
-          <option value="timeout">タイムアウト</option>
-          <option value="blocked">権限不足</option>
-          <option value="error">エラー</option>
-        </select>
-
-        <select
-          value={operationFilter}
-          onChange={(e) => setOperationFilter(e.target.value)}
-          className="rounded-lg px-3 py-1.5 text-sm outline-none"
-          style={{
-            borderWidth: 1,
-            borderStyle: "solid",
-            borderColor: "var(--border)",
-            backgroundColor: "var(--bg-card)",
-            color: "var(--text-secondary)",
-          }}
-        >
-          <option value="all">すべての操作</option>
-          {operations.map((op) => (
-            <option key={op} value={op}>
-              {op}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* サマリーバー */}
-      <div
-        className="mb-4 flex items-center gap-6 rounded-xl px-5 py-3"
-        style={{
-          borderWidth: 1,
-          borderStyle: "solid",
-          borderColor: "var(--border)",
-          backgroundColor: "var(--bg-card)",
-          boxShadow: "var(--shadow-card)",
-        }}
-      >
-        <span className="text-sm" style={{ color: "var(--text-secondary)" }}>
-          全
-          <span
-            className="mx-1 font-semibold"
-            style={{ color: "var(--text-primary)" }}
+      {/* サマリーカード4つ */}
+      <div className="grid grid-cols-4 gap-3">
+        {[
+          {
+            label: "総件数",
+            value: total,
+            color: "var(--text-primary)",
+          },
+          {
+            label: "成功率",
+            value: `${successRate}%`,
+            color: "var(--badge-success-text)",
+          },
+          {
+            label: "ブロック",
+            value: blockedCount,
+            color: "var(--badge-error-text)",
+          },
+          {
+            label: "タイムアウト",
+            value: timeoutCount,
+            color: "var(--badge-warn-text)",
+          },
+        ].map((card) => (
+          <div
+            key={card.label}
+            className="rounded-xl p-4"
+            style={{
+              backgroundColor: "var(--bg-card)",
+              border: "1px solid var(--border)",
+              boxShadow: "var(--shadow-card)",
+            }}
           >
-            {total}
-          </span>
-          件
-        </span>
-        <span className="text-sm" style={{ color: "var(--text-secondary)" }}>
-          成功率
-          <span className="mx-1 font-semibold text-emerald-400">
-            {successRate}%
-          </span>
-        </span>
-        <span className="text-sm" style={{ color: "var(--text-secondary)" }}>
-          遮断
-          <span className="mx-1 font-semibold text-red-400">
-            {blockedCount}
-          </span>
-          件
-        </span>
+            <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+              {card.label}
+            </span>
+            <div
+              className="mt-2 text-2xl font-semibold"
+              style={{ color: card.color }}
+            >
+              {card.value}
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* テーブル */}
+      {/* メインカード（フィルタ + テーブル） */}
       <div
         className="overflow-hidden rounded-xl"
         style={{
-          borderWidth: 1,
-          borderStyle: "solid",
-          borderColor: "var(--border)",
           backgroundColor: "var(--bg-card)",
+          border: "1px solid var(--border)",
           boxShadow: "var(--shadow-card)",
         }}
       >
+        {/* フィルタバー */}
+        <div
+          className="flex items-center justify-between px-5 py-3"
+          style={{
+            borderBottom: "1px solid var(--border)",
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <Activity
+              className="h-4 w-4"
+              style={{ color: "var(--text-muted)" }}
+            />
+            <span
+              className="text-sm font-medium"
+              style={{ color: "var(--text-primary)" }}
+            >
+              操作履歴
+            </span>
+            <span
+              className="ml-1 text-xs"
+              style={{ color: "var(--text-muted)" }}
+            >
+              {total}件
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <select
+              value={toolFilter}
+              onChange={(e) => setToolFilter(e.target.value)}
+              className="rounded-lg px-2 py-1 text-xs outline-none"
+              style={selectStyle}
+            >
+              <option value="all">すべてのツール</option>
+              {tools.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="rounded-lg px-2 py-1 text-xs outline-none"
+              style={selectStyle}
+            >
+              <option value="all">すべてのステータス</option>
+              <option value="success">成功</option>
+              <option value="timeout">タイムアウト</option>
+              <option value="blocked">ブロック</option>
+              <option value="error">エラー</option>
+            </select>
+
+            <select
+              value={operationFilter}
+              onChange={(e) => setOperationFilter(e.target.value)}
+              className="rounded-lg px-2 py-1 text-xs outline-none"
+              style={selectStyle}
+            >
+              <option value="all">すべての操作</option>
+              {operations.map((op) => (
+                <option key={op} value={op}>
+                  {op}
+                </option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs hover:opacity-80"
+              style={selectStyle}
+            >
+              <Download className="h-3 w-3" />
+              CSV
+            </button>
+          </div>
+        </div>
+
+        {/* テーブル */}
         <table className="w-full">
           <thead>
             <tr
               style={{
-                borderBottomWidth: 1,
-                borderBottomStyle: "solid",
-                borderBottomColor: "var(--border)",
+                borderBottom: "1px solid var(--border)",
                 backgroundColor: "var(--bg-card-hover)",
               }}
             >
-              <th
-                className="px-4 py-3 text-left text-[11px] font-medium"
-                style={{ color: "var(--text-muted)" }}
-              >
-                日時
-              </th>
-              <th
-                className="px-4 py-3 text-left text-[11px] font-medium"
-                style={{ color: "var(--text-muted)" }}
-              >
-                ツール
-              </th>
-              <th
-                className="px-4 py-3 text-left text-[11px] font-medium"
-                style={{ color: "var(--text-muted)" }}
-              >
-                操作
-              </th>
-              <th
-                className="px-4 py-3 text-left text-[11px] font-medium"
-                style={{ color: "var(--text-muted)" }}
-              >
-                ステータス
-              </th>
-              <th
-                className="px-4 py-3 text-left text-[11px] font-medium"
-                style={{ color: "var(--text-muted)" }}
-              >
-                詳細
-              </th>
+              {["日時", "ツール", "操作", "ステータス", "詳細", "応答時間"].map(
+                (label) => (
+                  <th
+                    key={label}
+                    className={`px-4 py-3 text-[11px] font-medium ${label === "応答時間" ? "text-right" : "text-left"}`}
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    {label}
+                  </th>
+                ),
+              )}
             </tr>
           </thead>
           <tbody>
             {filtered.map((item) => {
-              const display = statusDisplay(item.status);
+              const badge = statusBadge(item.status);
               return (
                 <tr
                   key={item.id}
-                  className="hover:opacity-90"
+                  className="transition-colors hover:opacity-90"
                   style={{
-                    borderBottomWidth: 1,
-                    borderBottomStyle: "solid",
-                    borderBottomColor: "var(--border-subtle)",
+                    borderBottom: "1px solid var(--border-subtle)",
+                    backgroundColor: isErrorRow(item.status)
+                      ? "var(--bg-error-row, rgba(239,68,68,0.03))"
+                      : undefined,
                   }}
                 >
+                  {/* 日時 */}
                   <td
-                    className="px-4 py-3 text-sm"
+                    className="px-4 py-3 font-mono text-xs"
                     style={{ color: "var(--text-secondary)" }}
                   >
                     {item.datetime}
                   </td>
-                  <td
-                    className="px-4 py-3 text-sm"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {item.tool}
+
+                  {/* ツール */}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
+                        style={{ backgroundColor: "var(--bg-card-hover)" }}
+                      >
+                        <span
+                          className="text-[10px] font-medium"
+                          style={{ color: "var(--text-secondary)" }}
+                        >
+                          --
+                        </span>
+                      </div>
+                      <span
+                        className="text-xs"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
+                        {item.tool}
+                      </span>
+                    </div>
                   </td>
+
+                  {/* 操作 */}
                   <td
-                    className="px-4 py-3 font-mono text-sm"
+                    className="px-4 py-3 font-mono text-xs"
                     style={{ color: "var(--text-secondary)" }}
                   >
                     {item.operation}
                   </td>
-                  <td className={`px-4 py-3 text-sm ${display.className}`}>
-                    {display.label}
-                  </td>
+
+                  {/* ステータスバッジ */}
                   <td className="px-4 py-3">
+                    <span
+                      className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium whitespace-nowrap"
+                      style={{
+                        backgroundColor: badge.bg,
+                        color: badge.text,
+                      }}
+                    >
+                      {badge.label}
+                    </span>
+                  </td>
+
+                  {/* 詳細リンク */}
+                  <td
+                    className="max-w-[200px] truncate px-4 py-3 text-xs"
+                    style={{ color: "var(--text-muted)" }}
+                  >
                     <Link
                       to={`/history/${item.id}`}
-                      className="text-sm text-blue-400 hover:underline"
+                      className="hover:underline"
+                      style={{ color: "var(--text-link, #60a5fa)" }}
                     >
-                      詳細 →
+                      {item.detail}
                     </Link>
+                  </td>
+
+                  {/* 応答時間 */}
+                  <td
+                    className="px-4 py-3 text-right font-mono text-xs"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    {item.latency}
                   </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
-      </div>
-
-      {/* CSVダウンロードボタン */}
-      <div className="mt-4 flex justify-end">
-        <button
-          type="button"
-          className="rounded-lg px-4 py-2 text-sm hover:opacity-90"
-          style={{
-            borderWidth: 1,
-            borderStyle: "solid",
-            borderColor: "var(--border)",
-            backgroundColor: "var(--bg-card)",
-            color: "var(--text-secondary)",
-          }}
-        >
-          CSVダウンロード
-        </button>
       </div>
     </div>
   );
