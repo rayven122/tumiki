@@ -4,47 +4,8 @@ import { Link } from "react-router-dom";
 import { useAtomValue } from "jotai";
 import { Activity, Download } from "lucide-react";
 import { themeAtom } from "../../store/atoms";
-import { HISTORY, type HistoryStatus } from "../../data/mock";
-
-/** ステータスバッジの設定 */
-const statusBadge = (
-  status: HistoryStatus,
-): { bg: string; text: string; label: string } => {
-  const config = {
-    success: {
-      bg: "var(--badge-success-bg)",
-      text: "var(--badge-success-text)",
-      label: "成功",
-    },
-    timeout: {
-      bg: "var(--badge-warn-bg)",
-      text: "var(--badge-warn-text)",
-      label: "タイムアウト",
-    },
-    blocked: {
-      bg: "var(--badge-error-bg)",
-      text: "var(--badge-error-text)",
-      label: "ブロック",
-    },
-    error: {
-      bg: "var(--badge-error-bg)",
-      text: "var(--badge-error-text)",
-      label: "エラー",
-    },
-  };
-  return config[status];
-};
-
-/** エラー行かどうか */
-const isErrorRow = (status: HistoryStatus): boolean =>
-  status === "blocked" || status === "error";
-
-/** セレクトの共通スタイル */
-const selectStyle = {
-  border: "1px solid var(--border)",
-  backgroundColor: "var(--bg-card)",
-  color: "var(--text-secondary)",
-};
+import { HISTORY } from "../../data/mock";
+import { statusBadge, isErrorRow, selectStyle } from "../../utils/theme-styles";
 
 export const AdminHistory = (): JSX.Element => {
   const theme = useAtomValue(themeAtom);

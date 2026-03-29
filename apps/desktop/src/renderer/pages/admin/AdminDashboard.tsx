@@ -4,7 +4,8 @@ import { Link } from "react-router-dom";
 import { useAtomValue } from "jotai";
 import { Activity, ArrowRight, Megaphone } from "lucide-react";
 import { themeAtom } from "../../store/atoms";
-import { HISTORY, ANNOUNCEMENTS, type HistoryStatus } from "../../data/mock";
+import { HISTORY, ANNOUNCEMENTS } from "../../data/mock";
+import { statusBadge, isErrorRow } from "../../utils/theme-styles";
 import {
   Area,
   AreaChart,
@@ -432,40 +433,6 @@ const ChartTooltip = ({
     </div>
   );
 };
-
-/* ---------- 操作履歴ステータスバッジ ---------- */
-
-const statusBadge = (
-  status: HistoryStatus,
-): { bg: string; text: string; label: string } => {
-  const config = {
-    success: {
-      bg: "var(--badge-success-bg)",
-      text: "var(--badge-success-text)",
-      label: "成功",
-    },
-    timeout: {
-      bg: "var(--badge-warn-bg)",
-      text: "var(--badge-warn-text)",
-      label: "タイムアウト",
-    },
-    blocked: {
-      bg: "var(--badge-error-bg)",
-      text: "var(--badge-error-text)",
-      label: "ブロック",
-    },
-    error: {
-      bg: "var(--badge-error-bg)",
-      text: "var(--badge-error-text)",
-      label: "エラー",
-    },
-  };
-  return config[status];
-};
-
-/** 行がエラー系かどうか判定 */
-const isErrorRow = (status: HistoryStatus): boolean =>
-  status === "blocked" || status === "error";
 
 /* ---------- メインコンポーネント ---------- */
 

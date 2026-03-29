@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { Plus, ChevronRight } from "lucide-react";
 import { REQUESTS } from "../data/mock";
 import type { RequestStatus } from "../data/mock";
+import { statusBadge } from "../utils/theme-styles";
 
 /** タブの定義 */
 type TabKey = "all" | RequestStatus;
@@ -12,34 +13,6 @@ type TabDef = {
   key: TabKey;
   label: string;
   count: number;
-};
-
-/** ステータス表示の設定 */
-const statusConfig: Record<
-  RequestStatus,
-  { style: React.CSSProperties; label: string }
-> = {
-  pending: {
-    style: {
-      backgroundColor: "var(--badge-warn-bg)",
-      color: "var(--badge-warn-text)",
-    },
-    label: "審査中",
-  },
-  approved: {
-    style: {
-      backgroundColor: "var(--badge-success-bg)",
-      color: "var(--badge-success-text)",
-    },
-    label: "承認済み",
-  },
-  rejected: {
-    style: {
-      backgroundColor: "var(--badge-error-bg)",
-      color: "var(--badge-error-text)",
-    },
-    label: "却下",
-  },
 };
 
 // 権限申請一覧ページ
@@ -147,7 +120,7 @@ export const RequestList = (): JSX.Element => {
           </thead>
           <tbody>
             {filtered.map((req) => {
-              const status = statusConfig[req.status];
+              const status = statusBadge(req.status);
               return (
                 <tr
                   key={req.id}
@@ -175,7 +148,7 @@ export const RequestList = (): JSX.Element => {
                   <td className="px-4 py-2.5">
                     <span
                       className="inline-block rounded-full px-2 py-0.5 text-[10px] font-medium"
-                      style={status.style}
+                      style={{ backgroundColor: status.bg, color: status.text }}
                     >
                       {status.label}
                     </span>

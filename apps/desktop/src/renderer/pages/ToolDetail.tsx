@@ -5,68 +5,28 @@ import { useAtomValue } from "jotai";
 import { ArrowLeft, ExternalLink, Shield, ChevronDown } from "lucide-react";
 import { themeAtom } from "../store/atoms";
 import { TOOLS, HISTORY } from "../data/mock";
-import type { ToolStatus, HistoryStatus } from "../data/mock";
+import type { ToolStatus } from "../data/mock";
+import { statusBadge, cardStyle } from "../utils/theme-styles";
 
-/** ステータスバッジの表示定義 */
-const statusBadge: Record<
+/** ツールステータスバッジの表示定義 */
+const toolStatusBadge: Record<
   ToolStatus,
-  { style: React.CSSProperties; label: string }
+  { bg: string; text: string; label: string }
 > = {
   active: {
-    style: {
-      backgroundColor: "var(--badge-success-bg)",
-      color: "var(--badge-success-text)",
-    },
+    bg: "var(--badge-success-bg)",
+    text: "var(--badge-success-text)",
     label: "稼働中",
   },
   degraded: {
-    style: {
-      backgroundColor: "var(--badge-warn-bg)",
-      color: "var(--badge-warn-text)",
-    },
+    bg: "var(--badge-warn-bg)",
+    text: "var(--badge-warn-text)",
     label: "応答遅延",
   },
   down: {
-    style: {
-      backgroundColor: "var(--badge-error-bg)",
-      color: "var(--badge-error-text)",
-    },
+    bg: "var(--badge-error-bg)",
+    text: "var(--badge-error-text)",
     label: "停止中",
-  },
-};
-
-/** 履歴ステータスのpillスタイル */
-const historyStatusPill: Record<
-  HistoryStatus,
-  { style: React.CSSProperties; label: string }
-> = {
-  success: {
-    style: {
-      backgroundColor: "var(--badge-success-bg)",
-      color: "var(--badge-success-text)",
-    },
-    label: "成功",
-  },
-  timeout: {
-    style: {
-      backgroundColor: "var(--badge-warn-bg)",
-      color: "var(--badge-warn-text)",
-    },
-    label: "遅延",
-  },
-  blocked: {
-    style: {
-      backgroundColor: "var(--badge-error-bg)",
-      color: "var(--badge-error-text)",
-    },
-    label: "拒否",
-  },
-  error: {
-    style: {
-      backgroundColor: "var(--badge-error-bg)",
-      color: "var(--badge-error-text)",
-    },
-    label: "エラー",
   },
 };
 
@@ -143,15 +103,6 @@ const AI_CLIENT_CONNECTIONS = [
   },
 ];
 
-/** カードの共通スタイル */
-const cardStyle: React.CSSProperties = {
-  borderWidth: 1,
-  borderStyle: "solid",
-  borderColor: "var(--border)",
-  backgroundColor: "var(--bg-card)",
-  boxShadow: "var(--shadow-card)",
-};
-
 export const ToolDetail = (): JSX.Element => {
   const theme = useAtomValue(themeAtom);
   const { toolId } = useParams<{ toolId: string }>();
@@ -180,7 +131,7 @@ export const ToolDetail = (): JSX.Element => {
     );
   }
 
-  const badge = statusBadge[tool.status];
+  const badge = toolStatusBadge[tool.status];
 
   // 該当ツールの操作履歴
   const toolHistory = HISTORY.filter((h) => h.tool === tool.name);
@@ -217,7 +168,7 @@ export const ToolDetail = (): JSX.Element => {
             </h1>
             <span
               className="rounded-full px-2 py-0.5 text-xs"
-              style={badge.style}
+              style={{ backgroundColor: badge.bg, color: badge.text }}
             >
               {badge.label}
             </span>
@@ -530,7 +481,7 @@ export const ToolDetail = (): JSX.Element => {
         {toolHistory.length > 0 ? (
           <div className="space-y-2">
             {toolHistory.map((item) => {
-              const pill = historyStatusPill[item.status];
+              const pill = statusBadge(item.status);
               return (
                 <div
                   key={item.id}
@@ -566,7 +517,7 @@ export const ToolDetail = (): JSX.Element => {
                     </span>
                     <span
                       className="rounded-full px-2 py-0.5 text-[10px] font-medium"
-                      style={pill.style}
+                      style={{ backgroundColor: pill.bg, color: pill.text }}
                     >
                       {pill.label}
                     </span>

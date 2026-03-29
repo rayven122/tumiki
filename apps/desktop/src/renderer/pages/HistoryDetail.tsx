@@ -1,46 +1,7 @@
 import type { JSX } from "react";
 import { useParams, Link } from "react-router-dom";
-import { HISTORY, type HistoryStatus } from "../data/mock";
-
-/** ステータスバッジの表示 */
-const statusBadge = (
-  status: HistoryStatus,
-): { label: string; style: React.CSSProperties } => {
-  switch (status) {
-    case "success":
-      return {
-        label: "成功",
-        style: {
-          backgroundColor: "var(--badge-success-bg)",
-          color: "var(--badge-success-text)",
-        },
-      };
-    case "timeout":
-      return {
-        label: "タイムアウト",
-        style: {
-          backgroundColor: "var(--badge-warn-bg)",
-          color: "var(--badge-warn-text)",
-        },
-      };
-    case "blocked":
-      return {
-        label: "権限不足",
-        style: {
-          backgroundColor: "var(--badge-error-bg)",
-          color: "var(--badge-error-text)",
-        },
-      };
-    case "error":
-      return {
-        label: "エラー",
-        style: {
-          backgroundColor: "var(--badge-error-bg)",
-          color: "var(--badge-error-text)",
-        },
-      };
-  }
-};
+import { HISTORY } from "../data/mock";
+import { statusBadge } from "../utils/theme-styles";
 
 /** 情報フィールドの表示 */
 const InfoField = ({
@@ -110,7 +71,7 @@ export const HistoryDetail = (): JSX.Element => {
         </h1>
         <span
           className="rounded-full px-2.5 py-0.5 text-[10px] font-medium"
-          style={badge.style}
+          style={{ backgroundColor: badge.bg, color: badge.text }}
         >
           {badge.label}
         </span>

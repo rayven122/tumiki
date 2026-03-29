@@ -6,21 +6,13 @@ import { Search, Plus, Settings } from "lucide-react";
 import { themeAtom } from "../store/atoms";
 import { TOOLS, CATEGORIES } from "../data/mock";
 import type { ToolStatus } from "../data/mock";
+import { cardStyle } from "../utils/theme-styles";
 
 /** ステータスドット色 */
 const statusDotColor: Record<ToolStatus, string> = {
   active: "bg-emerald-400",
   degraded: "bg-amber-400",
   down: "bg-red-400",
-};
-
-/** カードの共通スタイル */
-const cardStyle: React.CSSProperties = {
-  borderWidth: 1,
-  borderStyle: "solid",
-  borderColor: "var(--border)",
-  backgroundColor: "var(--bg-card)",
-  boxShadow: "var(--shadow-card)",
 };
 
 export const ToolCatalog = (): JSX.Element => {
