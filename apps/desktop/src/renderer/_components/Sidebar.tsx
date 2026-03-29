@@ -1,7 +1,6 @@
 import type { JSX } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Home, Wrench, History, ShieldCheck, Settings } from "lucide-react";
-import { clsx } from "clsx";
 
 type NavItem = {
   path: string;
@@ -32,12 +31,27 @@ export const Sidebar = (): JSX.Element => {
       <Link
         key={item.path}
         to={item.path}
-        className={clsx(
-          "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
+        className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors"
+        style={
           isActive
-            ? "bg-white/[0.08] text-white"
-            : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-300",
-        )}
+            ? {
+                backgroundColor: "var(--bg-active)",
+                color: "var(--text-primary)",
+              }
+            : { color: "var(--text-muted)" }
+        }
+        onMouseEnter={(e) => {
+          if (!isActive) {
+            e.currentTarget.style.backgroundColor = "var(--bg-card-hover)";
+            e.currentTarget.style.color = "var(--text-secondary)";
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!isActive) {
+            e.currentTarget.style.backgroundColor = "transparent";
+            e.currentTarget.style.color = "var(--text-muted)";
+          }
+        }}
       >
         {item.icon}
         <span>{item.label}</span>
@@ -46,10 +60,19 @@ export const Sidebar = (): JSX.Element => {
   };
 
   return (
-    <aside className="w-56 border-r border-white/[0.08] bg-[#0a0a0a] p-3">
+    <aside
+      className="w-56 p-3"
+      style={{
+        backgroundColor: "var(--bg-app)",
+        borderRight: "1px solid var(--border)",
+      }}
+    >
       <nav className="flex h-full flex-col">
         <div className="space-y-0.5">{mainNav.map(renderLink)}</div>
-        <div className="mt-auto border-t border-white/[0.06] pt-3">
+        <div
+          className="mt-auto pt-3"
+          style={{ borderTop: "1px solid var(--border-subtle)" }}
+        >
           {subNav.map(renderLink)}
         </div>
       </nav>

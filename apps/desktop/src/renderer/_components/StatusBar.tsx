@@ -2,8 +2,17 @@ import type { JSX } from "react";
 
 export const StatusBar = (): JSX.Element => {
   return (
-    <div className="border-t border-white/[0.08] bg-[#0a0a0a] px-6 py-1.5">
-      <div className="flex items-center justify-between text-[10px] text-zinc-600">
+    <div
+      className="px-6 py-1.5"
+      style={{
+        backgroundColor: "var(--bg-app)",
+        borderTop: "1px solid var(--border)",
+      }}
+    >
+      <div
+        className="flex items-center justify-between text-[10px]"
+        style={{ color: "var(--text-subtle)" }}
+      >
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />

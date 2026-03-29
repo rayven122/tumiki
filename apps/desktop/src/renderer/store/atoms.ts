@@ -6,10 +6,18 @@ export const mcpServersAtom = atom<McpServer[]>([]);
 
 // アプリケーション設定
 export const appConfigAtom = atom<AppConfig>({
-  theme: "light",
+  theme: "dark",
   autoStart: false,
   minimizeToTray: true,
 });
 
 // 現在選択中のサーバー
 export const selectedServerAtom = atom<string | null>(null);
+
+// テーマ派生atom（読み書き可能）
+export const themeAtom = atom(
+  (get) => get(appConfigAtom).theme,
+  (get, set, newTheme: "light" | "dark") => {
+    set(appConfigAtom, { ...get(appConfigAtom), theme: newTheme });
+  },
+);
