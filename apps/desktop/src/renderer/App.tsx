@@ -11,6 +11,8 @@ import { RequestList } from "./pages/RequestList";
 import { RequestForm } from "./pages/RequestForm";
 import { RequestDetail } from "./pages/RequestDetail";
 import { SettingsPage } from "./pages/Settings";
+import { Notifications } from "./pages/Notifications";
+import { Login } from "./pages/Login";
 
 export const App = (): JSX.Element => {
   return (
@@ -27,7 +29,10 @@ export const App = (): JSX.Element => {
           <Route path="requests/new" element={<RequestForm />} />
           <Route path="requests/:requestId" element={<RequestDetail />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="notifications" element={<Notifications />} />
         </Route>
+        {/* ログイン画面（サイドバーなし） */}
+        <Route path="login" element={<Login />} />
       </Routes>
     </HashRouter>
   );

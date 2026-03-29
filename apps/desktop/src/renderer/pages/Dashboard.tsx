@@ -1,7 +1,10 @@
 import { useState } from "react";
 import type { JSX } from "react";
+import { Link } from "react-router-dom";
 import { useAtomValue } from "jotai";
+import { ArrowRight, Megaphone } from "lucide-react";
 import { themeAtom } from "../store/atoms";
+import { HISTORY, ANNOUNCEMENTS, type HistoryStatus } from "../data/mock";
 import {
   Area,
   AreaChart,
@@ -430,6 +433,40 @@ const ChartTooltip = ({
   );
 };
 
+/* ---------- 操作履歴ステータスバッジ ---------- */
+
+const statusBadge = (
+  status: HistoryStatus,
+): { bg: string; text: string; label: string } => {
+  const config = {
+    success: {
+      bg: "var(--badge-success-bg)",
+      text: "var(--badge-success-text)",
+      label: "成功",
+    },
+    timeout: {
+      bg: "var(--badge-warn-bg)",
+      text: "var(--badge-warn-text)",
+      label: "タイムアウト",
+    },
+    blocked: {
+      bg: "var(--badge-error-bg)",
+      text: "var(--badge-error-text)",
+      label: "ブロック",
+    },
+    error: {
+      bg: "var(--badge-error-bg)",
+      text: "var(--badge-error-text)",
+      label: "エラー",
+    },
+  };
+  return config[status];
+};
+
+/** 行がエラー系かどうか判定 */
+const isErrorRow = (status: HistoryStatus): boolean =>
+  status === "blocked" || status === "error";
+
 /* ---------- メインコンポーネント ---------- */
 
 export const Dashboard = (): JSX.Element => {
@@ -821,6 +858,136 @@ export const Dashboard = (): JSX.Element => {
                 </span>
               </div>
             ))}
+          </div>
+        </div>
+      </div>
+
+      {/* 2カラム: 最近の操作 + お知らせ */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {/* 最近の操作 */}
+        <div
+          className="rounded-xl p-5"
+          style={{
+            backgroundColor: "var(--bg-card)",
+            border: "1px solid var(--border)",
+            boxShadow: "var(--shadow-card)",
+          }}
+        >
+          <div className="mb-4 flex items-center justify-between">
+            <span
+              className="text-sm font-medium"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              最近の操作
+            </span>
+            <Link
+              to="/history"
+              className="flex items-center gap-1 text-[11px] transition-colors hover:opacity-80"
+              style={{ color: "var(--text-muted)" }}
+            >
+              すべて見る
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {HISTORY.slice(0, 5).map((item) => {
+              const badge = statusBadge(item.status);
+              return (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-xs"
+                  style={{
+                    backgroundColor: isErrorRow(item.status)
+                      ? "var(--badge-error-bg)"
+                      : "transparent",
+                  }}
+                >
+                  <span
+                    className="w-10 shrink-0 font-mono"
+                    style={{ color: "var(--text-subtle)" }}
+                  >
+                    {item.datetime.split(" ")[1]?.slice(0, 5)}
+                  </span>
+                  <span
+                    className="flex-1 truncate"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    {item.tool}
+                    <span
+                      className="mx-1.5"
+                      style={{ color: "var(--text-subtle)" }}
+                    >
+                      &gt;
+                    </span>
+                    {item.operation}
+                  </span>
+                  <span
+                    className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium"
+                    style={{
+                      backgroundColor: badge.bg,
+                      color: badge.text,
+                    }}
+                  >
+                    {badge.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* お知らせ */}
+        <div
+          className="rounded-xl p-5"
+          style={{
+            backgroundColor: "var(--bg-card)",
+            border: "1px solid var(--border)",
+            boxShadow: "var(--shadow-card)",
+          }}
+        >
+          <span
+            className="mb-4 block text-sm font-medium"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            お知らせ
+          </span>
+          <div className="space-y-3">
+            {ANNOUNCEMENTS.map((a) => {
+              const content = (
+                <div key={a.id} className="flex items-start gap-2.5 text-xs">
+                  <Megaphone
+                    className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                    style={{ color: "var(--text-muted)" }}
+                  />
+                  <span
+                    className="flex-1"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    {a.message}
+                  </span>
+                  <span
+                    className="shrink-0 font-mono"
+                    style={{ color: "var(--text-subtle)" }}
+                  >
+                    {a.date}
+                  </span>
+                </div>
+              );
+              return a.link ? (
+                <Link
+                  key={a.id}
+                  to={a.link}
+                  className="block rounded-lg px-2 py-1.5 transition-colors hover:opacity-80"
+                  style={{ backgroundColor: "var(--bg-card-hover)" }}
+                >
+                  {content}
+                </Link>
+              ) : (
+                <div key={a.id} className="px-2 py-1.5">
+                  {content}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

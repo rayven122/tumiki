@@ -6,6 +6,7 @@ import {
   Wrench,
   History,
   ShieldCheck,
+  Bell,
   Settings,
   Moon,
   Sun,
@@ -26,6 +27,15 @@ const mainNav: NavItem[] = [
   { path: "/history", label: "操作履歴", icon: <History size={18} /> },
   { path: "/requests", label: "権限申請", icon: <ShieldCheck size={18} /> },
 ];
+
+const notificationNav: NavItem = {
+  path: "/notifications",
+  label: "通知",
+  icon: <Bell size={18} />,
+};
+
+// 未読通知数（モック値）
+const UNREAD_COUNT = 2;
 
 const subNav: NavItem[] = [
   { path: "/settings", label: "設定", icon: <Settings size={18} /> },
@@ -149,6 +159,54 @@ export const Sidebar = (): JSX.Element => {
       {/* メインナビ */}
       <nav className="flex flex-1 flex-col px-2">
         <div className="space-y-0.5">{mainNav.map(renderLink)}</div>
+
+        {/* 通知リンク */}
+        <div
+          className="mt-2 space-y-0.5 pt-2"
+          style={{ borderTop: "1px solid var(--border)" }}
+        >
+          <Link
+            to={notificationNav.path}
+            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors"
+            style={
+              location.pathname.startsWith(notificationNav.path)
+                ? {
+                    backgroundColor: "var(--bg-active)",
+                    color: "var(--text-primary)",
+                  }
+                : { color: "var(--text-muted)" }
+            }
+            onMouseEnter={(e) => {
+              if (!location.pathname.startsWith(notificationNav.path)) {
+                e.currentTarget.style.backgroundColor = "var(--bg-card-hover)";
+                e.currentTarget.style.color = "var(--text-secondary)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!location.pathname.startsWith(notificationNav.path)) {
+                e.currentTarget.style.backgroundColor = "transparent";
+                e.currentTarget.style.color = "var(--text-muted)";
+              }
+            }}
+            title={!isOpen ? notificationNav.label : undefined}
+          >
+            <div className="relative">
+              {notificationNav.icon}
+              {UNREAD_COUNT > 0 && (
+                <span
+                  className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[8px] font-bold"
+                  style={{
+                    backgroundColor: "var(--badge-error-text)",
+                    color: "#fff",
+                  }}
+                >
+                  {UNREAD_COUNT}
+                </span>
+              )}
+            </div>
+            {isOpen && <span>{notificationNav.label}</span>}
+          </Link>
+        </div>
 
         {/* 下部: 設定 + テーマ切替 */}
         <div
