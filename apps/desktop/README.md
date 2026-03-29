@@ -172,4 +172,3 @@ apps/desktop/
 - **tRPC**: クライアント統合（@trpc/client, @trpc/react-query）
 - **Prisma**: v6.x（SQLite、ローカルDB）
 - **react-router-dom**: v7.x（ページルーティング）
-
