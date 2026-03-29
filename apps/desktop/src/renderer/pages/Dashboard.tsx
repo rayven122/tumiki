@@ -18,224 +18,63 @@ import {
   YAxis,
 } from "recharts";
 
-/* ---------- 期間別トラフィックデータ ---------- */
+/* ===== コネクタ別アクセス推移データ（個人ユーザー規模） ===== */
 
-const TRAFFIC_24H = [
-  {
-    time: "00:00",
-    cursor: 180,
-    chatgpt: 100,
-    claude: 420,
-    copilot: 90,
-    cline: 680,
-    ag: 60,
-  },
-  {
-    time: "04:00",
-    cursor: 80,
-    chatgpt: 40,
-    claude: 350,
-    copilot: 50,
-    cline: 920,
-    ag: 30,
-  },
-  {
-    time: "08:00",
-    cursor: 3200,
-    chatgpt: 800,
-    claude: 1100,
-    copilot: 2400,
-    cline: 320,
-    ag: 180,
-  },
-  {
-    time: "10:00",
-    cursor: 4800,
-    chatgpt: 1600,
-    claude: 1300,
-    copilot: 3600,
-    cline: 280,
-    ag: 240,
-  },
-  {
-    time: "12:00",
-    cursor: 3100,
-    chatgpt: 2400,
-    claude: 1200,
-    copilot: 1800,
-    cline: 350,
-    ag: 320,
-  },
-  {
-    time: "14:00",
-    cursor: 2600,
-    chatgpt: 3800,
-    claude: 1400,
-    copilot: 2200,
-    cline: 420,
-    ag: 480,
-  },
-  {
-    time: "16:00",
-    cursor: 2900,
-    chatgpt: 4200,
-    claude: 1350,
-    copilot: 2000,
-    cline: 580,
-    ag: 720,
-  },
-  {
-    time: "18:00",
-    cursor: 1800,
-    chatgpt: 2800,
-    claude: 1100,
-    copilot: 1200,
-    cline: 900,
-    ag: 980,
-  },
-  {
-    time: "20:00",
-    cursor: 900,
-    chatgpt: 1200,
-    claude: 980,
-    copilot: 600,
-    cline: 1800,
-    ag: 540,
-  },
-  {
-    time: "22:00",
-    cursor: 400,
-    chatgpt: 600,
-    claude: 750,
-    copilot: 300,
-    cline: 2400,
-    ag: 280,
-  },
+const CONNECTOR_24H = [
+  { time: "00:00", slack: 2, github: 0, notion: 1, figma: 0, jira: 0 },
+  { time: "04:00", slack: 0, github: 0, notion: 0, figma: 0, jira: 0 },
+  { time: "08:00", slack: 5, github: 3, notion: 2, figma: 1, jira: 2 },
+  { time: "10:00", slack: 8, github: 6, notion: 4, figma: 2, jira: 3 },
+  { time: "12:00", slack: 4, github: 2, notion: 3, figma: 0, jira: 1 },
+  { time: "14:00", slack: 7, github: 5, notion: 2, figma: 3, jira: 4 },
+  { time: "16:00", slack: 6, github: 8, notion: 3, figma: 1, jira: 2 },
+  { time: "18:00", slack: 3, github: 4, notion: 1, figma: 0, jira: 1 },
+  { time: "20:00", slack: 1, github: 1, notion: 0, figma: 0, jira: 0 },
+  { time: "22:00", slack: 0, github: 0, notion: 0, figma: 0, jira: 0 },
 ];
 
-const TRAFFIC_7D = [
-  {
-    time: "Mon",
-    cursor: 18200,
-    chatgpt: 14800,
-    claude: 9800,
-    copilot: 11200,
-    cline: 6400,
-    ag: 3200,
-  },
-  {
-    time: "Tue",
-    cursor: 21400,
-    chatgpt: 16200,
-    claude: 10500,
-    copilot: 12800,
-    cline: 7100,
-    ag: 3800,
-  },
-  {
-    time: "Wed",
-    cursor: 24600,
-    chatgpt: 19800,
-    claude: 11200,
-    copilot: 14200,
-    cline: 5800,
-    ag: 4200,
-  },
-  {
-    time: "Thu",
-    cursor: 22100,
-    chatgpt: 21400,
-    claude: 10800,
-    copilot: 13600,
-    cline: 8200,
-    ag: 3600,
-  },
-  {
-    time: "Fri",
-    cursor: 26800,
-    chatgpt: 18600,
-    claude: 12400,
-    copilot: 15800,
-    cline: 9400,
-    ag: 5100,
-  },
-  {
-    time: "Sat",
-    cursor: 8400,
-    chatgpt: 12200,
-    claude: 7600,
-    copilot: 4200,
-    cline: 11800,
-    ag: 6800,
-  },
-  {
-    time: "Sun",
-    cursor: 6200,
-    chatgpt: 9800,
-    claude: 6400,
-    copilot: 3100,
-    cline: 13200,
-    ag: 7200,
-  },
+const CONNECTOR_7D = [
+  { time: "Mon", slack: 32, github: 28, notion: 18, figma: 8, jira: 14 },
+  { time: "Tue", slack: 38, github: 35, notion: 22, figma: 12, jira: 16 },
+  { time: "Wed", slack: 42, github: 31, notion: 20, figma: 10, jira: 18 },
+  { time: "Thu", slack: 35, github: 40, notion: 25, figma: 6, jira: 12 },
+  { time: "Fri", slack: 45, github: 38, notion: 15, figma: 14, jira: 20 },
+  { time: "Sat", slack: 5, github: 2, notion: 3, figma: 0, jira: 0 },
+  { time: "Sun", slack: 2, github: 0, notion: 1, figma: 0, jira: 0 },
 ];
 
-const TRAFFIC_30D = [
-  {
-    time: "W1",
-    cursor: 82000,
-    chatgpt: 56000,
-    claude: 42000,
-    copilot: 48000,
-    cline: 28000,
-    ag: 14000,
-  },
-  {
-    time: "W2",
-    cursor: 94000,
-    chatgpt: 68000,
-    claude: 48000,
-    copilot: 52000,
-    cline: 32000,
-    ag: 18000,
-  },
-  {
-    time: "W3",
-    cursor: 108000,
-    chatgpt: 82000,
-    claude: 54000,
-    copilot: 58000,
-    cline: 38000,
-    ag: 22000,
-  },
-  {
-    time: "W4",
-    cursor: 124000,
-    chatgpt: 98000,
-    claude: 62000,
-    copilot: 64000,
-    cline: 44000,
-    ag: 28000,
-  },
+const CONNECTOR_30D = [
+  { time: "W1", slack: 180, github: 145, notion: 95, figma: 42, jira: 68 },
+  { time: "W2", slack: 210, github: 168, notion: 102, figma: 55, jira: 78 },
+  { time: "W3", slack: 195, github: 178, notion: 88, figma: 48, jira: 72 },
+  { time: "W4", slack: 225, github: 192, notion: 110, figma: 60, jira: 85 },
 ];
 
-const TRAFFIC_MAP = {
-  "24h": TRAFFIC_24H,
-  "7d": TRAFFIC_7D,
-  "30d": TRAFFIC_30D,
+const CONNECTOR_MAP = {
+  "24h": CONNECTOR_24H,
+  "7d": CONNECTOR_7D,
+  "30d": CONNECTOR_30D,
 } as const;
 
-/* ---------- AIクライアント構成比 ---------- */
+/* ===== コネクタ凡例（チャート用） ===== */
+
+const CONNECTOR_LEGENDS = [
+  { label: "Slack", key: "slack", color: "#E01E5A" },
+  { label: "GitHub", key: "github", color: "#8b949e" },
+  { label: "Notion", key: "notion", color: "#fff" },
+  { label: "Figma", key: "figma", color: "#A259FF" },
+  { label: "Jira", key: "jira", color: "#2684FF" },
+] as const;
+
+/* ===== AIクライアント構成比（個人: 2-3クライアント） ===== */
 
 const AI_PIE = [
-  { name: "Cursor", value: 30, color: "#fff" },
-  { name: "ChatGPT", value: 22, color: "#10a37f" },
-  { name: "Claude", value: 18, color: "#DA704E" },
-  { name: "Copilot", value: 14, color: "#2b88d8" },
-  { name: "Cline", value: 10, color: "#71717a" },
-  { name: "AG", value: 6, color: "#a855f7" },
+  { name: "Cursor", value: 62, color: "#fff" },
+  { name: "ChatGPT", value: 28, color: "#10a37f" },
+  { name: "Claude", value: 10, color: "#DA704E" },
 ];
 
-/* ---------- AIクライアントロゴ ---------- */
+/* ===== AIクライアントロゴ（使用中のもののみ） ===== */
 
 const AI_CLIENTS = [
   {
@@ -253,144 +92,90 @@ const AI_CLIENTS = [
     dark: "/logos/ai-clients/claude.webp",
     light: "/logos/ai-clients/claude.svg",
   },
-  {
-    name: "Copilot",
-    dark: "/logos/ai-clients/copilot.webp",
-    light: "/logos/ai-clients/copilot.svg",
-  },
-  {
-    name: "Cline",
-    dark: "/logos/ai-clients/cline.webp",
-    light: "/logos/ai-clients/cline.svg",
-  },
-  {
-    name: "Antigravity",
-    dark: "/logos/ai-clients/antigravity.webp",
-    light: "/logos/ai-clients/antigravity.svg",
-  },
 ];
 
-/* ---------- 接続先サービス ---------- */
+/* ===== コネクタ（カード表示用） ===== */
 
-const SERVICES = [
+const CONNECTORS = [
+  {
+    name: "Slack",
+    dark: "/logos/services/slack.webp",
+    light: "/logos/services/slack.webp",
+    status: "active",
+  },
   {
     name: "GitHub",
     dark: "/logos/services/github_white.svg",
     light: "/logos/services/github_black.svg",
     status: "active",
-    requests: 3420,
   },
   {
     name: "Notion",
     dark: "/logos/services/notion.webp",
     light: "/logos/services/notion.webp",
     status: "active",
-    requests: 2810,
   },
   {
     name: "Figma",
     dark: "/logos/services/figma.webp",
     light: "/logos/services/figma.webp",
     status: "active",
-    requests: 1960,
+  },
+  {
+    name: "Jira",
+    dark: "/logos/services/database.webp",
+    light: "/logos/services/database.webp",
+    status: "degraded",
   },
   {
     name: "Google Drive",
     dark: "/logos/services/google-drive.svg",
     light: "/logos/services/google-drive.svg",
     status: "active",
-    requests: 1340,
-  },
-  {
-    name: "Slack",
-    dark: "/logos/services/slack.webp",
-    light: "/logos/services/slack.webp",
-    status: "active",
-    requests: 1120,
-  },
-  {
-    name: "PostgreSQL",
-    dark: "/logos/services/postgresql.webp",
-    light: "/logos/services/postgresql.webp",
-    status: "active",
-    requests: 890,
-  },
-  {
-    name: "Sentry",
-    dark: "/logos/services/sentry.webp",
-    light: "/logos/services/sentry.webp",
-    status: "idle",
-    requests: 340,
-  },
-  {
-    name: "Microsoft Teams",
-    dark: "/logos/services/microsoft-teams.webp",
-    light: "/logos/services/microsoft-teams.webp",
-    status: "active",
-    requests: 780,
-  },
-  {
-    name: "OneDrive",
-    dark: "/logos/services/one-drive.webp",
-    light: "/logos/services/one-drive.webp",
-    status: "active",
-    requests: 620,
-  },
-  {
-    name: "Playwright",
-    dark: "/logos/services/playwright.webp",
-    light: "/logos/services/playwright.webp",
-    status: "idle",
-    requests: 210,
   },
 ] as const;
 
-/* ---------- 期間別KPIデータ ---------- */
+/* ===== 期間別KPI（個人規模） ===== */
 
 const PERIOD_STATS = {
   "24h": {
-    requests: "12,847",
-    requestsSub: "+12.4% 前日比",
-    blocks: "47",
-    blocksSub: "0.37%",
-    users: "156",
-    usersSub: "+3 今日",
+    requests: "47",
+    requestsSub: "+5 前日比",
+    blocks: "1",
+    blocksSub: "2.1%",
+    successRate: "97.9%",
+    successSub: "前日比 +0.3%",
+    connectors: "5",
+    connectorsSub: "1 遅延中",
   },
   "7d": {
-    requests: "89,420",
-    requestsSub: "+8.2% 前週比",
-    blocks: "312",
-    blocksSub: "0.35%",
-    users: "284",
-    usersSub: "+18 今週",
+    requests: "312",
+    requestsSub: "+18% 前週比",
+    blocks: "3",
+    blocksSub: "1.0%",
+    successRate: "99.0%",
+    successSub: "前週比 +0.2%",
+    connectors: "5",
+    connectorsSub: "1 遅延中",
   },
   "30d": {
-    requests: "342,800",
-    requestsSub: "+22.6% 前月比",
-    blocks: "1,247",
-    blocksSub: "0.36%",
-    users: "412",
-    usersSub: "+67 今月",
+    requests: "1,247",
+    requestsSub: "+22% 前月比",
+    blocks: "8",
+    blocksSub: "0.6%",
+    successRate: "99.4%",
+    successSub: "前月比 +0.5%",
+    connectors: "5",
+    connectorsSub: "全稼働",
   },
 } as const;
 
-/* ---------- チャート凡例定義 ---------- */
-
-const CHART_LEGENDS = [
-  { label: "Cursor", key: "cursor", color: "#fff" },
-  { label: "ChatGPT", key: "chatgpt", color: "#10a37f" },
-  { label: "Claude", key: "claude", color: "#DA704E" },
-  { label: "Copilot", key: "copilot", color: "#2b88d8" },
-  { label: "Cline", key: "cline", color: "#71717a" },
-  { label: "AG", key: "ag", color: "#a855f7" },
-] as const;
-
-/* ---------- 期間選択肢 ---------- */
+/* ===== 期間選択肢 ===== */
 
 type Period = "24h" | "7d" | "30d";
 const PERIODS: readonly Period[] = ["24h", "7d", "30d"] as const;
 
-/* ---------- AreaChart ツールチップ ---------- */
+/* ===== チャートツールチップ ===== */
 
 const ChartTooltip = ({
   active,
@@ -398,9 +183,9 @@ const ChartTooltip = ({
   label,
 }: {
   active?: boolean;
-  payload?: Array<{ name: string; value: number; color: string }>;
+  payload?: Array<{ value: number; name: string; color?: string }>;
   label?: string;
-}): JSX.Element | null => {
+}) => {
   if (!active || !payload?.length) return null;
   return (
     <div
@@ -413,27 +198,18 @@ const ChartTooltip = ({
       <p className="mb-1" style={{ color: "var(--text-muted)" }}>
         {label}
       </p>
-      {payload.map((entry) => (
-        <p key={entry.name} className="flex items-center gap-1.5">
-          <span
-            className="inline-block h-1.5 w-1.5 rounded-full"
-            style={{ backgroundColor: entry.color }}
-          />
-          <span style={{ color: "var(--text-secondary)" }}>{entry.name}:</span>
-          <span style={{ color: "var(--text-primary)" }}>
-            {entry.value.toLocaleString()}
-          </span>
+      {payload.map((p) => (
+        <p key={p.name} style={{ color: "var(--text-primary)" }}>
+          {p.name}: {p.value}
         </p>
       ))}
     </div>
   );
 };
 
-/* ---------- 操作履歴ステータスバッジ ---------- */
+/* ===== ステータスバッジ ===== */
 
-const statusBadge = (
-  status: HistoryStatus,
-): { bg: string; text: string; label: string } => {
+const statusBadge = (status: HistoryStatus) => {
   const config = {
     success: {
       bg: "var(--badge-success-bg)",
@@ -459,11 +235,10 @@ const statusBadge = (
   return config[status];
 };
 
-/** 行がエラー系かどうか判定 */
 const isErrorRow = (status: HistoryStatus): boolean =>
   status === "blocked" || status === "error";
 
-/* ---------- メインコンポーネント ---------- */
+/* ===== メインコンポーネント ===== */
 
 export const Dashboard = (): JSX.Element => {
   const [period, setPeriod] = useState<Period>("24h");
@@ -471,16 +246,13 @@ export const Dashboard = (): JSX.Element => {
   const theme = useAtomValue(themeAtom);
   const stats = PERIOD_STATS[period];
 
-  // Cursorの色はテーマに応じて切替（白背景で白は見えないため）
   const cursorColor = theme === "dark" ? "#ffffff" : "#111827";
-
-  // テーマ対応の色解決（#fffをcursorColorに差し替え）
   const resolveColor = (color: string) =>
     color === "#fff" ? cursorColor : color;
 
   return (
     <div className="space-y-4 p-6">
-      {/* ヘッダー: タイトル + 期間切替 */}
+      {/* ヘッダー */}
       <div className="flex items-center justify-between">
         <h2
           className="text-lg font-semibold"
@@ -512,105 +284,60 @@ export const Dashboard = (): JSX.Element => {
 
       {/* KPIカード 4つ */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {/* リクエスト */}
-        <div
-          className="rounded-xl p-4"
-          style={{
-            backgroundColor: "var(--bg-card)",
-            border: "1px solid var(--border)",
-          }}
-        >
-          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-            リクエスト / {period}
-          </span>
+        {[
+          {
+            label: `リクエスト / ${period}`,
+            value: stats.requests,
+            sub: stats.requestsSub,
+            color: "var(--text-primary)",
+          },
+          {
+            label: "ブロック",
+            value: stats.blocks,
+            sub: stats.blocksSub,
+            color: "var(--badge-error-text)",
+          },
+          {
+            label: "成功率",
+            value: stats.successRate,
+            sub: stats.successSub,
+            color: "var(--badge-success-text)",
+          },
+          {
+            label: "コネクタ",
+            value: stats.connectors,
+            sub: stats.connectorsSub,
+            color: "var(--text-primary)",
+          },
+        ].map((card) => (
           <div
-            className="mt-2 text-2xl font-semibold"
-            style={{ color: "var(--text-primary)" }}
+            key={card.label}
+            className="rounded-xl p-4"
+            style={{
+              backgroundColor: "var(--bg-card)",
+              border: "1px solid var(--border)",
+            }}
           >
-            {stats.requests}
+            <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+              {card.label}
+            </span>
+            <div
+              className="mt-2 text-2xl font-semibold"
+              style={{ color: card.color }}
+            >
+              {card.value}
+            </div>
+            <div
+              className="mt-0.5 text-[10px]"
+              style={{ color: "var(--text-muted)" }}
+            >
+              {card.sub}
+            </div>
           </div>
-          <div
-            className="mt-0.5 text-[10px]"
-            style={{ color: "var(--text-muted)" }}
-          >
-            {stats.requestsSub}
-          </div>
-        </div>
-
-        {/* ブロック */}
-        <div
-          className="rounded-xl p-4"
-          style={{
-            backgroundColor: "var(--bg-card)",
-            border: "1px solid var(--border)",
-          }}
-        >
-          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-            ブロック
-          </span>
-          <div
-            className="mt-2 text-2xl font-semibold"
-            style={{ color: "var(--text-primary)" }}
-          >
-            {stats.blocks}
-          </div>
-          <div className="mt-0.5 text-[10px] text-red-400">
-            {stats.blocksSub}
-          </div>
-        </div>
-
-        {/* 接続 MCP */}
-        <div
-          className="rounded-xl p-4"
-          style={{
-            backgroundColor: "var(--bg-card)",
-            border: "1px solid var(--border)",
-          }}
-        >
-          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-            接続 MCP
-          </span>
-          <div
-            className="mt-2 text-2xl font-semibold"
-            style={{ color: "var(--text-primary)" }}
-          >
-            8
-          </div>
-          <div
-            className="mt-0.5 text-[10px]"
-            style={{ color: "var(--text-muted)" }}
-          >
-            5 稼働中
-          </div>
-        </div>
-
-        {/* ユーザー */}
-        <div
-          className="rounded-xl p-4"
-          style={{
-            backgroundColor: "var(--bg-card)",
-            border: "1px solid var(--border)",
-          }}
-        >
-          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-            ユーザー
-          </span>
-          <div
-            className="mt-2 text-2xl font-semibold"
-            style={{ color: "var(--text-primary)" }}
-          >
-            {stats.users}
-          </div>
-          <div
-            className="mt-0.5 text-[10px]"
-            style={{ color: "var(--text-muted)" }}
-          >
-            {stats.usersSub}
-          </div>
-        </div>
+        ))}
       </div>
 
-      {/* AIクライアント別リクエスト推移 AreaChart */}
+      {/* コネクタ別アクセス推移 */}
       <div
         className="rounded-xl p-5"
         style={{
@@ -624,14 +351,13 @@ export const Dashboard = (): JSX.Element => {
             className="text-sm font-medium"
             style={{ color: "var(--text-secondary)" }}
           >
-            AIクライアント別リクエスト推移
+            コネクタ別アクセス推移
           </span>
-          {/* 凡例 */}
           <div
             className="flex flex-wrap gap-3 text-[10px]"
             style={{ color: "var(--text-subtle)" }}
           >
-            {CHART_LEGENDS.map((l) => (
+            {CONNECTOR_LEGENDS.map((l) => (
               <span key={l.label} className="flex items-center gap-1">
                 <span
                   className="inline-block h-1.5 w-1.5 rounded-full"
@@ -644,9 +370,9 @@ export const Dashboard = (): JSX.Element => {
         </div>
         <div className="h-[200px]">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={TRAFFIC_MAP[period]}>
+            <AreaChart data={CONNECTOR_MAP[period]}>
               <defs>
-                {CHART_LEGENDS.map((l) => (
+                {CONNECTOR_LEGENDS.map((l) => (
                   <linearGradient
                     key={l.key}
                     id={`g-${l.key}`}
@@ -681,7 +407,7 @@ export const Dashboard = (): JSX.Element => {
               />
               <YAxis hide />
               <Tooltip content={<ChartTooltip />} />
-              {CHART_LEGENDS.map((l) => (
+              {CONNECTOR_LEGENDS.map((l) => (
                 <Area
                   key={l.key}
                   type="monotone"
@@ -690,12 +416,6 @@ export const Dashboard = (): JSX.Element => {
                   stroke={resolveColor(l.color)}
                   strokeWidth={1.5}
                   fill={`url(#g-${l.key})`}
-                  strokeOpacity={
-                    activeAi === null || activeAi === l.label ? 1 : 0.1
-                  }
-                  fillOpacity={
-                    activeAi === null || activeAi === l.label ? 1 : 0.05
-                  }
                 />
               ))}
             </AreaChart>
@@ -703,9 +423,9 @@ export const Dashboard = (): JSX.Element => {
         </div>
       </div>
 
-      {/* 2カラム下段 */}
+      {/* 2カラム: AIクライアント別 + コネクタ */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* 左: AIクライアント別ドーナツチャート + 構成比テーブル + バッジ */}
+        {/* 左: AIクライアント別 */}
         <div
           className="rounded-xl p-5"
           style={{
@@ -720,8 +440,6 @@ export const Dashboard = (): JSX.Element => {
           >
             AIクライアント別
           </span>
-
-          {/* ドーナツ + 構成比を横並び */}
           <div className="flex items-center gap-4">
             <div className="h-[150px] w-[150px] shrink-0">
               <ResponsiveContainer width="100%" height="100%">
@@ -749,14 +467,14 @@ export const Dashboard = (): JSX.Element => {
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="grid flex-1 grid-cols-2 gap-x-4 gap-y-1">
+            <div className="flex-1 space-y-2">
               {AI_PIE.map((item) => (
                 <div
                   key={item.name}
-                  className="flex items-center gap-1.5 text-[10px]"
+                  className="flex items-center gap-2 text-xs"
                 >
                   <span
-                    className="h-1.5 w-1.5 shrink-0 rounded-full"
+                    className="h-2 w-2 shrink-0 rounded-full"
                     style={{ backgroundColor: resolveColor(item.color) }}
                   />
                   <span style={{ color: "var(--text-secondary)" }}>
@@ -770,39 +488,42 @@ export const Dashboard = (): JSX.Element => {
                   </span>
                 </div>
               ))}
-            </div>
-          </div>
-
-          {/* AIクライアントバッジ（フィルタ） */}
-          <div className="mt-4 flex flex-wrap gap-2">
-            {AI_CLIENTS.map((ai) => (
-              <button
-                key={ai.name}
-                onClick={() =>
-                  setActiveAi(activeAi === ai.name ? null : ai.name)
-                }
-                className="flex items-center gap-1.5 rounded-md px-2 py-1 transition-colors"
-                style={{
-                  backgroundColor:
-                    activeAi === null || activeAi === ai.name
-                      ? "var(--bg-active)"
-                      : "var(--bg-card-hover)",
-                  opacity: activeAi === null || activeAi === ai.name ? 1 : 0.5,
-                  color: "var(--text-secondary)",
-                }}
+              {/* AIクライアントバッジ */}
+              <div
+                className="mt-3 flex flex-wrap gap-1.5 pt-2"
+                style={{ borderTop: "1px solid var(--border)" }}
               >
-                <img
-                  src={theme === "dark" ? ai.dark : ai.light}
-                  alt={ai.name}
-                  className="h-3.5 w-3.5 rounded"
-                />
-                <span className="text-[10px]">{ai.name}</span>
-              </button>
-            ))}
+                {AI_CLIENTS.map((ai) => (
+                  <button
+                    key={ai.name}
+                    onClick={() =>
+                      setActiveAi(activeAi === ai.name ? null : ai.name)
+                    }
+                    className="flex items-center gap-1.5 rounded-md px-2 py-1 transition-colors"
+                    style={{
+                      backgroundColor:
+                        activeAi === null || activeAi === ai.name
+                          ? "var(--bg-active)"
+                          : "var(--bg-card-hover)",
+                      opacity:
+                        activeAi === null || activeAi === ai.name ? 1 : 0.5,
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    <img
+                      src={theme === "dark" ? ai.dark : ai.light}
+                      alt={ai.name}
+                      className="h-3.5 w-3.5 rounded"
+                    />
+                    <span className="text-[10px]">{ai.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* 右: コネクタ（接続先ツール） */}
+        {/* 右: コネクタ */}
         <div
           className="rounded-xl p-5"
           style={{
@@ -828,7 +549,7 @@ export const Dashboard = (): JSX.Element => {
             </Link>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            {SERVICES.slice(0, 8).map((s) => (
+            {CONNECTORS.map((s) => (
               <div
                 key={s.name}
                 className="flex items-center gap-2.5 rounded-lg px-3 py-2"
@@ -846,26 +567,17 @@ export const Dashboard = (): JSX.Element => {
                   {s.name}
                 </span>
                 <span
-                  className={`h-1.5 w-1.5 shrink-0 rounded-full ${s.status === "active" ? "bg-emerald-400" : "bg-zinc-700"}`}
+                  className={`h-1.5 w-1.5 shrink-0 rounded-full ${s.status === "active" ? "bg-emerald-400" : "bg-amber-400"}`}
                 />
               </div>
             ))}
           </div>
-          {SERVICES.length > 8 && (
-            <Link
-              to="/tools"
-              className="mt-3 block text-center text-[10px] transition-colors hover:opacity-80"
-              style={{ color: "var(--text-subtle)" }}
-            >
-              + 他{SERVICES.length - 8}件のコネクタ
-            </Link>
-          )}
         </div>
       </div>
 
       {/* MCPツール呼び出しログ + お知らせ */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_0.4fr]">
-        {/* MCPツール呼び出しログ（LP風フルテーブル） */}
+        {/* MCPツール呼び出しログ */}
         <div
           className="overflow-hidden rounded-xl"
           style={{
@@ -874,7 +586,6 @@ export const Dashboard = (): JSX.Element => {
             boxShadow: "var(--shadow-card)",
           }}
         >
-          {/* ヘッダー */}
           <div
             className="flex items-center justify-between px-5 py-3"
             style={{ borderBottom: "1px solid var(--border)" }}
@@ -900,8 +611,6 @@ export const Dashboard = (): JSX.Element => {
               <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
-
-          {/* テーブルヘッダー */}
           <div
             className="grid grid-cols-[70px_80px_80px_1fr_85px_50px] items-center gap-2 px-5 py-2 text-[10px]"
             style={{
@@ -916,8 +625,6 @@ export const Dashboard = (): JSX.Element => {
             <span>ステータス</span>
             <span className="text-right">応答</span>
           </div>
-
-          {/* テーブル行 */}
           {HISTORY.slice(0, 6).map((item) => {
             const badge = statusBadge(item.status);
             return (
@@ -931,15 +638,12 @@ export const Dashboard = (): JSX.Element => {
                     : "transparent",
                 }}
               >
-                {/* 日時 */}
                 <span
                   className="font-mono text-[11px]"
                   style={{ color: "var(--text-subtle)" }}
                 >
                   {item.datetime.split(" ")[1]?.slice(0, 8)}
                 </span>
-
-                {/* AIクライアント */}
                 <div className="flex items-center gap-1.5">
                   <img
                     src={item.aiClient.logo}
@@ -953,8 +657,6 @@ export const Dashboard = (): JSX.Element => {
                     {item.aiClient.name}
                   </span>
                 </div>
-
-                {/* 接続先サービス */}
                 <div className="flex items-center gap-1.5">
                   <img
                     src={
@@ -969,24 +671,18 @@ export const Dashboard = (): JSX.Element => {
                     {item.service.name}
                   </span>
                 </div>
-
-                {/* ツール / アクション */}
                 <span
                   className="truncate font-mono text-[11px]"
                   style={{ color: "var(--text-muted)" }}
                 >
                   {item.operation}
                 </span>
-
-                {/* ステータス */}
                 <span
                   className="rounded-full px-1.5 py-0.5 text-center text-[9px] font-medium"
                   style={{ backgroundColor: badge.bg, color: badge.text }}
                 >
                   {badge.label}
                 </span>
-
-                {/* 応答時間 */}
                 <span
                   className="text-right font-mono text-[11px]"
                   style={{ color: "var(--text-subtle)" }}
@@ -1007,49 +703,37 @@ export const Dashboard = (): JSX.Element => {
             boxShadow: "var(--shadow-card)",
           }}
         >
-          <span
-            className="mb-4 block text-sm font-medium"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            お知らせ
-          </span>
+          <div className="mb-4 flex items-center gap-2">
+            <Megaphone
+              className="h-4 w-4"
+              style={{ color: "var(--text-subtle)" }}
+            />
+            <span
+              className="text-sm font-medium"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              お知らせ
+            </span>
+          </div>
           <div className="space-y-3">
-            {ANNOUNCEMENTS.map((a) => {
-              const content = (
-                <div key={a.id} className="flex items-start gap-2.5 text-xs">
-                  <Megaphone
-                    className="mt-0.5 h-3.5 w-3.5 shrink-0"
-                    style={{ color: "var(--text-muted)" }}
-                  />
-                  <span
-                    className="flex-1"
-                    style={{ color: "var(--text-secondary)" }}
+            {ANNOUNCEMENTS.map((a) => (
+              <div key={a.id} className="flex items-start gap-3 text-xs">
+                <span style={{ color: "var(--text-subtle)" }}>{a.date}</span>
+                {a.link ? (
+                  <Link
+                    to={a.link}
+                    className="transition-colors hover:opacity-80"
+                    style={{ color: "var(--text-primary)" }}
                   >
                     {a.message}
+                  </Link>
+                ) : (
+                  <span style={{ color: "var(--text-muted)" }}>
+                    {a.message}
                   </span>
-                  <span
-                    className="shrink-0 font-mono"
-                    style={{ color: "var(--text-subtle)" }}
-                  >
-                    {a.date}
-                  </span>
-                </div>
-              );
-              return a.link ? (
-                <Link
-                  key={a.id}
-                  to={a.link}
-                  className="block rounded-lg px-2 py-1.5 transition-colors hover:opacity-80"
-                  style={{ backgroundColor: "var(--bg-card-hover)" }}
-                >
-                  {content}
-                </Link>
-              ) : (
-                <div key={a.id} className="px-2 py-1.5">
-                  {content}
-                </div>
-              );
-            })}
+                )}
+              </div>
+            ))}
           </div>
         </div>
       </div>
