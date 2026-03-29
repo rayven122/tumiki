@@ -1,1 +1,28 @@
 @import "tailwindcss";
+
+@layer base {
+  html,
+  body,
+  #root {
+    @apply h-full bg-[#0a0a0a] text-zinc-400 antialiased;
+  }
+
+  ::selection {
+    @apply bg-white/20 text-white;
+  }
+}
+
+/* スクロールバーのダークテーマ化 */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}

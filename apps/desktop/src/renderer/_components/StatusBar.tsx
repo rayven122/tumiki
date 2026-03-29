@@ -1,22 +1,17 @@
-import React from "react";
-import { useAtomValue } from "jotai";
-import { mcpServersAtom } from "../store/atoms";
+import type { JSX } from "react";
 
-export const StatusBar = (): React.ReactElement => {
-  const servers = useAtomValue(mcpServersAtom);
-  const runningCount = servers.filter((s) => s.status === "running").length;
-
+export const StatusBar = (): JSX.Element => {
   return (
-    <div className="border-t border-gray-200 bg-gray-50 px-6 py-2">
-      <div className="flex items-center justify-between text-xs text-gray-600">
-        <div className="flex items-center space-x-4">
-          <span>
-            MCPサーバー: {runningCount} / {servers.length} 起動中
+    <div className="border-t border-white/[0.08] bg-[#0a0a0a] px-6 py-1.5">
+      <div className="flex items-center justify-between text-[10px] text-zinc-600">
+        <div className="flex items-center gap-4">
+          <span className="flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            接続済み
           </span>
+          <span>MCPサーバー: 4 / 5 稼働中</span>
         </div>
-        <div className="flex items-center space-x-4">
-          <span>準備完了</span>
-        </div>
+        <span>v0.1.0</span>
       </div>
     </div>
   );
