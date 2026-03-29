@@ -371,7 +371,6 @@ const OverviewView = ({
                       : "bg-white/[0.02] text-zinc-600 opacity-50"
                   }`}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={ai.logo}
                     alt={ai.name}
@@ -406,7 +405,6 @@ const OverviewView = ({
                   }}
                 >
                   {s.logo ? (
-                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={s.logo}
                       alt={s.name}
@@ -503,7 +501,6 @@ const DashboardMock = () => {
                   }}
                 >
                   {s.logo ? (
-                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={s.logo}
                       alt={s.name}

@@ -30,7 +30,6 @@ const LogoBarSection = () => {
       <div className="mx-auto flex min-w-max flex-nowrap items-center justify-center gap-5 px-5 md:gap-8">
         {LOGOS.map((logo) => (
           <div key={logo.name} className="flex shrink-0 items-center gap-1.5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={logo.src}
               alt={logo.name}

@@ -217,7 +217,6 @@ const ShowcaseSection = () => {
                         </span>
                         <span className="text-[10px] text-zinc-600">
                           (
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={row.ai.logo}
                             alt={row.ai.name}
@@ -233,7 +232,6 @@ const ShowcaseSection = () => {
 
                     {/* 下段: サービス/ツール + ステータス + 詳細 */}
                     <div className="flex flex-wrap items-center gap-2 pl-8 text-xs">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={row.service.logo}
                         alt={row.service.name}
@@ -296,7 +294,6 @@ const ShowcaseSection = () => {
                           className="flex items-center justify-between gap-1.5 rounded-md border border-white/[0.04] bg-white/[0.02] px-2 py-1.5"
                         >
                           <div className="flex items-center gap-1.5">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={svc.logo}
                               alt={svc.name}

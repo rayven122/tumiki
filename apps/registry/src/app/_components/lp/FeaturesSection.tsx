@@ -224,7 +224,6 @@ const FeaturesSection = () => {
 
                       {/* AIクライアント（実ロゴ） */}
                       <div className="flex items-center gap-1.5">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={row.ai.logo}
                           alt={row.ai.name}
@@ -237,7 +236,6 @@ const FeaturesSection = () => {
 
                       {/* 接続先サービス（実ロゴ） */}
                       <div className="flex items-center gap-1.5">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={row.service.logo}
                           alt={row.service.name}
@@ -389,7 +387,6 @@ const FeaturesSection = () => {
                     return (
                       <div key={srv.name} className="bg-[#111] p-3">
                         <div className="mb-2 flex items-center gap-2">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={srv.logo}
                             alt={srv.name}
@@ -471,7 +468,6 @@ const FeaturesSection = () => {
                   ].map((item) => (
                     <div key={item.tool} className="px-5 py-3">
                       <div className="mb-2 flex items-center gap-2">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={item.logo}
                           alt={item.service}
@@ -631,7 +627,6 @@ const FeaturesSection = () => {
                       }}
                     >
                       <div className="mb-3 flex items-start justify-between">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={srv.logo}
                           alt={srv.name}
@@ -709,7 +704,6 @@ const FeaturesSection = () => {
                           key={t.tool}
                           className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5"
                         >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={t.logo}
                             alt={t.service}
@@ -797,7 +791,6 @@ const FeaturesSection = () => {
                             key={ai.name}
                             className={`flex items-center gap-2 rounded-lg p-2 ${ai.connected ? "border border-emerald-500/20 bg-emerald-500/[0.03]" : "border border-white/[0.04] bg-white/[0.01]"}`}
                           >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={ai.logo}
                               alt={ai.name}
