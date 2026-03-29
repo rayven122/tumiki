@@ -123,6 +123,7 @@ export const ToolDetail = (): JSX.Element => {
           borderStyle: "solid",
           borderColor: "var(--border)",
           backgroundColor: "var(--bg-card)",
+          boxShadow: "var(--shadow-card)",
         }}
       >
         <h2
@@ -179,6 +180,7 @@ export const ToolDetail = (): JSX.Element => {
           borderStyle: "solid",
           borderColor: "var(--border)",
           backgroundColor: "var(--bg-card)",
+          boxShadow: "var(--shadow-card)",
         }}
       >
         <div className="mb-4 flex items-center gap-2">
@@ -287,6 +289,7 @@ export const ToolDetail = (): JSX.Element => {
           borderStyle: "solid",
           borderColor: "var(--border)",
           backgroundColor: "var(--bg-card)",
+          boxShadow: "var(--shadow-card)",
         }}
       >
         <h2
@@ -340,6 +343,7 @@ export const ToolDetail = (): JSX.Element => {
           borderStyle: "solid",
           borderColor: "var(--border)",
           backgroundColor: "var(--bg-card)",
+          boxShadow: "var(--shadow-card)",
         }}
       >
         <h2

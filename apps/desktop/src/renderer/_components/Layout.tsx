@@ -24,6 +24,7 @@ export const Layout = (): JSX.Element => {
           style={{
             backgroundColor: "var(--bg-main)",
             border: "1px solid var(--border)",
+            boxShadow: "var(--shadow-main)",
           }}
         >
           <Outlet />

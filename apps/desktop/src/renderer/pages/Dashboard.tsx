@@ -583,6 +583,7 @@ export const Dashboard = (): JSX.Element => {
         style={{
           backgroundColor: "var(--bg-card)",
           border: "1px solid var(--border)",
+          boxShadow: "var(--shadow-card)",
         }}
       >
         <div className="mb-4 flex items-center justify-between">
@@ -677,6 +678,7 @@ export const Dashboard = (): JSX.Element => {
           style={{
             backgroundColor: "var(--bg-card)",
             border: "1px solid var(--border)",
+            boxShadow: "var(--shadow-card)",
           }}
         >
           <span
@@ -773,6 +775,7 @@ export const Dashboard = (): JSX.Element => {
           style={{
             backgroundColor: "var(--bg-card)",
             border: "1px solid var(--border)",
+            boxShadow: "var(--shadow-card)",
           }}
         >
           <span

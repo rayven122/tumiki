@@ -107,6 +107,7 @@ export const HistoryDetail = (): JSX.Element => {
           borderStyle: "solid",
           borderColor: "var(--border)",
           backgroundColor: "var(--bg-card)",
+          boxShadow: "var(--shadow-card)",
         }}
       >
         {/* 日時・ツール */}

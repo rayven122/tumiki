@@ -48,13 +48,14 @@ export const MyTools = (): JSX.Element => {
   });
 
   return (
-    <div className="space-y-5">
-      {/* ウィンドウ風コンテナ */}
+    <div className="p-6">
+      {/* コンテナ（第3階層） */}
       <div
         className="overflow-hidden rounded-xl"
         style={{
           backgroundColor: "var(--bg-card)",
           border: "1px solid var(--border)",
+          boxShadow: "var(--shadow-card)",
         }}
       >
         {/* ヘッダー */}

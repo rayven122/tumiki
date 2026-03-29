@@ -178,6 +178,7 @@ export const ToolCatalog = (): JSX.Element => {
                   borderStyle: "solid",
                   borderColor: "var(--border)",
                   backgroundColor: "var(--bg-card)",
+                  boxShadow: "var(--shadow-card)",
                 }}
               >
                 {/* カードヘッダー */}

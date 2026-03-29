@@ -170,6 +170,7 @@ export const HistoryList = (): JSX.Element => {
           borderStyle: "solid",
           borderColor: "var(--border)",
           backgroundColor: "var(--bg-card)",
+          boxShadow: "var(--shadow-card)",
         }}
       >
         <span className="text-sm" style={{ color: "var(--text-secondary)" }}>
@@ -205,6 +206,7 @@ export const HistoryList = (): JSX.Element => {
           borderStyle: "solid",
           borderColor: "var(--border)",
           backgroundColor: "var(--bg-card)",
+          boxShadow: "var(--shadow-card)",
         }}
       >
         <table className="w-full">

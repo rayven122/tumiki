@@ -141,6 +141,7 @@ export const RequestList = (): JSX.Element => {
           borderStyle: "solid",
           borderColor: "var(--border)",
           backgroundColor: "var(--bg-card)",
+          boxShadow: "var(--shadow-card)",
         }}
       >
         <table className="w-full text-sm">

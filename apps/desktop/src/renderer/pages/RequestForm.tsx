@@ -72,6 +72,7 @@ export const RequestForm = (): JSX.Element => {
           borderStyle: "solid",
           borderColor: "var(--border)",
           backgroundColor: "var(--bg-card)",
+          boxShadow: "var(--shadow-card)",
         }}
       >
         <h2
@@ -152,6 +153,7 @@ export const RequestForm = (): JSX.Element => {
           borderStyle: "solid",
           borderColor: "var(--border)",
           backgroundColor: "var(--bg-card)",
+          boxShadow: "var(--shadow-card)",
         }}
       >
         <h2
@@ -304,6 +306,7 @@ export const RequestForm = (): JSX.Element => {
           borderStyle: "solid",
           borderColor: "var(--border)",
           backgroundColor: "var(--bg-card)",
+          boxShadow: "var(--shadow-card)",
         }}
       >
         <h2
