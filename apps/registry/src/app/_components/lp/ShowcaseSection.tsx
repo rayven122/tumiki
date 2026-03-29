@@ -8,8 +8,6 @@ const STREAM_ROWS = [
   {
     time: "09:14:23",
     user: "田中",
-    avatar:
-      "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=64&h=64&fit=crop&crop=face",
     ai: {
       logo: "/logos/ai-clients/cursor.webp",
       invert: false,
@@ -27,8 +25,6 @@ const STREAM_ROWS = [
   {
     time: "09:14:25",
     user: "鈴木",
-    avatar:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=64&h=64&fit=crop&crop=face",
     ai: {
       logo: "/logos/ai-clients/chatgpt.webp",
       invert: false,
@@ -46,7 +42,6 @@ const STREAM_ROWS = [
   {
     time: "09:14:27",
     user: "不明",
-    avatar: null,
     ai: { logo: "/logos/ai-clients/cline.webp", invert: false, name: "Cline" },
     service: {
       logo: "/logos/services/github.webp",
@@ -60,8 +55,6 @@ const STREAM_ROWS = [
   {
     time: "09:14:30",
     user: "山田",
-    avatar:
-      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=64&h=64&fit=crop&crop=face",
     ai: {
       logo: "/logos/ai-clients/cursor.webp",
       invert: false,
@@ -79,8 +72,6 @@ const STREAM_ROWS = [
   {
     time: "09:14:33",
     user: "佐藤",
-    avatar:
-      "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=64&h=64&fit=crop&crop=face",
     ai: {
       logo: "/logos/ai-clients/chatgpt.webp",
       invert: false,
@@ -210,16 +201,15 @@ const ShowcaseSection = () => {
                     {/* 上段: ユーザー + 時刻 */}
                     <div className="mb-1.5 flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        {row.avatar ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={row.avatar}
-                            alt={row.user}
-                            className="h-6 w-6 rounded-full object-cover"
-                          />
-                        ) : (
+                        {row.user === "不明" ? (
                           <div className="flex h-6 w-6 items-center justify-center rounded-full bg-red-500">
                             <User className="h-3.5 w-3.5 text-white" />
+                          </div>
+                        ) : (
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700">
+                            <span className="text-[10px] font-medium text-zinc-300">
+                              {row.user.charAt(0)}
+                            </span>
                           </div>
                         )}
                         <span className="text-sm text-zinc-300">

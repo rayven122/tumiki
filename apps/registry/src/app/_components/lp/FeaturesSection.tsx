@@ -92,8 +92,6 @@ const FeaturesSection = () => {
                   {
                     time: "17:22:43",
                     user: "田中",
-                    avatar:
-                      "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=64&h=64&fit=crop&crop=face",
                     ai: {
                       logo: "/logos/ai-clients/cursor.webp",
                       invert: false,
@@ -111,8 +109,6 @@ const FeaturesSection = () => {
                   {
                     time: "17:22:25",
                     user: "鈴木",
-                    avatar:
-                      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=64&h=64&fit=crop&crop=face",
                     ai: {
                       logo: "/logos/ai-clients/chatgpt.webp",
                       invert: false,
@@ -130,7 +126,6 @@ const FeaturesSection = () => {
                   {
                     time: "17:21:34",
                     user: "不明",
-                    avatar: null,
                     ai: {
                       logo: "/logos/ai-clients/cline.webp",
                       invert: false,
@@ -148,8 +143,6 @@ const FeaturesSection = () => {
                   {
                     time: "17:21:00",
                     user: "山田",
-                    avatar:
-                      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=64&h=64&fit=crop&crop=face",
                     ai: {
                       logo: "/logos/ai-clients/cursor.webp",
                       invert: false,
@@ -167,8 +160,6 @@ const FeaturesSection = () => {
                   {
                     time: "17:20:45",
                     user: "佐藤",
-                    avatar:
-                      "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=64&h=64&fit=crop&crop=face",
                     ai: {
                       logo: "/logos/ai-clients/chatgpt.webp",
                       invert: false,
@@ -186,8 +177,6 @@ const FeaturesSection = () => {
                   {
                     time: "17:20:12",
                     user: "田中",
-                    avatar:
-                      "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=64&h=64&fit=crop&crop=face",
                     ai: {
                       logo: "/logos/ai-clients/cursor.webp",
                       invert: false,
@@ -219,16 +208,15 @@ const FeaturesSection = () => {
 
                       {/* ユーザー */}
                       <div className="flex items-center gap-1.5">
-                        {row.avatar ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={row.avatar}
-                            alt={row.user}
-                            className="h-5 w-5 shrink-0 rounded-full object-cover"
-                          />
-                        ) : (
+                        {row.user === "不明" ? (
                           <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-500">
                             <User className="h-3 w-3 text-white" />
+                          </div>
+                        ) : (
+                          <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-700">
+                            <span className="text-[10px] font-medium text-zinc-300">
+                              {row.user.charAt(0)}
+                            </span>
                           </div>
                         )}
                         <span className="text-zinc-300">{row.user}</span>
