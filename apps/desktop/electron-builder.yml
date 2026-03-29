@@ -9,6 +9,7 @@ directories:
 files:
   - dist-electron/**/*
   - prisma/generated/**/*
+  - prisma/migrations/**/*
   - package.json
   - "!**/*.{ts,tsx,map}"
   - "!**/tsconfig*.json"
@@ -22,6 +23,7 @@ files:
 asarUnpack:
   - "**/*.node"
   - "**/prisma/generated/**/*"
+  - "**/prisma/migrations/**/*"
   - "dist-electron/renderer/**/*"
 
 # node_modulesの処理方法を指定

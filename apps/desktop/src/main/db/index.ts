@@ -3,6 +3,7 @@ import { join } from "path";
 import { app } from "electron";
 import { existsSync, mkdirSync } from "fs";
 import * as logger from "../utils/logger";
+import { runMigrations } from "./migrationRunner";
 
 // 接続タイムアウト設定（ミリ秒）
 // 環境変数で設定可能（DESKTOP_DB_TIMEOUT_MS）
@@ -260,55 +261,6 @@ export const getDb = async (): Promise<PrismaClient> => {
 };
 
 /**
- * SQLiteテーブルを自動作成（CREATE TABLE IF NOT EXISTS）
- * ElectronアプリではユーザーごとにuserDataパスが異なるため、
- * ビルド時のdb pushでは対応できない。起動時に自動でスキーマを適用する。
- *
- * ⚠️ 二重管理: このSQL定義は apps/desktop/prisma/schema.prisma と手動で同期が必要。
- * スキーマ変更手順:
- *   1. prisma/schema.prisma を変更
- *   2. この関数内のSQLを同じ内容に更新
- *   3. pnpm prisma generate で型を再生成
- */
-const ensureSchema = async (db: PrismaClient): Promise<void> => {
-  await db.$executeRaw`
-    CREATE TABLE IF NOT EXISTS "auth_tokens" (
-      "id" TEXT NOT NULL PRIMARY KEY,
-      "accessToken" TEXT NOT NULL,
-      "refreshToken" TEXT NOT NULL,
-      "idToken" TEXT,
-      "expiresAt" DATETIME NOT NULL,
-      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `;
-
-  await db.$executeRaw`
-    CREATE TABLE IF NOT EXISTS "log_sync_queue" (
-      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-      "serverId" TEXT NOT NULL,
-      "logEntry" TEXT NOT NULL,
-      "syncStatus" TEXT NOT NULL DEFAULT 'pending',
-      "retryCount" INTEGER NOT NULL DEFAULT 0,
-      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "syncedAt" DATETIME
-    )
-  `;
-
-  // インデックス作成
-  await db.$executeRaw`
-    CREATE INDEX IF NOT EXISTS "log_sync_queue_syncStatus_serverId_idx"
-    ON "log_sync_queue" ("syncStatus", "serverId")
-  `;
-  await db.$executeRaw`
-    CREATE INDEX IF NOT EXISTS "log_sync_queue_serverId_idx"
-    ON "log_sync_queue" ("serverId")
-  `;
-
-  logger.debug("Database schema ensured");
-};
-
-/**
  * データベース初期化
  * アプリケーション起動時に接続を確立し、スキーマを適用して接続状態を確認
  */
@@ -316,8 +268,8 @@ export const initializeDb = async (): Promise<void> => {
   try {
     const db = await connectionManager.getConnection();
 
-    // テーブルが存在しない場合は自動作成
-    await ensureSchema(db);
+    // マイグレーションを適用
+    await runMigrations(db);
 
     // データベース接続を確認（簡単なクエリを実行）
     await db.$queryRaw`SELECT 1`;
