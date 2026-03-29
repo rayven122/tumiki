@@ -688,7 +688,7 @@ export const Dashboard = (): JSX.Element => {
 
           {/* ドーナツ + 構成比を横並び */}
           <div className="flex items-center gap-4">
-            <div className="h-[100px] w-[100px] shrink-0">
+            <div className="h-[150px] w-[150px] shrink-0">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie

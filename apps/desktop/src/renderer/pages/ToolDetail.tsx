@@ -52,7 +52,7 @@ export const ToolDetail = (): JSX.Element => {
           style={{ color: "var(--text-muted)" }}
         >
           <ArrowLeft size={14} />
-          マイツール
+          コネクト
         </Link>
         <div
           className="mt-12 text-center text-sm"
@@ -84,7 +84,7 @@ export const ToolDetail = (): JSX.Element => {
         style={{ color: "var(--text-muted)" }}
       >
         <ArrowLeft size={14} />
-        マイツール
+        コネクト
       </Link>
 
       {/* ツール名 + ステータス */}

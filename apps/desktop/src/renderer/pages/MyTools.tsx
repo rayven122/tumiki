@@ -67,7 +67,7 @@ export const MyTools = (): JSX.Element => {
               className="text-sm font-medium"
               style={{ color: "var(--text-primary)" }}
             >
-              マイツール
+              コネクト
             </span>
             <span
               className="text-[10px]"

@@ -22,7 +22,7 @@ type NavItem = {
 
 const mainNav: NavItem[] = [
   { path: "/", label: "ホーム", icon: <Home size={18} /> },
-  { path: "/tools", label: "マイツール", icon: <Wrench size={18} /> },
+  { path: "/tools", label: "コネクト", icon: <Wrench size={18} /> },
   { path: "/history", label: "操作履歴", icon: <History size={18} /> },
   { path: "/requests", label: "権限申請", icon: <ShieldCheck size={18} /> },
 ];
