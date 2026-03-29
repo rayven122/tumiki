@@ -1,5 +1,7 @@
 import { useState } from "react";
 import type { JSX } from "react";
+import { useAtomValue } from "jotai";
+import { themeAtom } from "../store/atoms";
 import {
   Area,
   AreaChart,
@@ -399,7 +401,15 @@ const ChartTooltip = ({
 export const Dashboard = (): JSX.Element => {
   const [period, setPeriod] = useState<Period>("24h");
   const [activeAi, setActiveAi] = useState<string | null>(null);
+  const theme = useAtomValue(themeAtom);
   const stats = PERIOD_STATS[period];
+
+  // Cursorの色はテーマに応じて切替（白背景で白は見えないため）
+  const cursorColor = theme === "dark" ? "#ffffff" : "#111827";
+
+  // テーマ対応の色解決（#fffをcursorColorに差し替え）
+  const resolveColor = (color: string) =>
+    color === "#fff" ? cursorColor : color;
 
   return (
     <div className="space-y-4 p-6">
@@ -557,7 +567,7 @@ export const Dashboard = (): JSX.Element => {
               <span key={l.label} className="flex items-center gap-1">
                 <span
                   className="inline-block h-1.5 w-1.5 rounded-full"
-                  style={{ backgroundColor: l.color }}
+                  style={{ backgroundColor: resolveColor(l.color) }}
                 />
                 {l.label}
               </span>
@@ -577,8 +587,16 @@ export const Dashboard = (): JSX.Element => {
                     x2="0"
                     y2="1"
                   >
-                    <stop offset="0%" stopColor={l.color} stopOpacity={0.3} />
-                    <stop offset="100%" stopColor={l.color} stopOpacity={0} />
+                    <stop
+                      offset="0%"
+                      stopColor={resolveColor(l.color)}
+                      stopOpacity={0.3}
+                    />
+                    <stop
+                      offset="100%"
+                      stopColor={resolveColor(l.color)}
+                      stopOpacity={0}
+                    />
                   </linearGradient>
                 ))}
               </defs>
@@ -601,7 +619,7 @@ export const Dashboard = (): JSX.Element => {
                   type="monotone"
                   dataKey={l.key}
                   name={l.label}
-                  stroke={l.color}
+                  stroke={resolveColor(l.color)}
                   strokeWidth={1.5}
                   fill={`url(#g-${l.key})`}
                   strokeOpacity={
@@ -651,7 +669,7 @@ export const Dashboard = (): JSX.Element => {
                     {AI_PIE.map((entry) => (
                       <Cell
                         key={entry.name}
-                        fill={entry.color}
+                        fill={resolveColor(entry.color)}
                         opacity={
                           activeAi === null || activeAi === entry.name ? 1 : 0.2
                         }
@@ -673,7 +691,7 @@ export const Dashboard = (): JSX.Element => {
                 <div className="flex items-center gap-2">
                   <span
                     className="inline-block h-2 w-2 rounded-full"
-                    style={{ backgroundColor: item.color }}
+                    style={{ backgroundColor: resolveColor(item.color) }}
                   />
                   <span style={{ color: "var(--text-secondary)" }}>
                     {item.name}
