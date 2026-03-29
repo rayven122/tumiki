@@ -65,52 +65,33 @@ export const MyTools = (): JSX.Element => {
           border: "1px solid var(--border)",
         }}
       >
-        {/* ウィンドウバー（LP風） */}
+        {/* ヘッダー */}
         <div
-          className="flex items-center justify-between px-4 py-2.5"
+          className="flex items-center justify-between px-4 py-3"
           style={{ borderBottom: "1px solid var(--border)" }}
         >
-          <div className="flex items-center gap-2">
-            <div className="flex gap-1.5">
-              <span
-                className="h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: "var(--text-subtle)" }}
-              />
-              <span
-                className="h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: "var(--text-subtle)" }}
-              />
-              <span
-                className="h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: "var(--text-subtle)" }}
-              />
-            </div>
-            <span
-              className="ml-2 text-xs"
-              style={{ color: "var(--text-subtle)" }}
-            >
-              tumiki — マイツール
-            </span>
-          </div>
           <div className="flex items-center gap-3">
+            <span
+              className="text-sm font-medium"
+              style={{ color: "var(--text-primary)" }}
+            >
+              マイツール
+            </span>
             <span
               className="text-[10px]"
               style={{ color: "var(--text-subtle)" }}
             >
               {filteredTools.length}件表示
             </span>
-            <Link
-              to="/tools/catalog"
-              className="flex items-center gap-1 rounded px-2 py-0.5 text-[10px] transition-opacity hover:opacity-80"
-              style={{
-                backgroundColor: "var(--bg-active)",
-                color: "var(--text-muted)",
-              }}
-            >
-              カタログ
-              <ArrowRight size={10} />
-            </Link>
           </div>
+          <Link
+            to="/tools/catalog"
+            className="flex items-center gap-1 text-xs transition-opacity hover:opacity-80"
+            style={{ color: "var(--text-muted)" }}
+          >
+            カタログを見る
+            <ArrowRight size={12} />
+          </Link>
         </div>
 
         {/* フィルタバー */}
