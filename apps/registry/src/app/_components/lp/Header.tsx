@@ -51,7 +51,7 @@ const Header = () => {
           ))}
         </nav>
 
-        {/* CTA（右側） */}
+        {/* 問い合わせ導線（右側） */}
         <div className="hidden items-center gap-4 md:flex">
           <a
             href="/contact"
@@ -71,7 +71,8 @@ const Header = () => {
         <button
           onClick={() => setIsMenuOpen(!isMenuOpen)}
           className="flex min-h-[44px] min-w-[44px] items-center justify-center md:hidden"
-          aria-label="メニューを開く"
+          aria-expanded={isMenuOpen}
+          aria-label={isMenuOpen ? "メニューを閉じる" : "メニューを開く"}
         >
           <div className="flex flex-col gap-1.5">
             <span

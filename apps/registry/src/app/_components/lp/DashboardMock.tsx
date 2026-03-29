@@ -105,7 +105,7 @@ const CustomTooltip = ({
   );
 };
 
-/* ===== OverviewView ===== */
+/* ===== 概要ビュー ===== */
 
 const OverviewView = ({
   period,

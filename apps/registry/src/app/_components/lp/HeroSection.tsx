@@ -1,9 +1,12 @@
 "use client";
 
 import { motion } from "framer-motion";
-import DashboardMock from "./DashboardMock";
+import dynamic from "next/dynamic";
 
-/* staggerコンテナ */
+/* クライアントバンドル削減のため遅延ロード */
+const DashboardMock = dynamic(() => import("./DashboardMock"), { ssr: false });
+
+/* 順次表示コンテナ */
 const container = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.12, delayChildren: 0.1 } },
@@ -78,7 +81,7 @@ const HeroSection = () => {
             すべての通信を可視化し、未認証アクセスを自動遮断します。
           </motion.p>
 
-          {/* CTA */}
+          {/* 問い合わせ導線 */}
           <motion.div
             variants={fadeUp}
             className="mb-6 flex flex-wrap items-center justify-center gap-4"

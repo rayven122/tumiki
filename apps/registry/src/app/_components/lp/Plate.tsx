@@ -1,4 +1,4 @@
-/** isometricプレート（SVGダイヤモンド形状） */
+/** アイソメトリックプレート（SVGダイヤモンド形状） */
 export const Plate = ({
   x,
   y,
