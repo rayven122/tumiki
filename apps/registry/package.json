@@ -17,8 +17,8 @@
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
     "@tanstack/react-query": "catalog:",
-    "@trpc/client": "11.12.0",
-    "@trpc/react-query": "11.12.0",
+    "@trpc/client": "11.16.0",
+    "@trpc/react-query": "11.16.0",
     "@trpc/server": "11.16.0",
     "@tumiki/db": "workspace:*",
     "@tumiki/keycloak": "workspace:*",
