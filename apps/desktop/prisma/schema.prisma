@@ -3,34 +3,234 @@ generator client {
   output   = "../prisma/generated/client"
 }
 
+generator markdown {
+  provider = "prisma-markdown"
+  output   = "../prisma/README.md"
+  title    = "Desktop DB Schema"
+}
+
 datasource db {
   provider = "sqlite"
   url      = env("DESKTOP_DATABASE_URL")
 }
 
-// 認証トークン（暗号化保存）
+/// 認証トークン
+/// @namespace Auth
 model AuthToken {
-  id           String   @id @default(uuid())
-  accessToken  String   // 暗号化されたアクセストークン
-  refreshToken String   // 暗号化されたリフレッシュトークン
-  expiresAt    DateTime // トークンの有効期限
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id String @id @default(uuid())
 
-  @@map("auth_tokens")
+  /// アクセストークン
+  accessToken String
+
+  /// リフレッシュトークン
+  refreshToken String
+
+  /// トークンの有効期限
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-// ログ同期キュー
-model LogSyncQueue {
-  id         Int      @id @default(autoincrement())
-  serverId   String   // MCPサーバーID
-  logEntry   String   // ログエントリ（JSON形式）
-  syncStatus String   @default("pending") // pending | syncing | synced | failed
-  retryCount Int      @default(0)
-  createdAt  DateTime @default(now())
-  syncedAt   DateTime?
+/// MCPカタログ（プリセットMCPサーバーのテンプレート）
+/// @namespace McpServer
+model McpCatalog {
+  id String @id @default(uuid())
 
-  @@index([syncStatus, serverId])
-  @@index([serverId])
-  @@map("log_sync_queue")
+  /// カタログ表示名
+  name String
+
+  /// URL識別子（小文字・ハイフン区切り）
+  slug String @unique
+
+  /// カタログ説明
+  description String @default("")
+
+  /// アイコンパス
+  iconPath String?
+
+  /// トランスポートタイプ: "stdio" | "sse" | "streamable_http"
+  transportType String @default("stdio")
+
+  /// STDIO用デフォルトコマンド
+  command String?
+
+  /// STDIO用デフォルト引数（JSON配列文字列）
+  defaultArgs String @default("[]")
+
+  /// SSE/Streamable HTTP用デフォルトURL
+  serverUrl String?
+
+  /// 必要な環境変数キー名（JSON配列文字列）
+  envVarKeys String @default("[]")
+
+  /// 認証タイプ: "none" | "bearer" | "api_key" | "oauth"
+  authType String @default("none")
+
+  /// 公式カタログフラグ
+  isOfficial Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// このカタログから作成された接続一覧
+  connections McpServerConnection[]
+}
+
+/// MCPサーバー（仮想・統合サーバー = Proxyエンドポイント）
+/// 1つ以上のMcpServerConnectionを束ねて、1つのMCPサーバーとして公開する
+/// @namespace McpServer
+model McpServer {
+  id String @id @default(uuid())
+
+  /// サーバー表示名
+  name String
+
+  /// URL識別子（小文字・ハイフン区切り）
+  slug String @unique
+
+  /// サーバー説明
+  description String @default("")
+
+  /// サーバー状態: "running" | "stopped" | "error" | "pending"
+  serverStatus String @default("stopped")
+
+  /// 有効/無効フラグ（トグル用）
+  isEnabled Boolean @default(true)
+
+  /// 一覧画面での表示順序
+  displayOrder Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// 個別MCP接続一覧
+  connections McpServerConnection[]
+
+  /// 監査ログ一覧
+  auditLogs AuditLog[]
+}
+
+/// MCP接続（個別のMCPサーバーへの接続設定）
+/// SaaS側の McpServerTemplateInstance + McpConfig に対応
+/// @namespace McpServer
+model McpServerConnection {
+  id String @id @default(uuid())
+
+  /// 所属するMcpServerのID
+  serverId String
+  server   McpServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  /// 接続表示名
+  name String
+
+  /// トランスポートタイプ: "stdio" | "sse" | "streamable_http"
+  transportType String @default("stdio")
+
+  /// STDIO用コマンド（例: "npx", "uvx", "node"）
+  command String?
+
+  /// STDIO用引数（JSON配列文字列）
+  args String @default("[]")
+
+  /// SSE/Streamable HTTP接続先URL
+  serverUrl String?
+
+  /// 環境変数（JSON object文字列）
+  envVars String @default("{}")
+
+  /// 認証タイプ: "none" | "bearer" | "api_key" | "oauth"
+  authType String @default("none")
+
+  /// 認証トークン/APIキー
+  authToken String?
+
+  /// 有効/無効フラグ
+  isEnabled Boolean @default(true)
+
+  /// 統合サーバー内での表示順序
+  displayOrder Int @default(0)
+
+  /// カタログ参照（カタログから登録した場合）
+  catalogId String?
+  catalog   McpCatalog? @relation(fields: [catalogId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// この接続が提供するツール一覧
+  tools McpTool[]
+}
+
+/// MCPツール（接続が提供するツールの定義・権限管理）
+/// @namespace McpServer
+model McpTool {
+  id String @id @default(uuid())
+
+  /// 対象MCP接続ID
+  connectionId String
+  connection   McpServerConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  /// ツール名（大元のMCPから取得、ルーティングに使用）
+  name String
+
+  /// ツール説明（大元のMCPから取得）
+  description String @default("")
+
+  /// 入力スキーマ（JSON Schema文字列）
+  inputSchema String @default("{}")
+
+  /// カスタム表示名（nullなら元のnameを使用）
+  customName String?
+
+  /// カスタム説明（nullなら元のdescriptionを使用）
+  customDescription String?
+
+  /// ツールの使用を許可するか
+  isAllowed Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([connectionId, name])
+}
+
+/// 監査ログ（MCPツール呼び出しの記録）
+/// 7日以上のレコードは自動削除対象
+/// @namespace McpServer
+model AuditLog {
+  id Int @id @default(autoincrement())
+
+  /// 対象MCPサーバーID
+  serverId String
+  server   McpServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  /// 対象MCP接続ID（接続削除後もログ保持のためリレーション未定義）
+  connectionId String?
+
+  /// 実行されたツール名
+  toolName String
+
+  /// MCPメソッド（例: "tools/call", "resources/read"）
+  method String
+
+  /// 実行時間（ミリ秒）
+  durationMs Int
+
+  /// 入力データサイズ（バイト）
+  inputBytes Int @default(0)
+
+  /// 出力データサイズ（バイト）
+  outputBytes Int @default(0)
+
+  /// 成功/失敗フラグ
+  isSuccess Boolean @default(true)
+
+  /// MCPエラーコード（エラー時のみ）
+  errorCode Int?
+
+  /// エラーメッセージ要約
+  errorSummary String?
+
+  createdAt DateTime @default(now())
 }
