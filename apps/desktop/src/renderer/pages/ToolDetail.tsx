@@ -1,7 +1,8 @@
 import type { JSX } from "react";
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAtomValue } from "jotai";
-import { ArrowLeft, ExternalLink, Shield } from "lucide-react";
+import { ArrowLeft, ExternalLink, Shield, ChevronDown } from "lucide-react";
 import { themeAtom } from "../store/atoms";
 import { TOOLS, HISTORY } from "../data/mock";
 import type { ToolStatus, HistoryStatus } from "../data/mock";
@@ -69,6 +70,79 @@ const historyStatusPill: Record<
   },
 };
 
+/** AIクライアント接続先一覧 */
+const AI_CLIENT_CONNECTIONS = [
+  {
+    name: "Cursor",
+    logo: (t: string) =>
+      t === "dark"
+        ? "/logos/ai-clients/cursor.webp"
+        : "/logos/ai-clients/cursor.svg",
+    path: (id: string) => `npx tumiki-mcp@latest --connector=${id}`,
+    type: "コマンド",
+  },
+  {
+    name: "Claude Code",
+    logo: (t: string) =>
+      t === "dark"
+        ? "/logos/ai-clients/claude.webp"
+        : "/logos/ai-clients/claude.svg",
+    path: (id: string) => `npx tumiki-mcp@latest --connector=${id}`,
+    type: "コマンド",
+  },
+  {
+    name: "Cline",
+    logo: (t: string) =>
+      t === "dark"
+        ? "/logos/ai-clients/cline.webp"
+        : "/logos/ai-clients/cline.svg",
+    path: (id: string) => `npx tumiki-mcp@latest --connector=${id}`,
+    type: "コマンド",
+  },
+  {
+    name: "Claude",
+    logo: (t: string) =>
+      t === "dark"
+        ? "/logos/ai-clients/claude.webp"
+        : "/logos/ai-clients/claude.svg",
+    path: (id: string) => `https://mcp.tumiki.cloud/${id}/sse`,
+    type: "SSE",
+  },
+  {
+    name: "ChatGPT",
+    logo: (t: string) =>
+      t === "dark"
+        ? "/logos/ai-clients/chatgpt.webp"
+        : "/logos/ai-clients/chatgpt.svg",
+    path: (id: string) => `https://mcp.tumiki.cloud/${id}/http`,
+    type: "HTTP",
+  },
+  {
+    name: "Copilot",
+    logo: (t: string) =>
+      t === "dark"
+        ? "/logos/ai-clients/copilot.webp"
+        : "/logos/ai-clients/copilot.svg",
+    path: (id: string) => `https://mcp.tumiki.cloud/${id}/http`,
+    type: "HTTP",
+  },
+  {
+    name: "Antigravity",
+    logo: (t: string) =>
+      t === "dark"
+        ? "/logos/ai-clients/antigravity.webp"
+        : "/logos/ai-clients/antigravity.svg",
+    path: (id: string) => `https://mcp.tumiki.cloud/${id}/sse`,
+    type: "SSE",
+  },
+  {
+    name: "API",
+    logo: () => "",
+    path: (id: string) => `https://mcp.tumiki.cloud/${id}/http`,
+    type: "HTTP",
+  },
+];
+
 /** カードの共通スタイル */
 const cardStyle: React.CSSProperties = {
   borderWidth: 1,
@@ -82,6 +156,7 @@ export const ToolDetail = (): JSX.Element => {
   const theme = useAtomValue(themeAtom);
   const { toolId } = useParams<{ toolId: string }>();
   const tool = TOOLS.find((t) => t.id === toolId);
+  const [showAiClients, setShowAiClients] = useState(false);
 
   // ツールが見つからない場合
   if (!tool) {
@@ -200,102 +275,92 @@ export const ToolDetail = (): JSX.Element => {
           </div>
         </div>
 
-        {/* AIクライアント接続方法 */}
+        {/* AIクライアント接続方法（アコーディオン + スクロール） */}
         <div
           className="mt-5"
           style={{ borderTop: "1px solid var(--border)", paddingTop: 16 }}
         >
-          <h3
-            className="mb-3 text-xs font-medium"
-            style={{ color: "var(--text-primary)" }}
+          <button
+            onClick={() => setShowAiClients(!showAiClients)}
+            className="flex w-full items-center justify-between"
           >
-            AIクライアントから接続
-          </h3>
-          <div className="space-y-2">
-            {[
-              {
-                name: "Cursor",
-                logo:
-                  theme === "dark"
-                    ? "/logos/ai-clients/cursor.webp"
-                    : "/logos/ai-clients/cursor.svg",
-                path: `npx tumiki-mcp@latest --connector=${tool.id}`,
-                type: "コマンド",
-              },
-              {
-                name: "Claude Code",
-                logo:
-                  theme === "dark"
-                    ? "/logos/ai-clients/claude.webp"
-                    : "/logos/ai-clients/claude.svg",
-                path: `npx tumiki-mcp@latest --connector=${tool.id}`,
-                type: "コマンド",
-              },
-              {
-                name: "Claude",
-                logo:
-                  theme === "dark"
-                    ? "/logos/ai-clients/claude.webp"
-                    : "/logos/ai-clients/claude.svg",
-                path: `https://mcp.tumiki.cloud/${tool.id}/sse`,
-                type: "SSE",
-              },
-              {
-                name: "ChatGPT",
-                logo:
-                  theme === "dark"
-                    ? "/logos/ai-clients/chatgpt.webp"
-                    : "/logos/ai-clients/chatgpt.svg",
-                path: `https://mcp.tumiki.cloud/${tool.id}/http`,
-                type: "HTTP",
-              },
-              {
-                name: "Copilot",
-                logo:
-                  theme === "dark"
-                    ? "/logos/ai-clients/copilot.webp"
-                    : "/logos/ai-clients/copilot.svg",
-                path: `https://mcp.tumiki.cloud/${tool.id}/http`,
-                type: "HTTP",
-              },
-            ].map((ai) => (
-              <div
-                key={ai.name}
-                className="flex items-center gap-3 rounded-lg px-3 py-2"
-                style={{ backgroundColor: "var(--bg-card-hover)" }}
+            <h3
+              className="text-xs font-medium"
+              style={{ color: "var(--text-primary)" }}
+            >
+              AIクライアントから接続
+            </h3>
+            <div className="flex items-center gap-2">
+              <span
+                className="text-[10px]"
+                style={{ color: "var(--text-subtle)" }}
               >
-                <img
-                  src={ai.logo}
-                  alt={ai.name}
-                  className="h-5 w-5 shrink-0 rounded"
-                />
-                <span
-                  className="w-20 shrink-0 text-xs"
-                  style={{ color: "var(--text-secondary)" }}
+                {AI_CLIENT_CONNECTIONS.length}件
+              </span>
+              <ChevronDown
+                size={14}
+                className="transition-transform"
+                style={{
+                  color: "var(--text-subtle)",
+                  transform: showAiClients ? "rotate(180deg)" : "rotate(0deg)",
+                }}
+              />
+            </div>
+          </button>
+
+          {showAiClients && (
+            <div className="mt-3 max-h-[280px] space-y-1.5 overflow-y-auto pr-1">
+              {AI_CLIENT_CONNECTIONS.map((ai) => (
+                <div
+                  key={ai.name}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2"
+                  style={{ backgroundColor: "var(--bg-card-hover)" }}
                 >
-                  {ai.name}
-                </span>
-                <span
-                  className="rounded px-1.5 py-0.5 text-[8px] font-medium"
-                  style={{
-                    backgroundColor: "var(--bg-active)",
-                    color: "var(--text-muted)",
-                  }}
-                >
-                  {ai.type}
-                </span>
-                <code
-                  className="flex-1 truncate rounded px-2 py-1 font-mono text-[10px]"
-                  style={{
-                    backgroundColor: "var(--bg-input)",
-                    color: "var(--text-secondary)",
-                  }}
-                >
-                  {ai.path}
-                </code>
-              </div>
-            ))}
-          </div>
+                  {ai.logo(theme) ? (
+                    <img
+                      src={ai.logo(theme)}
+                      alt={ai.name}
+                      className="h-5 w-5 shrink-0 rounded"
+                    />
+                  ) : (
+                    <div
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-[8px] font-bold"
+                      style={{
+                        backgroundColor: "var(--bg-active)",
+                        color: "var(--text-muted)",
+                      }}
+                    >
+                      {"<>"}
+                    </div>
+                  )}
+                  <span
+                    className="w-24 shrink-0 text-xs"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    {ai.name}
+                  </span>
+                  <span
+                    className="rounded px-1.5 py-0.5 text-[8px] font-medium"
+                    style={{
+                      backgroundColor: "var(--bg-active)",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    {ai.type}
+                  </span>
+                  <code
+                    className="flex-1 truncate rounded px-2 py-1 font-mono text-[10px]"
+                    style={{
+                      backgroundColor: "var(--bg-input)",
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    {ai.path(tool.id)}
+                  </code>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
