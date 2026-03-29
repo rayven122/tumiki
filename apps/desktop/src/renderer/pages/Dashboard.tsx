@@ -390,10 +390,6 @@ const CHART_LEGENDS = [
 type Period = "24h" | "7d" | "30d";
 const PERIODS: readonly Period[] = ["24h", "7d", "30d"] as const;
 
-/* ---------- サービスの最大リクエスト数 ---------- */
-
-const maxServiceRequests = Math.max(...SERVICES.map((s) => s.requests));
-
 /* ---------- AreaChart ツールチップ ---------- */
 
 const ChartTooltip = ({
@@ -806,7 +802,7 @@ export const Dashboard = (): JSX.Element => {
           </div>
         </div>
 
-        {/* 右: 接続先サービスリスト */}
+        {/* 右: コネクタ（接続先ツール） */}
         <div
           className="rounded-xl p-5"
           style={{
@@ -815,50 +811,55 @@ export const Dashboard = (): JSX.Element => {
             boxShadow: "var(--shadow-card)",
           }}
         >
-          <span
-            className="mb-4 block text-sm font-medium"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            接続先サービス
-          </span>
-          <div className="space-y-3">
-            {SERVICES.map((s) => (
-              <div key={s.name} className="flex items-center gap-2.5 text-xs">
+          <div className="mb-4 flex items-center justify-between">
+            <span
+              className="text-sm font-medium"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              コネクタ
+            </span>
+            <Link
+              to="/tools"
+              className="flex items-center gap-1 text-[11px] transition-colors hover:opacity-80"
+              style={{ color: "var(--text-muted)" }}
+            >
+              すべて見る
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {SERVICES.slice(0, 8).map((s) => (
+              <div
+                key={s.name}
+                className="flex items-center gap-2.5 rounded-lg px-3 py-2"
+                style={{ backgroundColor: "var(--bg-card-hover)" }}
+              >
                 <img
                   src={theme === "dark" ? s.dark : s.light}
                   alt={s.name}
-                  className="h-4 w-4 rounded"
+                  className="h-5 w-5 shrink-0 rounded"
                 />
                 <span
-                  className="w-24"
+                  className="flex-1 truncate text-xs"
                   style={{ color: "var(--text-secondary)" }}
                 >
                   {s.name}
                 </span>
                 <span
-                  className={`h-1.5 w-1.5 rounded-full ${s.status === "active" ? "bg-emerald-400" : "bg-zinc-700"}`}
+                  className={`h-1.5 w-1.5 shrink-0 rounded-full ${s.status === "active" ? "bg-emerald-400" : "bg-zinc-700"}`}
                 />
-                <div
-                  className="h-1.5 flex-1 rounded-full"
-                  style={{ backgroundColor: "var(--bg-card-hover)" }}
-                >
-                  <div
-                    className="h-1.5 rounded-full"
-                    style={{
-                      width: `${(s.requests / maxServiceRequests) * 100}%`,
-                      backgroundColor: "var(--text-muted)",
-                    }}
-                  />
-                </div>
-                <span
-                  className="w-12 text-right font-mono"
-                  style={{ color: "var(--text-subtle)" }}
-                >
-                  {s.requests.toLocaleString()}
-                </span>
               </div>
             ))}
           </div>
+          {SERVICES.length > 8 && (
+            <Link
+              to="/tools"
+              className="mt-3 block text-center text-[10px] transition-colors hover:opacity-80"
+              style={{ color: "var(--text-subtle)" }}
+            >
+              + 他{SERVICES.length - 8}件のコネクタ
+            </Link>
+          )}
         </div>
       </div>
 
@@ -902,7 +903,7 @@ export const Dashboard = (): JSX.Element => {
 
           {/* テーブルヘッダー */}
           <div
-            className="grid grid-cols-[70px_80px_80px_1fr_60px_50px] items-center gap-2 px-5 py-2 text-[10px]"
+            className="grid grid-cols-[70px_80px_80px_1fr_85px_50px] items-center gap-2 px-5 py-2 text-[10px]"
             style={{
               borderBottom: "1px solid var(--border)",
               color: "var(--text-subtle)",
@@ -922,7 +923,7 @@ export const Dashboard = (): JSX.Element => {
             return (
               <div
                 key={item.id}
-                className="grid grid-cols-[70px_80px_80px_1fr_60px_50px] items-center gap-2 px-5 py-2.5 text-xs transition-colors"
+                className="grid grid-cols-[70px_80px_80px_1fr_85px_50px] items-center gap-2 px-5 py-2.5 text-xs transition-colors"
                 style={{
                   borderBottom: "1px solid var(--border-subtle)",
                   backgroundColor: isErrorRow(item.status)
