@@ -54,7 +54,7 @@ enum ServerStatus {
 /// 認証トークン
 /// @namespace Auth
 model AuthToken {
-  id           String   @id @default(uuid())
+  id           Int      @id @default(autoincrement())
   /// アクセストークン
   accessToken  String
   /// リフレッシュトークン
@@ -68,7 +68,7 @@ model AuthToken {
 /// MCPカタログ（プリセットMCPサーバーのテンプレート）
 /// @namespace McpServer
 model McpCatalog {
-  id            String        @id @default(uuid())
+  id            Int           @id @default(autoincrement())
   /// カタログ表示名
   name          String
   /// URL識別子（小文字・ハイフン区切り）
@@ -102,7 +102,7 @@ model McpCatalog {
 /// 1つ以上のMcpConnectionを束ねて1つのMCPサーバーとして公開する
 /// @namespace McpServer
 model McpServer {
-  id           String       @id @default(uuid())
+  id           Int          @id @default(autoincrement())
   /// サーバー表示名
   name         String
   /// URL識別子（小文字・ハイフン区切り）
@@ -127,9 +127,9 @@ model McpServer {
 /// MCP接続（個別のMCPサーバーへの接続設定）
 /// @namespace McpServer
 model McpConnection {
-  id            String        @id @default(uuid())
+  id            Int           @id @default(autoincrement())
   /// 所属するMcpServerのID
-  serverId      String
+  serverId      Int
   server        McpServer     @relation(fields: [serverId], references: [id], onDelete: Cascade)
   /// 接続表示名
   name          String
@@ -152,7 +152,7 @@ model McpConnection {
   /// 統合サーバー内での表示順序
   displayOrder  Int           @default(0)
   /// カタログ参照（カタログから登録した場合）
-  catalogId     String?
+  catalogId     Int?
   catalog       McpCatalog?   @relation(fields: [catalogId], references: [id], onDelete: SetNull)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -164,9 +164,9 @@ model McpConnection {
 /// MCPツール（接続が提供するツールの定義・権限管理）
 /// @namespace McpServer
 model McpTool {
-  id                String        @id @default(uuid())
+  id                Int           @id @default(autoincrement())
   /// 対象MCP接続ID
-  connectionId      String
+  connectionId      Int
   connection        McpConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
   /// ツール名（大元のMCPから取得、ルーティングに使用）
   name              String
@@ -192,10 +192,10 @@ model McpTool {
 model AuditLog {
   id           Int       @id @default(autoincrement())
   /// 対象MCPサーバーID
-  serverId     String
+  serverId     Int
   server       McpServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
   /// 対象MCP接続ID（接続削除後もログ保持のためリレーション未定義）
-  connectionId String?
+  connectionId Int?
   /// 実行されたツール名
   toolName     String
   /// MCPメソッド（例: "tools/call", "resources/read"）

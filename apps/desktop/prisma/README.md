@@ -10,7 +10,7 @@
 ```mermaid
 erDiagram
 "AuthToken" {
-  String id PK
+  Int id PK
   String accessToken
   String refreshToken
   DateTime expiresAt
@@ -37,7 +37,7 @@ erDiagram
 ```mermaid
 erDiagram
 "McpCatalog" {
-  String id PK
+  Int id PK
   String name
   String slug UK
   String description
@@ -53,7 +53,7 @@ erDiagram
   DateTime updatedAt
 }
 "McpServer" {
-  String id PK
+  Int id PK
   String name
   String slug UK
   String description
@@ -64,8 +64,8 @@ erDiagram
   DateTime updatedAt
 }
 "McpConnection" {
-  String id PK
-  String serverId FK
+  Int id PK
+  Int serverId FK
   String name
   TransportType transportType
   String command "nullable"
@@ -76,13 +76,13 @@ erDiagram
   String authToken "nullable"
   Boolean isEnabled
   Int displayOrder
-  String catalogId FK "nullable"
+  Int catalogId FK "nullable"
   DateTime createdAt
   DateTime updatedAt
 }
 "McpTool" {
-  String id PK
-  String connectionId FK
+  Int id PK
+  Int connectionId FK
   String name
   String description
   String inputSchema
@@ -94,8 +94,8 @@ erDiagram
 }
 "AuditLog" {
   Int id PK
-  String serverId FK
-  String connectionId "nullable"
+  Int serverId FK
+  Int connectionId "nullable"
   String toolName
   String method
   Int durationMs
