@@ -12,6 +12,11 @@ import {
   Sun,
   PanelLeftClose,
   PanelLeft,
+  Users,
+  Shield,
+  Server,
+  Activity,
+  ClipboardCheck,
 } from "lucide-react";
 import { themeAtom, sidebarOpenAtom } from "../store/atoms";
 
@@ -26,6 +31,18 @@ const mainNav: NavItem[] = [
   { path: "/tools", label: "コネクト", icon: <Wrench size={18} /> },
   { path: "/history", label: "操作履歴", icon: <History size={18} /> },
   { path: "/requests", label: "権限申請", icon: <ShieldCheck size={18} /> },
+];
+
+const adminNav: NavItem[] = [
+  { path: "/admin/users", label: "ユーザー", icon: <Users size={18} /> },
+  { path: "/admin/roles", label: "ロール", icon: <Shield size={18} /> },
+  { path: "/admin/tools", label: "ツール管理", icon: <Server size={18} /> },
+  { path: "/admin/audit", label: "監査ログ", icon: <Activity size={18} /> },
+  {
+    path: "/admin/approvals",
+    label: "承認管理",
+    icon: <ClipboardCheck size={18} />,
+  },
 ];
 
 const notificationNav: NavItem = {
@@ -159,6 +176,22 @@ export const Sidebar = (): JSX.Element => {
       {/* メインナビ */}
       <nav className="flex flex-1 flex-col px-2">
         <div className="space-y-0.5">{mainNav.map(renderLink)}</div>
+
+        {/* 管理セクション */}
+        <div
+          className="mt-2 space-y-0.5 pt-2"
+          style={{ borderTop: "1px solid var(--border)" }}
+        >
+          {isOpen && (
+            <div
+              className="px-3 pt-1 pb-1 text-[10px] font-medium tracking-wider uppercase"
+              style={{ color: "var(--text-subtle)" }}
+            >
+              管理
+            </div>
+          )}
+          {adminNav.map(renderLink)}
+        </div>
 
         {/* 通知リンク */}
         <div
