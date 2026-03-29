@@ -21,7 +21,7 @@ export const ConnectorAuto = (): JSX.Element => {
   ]);
   const [generatedConnector, setGeneratedConnector] = useState<{
     name: string;
-    tools: string[];
+    tools: { id: string; operations: string[]; description: string }[];
     description: string;
     paths: { ai: string; path: string }[];
   } | null>(null);
@@ -46,7 +46,25 @@ export const ConnectorAuto = (): JSX.Element => {
         const slug = input.replace(/\s+/g, "-").toLowerCase().slice(0, 20);
         setGeneratedConnector({
           name: input.slice(0, 30),
-          tools: ["slack", "github", "notion"],
+          tools: [
+            {
+              id: "slack",
+              operations: ["send_message", "list_channels"],
+              description: "指定チャンネルに週次サマリーを自動投稿する",
+            },
+            {
+              id: "github",
+              operations: ["list_repos", "get_file", "create_pr"],
+              description:
+                "リポジトリのIssue・PR情報を取得しレポートに集約する",
+            },
+            {
+              id: "notion",
+              operations: ["create_page", "search_pages"],
+              description:
+                "週次レポートページを自動作成し、過去のレポートを参照する",
+            },
+          ],
           description: `${input}を自動化するコネクタ。GitHub の情報を取得し、Notion にまとめ、Slack に通知します。`,
           paths: [
             {
@@ -154,7 +172,7 @@ export const ConnectorAuto = (): JSX.Element => {
               </span>
             </div>
 
-            {/* 選択されたツール */}
+            {/* 選択されたツール + オペレーション詳細 */}
             <div className="mb-3">
               <span
                 className="text-[10px]"
@@ -162,27 +180,53 @@ export const ConnectorAuto = (): JSX.Element => {
               >
                 使用ツール
               </span>
-              <div className="mt-1 flex flex-wrap gap-1.5">
-                {generatedConnector.tools.map((id) => {
-                  const tool = TOOLS.find((t) => t.id === id);
+              <div className="mt-2 space-y-2">
+                {generatedConnector.tools.map((t) => {
+                  const tool = TOOLS.find((x) => x.id === t.id);
                   if (!tool) return null;
                   return (
                     <div
-                      key={id}
-                      className="flex items-center gap-1.5 rounded-md px-2 py-1"
-                      style={{ backgroundColor: "var(--bg-active)" }}
+                      key={t.id}
+                      className="rounded-lg p-3"
+                      style={{ backgroundColor: "var(--bg-input)" }}
                     >
-                      <img
-                        src={theme === "dark" ? tool.logoDark : tool.logoLight}
-                        alt={tool.name}
-                        className="h-3.5 w-3.5 rounded"
-                      />
-                      <span
-                        className="text-[10px]"
+                      <div className="mb-2 flex items-center gap-2">
+                        <img
+                          src={
+                            theme === "dark" ? tool.logoDark : tool.logoLight
+                          }
+                          alt={tool.name}
+                          className="h-4 w-4 rounded"
+                        />
+                        <span
+                          className="text-xs font-medium"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          {tool.name}
+                        </span>
+                      </div>
+                      {/* オペレーション */}
+                      <div className="mb-1.5 flex flex-wrap gap-1">
+                        {t.operations.map((op) => (
+                          <span
+                            key={op}
+                            className="rounded px-1.5 py-0.5 font-mono text-[8px]"
+                            style={{
+                              backgroundColor: "var(--bg-active)",
+                              color: "var(--text-muted)",
+                            }}
+                          >
+                            {op}
+                          </span>
+                        ))}
+                      </div>
+                      {/* カスタムDescription */}
+                      <p
+                        className="text-[10px] leading-relaxed"
                         style={{ color: "var(--text-secondary)" }}
                       >
-                        {tool.name}
-                      </span>
+                        {t.description}
+                      </p>
                     </div>
                   );
                 })}
