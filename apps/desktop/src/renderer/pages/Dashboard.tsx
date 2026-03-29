@@ -1,115 +1,195 @@
 import type { JSX } from "react";
-import { useAtomValue } from "jotai";
-import { mcpServersAtom } from "../store/atoms";
-import { Activity, Server, AlertCircle } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Wrench, BarChart3, Clock, Plus, ArrowRight, Bell } from "lucide-react";
+import { TOOLS, HISTORY, CURRENT_USER, ANNOUNCEMENTS } from "../data/mock";
+import type { ToolStatus } from "../data/mock";
+
+/** ステータスに応じたドット色 */
+const statusDotColor: Record<ToolStatus, string> = {
+  active: "bg-emerald-400",
+  degraded: "bg-amber-400",
+  down: "bg-red-400",
+};
 
 export const Dashboard = (): JSX.Element => {
-  const servers = useAtomValue(mcpServersAtom);
+  const approvedTools = TOOLS.filter((t) => t.approved);
+  const pendingCount = TOOLS.filter((t) => !t.approved).length;
+  const totalRequests = approvedTools.reduce(
+    (sum, t) => sum + t.stats.requests,
+    0,
+  );
 
-  const stats = {
-    total: servers.length,
-    running: servers.filter((s) => s.status === "running").length,
-    stopped: servers.filter((s) => s.status === "stopped").length,
-    error: servers.filter((s) => s.status === "error").length,
-  };
+  // よく使うツール（リクエスト数上位4つ）
+  const favoriteTools = [...approvedTools]
+    .sort((a, b) => b.stats.requests - a.stats.requests)
+    .slice(0, 4);
+
+  // 最近の操作（上位4件）
+  const recentHistory = HISTORY.slice(0, 4);
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen space-y-6 bg-[#0a0a0a] p-6">
+      {/* 挨拶 */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">ダッシュボード</h2>
-        <p className="mt-1 text-sm text-gray-600">
-          MCPサーバーの状態を一覧で確認できます
+        <h1 className="text-2xl font-bold text-white">
+          おはようございます、{CURRENT_USER.name.replace("太郎", "")}さん
+        </h1>
+        <p className="mt-1 text-sm text-zinc-500">
+          {CURRENT_USER.department} / {CURRENT_USER.role} ロール
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">総サーバー数</p>
-              <p className="mt-2 text-3xl font-semibold text-gray-900">
-                {stats.total}
-              </p>
+      {/* KPIカード */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="rounded-xl border border-white/[0.08] bg-[#111] p-5">
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-white/[0.05] p-2">
+              <Wrench size={18} className="text-zinc-400" />
             </div>
-            <div className="rounded-full bg-blue-100 p-3">
-              <Server className="text-blue-600" size={24} />
+            <div>
+              <p className="text-xs text-zinc-500">利用可能ツール</p>
+              <p className="text-2xl font-semibold text-white">
+                {approvedTools.length}
+              </p>
             </div>
           </div>
         </div>
 
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">起動中</p>
-              <p className="mt-2 text-3xl font-semibold text-green-600">
-                {stats.running}
-              </p>
+        <div className="rounded-xl border border-white/[0.08] bg-[#111] p-5">
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-white/[0.05] p-2">
+              <BarChart3 size={18} className="text-zinc-400" />
             </div>
-            <div className="rounded-full bg-green-100 p-3">
-              <Activity className="text-green-600" size={24} />
+            <div>
+              <p className="text-xs text-zinc-500">今月のリクエスト数</p>
+              <p className="text-2xl font-semibold text-white">
+                {totalRequests.toLocaleString()}
+              </p>
             </div>
           </div>
         </div>
 
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <div className="flex items-center justify-between">
+        <div className="rounded-xl border border-white/[0.08] bg-[#111] p-5">
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-white/[0.05] p-2">
+              <Clock size={18} className="text-zinc-400" />
+            </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">停止中</p>
-              <p className="mt-2 text-3xl font-semibold text-gray-600">
-                {stats.stopped}
+              <p className="text-xs text-zinc-500">申請中</p>
+              <p className="text-2xl font-semibold text-white">
+                {pendingCount}
               </p>
-            </div>
-            <div className="rounded-full bg-gray-100 p-3">
-              <Server className="text-gray-600" size={24} />
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">エラー</p>
-              <p className="mt-2 text-3xl font-semibold text-red-600">
-                {stats.error}
-              </p>
-            </div>
-            <div className="rounded-full bg-red-100 p-3">
-              <AlertCircle className="text-red-600" size={24} />
             </div>
           </div>
         </div>
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white p-6">
-        <h3 className="text-lg font-semibold text-gray-900">
-          クイックスタート
-        </h3>
-        <p className="mt-2 text-sm text-gray-600">
-          左側のメニューから「MCPサーバー」を選択して、サーバーを管理できます。
-        </p>
-        <div className="mt-4 space-y-2">
-          <div className="flex items-start space-x-3">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-600">
-              1
+      {/* よく使うツール */}
+      <div className="rounded-xl border border-white/[0.08] bg-[#111] p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-medium text-white">よく使うツール</h2>
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+          {favoriteTools.map((tool) => (
+            <Link
+              key={tool.id}
+              to={`/tools/${tool.id}`}
+              className="flex flex-col items-center gap-2 rounded-lg border border-white/[0.08] p-4 transition hover:border-white/[0.15]"
+            >
+              <div className="relative flex h-10 w-10 items-center justify-center rounded-lg bg-white/[0.05] text-sm font-semibold text-white">
+                {tool.name.charAt(0)}
+                <span
+                  className={`absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full ${statusDotColor[tool.status]}`}
+                />
+              </div>
+              <span className="text-xs text-zinc-400">{tool.name}</span>
+            </Link>
+          ))}
+
+          {/* 追加ボタン */}
+          <Link
+            to="/tools/catalog"
+            className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-white/[0.08] p-4 transition hover:border-white/[0.15]"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/[0.05]">
+              <Plus size={18} className="text-zinc-500" />
             </div>
-            <p className="text-sm text-gray-700">
-              MCPサーバーページで利用可能なサーバーを確認
-            </p>
-          </div>
-          <div className="flex items-start space-x-3">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-600">
-              2
+            <span className="text-xs text-zinc-500">追加</span>
+          </Link>
+        </div>
+      </div>
+
+      {/* 最近の操作 */}
+      <div className="rounded-xl border border-white/[0.08] bg-[#111] p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-medium text-white">最近の操作</h2>
+          <Link
+            to="/history"
+            className="flex items-center gap-1 text-xs text-zinc-500 hover:text-white"
+          >
+            すべて見る
+            <ArrowRight size={12} />
+          </Link>
+        </div>
+        <div className="space-y-3">
+          {recentHistory.map((item) => (
+            <div
+              key={item.id}
+              className="flex items-center justify-between text-sm"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-zinc-600">{item.datetime}</span>
+                <span className="text-zinc-400">{item.tool}</span>
+                <span className="text-zinc-600">{item.operation}</span>
+              </div>
+              <span
+                className={
+                  item.status === "success"
+                    ? "text-emerald-400"
+                    : item.status === "timeout"
+                      ? "text-amber-400"
+                      : item.status === "blocked"
+                        ? "text-red-400"
+                        : "text-red-400"
+                }
+              >
+                {item.status === "success"
+                  ? "成功"
+                  : item.status === "timeout"
+                    ? "タイムアウト"
+                    : item.status === "blocked"
+                      ? "ブロック"
+                      : "エラー"}
+              </span>
             </div>
-            <p className="text-sm text-gray-700">起動ボタンでサーバーを起動</p>
-          </div>
-          <div className="flex items-start space-x-3">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-600">
-              3
+          ))}
+        </div>
+      </div>
+
+      {/* お知らせ */}
+      <div className="rounded-xl border border-white/[0.08] bg-[#111] p-5">
+        <div className="mb-4 flex items-center gap-2">
+          <Bell size={14} className="text-zinc-500" />
+          <h2 className="text-sm font-medium text-white">お知らせ</h2>
+        </div>
+        <div className="space-y-3">
+          {ANNOUNCEMENTS.map((a) => (
+            <div
+              key={a.id}
+              className="flex items-start justify-between text-sm"
+            >
+              <div className="flex items-start gap-3">
+                <span className="text-xs text-zinc-600">{a.date}</span>
+                {a.link ? (
+                  <Link to={a.link} className="text-zinc-400 hover:text-white">
+                    {a.message}
+                  </Link>
+                ) : (
+                  <span className="text-zinc-400">{a.message}</span>
+                )}
+              </div>
             </div>
-            <p className="text-sm text-gray-700">
-              設定ページでアプリケーションの動作をカスタマイズ
-            </p>
-          </div>
+          ))}
         </div>
       </div>
     </div>
