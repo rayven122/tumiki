@@ -368,7 +368,7 @@ export type HistoryItem = {
   id: string;
   datetime: string;
   user: string;
-  aiClient: { name: string; logo: string };
+  aiClient: { name: string; logoDark: string; logoLight: string };
   service: { name: string; logoDark: string; logoLight: string };
   tool: string;
   operation: string;
@@ -385,7 +385,11 @@ export const HISTORY: HistoryItem[] = [
     id: "h1",
     datetime: "03/29 14:32:15",
     user: "田中",
-    aiClient: { name: "Cursor", logo: "/logos/ai-clients/cursor.webp" },
+    aiClient: {
+      name: "Cursor",
+      logoDark: "/logos/ai-clients/cursor.webp",
+      logoLight: "/logos/ai-clients/cursor.svg",
+    },
     service: {
       name: "Slack",
       logoDark: "/logos/services/slack.webp",
@@ -402,7 +406,11 @@ export const HISTORY: HistoryItem[] = [
     id: "h2",
     datetime: "03/29 14:28:03",
     user: "鈴木",
-    aiClient: { name: "ChatGPT", logo: "/logos/ai-clients/chatgpt.webp" },
+    aiClient: {
+      name: "ChatGPT",
+      logoDark: "/logos/ai-clients/chatgpt.webp",
+      logoLight: "/logos/ai-clients/chatgpt.svg",
+    },
     service: {
       name: "Notion",
       logoDark: "/logos/services/notion.webp",
@@ -419,7 +427,11 @@ export const HISTORY: HistoryItem[] = [
     id: "h3",
     datetime: "03/29 13:55:41",
     user: "不明",
-    aiClient: { name: "Cline", logo: "/logos/ai-clients/cline.webp" },
+    aiClient: {
+      name: "Cline",
+      logoDark: "/logos/ai-clients/cline.webp",
+      logoLight: "/logos/ai-clients/cline.svg",
+    },
     service: {
       name: "Sentry",
       logoDark: "/logos/services/sentry.webp",
@@ -436,7 +448,11 @@ export const HISTORY: HistoryItem[] = [
     id: "h4",
     datetime: "03/29 13:40:22",
     user: "山田",
-    aiClient: { name: "Cursor", logo: "/logos/ai-clients/cursor.webp" },
+    aiClient: {
+      name: "Cursor",
+      logoDark: "/logos/ai-clients/cursor.webp",
+      logoLight: "/logos/ai-clients/cursor.svg",
+    },
     service: {
       name: "Slack",
       logoDark: "/logos/services/slack.webp",
@@ -453,7 +469,11 @@ export const HISTORY: HistoryItem[] = [
     id: "h5",
     datetime: "03/29 11:15:08",
     user: "鈴木",
-    aiClient: { name: "Copilot", logo: "/logos/ai-clients/copilot.webp" },
+    aiClient: {
+      name: "Copilot",
+      logoDark: "/logos/ai-clients/copilot.webp",
+      logoLight: "/logos/ai-clients/copilot.svg",
+    },
     service: {
       name: "GitHub",
       logoDark: "/logos/services/github_white.svg",
@@ -470,7 +490,11 @@ export const HISTORY: HistoryItem[] = [
     id: "h6",
     datetime: "03/29 10:02:33",
     user: "田中",
-    aiClient: { name: "ChatGPT", logo: "/logos/ai-clients/chatgpt.webp" },
+    aiClient: {
+      name: "ChatGPT",
+      logoDark: "/logos/ai-clients/chatgpt.webp",
+      logoLight: "/logos/ai-clients/chatgpt.svg",
+    },
     service: {
       name: "PostgreSQL",
       logoDark: "/logos/services/postgresql.webp",
@@ -490,7 +514,11 @@ export const HISTORY: HistoryItem[] = [
     id: "h7",
     datetime: "03/28 17:45:12",
     user: "佐藤",
-    aiClient: { name: "ChatGPT", logo: "/logos/ai-clients/chatgpt.webp" },
+    aiClient: {
+      name: "ChatGPT",
+      logoDark: "/logos/ai-clients/chatgpt.webp",
+      logoLight: "/logos/ai-clients/chatgpt.svg",
+    },
     service: {
       name: "Slack",
       logoDark: "/logos/services/slack.webp",
@@ -507,7 +535,11 @@ export const HISTORY: HistoryItem[] = [
     id: "h8",
     datetime: "03/28 16:30:55",
     user: "田中",
-    aiClient: { name: "Cursor", logo: "/logos/ai-clients/cursor.webp" },
+    aiClient: {
+      name: "Cursor",
+      logoDark: "/logos/ai-clients/cursor.webp",
+      logoLight: "/logos/ai-clients/cursor.svg",
+    },
     service: {
       name: "Notion",
       logoDark: "/logos/services/notion.webp",
@@ -524,7 +556,11 @@ export const HISTORY: HistoryItem[] = [
     id: "h9",
     datetime: "03/28 15:20:10",
     user: "山田",
-    aiClient: { name: "Claude", logo: "/logos/ai-clients/claude.webp" },
+    aiClient: {
+      name: "Claude",
+      logoDark: "/logos/ai-clients/claude.webp",
+      logoLight: "/logos/ai-clients/claude.svg",
+    },
     service: {
       name: "Google Drive",
       logoDark: "/logos/services/google-drive.svg",
@@ -541,7 +577,11 @@ export const HISTORY: HistoryItem[] = [
     id: "h10",
     datetime: "03/28 14:10:30",
     user: "鈴木",
-    aiClient: { name: "Cursor", logo: "/logos/ai-clients/cursor.webp" },
+    aiClient: {
+      name: "Cursor",
+      logoDark: "/logos/ai-clients/cursor.webp",
+      logoLight: "/logos/ai-clients/cursor.svg",
+    },
     service: {
       name: "Figma",
       logoDark: "/logos/services/figma.webp",
@@ -558,7 +598,11 @@ export const HISTORY: HistoryItem[] = [
     id: "h11",
     datetime: "03/28 10:05:22",
     user: "佐藤",
-    aiClient: { name: "Claude", logo: "/logos/ai-clients/claude.webp" },
+    aiClient: {
+      name: "Claude",
+      logoDark: "/logos/ai-clients/claude.webp",
+      logoLight: "/logos/ai-clients/claude.svg",
+    },
     service: {
       name: "Slack",
       logoDark: "/logos/services/slack.webp",
@@ -575,7 +619,11 @@ export const HISTORY: HistoryItem[] = [
     id: "h12",
     datetime: "03/27 16:45:00",
     user: "田中",
-    aiClient: { name: "Cursor", logo: "/logos/ai-clients/cursor.webp" },
+    aiClient: {
+      name: "Cursor",
+      logoDark: "/logos/ai-clients/cursor.webp",
+      logoLight: "/logos/ai-clients/cursor.svg",
+    },
     service: {
       name: "GitHub",
       logoDark: "/logos/services/github_white.svg",

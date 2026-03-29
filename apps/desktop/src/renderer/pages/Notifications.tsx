@@ -178,7 +178,9 @@ export const Notifications = (): JSX.Element => {
               <span
                 className="inline-block h-2 w-2 rounded-full"
                 style={{
-                  backgroundColor: n.read ? "transparent" : "#3b82f6",
+                  backgroundColor: n.read
+                    ? "transparent"
+                    : "var(--badge-warn-text)",
                 }}
               />
             </div>

@@ -160,7 +160,6 @@ export const RequestForm = (): JSX.Element => {
                     name="requestType"
                     checked={requestType === opt.value}
                     onChange={() => setRequestType(opt.value)}
-                    className="accent-white"
                   />
                   {opt.label}
                 </label>
@@ -204,7 +203,6 @@ export const RequestForm = (): JSX.Element => {
                     type="checkbox"
                     checked={permissions[perm]}
                     onChange={() => togglePermission(perm)}
-                    className="accent-white"
                   />
                   {perm.charAt(0).toUpperCase() + perm.slice(1)}
                 </label>
@@ -247,7 +245,6 @@ export const RequestForm = (): JSX.Element => {
                     name="periodType"
                     checked={periodType === opt.value}
                     onChange={() => setPeriodType(opt.value)}
-                    className="accent-white"
                   />
                   {opt.label}
                 </label>

@@ -37,12 +37,36 @@ const statusBadge: Record<
 /** 履歴ステータスのpillスタイル */
 const historyStatusPill: Record<
   HistoryStatus,
-  { bg: string; text: string; label: string }
+  { style: React.CSSProperties; label: string }
 > = {
-  success: { bg: "bg-emerald-400/10", text: "text-emerald-400", label: "成功" },
-  timeout: { bg: "bg-amber-400/10", text: "text-amber-400", label: "遅延" },
-  blocked: { bg: "bg-red-400/10", text: "text-red-400", label: "拒否" },
-  error: { bg: "bg-red-400/10", text: "text-red-400", label: "エラー" },
+  success: {
+    style: {
+      backgroundColor: "var(--badge-success-bg)",
+      color: "var(--badge-success-text)",
+    },
+    label: "成功",
+  },
+  timeout: {
+    style: {
+      backgroundColor: "var(--badge-warn-bg)",
+      color: "var(--badge-warn-text)",
+    },
+    label: "遅延",
+  },
+  blocked: {
+    style: {
+      backgroundColor: "var(--badge-error-bg)",
+      color: "var(--badge-error-text)",
+    },
+    label: "拒否",
+  },
+  error: {
+    style: {
+      backgroundColor: "var(--badge-error-bg)",
+      color: "var(--badge-error-text)",
+    },
+    label: "エラー",
+  },
 };
 
 /** カードの共通スタイル */
@@ -215,7 +239,12 @@ export const ToolDetail = (): JSX.Element => {
             >
               {/* ON/OFF ドット */}
               <span
-                className={`h-2 w-2 shrink-0 rounded-full ${op.allowed ? "bg-emerald-400" : "bg-zinc-700"}`}
+                className="h-2 w-2 shrink-0 rounded-full"
+                style={{
+                  backgroundColor: op.allowed
+                    ? "var(--badge-success-text)"
+                    : "var(--text-subtle)",
+                }}
               />
               {/* 操作名 */}
               <span
@@ -241,11 +270,15 @@ export const ToolDetail = (): JSX.Element => {
               </span>
               {/* ステータスラベル */}
               <span
-                className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                  op.allowed
-                    ? "bg-emerald-400/10 text-emerald-400"
-                    : "bg-zinc-700/30 text-zinc-500"
-                }`}
+                className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium"
+                style={{
+                  backgroundColor: op.allowed
+                    ? "var(--badge-success-bg)"
+                    : "var(--bg-active)",
+                  color: op.allowed
+                    ? "var(--badge-success-text)"
+                    : "var(--text-muted)",
+                }}
               >
                 {op.allowed ? "許可" : "不可"}
               </span>
@@ -369,7 +402,8 @@ export const ToolDetail = (): JSX.Element => {
                       {item.latency}
                     </span>
                     <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${pill.bg} ${pill.text}`}
+                      className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                      style={pill.style}
                     >
                       {pill.label}
                     </span>

@@ -964,7 +964,11 @@ export const AdminDashboard = (): JSX.Element => {
                 {/* AIクライアント */}
                 <div className="flex items-center gap-1.5">
                   <img
-                    src={item.aiClient.logo}
+                    src={
+                      theme === "dark"
+                        ? item.aiClient.logoDark
+                        : item.aiClient.logoLight
+                    }
                     alt={item.aiClient.name}
                     className="h-4 w-4 rounded-sm"
                   />

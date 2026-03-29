@@ -21,33 +21,33 @@ import {
 /* ===== コネクタ別アクセス推移データ（個人ユーザー規模） ===== */
 
 const CONNECTOR_24H = [
-  { time: "00:00", slack: 2, github: 0, notion: 1, figma: 0, jira: 0 },
-  { time: "04:00", slack: 0, github: 0, notion: 0, figma: 0, jira: 0 },
-  { time: "08:00", slack: 5, github: 3, notion: 2, figma: 1, jira: 2 },
-  { time: "10:00", slack: 8, github: 6, notion: 4, figma: 2, jira: 3 },
-  { time: "12:00", slack: 4, github: 2, notion: 3, figma: 0, jira: 1 },
-  { time: "14:00", slack: 7, github: 5, notion: 2, figma: 3, jira: 4 },
-  { time: "16:00", slack: 6, github: 8, notion: 3, figma: 1, jira: 2 },
-  { time: "18:00", slack: 3, github: 4, notion: 1, figma: 0, jira: 1 },
-  { time: "20:00", slack: 1, github: 1, notion: 0, figma: 0, jira: 0 },
-  { time: "22:00", slack: 0, github: 0, notion: 0, figma: 0, jira: 0 },
+  { time: "00:00", slack: 2, github: 0, notion: 1, figma: 0, sentry: 0 },
+  { time: "04:00", slack: 0, github: 0, notion: 0, figma: 0, sentry: 0 },
+  { time: "08:00", slack: 5, github: 3, notion: 2, figma: 1, sentry: 2 },
+  { time: "10:00", slack: 8, github: 6, notion: 4, figma: 2, sentry: 3 },
+  { time: "12:00", slack: 4, github: 2, notion: 3, figma: 0, sentry: 1 },
+  { time: "14:00", slack: 7, github: 5, notion: 2, figma: 3, sentry: 4 },
+  { time: "16:00", slack: 6, github: 8, notion: 3, figma: 1, sentry: 2 },
+  { time: "18:00", slack: 3, github: 4, notion: 1, figma: 0, sentry: 1 },
+  { time: "20:00", slack: 1, github: 1, notion: 0, figma: 0, sentry: 0 },
+  { time: "22:00", slack: 0, github: 0, notion: 0, figma: 0, sentry: 0 },
 ];
 
 const CONNECTOR_7D = [
-  { time: "Mon", slack: 32, github: 28, notion: 18, figma: 8, jira: 14 },
-  { time: "Tue", slack: 38, github: 35, notion: 22, figma: 12, jira: 16 },
-  { time: "Wed", slack: 42, github: 31, notion: 20, figma: 10, jira: 18 },
-  { time: "Thu", slack: 35, github: 40, notion: 25, figma: 6, jira: 12 },
-  { time: "Fri", slack: 45, github: 38, notion: 15, figma: 14, jira: 20 },
-  { time: "Sat", slack: 5, github: 2, notion: 3, figma: 0, jira: 0 },
-  { time: "Sun", slack: 2, github: 0, notion: 1, figma: 0, jira: 0 },
+  { time: "Mon", slack: 32, github: 28, notion: 18, figma: 8, sentry: 14 },
+  { time: "Tue", slack: 38, github: 35, notion: 22, figma: 12, sentry: 16 },
+  { time: "Wed", slack: 42, github: 31, notion: 20, figma: 10, sentry: 18 },
+  { time: "Thu", slack: 35, github: 40, notion: 25, figma: 6, sentry: 12 },
+  { time: "Fri", slack: 45, github: 38, notion: 15, figma: 14, sentry: 20 },
+  { time: "Sat", slack: 5, github: 2, notion: 3, figma: 0, sentry: 0 },
+  { time: "Sun", slack: 2, github: 0, notion: 1, figma: 0, sentry: 0 },
 ];
 
 const CONNECTOR_30D = [
-  { time: "W1", slack: 180, github: 145, notion: 95, figma: 42, jira: 68 },
-  { time: "W2", slack: 210, github: 168, notion: 102, figma: 55, jira: 78 },
-  { time: "W3", slack: 195, github: 178, notion: 88, figma: 48, jira: 72 },
-  { time: "W4", slack: 225, github: 192, notion: 110, figma: 60, jira: 85 },
+  { time: "W1", slack: 180, github: 145, notion: 95, figma: 42, sentry: 68 },
+  { time: "W2", slack: 210, github: 168, notion: 102, figma: 55, sentry: 78 },
+  { time: "W3", slack: 195, github: 178, notion: 88, figma: 48, sentry: 72 },
+  { time: "W4", slack: 225, github: 192, notion: 110, figma: 60, sentry: 85 },
 ];
 
 const CONNECTOR_MAP = {
@@ -61,9 +61,9 @@ const CONNECTOR_MAP = {
 const CONNECTOR_LEGENDS = [
   { label: "Slack", key: "slack", color: "#E01E5A" },
   { label: "GitHub", key: "github", color: "#8b949e" },
-  { label: "Notion", key: "notion", color: "#fff" },
+  { label: "Notion", key: "notion", color: "#787878" },
   { label: "Figma", key: "figma", color: "#A259FF" },
-  { label: "Jira", key: "jira", color: "#2684FF" },
+  { label: "Sentry", key: "sentry", color: "#362D59" },
 ] as const;
 
 /* ===== AIクライアント構成比（個人: 2-3クライアント） ===== */
@@ -122,10 +122,10 @@ const CONNECTORS = [
     status: "active",
   },
   {
-    name: "Jira",
-    dark: "/logos/services/database.webp",
-    light: "/logos/services/database.webp",
-    status: "degraded",
+    name: "Sentry",
+    dark: "/logos/services/sentry.webp",
+    light: "/logos/services/sentry.webp",
+    status: "active",
   },
   {
     name: "Google Drive",
@@ -646,7 +646,11 @@ export const Dashboard = (): JSX.Element => {
                 </span>
                 <div className="flex items-center gap-1.5">
                   <img
-                    src={item.aiClient.logo}
+                    src={
+                      theme === "dark"
+                        ? item.aiClient.logoDark
+                        : item.aiClient.logoLight
+                    }
                     alt={item.aiClient.name}
                     className="h-4 w-4 rounded-sm"
                   />

@@ -120,6 +120,7 @@ export const Sidebar = (): JSX.Element => {
             src="/rayven_white.png"
             alt="RAYVEN"
             className="h-6 w-6 shrink-0"
+            style={{ filter: theme === "light" ? "invert(1)" : "none" }}
           />
           {isOpen && (
             <span
@@ -227,7 +228,7 @@ export const Sidebar = (): JSX.Element => {
                   className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[8px] font-bold"
                   style={{
                     backgroundColor: "var(--badge-error-text)",
-                    color: "#fff",
+                    color: "var(--bg-card)",
                   }}
                 >
                   {UNREAD_COUNT}

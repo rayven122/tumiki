@@ -70,7 +70,7 @@ export const ToolCatalog = (): JSX.Element => {
             placeholder="ツールを検索..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full rounded-lg py-2 pr-3 pl-9 text-sm outline-none focus:border-white/[0.15]"
+            className="w-full rounded-lg py-2 pr-3 pl-9 text-sm outline-none"
             style={{
               borderWidth: 1,
               borderStyle: "solid",
@@ -85,7 +85,7 @@ export const ToolCatalog = (): JSX.Element => {
         <select
           value={category}
           onChange={(e) => setCategory(e.target.value)}
-          className="rounded-lg px-3 py-2 text-sm outline-none focus:border-white/[0.15]"
+          className="rounded-lg px-3 py-2 text-sm outline-none"
           style={{
             borderWidth: 1,
             borderStyle: "solid",
