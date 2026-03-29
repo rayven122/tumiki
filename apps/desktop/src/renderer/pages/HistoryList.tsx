@@ -49,30 +49,54 @@ export const HistoryList = (): JSX.Element => {
   const blockedCount = filtered.filter((h) => h.status === "blocked").length;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] p-6">
+    <div
+      className="min-h-screen p-6"
+      style={{ backgroundColor: "var(--bg-app)" }}
+    >
       {/* ヘッダー */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">操作履歴</h1>
-        <p className="mt-1 text-sm text-zinc-400">
+        <h1
+          className="text-2xl font-bold"
+          style={{ color: "var(--text-primary)" }}
+        >
+          操作履歴
+        </h1>
+        <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
           あなたのAIエージェント操作の記録
         </p>
       </div>
 
       {/* 期間フィルタ */}
       <div className="mb-4 flex items-center gap-3">
-        <label className="text-xs text-zinc-500">期間</label>
+        <label className="text-xs" style={{ color: "var(--text-muted)" }}>
+          期間
+        </label>
         <input
           type="date"
           value={startDate}
           onChange={(e) => setStartDate(e.target.value)}
-          className="rounded-lg border border-white/[0.08] bg-[#111] px-3 py-1.5 text-sm text-zinc-300 outline-none focus:border-white/20"
+          className="rounded-lg px-3 py-1.5 text-sm outline-none focus:border-white/20"
+          style={{
+            borderWidth: 1,
+            borderStyle: "solid",
+            borderColor: "var(--border)",
+            backgroundColor: "var(--bg-card)",
+            color: "var(--text-secondary)",
+          }}
         />
-        <span className="text-zinc-500">〜</span>
+        <span style={{ color: "var(--text-muted)" }}>〜</span>
         <input
           type="date"
           value={endDate}
           onChange={(e) => setEndDate(e.target.value)}
-          className="rounded-lg border border-white/[0.08] bg-[#111] px-3 py-1.5 text-sm text-zinc-300 outline-none focus:border-white/20"
+          className="rounded-lg px-3 py-1.5 text-sm outline-none focus:border-white/20"
+          style={{
+            borderWidth: 1,
+            borderStyle: "solid",
+            borderColor: "var(--border)",
+            backgroundColor: "var(--bg-card)",
+            color: "var(--text-secondary)",
+          }}
         />
       </div>
 
@@ -81,7 +105,14 @@ export const HistoryList = (): JSX.Element => {
         <select
           value={toolFilter}
           onChange={(e) => setToolFilter(e.target.value)}
-          className="rounded-lg border border-white/[0.08] bg-[#111] px-3 py-1.5 text-sm text-zinc-300 outline-none"
+          className="rounded-lg px-3 py-1.5 text-sm outline-none"
+          style={{
+            borderWidth: 1,
+            borderStyle: "solid",
+            borderColor: "var(--border)",
+            backgroundColor: "var(--bg-card)",
+            color: "var(--text-secondary)",
+          }}
         >
           <option value="all">すべてのツール</option>
           {tools.map((t) => (
@@ -94,7 +125,14 @@ export const HistoryList = (): JSX.Element => {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-lg border border-white/[0.08] bg-[#111] px-3 py-1.5 text-sm text-zinc-300 outline-none"
+          className="rounded-lg px-3 py-1.5 text-sm outline-none"
+          style={{
+            borderWidth: 1,
+            borderStyle: "solid",
+            borderColor: "var(--border)",
+            backgroundColor: "var(--bg-card)",
+            color: "var(--text-secondary)",
+          }}
         >
           <option value="all">すべてのステータス</option>
           <option value="success">成功</option>
@@ -106,7 +144,14 @@ export const HistoryList = (): JSX.Element => {
         <select
           value={operationFilter}
           onChange={(e) => setOperationFilter(e.target.value)}
-          className="rounded-lg border border-white/[0.08] bg-[#111] px-3 py-1.5 text-sm text-zinc-300 outline-none"
+          className="rounded-lg px-3 py-1.5 text-sm outline-none"
+          style={{
+            borderWidth: 1,
+            borderStyle: "solid",
+            borderColor: "var(--border)",
+            backgroundColor: "var(--bg-card)",
+            color: "var(--text-secondary)",
+          }}
         >
           <option value="all">すべての操作</option>
           {operations.map((op) => (
@@ -118,17 +163,32 @@ export const HistoryList = (): JSX.Element => {
       </div>
 
       {/* サマリーバー */}
-      <div className="mb-4 flex items-center gap-6 rounded-xl border border-white/[0.08] bg-[#111] px-5 py-3">
-        <span className="text-sm text-zinc-300">
-          全<span className="mx-1 font-semibold text-white">{total}</span>件
+      <div
+        className="mb-4 flex items-center gap-6 rounded-xl px-5 py-3"
+        style={{
+          borderWidth: 1,
+          borderStyle: "solid",
+          borderColor: "var(--border)",
+          backgroundColor: "var(--bg-card)",
+        }}
+      >
+        <span className="text-sm" style={{ color: "var(--text-secondary)" }}>
+          全
+          <span
+            className="mx-1 font-semibold"
+            style={{ color: "var(--text-primary)" }}
+          >
+            {total}
+          </span>
+          件
         </span>
-        <span className="text-sm text-zinc-300">
+        <span className="text-sm" style={{ color: "var(--text-secondary)" }}>
           成功率
           <span className="mx-1 font-semibold text-emerald-400">
             {successRate}%
           </span>
         </span>
-        <span className="text-sm text-zinc-300">
+        <span className="text-sm" style={{ color: "var(--text-secondary)" }}>
           遮断
           <span className="mx-1 font-semibold text-red-400">
             {blockedCount}
@@ -138,23 +198,53 @@ export const HistoryList = (): JSX.Element => {
       </div>
 
       {/* テーブル */}
-      <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-[#111]">
+      <div
+        className="overflow-hidden rounded-xl"
+        style={{
+          borderWidth: 1,
+          borderStyle: "solid",
+          borderColor: "var(--border)",
+          backgroundColor: "var(--bg-card)",
+        }}
+      >
         <table className="w-full">
           <thead>
-            <tr className="border-b border-white/[0.06] bg-white/[0.02]">
-              <th className="px-4 py-3 text-left text-[11px] font-medium text-zinc-500">
+            <tr
+              style={{
+                borderBottomWidth: 1,
+                borderBottomStyle: "solid",
+                borderBottomColor: "var(--border)",
+                backgroundColor: "var(--bg-card-hover)",
+              }}
+            >
+              <th
+                className="px-4 py-3 text-left text-[11px] font-medium"
+                style={{ color: "var(--text-muted)" }}
+              >
                 日時
               </th>
-              <th className="px-4 py-3 text-left text-[11px] font-medium text-zinc-500">
+              <th
+                className="px-4 py-3 text-left text-[11px] font-medium"
+                style={{ color: "var(--text-muted)" }}
+              >
                 ツール
               </th>
-              <th className="px-4 py-3 text-left text-[11px] font-medium text-zinc-500">
+              <th
+                className="px-4 py-3 text-left text-[11px] font-medium"
+                style={{ color: "var(--text-muted)" }}
+              >
                 操作
               </th>
-              <th className="px-4 py-3 text-left text-[11px] font-medium text-zinc-500">
+              <th
+                className="px-4 py-3 text-left text-[11px] font-medium"
+                style={{ color: "var(--text-muted)" }}
+              >
                 ステータス
               </th>
-              <th className="px-4 py-3 text-left text-[11px] font-medium text-zinc-500">
+              <th
+                className="px-4 py-3 text-left text-[11px] font-medium"
+                style={{ color: "var(--text-muted)" }}
+              >
                 詳細
               </th>
             </tr>
@@ -165,15 +255,29 @@ export const HistoryList = (): JSX.Element => {
               return (
                 <tr
                   key={item.id}
-                  className="border-b border-white/[0.03] hover:bg-white/[0.02]"
+                  className="hover:opacity-90"
+                  style={{
+                    borderBottomWidth: 1,
+                    borderBottomStyle: "solid",
+                    borderBottomColor: "var(--border-subtle)",
+                  }}
                 >
-                  <td className="px-4 py-3 text-sm text-zinc-300">
+                  <td
+                    className="px-4 py-3 text-sm"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
                     {item.datetime}
                   </td>
-                  <td className="px-4 py-3 text-sm text-zinc-300">
+                  <td
+                    className="px-4 py-3 text-sm"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
                     {item.tool}
                   </td>
-                  <td className="px-4 py-3 font-mono text-sm text-zinc-400">
+                  <td
+                    className="px-4 py-3 font-mono text-sm"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
                     {item.operation}
                   </td>
                   <td className={`px-4 py-3 text-sm ${display.className}`}>
@@ -198,7 +302,14 @@ export const HistoryList = (): JSX.Element => {
       <div className="mt-4 flex justify-end">
         <button
           type="button"
-          className="rounded-lg border border-white/[0.08] bg-[#111] px-4 py-2 text-sm text-zinc-300 hover:bg-white/[0.04]"
+          className="rounded-lg px-4 py-2 text-sm hover:opacity-90"
+          style={{
+            borderWidth: 1,
+            borderStyle: "solid",
+            borderColor: "var(--border)",
+            backgroundColor: "var(--bg-card)",
+            color: "var(--text-secondary)",
+          }}
         >
           CSVダウンロード
         </button>

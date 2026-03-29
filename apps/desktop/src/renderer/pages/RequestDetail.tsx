@@ -7,18 +7,27 @@ import type { RequestStatus } from "../data/mock";
 /** ステータス表示の設定 */
 const statusConfig: Record<
   RequestStatus,
-  { className: string; label: string }
+  { style: React.CSSProperties; label: string }
 > = {
   pending: {
-    className: "bg-amber-400/10 text-amber-400",
+    style: {
+      backgroundColor: "var(--badge-warn-bg)",
+      color: "var(--badge-warn-text)",
+    },
     label: "\u{1F7E1} 審査中",
   },
   approved: {
-    className: "bg-emerald-400/10 text-emerald-400",
+    style: {
+      backgroundColor: "var(--badge-success-bg)",
+      color: "var(--badge-success-text)",
+    },
     label: "\u2705 承認済み",
   },
   rejected: {
-    className: "bg-red-400/10 text-red-400",
+    style: {
+      backgroundColor: "var(--badge-error-bg)",
+      color: "var(--badge-error-text)",
+    },
     label: "\u{1F534} 却下",
   },
 };
@@ -71,8 +80,11 @@ export const RequestDetail = (): JSX.Element => {
 
   if (!request) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] p-6">
-        <p className="text-zinc-400">申請が見つかりません</p>
+      <div
+        className="min-h-screen p-6"
+        style={{ backgroundColor: "var(--bg-app)" }}
+      >
+        <p style={{ color: "var(--text-secondary)" }}>申請が見つかりません</p>
       </div>
     );
   }
@@ -81,11 +93,15 @@ export const RequestDetail = (): JSX.Element => {
   const steps = buildSteps(request);
 
   return (
-    <div className="min-h-screen space-y-6 bg-[#0a0a0a] p-6">
+    <div
+      className="min-h-screen space-y-6 p-6"
+      style={{ backgroundColor: "var(--bg-app)" }}
+    >
       {/* 戻るリンク */}
       <Link
         to="/requests"
-        className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-white"
+        className="inline-flex items-center gap-1.5 text-sm hover:opacity-80"
+        style={{ color: "var(--text-muted)" }}
       >
         <ArrowLeft size={14} />
         権限申請
@@ -93,56 +109,88 @@ export const RequestDetail = (): JSX.Element => {
 
       {/* タイトル + ステータス */}
       <div className="flex items-center gap-3">
-        <h1 className="text-xl font-semibold text-white">申請詳細</h1>
+        <h1
+          className="text-xl font-semibold"
+          style={{ color: "var(--text-primary)" }}
+        >
+          申請詳細
+        </h1>
         <span
-          className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${status.className}`}
+          className="rounded-full px-2.5 py-0.5 text-xs font-medium"
+          style={status.style}
         >
           {status.label}
         </span>
       </div>
 
       {/* 申請内容 */}
-      <div className="space-y-4 rounded-xl border border-white/[0.08] bg-[#111] p-6">
-        <h2 className="text-sm font-medium text-white">申請内容</h2>
+      <div
+        className="space-y-4 rounded-xl p-6"
+        style={{
+          borderWidth: 1,
+          borderStyle: "solid",
+          borderColor: "var(--border)",
+          backgroundColor: "var(--bg-card)",
+        }}
+      >
+        <h2
+          className="text-sm font-medium"
+          style={{ color: "var(--text-primary)" }}
+        >
+          申請内容
+        </h2>
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div className="space-y-1">
-            <p className="text-zinc-500">申請日</p>
-            <p className="text-zinc-300">{request.date}</p>
+            <p style={{ color: "var(--text-muted)" }}>申請日</p>
+            <p style={{ color: "var(--text-secondary)" }}>{request.date}</p>
           </div>
           <div className="space-y-1">
-            <p className="text-zinc-500">対象ツール</p>
-            <p className="text-zinc-300">{request.tool}</p>
+            <p style={{ color: "var(--text-muted)" }}>対象ツール</p>
+            <p style={{ color: "var(--text-secondary)" }}>{request.tool}</p>
           </div>
           <div className="space-y-1">
-            <p className="text-zinc-500">申請種別</p>
-            <p className="text-zinc-300">{request.type}</p>
+            <p style={{ color: "var(--text-muted)" }}>申請種別</p>
+            <p style={{ color: "var(--text-secondary)" }}>{request.type}</p>
           </div>
           <div className="space-y-1">
-            <p className="text-zinc-500">希望権限</p>
-            <p className="text-zinc-300">
+            <p style={{ color: "var(--text-muted)" }}>希望権限</p>
+            <p style={{ color: "var(--text-secondary)" }}>
               {request.requestedPermissions.join(", ")}
             </p>
           </div>
           <div className="space-y-1">
-            <p className="text-zinc-500">希望操作</p>
-            <p className="text-zinc-300">
+            <p style={{ color: "var(--text-muted)" }}>希望操作</p>
+            <p style={{ color: "var(--text-secondary)" }}>
               {request.requestedOperations.join(", ")}
             </p>
           </div>
           <div className="space-y-1">
-            <p className="text-zinc-500">利用期間</p>
-            <p className="text-zinc-300">{request.period}</p>
+            <p style={{ color: "var(--text-muted)" }}>利用期間</p>
+            <p style={{ color: "var(--text-secondary)" }}>{request.period}</p>
           </div>
           <div className="col-span-2 space-y-1">
-            <p className="text-zinc-500">利用目的</p>
-            <p className="text-zinc-300">{request.purpose}</p>
+            <p style={{ color: "var(--text-muted)" }}>利用目的</p>
+            <p style={{ color: "var(--text-secondary)" }}>{request.purpose}</p>
           </div>
         </div>
       </div>
 
       {/* 承認状況 ステッパー */}
-      <div className="space-y-4 rounded-xl border border-white/[0.08] bg-[#111] p-6">
-        <h2 className="text-sm font-medium text-white">承認状況</h2>
+      <div
+        className="space-y-4 rounded-xl p-6"
+        style={{
+          borderWidth: 1,
+          borderStyle: "solid",
+          borderColor: "var(--border)",
+          backgroundColor: "var(--bg-card)",
+        }}
+      >
+        <h2
+          className="text-sm font-medium"
+          style={{ color: "var(--text-primary)" }}
+        >
+          承認状況
+        </h2>
         <div className="flex items-center gap-2">
           {steps.map((step, i) => (
             <div key={step.label} className="flex items-center gap-2">
@@ -171,14 +219,21 @@ export const RequestDetail = (): JSX.Element => {
               className="flex items-center justify-between text-sm"
             >
               <div>
-                <span className="text-zinc-300">{approver.name}</span>
-                <span className="ml-2 text-zinc-600">
+                <span style={{ color: "var(--text-secondary)" }}>
+                  {approver.name}
+                </span>
+                <span className="ml-2" style={{ color: "var(--text-subtle)" }}>
                   {approver.department}
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 {approver.date && (
-                  <span className="text-xs text-zinc-600">{approver.date}</span>
+                  <span
+                    className="text-xs"
+                    style={{ color: "var(--text-subtle)" }}
+                  >
+                    {approver.date}
+                  </span>
                 )}
                 <span
                   className={`text-xs ${
@@ -209,7 +264,9 @@ export const RequestDetail = (): JSX.Element => {
       {request.rejectReason && (
         <div className="space-y-2 rounded-xl border border-red-400/20 bg-red-400/[0.03] p-6">
           <h2 className="text-sm font-medium text-red-400">却下理由</h2>
-          <p className="text-sm text-zinc-300">{request.rejectReason}</p>
+          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+            {request.rejectReason}
+          </p>
         </div>
       )}
 

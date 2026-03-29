@@ -5,17 +5,29 @@ import { TOOLS, HISTORY } from "../data/mock";
 import type { ToolStatus } from "../data/mock";
 
 /** ステータスバッジの表示定義 */
-const statusBadge: Record<ToolStatus, { className: string; label: string }> = {
+const statusBadge: Record<
+  ToolStatus,
+  { style: React.CSSProperties; label: string }
+> = {
   active: {
-    className: "bg-emerald-400/10 text-emerald-400",
+    style: {
+      backgroundColor: "var(--badge-success-bg)",
+      color: "var(--badge-success-text)",
+    },
     label: "稼働中",
   },
   degraded: {
-    className: "bg-amber-400/10 text-amber-400",
+    style: {
+      backgroundColor: "var(--badge-warn-bg)",
+      color: "var(--badge-warn-text)",
+    },
     label: "応答遅延",
   },
   down: {
-    className: "bg-red-400/10 text-red-400",
+    style: {
+      backgroundColor: "var(--badge-error-bg)",
+      color: "var(--badge-error-text)",
+    },
     label: "停止中",
   },
 };
@@ -27,15 +39,22 @@ export const ToolDetail = (): JSX.Element => {
   // ツールが見つからない場合
   if (!tool) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] p-6">
+      <div
+        className="min-h-screen p-6"
+        style={{ backgroundColor: "var(--bg-app)" }}
+      >
         <Link
           to="/tools"
-          className="flex items-center gap-1 text-sm text-zinc-500 hover:text-white"
+          className="flex items-center gap-1 text-sm hover:opacity-80"
+          style={{ color: "var(--text-muted)" }}
         >
           <ArrowLeft size={14} />
           マイツール
         </Link>
-        <div className="mt-12 text-center text-sm text-zinc-600">
+        <div
+          className="mt-12 text-center text-sm"
+          style={{ color: "var(--text-subtle)" }}
+        >
           ツールが見つかりません
         </div>
       </div>
@@ -51,11 +70,15 @@ export const ToolDetail = (): JSX.Element => {
   const hasLockedOperations = tool.operations.some((op) => !op.allowed);
 
   return (
-    <div className="min-h-screen space-y-6 bg-[#0a0a0a] p-6">
+    <div
+      className="min-h-screen space-y-6 p-6"
+      style={{ backgroundColor: "var(--bg-app)" }}
+    >
       {/* 戻るリンク */}
       <Link
         to="/tools"
-        className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-white"
+        className="inline-flex items-center gap-1 text-sm hover:opacity-80"
+        style={{ color: "var(--text-muted)" }}
       >
         <ArrowLeft size={14} />
         マイツール
@@ -63,65 +86,145 @@ export const ToolDetail = (): JSX.Element => {
 
       {/* ツール名 + ステータス */}
       <div className="flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-white/[0.05] text-lg font-semibold text-white">
+        <div
+          className="flex h-12 w-12 items-center justify-center rounded-lg text-lg font-semibold"
+          style={{
+            backgroundColor: "var(--bg-card-hover)",
+            color: "var(--text-primary)",
+          }}
+        >
           {tool.name.charAt(0)}
         </div>
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-white">{tool.name}</h1>
+            <h1
+              className="text-2xl font-bold"
+              style={{ color: "var(--text-primary)" }}
+            >
+              {tool.name}
+            </h1>
             <span
-              className={`rounded-full px-2 py-0.5 text-xs ${badge.className}`}
+              className="rounded-full px-2 py-0.5 text-xs"
+              style={badge.style}
             >
               {badge.label}
             </span>
           </div>
-          <p className="text-sm text-zinc-500">{tool.description}</p>
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+            {tool.description}
+          </p>
         </div>
       </div>
 
       {/* 基本情報 */}
-      <div className="rounded-xl border border-white/[0.08] bg-[#111] p-5">
-        <h2 className="mb-4 text-sm font-medium text-white">基本情報</h2>
+      <div
+        className="rounded-xl p-5"
+        style={{
+          borderWidth: 1,
+          borderStyle: "solid",
+          borderColor: "var(--border)",
+          backgroundColor: "var(--bg-card)",
+        }}
+      >
+        <h2
+          className="mb-4 text-sm font-medium"
+          style={{ color: "var(--text-primary)" }}
+        >
+          基本情報
+        </h2>
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
-            <span className="text-xs text-zinc-600">接続先</span>
-            <p className="mt-1 flex items-center gap-1 text-zinc-400">
+            <span className="text-xs" style={{ color: "var(--text-subtle)" }}>
+              接続先
+            </span>
+            <p
+              className="mt-1 flex items-center gap-1"
+              style={{ color: "var(--text-secondary)" }}
+            >
               <ExternalLink size={12} />
               {tool.endpoint}
             </p>
           </div>
           <div>
-            <span className="text-xs text-zinc-600">プロトコル</span>
-            <p className="mt-1 text-zinc-400">{tool.protocol}</p>
+            <span className="text-xs" style={{ color: "var(--text-subtle)" }}>
+              プロトコル
+            </span>
+            <p className="mt-1" style={{ color: "var(--text-secondary)" }}>
+              {tool.protocol}
+            </p>
           </div>
           <div>
-            <span className="text-xs text-zinc-600">追加日</span>
-            <p className="mt-1 text-zinc-400">{tool.addedDate}</p>
+            <span className="text-xs" style={{ color: "var(--text-subtle)" }}>
+              追加日
+            </span>
+            <p className="mt-1" style={{ color: "var(--text-secondary)" }}>
+              {tool.addedDate}
+            </p>
           </div>
           <div>
-            <span className="text-xs text-zinc-600">管理者</span>
-            <p className="mt-1 text-zinc-400">{tool.admin}</p>
+            <span className="text-xs" style={{ color: "var(--text-subtle)" }}>
+              管理者
+            </span>
+            <p className="mt-1" style={{ color: "var(--text-secondary)" }}>
+              {tool.admin}
+            </p>
           </div>
         </div>
       </div>
 
       {/* あなたの権限 */}
-      <div className="rounded-xl border border-white/[0.08] bg-[#111] p-5">
+      <div
+        className="rounded-xl p-5"
+        style={{
+          borderWidth: 1,
+          borderStyle: "solid",
+          borderColor: "var(--border)",
+          backgroundColor: "var(--bg-card)",
+        }}
+      >
         <div className="mb-4 flex items-center gap-2">
-          <Shield size={14} className="text-zinc-500" />
-          <h2 className="text-sm font-medium text-white">あなたの権限</h2>
+          <Shield size={14} style={{ color: "var(--text-muted)" }} />
+          <h2
+            className="text-sm font-medium"
+            style={{ color: "var(--text-primary)" }}
+          >
+            あなたの権限
+          </h2>
         </div>
-        <div className="overflow-hidden rounded-lg border border-white/[0.08]">
+        <div
+          className="overflow-hidden rounded-lg"
+          style={{
+            borderWidth: 1,
+            borderStyle: "solid",
+            borderColor: "var(--border)",
+          }}
+        >
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-white/[0.08] bg-white/[0.02]">
-                <th className="px-4 py-2 text-left text-xs font-medium text-zinc-500">
+              <tr
+                style={{
+                  borderBottomWidth: 1,
+                  borderBottomStyle: "solid",
+                  borderBottomColor: "var(--border)",
+                  backgroundColor: "var(--bg-card-hover)",
+                }}
+              >
+                <th
+                  className="px-4 py-2 text-left text-xs font-medium"
+                  style={{ color: "var(--text-muted)" }}
+                >
                   操作
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-zinc-500">
+                <th
+                  className="px-4 py-2 text-left text-xs font-medium"
+                  style={{ color: "var(--text-muted)" }}
+                >
                   説明
                 </th>
-                <th className="px-4 py-2 text-center text-xs font-medium text-zinc-500">
+                <th
+                  className="px-4 py-2 text-center text-xs font-medium"
+                  style={{ color: "var(--text-muted)" }}
+                >
                   状態
                 </th>
               </tr>
@@ -130,19 +233,29 @@ export const ToolDetail = (): JSX.Element => {
               {tool.operations.map((op) => (
                 <tr
                   key={op.name}
-                  className="border-b border-white/[0.04] last:border-0"
+                  style={{
+                    borderBottomWidth: 1,
+                    borderBottomStyle: "solid",
+                    borderBottomColor: "var(--border-subtle)",
+                  }}
                 >
-                  <td className="px-4 py-2 font-mono text-xs text-zinc-400">
+                  <td
+                    className="px-4 py-2 font-mono text-xs"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
                     {op.name}
                   </td>
-                  <td className="px-4 py-2 text-xs text-zinc-500">
+                  <td
+                    className="px-4 py-2 text-xs"
+                    style={{ color: "var(--text-muted)" }}
+                  >
                     {op.description}
                   </td>
                   <td className="px-4 py-2 text-center text-xs">
                     {op.allowed ? (
                       <span className="text-emerald-400">可</span>
                     ) : (
-                      <span className="text-zinc-600">不可</span>
+                      <span style={{ color: "var(--text-subtle)" }}>不可</span>
                     )}
                   </td>
                 </tr>
@@ -155,7 +268,11 @@ export const ToolDetail = (): JSX.Element => {
           <div className="mt-4">
             <Link
               to="/requests/new"
-              className="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-medium text-black hover:bg-zinc-200"
+              className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium hover:opacity-90"
+              style={{
+                backgroundColor: "var(--btn-primary-bg)",
+                color: "var(--btn-primary-text)",
+              }}
             >
               不可の権限を申請する
             </Link>
@@ -164,26 +281,52 @@ export const ToolDetail = (): JSX.Element => {
       </div>
 
       {/* 利用統計 */}
-      <div className="rounded-xl border border-white/[0.08] bg-[#111] p-5">
-        <h2 className="mb-4 text-sm font-medium text-white">
+      <div
+        className="rounded-xl p-5"
+        style={{
+          borderWidth: 1,
+          borderStyle: "solid",
+          borderColor: "var(--border)",
+          backgroundColor: "var(--bg-card)",
+        }}
+      >
+        <h2
+          className="mb-4 text-sm font-medium"
+          style={{ color: "var(--text-primary)" }}
+        >
           利用統計（今月）
         </h2>
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <p className="text-xs text-zinc-500">総リクエスト数</p>
-            <p className="mt-1 text-2xl font-semibold text-white">
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              総リクエスト数
+            </p>
+            <p
+              className="mt-1 text-2xl font-semibold"
+              style={{ color: "var(--text-primary)" }}
+            >
               {tool.stats.requests}
             </p>
           </div>
           <div>
-            <p className="text-xs text-zinc-500">成功率</p>
-            <p className="mt-1 text-2xl font-semibold text-white">
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              成功率
+            </p>
+            <p
+              className="mt-1 text-2xl font-semibold"
+              style={{ color: "var(--text-primary)" }}
+            >
               {tool.stats.successRate}%
             </p>
           </div>
           <div>
-            <p className="text-xs text-zinc-500">平均応答時間</p>
-            <p className="mt-1 text-2xl font-semibold text-white">
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              平均応答時間
+            </p>
+            <p
+              className="mt-1 text-2xl font-semibold"
+              style={{ color: "var(--text-primary)" }}
+            >
               {tool.stats.avgLatency}ms
             </p>
           </div>
@@ -191,8 +334,21 @@ export const ToolDetail = (): JSX.Element => {
       </div>
 
       {/* 最近の操作 */}
-      <div className="rounded-xl border border-white/[0.08] bg-[#111] p-5">
-        <h2 className="mb-4 text-sm font-medium text-white">最近の操作</h2>
+      <div
+        className="rounded-xl p-5"
+        style={{
+          borderWidth: 1,
+          borderStyle: "solid",
+          borderColor: "var(--border)",
+          backgroundColor: "var(--bg-card)",
+        }}
+      >
+        <h2
+          className="mb-4 text-sm font-medium"
+          style={{ color: "var(--text-primary)" }}
+        >
+          最近の操作
+        </h2>
         {toolHistory.length > 0 ? (
           <div className="space-y-3">
             {toolHistory.map((item) => (
@@ -201,11 +357,24 @@ export const ToolDetail = (): JSX.Element => {
                 className="flex items-center justify-between text-sm"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-zinc-600">{item.datetime}</span>
-                  <span className="font-mono text-xs text-zinc-400">
+                  <span
+                    className="text-xs"
+                    style={{ color: "var(--text-subtle)" }}
+                  >
+                    {item.datetime}
+                  </span>
+                  <span
+                    className="font-mono text-xs"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
                     {item.operation}
                   </span>
-                  <span className="text-xs text-zinc-600">{item.detail}</span>
+                  <span
+                    className="text-xs"
+                    style={{ color: "var(--text-subtle)" }}
+                  >
+                    {item.detail}
+                  </span>
                 </div>
                 <span
                   className={
@@ -222,7 +391,9 @@ export const ToolDetail = (): JSX.Element => {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-zinc-600">操作履歴がありません</p>
+          <p className="text-sm" style={{ color: "var(--text-subtle)" }}>
+            操作履歴がありません
+          </p>
         )}
       </div>
     </div>

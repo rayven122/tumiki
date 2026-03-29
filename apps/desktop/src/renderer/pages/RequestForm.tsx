@@ -1,15 +1,25 @@
-import type { JSX } from "react";
+import type { CSSProperties, JSX } from "react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { CURRENT_USER, TOOLS } from "../data/mock";
 
 /** フォーム入力の共通スタイル */
-const inputClass =
-  "w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-4 py-2.5 text-sm text-white outline-none focus:border-white/20";
-const readonlyClass =
-  "w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-zinc-500";
-const labelClass = "text-sm text-zinc-300";
+const inputStyle: CSSProperties = {
+  borderWidth: 1,
+  borderStyle: "solid",
+  borderColor: "var(--border)",
+  backgroundColor: "var(--bg-input)",
+  color: "var(--text-primary)",
+};
+
+const readonlyStyle: CSSProperties = {
+  borderWidth: 1,
+  borderStyle: "solid",
+  borderColor: "var(--border)",
+  backgroundColor: "var(--bg-card-hover)",
+  color: "var(--text-muted)",
+};
 
 // 権限申請フォームページ
 export const RequestForm = (): JSX.Element => {
@@ -33,68 +43,129 @@ export const RequestForm = (): JSX.Element => {
   };
 
   return (
-    <div className="min-h-screen space-y-6 bg-[#0a0a0a] p-6">
+    <div
+      className="min-h-screen space-y-6 p-6"
+      style={{ backgroundColor: "var(--bg-app)" }}
+    >
       {/* 戻るリンク */}
       <Link
         to="/requests"
-        className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-white"
+        className="inline-flex items-center gap-1.5 text-sm hover:opacity-80"
+        style={{ color: "var(--text-muted)" }}
       >
         <ArrowLeft size={14} />
         権限申請
       </Link>
 
-      <h1 className="text-xl font-semibold text-white">権限の利用申請</h1>
+      <h1
+        className="text-xl font-semibold"
+        style={{ color: "var(--text-primary)" }}
+      >
+        権限の利用申請
+      </h1>
 
       {/* 申請者情報 */}
-      <div className="space-y-4 rounded-xl border border-white/[0.08] bg-[#111] p-6">
-        <h2 className="text-sm font-medium text-white">申請者情報</h2>
+      <div
+        className="space-y-4 rounded-xl p-6"
+        style={{
+          borderWidth: 1,
+          borderStyle: "solid",
+          borderColor: "var(--border)",
+          backgroundColor: "var(--bg-card)",
+        }}
+      >
+        <h2
+          className="text-sm font-medium"
+          style={{ color: "var(--text-primary)" }}
+        >
+          申請者情報
+        </h2>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label className={labelClass}>氏名</label>
+            <label
+              className="text-sm"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              氏名
+            </label>
             <input
               type="text"
               value={CURRENT_USER.name}
               readOnly
-              className={readonlyClass}
+              className="w-full rounded-lg px-4 py-2.5 text-sm"
+              style={readonlyStyle}
             />
           </div>
           <div className="space-y-1.5">
-            <label className={labelClass}>部署</label>
+            <label
+              className="text-sm"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              部署
+            </label>
             <input
               type="text"
               value={CURRENT_USER.department}
               readOnly
-              className={readonlyClass}
+              className="w-full rounded-lg px-4 py-2.5 text-sm"
+              style={readonlyStyle}
             />
           </div>
           <div className="space-y-1.5">
-            <label className={labelClass}>ロール</label>
+            <label
+              className="text-sm"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              ロール
+            </label>
             <input
               type="text"
               value={CURRENT_USER.role}
               readOnly
-              className={readonlyClass}
+              className="w-full rounded-lg px-4 py-2.5 text-sm"
+              style={readonlyStyle}
             />
           </div>
           <div className="space-y-1.5">
-            <label className={labelClass}>社員ID</label>
+            <label
+              className="text-sm"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              社員ID
+            </label>
             <input
               type="text"
               value={CURRENT_USER.employeeId}
               readOnly
-              className={readonlyClass}
+              className="w-full rounded-lg px-4 py-2.5 text-sm"
+              style={readonlyStyle}
             />
           </div>
         </div>
       </div>
 
       {/* 申請内容 */}
-      <div className="space-y-5 rounded-xl border border-white/[0.08] bg-[#111] p-6">
-        <h2 className="text-sm font-medium text-white">申請内容</h2>
+      <div
+        className="space-y-5 rounded-xl p-6"
+        style={{
+          borderWidth: 1,
+          borderStyle: "solid",
+          borderColor: "var(--border)",
+          backgroundColor: "var(--bg-card)",
+        }}
+      >
+        <h2
+          className="text-sm font-medium"
+          style={{ color: "var(--text-primary)" }}
+        >
+          申請内容
+        </h2>
 
         {/* 申請種別 */}
         <div className="space-y-2">
-          <label className={labelClass}>申請種別</label>
+          <label className="text-sm" style={{ color: "var(--text-secondary)" }}>
+            申請種別
+          </label>
           <div className="flex gap-4">
             {[
               { value: "new" as const, label: "新規ツール利用" },
@@ -102,7 +173,8 @@ export const RequestForm = (): JSX.Element => {
             ].map((opt) => (
               <label
                 key={opt.value}
-                className="flex cursor-pointer items-center gap-2 text-sm text-zinc-300"
+                className="flex cursor-pointer items-center gap-2 text-sm"
+                style={{ color: "var(--text-secondary)" }}
               >
                 <input
                   type="radio"
@@ -119,17 +191,18 @@ export const RequestForm = (): JSX.Element => {
 
         {/* 対象ツール */}
         <div className="space-y-1.5">
-          <label className={labelClass}>対象ツール</label>
+          <label className="text-sm" style={{ color: "var(--text-secondary)" }}>
+            対象ツール
+          </label>
           <select
             value={selectedTool}
             onChange={(e) => setSelectedTool(e.target.value)}
-            className={inputClass}
+            className="w-full rounded-lg px-4 py-2.5 text-sm outline-none focus:border-white/20"
+            style={inputStyle}
           >
-            <option value="" className="bg-[#111]">
-              選択してください
-            </option>
+            <option value="">選択してください</option>
             {TOOLS.map((tool) => (
-              <option key={tool.id} value={tool.id} className="bg-[#111]">
+              <option key={tool.id} value={tool.id}>
                 {tool.name}
               </option>
             ))}
@@ -138,12 +211,15 @@ export const RequestForm = (): JSX.Element => {
 
         {/* 希望する権限 */}
         <div className="space-y-2">
-          <label className={labelClass}>希望する権限</label>
+          <label className="text-sm" style={{ color: "var(--text-secondary)" }}>
+            希望する権限
+          </label>
           <div className="flex gap-4">
             {(["read", "write", "execute"] as const).map((perm) => (
               <label
                 key={perm}
-                className="flex cursor-pointer items-center gap-2 text-sm text-zinc-300"
+                className="flex cursor-pointer items-center gap-2 text-sm"
+                style={{ color: "var(--text-secondary)" }}
               >
                 <input
                   type="checkbox"
@@ -159,19 +235,24 @@ export const RequestForm = (): JSX.Element => {
 
         {/* 利用目的 */}
         <div className="space-y-1.5">
-          <label className={labelClass}>利用目的</label>
+          <label className="text-sm" style={{ color: "var(--text-secondary)" }}>
+            利用目的
+          </label>
           <textarea
             value={purpose}
             onChange={(e) => setPurpose(e.target.value)}
             rows={4}
             placeholder="利用目的を入力してください"
-            className={inputClass}
+            className="w-full rounded-lg px-4 py-2.5 text-sm outline-none focus:border-white/20"
+            style={inputStyle}
           />
         </div>
 
         {/* 利用期間 */}
         <div className="space-y-2">
-          <label className={labelClass}>利用期間</label>
+          <label className="text-sm" style={{ color: "var(--text-secondary)" }}>
+            利用期間
+          </label>
           <div className="flex gap-4">
             {[
               { value: "unlimited" as const, label: "無期限" },
@@ -179,7 +260,8 @@ export const RequestForm = (): JSX.Element => {
             ].map((opt) => (
               <label
                 key={opt.value}
-                className="flex cursor-pointer items-center gap-2 text-sm text-zinc-300"
+                className="flex cursor-pointer items-center gap-2 text-sm"
+                style={{ color: "var(--text-secondary)" }}
               >
                 <input
                   type="radio"
@@ -198,14 +280,16 @@ export const RequestForm = (): JSX.Element => {
                 type="date"
                 value={periodStart}
                 onChange={(e) => setPeriodStart(e.target.value)}
-                className={inputClass}
+                className="w-full rounded-lg px-4 py-2.5 text-sm outline-none focus:border-white/20"
+                style={inputStyle}
               />
-              <span className="text-zinc-500">～</span>
+              <span style={{ color: "var(--text-muted)" }}>～</span>
               <input
                 type="date"
                 value={periodEnd}
                 onChange={(e) => setPeriodEnd(e.target.value)}
-                className={inputClass}
+                className="w-full rounded-lg px-4 py-2.5 text-sm outline-none focus:border-white/20"
+                style={inputStyle}
               />
             </div>
           )}
@@ -213,20 +297,49 @@ export const RequestForm = (): JSX.Element => {
       </div>
 
       {/* 承認フロー */}
-      <div className="space-y-3 rounded-xl border border-white/[0.08] bg-[#111] p-6">
-        <h2 className="text-sm font-medium text-white">
+      <div
+        className="space-y-3 rounded-xl p-6"
+        style={{
+          borderWidth: 1,
+          borderStyle: "solid",
+          borderColor: "var(--border)",
+          backgroundColor: "var(--bg-card)",
+        }}
+      >
+        <h2
+          className="text-sm font-medium"
+          style={{ color: "var(--text-primary)" }}
+        >
           承認フロー（自動設定）
         </h2>
         <div className="flex items-center gap-3 text-sm">
-          <span className="rounded-full bg-white/[0.05] px-3 py-1 text-zinc-400">
+          <span
+            className="rounded-full px-3 py-1"
+            style={{
+              backgroundColor: "var(--bg-card-hover)",
+              color: "var(--text-secondary)",
+            }}
+          >
             1. 部門長承認
           </span>
-          <span className="text-zinc-600">→</span>
-          <span className="rounded-full bg-white/[0.05] px-3 py-1 text-zinc-400">
+          <span style={{ color: "var(--text-subtle)" }}>→</span>
+          <span
+            className="rounded-full px-3 py-1"
+            style={{
+              backgroundColor: "var(--bg-card-hover)",
+              color: "var(--text-secondary)",
+            }}
+          >
             2. 情報システム部承認
           </span>
-          <span className="text-zinc-600">→</span>
-          <span className="rounded-full bg-white/[0.05] px-3 py-1 text-zinc-400">
+          <span style={{ color: "var(--text-subtle)" }}>→</span>
+          <span
+            className="rounded-full px-3 py-1"
+            style={{
+              backgroundColor: "var(--bg-card-hover)",
+              color: "var(--text-secondary)",
+            }}
+          >
             3. 完了
           </span>
         </div>
@@ -234,10 +347,24 @@ export const RequestForm = (): JSX.Element => {
 
       {/* ボタン */}
       <div className="flex items-center gap-3">
-        <button className="rounded-lg border border-white/[0.08] px-4 py-2 text-sm text-zinc-400 hover:border-white/[0.15]">
+        <button
+          className="rounded-lg px-4 py-2 text-sm hover:opacity-90"
+          style={{
+            borderWidth: 1,
+            borderStyle: "solid",
+            borderColor: "var(--border)",
+            color: "var(--text-secondary)",
+          }}
+        >
           下書き保存
         </button>
-        <button className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-black hover:bg-zinc-200">
+        <button
+          className="rounded-lg px-4 py-2 text-sm font-medium hover:opacity-90"
+          style={{
+            backgroundColor: "var(--btn-primary-bg)",
+            color: "var(--btn-primary-text)",
+          }}
+        >
           申請する
         </button>
       </div>

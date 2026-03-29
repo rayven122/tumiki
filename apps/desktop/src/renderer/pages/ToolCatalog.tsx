@@ -30,11 +30,19 @@ export const ToolCatalog = (): JSX.Element => {
   const unapprovedTools = allFiltered.filter((t) => !t.approved);
 
   return (
-    <div className="min-h-screen space-y-6 bg-[#0a0a0a] p-6">
+    <div
+      className="min-h-screen space-y-6 p-6"
+      style={{ backgroundColor: "var(--bg-app)" }}
+    >
       {/* ヘッダー */}
       <div>
-        <h1 className="text-2xl font-bold text-white">ツールカタログ</h1>
-        <p className="mt-1 text-sm text-zinc-500">
+        <h1
+          className="text-2xl font-bold"
+          style={{ color: "var(--text-primary)" }}
+        >
+          ツールカタログ
+        </h1>
+        <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
           組織で利用可能なツールを検索・申請できます
         </p>
       </div>
@@ -45,14 +53,22 @@ export const ToolCatalog = (): JSX.Element => {
         <div className="relative min-w-[200px] flex-1">
           <Search
             size={14}
-            className="absolute top-1/2 left-3 -translate-y-1/2 text-zinc-600"
+            className="absolute top-1/2 left-3 -translate-y-1/2"
+            style={{ color: "var(--text-subtle)" }}
           />
           <input
             type="text"
             placeholder="ツールを検索..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full rounded-lg border border-white/[0.08] bg-[#111] py-2 pr-3 pl-9 text-sm text-white placeholder-zinc-600 outline-none focus:border-white/[0.15]"
+            className="w-full rounded-lg py-2 pr-3 pl-9 text-sm outline-none focus:border-white/[0.15]"
+            style={{
+              borderWidth: 1,
+              borderStyle: "solid",
+              borderColor: "var(--border)",
+              backgroundColor: "var(--bg-card)",
+              color: "var(--text-primary)",
+            }}
           />
         </div>
 
@@ -60,7 +76,14 @@ export const ToolCatalog = (): JSX.Element => {
         <select
           value={category}
           onChange={(e) => setCategory(e.target.value)}
-          className="rounded-lg border border-white/[0.08] bg-[#111] px-3 py-2 text-sm text-zinc-400 outline-none focus:border-white/[0.15]"
+          className="rounded-lg px-3 py-2 text-sm outline-none focus:border-white/[0.15]"
+          style={{
+            borderWidth: 1,
+            borderStyle: "solid",
+            borderColor: "var(--border)",
+            backgroundColor: "var(--bg-card)",
+            color: "var(--text-secondary)",
+          }}
         >
           {CATEGORIES.map((c) => (
             <option key={c} value={c}>
@@ -73,7 +96,10 @@ export const ToolCatalog = (): JSX.Element => {
       {/* 承認済みセクション */}
       {approvedTools.length > 0 && (
         <div>
-          <h2 className="mb-3 text-sm font-medium text-zinc-500">
+          <h2
+            className="mb-3 text-sm font-medium"
+            style={{ color: "var(--text-muted)" }}
+          >
             利用中のツール
           </h2>
           <div className="space-y-2">
@@ -81,25 +107,50 @@ export const ToolCatalog = (): JSX.Element => {
               <Link
                 key={tool.id}
                 to={`/tools/${tool.id}`}
-                className="flex items-center justify-between rounded-lg border border-white/[0.08] bg-[#111] px-4 py-3 transition hover:border-white/[0.15]"
+                className="flex items-center justify-between rounded-lg px-4 py-3 transition hover:opacity-90"
+                style={{
+                  borderWidth: 1,
+                  borderStyle: "solid",
+                  borderColor: "var(--border)",
+                  backgroundColor: "var(--bg-card)",
+                }}
               >
                 <div className="flex items-center gap-3">
-                  <div className="relative flex h-8 w-8 items-center justify-center rounded-md bg-white/[0.05] text-xs font-semibold text-white">
+                  <div
+                    className="relative flex h-8 w-8 items-center justify-center rounded-md text-xs font-semibold"
+                    style={{
+                      backgroundColor: "var(--bg-card-hover)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
                     {tool.name.charAt(0)}
                     <span
                       className={`absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full ${statusDotColor[tool.status]}`}
                     />
                   </div>
                   <div>
-                    <span className="text-sm text-white">{tool.name}</span>
-                    <span className="ml-2 text-xs text-zinc-600">
+                    <span
+                      className="text-sm"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {tool.name}
+                    </span>
+                    <span
+                      className="ml-2 text-xs"
+                      style={{ color: "var(--text-subtle)" }}
+                    >
                       {tool.category}
                     </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Check size={14} className="text-emerald-400" />
-                  <span className="text-xs text-zinc-600">利用中</span>
+                  <span
+                    className="text-xs"
+                    style={{ color: "var(--text-subtle)" }}
+                  >
+                    利用中
+                  </span>
                 </div>
               </Link>
             ))}
@@ -110,46 +161,77 @@ export const ToolCatalog = (): JSX.Element => {
       {/* 申請可能セクション */}
       {unapprovedTools.length > 0 && (
         <div>
-          <h2 className="mb-3 text-sm font-medium text-zinc-500">
+          <h2
+            className="mb-3 text-sm font-medium"
+            style={{ color: "var(--text-muted)" }}
+          >
             申請可能なツール
           </h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {unapprovedTools.map((tool) => (
               <div
                 key={tool.id}
-                className="space-y-4 rounded-xl border border-white/[0.08] bg-[#111] p-5"
+                className="space-y-4 rounded-xl p-5"
+                style={{
+                  borderWidth: 1,
+                  borderStyle: "solid",
+                  borderColor: "var(--border)",
+                  backgroundColor: "var(--bg-card)",
+                }}
               >
                 {/* カードヘッダー */}
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/[0.05] text-sm font-semibold text-white">
+                  <div
+                    className="flex h-10 w-10 items-center justify-center rounded-lg text-sm font-semibold"
+                    style={{
+                      backgroundColor: "var(--bg-card-hover)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
                     {tool.name.charAt(0)}
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-white">
+                    <h3
+                      className="text-sm font-medium"
+                      style={{ color: "var(--text-primary)" }}
+                    >
                       {tool.name}
                     </h3>
-                    <p className="text-xs text-zinc-500">{tool.description}</p>
+                    <p
+                      className="text-xs"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      {tool.description}
+                    </p>
                   </div>
                 </div>
 
                 {/* 追加情報 */}
                 <div className="space-y-2 text-xs">
                   <div className="flex justify-between">
-                    <span className="text-zinc-600">カテゴリ</span>
-                    <span className="text-zinc-400">{tool.category}</span>
+                    <span style={{ color: "var(--text-subtle)" }}>
+                      カテゴリ
+                    </span>
+                    <span style={{ color: "var(--text-secondary)" }}>
+                      {tool.category}
+                    </span>
                   </div>
                   {tool.requiredApproval && (
                     <div className="flex justify-between">
-                      <span className="text-zinc-600">必要な承認</span>
-                      <span className="text-zinc-400">
+                      <span style={{ color: "var(--text-subtle)" }}>
+                        必要な承認
+                      </span>
+                      <span style={{ color: "var(--text-secondary)" }}>
                         {tool.requiredApproval}
                       </span>
                     </div>
                   )}
                   {tool.availableDepartments && (
                     <div className="flex justify-between">
-                      <span className="text-zinc-600">対象部署</span>
-                      <span className="text-zinc-400">
+                      <span style={{ color: "var(--text-subtle)" }}>
+                        対象部署
+                      </span>
+                      <span style={{ color: "var(--text-secondary)" }}>
                         {tool.availableDepartments}
                       </span>
                     </div>
@@ -159,7 +241,8 @@ export const ToolCatalog = (): JSX.Element => {
                 {/* 申請ボタン */}
                 <Link
                   to="/requests/new"
-                  className="flex items-center gap-1 text-xs text-zinc-500 hover:text-white"
+                  className="flex items-center gap-1 text-xs hover:opacity-80"
+                  style={{ color: "var(--text-muted)" }}
                 >
                   利用を申請
                   <ArrowRight size={12} />
@@ -171,7 +254,10 @@ export const ToolCatalog = (): JSX.Element => {
       )}
 
       {allFiltered.length === 0 && (
-        <div className="py-12 text-center text-sm text-zinc-600">
+        <div
+          className="py-12 text-center text-sm"
+          style={{ color: "var(--text-subtle)" }}
+        >
           条件に一致するツールが見つかりません
         </div>
       )}

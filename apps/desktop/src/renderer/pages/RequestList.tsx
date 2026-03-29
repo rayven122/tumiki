@@ -17,18 +17,27 @@ type TabDef = {
 /** ステータス表示の設定 */
 const statusConfig: Record<
   RequestStatus,
-  { className: string; label: string }
+  { style: React.CSSProperties; label: string }
 > = {
   pending: {
-    className: "bg-amber-400/10 text-amber-400",
+    style: {
+      backgroundColor: "var(--badge-warn-bg)",
+      color: "var(--badge-warn-text)",
+    },
     label: "\u{1F7E1} 審査中",
   },
   approved: {
-    className: "bg-emerald-400/10 text-emerald-400",
+    style: {
+      backgroundColor: "var(--badge-success-bg)",
+      color: "var(--badge-success-text)",
+    },
     label: "\u2705 承認済み",
   },
   rejected: {
-    className: "bg-red-400/10 text-red-400",
+    style: {
+      backgroundColor: "var(--badge-error-bg)",
+      color: "var(--badge-error-text)",
+    },
     label: "\u{1F534} 却下",
   },
 };
@@ -62,13 +71,25 @@ export const RequestList = (): JSX.Element => {
       : REQUESTS.filter((r) => r.status === activeTab);
 
   return (
-    <div className="min-h-screen space-y-6 bg-[#0a0a0a] p-6">
+    <div
+      className="min-h-screen space-y-6 p-6"
+      style={{ backgroundColor: "var(--bg-app)" }}
+    >
       {/* ヘッダー */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-white">権限申請</h1>
+        <h1
+          className="text-xl font-semibold"
+          style={{ color: "var(--text-primary)" }}
+        >
+          権限申請
+        </h1>
         <Link
           to="/requests/new"
-          className="flex items-center gap-1.5 rounded-lg bg-white px-4 py-2 text-sm font-medium text-black hover:bg-zinc-200"
+          className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium hover:opacity-90"
+          style={{
+            backgroundColor: "var(--btn-primary-bg)",
+            color: "var(--btn-primary-text)",
+          }}
         >
           <Plus size={16} />
           新規申請
@@ -76,20 +97,35 @@ export const RequestList = (): JSX.Element => {
       </div>
 
       {/* タブ */}
-      <div className="flex gap-1 rounded-lg border border-white/[0.08] bg-[#111] p-1">
+      <div
+        className="flex gap-1 rounded-lg p-1"
+        style={{
+          borderWidth: 1,
+          borderStyle: "solid",
+          borderColor: "var(--border)",
+          backgroundColor: "var(--bg-card)",
+        }}
+      >
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`rounded-md px-3 py-1.5 text-sm transition ${
+            className="rounded-md px-3 py-1.5 text-sm transition"
+            style={
               activeTab === tab.key
-                ? "bg-white/[0.08] text-white"
-                : "text-zinc-500 hover:text-zinc-300"
-            }`}
+                ? {
+                    backgroundColor: "var(--bg-active)",
+                    color: "var(--text-primary)",
+                  }
+                : { color: "var(--text-muted)" }
+            }
           >
             {tab.label}
             {tab.key !== "all" && (
-              <span className="ml-1.5 text-xs text-zinc-600">
+              <span
+                className="ml-1.5 text-xs"
+                style={{ color: "var(--text-subtle)" }}
+              >
                 ({tab.count})
               </span>
             )}
@@ -98,10 +134,26 @@ export const RequestList = (): JSX.Element => {
       </div>
 
       {/* テーブル */}
-      <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-[#111]">
+      <div
+        className="overflow-hidden rounded-xl"
+        style={{
+          borderWidth: 1,
+          borderStyle: "solid",
+          borderColor: "var(--border)",
+          backgroundColor: "var(--bg-card)",
+        }}
+      >
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/[0.08] text-left text-xs text-zinc-500">
+            <tr
+              className="text-left text-xs"
+              style={{
+                borderBottomWidth: 1,
+                borderBottomStyle: "solid",
+                borderBottomColor: "var(--border)",
+                color: "var(--text-muted)",
+              }}
+            >
               <th className="px-5 py-3 font-medium">申請日</th>
               <th className="px-5 py-3 font-medium">ツール</th>
               <th className="px-5 py-3 font-medium">申請内容</th>
@@ -116,25 +168,50 @@ export const RequestList = (): JSX.Element => {
               return (
                 <tr
                   key={req.id}
-                  className="border-b border-white/[0.06] last:border-0 hover:bg-white/[0.02]"
+                  className="last:border-0 hover:opacity-90"
+                  style={{
+                    borderBottomWidth: 1,
+                    borderBottomStyle: "solid",
+                    borderBottomColor: "var(--border)",
+                  }}
                 >
-                  <td className="px-5 py-4 text-zinc-400">{req.date}</td>
-                  <td className="px-5 py-4 text-white">{req.tool}</td>
-                  <td className="px-5 py-4 text-zinc-400">{req.type}</td>
+                  <td
+                    className="px-5 py-4"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    {req.date}
+                  </td>
+                  <td
+                    className="px-5 py-4"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {req.tool}
+                  </td>
+                  <td
+                    className="px-5 py-4"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    {req.type}
+                  </td>
                   <td className="px-5 py-4">
                     <span
-                      className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${status.className}`}
+                      className="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium"
+                      style={status.style}
                     >
                       {status.label}
                     </span>
                   </td>
-                  <td className="px-5 py-4 text-zinc-400">
+                  <td
+                    className="px-5 py-4"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
                     {req.approvers.map((a) => a.name).join(", ")}
                   </td>
                   <td className="px-5 py-4">
                     <Link
                       to={`/requests/${req.id}`}
-                      className="flex items-center gap-1 text-xs text-zinc-500 hover:text-white"
+                      className="flex items-center gap-1 text-xs hover:opacity-80"
+                      style={{ color: "var(--text-muted)" }}
                     >
                       詳細
                       <ChevronRight size={14} />
