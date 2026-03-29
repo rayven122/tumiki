@@ -2,6 +2,30 @@
 
 Electronベースのtumikiデスクトップアプリケーション。MCPサーバーの管理・監視を行うネイティブクライアント。
 
+## セットアップ
+
+1. **環境変数の設定**
+
+   ルートの `.env` に以下を追加:
+
+   ```bash
+   DESKTOP_DATABASE_URL="file:./prisma/db.sqlite"
+   ```
+
+2. **DBのセットアップ**
+
+   ```bash
+   cd apps/desktop
+   pnpm db:migrate    # マイグレーション作成・適用
+   pnpm db:generate   # Prismaクライアント生成
+   ```
+
+3. **開発サーバー起動**
+
+   ```bash
+   pnpm dev
+   ```
+
 ## 開発コマンド
 
 ```bash
@@ -149,13 +173,3 @@ apps/desktop/
 - **Prisma**: v6.x（SQLite、ローカルDB）
 - **react-router-dom**: v7.x（ページルーティング）
 
-## 開発ガイドライン
-
-tumikiプロジェクトの標準に準拠：
-
-- 関数定義: アロー関数使用
-- 型定義: `type` のみ使用（`interface` は使用しない）
-- コンポーネント: `_components/` ディレクトリに配置
-- テスト: Vitest使用、カバレッジ100%目標
-
-詳細は [プロジェクトルートのCLAUDE.md](../../CLAUDE.md) を参照。

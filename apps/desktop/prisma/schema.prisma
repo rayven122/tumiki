@@ -110,7 +110,7 @@ model AuditLog {
   id           Int       @id @default(autoincrement())
   serverId     String // 対象MCPサーバーID
   server       McpServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
-  connectionId String? // 対象MCP接続ID（どの接続のツールが呼ばれたか）
+  connectionId String? // 対象MCP接続ID（接続削除後もログ保持のためリレーション未定義）
   toolName     String // 実行されたツール名
   method       String // MCPメソッド（例: "tools/call", "resources/read"）
   durationMs   Int // 実行時間（ミリ秒）
