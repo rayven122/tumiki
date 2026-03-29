@@ -13,6 +13,7 @@ import {
 import { getDb } from "../db";
 import { encryptToken, decryptToken } from "../utils/encryption";
 import * as logger from "../utils/logger";
+import { AUTH_SESSION_TIMEOUT_MS } from "../../shared/types";
 
 /**
  * OAuth認証セッションの状態
@@ -23,8 +24,8 @@ type OAuthSession = {
   createdAt: Date;
 };
 
-/** セッション有効期限（ミリ秒） */
-const SESSION_TIMEOUT_MS = 5 * 60 * 1000;
+/** セッション有効期限（ミリ秒）。UIと共有 */
+const SESSION_TIMEOUT_MS = AUTH_SESSION_TIMEOUT_MS;
 
 /**
  * OAuthManager型
@@ -380,10 +381,12 @@ export const createOAuthManager = (
         const db = await getDb();
         await db.authToken.deleteMany({});
       } catch (cleanupError) {
-        logger.error(
-          "Failed to clear local tokens during logout",
-          cleanupError instanceof Error ? cleanupError : { cleanupError },
-        );
+        logger.error("Failed to clear local tokens during logout", {
+          error:
+            cleanupError instanceof Error
+              ? cleanupError.message
+              : String(cleanupError),
+        });
       }
       if (refreshTimerId) {
         clearTimeout(refreshTimerId);

@@ -7,8 +7,9 @@ import * as logger from "../utils/logger";
 // 接続タイムアウト設定（ミリ秒）
 // 環境変数で設定可能（DESKTOP_DB_TIMEOUT_MS）
 // デフォルト: 10秒（UX向上のため30秒から短縮）
+const _envTimeout = Number(process.env.DESKTOP_DB_TIMEOUT_MS);
 const CONNECTION_TIMEOUT_MS =
-  Number(process.env.DESKTOP_DB_TIMEOUT_MS) || 10000;
+  Number.isFinite(_envTimeout) && _envTimeout > 0 ? _envTimeout : 10000;
 
 // リトライ設定
 const RETRY_CONFIG = {
@@ -285,7 +286,15 @@ const ensureSchema = async (db: PrismaClient): Promise<void> => {
 
   // 既存DBへのidTokenカラム追加（アップグレード対応）
   // PRAGMA table_infoでカラム存在を確認してからALTER TABLEを実行
-  const columns = await db.$queryRaw<{ name: string }[]>`
+  type PragmaTableColumn = {
+    cid: number;
+    name: string;
+    type: string;
+    notnull: number;
+    dflt_value: string | null;
+    pk: number;
+  };
+  const columns = await db.$queryRaw<PragmaTableColumn[]>`
     PRAGMA table_info("auth_tokens")
   `;
   const hasIdToken = columns.some((col) => col.name === "idToken");

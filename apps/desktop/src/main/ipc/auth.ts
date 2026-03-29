@@ -66,8 +66,15 @@ export const setupAuthIpc = (): void => {
 
   // 認証フローキャンセル
   ipcMain.handle("auth:cancelLogin", () => {
-    const oauthManager = getOAuthManager();
-    oauthManager?.cancelAuthFlow();
+    try {
+      const oauthManager = getOAuthManager();
+      oauthManager?.cancelAuthFlow();
+    } catch (error) {
+      logger.error(
+        "Failed to cancel auth flow",
+        error instanceof Error ? error : { error },
+      );
+    }
   });
 
   // ログイン（OAuth認証フロー開始）

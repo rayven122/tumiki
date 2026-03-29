@@ -110,8 +110,15 @@ export const createKeycloakClient = (
       });
 
       if (!response.ok) {
+        let body = "";
+        try {
+          body = await response.text();
+        } catch {
+          // レスポンスボディ読み取り失敗は無視
+        }
         logger.error("Token exchange failed", {
           status: response.status,
+          body,
         });
         throw new Error(`トークン取得に失敗しました（${response.status}）`);
       }
@@ -119,7 +126,14 @@ export const createKeycloakClient = (
       let data: unknown;
       try {
         data = await response.json();
-      } catch {
+      } catch (parseError) {
+        logger.warn("Failed to parse token exchange response", {
+          status: response.status,
+          error:
+            parseError instanceof Error
+              ? parseError.message
+              : String(parseError),
+        });
         throw new Error(
           `トークン取得に失敗しました（レスポンス解析エラー: ${response.status}）`,
         );
@@ -156,9 +170,13 @@ export const createKeycloakClient = (
       });
 
       if (!response.ok) {
-        logger.error("Token refresh failed", {
-          status: response.status,
-        });
+        let body = "";
+        try {
+          body = await response.text();
+        } catch {
+          // レスポンスボディ読み取り失敗は無視
+        }
+        logger.error("Token refresh failed", { status: response.status, body });
         throw new Error(
           `トークンリフレッシュに失敗しました（${response.status}）`,
         );
@@ -167,7 +185,14 @@ export const createKeycloakClient = (
       let data: unknown;
       try {
         data = await response.json();
-      } catch {
+      } catch (parseError) {
+        logger.warn("Failed to parse token refresh response", {
+          status: response.status,
+          error:
+            parseError instanceof Error
+              ? parseError.message
+              : String(parseError),
+        });
         throw new Error(
           `トークンリフレッシュに失敗しました（レスポンス解析エラー: ${response.status}）`,
         );
@@ -211,10 +236,11 @@ export const createKeycloakClient = (
       });
 
       if (!response.ok) {
-        logger.warn("Logout request failed", {
+        logger.warn("Logout request failed, continuing with local cleanup", {
           status: response.status,
         });
-        // ログアウト失敗はエラーをスローせず、警告ログのみ
+        // ログアウト失敗はエラーをスローせず、ローカルのトークン削除は別途実行される
+        return;
       }
 
       logger.info("Successfully logged out from Keycloak");

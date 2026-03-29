@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useAtom } from "jotai";
 import { appConfigAtom } from "../store/atoms";
 import { LogIn, LogOut, CheckCircle, XCircle } from "lucide-react";
+import { AUTH_SESSION_TIMEOUT_MS } from "../../shared/types";
 
 /**
  * タイムアウトIDを管理し、アンマウント時に全てクリアするフック
@@ -132,7 +133,7 @@ export const SettingsForm = (): React.ReactElement => {
             return false;
           });
         },
-        5 * 60 * 1000,
+        AUTH_SESSION_TIMEOUT_MS,
       );
     } catch (error) {
       setIsLoading(false);
