@@ -680,25 +680,26 @@ export const Dashboard = (): JSX.Element => {
           }}
         >
           <span
-            className="mb-4 block text-sm font-medium"
+            className="mb-3 block text-sm font-medium"
             style={{ color: "var(--text-secondary)" }}
           >
-            AIクライアント別構成比
+            AIクライアント別
           </span>
 
-          {/* ドーナツチャート */}
-          <div className="flex items-center justify-center">
-            <div className="h-[160px] w-[160px]">
+          {/* ドーナツ + 構成比を横並び */}
+          <div className="flex items-center gap-4">
+            <div className="h-[100px] w-[100px] shrink-0">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={AI_PIE}
                     cx="50%"
                     cy="50%"
-                    innerRadius={45}
-                    outerRadius={70}
+                    innerRadius={30}
+                    outerRadius={46}
                     dataKey="value"
                     stroke="none"
+                    paddingAngle={2}
                   >
                     {AI_PIE.map((entry) => (
                       <Cell
@@ -713,32 +714,28 @@ export const Dashboard = (): JSX.Element => {
                 </PieChart>
               </ResponsiveContainer>
             </div>
-          </div>
-
-          {/* 構成比テーブル */}
-          <div className="mt-4 space-y-2">
-            {AI_PIE.map((item) => (
-              <div
-                key={item.name}
-                className="flex items-center justify-between text-xs"
-              >
-                <div className="flex items-center gap-2">
+            <div className="grid flex-1 grid-cols-2 gap-x-4 gap-y-1">
+              {AI_PIE.map((item) => (
+                <div
+                  key={item.name}
+                  className="flex items-center gap-1.5 text-[10px]"
+                >
                   <span
-                    className="inline-block h-2 w-2 rounded-full"
+                    className="h-1.5 w-1.5 shrink-0 rounded-full"
                     style={{ backgroundColor: resolveColor(item.color) }}
                   />
                   <span style={{ color: "var(--text-secondary)" }}>
                     {item.name}
                   </span>
+                  <span
+                    className="ml-auto font-mono"
+                    style={{ color: "var(--text-subtle)" }}
+                  >
+                    {item.value}%
+                  </span>
                 </div>
-                <span
-                  className="font-mono"
-                  style={{ color: "var(--text-subtle)" }}
-                >
-                  {item.value}%
-                </span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
 
           {/* AIクライアントバッジ（フィルタ） */}
