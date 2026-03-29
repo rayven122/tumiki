@@ -23,7 +23,7 @@
     "@tumiki/db": "workspace:*",
     "@tumiki/keycloak": "workspace:*",
     "@tumiki/ui": "workspace:*",
-    "next": "^16.1.5",
+    "next": "^16.1.7",
     "next-auth": "5.0.0-beta.30",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
