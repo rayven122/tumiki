@@ -268,8 +268,7 @@ export const getDb = async (): Promise<PrismaClient> => {
  * スキーマ変更手順:
  *   1. prisma/schema.prisma を変更
  *   2. この関数内のSQLを同じ内容に更新
- *   3. 既存ユーザー向けのALTER TABLE（マイグレーション）を追加
- *   4. pnpm prisma generate で型を再生成
+ *   3. pnpm prisma generate で型を再生成
  */
 const ensureSchema = async (db: PrismaClient): Promise<void> => {
   await db.$executeRaw`
@@ -283,26 +282,6 @@ const ensureSchema = async (db: PrismaClient): Promise<void> => {
       "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `;
-
-  // 既存DBへのidTokenカラム追加（アップグレード対応）
-  // PRAGMA table_infoでカラム存在を確認してからALTER TABLEを実行
-  type PragmaTableColumn = {
-    cid: number;
-    name: string;
-    type: string;
-    notnull: number;
-    dflt_value: string | null;
-    pk: number;
-  };
-  const columns = await db.$queryRaw<PragmaTableColumn[]>`
-    PRAGMA table_info("auth_tokens")
-  `;
-  const hasIdToken = columns.some((col) => col.name === "idToken");
-  if (!hasIdToken) {
-    await db.$executeRaw`
-      ALTER TABLE "auth_tokens" ADD COLUMN "idToken" TEXT
-    `;
-  }
 
   await db.$executeRaw`
     CREATE TABLE IF NOT EXISTS "log_sync_queue" (
