@@ -17,7 +17,7 @@ export const Layout = (): JSX.Element => {
       {/* メインコンテンツ（サイドバーの上に載る、上右下に3px余白） */}
       <div
         className="flex flex-1 flex-col"
-        style={{ padding: "3px 3px 3px 0" }}
+        style={{ padding: "8px 8px 8px 0" }}
       >
         <main
           className="flex-1 overflow-y-auto rounded-xl"
