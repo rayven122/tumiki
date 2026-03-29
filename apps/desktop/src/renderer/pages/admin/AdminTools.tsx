@@ -148,7 +148,7 @@ export const AdminTools = (): JSX.Element => {
             className="mt-1 text-xs"
             style={{ color: "var(--text-secondary)" }}
           >
-            全{TOOLS.length}件のMCPサーバー
+            全{TOOLS.length}件のコネクタ
           </p>
         </div>
         <button

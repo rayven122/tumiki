@@ -563,7 +563,7 @@ export const AdminDashboard = (): JSX.Element => {
           </div>
         </div>
 
-        {/* 接続 MCP */}
+        {/* コネクタ */}
         <div
           className="rounded-xl p-4"
           style={{
@@ -572,7 +572,7 @@ export const AdminDashboard = (): JSX.Element => {
           }}
         >
           <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-            接続 MCP
+            コネクタ
           </span>
           <div
             className="mt-2 text-2xl font-semibold"
@@ -862,9 +862,9 @@ export const AdminDashboard = (): JSX.Element => {
         </div>
       </div>
 
-      {/* MCPツール呼び出しログ + お知らせ */}
+      {/* コネクタログ + お知らせ */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_0.4fr]">
-        {/* MCPツール呼び出しログ（LP風フルテーブル） */}
+        {/* コネクタログ */}
         <div
           className="overflow-hidden rounded-xl"
           style={{
@@ -887,7 +887,7 @@ export const AdminDashboard = (): JSX.Element => {
                 className="text-sm font-medium"
                 style={{ color: "var(--text-primary)" }}
               >
-                MCPツール呼び出しログ
+                コネクタログ
               </span>
             </div>
             <Link

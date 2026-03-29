@@ -34,6 +34,10 @@ export const MyTools = (): JSX.Element => {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string>("すべて");
   const [statusFilter, setStatusFilter] = useState<ToolStatus | "all">("all");
+  const [showCustomForm, setShowCustomForm] = useState(false);
+  const [customName, setCustomName] = useState("");
+  const [customDescription, setCustomDescription] = useState("");
+  const [selectedTools, setSelectedTools] = useState<string[]>([]);
 
   const approvedTools = TOOLS.filter((t) => t.approved);
 
@@ -218,6 +222,57 @@ export const MyTools = (): JSX.Element => {
                 >
                   最終利用: {tool.lastUsed}
                 </div>
+
+                {/* AIクライアント別接続パス */}
+                <div
+                  className="mt-3 space-y-1.5"
+                  style={{
+                    borderTop: "1px solid var(--border)",
+                    paddingTop: 8,
+                  }}
+                >
+                  <span
+                    className="text-[9px]"
+                    style={{ color: "var(--text-subtle)" }}
+                  >
+                    接続パス
+                  </span>
+                  {[
+                    {
+                      ai: "Cursor",
+                      path: `npx tumiki-mcp@latest --connector=${tool.id}`,
+                    },
+                    {
+                      ai: "Claude",
+                      path: `https://mcp.tumiki.cloud/${tool.id}/sse`,
+                    },
+                    {
+                      ai: "ChatGPT",
+                      path: `https://mcp.tumiki.cloud/${tool.id}/http`,
+                    },
+                  ].map((p) => (
+                    <div
+                      key={p.ai}
+                      className="flex items-center gap-2 text-[9px]"
+                    >
+                      <span
+                        className="w-12 shrink-0"
+                        style={{ color: "var(--text-muted)" }}
+                      >
+                        {p.ai}
+                      </span>
+                      <code
+                        className="flex-1 truncate rounded px-1.5 py-0.5 font-mono"
+                        style={{
+                          backgroundColor: "var(--bg-card-hover)",
+                          color: "var(--text-secondary)",
+                        }}
+                      >
+                        {p.path}
+                      </code>
+                    </div>
+                  ))}
+                </div>
               </Link>
             );
           })}
@@ -229,6 +284,201 @@ export const MyTools = (): JSX.Element => {
             style={{ color: "var(--text-subtle)" }}
           >
             条件に一致するツールが見つかりません
+          </div>
+        )}
+      </div>
+
+      {/* カスタムMCP作成 */}
+      <div
+        className="mt-4 rounded-xl p-5"
+        style={{
+          backgroundColor: "var(--bg-card)",
+          border: "1px solid var(--border)",
+          boxShadow: "var(--shadow-card)",
+        }}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2
+              className="text-sm font-medium"
+              style={{ color: "var(--text-primary)" }}
+            >
+              カスタムコネクタ
+            </h2>
+            <p
+              className="mt-1 text-[10px]"
+              style={{ color: "var(--text-muted)" }}
+            >
+              接続先ツールを選択し、AIへの指示（Description）をカスタマイズできます
+            </p>
+          </div>
+          <button
+            className="rounded-lg px-3 py-1.5 text-xs font-medium transition-colors hover:opacity-90"
+            style={{
+              backgroundColor: "var(--btn-primary-bg)",
+              color: "var(--btn-primary-text)",
+            }}
+            onClick={() => setShowCustomForm(!showCustomForm)}
+          >
+            {showCustomForm ? "閉じる" : "+ 作成"}
+          </button>
+        </div>
+
+        {showCustomForm && (
+          <div
+            className="space-y-4"
+            style={{ borderTop: "1px solid var(--border)", paddingTop: 16 }}
+          >
+            {/* コネクタ名 */}
+            <div>
+              <label
+                className="mb-1 block text-xs"
+                style={{ color: "var(--text-muted)" }}
+              >
+                コネクタ名
+              </label>
+              <input
+                type="text"
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+                placeholder="例: 週次レポート作成"
+                className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                style={{
+                  border: "1px solid var(--border)",
+                  backgroundColor: "var(--bg-input)",
+                  color: "var(--text-primary)",
+                }}
+              />
+            </div>
+
+            {/* ツール選択（チェックボックス） */}
+            <div>
+              <label
+                className="mb-2 block text-xs"
+                style={{ color: "var(--text-muted)" }}
+              >
+                使用するツールを選択
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {approvedTools.map((tool) => (
+                  <label
+                    key={tool.id}
+                    className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-xs"
+                    style={{
+                      backgroundColor: selectedTools.includes(tool.id)
+                        ? "var(--bg-active)"
+                        : "var(--bg-card-hover)",
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedTools.includes(tool.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedTools([...selectedTools, tool.id]);
+                        } else {
+                          setSelectedTools(
+                            selectedTools.filter((id) => id !== tool.id),
+                          );
+                        }
+                      }}
+                    />
+                    <img
+                      src={theme === "dark" ? tool.logoDark : tool.logoLight}
+                      alt={tool.name}
+                      className="h-4 w-4 rounded"
+                    />
+                    {tool.name}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* カスタムDescription */}
+            <div>
+              <label
+                className="mb-1 block text-xs"
+                style={{ color: "var(--text-muted)" }}
+              >
+                カスタム Description
+              </label>
+              <textarea
+                value={customDescription}
+                onChange={(e) => setCustomDescription(e.target.value)}
+                rows={3}
+                placeholder="AIに対する指示を記述します。例: 「GitHub の Issue を検索し、Slack の #dev チャンネルに週次サマリーを投稿する」"
+                className="w-full resize-none rounded-lg px-3 py-2 text-sm outline-none"
+                style={{
+                  border: "1px solid var(--border)",
+                  backgroundColor: "var(--bg-input)",
+                  color: "var(--text-primary)",
+                }}
+              />
+            </div>
+
+            {/* 接続パス（プレビュー） */}
+            {customName && (
+              <div
+                className="rounded-lg p-3"
+                style={{ backgroundColor: "var(--bg-card-hover)" }}
+              >
+                <span
+                  className="mb-2 block text-[10px] font-medium"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  接続パス（プレビュー）
+                </span>
+                {[
+                  {
+                    ai: "Cursor",
+                    path: `npx tumiki-mcp@latest --connector=${customName.toLowerCase().replace(/\s+/g, "-")}`,
+                  },
+                  {
+                    ai: "Claude",
+                    path: `https://mcp.tumiki.cloud/custom/${customName.toLowerCase().replace(/\s+/g, "-")}/sse`,
+                  },
+                  {
+                    ai: "ChatGPT",
+                    path: `https://mcp.tumiki.cloud/custom/${customName.toLowerCase().replace(/\s+/g, "-")}/http`,
+                  },
+                ].map((p) => (
+                  <div
+                    key={p.ai}
+                    className="mt-1 flex items-center gap-2 text-[9px]"
+                  >
+                    <span
+                      className="w-14 shrink-0"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      {p.ai}
+                    </span>
+                    <code
+                      className="flex-1 truncate rounded px-1.5 py-0.5 font-mono"
+                      style={{
+                        backgroundColor: "var(--bg-input)",
+                        color: "var(--text-secondary)",
+                      }}
+                    >
+                      {p.path}
+                    </code>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* 保存ボタン */}
+            <div className="flex justify-end">
+              <button
+                className="rounded-lg px-4 py-2 text-xs font-medium transition-colors hover:opacity-90"
+                style={{
+                  backgroundColor: "var(--btn-primary-bg)",
+                  color: "var(--btn-primary-text)",
+                }}
+              >
+                作成する
+              </button>
+            </div>
           </div>
         )}
       </div>

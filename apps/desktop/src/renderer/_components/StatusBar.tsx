@@ -18,7 +18,7 @@ export const StatusBar = (): JSX.Element => {
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
             接続済み
           </span>
-          <span>MCPサーバー: 4 / 5 稼働中</span>
+          <span>コネクタ: 4 / 5 稼働中</span>
         </div>
         <span>v0.1.0</span>
       </div>

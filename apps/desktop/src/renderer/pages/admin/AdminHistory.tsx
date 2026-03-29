@@ -149,7 +149,7 @@ export const AdminHistory = (): JSX.Element => {
               className="text-sm font-medium"
               style={{ color: "var(--text-primary)" }}
             >
-              MCPツール呼び出しログ
+              コネクタログ
             </span>
             <span
               className="ml-1 text-xs"
