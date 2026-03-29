@@ -116,14 +116,12 @@ export const ToolCatalog = (): JSX.Element => {
                 }}
               >
                 <div className="flex items-center gap-3">
-                  <div
-                    className="relative flex h-8 w-8 items-center justify-center rounded-md text-xs font-semibold"
-                    style={{
-                      backgroundColor: "var(--bg-card-hover)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    {tool.name.charAt(0)}
+                  <div className="relative">
+                    <img
+                      src={tool.logo}
+                      alt={tool.name}
+                      className="h-8 w-8 rounded-md"
+                    />
                     <span
                       className={`absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full ${statusDotColor[tool.status]}`}
                     />
@@ -181,15 +179,11 @@ export const ToolCatalog = (): JSX.Element => {
               >
                 {/* カードヘッダー */}
                 <div className="flex items-center gap-3">
-                  <div
-                    className="flex h-10 w-10 items-center justify-center rounded-lg text-sm font-semibold"
-                    style={{
-                      backgroundColor: "var(--bg-card-hover)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    {tool.name.charAt(0)}
-                  </div>
+                  <img
+                    src={tool.logo}
+                    alt={tool.name}
+                    className="h-10 w-10 rounded-lg"
+                  />
                   <div>
                     <h3
                       className="text-sm font-medium"

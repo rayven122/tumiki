@@ -86,15 +86,7 @@ export const ToolDetail = (): JSX.Element => {
 
       {/* ツール名 + ステータス */}
       <div className="flex items-center gap-3">
-        <div
-          className="flex h-12 w-12 items-center justify-center rounded-lg text-lg font-semibold"
-          style={{
-            backgroundColor: "var(--bg-card-hover)",
-            color: "var(--text-primary)",
-          }}
-        >
-          {tool.name.charAt(0)}
-        </div>
+        <img src={tool.logo} alt={tool.name} className="h-12 w-12 rounded-lg" />
         <div>
           <div className="flex items-center gap-2">
             <h1

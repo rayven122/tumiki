@@ -5,17 +5,6 @@ import { Search, ArrowRight } from "lucide-react";
 import { TOOLS, CATEGORIES } from "../data/mock";
 import type { ToolStatus } from "../data/mock";
 
-/** ツールIDとロゴパスのマッピング */
-const TOOL_LOGOS: Record<string, string> = {
-  slack: "/logos/services/slack.webp",
-  jira: "/logos/services/database.webp",
-  github: "/logos/services/github.webp",
-  esa: "/logos/services/notion.webp",
-  "google-drive": "/logos/services/google-drive.svg",
-  salesforce: "/logos/services/database.webp",
-  freee: "/logos/services/database.webp",
-};
-
 /** ステータス表示定義 */
 const STATUS_CONFIG: Record<
   ToolStatus,
@@ -157,7 +146,6 @@ export const MyTools = (): JSX.Element => {
         <div className="grid grid-cols-2 gap-3 p-4 lg:grid-cols-3">
           {filteredTools.map((tool) => {
             const status = STATUS_CONFIG[tool.status];
-            const logo = TOOL_LOGOS[tool.id];
             const allowedOps = tool.operations.filter((o) => o.allowed).length;
             return (
               <Link
@@ -171,23 +159,11 @@ export const MyTools = (): JSX.Element => {
               >
                 {/* ロゴ + ステータスドット */}
                 <div className="mb-3 flex items-start justify-between">
-                  {logo ? (
-                    <img
-                      src={logo}
-                      alt={tool.name}
-                      className="h-8 w-8 rounded-lg"
-                    />
-                  ) : (
-                    <div
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-sm font-semibold"
-                      style={{
-                        backgroundColor: "var(--bg-active)",
-                        color: "var(--text-primary)",
-                      }}
-                    >
-                      {tool.name.charAt(0)}
-                    </div>
-                  )}
+                  <img
+                    src={tool.logo}
+                    alt={tool.name}
+                    className="h-8 w-8 rounded-lg"
+                  />
                   <span className={`h-2 w-2 rounded-full ${status.dotClass}`} />
                 </div>
 

@@ -38,6 +38,7 @@ export default defineConfig({
   },
   renderer: {
     root: "src/renderer",
+    publicDir: resolve(__dirname, "public"),
     build: {
       outDir: resolve(__dirname, "dist-electron/renderer"),
     },
