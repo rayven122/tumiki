@@ -74,11 +74,11 @@ model McpCatalog {
   updatedAt DateTime @updatedAt
 
   /// このカタログから作成された接続一覧
-  connections McpServerConnection[]
+  connections McpConnection[]
 }
 
 /// MCPサーバー（仮想・統合サーバー = Proxyエンドポイント）
-/// 1つ以上のMcpServerConnectionを束ねて、1つのMCPサーバーとして公開する
+/// 1つ以上のMcpConnectionを束ねて1つのMCPサーバーとして公開する
 /// @namespace McpServer
 model McpServer {
   id String @id @default(uuid())
@@ -105,7 +105,7 @@ model McpServer {
   updatedAt DateTime @updatedAt
 
   /// 個別MCP接続一覧
-  connections McpServerConnection[]
+  connections McpConnection[]
 
   /// 監査ログ一覧
   auditLogs AuditLog[]
@@ -114,7 +114,7 @@ model McpServer {
 /// MCP接続（個別のMCPサーバーへの接続設定）
 /// SaaS側の McpServerTemplateInstance + McpConfig に対応
 /// @namespace McpServer
-model McpServerConnection {
+model McpConnection {
   id String @id @default(uuid())
 
   /// 所属するMcpServerのID
@@ -169,7 +169,7 @@ model McpTool {
 
   /// 対象MCP接続ID
   connectionId String
-  connection   McpServerConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  connection   McpConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
 
   /// ツール名（大元のMCPから取得、ルーティングに使用）
   name String
