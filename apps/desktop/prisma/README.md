@@ -42,12 +42,12 @@ erDiagram
   String slug UK
   String description
   String iconPath "nullable"
-  String transportType
+  TransportType transportType
   String command "nullable"
   String defaultArgs
   String serverUrl "nullable"
   String envVarKeys
-  String authType
+  AuthType authType
   Boolean isOfficial
   DateTime createdAt
   DateTime updatedAt
@@ -57,7 +57,7 @@ erDiagram
   String name
   String slug UK
   String description
-  String serverStatus
+  ServerStatus serverStatus
   Boolean isEnabled
   Int displayOrder
   DateTime createdAt
@@ -67,12 +67,12 @@ erDiagram
   String id PK
   String serverId FK
   String name
-  String transportType
+  TransportType transportType
   String command "nullable"
   String args
   String serverUrl "nullable"
   String envVars
-  String authType
+  AuthType authType
   String authToken "nullable"
   Boolean isEnabled
   Int displayOrder
@@ -123,12 +123,12 @@ MCPカタログ（プリセットMCPサーバーのテンプレート）
 - `slug`: URL識別子（小文字・ハイフン区切り）
 - `description`: カタログ説明
 - `iconPath`: アイコンパス
-- `transportType`: トランスポートタイプ: "stdio" | "sse" | "streamable_http"
+- `transportType`: トランスポートタイプ
 - `command`: STDIO用デフォルトコマンド
 - `defaultArgs`: STDIO用デフォルト引数（JSON配列文字列）
 - `serverUrl`: SSE/Streamable HTTP用デフォルトURL
 - `envVarKeys`: 必要な環境変数キー名（JSON配列文字列）
-- `authType`: 認証タイプ: "none" | "bearer" | "api_key" | "oauth"
+- `authType`: 認証タイプ
 - `isOfficial`: 公式カタログフラグ
 - `createdAt`:
 - `updatedAt`:
@@ -144,7 +144,7 @@ MCPサーバー（仮想・統合サーバー = Proxyエンドポイント）
 - `name`: サーバー表示名
 - `slug`: URL識別子（小文字・ハイフン区切り）
 - `description`: サーバー説明
-- `serverStatus`: サーバー状態: "running" | "stopped" | "error" | "pending"
+- `serverStatus`: サーバー状態
 - `isEnabled`: 有効/無効フラグ（トグル用）
 - `displayOrder`: 一覧画面での表示順序
 - `createdAt`:
@@ -153,19 +153,18 @@ MCPサーバー（仮想・統合サーバー = Proxyエンドポイント）
 ### `McpConnection`
 
 MCP接続（個別のMCPサーバーへの接続設定）
-SaaS側の McpServerTemplateInstance + McpConfig に対応
 
 **Properties**
 
 - `id`:
 - `serverId`: 所属するMcpServerのID
 - `name`: 接続表示名
-- `transportType`: トランスポートタイプ: "stdio" | "sse" | "streamable_http"
+- `transportType`: トランスポートタイプ
 - `command`: STDIO用コマンド（例: "npx", "uvx", "node"）
 - `args`: STDIO用引数（JSON配列文字列）
 - `serverUrl`: SSE/Streamable HTTP接続先URL
 - `envVars`: 環境変数（JSON object文字列）
-- `authType`: 認証タイプ: "none" | "bearer" | "api_key" | "oauth"
+- `authType`: 認証タイプ
 - `authToken`: 認証トークン/APIキー
 - `isEnabled`: 有効/無効フラグ
 - `displayOrder`: 統合サーバー内での表示順序
