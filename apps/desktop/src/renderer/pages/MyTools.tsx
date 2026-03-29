@@ -2,7 +2,7 @@ import type { JSX } from "react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAtomValue } from "jotai";
-import { Search, ArrowRight } from "lucide-react";
+import { Search, ArrowRight, Sparkles, Wrench } from "lucide-react";
 import { themeAtom } from "../store/atoms";
 import { TOOLS, CATEGORIES } from "../data/mock";
 import type { ToolStatus } from "../data/mock";
@@ -34,13 +34,7 @@ export const MyTools = (): JSX.Element => {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string>("すべて");
   const [statusFilter, setStatusFilter] = useState<ToolStatus | "all">("all");
-  const [showCustomForm, setShowCustomForm] = useState(false);
-  const [customName, setCustomName] = useState("");
-  const [customDescription, setCustomDescription] = useState("");
-  const [selectedTools, setSelectedTools] = useState<string[]>([]);
-
   const approvedTools = TOOLS.filter((t) => t.approved);
-
   const filteredTools = approvedTools.filter((t) => {
     const matchesQuery =
       query === "" ||
@@ -288,7 +282,7 @@ export const MyTools = (): JSX.Element => {
         )}
       </div>
 
-      {/* カスタムMCP作成 */}
+      {/* カスタムコネクタ作成 */}
       <div
         className="mt-4 rounded-xl p-5"
         style={{
@@ -297,190 +291,90 @@ export const MyTools = (): JSX.Element => {
           boxShadow: "var(--shadow-card)",
         }}
       >
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2
+        <h2
+          className="text-sm font-medium"
+          style={{ color: "var(--text-primary)" }}
+        >
+          カスタムコネクタ作成
+        </h2>
+        <p className="mt-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
+          接続先ツールを組み合わせて、業務に最適化されたカスタムコネクタを作成できます
+        </p>
+
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          {/* オートモード */}
+          <Link
+            to="/tools/connector/auto"
+            className="rounded-xl p-4 transition-all hover:-translate-y-0.5"
+            style={{
+              border: "1px solid rgba(52,211,153,0.2)",
+              backgroundColor: "var(--bg-card)",
+            }}
+          >
+            <div
+              className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg"
+              style={{ backgroundColor: "rgba(52,211,153,0.1)" }}
+            >
+              <Sparkles
+                size={20}
+                style={{ color: "var(--badge-success-text)" }}
+              />
+            </div>
+            <div
               className="text-sm font-medium"
               style={{ color: "var(--text-primary)" }}
             >
-              カスタムコネクタ
-            </h2>
+              AIで自動作成
+            </div>
             <p
-              className="mt-1 text-[10px]"
+              className="mt-1 text-[10px] leading-relaxed"
               style={{ color: "var(--text-muted)" }}
             >
-              接続先ツールを選択し、AIへの指示（Description）をカスタマイズできます
+              自動化したい業務を伝えるだけで、AIが必要なツールを選定し、最適なDescriptionを自動生成します
             </p>
-          </div>
-          <button
-            className="rounded-lg px-3 py-1.5 text-xs font-medium transition-colors hover:opacity-90"
+            <span
+              className="mt-3 inline-flex items-center gap-1 text-[10px]"
+              style={{ color: "var(--badge-success-text)" }}
+            >
+              おすすめ <ArrowRight size={10} />
+            </span>
+          </Link>
+
+          {/* マニュアルモード */}
+          <Link
+            to="/tools/connector/manual"
+            className="rounded-xl p-4 transition-all hover:-translate-y-0.5"
             style={{
-              backgroundColor: "var(--btn-primary-bg)",
-              color: "var(--btn-primary-text)",
+              border: "1px solid var(--border)",
+              backgroundColor: "var(--bg-card)",
             }}
-            onClick={() => setShowCustomForm(!showCustomForm)}
           >
-            {showCustomForm ? "閉じる" : "+ 作成"}
-          </button>
+            <div
+              className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg"
+              style={{ backgroundColor: "var(--bg-active)" }}
+            >
+              <Wrench size={20} style={{ color: "var(--text-muted)" }} />
+            </div>
+            <div
+              className="text-sm font-medium"
+              style={{ color: "var(--text-primary)" }}
+            >
+              マニュアル作成
+            </div>
+            <p
+              className="mt-1 text-[10px] leading-relaxed"
+              style={{ color: "var(--text-muted)" }}
+            >
+              ツールを手動で選択し、Descriptionを自分で編集してカスタムコネクタを作成します
+            </p>
+            <span
+              className="mt-3 inline-flex items-center gap-1 text-[10px]"
+              style={{ color: "var(--text-muted)" }}
+            >
+              詳細設定向け <ArrowRight size={10} />
+            </span>
+          </Link>
         </div>
-
-        {showCustomForm && (
-          <div
-            className="space-y-4"
-            style={{ borderTop: "1px solid var(--border)", paddingTop: 16 }}
-          >
-            {/* コネクタ名 */}
-            <div>
-              <label
-                className="mb-1 block text-xs"
-                style={{ color: "var(--text-muted)" }}
-              >
-                コネクタ名
-              </label>
-              <input
-                type="text"
-                value={customName}
-                onChange={(e) => setCustomName(e.target.value)}
-                placeholder="例: 週次レポート作成"
-                className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                style={{
-                  border: "1px solid var(--border)",
-                  backgroundColor: "var(--bg-input)",
-                  color: "var(--text-primary)",
-                }}
-              />
-            </div>
-
-            {/* ツール選択（チェックボックス） */}
-            <div>
-              <label
-                className="mb-2 block text-xs"
-                style={{ color: "var(--text-muted)" }}
-              >
-                使用するツールを選択
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {approvedTools.map((tool) => (
-                  <label
-                    key={tool.id}
-                    className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-xs"
-                    style={{
-                      backgroundColor: selectedTools.includes(tool.id)
-                        ? "var(--bg-active)"
-                        : "var(--bg-card-hover)",
-                      color: "var(--text-secondary)",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedTools.includes(tool.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedTools([...selectedTools, tool.id]);
-                        } else {
-                          setSelectedTools(
-                            selectedTools.filter((id) => id !== tool.id),
-                          );
-                        }
-                      }}
-                    />
-                    <img
-                      src={theme === "dark" ? tool.logoDark : tool.logoLight}
-                      alt={tool.name}
-                      className="h-4 w-4 rounded"
-                    />
-                    {tool.name}
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* カスタムDescription */}
-            <div>
-              <label
-                className="mb-1 block text-xs"
-                style={{ color: "var(--text-muted)" }}
-              >
-                カスタム Description
-              </label>
-              <textarea
-                value={customDescription}
-                onChange={(e) => setCustomDescription(e.target.value)}
-                rows={3}
-                placeholder="AIに対する指示を記述します。例: 「GitHub の Issue を検索し、Slack の #dev チャンネルに週次サマリーを投稿する」"
-                className="w-full resize-none rounded-lg px-3 py-2 text-sm outline-none"
-                style={{
-                  border: "1px solid var(--border)",
-                  backgroundColor: "var(--bg-input)",
-                  color: "var(--text-primary)",
-                }}
-              />
-            </div>
-
-            {/* 接続パス（プレビュー） */}
-            {customName && (
-              <div
-                className="rounded-lg p-3"
-                style={{ backgroundColor: "var(--bg-card-hover)" }}
-              >
-                <span
-                  className="mb-2 block text-[10px] font-medium"
-                  style={{ color: "var(--text-muted)" }}
-                >
-                  接続パス（プレビュー）
-                </span>
-                {[
-                  {
-                    ai: "Cursor",
-                    path: `npx tumiki-mcp@latest --connector=${customName.toLowerCase().replace(/\s+/g, "-")}`,
-                  },
-                  {
-                    ai: "Claude",
-                    path: `https://mcp.tumiki.cloud/custom/${customName.toLowerCase().replace(/\s+/g, "-")}/sse`,
-                  },
-                  {
-                    ai: "ChatGPT",
-                    path: `https://mcp.tumiki.cloud/custom/${customName.toLowerCase().replace(/\s+/g, "-")}/http`,
-                  },
-                ].map((p) => (
-                  <div
-                    key={p.ai}
-                    className="mt-1 flex items-center gap-2 text-[9px]"
-                  >
-                    <span
-                      className="w-14 shrink-0"
-                      style={{ color: "var(--text-muted)" }}
-                    >
-                      {p.ai}
-                    </span>
-                    <code
-                      className="flex-1 truncate rounded px-1.5 py-0.5 font-mono"
-                      style={{
-                        backgroundColor: "var(--bg-input)",
-                        color: "var(--text-secondary)",
-                      }}
-                    >
-                      {p.path}
-                    </code>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* 保存ボタン */}
-            <div className="flex justify-end">
-              <button
-                className="rounded-lg px-4 py-2 text-xs font-medium transition-colors hover:opacity-90"
-                style={{
-                  backgroundColor: "var(--btn-primary-bg)",
-                  color: "var(--btn-primary-text)",
-                }}
-              >
-                作成する
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

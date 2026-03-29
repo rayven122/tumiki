@@ -19,6 +19,8 @@ import { AdminUsers } from "./pages/admin/AdminUsers";
 import { AdminRoles } from "./pages/admin/AdminRoles";
 import { AdminTools } from "./pages/admin/AdminTools";
 import { AdminApprovals } from "./pages/admin/AdminApprovals";
+import { ConnectorAuto } from "./pages/ConnectorAuto";
+import { ConnectorManual } from "./pages/ConnectorManual";
 
 export const App = (): JSX.Element => {
   return (
@@ -28,6 +30,8 @@ export const App = (): JSX.Element => {
           <Route index element={<Dashboard />} />
           <Route path="tools" element={<MyTools />} />
           <Route path="tools/catalog" element={<ToolCatalog />} />
+          <Route path="tools/connector/auto" element={<ConnectorAuto />} />
+          <Route path="tools/connector/manual" element={<ConnectorManual />} />
           <Route path="tools/:toolId" element={<ToolDetail />} />
           <Route path="history" element={<HistoryList />} />
           <Route path="history/:historyId" element={<HistoryDetail />} />
