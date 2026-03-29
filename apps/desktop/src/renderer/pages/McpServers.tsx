@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useAtomValue } from "jotai";
 import { mcpServersAtom } from "../store/atoms";
 import { MCP_CATALOG_ITEMS } from "../constants/mcpCatalog";
@@ -89,6 +89,7 @@ export const McpServers = (): React.ReactElement => {
               </h3>
               {(searchQuery || selectedTags.length > 0) && (
                 <button
+                  type="button"
                   onClick={clearAllFilters}
                   className="text-sm text-blue-600 hover:text-blue-800"
                 >
@@ -99,6 +100,7 @@ export const McpServers = (): React.ReactElement => {
             <div className="flex flex-wrap gap-2">
               {availableTags.map((tag) => (
                 <button
+                  type="button"
                   key={tag}
                   onClick={() => toggleTag(tag)}
                   className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
