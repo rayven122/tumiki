@@ -235,12 +235,36 @@ const AI_PIE = [
 /* ---------- AIクライアントロゴ ---------- */
 
 const AI_CLIENTS = [
-  { name: "Cursor", logo: "/logos/ai-clients/cursor.webp" },
-  { name: "ChatGPT", logo: "/logos/ai-clients/chatgpt.webp" },
-  { name: "Claude", logo: "/logos/ai-clients/claude.webp" },
-  { name: "Copilot", logo: "/logos/ai-clients/copilot.webp" },
-  { name: "Cline", logo: "/logos/ai-clients/cline.webp" },
-  { name: "Antigravity", logo: "/logos/ai-clients/antigravity.webp" },
+  {
+    name: "Cursor",
+    dark: "/logos/ai-clients/cursor.webp",
+    light: "/logos/ai-clients/cursor.svg",
+  },
+  {
+    name: "ChatGPT",
+    dark: "/logos/ai-clients/chatgpt.webp",
+    light: "/logos/ai-clients/chatgpt.svg",
+  },
+  {
+    name: "Claude",
+    dark: "/logos/ai-clients/claude.webp",
+    light: "/logos/ai-clients/claude.svg",
+  },
+  {
+    name: "Copilot",
+    dark: "/logos/ai-clients/copilot.webp",
+    light: "/logos/ai-clients/copilot.svg",
+  },
+  {
+    name: "Cline",
+    dark: "/logos/ai-clients/cline.webp",
+    light: "/logos/ai-clients/cline.svg",
+  },
+  {
+    name: "Antigravity",
+    dark: "/logos/ai-clients/antigravity.webp",
+    light: "/logos/ai-clients/antigravity.svg",
+  },
 ];
 
 /* ---------- 接続先サービス ---------- */
@@ -248,61 +272,71 @@ const AI_CLIENTS = [
 const SERVICES = [
   {
     name: "GitHub",
-    logo: "/logos/services/github.webp",
+    dark: "/logos/services/github_white.svg",
+    light: "/logos/services/github_black.svg",
     status: "active",
     requests: 3420,
   },
   {
     name: "Notion",
-    logo: "/logos/services/notion.webp",
+    dark: "/logos/services/notion.webp",
+    light: "/logos/services/notion.webp",
     status: "active",
     requests: 2810,
   },
   {
     name: "Figma",
-    logo: "/logos/services/figma.webp",
+    dark: "/logos/services/figma.webp",
+    light: "/logos/services/figma.webp",
     status: "active",
     requests: 1960,
   },
   {
     name: "Google Drive",
-    logo: "/logos/services/google-drive.svg",
+    dark: "/logos/services/google-drive.svg",
+    light: "/logos/services/google-drive.svg",
     status: "active",
     requests: 1340,
   },
   {
     name: "Slack",
-    logo: "/logos/services/slack.webp",
+    dark: "/logos/services/slack.webp",
+    light: "/logos/services/slack.webp",
     status: "active",
     requests: 1120,
   },
   {
     name: "PostgreSQL",
-    logo: "/logos/services/postgresql.webp",
+    dark: "/logos/services/postgresql.webp",
+    light: "/logos/services/postgresql.webp",
     status: "active",
     requests: 890,
   },
   {
     name: "Sentry",
-    logo: "/logos/services/sentry.webp",
+    dark: "/logos/services/sentry.webp",
+    light: "/logos/services/sentry.webp",
     status: "idle",
     requests: 340,
   },
   {
     name: "Microsoft Teams",
-    logo: "/logos/services/microsoft-teams.webp",
+    dark: "/logos/services/microsoft-teams.webp",
+    light: "/logos/services/microsoft-teams.webp",
     status: "active",
     requests: 780,
   },
   {
     name: "OneDrive",
-    logo: "/logos/services/one-drive.webp",
+    dark: "/logos/services/one-drive.webp",
+    light: "/logos/services/one-drive.webp",
     status: "active",
     requests: 620,
   },
   {
     name: "Playwright",
-    logo: "/logos/services/playwright.webp",
+    dark: "/logos/services/playwright.webp",
+    light: "/logos/services/playwright.webp",
     status: "idle",
     requests: 210,
   },
@@ -726,7 +760,7 @@ export const Dashboard = (): JSX.Element => {
                 }}
               >
                 <img
-                  src={ai.logo}
+                  src={theme === "dark" ? ai.dark : ai.light}
                   alt={ai.name}
                   className="h-3.5 w-3.5 rounded"
                 />
@@ -753,7 +787,11 @@ export const Dashboard = (): JSX.Element => {
           <div className="space-y-3">
             {SERVICES.map((s) => (
               <div key={s.name} className="flex items-center gap-2.5 text-xs">
-                <img src={s.logo} alt={s.name} className="h-4 w-4 rounded" />
+                <img
+                  src={theme === "dark" ? s.dark : s.light}
+                  alt={s.name}
+                  className="h-4 w-4 rounded"
+                />
                 <span
                   className="w-24"
                   style={{ color: "var(--text-secondary)" }}

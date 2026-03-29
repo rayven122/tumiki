@@ -1,7 +1,9 @@
 import type { JSX } from "react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useAtomValue } from "jotai";
 import { Search, ArrowRight, Check } from "lucide-react";
+import { themeAtom } from "../store/atoms";
 import { TOOLS, CATEGORIES } from "../data/mock";
 import type { ToolStatus } from "../data/mock";
 
@@ -13,6 +15,7 @@ const statusDotColor: Record<ToolStatus, string> = {
 };
 
 export const ToolCatalog = (): JSX.Element => {
+  const theme = useAtomValue(themeAtom);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string>("すべて");
 
@@ -118,7 +121,7 @@ export const ToolCatalog = (): JSX.Element => {
                 <div className="flex items-center gap-3">
                   <div className="relative">
                     <img
-                      src={tool.logo}
+                      src={theme === "dark" ? tool.logoDark : tool.logoLight}
                       alt={tool.name}
                       className="h-8 w-8 rounded-md"
                     />
@@ -180,7 +183,7 @@ export const ToolCatalog = (): JSX.Element => {
                 {/* カードヘッダー */}
                 <div className="flex items-center gap-3">
                   <img
-                    src={tool.logo}
+                    src={theme === "dark" ? tool.logoDark : tool.logoLight}
                     alt={tool.name}
                     className="h-10 w-10 rounded-lg"
                   />

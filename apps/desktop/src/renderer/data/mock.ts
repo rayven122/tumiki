@@ -26,7 +26,8 @@ export type ToolOperation = {
 export type Tool = {
   id: string;
   name: string;
-  logo: string;
+  logoDark: string;
+  logoLight: string;
   description: string;
   status: ToolStatus;
   permissions: PermissionLevel[];
@@ -47,7 +48,8 @@ export const TOOLS: Tool[] = [
   {
     id: "slack",
     name: "Slack",
-    logo: "/logos/services/slack.webp",
+    logoDark: "/logos/services/slack.webp",
+    logoLight: "/logos/services/slack.webp",
     description: "メッセージ送信・検索・チャンネル管理",
     status: "active",
     permissions: ["read", "write"],
@@ -91,7 +93,8 @@ export const TOOLS: Tool[] = [
   {
     id: "jira",
     name: "Jira",
-    logo: "/logos/services/database.webp",
+    logoDark: "/logos/services/database.webp",
+    logoLight: "/logos/services/database.webp",
     description: "チケット作成・更新・検索",
     status: "degraded",
     permissions: ["read", "execute"],
@@ -113,7 +116,8 @@ export const TOOLS: Tool[] = [
   {
     id: "github",
     name: "GitHub",
-    logo: "/logos/services/github.webp",
+    logoDark: "/logos/services/github_white.svg",
+    logoLight: "/logos/services/github_black.svg",
     description: "リポジトリ操作・PR管理",
     status: "down",
     permissions: ["read"],
@@ -139,7 +143,8 @@ export const TOOLS: Tool[] = [
   {
     id: "esa",
     name: "esa",
-    logo: "/logos/services/notion.webp",
+    logoDark: "/logos/services/notion.webp",
+    logoLight: "/logos/services/notion.webp",
     description: "記事の作成・検索・編集",
     status: "active",
     permissions: ["read", "write"],
@@ -160,7 +165,8 @@ export const TOOLS: Tool[] = [
   {
     id: "google-drive",
     name: "Google Drive",
-    logo: "/logos/services/google-drive.svg",
+    logoDark: "/logos/services/google-drive.svg",
+    logoLight: "/logos/services/google-drive.svg",
     description: "ファイル検索・アップロード・共有",
     status: "active",
     permissions: ["read"],
@@ -185,7 +191,8 @@ export const TOOLS: Tool[] = [
   {
     id: "salesforce",
     name: "Salesforce",
-    logo: "/logos/services/database.webp",
+    logoDark: "/logos/services/database.webp",
+    logoLight: "/logos/services/database.webp",
     description: "CRM・顧客管理",
     status: "active",
     permissions: [],
@@ -213,7 +220,8 @@ export const TOOLS: Tool[] = [
   {
     id: "freee",
     name: "freee",
-    logo: "/logos/services/database.webp",
+    logoDark: "/logos/services/database.webp",
+    logoLight: "/logos/services/database.webp",
     description: "会計・経費精算",
     status: "active",
     permissions: [],

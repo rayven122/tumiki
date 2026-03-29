@@ -1,6 +1,8 @@
 import type { JSX } from "react";
 import { useParams, Link } from "react-router-dom";
+import { useAtomValue } from "jotai";
 import { ArrowLeft, ExternalLink, Shield } from "lucide-react";
+import { themeAtom } from "../store/atoms";
 import { TOOLS, HISTORY } from "../data/mock";
 import type { ToolStatus } from "../data/mock";
 
@@ -33,6 +35,7 @@ const statusBadge: Record<
 };
 
 export const ToolDetail = (): JSX.Element => {
+  const theme = useAtomValue(themeAtom);
   const { toolId } = useParams<{ toolId: string }>();
   const tool = TOOLS.find((t) => t.id === toolId);
 
@@ -86,7 +89,11 @@ export const ToolDetail = (): JSX.Element => {
 
       {/* ツール名 + ステータス */}
       <div className="flex items-center gap-3">
-        <img src={tool.logo} alt={tool.name} className="h-12 w-12 rounded-lg" />
+        <img
+          src={theme === "dark" ? tool.logoDark : tool.logoLight}
+          alt={tool.name}
+          className="h-12 w-12 rounded-lg"
+        />
         <div>
           <div className="flex items-center gap-2">
             <h1

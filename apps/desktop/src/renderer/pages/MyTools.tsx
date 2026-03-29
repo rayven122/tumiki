@@ -1,7 +1,9 @@
 import type { JSX } from "react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useAtomValue } from "jotai";
 import { Search, ArrowRight } from "lucide-react";
+import { themeAtom } from "../store/atoms";
 import { TOOLS, CATEGORIES } from "../data/mock";
 import type { ToolStatus } from "../data/mock";
 
@@ -28,6 +30,7 @@ const STATUS_CONFIG: Record<
 };
 
 export const MyTools = (): JSX.Element => {
+  const theme = useAtomValue(themeAtom);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string>("すべて");
   const [statusFilter, setStatusFilter] = useState<ToolStatus | "all">("all");
@@ -160,7 +163,7 @@ export const MyTools = (): JSX.Element => {
                 {/* ロゴ + ステータスドット */}
                 <div className="mb-3 flex items-start justify-between">
                   <img
-                    src={tool.logo}
+                    src={theme === "dark" ? tool.logoDark : tool.logoLight}
                     alt={tool.name}
                     className="h-8 w-8 rounded-lg"
                   />
