@@ -12,31 +12,6 @@ const STATUS_DOT: Record<ToolStatus, string> = {
   down: "bg-red-400",
 };
 
-/** Description上書きの例 */
-const DESCRIPTION_OVERRIDES = [
-  {
-    tool: "search_pages",
-    service: "Notion",
-    original: "Search for pages in the workspace",
-    override:
-      "社内のQ3 OKRドキュメントと議事録を検索する。部署名やプロジェクト名で絞り込み可能。",
-  },
-  {
-    tool: "create_pr",
-    service: "GitHub",
-    original: "Create a pull request",
-    override:
-      "mainブランチへのPRを作成。レビュアーにチームリードを自動アサイン。CI必須。",
-  },
-  {
-    tool: "send_message",
-    service: "Slack",
-    original: "Send a message to a channel",
-    override:
-      "#general と #dev チャンネルのみ送信可。DMは禁止。メンション@hereは管理者承認が必要。",
-  },
-] as const;
-
 /** ツールカード */
 const ToolCard = ({
   tool,
@@ -197,100 +172,6 @@ export const AdminTools = (): JSX.Element => {
         <div className="grid grid-cols-2 gap-3 p-4 lg:grid-cols-3">
           {TOOLS.map((tool) => (
             <ToolCard key={tool.id} tool={tool} theme={theme} />
-          ))}
-        </div>
-      </div>
-
-      {/* ツール設定パネル: Description上書き */}
-      <div
-        className="overflow-hidden rounded-xl"
-        style={{
-          backgroundColor: "var(--bg-card)",
-          border: "1px solid var(--border)",
-          boxShadow: "var(--shadow-card)",
-        }}
-      >
-        <div
-          className="flex items-center justify-between px-5 py-3"
-          style={{ borderBottom: "1px solid var(--border)" }}
-        >
-          <span
-            className="text-sm font-medium"
-            style={{ color: "var(--text-primary)" }}
-          >
-            ツールDescription上書き
-          </span>
-          <span
-            className="rounded px-2 py-0.5 text-[9px] font-medium"
-            style={{
-              backgroundColor: "rgba(52, 211, 153, 0.1)",
-              color: "rgb(52, 211, 153)",
-            }}
-          >
-            AI精度向上
-          </span>
-        </div>
-        <div>
-          {DESCRIPTION_OVERRIDES.map((item, i) => (
-            <div
-              key={item.tool}
-              className="px-5 py-3"
-              style={
-                i < DESCRIPTION_OVERRIDES.length - 1
-                  ? { borderBottom: "1px solid var(--border-subtle)" }
-                  : undefined
-              }
-            >
-              <div className="mb-2 flex items-center gap-2">
-                <span
-                  className="font-mono text-[11px]"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {item.service}/{item.tool}
-                </span>
-              </div>
-              <div className="grid gap-2 md:grid-cols-2">
-                {/* 元のDescription */}
-                <div
-                  className="rounded-lg p-2.5"
-                  style={{ backgroundColor: "var(--bg-active)" }}
-                >
-                  <div
-                    className="mb-1 text-[9px]"
-                    style={{ color: "var(--text-subtle)" }}
-                  >
-                    元のDescription
-                  </div>
-                  <div
-                    className="font-mono text-[10px] line-through"
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    {item.original}
-                  </div>
-                </div>
-                {/* カスタムDescription */}
-                <div
-                  className="rounded-lg p-2.5"
-                  style={{
-                    border: "1px solid rgba(52, 211, 153, 0.1)",
-                    backgroundColor: "rgba(52, 211, 153, 0.02)",
-                  }}
-                >
-                  <div
-                    className="mb-1 flex items-center gap-1 text-[9px]"
-                    style={{ color: "rgb(52, 211, 153)" }}
-                  >
-                    カスタムDescription
-                  </div>
-                  <div
-                    className="text-[10px] leading-relaxed"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {item.override}
-                  </div>
-                </div>
-              </div>
-            </div>
           ))}
         </div>
       </div>

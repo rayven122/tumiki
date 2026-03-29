@@ -199,6 +199,104 @@ export const ToolDetail = (): JSX.Element => {
             </p>
           </div>
         </div>
+
+        {/* AIクライアント接続方法 */}
+        <div
+          className="mt-5"
+          style={{ borderTop: "1px solid var(--border)", paddingTop: 16 }}
+        >
+          <h3
+            className="mb-3 text-xs font-medium"
+            style={{ color: "var(--text-primary)" }}
+          >
+            AIクライアントから接続
+          </h3>
+          <div className="space-y-2">
+            {[
+              {
+                name: "Cursor",
+                logo:
+                  theme === "dark"
+                    ? "/logos/ai-clients/cursor.webp"
+                    : "/logos/ai-clients/cursor.svg",
+                path: `npx tumiki-mcp@latest --connector=${tool.id}`,
+                type: "コマンド",
+              },
+              {
+                name: "Claude Code",
+                logo:
+                  theme === "dark"
+                    ? "/logos/ai-clients/claude.webp"
+                    : "/logos/ai-clients/claude.svg",
+                path: `npx tumiki-mcp@latest --connector=${tool.id}`,
+                type: "コマンド",
+              },
+              {
+                name: "Claude",
+                logo:
+                  theme === "dark"
+                    ? "/logos/ai-clients/claude.webp"
+                    : "/logos/ai-clients/claude.svg",
+                path: `https://mcp.tumiki.cloud/${tool.id}/sse`,
+                type: "SSE",
+              },
+              {
+                name: "ChatGPT",
+                logo:
+                  theme === "dark"
+                    ? "/logos/ai-clients/chatgpt.webp"
+                    : "/logos/ai-clients/chatgpt.svg",
+                path: `https://mcp.tumiki.cloud/${tool.id}/http`,
+                type: "HTTP",
+              },
+              {
+                name: "Copilot",
+                logo:
+                  theme === "dark"
+                    ? "/logos/ai-clients/copilot.webp"
+                    : "/logos/ai-clients/copilot.svg",
+                path: `https://mcp.tumiki.cloud/${tool.id}/http`,
+                type: "HTTP",
+              },
+            ].map((ai) => (
+              <div
+                key={ai.name}
+                className="flex items-center gap-3 rounded-lg px-3 py-2"
+                style={{ backgroundColor: "var(--bg-card-hover)" }}
+              >
+                <img
+                  src={ai.logo}
+                  alt={ai.name}
+                  className="h-5 w-5 shrink-0 rounded"
+                />
+                <span
+                  className="w-20 shrink-0 text-xs"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  {ai.name}
+                </span>
+                <span
+                  className="rounded px-1.5 py-0.5 text-[8px] font-medium"
+                  style={{
+                    backgroundColor: "var(--bg-active)",
+                    color: "var(--text-muted)",
+                  }}
+                >
+                  {ai.type}
+                </span>
+                <code
+                  className="flex-1 truncate rounded px-2 py-1 font-mono text-[10px]"
+                  style={{
+                    backgroundColor: "var(--bg-input)",
+                    color: "var(--text-secondary)",
+                  }}
+                >
+                  {ai.path}
+                </code>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* あなたの権限（LP風トグル表示） */}
