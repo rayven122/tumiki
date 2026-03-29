@@ -14,17 +14,21 @@ export const Layout = (): JSX.Element => {
     >
       {/* サイドバー（最下層） */}
       <Sidebar />
-      {/* メインコンテンツ（サイドバーの上に載る） */}
-      <main
-        className="flex-1 overflow-y-auto rounded-tl-xl"
-        style={{
-          backgroundColor: "var(--bg-main)",
-          borderTop: "1px solid var(--border)",
-          borderLeft: "1px solid var(--border)",
-        }}
+      {/* メインコンテンツ（サイドバーの上に載る、上右下に3px余白） */}
+      <div
+        className="flex flex-1 flex-col"
+        style={{ padding: "3px 3px 3px 0" }}
       >
-        <Outlet />
-      </main>
+        <main
+          className="flex-1 overflow-y-auto rounded-xl"
+          style={{
+            backgroundColor: "var(--bg-main)",
+            border: "1px solid var(--border)",
+          }}
+        >
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 };
