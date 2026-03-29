@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { JSX } from "react";
 import { Link } from "react-router-dom";
 import { useAtomValue } from "jotai";
-import { ArrowRight, Megaphone } from "lucide-react";
+import { Activity, ArrowRight, Megaphone } from "lucide-react";
 import { themeAtom } from "../store/atoms";
 import { HISTORY, ANNOUNCEMENTS, type HistoryStatus } from "../data/mock";
 import {
@@ -862,78 +862,162 @@ export const Dashboard = (): JSX.Element => {
         </div>
       </div>
 
-      {/* 2カラム: 最近の操作 + お知らせ */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* 最近の操作 */}
+      {/* MCPツール呼び出しログ + お知らせ */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_0.4fr]">
+        {/* MCPツール呼び出しログ（LP風フルテーブル） */}
         <div
-          className="rounded-xl p-5"
+          className="overflow-hidden rounded-xl"
           style={{
             backgroundColor: "var(--bg-card)",
             border: "1px solid var(--border)",
             boxShadow: "var(--shadow-card)",
           }}
         >
-          <div className="mb-4 flex items-center justify-between">
-            <span
-              className="text-sm font-medium"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              最近の操作
-            </span>
+          {/* ヘッダー */}
+          <div
+            className="flex items-center justify-between px-5 py-3"
+            style={{ borderBottom: "1px solid var(--border)" }}
+          >
+            <div className="flex items-center gap-2">
+              <Activity
+                className="h-4 w-4"
+                style={{ color: "var(--text-muted)" }}
+              />
+              <span
+                className="text-sm font-medium"
+                style={{ color: "var(--text-primary)" }}
+              >
+                MCPツール呼び出しログ
+              </span>
+            </div>
             <Link
               to="/history"
-              className="flex items-center gap-1 text-[11px] transition-colors hover:opacity-80"
+              className="flex items-center gap-1 text-[10px] transition-colors hover:opacity-80"
               style={{ color: "var(--text-muted)" }}
             >
               すべて見る
               <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
-          <div className="space-y-2">
-            {HISTORY.slice(0, 5).map((item) => {
-              const badge = statusBadge(item.status);
-              return (
-                <div
-                  key={item.id}
-                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-xs"
-                  style={{
-                    backgroundColor: isErrorRow(item.status)
-                      ? "var(--badge-error-bg)"
-                      : "transparent",
-                  }}
+
+          {/* テーブルヘッダー */}
+          <div
+            className="grid grid-cols-[70px_70px_80px_80px_1fr_60px_50px] items-center gap-2 px-5 py-2 text-[10px]"
+            style={{
+              borderBottom: "1px solid var(--border)",
+              color: "var(--text-subtle)",
+            }}
+          >
+            <span>日時</span>
+            <span>ユーザー</span>
+            <span>AIクライアント</span>
+            <span>接続先</span>
+            <span>ツール / アクション</span>
+            <span>ステータス</span>
+            <span className="text-right">応答</span>
+          </div>
+
+          {/* テーブル行 */}
+          {HISTORY.slice(0, 6).map((item) => {
+            const badge = statusBadge(item.status);
+            return (
+              <div
+                key={item.id}
+                className="grid grid-cols-[70px_70px_80px_80px_1fr_60px_50px] items-center gap-2 px-5 py-2.5 text-xs transition-colors"
+                style={{
+                  borderBottom: "1px solid var(--border-subtle)",
+                  backgroundColor: isErrorRow(item.status)
+                    ? "rgba(239,68,68,0.03)"
+                    : "transparent",
+                }}
+              >
+                {/* 日時 */}
+                <span
+                  className="font-mono text-[11px]"
+                  style={{ color: "var(--text-subtle)" }}
                 >
-                  <span
-                    className="w-10 shrink-0 font-mono"
-                    style={{ color: "var(--text-subtle)" }}
-                  >
-                    {item.datetime.split(" ")[1]?.slice(0, 5)}
-                  </span>
-                  <span
-                    className="flex-1 truncate"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {item.tool}
-                    <span
-                      className="mx-1.5"
-                      style={{ color: "var(--text-subtle)" }}
-                    >
-                      &gt;
-                    </span>
-                    {item.operation}
-                  </span>
-                  <span
-                    className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium"
+                  {item.datetime.split(" ")[1]?.slice(0, 8)}
+                </span>
+
+                {/* ユーザー */}
+                <div className="flex items-center gap-1.5">
+                  <div
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-medium"
                     style={{
-                      backgroundColor: badge.bg,
-                      color: badge.text,
+                      backgroundColor:
+                        item.user === "不明"
+                          ? "var(--badge-error-bg)"
+                          : "var(--bg-active)",
+                      color:
+                        item.user === "不明"
+                          ? "var(--badge-error-text)"
+                          : "var(--text-secondary)",
                     }}
                   >
-                    {badge.label}
+                    {item.user.charAt(0)}
+                  </div>
+                  <span style={{ color: "var(--text-secondary)" }}>
+                    {item.user}
                   </span>
                 </div>
-              );
-            })}
-          </div>
+
+                {/* AIクライアント */}
+                <div className="flex items-center gap-1.5">
+                  <img
+                    src={item.aiClient.logo}
+                    alt={item.aiClient.name}
+                    className="h-4 w-4 rounded-sm"
+                  />
+                  <span
+                    className="text-[11px]"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    {item.aiClient.name}
+                  </span>
+                </div>
+
+                {/* 接続先サービス */}
+                <div className="flex items-center gap-1.5">
+                  <img
+                    src={
+                      theme === "dark"
+                        ? item.service.logoDark
+                        : item.service.logoLight
+                    }
+                    alt={item.service.name}
+                    className="h-4 w-4 rounded-sm"
+                  />
+                  <span style={{ color: "var(--text-secondary)" }}>
+                    {item.service.name}
+                  </span>
+                </div>
+
+                {/* ツール / アクション */}
+                <span
+                  className="truncate font-mono text-[11px]"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  {item.operation}
+                </span>
+
+                {/* ステータス */}
+                <span
+                  className="rounded-full px-1.5 py-0.5 text-center text-[9px] font-medium"
+                  style={{ backgroundColor: badge.bg, color: badge.text }}
+                >
+                  {badge.label}
+                </span>
+
+                {/* 応答時間 */}
+                <span
+                  className="text-right font-mono text-[11px]"
+                  style={{ color: "var(--text-subtle)" }}
+                >
+                  {item.latency}
+                </span>
+              </div>
+            );
+          })}
         </div>
 
         {/* お知らせ */}
