@@ -115,21 +115,17 @@ export const Sidebar = (): JSX.Element => {
       {/* ワークスペース */}
       <div className="mb-4 flex items-center justify-between px-3">
         <div className="flex items-center gap-2 overflow-hidden">
-          <div
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold"
-            style={{
-              backgroundColor: "var(--bg-active)",
-              color: "var(--text-primary)",
-            }}
-          >
-            T
-          </div>
+          <img
+            src="/rayven_white.png"
+            alt="RAYVEN"
+            className="h-6 w-6 shrink-0"
+          />
           {isOpen && (
             <span
               className="truncate text-sm font-semibold"
               style={{ color: "var(--text-primary)" }}
             >
-              TUMIKI
+              RAYVEN
             </span>
           )}
         </div>

@@ -1,10 +1,12 @@
 import type { JSX } from "react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useAtomValue } from "jotai";
 import { Activity, Download } from "lucide-react";
+import { themeAtom } from "../store/atoms";
 import { HISTORY, type HistoryStatus } from "../data/mock";
 
-/** ステータスバッジの設定を返す */
+/** ステータスバッジの設定 */
 const statusBadge = (
   status: HistoryStatus,
 ): { bg: string; text: string; label: string } => {
@@ -33,30 +35,26 @@ const statusBadge = (
   return config[status];
 };
 
-/** 行がエラー系かどうか判定 */
+/** エラー行かどうか */
 const isErrorRow = (status: HistoryStatus): boolean =>
   status === "blocked" || status === "error";
 
 /** セレクトの共通スタイル */
 const selectStyle = {
-  borderWidth: 1,
-  borderStyle: "solid" as const,
-  borderColor: "var(--border)",
+  border: "1px solid var(--border)",
   backgroundColor: "var(--bg-card)",
   color: "var(--text-secondary)",
 };
 
 export const HistoryList = (): JSX.Element => {
-  // セレクトフィルタ
+  const theme = useAtomValue(themeAtom);
   const [toolFilter, setToolFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [operationFilter, setOperationFilter] = useState("all");
 
-  // ユニークなツール・操作を取得
   const tools = [...new Set(HISTORY.map((h) => h.tool))];
   const operations = [...new Set(HISTORY.map((h) => h.operation))];
 
-  // フィルタ適用
   const filtered = HISTORY.filter((h) => {
     if (toolFilter !== "all" && h.tool !== toolFilter) return false;
     if (statusFilter !== "all" && h.status !== statusFilter) return false;
@@ -65,7 +63,6 @@ export const HistoryList = (): JSX.Element => {
     return true;
   });
 
-  // サマリー計算
   const total = filtered.length;
   const successCount = filtered.filter((h) => h.status === "success").length;
   const successRate = total > 0 ? Math.round((successCount / total) * 100) : 0;
@@ -90,11 +87,7 @@ export const HistoryList = (): JSX.Element => {
       {/* サマリーカード4つ */}
       <div className="grid grid-cols-4 gap-3">
         {[
-          {
-            label: "総件数",
-            value: total,
-            color: "var(--text-primary)",
-          },
+          { label: "総件数", value: total, color: "var(--text-primary)" },
           {
             label: "成功率",
             value: `${successRate}%`,
@@ -145,9 +138,7 @@ export const HistoryList = (): JSX.Element => {
         {/* フィルタバー */}
         <div
           className="flex items-center justify-between px-5 py-3"
-          style={{
-            borderBottom: "1px solid var(--border)",
-          }}
+          style={{ borderBottom: "1px solid var(--border)" }}
         >
           <div className="flex items-center gap-2">
             <Activity
@@ -158,7 +149,7 @@ export const HistoryList = (): JSX.Element => {
               className="text-sm font-medium"
               style={{ color: "var(--text-primary)" }}
             >
-              操作履歴
+              MCPツール呼び出しログ
             </span>
             <span
               className="ml-1 text-xs"
@@ -167,7 +158,6 @@ export const HistoryList = (): JSX.Element => {
               {total}件
             </span>
           </div>
-
           <div className="flex items-center gap-2">
             <select
               value={toolFilter}
@@ -182,7 +172,6 @@ export const HistoryList = (): JSX.Element => {
                 </option>
               ))}
             </select>
-
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -195,7 +184,6 @@ export const HistoryList = (): JSX.Element => {
               <option value="blocked">ブロック</option>
               <option value="error">エラー</option>
             </select>
-
             <select
               value={operationFilter}
               onChange={(e) => setOperationFilter(e.target.value)}
@@ -209,7 +197,6 @@ export const HistoryList = (): JSX.Element => {
                 </option>
               ))}
             </select>
-
             <button
               type="button"
               className="flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs hover:opacity-80"
@@ -221,120 +208,125 @@ export const HistoryList = (): JSX.Element => {
           </div>
         </div>
 
-        {/* テーブル */}
-        <table className="w-full">
-          <thead>
-            <tr
+        {/* テーブルヘッダー */}
+        <div
+          className="grid grid-cols-[80px_80px_90px_90px_1fr_70px_56px] items-center gap-2 px-5 py-2 text-[10px]"
+          style={{
+            borderBottom: "1px solid var(--border)",
+            color: "var(--text-subtle)",
+          }}
+        >
+          <span>日時</span>
+          <span>ユーザー</span>
+          <span>AIクライアント</span>
+          <span>接続先サービス</span>
+          <span>ツール / アクション</span>
+          <span>ステータス</span>
+          <span className="text-right">応答</span>
+        </div>
+
+        {/* テーブル行 */}
+        {filtered.map((item) => {
+          const badge = statusBadge(item.status);
+          return (
+            <Link
+              key={item.id}
+              to={`/history/${item.id}`}
+              className="grid grid-cols-[80px_80px_90px_90px_1fr_70px_56px] items-center gap-2 px-5 py-2.5 text-xs transition-colors hover:opacity-90"
               style={{
-                borderBottom: "1px solid var(--border)",
-                backgroundColor: "var(--bg-card-hover)",
+                borderBottom: "1px solid var(--border-subtle)",
+                backgroundColor: isErrorRow(item.status)
+                  ? "rgba(239,68,68,0.03)"
+                  : "transparent",
               }}
             >
-              {["日時", "ツール", "操作", "ステータス", "詳細", "応答時間"].map(
-                (label) => (
-                  <th
-                    key={label}
-                    className={`px-4 py-3 text-[11px] font-medium ${label === "応答時間" ? "text-right" : "text-left"}`}
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    {label}
-                  </th>
-                ),
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((item) => {
-              const badge = statusBadge(item.status);
-              return (
-                <tr
-                  key={item.id}
-                  className="transition-colors hover:opacity-90"
+              {/* 日時 */}
+              <span
+                className="font-mono text-[11px]"
+                style={{ color: "var(--text-subtle)" }}
+              >
+                {item.datetime.split(" ")[1]?.slice(0, 8)}
+              </span>
+
+              {/* ユーザー */}
+              <div className="flex items-center gap-1.5">
+                <div
+                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-medium"
                   style={{
-                    borderBottom: "1px solid var(--border-subtle)",
-                    backgroundColor: isErrorRow(item.status)
-                      ? "var(--bg-error-row, rgba(239,68,68,0.03))"
-                      : undefined,
+                    backgroundColor:
+                      item.user === "不明"
+                        ? "var(--badge-error-bg)"
+                        : "var(--bg-active)",
+                    color:
+                      item.user === "不明"
+                        ? "var(--badge-error-text)"
+                        : "var(--text-secondary)",
                   }}
                 >
-                  {/* 日時 */}
-                  <td
-                    className="px-4 py-3 font-mono text-xs"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {item.datetime}
-                  </td>
+                  {item.user.charAt(0)}
+                </div>
+                <span style={{ color: "var(--text-secondary)" }}>
+                  {item.user}
+                </span>
+              </div>
 
-                  {/* ツール */}
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
-                        style={{ backgroundColor: "var(--bg-card-hover)" }}
-                      >
-                        <span
-                          className="text-[10px] font-medium"
-                          style={{ color: "var(--text-secondary)" }}
-                        >
-                          --
-                        </span>
-                      </div>
-                      <span
-                        className="text-xs"
-                        style={{ color: "var(--text-secondary)" }}
-                      >
-                        {item.tool}
-                      </span>
-                    </div>
-                  </td>
+              {/* AIクライアント */}
+              <div className="flex items-center gap-1.5">
+                <img
+                  src={item.aiClient.logo}
+                  alt={item.aiClient.name}
+                  className="h-4 w-4 rounded-sm"
+                />
+                <span
+                  className="text-[11px]"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  {item.aiClient.name}
+                </span>
+              </div>
 
-                  {/* 操作 */}
-                  <td
-                    className="px-4 py-3 font-mono text-xs"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {item.operation}
-                  </td>
+              {/* 接続先サービス */}
+              <div className="flex items-center gap-1.5">
+                <img
+                  src={
+                    theme === "dark"
+                      ? item.service.logoDark
+                      : item.service.logoLight
+                  }
+                  alt={item.service.name}
+                  className="h-4 w-4 rounded-sm"
+                />
+                <span style={{ color: "var(--text-secondary)" }}>
+                  {item.service.name}
+                </span>
+              </div>
 
-                  {/* ステータスバッジ */}
-                  <td className="px-4 py-3">
-                    <span
-                      className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium whitespace-nowrap"
-                      style={{
-                        backgroundColor: badge.bg,
-                        color: badge.text,
-                      }}
-                    >
-                      {badge.label}
-                    </span>
-                  </td>
+              {/* ツール / アクション */}
+              <span
+                className="truncate font-mono text-[11px]"
+                style={{ color: "var(--text-muted)" }}
+              >
+                {item.operation}
+              </span>
 
-                  {/* 詳細リンク */}
-                  <td
-                    className="max-w-[200px] truncate px-4 py-3 text-xs"
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    <Link
-                      to={`/history/${item.id}`}
-                      className="hover:underline"
-                      style={{ color: "var(--text-link, #60a5fa)" }}
-                    >
-                      {item.detail}
-                    </Link>
-                  </td>
+              {/* ステータス */}
+              <span
+                className="rounded-full px-1.5 py-0.5 text-center text-[9px] font-medium"
+                style={{ backgroundColor: badge.bg, color: badge.text }}
+              >
+                {badge.label}
+              </span>
 
-                  {/* 応答時間 */}
-                  <td
-                    className="px-4 py-3 text-right font-mono text-xs"
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    {item.latency}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              {/* 応答時間 */}
+              <span
+                className="text-right font-mono text-[11px]"
+                style={{ color: "var(--text-subtle)" }}
+              >
+                {item.latency}
+              </span>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );
