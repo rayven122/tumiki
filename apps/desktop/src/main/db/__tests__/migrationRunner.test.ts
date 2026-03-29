@@ -47,10 +47,22 @@ const makeDirent = (name: string, isDir: boolean): Dirent =>
   }) as unknown as Dirent;
 
 /** モックDBクライアント生成 */
-const createMockDb = () => ({
-  $executeRawUnsafe: vi.fn().mockResolvedValue(0),
-  $queryRaw: vi.fn().mockResolvedValue([]),
-});
+const createMockDb = () => {
+  const txMock = {
+    $executeRawUnsafe: vi.fn().mockResolvedValue(0),
+  };
+  return {
+    $executeRawUnsafe: vi.fn().mockResolvedValue(0),
+    $queryRaw: vi.fn().mockResolvedValue([]),
+    $transaction: vi.fn(
+      async (fn: (tx: typeof txMock) => Promise<void>) => {
+        await fn(txMock);
+      },
+    ),
+    /** トランザクション内のモック */
+    tx: txMock,
+  };
+};
 
 // --- テスト ---
 
@@ -95,11 +107,12 @@ describe("runMigrations", () => {
 
     await runMigrations(mockDb as never);
 
-    // CREATE TABLE の1回だけ
+    // CREATE TABLE の1回だけ（トランザクションは呼ばれない）
     expect(mockDb.$executeRawUnsafe).toHaveBeenCalledTimes(1);
+    expect(mockDb.$transaction).not.toHaveBeenCalled();
   });
 
-  test("未適用のマイグレーションを順番に適用する", async () => {
+  test("未適用のマイグレーションをトランザクション内で順番に適用する", async () => {
     mockReaddirSync.mockReturnValue([
       makeDirent("20240101_init", true),
       makeDirent("20240102_add_users", true),
@@ -113,19 +126,22 @@ describe("runMigrations", () => {
 
     await runMigrations(mockDb as never);
 
-    const calls = mockDb.$executeRawUnsafe.mock.calls;
-    // 1: CREATE TABLE _prisma_migrations
-    // 2: CREATE TABLE foo (id TEXT)
-    // 3: INSERT (20240101_init)
-    // 4: CREATE TABLE bar (id TEXT)
-    // 5: INSERT (20240102_add_users)
-    expect(calls).toHaveLength(5);
-    expect(calls[1]?.[0]).toContain("CREATE TABLE foo");
-    expect(calls[2]?.[0]).toContain("INSERT INTO");
-    expect(calls[2]?.[1]).toBe("uuid-1");
-    expect(calls[2]?.[2]).toBe("20240101_init");
-    expect(calls[3]?.[0]).toContain("CREATE TABLE bar");
-    expect(calls[4]?.[2]).toBe("20240102_add_users");
+    // $transactionが2回呼ばれる（各マイグレーションごと）
+    expect(mockDb.$transaction).toHaveBeenCalledTimes(2);
+
+    // tx内でSQL + INSERTが実行される
+    const txCalls = mockDb.tx.$executeRawUnsafe.mock.calls;
+    // 1: CREATE TABLE foo
+    // 2: INSERT (20240101_init)
+    // 3: CREATE TABLE bar
+    // 4: INSERT (20240102_add_users)
+    expect(txCalls).toHaveLength(4);
+    expect(txCalls[0]?.[0]).toContain("CREATE TABLE foo");
+    expect(txCalls[1]?.[0]).toContain("INSERT INTO");
+    expect(txCalls[1]?.[1]).toBe("uuid-1");
+    expect(txCalls[1]?.[2]).toBe("20240101_init");
+    expect(txCalls[2]?.[0]).toContain("CREATE TABLE bar");
+    expect(txCalls[3]?.[2]).toBe("20240102_add_users");
   });
 
   test("適用済みのマイグレーションをスキップする", async () => {
@@ -141,9 +157,9 @@ describe("runMigrations", () => {
 
     await runMigrations(mockDb as never);
 
-    // CREATE TABLE _prisma_migrations + 1ステートメント + 1 INSERT = 3
-    expect(mockDb.$executeRawUnsafe).toHaveBeenCalledTimes(3);
-    // readFileSyncは1回だけ（スキップされた分は読まない）
+    // トランザクションは1回だけ（スキップ分は呼ばれない）
+    expect(mockDb.$transaction).toHaveBeenCalledTimes(1);
+    // readFileSyncは1回だけ
     expect(mockReadFileSync).toHaveBeenCalledTimes(1);
   });
 
@@ -157,8 +173,10 @@ describe("runMigrations", () => {
 
     await runMigrations(mockDb as never);
 
-    // CREATE TABLE _prisma_migrations + 1ステートメント + 1 INSERT = 3
-    expect(mockDb.$executeRawUnsafe).toHaveBeenCalledTimes(3);
+    // トランザクションは1回だけ
+    expect(mockDb.$transaction).toHaveBeenCalledTimes(1);
+    // tx内: 1ステートメント + 1 INSERT = 2
+    expect(mockDb.tx.$executeRawUnsafe).toHaveBeenCalledTimes(2);
   });
 
   test("コメント行付きのSQLを正しく分割して実行する", async () => {
@@ -177,16 +195,15 @@ describe("runMigrations", () => {
 
     await runMigrations(mockDb as never);
 
-    const calls = mockDb.$executeRawUnsafe.mock.calls;
-    // 1: CREATE TABLE _prisma_migrations
-    // 2: CREATE TABLE foo (...)
-    // 3: CREATE INDEX idx ON foo(id)
-    // 4: INSERT INTO _prisma_migrations
-    expect(calls).toHaveLength(4);
-    expect(calls[1]?.[0]).toContain("CREATE TABLE foo");
-    expect((calls[1]?.[0] as string)).not.toContain("--");
-    expect(calls[2]?.[0]).toContain("CREATE INDEX idx ON foo(id)");
-    expect((calls[2]?.[0] as string)).not.toContain("--");
+    const txCalls = mockDb.tx.$executeRawUnsafe.mock.calls;
+    // 1: CREATE TABLE foo (...)
+    // 2: CREATE INDEX idx ON foo(id)
+    // 3: INSERT INTO _prisma_migrations
+    expect(txCalls).toHaveLength(3);
+    expect(txCalls[0]?.[0]).toContain("CREATE TABLE foo");
+    expect((txCalls[0]?.[0] as string)).not.toContain("--");
+    expect(txCalls[1]?.[0]).toContain("CREATE INDEX idx ON foo(id)");
+    expect((txCalls[1]?.[0] as string)).not.toContain("--");
   });
 
   test("複数ステートメントを含むSQLを個別に実行する", async () => {
@@ -198,14 +215,13 @@ describe("runMigrations", () => {
 
     await runMigrations(mockDb as never);
 
-    const calls = mockDb.$executeRawUnsafe.mock.calls;
-    // 1: CREATE TABLE _prisma_migrations
-    // 2: CREATE TABLE a
-    // 3: CREATE TABLE b
-    // 4: INSERT
-    expect(calls).toHaveLength(4);
-    expect(calls[1]?.[0]).toContain("CREATE TABLE a");
-    expect(calls[2]?.[0]).toContain("CREATE TABLE b");
+    const txCalls = mockDb.tx.$executeRawUnsafe.mock.calls;
+    // 1: CREATE TABLE a
+    // 2: CREATE TABLE b
+    // 3: INSERT
+    expect(txCalls).toHaveLength(3);
+    expect(txCalls[0]?.[0]).toContain("CREATE TABLE a");
+    expect(txCalls[1]?.[0]).toContain("CREATE TABLE b");
   });
 
   test("空のSQLステートメントは除去される", async () => {
@@ -218,11 +234,10 @@ describe("runMigrations", () => {
 
     await runMigrations(mockDb as never);
 
-    const calls = mockDb.$executeRawUnsafe.mock.calls;
-    // 1: CREATE TABLE _prisma_migrations
-    // 2: CREATE TABLE foo
-    // 3: INSERT
-    expect(calls).toHaveLength(3);
+    const txCalls = mockDb.tx.$executeRawUnsafe.mock.calls;
+    // 1: CREATE TABLE foo
+    // 2: INSERT
+    expect(txCalls).toHaveLength(2);
   });
 
   test("コメントのみのステートメントは除去される", async () => {
@@ -234,11 +249,10 @@ describe("runMigrations", () => {
 
     await runMigrations(mockDb as never);
 
-    const calls = mockDb.$executeRawUnsafe.mock.calls;
-    // 1: CREATE TABLE _prisma_migrations
-    // 2: CREATE TABLE foo
-    // 3: INSERT
-    expect(calls).toHaveLength(3);
+    const txCalls = mockDb.tx.$executeRawUnsafe.mock.calls;
+    // 1: CREATE TABLE foo
+    // 2: INSERT
+    expect(txCalls).toHaveLength(2);
   });
 
   test("マイグレーションディレクトリはソート順で処理される", async () => {
@@ -252,22 +266,23 @@ describe("runMigrations", () => {
 
     await runMigrations(mockDb as never);
 
-    const insertCalls = mockDb.$executeRawUnsafe.mock.calls.filter(
-      (c: unknown[]) => (c[0] as string).includes("INSERT INTO"),
+    const txCalls = mockDb.tx.$executeRawUnsafe.mock.calls;
+    const insertCalls = txCalls.filter((c: unknown[]) =>
+      (c[0] as string).includes("INSERT INTO"),
     );
     expect(insertCalls[0]?.[2]).toBe("20240101_first");
     expect(insertCalls[1]?.[2]).toBe("20240201_second");
   });
 
-  test("$executeRawUnsafeが失敗した場合エラーをスローする", async () => {
+  test("トランザクション内でSQL実行が失敗した場合エラーをスローする", async () => {
     mockReaddirSync.mockReturnValue([makeDirent("20240101_init", true)]);
     mockReadFileSync.mockReturnValue("CREATE TABLE foo (id TEXT);");
     mockRandomUUID.mockReturnValue("uuid-1");
 
-    // 最初のCREATE TABLE _prisma_migrationsは成功、2回目でエラー
-    mockDb.$executeRawUnsafe
-      .mockResolvedValueOnce(0)
-      .mockRejectedValueOnce(new Error("SQL execution failed"));
+    // tx内のSQL実行でエラー
+    mockDb.tx.$executeRawUnsafe.mockRejectedValueOnce(
+      new Error("SQL execution failed"),
+    );
 
     await expect(runMigrations(mockDb as never)).rejects.toThrow(
       "SQL execution failed",
@@ -302,7 +317,7 @@ describe("getMigrationsDir", () => {
     await runMigrations(mockDb as never);
 
     // readdirSyncに渡されたパスを確認
-    const dirPath = mockReaddirSync.mock.calls[0]?.[0] as string;
+    const dirPath = (mockReaddirSync.mock.calls[0] as unknown as [string])[0];
     expect(dirPath).toBe("/test/app/prisma/migrations");
     expect(dirPath).not.toContain("app.asar.unpacked");
   });
@@ -316,7 +331,7 @@ describe("getMigrationsDir", () => {
     const mockDb = createMockDb();
     await runMigrations(mockDb as never);
 
-    const dirPath = mockReaddirSync.mock.calls[0]?.[0] as string;
+    const dirPath = (mockReaddirSync.mock.calls[0] as unknown as [string])[0];
     expect(dirPath).toBe("/path/to/app.asar.unpacked/prisma/migrations");
   });
 });

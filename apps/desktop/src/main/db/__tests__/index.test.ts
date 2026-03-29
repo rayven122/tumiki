@@ -8,12 +8,16 @@ vi.mock("electron", () => ({
       }
       return "/test";
     },
+    getAppPath: () => "/test/app",
+    isPackaged: false,
   },
 }));
 
 vi.mock("fs", () => ({
   existsSync: () => true,
   mkdirSync: () => undefined,
+  readdirSync: () => [],
+  readFileSync: () => "",
 }));
 
 vi.mock("../../../../prisma/generated/client", () => {
@@ -23,6 +27,8 @@ vi.mock("../../../../prisma/generated/client", () => {
     $disconnect: ReturnType<typeof vi.fn>;
     $queryRaw: ReturnType<typeof vi.fn>;
     $executeRaw: ReturnType<typeof vi.fn>;
+    $executeRawUnsafe: ReturnType<typeof vi.fn>;
+    $transaction: ReturnType<typeof vi.fn>;
   } | null = null;
 
   return {
@@ -33,6 +39,11 @@ vi.mock("../../../../prisma/generated/client", () => {
           $disconnect: vi.fn().mockResolvedValue(undefined),
           $queryRaw: vi.fn().mockResolvedValue([{ 1: 1 }]),
           $executeRaw: vi.fn().mockResolvedValue(0),
+          $executeRawUnsafe: vi.fn().mockResolvedValue(0),
+          $transaction: vi.fn(async (fn: (tx: unknown) => Promise<void>) => {
+            // トランザクション内でも同じモックインスタンスを使用
+            await fn(instance);
+          }),
         };
       }
       return instance;
@@ -65,6 +76,8 @@ let mockPrismaClient: {
   $disconnect: ReturnType<typeof vi.fn>;
   $queryRaw: ReturnType<typeof vi.fn>;
   $executeRaw: ReturnType<typeof vi.fn>;
+  $executeRawUnsafe: ReturnType<typeof vi.fn>;
+  $transaction: ReturnType<typeof vi.fn>;
 };
 
 /**
@@ -93,6 +106,8 @@ const setupBeforeEach = async () => {
   mockPrismaClient.$disconnect.mockClear();
   mockPrismaClient.$queryRaw.mockClear();
   mockPrismaClient.$executeRaw.mockClear();
+  mockPrismaClient.$executeRawUnsafe.mockClear();
+  mockPrismaClient.$transaction.mockClear();
 
   mockPrismaClient.$connect.mockResolvedValue(undefined);
   mockPrismaClient.$disconnect.mockResolvedValue(undefined);
@@ -108,6 +123,12 @@ const setupBeforeEach = async () => {
     { name: "updatedAt" },
   ]);
   mockPrismaClient.$executeRaw.mockResolvedValue(0);
+  mockPrismaClient.$executeRawUnsafe.mockResolvedValue(0);
+  mockPrismaClient.$transaction.mockImplementation(
+    async (fn: (tx: unknown) => Promise<void>) => {
+      await fn(mockPrismaClient);
+    },
+  );
 };
 
 describe("getDb", () => {
@@ -225,16 +246,16 @@ describe("initializeDb", () => {
     await initializeDb();
 
     expect(mockPrismaClient.$connect).toHaveBeenCalled();
-    expect(mockPrismaClient.$executeRaw).toHaveBeenCalled();
+    // runMigrationsがCREATE TABLE _prisma_migrationsを実行
+    expect(mockPrismaClient.$executeRawUnsafe).toHaveBeenCalled();
     expect(mockPrismaClient.$queryRaw).toHaveBeenCalled();
   });
 
-  test("初期化時にスキーマを適用する", async () => {
+  test("初期化時にマイグレーションを適用する", async () => {
     await initializeDb();
 
-    // CREATE TABLE IF NOT EXISTS（2テーブル） + CREATE INDEX（2回） = 4回
-    // idTokenカラムが既に存在する場合はALTER TABLEは実行されない
-    expect(mockPrismaClient.$executeRaw).toHaveBeenCalledTimes(4);
+    // runMigrationsがCREATE TABLE _prisma_migrationsを実行（マイグレーションディレクトリは空）
+    expect(mockPrismaClient.$executeRawUnsafe).toHaveBeenCalledTimes(1);
   });
 
   test("初期化時に接続確認クエリを実行する", async () => {
@@ -249,9 +270,9 @@ describe("initializeDb", () => {
     await expect(initializeDb()).rejects.toThrow();
   });
 
-  test("スキーマ適用失敗時はエラーをスロー", async () => {
-    mockPrismaClient.$executeRaw.mockRejectedValue(
-      new Error("Schema migration failed"),
+  test("マイグレーション適用失敗時はエラーをスロー", async () => {
+    mockPrismaClient.$executeRawUnsafe.mockRejectedValue(
+      new Error("Migration failed"),
     );
 
     await expect(initializeDb()).rejects.toThrow();

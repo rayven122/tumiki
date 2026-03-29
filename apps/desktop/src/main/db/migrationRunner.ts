@@ -78,15 +78,18 @@ export const runMigrations = async (db: PrismaClient): Promise<void> => {
 
     logger.info(`Applying migration: ${name}`);
 
-    for (const statement of splitSql(sql)) {
-      await db.$executeRawUnsafe(statement);
-    }
+    // SQL実行と適用記録をトランザクションでアトミックに実行
+    await db.$transaction(async (tx) => {
+      for (const statement of splitSql(sql)) {
+        await tx.$executeRawUnsafe(statement);
+      }
 
-    await db.$executeRawUnsafe(
-      `INSERT INTO "_prisma_migrations" (id, migration_name) VALUES (?, ?)`,
-      randomUUID(),
-      name,
-    );
+      await tx.$executeRawUnsafe(
+        `INSERT INTO "_prisma_migrations" (id, migration_name) VALUES (?, ?)`,
+        randomUUID(),
+        name,
+      );
+    });
 
     logger.info(`Migration applied: ${name}`);
   }
