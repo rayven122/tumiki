@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { isFreeEmail } from "@/lib/contact-validation";
+
 const COMPANY_SIZES = [
   "1〜50名",
   "51〜200名",
@@ -20,34 +22,14 @@ const INTERESTS = [
   "その他",
 ] as const;
 
-const FREE_EMAIL_DOMAINS = [
-  "gmail.com",
-  "yahoo.co.jp",
-  "yahoo.com",
-  "hotmail.com",
-  "outlook.com",
-  "outlook.jp",
-  "icloud.com",
-  "me.com",
-  "mac.com",
-  "aol.com",
-  "protonmail.com",
-  "zoho.com",
-  "ymail.com",
-  "live.com",
-  "live.jp",
-  "msn.com",
-  "googlemail.com",
-] as const;
-
 const ContactPage = () => {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailError, setEmailError] = useState("");
+  const [submitError, setSubmitError] = useState("");
 
   const validateEmail = (email: string) => {
-    const domain = email.split("@")[1]?.toLowerCase();
-    if (domain && FREE_EMAIL_DOMAINS.some((d) => domain === d)) {
+    if (isFreeEmail(email)) {
       setEmailError("法人メールアドレスをご入力ください");
       return false;
     }
@@ -65,6 +47,7 @@ const ContactPage = () => {
     if (!validateEmail(email)) return;
 
     setIsSubmitting(true);
+    setSubmitError("");
 
     // メール送信（実装時にAPI routeに差し替え）
     const body = {
@@ -78,13 +61,21 @@ const ContactPage = () => {
     };
 
     try {
-      await fetch("/api/contact", {
+      const response = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+
+      if (!response.ok) {
+        setSubmitError("送信に失敗しました。時間をおいて再度お試しください。");
+        setIsSubmitting(false);
+        return;
+      }
     } catch {
-      // エラー時もthanksページへ（フォールバック）
+      setSubmitError("送信に失敗しました。時間をおいて再度お試しください。");
+      setIsSubmitting(false);
+      return;
     }
 
     router.push("/contact/thanks");
@@ -248,6 +239,13 @@ const ContactPage = () => {
               className="w-full resize-none rounded-lg border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white placeholder-zinc-600 transition outline-none focus:border-white/20"
             />
           </div>
+
+          {/* 送信エラー */}
+          {submitError && (
+            <p className="rounded-lg border border-red-400/20 bg-red-400/5 px-4 py-3 text-center text-sm text-red-400">
+              {submitError}
+            </p>
+          )}
 
           {/* 送信ボタン */}
           <button

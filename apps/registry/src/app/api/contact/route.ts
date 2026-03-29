@@ -1,9 +1,22 @@
 import { NextResponse } from "next/server";
 
+import { contactFormSchema } from "@/lib/contact-validation";
+
 const SLACK_WEBHOOK_URL = process.env.SLACK_CONTACT_WEBHOOK_URL;
 
 export const POST = async (request: Request) => {
-  const body = await request.json();
+  // リクエストボディのバリデーション
+  const rawBody: unknown = await request.json();
+  const parsed = contactFormSchema.safeParse(rawBody);
+
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "入力内容に不備があります", details: parsed.error.flatten() },
+      { status: 400 },
+    );
+  }
+
+  const body = parsed.data;
 
   const slackMessage = {
     blocks: [
@@ -18,9 +31,9 @@ export const POST = async (request: Request) => {
       {
         type: "section",
         fields: [
-          { type: "mrkdwn", text: `*氏名*\n${body.name ?? "未入力"}` },
-          { type: "mrkdwn", text: `*メール*\n${body.email ?? "未入力"}` },
-          { type: "mrkdwn", text: `*会社名*\n${body.company ?? "未入力"}` },
+          { type: "mrkdwn", text: `*氏名*\n${body.name}` },
+          { type: "mrkdwn", text: `*メール*\n${body.email}` },
+          { type: "mrkdwn", text: `*会社名*\n${body.company}` },
           {
             type: "mrkdwn",
             text: `*従業員数*\n${body.companySize ?? "未入力"}`,
