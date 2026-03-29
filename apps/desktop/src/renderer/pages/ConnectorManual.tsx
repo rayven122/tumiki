@@ -11,15 +11,42 @@ export const ConnectorManual = (): JSX.Element => {
   const approvedTools = TOOLS.filter((t) => t.approved);
   const [connectorName, setConnectorName] = useState("");
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
+  const [selectedOps, setSelectedOps] = useState<Record<string, string[]>>({});
   const [descriptions, setDescriptions] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
   const [testing, setTesting] = useState(false);
 
   /** ツール選択のトグル */
   const toggleTool = (id: string) => {
-    setSelectedTools((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+    if (selectedTools.includes(id)) {
+      setSelectedTools((prev) => prev.filter((x) => x !== id));
+      setSelectedOps((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    } else {
+      setSelectedTools((prev) => [...prev, id]);
+      // 全オペレーションをデフォルト選択
+      const tool = TOOLS.find((t) => t.id === id);
+      if (tool) {
+        setSelectedOps((prev) => ({
+          ...prev,
+          [id]: tool.operations.filter((o) => o.allowed).map((o) => o.name),
+        }));
+      }
+    }
+  };
+
+  /** オペレーション選択のトグル */
+  const toggleOp = (toolId: string, opName: string) => {
+    setSelectedOps((prev) => {
+      const current = prev[toolId] ?? [];
+      const next = current.includes(opName)
+        ? current.filter((x) => x !== opName)
+        : [...current, opName];
+      return { ...prev, [toolId]: next };
+    });
   };
 
   /** Description更新 */
@@ -122,7 +149,7 @@ export const ConnectorManual = (): JSX.Element => {
           </div>
         </div>
 
-        {/* 選択したツールのDescription編集 */}
+        {/* 選択したツールのオペレーション選択 + Description編集 */}
         {selectedTools.length > 0 && (
           <div
             className="mb-5"
@@ -132,19 +159,21 @@ export const ConnectorManual = (): JSX.Element => {
               className="mb-3 block text-xs"
               style={{ color: "var(--text-muted)" }}
             >
-              Description 上書き（ツールごと）
+              ツール設定（オペレーション選択 + Description上書き）
             </label>
             <div className="space-y-3">
               {selectedTools.map((id) => {
                 const tool = TOOLS.find((t) => t.id === id);
                 if (!tool) return null;
+                const ops = selectedOps[id] ?? [];
                 return (
                   <div
                     key={id}
                     className="rounded-lg p-3"
                     style={{ backgroundColor: "var(--bg-card-hover)" }}
                   >
-                    <div className="mb-2 flex items-center gap-2">
+                    {/* ツール名 */}
+                    <div className="mb-3 flex items-center gap-2">
                       <img
                         src={theme === "dark" ? tool.logoDark : tool.logoLight}
                         alt={tool.name}
@@ -156,7 +185,77 @@ export const ConnectorManual = (): JSX.Element => {
                       >
                         {tool.name}
                       </span>
+                      <span
+                        className="text-[9px]"
+                        style={{ color: "var(--text-subtle)" }}
+                      >
+                        {ops.length} / {tool.operations.length} ツール選択中
+                      </span>
                     </div>
+
+                    {/* オペレーション選択 */}
+                    <div className="mb-3">
+                      <span
+                        className="mb-1.5 block text-[9px]"
+                        style={{ color: "var(--text-subtle)" }}
+                      >
+                        使用するツール（オペレーション）
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {tool.operations.map((op) => {
+                          const isSelected = ops.includes(op.name);
+                          return (
+                            <button
+                              key={op.name}
+                              onClick={() => toggleOp(id, op.name)}
+                              className="rounded px-2 py-1 font-mono text-[9px] transition-colors"
+                              style={{
+                                backgroundColor: isSelected
+                                  ? "var(--bg-active)"
+                                  : "var(--bg-input)",
+                                color: isSelected
+                                  ? "var(--text-primary)"
+                                  : "var(--text-subtle)",
+                                border: isSelected
+                                  ? "1px solid rgba(52,211,153,0.3)"
+                                  : "1px solid transparent",
+                              }}
+                              title={op.description}
+                            >
+                              {op.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {/* 選択中オペレーションの説明 */}
+                      {ops.length > 0 && (
+                        <div className="mt-2 space-y-0.5">
+                          {ops.map((opName) => {
+                            const op = tool.operations.find(
+                              (o) => o.name === opName,
+                            );
+                            return op ? (
+                              <div
+                                key={opName}
+                                className="flex items-center gap-2 text-[9px]"
+                              >
+                                <span className="h-1 w-1 shrink-0 rounded-full bg-emerald-400" />
+                                <span
+                                  className="font-mono"
+                                  style={{ color: "var(--text-muted)" }}
+                                >
+                                  {op.name}
+                                </span>
+                                <span style={{ color: "var(--text-subtle)" }}>
+                                  — {op.description}
+                                </span>
+                              </div>
+                            ) : null;
+                          })}
+                        </div>
+                      )}
+                    </div>
+
                     {/* 元のDescription */}
                     <div
                       className="mb-2 rounded-md px-2.5 py-1.5"
@@ -175,6 +274,7 @@ export const ConnectorManual = (): JSX.Element => {
                         {tool.description}
                       </p>
                     </div>
+
                     {/* カスタムDescription */}
                     <div
                       className="rounded-md px-2.5 py-1.5"
