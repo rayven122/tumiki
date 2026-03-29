@@ -17,6 +17,7 @@ import {
   Server,
   Activity,
   ClipboardCheck,
+  Sparkles,
 } from "lucide-react";
 import { themeAtom, sidebarOpenAtom } from "../store/atoms";
 
@@ -174,6 +175,31 @@ export const Sidebar = (): JSX.Element => {
       {/* メインナビ */}
       <nav className="flex flex-1 flex-col px-2">
         <div className="space-y-0.5">{mainNav.map(renderLink)}</div>
+
+        {/* カスタムコネクタ */}
+        <div
+          className="mt-2 space-y-0.5 pt-2"
+          style={{ borderTop: "1px solid var(--border)" }}
+        >
+          {isOpen && (
+            <div
+              className="px-3 pt-1 pb-1 text-[10px] font-medium tracking-wider uppercase"
+              style={{ color: "var(--text-subtle)" }}
+            >
+              カスタムコネクタ
+            </div>
+          )}
+          {renderLink({
+            path: "/tools/connector/auto",
+            label: "AIで自動作成",
+            icon: <Sparkles size={18} />,
+          })}
+          {renderLink({
+            path: "/tools/connector/manual",
+            label: "マニュアル作成",
+            icon: <Wrench size={18} />,
+          })}
+        </div>
 
         {/* 管理セクション */}
         <div

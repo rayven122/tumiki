@@ -2,7 +2,7 @@ import type { JSX } from "react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAtomValue } from "jotai";
-import { Search, ArrowRight, Sparkles, Wrench } from "lucide-react";
+import { Search, ArrowRight } from "lucide-react";
 import { themeAtom } from "../store/atoms";
 import { TOOLS, CATEGORIES } from "../data/mock";
 import type { ToolStatus } from "../data/mock";
@@ -75,14 +75,26 @@ export const MyTools = (): JSX.Element => {
               {filteredTools.length}件表示
             </span>
           </div>
-          <Link
-            to="/tools/catalog"
-            className="flex items-center gap-1 text-xs transition-opacity hover:opacity-80"
-            style={{ color: "var(--text-muted)" }}
-          >
-            カタログを見る
-            <ArrowRight size={12} />
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              to="/tools/connector/auto"
+              className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-90"
+              style={{
+                backgroundColor: "var(--btn-primary-bg)",
+                color: "var(--btn-primary-text)",
+              }}
+            >
+              + 作成
+            </Link>
+            <Link
+              to="/tools/catalog"
+              className="flex items-center gap-1 text-xs transition-opacity hover:opacity-80"
+              style={{ color: "var(--text-muted)" }}
+            >
+              カタログ
+              <ArrowRight size={12} />
+            </Link>
+          </div>
         </div>
 
         {/* フィルタバー */}
@@ -280,101 +292,6 @@ export const MyTools = (): JSX.Element => {
             条件に一致するツールが見つかりません
           </div>
         )}
-      </div>
-
-      {/* カスタムコネクタ作成 */}
-      <div
-        className="mt-4 rounded-xl p-5"
-        style={{
-          backgroundColor: "var(--bg-card)",
-          border: "1px solid var(--border)",
-          boxShadow: "var(--shadow-card)",
-        }}
-      >
-        <h2
-          className="text-sm font-medium"
-          style={{ color: "var(--text-primary)" }}
-        >
-          カスタムコネクタ作成
-        </h2>
-        <p className="mt-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
-          接続先ツールを組み合わせて、業務に最適化されたカスタムコネクタを作成できます
-        </p>
-
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          {/* オートモード */}
-          <Link
-            to="/tools/connector/auto"
-            className="rounded-xl p-4 transition-all hover:-translate-y-0.5"
-            style={{
-              border: "1px solid rgba(52,211,153,0.2)",
-              backgroundColor: "var(--bg-card)",
-            }}
-          >
-            <div
-              className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg"
-              style={{ backgroundColor: "rgba(52,211,153,0.1)" }}
-            >
-              <Sparkles
-                size={20}
-                style={{ color: "var(--badge-success-text)" }}
-              />
-            </div>
-            <div
-              className="text-sm font-medium"
-              style={{ color: "var(--text-primary)" }}
-            >
-              AIで自動作成
-            </div>
-            <p
-              className="mt-1 text-[10px] leading-relaxed"
-              style={{ color: "var(--text-muted)" }}
-            >
-              自動化したい業務を伝えるだけで、AIが必要なツールを選定し、最適なDescriptionを自動生成します
-            </p>
-            <span
-              className="mt-3 inline-flex items-center gap-1 text-[10px]"
-              style={{ color: "var(--badge-success-text)" }}
-            >
-              おすすめ <ArrowRight size={10} />
-            </span>
-          </Link>
-
-          {/* マニュアルモード */}
-          <Link
-            to="/tools/connector/manual"
-            className="rounded-xl p-4 transition-all hover:-translate-y-0.5"
-            style={{
-              border: "1px solid var(--border)",
-              backgroundColor: "var(--bg-card)",
-            }}
-          >
-            <div
-              className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg"
-              style={{ backgroundColor: "var(--bg-active)" }}
-            >
-              <Wrench size={20} style={{ color: "var(--text-muted)" }} />
-            </div>
-            <div
-              className="text-sm font-medium"
-              style={{ color: "var(--text-primary)" }}
-            >
-              マニュアル作成
-            </div>
-            <p
-              className="mt-1 text-[10px] leading-relaxed"
-              style={{ color: "var(--text-muted)" }}
-            >
-              ツールを手動で選択し、Descriptionを自分で編集してカスタムコネクタを作成します
-            </p>
-            <span
-              className="mt-3 inline-flex items-center gap-1 text-[10px]"
-              style={{ color: "var(--text-muted)" }}
-            >
-              詳細設定向け <ArrowRight size={10} />
-            </span>
-          </Link>
-        </div>
       </div>
     </div>
   );
