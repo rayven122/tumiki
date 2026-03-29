@@ -3,8 +3,8 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAtomValue } from "jotai";
 import { Activity, Download } from "lucide-react";
-import { themeAtom } from "../store/atoms";
-import { HISTORY, type HistoryStatus } from "../data/mock";
+import { themeAtom } from "../../store/atoms";
+import { HISTORY, type HistoryStatus } from "../../data/mock";
 
 /** ステータスバッジの設定 */
 const statusBadge = (
@@ -46,7 +46,7 @@ const selectStyle = {
   color: "var(--text-secondary)",
 };
 
-export const HistoryList = (): JSX.Element => {
+export const AdminHistory = (): JSX.Element => {
   const theme = useAtomValue(themeAtom);
   const [toolFilter, setToolFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -77,10 +77,10 @@ export const HistoryList = (): JSX.Element => {
           className="text-lg font-semibold"
           style={{ color: "var(--text-primary)" }}
         >
-          操作履歴
+          監査ログ
         </h1>
         <p className="mt-1 text-xs" style={{ color: "var(--text-secondary)" }}>
-          あなたのAIエージェント操作の記録
+          全ユーザーのAIエージェント操作の記録
         </p>
       </div>
 
@@ -210,13 +210,14 @@ export const HistoryList = (): JSX.Element => {
 
         {/* テーブルヘッダー */}
         <div
-          className="grid grid-cols-[80px_90px_90px_1fr_70px_56px] items-center gap-2 px-5 py-2 text-[10px]"
+          className="grid grid-cols-[80px_80px_90px_90px_1fr_70px_56px] items-center gap-2 px-5 py-2 text-[10px]"
           style={{
             borderBottom: "1px solid var(--border)",
             color: "var(--text-subtle)",
           }}
         >
           <span>日時</span>
+          <span>ユーザー</span>
           <span>AIクライアント</span>
           <span>接続先サービス</span>
           <span>ツール / アクション</span>
@@ -230,8 +231,8 @@ export const HistoryList = (): JSX.Element => {
           return (
             <Link
               key={item.id}
-              to={`/history/${item.id}`}
-              className="grid grid-cols-[80px_90px_90px_1fr_70px_56px] items-center gap-2 px-5 py-2.5 text-xs transition-colors hover:opacity-90"
+              to={`/history/${item.id}`} /* 詳細は共通の履歴詳細を使用 */
+              className="grid grid-cols-[80px_80px_90px_90px_1fr_70px_56px] items-center gap-2 px-5 py-2.5 text-xs transition-colors hover:opacity-90"
               style={{
                 borderBottom: "1px solid var(--border-subtle)",
                 backgroundColor: isErrorRow(item.status)
@@ -246,6 +247,28 @@ export const HistoryList = (): JSX.Element => {
               >
                 {item.datetime.split(" ")[1]?.slice(0, 8)}
               </span>
+
+              {/* ユーザー */}
+              <div className="flex items-center gap-1.5">
+                <div
+                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-medium"
+                  style={{
+                    backgroundColor:
+                      item.user === "不明"
+                        ? "var(--badge-error-bg)"
+                        : "var(--bg-active)",
+                    color:
+                      item.user === "不明"
+                        ? "var(--badge-error-text)"
+                        : "var(--text-secondary)",
+                  }}
+                >
+                  {item.user.charAt(0)}
+                </div>
+                <span style={{ color: "var(--text-secondary)" }}>
+                  {item.user}
+                </span>
+              </div>
 
               {/* AIクライアント */}
               <div className="flex items-center gap-1.5">

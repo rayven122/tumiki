@@ -3,8 +3,8 @@ import type { JSX } from "react";
 import { Link } from "react-router-dom";
 import { useAtomValue } from "jotai";
 import { Activity, ArrowRight, Megaphone } from "lucide-react";
-import { themeAtom } from "../store/atoms";
-import { HISTORY, ANNOUNCEMENTS, type HistoryStatus } from "../data/mock";
+import { themeAtom } from "../../store/atoms";
+import { HISTORY, ANNOUNCEMENTS, type HistoryStatus } from "../../data/mock";
 import {
   Area,
   AreaChart,
@@ -469,7 +469,7 @@ const isErrorRow = (status: HistoryStatus): boolean =>
 
 /* ---------- メインコンポーネント ---------- */
 
-export const Dashboard = (): JSX.Element => {
+export const AdminDashboard = (): JSX.Element => {
   const [period, setPeriod] = useState<Period>("24h");
   const [activeAi, setActiveAi] = useState<string | null>(null);
   const theme = useAtomValue(themeAtom);
@@ -891,7 +891,7 @@ export const Dashboard = (): JSX.Element => {
               </span>
             </div>
             <Link
-              to="/history"
+              to="/admin/history"
               className="flex items-center gap-1 text-[10px] transition-colors hover:opacity-80"
               style={{ color: "var(--text-muted)" }}
             >
@@ -902,13 +902,14 @@ export const Dashboard = (): JSX.Element => {
 
           {/* テーブルヘッダー */}
           <div
-            className="grid grid-cols-[70px_80px_80px_1fr_60px_50px] items-center gap-2 px-5 py-2 text-[10px]"
+            className="grid grid-cols-[70px_70px_80px_80px_1fr_60px_50px] items-center gap-2 px-5 py-2 text-[10px]"
             style={{
               borderBottom: "1px solid var(--border)",
               color: "var(--text-subtle)",
             }}
           >
             <span>日時</span>
+            <span>ユーザー</span>
             <span>AIクライアント</span>
             <span>接続先</span>
             <span>ツール / アクション</span>
@@ -922,7 +923,7 @@ export const Dashboard = (): JSX.Element => {
             return (
               <div
                 key={item.id}
-                className="grid grid-cols-[70px_80px_80px_1fr_60px_50px] items-center gap-2 px-5 py-2.5 text-xs transition-colors"
+                className="grid grid-cols-[70px_70px_80px_80px_1fr_60px_50px] items-center gap-2 px-5 py-2.5 text-xs transition-colors"
                 style={{
                   borderBottom: "1px solid var(--border-subtle)",
                   backgroundColor: isErrorRow(item.status)
@@ -937,6 +938,28 @@ export const Dashboard = (): JSX.Element => {
                 >
                   {item.datetime.split(" ")[1]?.slice(0, 8)}
                 </span>
+
+                {/* ユーザー */}
+                <div className="flex items-center gap-1.5">
+                  <div
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-medium"
+                    style={{
+                      backgroundColor:
+                        item.user === "不明"
+                          ? "var(--badge-error-bg)"
+                          : "var(--bg-active)",
+                      color:
+                        item.user === "不明"
+                          ? "var(--badge-error-text)"
+                          : "var(--text-secondary)",
+                    }}
+                  >
+                    {item.user.charAt(0)}
+                  </div>
+                  <span style={{ color: "var(--text-secondary)" }}>
+                    {item.user}
+                  </span>
+                </div>
 
                 {/* AIクライアント */}
                 <div className="flex items-center gap-1.5">

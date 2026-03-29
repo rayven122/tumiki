@@ -34,10 +34,11 @@ const mainNav: NavItem[] = [
 ];
 
 const adminNav: NavItem[] = [
+  { path: "/admin", label: "ダッシュボード", icon: <Activity size={18} /> },
+  { path: "/admin/history", label: "操作履歴", icon: <History size={18} /> },
   { path: "/admin/users", label: "ユーザー", icon: <Users size={18} /> },
   { path: "/admin/roles", label: "ロール", icon: <Shield size={18} /> },
   { path: "/admin/tools", label: "ツール管理", icon: <Server size={18} /> },
-  { path: "/admin/audit", label: "監査ログ", icon: <Activity size={18} /> },
   {
     path: "/admin/approvals",
     label: "承認管理",
