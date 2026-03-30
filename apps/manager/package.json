@@ -41,7 +41,7 @@
     "@streamdown/code": "^1.0.1",
     "@tanstack/react-query": "catalog:",
     "@trpc/client": "11.12.0",
-    "@trpc/react-query": "11.12.0",
+    "@trpc/react-query": "11.16.0",
     "@trpc/server": "11.12.0",
     "@tumiki/db": "workspace:*",
     "@tumiki/keycloak": "workspace:*",
