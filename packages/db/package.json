@@ -49,7 +49,7 @@
     "with-env": "dotenv -e ../../.env --",
     "with-env-test": "dotenv -e ../../.env.test --",
     "lint": "eslint",
-    "format": "prettier --check . --ignore-path ../../.gitignore --write",
+    "format": "prettier --check . --ignore-path ../../.gitignore --ignore-path ../../.prettierignore --write",
     "db:generate": "pnpm with-env prisma generate",
     "db:migrate": "pnpm with-env prisma migrate dev",
     "db:deploy": "pnpm with-env prisma migrate deploy",
