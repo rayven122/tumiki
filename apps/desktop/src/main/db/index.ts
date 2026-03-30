@@ -3,12 +3,14 @@ import { join } from "path";
 import { app } from "electron";
 import { existsSync, mkdirSync } from "fs";
 import * as logger from "../utils/logger";
+import { runMigrations } from "./migrationRunner";
 
 // 接続タイムアウト設定（ミリ秒）
 // 環境変数で設定可能（DESKTOP_DB_TIMEOUT_MS）
 // デフォルト: 10秒（UX向上のため30秒から短縮）
+const _envTimeout = Number(process.env.DESKTOP_DB_TIMEOUT_MS);
 const CONNECTION_TIMEOUT_MS =
-  Number(process.env.DESKTOP_DB_TIMEOUT_MS) || 10000;
+  Number.isFinite(_envTimeout) && _envTimeout > 0 ? _envTimeout : 10000;
 
 // リトライ設定
 const RETRY_CONFIG = {
@@ -260,11 +262,14 @@ export const getDb = async (): Promise<PrismaClient> => {
 
 /**
  * データベース初期化
- * アプリケーション起動時に接続を確立し、接続状態を確認
+ * アプリケーション起動時に接続を確立し、スキーマを適用して接続状態を確認
  */
 export const initializeDb = async (): Promise<void> => {
   try {
     const db = await connectionManager.getConnection();
+
+    // マイグレーションを適用
+    await runMigrations(db);
 
     // データベース接続を確認（簡単なクエリを実行）
     await db.$queryRaw`SELECT 1`;
