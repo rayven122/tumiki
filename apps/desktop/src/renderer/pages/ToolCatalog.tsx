@@ -166,25 +166,10 @@ export const ToolCatalog = (): JSX.Element => {
                 >
                   {tool.description}
                 </div>
-                {/* タグ */}
-                <div className="mt-auto flex flex-wrap gap-1">
-                  {tool.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="rounded-full px-2 py-0.5 text-[9px] font-medium"
-                      style={{
-                        backgroundColor: "var(--bg-card-hover)",
-                        color: "var(--text-muted)",
-                      }}
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
                 {/* 追加ボタン */}
                 <Link
                   to={`/tools/${tool.id}`}
-                  className="mt-3 flex w-full items-center justify-center gap-1 rounded-md py-1.5 text-[10px] font-medium transition hover:opacity-90"
+                  className="mt-auto flex w-full items-center justify-center gap-1 rounded-md py-1.5 text-[10px] font-medium transition hover:opacity-90"
                   style={{
                     backgroundColor: "var(--text-primary)",
                     color: "var(--bg-card)",
