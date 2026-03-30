@@ -158,15 +158,15 @@ export const SettingsForm = (): React.ReactElement => {
     try {
       await window.electronAPI.auth.logout();
       setIsAuthenticated(false);
-      setIsLoading(false);
       setAuthSuccess("ログアウトしました");
       // 3秒後に成功メッセージを消す
       timeouts.set("logoutSuccess", () => setAuthSuccess(null), 3000);
     } catch (error) {
-      setIsLoading(false);
       showAuthError(
         error instanceof Error ? error.message : "ログアウトに失敗しました",
       );
+    } finally {
+      setIsLoading(false);
     }
   };
 

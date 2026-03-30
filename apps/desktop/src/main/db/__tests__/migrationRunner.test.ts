@@ -1,5 +1,6 @@
 import { describe, test, expect, beforeEach, vi } from "vitest";
 import type { Dirent } from "fs";
+import type { PrismaClient } from "../../../../prisma/generated/client";
 
 // --- モック定義 ---
 
@@ -84,7 +85,7 @@ describe("runMigrations", () => {
   test("_prisma_migrationsテーブルを作成する", async () => {
     mockReaddir.mockResolvedValue([]);
 
-    await runMigrations(mockDb as never);
+    await runMigrations(mockDb as unknown as PrismaClient);
 
     // 最初の呼び出しがCREATE TABLE
     const firstCall = mockDb.$executeRawUnsafe.mock.calls[0]?.[0] as string;
@@ -95,7 +96,7 @@ describe("runMigrations", () => {
   test("適用済みマイグレーション一覧を取得する", async () => {
     mockReaddir.mockResolvedValue([]);
 
-    await runMigrations(mockDb as never);
+    await runMigrations(mockDb as unknown as PrismaClient);
 
     expect(mockDb.$queryRaw).toHaveBeenCalledTimes(1);
   });
@@ -103,7 +104,7 @@ describe("runMigrations", () => {
   test("マイグレーションディレクトリが空の場合は何も適用しない", async () => {
     mockReaddir.mockResolvedValue([]);
 
-    await runMigrations(mockDb as never);
+    await runMigrations(mockDb as unknown as PrismaClient);
 
     // CREATE TABLE の1回だけ（トランザクションは呼ばれない）
     expect(mockDb.$executeRawUnsafe).toHaveBeenCalledTimes(1);
@@ -120,7 +121,7 @@ describe("runMigrations", () => {
       .mockResolvedValueOnce("CREATE TABLE bar (id TEXT);");
     mockRandomUUID.mockReturnValueOnce("uuid-1").mockReturnValueOnce("uuid-2");
 
-    await runMigrations(mockDb as never);
+    await runMigrations(mockDb as unknown as PrismaClient);
 
     // $transactionが2回呼ばれる（各マイグレーションごと）
     expect(mockDb.$transaction).toHaveBeenCalledTimes(2);
@@ -149,7 +150,7 @@ describe("runMigrations", () => {
     mockReadFile.mockResolvedValue("CREATE TABLE bar (id TEXT);");
     mockRandomUUID.mockReturnValue("uuid-new");
 
-    await runMigrations(mockDb as never);
+    await runMigrations(mockDb as unknown as PrismaClient);
 
     // トランザクションは1回だけ（スキップ分は呼ばれない）
     expect(mockDb.$transaction).toHaveBeenCalledTimes(1);
@@ -165,7 +166,7 @@ describe("runMigrations", () => {
     mockReadFile.mockResolvedValue("CREATE TABLE foo (id TEXT);");
     mockRandomUUID.mockReturnValue("uuid-1");
 
-    await runMigrations(mockDb as never);
+    await runMigrations(mockDb as unknown as PrismaClient);
 
     // トランザクションは1回だけ
     expect(mockDb.$transaction).toHaveBeenCalledTimes(1);
@@ -187,7 +188,7 @@ describe("runMigrations", () => {
     mockReadFile.mockResolvedValue(sql);
     mockRandomUUID.mockReturnValue("uuid-1");
 
-    await runMigrations(mockDb as never);
+    await runMigrations(mockDb as unknown as PrismaClient);
 
     const txCalls = mockDb.tx.$executeRawUnsafe.mock.calls;
     // 1: CREATE TABLE foo (...)
@@ -207,7 +208,7 @@ describe("runMigrations", () => {
     mockReadFile.mockResolvedValue(sql);
     mockRandomUUID.mockReturnValue("uuid-1");
 
-    await runMigrations(mockDb as never);
+    await runMigrations(mockDb as unknown as PrismaClient);
 
     const txCalls = mockDb.tx.$executeRawUnsafe.mock.calls;
     // 1: CREATE TABLE a
@@ -226,7 +227,7 @@ describe("runMigrations", () => {
     mockReadFile.mockResolvedValue(sql);
     mockRandomUUID.mockReturnValue("uuid-1");
 
-    await runMigrations(mockDb as never);
+    await runMigrations(mockDb as unknown as PrismaClient);
 
     const txCalls = mockDb.tx.$executeRawUnsafe.mock.calls;
     // 1: CREATE TABLE foo
@@ -241,7 +242,7 @@ describe("runMigrations", () => {
     mockReadFile.mockResolvedValue(sql);
     mockRandomUUID.mockReturnValue("uuid-1");
 
-    await runMigrations(mockDb as never);
+    await runMigrations(mockDb as unknown as PrismaClient);
 
     const txCalls = mockDb.tx.$executeRawUnsafe.mock.calls;
     // 1: CREATE TABLE foo
@@ -258,7 +259,7 @@ describe("runMigrations", () => {
     mockReadFile.mockResolvedValue("SELECT 1;");
     mockRandomUUID.mockReturnValueOnce("uuid-1").mockReturnValueOnce("uuid-2");
 
-    await runMigrations(mockDb as never);
+    await runMigrations(mockDb as unknown as PrismaClient);
 
     const txCalls = mockDb.tx.$executeRawUnsafe.mock.calls;
     const insertCalls = txCalls.filter((c: unknown[]) =>
@@ -278,17 +279,17 @@ describe("runMigrations", () => {
       new Error("SQL execution failed"),
     );
 
-    await expect(runMigrations(mockDb as never)).rejects.toThrow(
-      "SQL execution failed",
-    );
+    await expect(
+      runMigrations(mockDb as unknown as PrismaClient),
+    ).rejects.toThrow("SQL execution failed");
   });
 
   test("$queryRawが失敗した場合エラーをスローする", async () => {
     mockDb.$queryRaw.mockRejectedValue(new Error("Query failed"));
 
-    await expect(runMigrations(mockDb as never)).rejects.toThrow(
-      "Query failed",
-    );
+    await expect(
+      runMigrations(mockDb as unknown as PrismaClient),
+    ).rejects.toThrow("Query failed");
   });
 });
 
@@ -308,7 +309,7 @@ describe("getMigrationsDir", () => {
 
     const { runMigrations } = await import("../migrationRunner");
     const mockDb = createMockDb();
-    await runMigrations(mockDb as never);
+    await runMigrations(mockDb as unknown as PrismaClient);
 
     // readdirSyncに渡されたパスを確認
     const dirPath = (mockReaddir.mock.calls[0] as unknown as [string])[0];
@@ -323,7 +324,7 @@ describe("getMigrationsDir", () => {
 
     const { runMigrations } = await import("../migrationRunner");
     const mockDb = createMockDb();
-    await runMigrations(mockDb as never);
+    await runMigrations(mockDb as unknown as PrismaClient);
 
     const dirPath = (mockReaddir.mock.calls[0] as unknown as [string])[0];
     expect(dirPath).toBe("/path/to/app.asar.unpacked/prisma/migrations");

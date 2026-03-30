@@ -115,15 +115,16 @@ app.on("second-instance", (_event, argv) => {
     }
   });
   if (deepLinkUrl) {
+    // handleDeepLink内でウィンドウフォーカスも行うため、ここでは不要
     handleDeepLink(deepLinkUrl).catch((error) => {
       logger.error("Unhandled error in second-instance handler", { error });
     });
-  }
-
-  // 既存ウィンドウをフォーカス
-  if (mainWindow) {
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.focus();
+  } else {
+    // ディープリンクなしの場合のみ、既存ウィンドウをフォーカス
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
   }
 });
 
@@ -163,9 +164,12 @@ app
         logger.info("OAuthManager initialized");
       } catch (error) {
         // 既存トークンの復元に失敗しても、新規ログインフローは利用可能なためマネージャーは維持
-        logger.error("OAuthManager initialization failed (new login still available)", {
-          error: error instanceof Error ? error.message : error,
-        });
+        logger.error(
+          "OAuthManager initialization failed (new login still available)",
+          {
+            error: error instanceof Error ? error.message : error,
+          },
+        );
       }
     } else {
       logger.warn("Keycloak environment variables not set, OAuth disabled");
