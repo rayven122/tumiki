@@ -59,9 +59,15 @@ const withTimeout = <T>(
 
 /**
  * データベースパスを取得
- * Electronアプリ実行中はuserDataディレクトリ、それ以外は環境変数またはデフォルトパスを使用
+ * 環境変数DESKTOP_DATABASE_URLが設定されている場合はそれを優先（開発・CLI共通）
+ * 未設定でElectronアプリ実行中はuserDataディレクトリを使用（本番）
  */
 const getDatabasePath = (): string => {
+  // 環境変数が設定されている場合は最優先（開発時にCLIとElectronで同じDBを使用）
+  if (process.env.DESKTOP_DATABASE_URL) {
+    return process.env.DESKTOP_DATABASE_URL;
+  }
+
   // Electron app が実行中の場合は userData ディレクトリを使用
   if (app && app.getPath) {
     const userDataPath = app.getPath("userData");
@@ -75,8 +81,7 @@ const getDatabasePath = (): string => {
     return `file:${dbPath}`;
   }
 
-  // テスト環境など
-  return process.env.DESKTOP_DATABASE_URL || "file:./db.sqlite";
+  return "file:./db.sqlite";
 };
 
 /**
