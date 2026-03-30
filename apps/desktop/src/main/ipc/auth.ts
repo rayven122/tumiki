@@ -43,6 +43,11 @@ export const setupAuthIpc = (): void => {
       // 暗号化されたトークンを非同期で復号化（失敗時はエラーをスロー）
       const decryptedAccessToken = await decryptToken(token.accessToken);
 
+      // 復号化結果が空の場合は無効なトークンとしてnullを返す
+      if (!decryptedAccessToken) {
+        return null;
+      }
+
       // idTokenはmainプロセス内（ログアウト時）でのみ使用し、レンダラーには返さない
       return { accessToken: decryptedAccessToken };
     } catch (error) {

@@ -22,12 +22,12 @@ vi.mock("../../utils/logger", () => ({
   error: () => undefined,
 }));
 
-const mockReaddirSync = vi.fn<() => Dirent[]>();
-const mockReadFileSync = vi.fn<() => string>();
+const mockReaddir = vi.fn<() => Promise<Dirent[]>>();
+const mockReadFile = vi.fn<() => Promise<string>>();
 
-vi.mock("fs", () => ({
-  readdirSync: (...args: unknown[]) => mockReaddirSync(...(args as [])),
-  readFileSync: (...args: unknown[]) => mockReadFileSync(...(args as [])),
+vi.mock("fs/promises", () => ({
+  readdir: (...args: unknown[]) => mockReaddir(...(args as [])),
+  readFile: (...args: unknown[]) => mockReadFile(...(args as [])),
 }));
 
 const mockRandomUUID = vi.fn<() => string>();
@@ -72,8 +72,8 @@ describe("runMigrations", () => {
     vi.resetModules();
     mockIsPackaged = false;
     mockAppPath = "/test/app";
-    mockReaddirSync.mockReset();
-    mockReadFileSync.mockReset();
+    mockReaddir.mockReset();
+    mockReadFile.mockReset();
     mockRandomUUID.mockReset();
 
     const mod = await import("../migrationRunner");
@@ -82,7 +82,7 @@ describe("runMigrations", () => {
   });
 
   test("_prisma_migrationsテーブルを作成する", async () => {
-    mockReaddirSync.mockReturnValue([]);
+    mockReaddir.mockResolvedValue([]);
 
     await runMigrations(mockDb as never);
 
@@ -93,7 +93,7 @@ describe("runMigrations", () => {
   });
 
   test("適用済みマイグレーション一覧を取得する", async () => {
-    mockReaddirSync.mockReturnValue([]);
+    mockReaddir.mockResolvedValue([]);
 
     await runMigrations(mockDb as never);
 
@@ -101,7 +101,7 @@ describe("runMigrations", () => {
   });
 
   test("マイグレーションディレクトリが空の場合は何も適用しない", async () => {
-    mockReaddirSync.mockReturnValue([]);
+    mockReaddir.mockResolvedValue([]);
 
     await runMigrations(mockDb as never);
 
@@ -111,13 +111,13 @@ describe("runMigrations", () => {
   });
 
   test("未適用のマイグレーションをトランザクション内で順番に適用する", async () => {
-    mockReaddirSync.mockReturnValue([
+    mockReaddir.mockResolvedValue([
       makeDirent("20240101_init", true),
       makeDirent("20240102_add_users", true),
     ]);
-    mockReadFileSync
-      .mockReturnValueOnce("CREATE TABLE foo (id TEXT);")
-      .mockReturnValueOnce("CREATE TABLE bar (id TEXT);");
+    mockReadFile
+      .mockResolvedValueOnce("CREATE TABLE foo (id TEXT);")
+      .mockResolvedValueOnce("CREATE TABLE bar (id TEXT);");
     mockRandomUUID.mockReturnValueOnce("uuid-1").mockReturnValueOnce("uuid-2");
 
     await runMigrations(mockDb as never);
@@ -142,11 +142,11 @@ describe("runMigrations", () => {
 
   test("適用済みのマイグレーションをスキップする", async () => {
     mockDb.$queryRaw.mockResolvedValue([{ migration_name: "20240101_init" }]);
-    mockReaddirSync.mockReturnValue([
+    mockReaddir.mockResolvedValue([
       makeDirent("20240101_init", true),
       makeDirent("20240102_add_users", true),
     ]);
-    mockReadFileSync.mockReturnValue("CREATE TABLE bar (id TEXT);");
+    mockReadFile.mockResolvedValue("CREATE TABLE bar (id TEXT);");
     mockRandomUUID.mockReturnValue("uuid-new");
 
     await runMigrations(mockDb as never);
@@ -154,15 +154,15 @@ describe("runMigrations", () => {
     // トランザクションは1回だけ（スキップ分は呼ばれない）
     expect(mockDb.$transaction).toHaveBeenCalledTimes(1);
     // readFileSyncは1回だけ
-    expect(mockReadFileSync).toHaveBeenCalledTimes(1);
+    expect(mockReadFile).toHaveBeenCalledTimes(1);
   });
 
   test("ファイルのみのエントリはスキップしディレクトリのみ処理する", async () => {
-    mockReaddirSync.mockReturnValue([
+    mockReaddir.mockResolvedValue([
       makeDirent("migration_lock.toml", false),
       makeDirent("20240101_init", true),
     ]);
-    mockReadFileSync.mockReturnValue("CREATE TABLE foo (id TEXT);");
+    mockReadFile.mockResolvedValue("CREATE TABLE foo (id TEXT);");
     mockRandomUUID.mockReturnValue("uuid-1");
 
     await runMigrations(mockDb as never);
@@ -183,8 +183,8 @@ describe("runMigrations", () => {
       "CREATE INDEX idx ON foo(id);",
     ].join("\n");
 
-    mockReaddirSync.mockReturnValue([makeDirent("20240101_init", true)]);
-    mockReadFileSync.mockReturnValue(sql);
+    mockReaddir.mockResolvedValue([makeDirent("20240101_init", true)]);
+    mockReadFile.mockResolvedValue(sql);
     mockRandomUUID.mockReturnValue("uuid-1");
 
     await runMigrations(mockDb as never);
@@ -203,8 +203,8 @@ describe("runMigrations", () => {
   test("複数ステートメントを含むSQLを個別に実行する", async () => {
     const sql = "CREATE TABLE a (id TEXT);\nCREATE TABLE b (id TEXT);";
 
-    mockReaddirSync.mockReturnValue([makeDirent("20240101_init", true)]);
-    mockReadFileSync.mockReturnValue(sql);
+    mockReaddir.mockResolvedValue([makeDirent("20240101_init", true)]);
+    mockReadFile.mockResolvedValue(sql);
     mockRandomUUID.mockReturnValue("uuid-1");
 
     await runMigrations(mockDb as never);
@@ -222,8 +222,8 @@ describe("runMigrations", () => {
     // 末尾セミコロン後の空文字をスキップ
     const sql = "CREATE TABLE foo (id TEXT);;";
 
-    mockReaddirSync.mockReturnValue([makeDirent("20240101_init", true)]);
-    mockReadFileSync.mockReturnValue(sql);
+    mockReaddir.mockResolvedValue([makeDirent("20240101_init", true)]);
+    mockReadFile.mockResolvedValue(sql);
     mockRandomUUID.mockReturnValue("uuid-1");
 
     await runMigrations(mockDb as never);
@@ -237,8 +237,8 @@ describe("runMigrations", () => {
   test("コメントのみのステートメントは除去される", async () => {
     const sql = "-- comment only;\nCREATE TABLE foo (id TEXT);";
 
-    mockReaddirSync.mockReturnValue([makeDirent("20240101_init", true)]);
-    mockReadFileSync.mockReturnValue(sql);
+    mockReaddir.mockResolvedValue([makeDirent("20240101_init", true)]);
+    mockReadFile.mockResolvedValue(sql);
     mockRandomUUID.mockReturnValue("uuid-1");
 
     await runMigrations(mockDb as never);
@@ -251,11 +251,11 @@ describe("runMigrations", () => {
 
   test("マイグレーションディレクトリはソート順で処理される", async () => {
     // 逆順で返しても名前順にソートされる
-    mockReaddirSync.mockReturnValue([
+    mockReaddir.mockResolvedValue([
       makeDirent("20240201_second", true),
       makeDirent("20240101_first", true),
     ]);
-    mockReadFileSync.mockReturnValue("SELECT 1;");
+    mockReadFile.mockResolvedValue("SELECT 1;");
     mockRandomUUID.mockReturnValueOnce("uuid-1").mockReturnValueOnce("uuid-2");
 
     await runMigrations(mockDb as never);
@@ -269,8 +269,8 @@ describe("runMigrations", () => {
   });
 
   test("トランザクション内でSQL実行が失敗した場合エラーをスローする", async () => {
-    mockReaddirSync.mockReturnValue([makeDirent("20240101_init", true)]);
-    mockReadFileSync.mockReturnValue("CREATE TABLE foo (id TEXT);");
+    mockReaddir.mockResolvedValue([makeDirent("20240101_init", true)]);
+    mockReadFile.mockResolvedValue("CREATE TABLE foo (id TEXT);");
     mockRandomUUID.mockReturnValue("uuid-1");
 
     // tx内のSQL実行でエラー
@@ -297,21 +297,21 @@ describe("getMigrationsDir", () => {
     vi.resetModules();
     mockIsPackaged = false;
     mockAppPath = "/test/app";
-    mockReaddirSync.mockReset();
-    mockReadFileSync.mockReset();
+    mockReaddir.mockReset();
+    mockReadFile.mockReset();
     mockRandomUUID.mockReset();
   });
 
   test("開発時はapp.getAppPath()直下のprisma/migrationsを返す", async () => {
     mockIsPackaged = false;
-    mockReaddirSync.mockReturnValue([]);
+    mockReaddir.mockResolvedValue([]);
 
     const { runMigrations } = await import("../migrationRunner");
     const mockDb = createMockDb();
     await runMigrations(mockDb as never);
 
     // readdirSyncに渡されたパスを確認
-    const dirPath = (mockReaddirSync.mock.calls[0] as unknown as [string])[0];
+    const dirPath = (mockReaddir.mock.calls[0] as unknown as [string])[0];
     expect(dirPath).toBe("/test/app/prisma/migrations");
     expect(dirPath).not.toContain("app.asar.unpacked");
   });
@@ -319,13 +319,13 @@ describe("getMigrationsDir", () => {
   test("プロダクション時はapp.asar.unpackedパスを返す", async () => {
     mockIsPackaged = true;
     mockAppPath = "/path/to/app.asar";
-    mockReaddirSync.mockReturnValue([]);
+    mockReaddir.mockResolvedValue([]);
 
     const { runMigrations } = await import("../migrationRunner");
     const mockDb = createMockDb();
     await runMigrations(mockDb as never);
 
-    const dirPath = (mockReaddirSync.mock.calls[0] as unknown as [string])[0];
+    const dirPath = (mockReaddir.mock.calls[0] as unknown as [string])[0];
     expect(dirPath).toBe("/path/to/app.asar.unpacked/prisma/migrations");
   });
 });

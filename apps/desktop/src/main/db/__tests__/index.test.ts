@@ -16,8 +16,11 @@ vi.mock("electron", () => ({
 vi.mock("fs", () => ({
   existsSync: () => true,
   mkdirSync: () => undefined,
-  readdirSync: () => [],
-  readFileSync: () => "",
+}));
+
+vi.mock("fs/promises", () => ({
+  readdir: () => Promise.resolve([]),
+  readFile: () => Promise.resolve(""),
 }));
 
 vi.mock("../../../../prisma/generated/client", () => {

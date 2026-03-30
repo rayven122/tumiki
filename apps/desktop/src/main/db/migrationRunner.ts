@@ -13,7 +13,7 @@ const getMigrationsDir = (): string => {
   if (app.isPackaged) {
     // asarUnpackされたファイルは app.asar.unpacked に展開される
     const appPath = app.getAppPath();
-    const unpackedPath = appPath.replace("app.asar", "app.asar.unpacked");
+    const unpackedPath = appPath.replace(/app\.asar$/, "app.asar.unpacked");
     return join(unpackedPath, "prisma", "migrations");
   }
   // 開発時: app.getAppPath() は apps/desktop/ を指す
