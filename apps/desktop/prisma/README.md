@@ -38,7 +38,7 @@ erDiagram
 erDiagram
 "McpCatalog" {
   Int id PK
-  String name
+  String name UK
   String description
   String iconPath "nullable"
   TransportType transportType

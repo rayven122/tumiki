@@ -70,7 +70,7 @@ model AuthToken {
 model McpCatalog {
   id            Int           @id @default(autoincrement())
   /// カタログ表示名
-  name          String
+  name          String        @unique
   /// カタログ説明
   description   String        @default("")
   /// アイコンパス
@@ -222,4 +222,5 @@ model AuditLog {
   connectionName String?
 
   @@index([serverId, createdAt])
+  @@index([createdAt])
 }
