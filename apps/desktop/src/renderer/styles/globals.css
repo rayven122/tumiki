@@ -1,1 +1,88 @@
 @import "tailwindcss";
+
+/* ===== テーマCSS変数（ダークモードがデフォルト） ===== */
+:root {
+  --bg-app: #0a0a0a;
+  --bg-main: #111111;
+  --bg-card: #18181b;
+  --bg-card-hover: rgba(255, 255, 255, 0.04);
+  --bg-active: rgba(255, 255, 255, 0.08);
+  --bg-input: rgba(255, 255, 255, 0.03);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.03);
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --text-subtle: #52525b;
+  --badge-success-bg: rgba(52, 211, 153, 0.1);
+  --badge-success-text: #34d399;
+  --badge-warn-bg: rgba(251, 191, 36, 0.1);
+  --badge-warn-text: #fbbf24;
+  --badge-error-bg: rgba(248, 113, 113, 0.1);
+  --badge-error-text: #f87171;
+  --btn-primary-bg: #ffffff;
+  --btn-primary-text: #000000;
+  --btn-primary-hover: #e4e4e7;
+  --shadow-main: none;
+  --shadow-card: none;
+}
+
+/* ===== ライトモード ===== */
+.light {
+  --bg-app: #e8eaed;
+  --bg-main: #f4f5f7;
+  --bg-card: #ffffff;
+  --bg-card-hover: rgba(0, 0, 0, 0.02);
+  --bg-active: rgba(0, 0, 0, 0.06);
+  --bg-input: rgba(0, 0, 0, 0.02);
+  --border: #e5e7eb;
+  --border-subtle: #f3f4f6;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-muted: #6b7280;
+  --text-subtle: #9ca3af;
+  --badge-success-bg: rgba(16, 185, 129, 0.1);
+  --badge-success-text: #059669;
+  --badge-warn-bg: rgba(245, 158, 11, 0.1);
+  --badge-warn-text: #d97706;
+  --badge-error-bg: rgba(239, 68, 68, 0.1);
+  --badge-error-text: #dc2626;
+  --btn-primary-bg: #111827;
+  --btn-primary-text: #ffffff;
+  --btn-primary-hover: #1f2937;
+  --shadow-main: none;
+  --shadow-card: none;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    @apply h-full antialiased;
+    background-color: var(--bg-app);
+    color: var(--text-secondary);
+  }
+
+  ::selection {
+    @apply bg-white/20 text-white;
+  }
+
+  .light ::selection {
+    @apply bg-blue-100 text-blue-900;
+  }
+}
+
+/* スクロールバー */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-subtle);
+}

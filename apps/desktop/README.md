@@ -1,19 +1,30 @@
 # tumiki Desktop
 
-Electronベースのtumikiデスクトップアプリケーション
+Electronベースのtumikiデスクトップアプリケーション。MCPサーバーの管理・監視を行うネイティブクライアント。
 
-## Phase 1 完了 ✅
+## セットアップ
 
-Phase 1（基本起動）が完了しました：
+1. **環境変数の設定**
 
-- ✅ プロジェクト構造作成
-- ✅ package.json設定（tumiki標準準拠）
-- ✅ TypeScript設定（`@tumiki/tsconfig`継承）
-- ✅ electron-vite設定
-- ✅ Electronメインプロセス実装
-- ✅ Preloadスクリプト実装（contextBridge）
-- ✅ Reactレンダラー実装（基本UI）
-- ✅ ビルド成功確認
+   ルートの `.env` に以下を追加:
+
+   ```bash
+   DESKTOP_DATABASE_URL="file:./db.sqlite"
+   ```
+
+2. **DBのセットアップ**
+
+   ```bash
+   cd apps/desktop
+   pnpm db:migrate    # マイグレーション作成・適用
+   pnpm db:generate   # Prismaクライアント生成
+   ```
+
+3. **開発サーバー起動**
+
+   ```bash
+   pnpm dev
+   ```
 
 ## 開発コマンド
 
@@ -46,6 +57,12 @@ pnpm test:coverage
 
 # クリーンアップ
 pnpm clean
+
+# DB関連
+pnpm db:generate      # Prismaクライアント生成
+pnpm db:push          # スキーマをDBに反映
+pnpm db:migrate       # マイグレーション作成・適用
+pnpm db:studio        # Prisma Studio起動
 
 # リリースビルド
 pnpm build:mac        # macOS用ビルド
@@ -123,17 +140,29 @@ apps/desktop/
 ├── src/
 │   ├── main/              # Electronメインプロセス
 │   │   ├── index.ts       # エントリーポイント
-│   │   └── window.ts      # ウィンドウ管理
+│   │   ├── window.ts      # ウィンドウ管理
+│   │   ├── db/            # ローカルDB（Prisma SQLite）
+│   │   ├── ipc/           # IPC通信ハンドラー（認証等）
+│   │   └── utils/         # ユーティリティ（暗号化、ロガー）
 │   ├── preload/           # Preloadスクリプト
 │   │   └── index.ts       # ContextBridge設定
 │   ├── renderer/          # Reactレンダラープロセス
 │   │   ├── index.html     # HTMLエントリーポイント
 │   │   ├── main.tsx       # Reactエントリーポイント
 │   │   ├── App.tsx        # ルートコンポーネント
-│   │   └── styles/        # Tailwind CSS
-│   └── shared/            # 共通型定義
-│       └── types.ts
-├── resources/             # アプリケーションリソース
+│   │   ├── _components/   # UIコンポーネント
+│   │   ├── pages/         # ページ（Dashboard, McpServers, Settings）
+│   │   ├── server/        # tRPC API設定
+│   │   ├── store/         # Jotai atoms
+│   │   ├── styles/        # Tailwind CSS
+│   │   ├── types/         # 型定義
+│   │   └── utils/         # ユーティリティ（tRPC, エラーハンドリング）
+│   ├── shared/            # メイン・レンダラー共通型定義
+│   │   └── types.ts
+│   └── types/             # プロセス横断型定義（認証、ログ同期）
+├── prisma/
+│   └── schema.prisma      # ローカルDB定義（SQLite）
+├── electron-builder.yml
 ├── electron.vite.config.ts
 ├── tsconfig.json
 └── package.json
@@ -147,22 +176,6 @@ apps/desktop/
 - **Vite**: electron-vite v4.x
 - **Tailwind CSS**: v4.x (catalog)
 - **Jotai**: v2.x（状態管理）
-
-## 次のステップ（Phase 2以降）
-
-- [ ] MCPサーバー統合
-- [ ] 設定管理（electron-store）
-- [ ] システムトレイ実装
-- [ ] 自動アップデート（electron-updater）
-- [ ] パッケージング（dmg/exe/deb）
-
-## 開発ガイドライン
-
-tumikiプロジェクトの標準に準拠：
-
-- 関数定義: アロー関数使用
-- 型定義: `type` のみ使用（`interface` は使用しない）
-- コンポーネント: `_components/` ディレクトリに配置
-- テスト: Vitest使用、カバレッジ100%目標
-
-詳細は [プロジェクトルートのCLAUDE.md](../../CLAUDE.md) を参照。
+- **tRPC**: クライアント統合（@trpc/client, @trpc/react-query）
+- **Prisma**: v6.x（SQLite、ローカルDB）
+- **react-router-dom**: v7.x（ページルーティング）

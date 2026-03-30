@@ -16,5 +16,5 @@
     ".next/types/**/*.ts",
     "postcss.config.mjs"
   ],
-  "exclude": ["node_modules", "coverage"]
+  "exclude": ["node_modules", "coverage", "lp-harness"]
 }
