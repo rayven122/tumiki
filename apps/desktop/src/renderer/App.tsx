@@ -12,7 +12,6 @@ import { RequestForm } from "./pages/RequestForm";
 import { RequestDetail } from "./pages/RequestDetail";
 import { SettingsPage } from "./pages/Settings";
 import { Notifications } from "./pages/Notifications";
-import { Login } from "./pages/Login";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
 import { AdminHistory } from "./pages/admin/AdminHistory";
 import { AdminUsers } from "./pages/admin/AdminUsers";
@@ -47,8 +46,6 @@ export const App = (): JSX.Element => {
           <Route path="admin/tools" element={<AdminTools />} />
           <Route path="admin/approvals" element={<AdminApprovals />} />
         </Route>
-        {/* ログイン画面（サイドバーなし） */}
-        <Route path="login" element={<Login />} />
       </Routes>
     </HashRouter>
   );

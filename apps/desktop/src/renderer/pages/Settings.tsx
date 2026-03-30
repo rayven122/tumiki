@@ -1,5 +1,4 @@
-import type { JSX } from "react";
-import { useState } from "react";
+import { type JSX, useEffect, useState } from "react";
 import {
   CURRENT_USER,
   TOOLS,
@@ -57,6 +56,123 @@ const NotificationSection = ({
     </div>
   </div>
 );
+
+/** Manager連携セクション */
+const ManagerConnectionSection = (): JSX.Element => {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    window.electronAPI.auth
+      .isAuthenticated()
+      .then(setIsAuthenticated)
+      .catch(() => setIsAuthenticated(false));
+  }, []);
+
+  useEffect(() => {
+    const unsubSuccess = window.electronAPI.auth.onCallbackSuccess(() => {
+      setIsAuthenticated(true);
+      setIsLoading(false);
+      setError(null);
+    });
+    const unsubError = window.electronAPI.auth.onCallbackError((msg) => {
+      setError(msg);
+      setIsLoading(false);
+    });
+    return () => {
+      unsubSuccess();
+      unsubError();
+    };
+  }, []);
+
+  const handleLogin = async (): Promise<void> => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      await window.electronAPI.auth.login();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "ログインに失敗しました");
+      setIsLoading(false);
+    }
+  };
+
+  const handleLogout = async (): Promise<void> => {
+    setIsLoading(true);
+    try {
+      await window.electronAPI.auth.logout();
+      setIsAuthenticated(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "ログアウトに失敗しました");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div
+      className="space-y-4 rounded-xl p-6"
+      style={{
+        border: "1px solid var(--border)",
+        backgroundColor: "var(--bg-card)",
+        boxShadow: "var(--shadow-card)",
+      }}
+    >
+      <h2
+        className="text-sm font-medium"
+        style={{ color: "var(--text-primary)" }}
+      >
+        Manager連携
+      </h2>
+
+      <div className="flex items-center gap-3">
+        {isAuthenticated ? (
+          <button
+            className="rounded-lg px-4 py-2 text-sm font-medium transition-colors hover:opacity-90"
+            style={{
+              border: "1px solid var(--border)",
+              color: "var(--text-secondary)",
+            }}
+            onClick={handleLogout}
+            disabled={isLoading}
+          >
+            {isLoading ? "処理中..." : "ログアウト"}
+          </button>
+        ) : (
+          <button
+            className="rounded-lg px-4 py-2 text-sm font-medium transition-colors hover:opacity-90"
+            style={{
+              backgroundColor: "var(--btn-primary-bg)",
+              color: "var(--btn-primary-text)",
+            }}
+            onClick={handleLogin}
+            disabled={isLoading || isAuthenticated === null}
+          >
+            {isLoading ? "ブラウザで認証中..." : "ログイン"}
+          </button>
+        )}
+
+        {/* 接続状態 */}
+        <span
+          className="text-xs"
+          style={{
+            color: isAuthenticated
+              ? "var(--badge-success-text)"
+              : "var(--text-muted)",
+          }}
+        >
+          {isAuthenticated === null
+            ? "確認中..."
+            : isAuthenticated
+              ? "接続済み"
+              : "未接続"}
+        </span>
+      </div>
+
+      {error && <p className="text-xs text-red-500">{error}</p>}
+    </div>
+  );
+};
 
 // 設定ページ
 export const SettingsPage = (): JSX.Element => {
@@ -239,6 +355,9 @@ export const SettingsPage = (): JSX.Element => {
           onToggle={togglePortal}
         />
       </div>
+
+      {/* Manager連携 */}
+      <ManagerConnectionSection />
 
       {/* 保存ボタン */}
       <button
