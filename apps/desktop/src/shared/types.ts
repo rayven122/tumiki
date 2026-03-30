@@ -1,11 +1,5 @@
-import type { ElectronAPI } from "../preload";
-
-// グローバルなWindow型を拡張
-declare global {
-  interface Window {
-    electronAPI: ElectronAPI;
-  }
-}
+/** OAuth認証セッションのタイムアウト（ミリ秒）。UIとサーバー側で共有 */
+export const AUTH_SESSION_TIMEOUT_MS = 5 * 60 * 1000;
 
 // MCPサーバー型定義
 export type McpServer = {
@@ -24,5 +18,3 @@ export type AppConfig = {
   autoStart: boolean;
   minimizeToTray: boolean;
 };
-
-export {};
