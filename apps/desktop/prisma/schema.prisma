@@ -3,34 +3,224 @@ generator client {
   output   = "../prisma/generated/client"
 }
 
+generator markdown {
+  provider = "prisma-markdown"
+  output   = "../prisma/README.md"
+  title    = "Desktop DB Schema"
+}
+
 datasource db {
   provider = "sqlite"
   url      = env("DESKTOP_DATABASE_URL")
 }
 
-// 認証トークン（暗号化保存）
-model AuthToken {
-  id           String   @id @default(uuid())
-  accessToken  String   // 暗号化されたアクセストークン
-  refreshToken String   // 暗号化されたリフレッシュトークン
-  expiresAt    DateTime // トークンの有効期限
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@map("auth_tokens")
+/// 接続タイプ
+/// @namespace McpServer
+enum TransportType {
+  /// 標準入出力での通信
+  STDIO
+  /// Server-Sent Eventsでの通信
+  SSE
+  /// Streamable HTTPでの通信
+  STREAMABLE_HTTP
 }
 
-// ログ同期キュー
-model LogSyncQueue {
-  id         Int      @id @default(autoincrement())
-  serverId   String   // MCPサーバーID
-  logEntry   String   // ログエントリ（JSON形式）
-  syncStatus String   @default("pending") // pending | syncing | synced | failed
-  retryCount Int      @default(0)
-  createdAt  DateTime @default(now())
-  syncedAt   DateTime?
+/// 認証タイプ
+/// @namespace McpServer
+enum AuthType {
+  /// 認証不要
+  NONE
+  /// Bearerトークン認証
+  BEARER
+  /// APIキー認証
+  API_KEY
+  /// OAuth認証
+  OAUTH
+}
 
-  @@index([syncStatus, serverId])
-  @@index([serverId])
-  @@map("log_sync_queue")
+/// サーバー状態
+/// @namespace McpServer
+enum ServerStatus {
+  /// 起動中
+  RUNNING
+  /// 停止
+  STOPPED
+  /// エラー
+  ERROR
+  /// 接続検証中
+  PENDING
+}
+
+/// 認証トークン
+/// @namespace Auth
+model AuthToken {
+  id           Int      @id @default(autoincrement())
+  /// アクセストークン
+  accessToken  String
+  /// リフレッシュトークン
+  refreshToken String
+  /// トークンの有効期限
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+/// MCPカタログ（プリセットMCPサーバーのテンプレート）
+/// @namespace McpServer
+model McpCatalog {
+  id            Int           @id @default(autoincrement())
+  /// カタログ表示名
+  name          String        @unique
+  /// カタログ説明
+  description   String        @default("")
+  /// アイコンパス
+  iconPath      String?
+  /// トランスポートタイプ
+  transportType TransportType @default(STDIO)
+  /// STDIO用コマンド
+  command       String?
+  /// STDIO用引数（JSON配列文字列）
+  args          String        @default("[]")
+  /// SSE/Streamable HTTP用URL
+  url           String?
+  /// 必要な設定キー名（STDIO: 環境変数キー / SSE・Streamable HTTP: ヘッダー名、JSON配列文字列）
+  credentialKeys String       @default("[]")
+  /// 認証タイプ
+  authType      AuthType      @default(NONE)
+  /// 公式カタログフラグ
+  isOfficial    Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  /// このカタログから作成された接続一覧
+  connections McpConnection[]
+}
+
+/// MCP接続（個別のMCPサーバーへの接続設定）
+/// @namespace McpServer
+model McpConnection {
+  id            Int           @id @default(autoincrement())
+  /// 接続表示名
+  name          String
+  /// URL識別子（小文字・ハイフン区切り）
+  slug          String
+  /// トランスポートタイプ
+  transportType TransportType @default(STDIO)
+  /// STDIO用コマンド（例: "npx", "uvx", "node"）
+  command       String?
+  /// STDIO用引数（JSON配列文字列）
+  args          String        @default("[]")
+  /// SSE/Streamable HTTP用URL
+  url           String?
+  /// 接続設定値（STDIO: 環境変数 / SSE・Streamable HTTP: HTTPヘッダー）
+  credentials   String        @default("{}")
+  /// 認証タイプ
+  authType      AuthType      @default(NONE)
+  /// 有効/無効フラグ
+  isEnabled     Boolean       @default(true)
+  /// 統合サーバー内での表示順序
+  displayOrder  Int           @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  /// 所属するMcpServer
+  serverId  Int
+  server    McpServer   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  /// カタログ参照（カタログから登録した場合）
+  catalogId Int?
+  catalog   McpCatalog? @relation(fields: [catalogId], references: [id], onDelete: SetNull)
+
+  /// この接続が提供するツール一覧
+  tools McpTool[]
+
+  @@unique([serverId, slug])
+}
+
+/// MCPツール（接続が提供するツールの定義・権限管理）
+/// @namespace McpServer
+model McpTool {
+  id                Int     @id @default(autoincrement())
+  /// ツール名（大元のMCPから取得、ルーティングに使用）
+  name              String
+  /// ツール説明（大元のMCPから取得）
+  description       String  @default("")
+  /// 入力スキーマ（JSON Schema文字列）
+  inputSchema       String  @default("{}")
+  /// カスタム表示名（nullなら元のnameを使用）
+  customName        String?
+  /// カスタム説明（nullなら元のdescriptionを使用）
+  customDescription String?
+  /// ツールの使用を許可するか
+  isAllowed         Boolean @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  /// 対象MCP接続
+  connectionId Int
+  connection   McpConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, name])
+}
+
+
+/// MCPサーバー（仮想・統合サーバー = Proxyエンドポイント）
+/// 1つ以上のMcpConnectionを束ねて1つのMCPサーバーとして公開する
+/// @namespace McpServer
+model McpServer {
+  id           Int          @id @default(autoincrement())
+  /// サーバー表示名
+  name         String
+  /// URL識別子（小文字・ハイフン区切り）
+  slug         String       @unique
+  /// サーバー説明
+  description  String       @default("")
+  /// サーバー状態
+  serverStatus ServerStatus @default(STOPPED)
+  /// 有効/無効フラグ（トグル用）
+  isEnabled    Boolean      @default(true)
+  /// 一覧画面での表示順序
+  displayOrder Int          @default(0)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  /// 個別MCP接続一覧
+  connections McpConnection[]
+  /// 監査ログ一覧
+  auditLogs   AuditLog[]
+}
+
+
+/// 監査ログ（MCPツール呼び出しの記録）
+/// 7日以上のレコードは自動削除対象
+/// @namespace McpServer
+model AuditLog {
+  id             Int           @id @default(autoincrement())
+  /// 実行されたツール名
+  toolName       String
+  /// MCPメソッド（例: "tools/call", "resources/read"）
+  method         String
+  /// リクエスト時のトランスポートタイプ
+  transportType  TransportType
+  /// 実行時間（ミリ秒）
+  durationMs     Int
+  /// 入力データサイズ（バイト）
+  inputBytes     Int           @default(0)
+  /// 出力データサイズ（バイト）
+  outputBytes    Int           @default(0)
+  /// 成功/失敗フラグ
+  isSuccess      Boolean       @default(true)
+  /// MCPエラーコード（エラー時のみ）
+  errorCode      Int?
+  /// エラーメッセージ要約
+  errorSummary   String?
+  createdAt      DateTime      @default(now())
+
+  /// 対象MCPサーバー
+  serverId       Int
+  server         McpServer     @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  /// 対象MCP接続名（接続削除後もログで識別可能にするため名前で保持）
+  connectionName String?
+
+  @@index([serverId, createdAt])
+  @@index([createdAt])
 }
