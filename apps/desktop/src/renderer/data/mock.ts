@@ -50,8 +50,8 @@ export const TOOLS: Tool[] = [
   {
     id: "context7",
     name: "Context7",
-    logoDark: "/logos/services/context7.svg",
-    logoLight: "/logos/services/context7.svg",
+    logoDark: "/logos/services/database.svg",
+    logoLight: "/logos/services/database.svg",
     description:
       "ライブラリドキュメント検索サービス - 最新のドキュメントをリアルタイムで取得",
     tags: ["ドキュメント", "検索", "ツール"],
@@ -115,8 +115,8 @@ export const TOOLS: Tool[] = [
   {
     id: "linear-mcp",
     name: "Linear MCP",
-    logoDark: "/logos/services/linear.svg",
-    logoLight: "/logos/services/linear.svg",
+    logoDark: "/logos/services/sentry.svg",
+    logoLight: "/logos/services/sentry.svg",
     description:
       "Linear プロジェクト管理サービス - イシュー、プロジェクト、チーム情報へのアクセス",
     tags: ["プロジェクト管理", "イシュー管理", "ツール"],
@@ -178,8 +178,8 @@ export const TOOLS: Tool[] = [
   {
     id: "neon-mcp",
     name: "Neon MCP",
-    logoDark: "/logos/services/neon.svg",
-    logoLight: "/logos/services/neon.svg",
+    logoDark: "/logos/services/postgresql.svg",
+    logoLight: "/logos/services/postgresql.svg",
     description:
       "Neon PostgreSQL データベースサービス - データベース管理とAI統合",
     tags: ["データベース", "PostgreSQL", "ツール"],
@@ -207,8 +207,8 @@ export const TOOLS: Tool[] = [
   {
     id: "supabase-mcp",
     name: "Supabase MCP",
-    logoDark: "/logos/services/supabase.svg",
-    logoLight: "/logos/services/supabase.svg",
+    logoDark: "/logos/services/database.svg",
+    logoLight: "/logos/services/database.svg",
     description:
       "Supabase プロジェクト管理 - データベース、認証、ストレージへのアクセス",
     tags: ["データベース", "BaaS", "ツール"],
@@ -272,8 +272,8 @@ export const TOOLS: Tool[] = [
   {
     id: "brave-search-mcp",
     name: "Brave Search MCP",
-    logoDark: "/logos/services/brave-search.png",
-    logoLight: "/logos/services/brave-search.png",
+    logoDark: "/logos/services/google-drive.svg",
+    logoLight: "/logos/services/google-drive.svg",
     description: "Brave Search API統合 - 検索エンジンAPI",
     tags: ["検索", "ツール"],
     status: "active",
@@ -303,8 +303,8 @@ export const TOOLS: Tool[] = [
   {
     id: "deepl-mcp",
     name: "DeepL MCP",
-    logoDark: "/logos/services/deepl.svg",
-    logoLight: "/logos/services/deepl.svg",
+    logoDark: "/logos/services/vercel.svg",
+    logoLight: "/logos/services/vercel.svg",
     description: "DeepL 翻訳サービス",
     tags: ["翻訳", "ツール"],
     status: "active",
