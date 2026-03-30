@@ -3,7 +3,7 @@ packages:
   - packages/*
   - tooling/*
 catalog:
-  '@auth/core': 0.37.2
+  '@auth/core': 0.41.1
   eslint: ^9.25.1
   prettier: ^3.8.1
   tailwindcss: ^4.1.8
