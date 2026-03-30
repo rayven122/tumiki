@@ -84,7 +84,7 @@ const validateFilePermissions = async (
 
     // ファイルがユーザーデータディレクトリ内にあることを確認
     const userDataPath = app.getPath("userData");
-    if (!filePath.startsWith(userDataPath)) {
+    if (!filePath.toLowerCase().startsWith(userDataPath.toLowerCase())) {
       throw new Error(
         `Encryption key file must be in user data directory for security. Path: ${filePath}`,
       );
