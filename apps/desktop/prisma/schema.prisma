@@ -77,18 +77,19 @@ model McpCatalog {
   description   String        @default("")
   /// アイコンパス
   iconPath      String?
+    /// 認証タイプ
+  authType      AuthType      @default(NONE)
   /// トランスポートタイプ
   transportType TransportType @default(STDIO)
-  /// STDIO用デフォルトコマンド
+  /// STDIO用コマンド
   command       String?
-  /// STDIO用デフォルト引数（JSON配列文字列）
-  defaultArgs   String        @default("[]")
-  /// SSE/Streamable HTTP用デフォルトURL
-  serverUrl     String?
+  /// STDIO用引数（JSON配列文字列）
+  args          String        @default("[]")
+  /// SSE/Streamable HTTP用URL
+  url           String?
   /// 必要な環境変数キー名（JSON配列文字列）
   envVarKeys    String        @default("[]")
-  /// 認証タイプ
-  authType      AuthType      @default(NONE)
+
   /// 公式カタログフラグ
   isOfficial    Boolean       @default(false)
   createdAt     DateTime      @default(now())
@@ -139,8 +140,8 @@ model McpConnection {
   command       String?
   /// STDIO用引数（JSON配列文字列）
   args          String        @default("[]")
-  /// SSE/Streamable HTTP接続先URL
-  serverUrl     String?
+  /// SSE/Streamable HTTP用URL
+  url           String?
   /// 環境変数（JSON object文字列）
   envVars       String        @default("{}")
   /// 認証タイプ

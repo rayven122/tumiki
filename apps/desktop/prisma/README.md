@@ -44,8 +44,8 @@ erDiagram
   String iconPath "nullable"
   TransportType transportType
   String command "nullable"
-  String defaultArgs
-  String serverUrl "nullable"
+  String args
+  String url "nullable"
   String envVarKeys
   AuthType authType
   Boolean isOfficial
@@ -70,7 +70,7 @@ erDiagram
   TransportType transportType
   String command "nullable"
   String args
-  String serverUrl "nullable"
+  String url "nullable"
   String envVars
   AuthType authType
   String authToken "nullable"
@@ -124,9 +124,9 @@ MCPカタログ（プリセットMCPサーバーのテンプレート）
 - `description`: カタログ説明
 - `iconPath`: アイコンパス
 - `transportType`: トランスポートタイプ
-- `command`: STDIO用デフォルトコマンド
-- `defaultArgs`: STDIO用デフォルト引数（JSON配列文字列）
-- `serverUrl`: SSE/Streamable HTTP用デフォルトURL
+- `command`: STDIO用コマンド
+- `args`: STDIO用引数（JSON配列文字列）
+- `url`: SSE/Streamable HTTP用URL
 - `envVarKeys`: 必要な環境変数キー名（JSON配列文字列）
 - `authType`: 認証タイプ
 - `isOfficial`: 公式カタログフラグ
@@ -162,7 +162,7 @@ MCP接続（個別のMCPサーバーへの接続設定）
 - `transportType`: トランスポートタイプ
 - `command`: STDIO用コマンド（例: "npx", "uvx", "node"）
 - `args`: STDIO用引数（JSON配列文字列）
-- `serverUrl`: SSE/Streamable HTTP接続先URL
+- `url`: SSE/Streamable HTTP用URL
 - `envVars`: 環境変数（JSON object文字列）
 - `authType`: 認証タイプ
 - `authToken`: 認証トークン/APIキー
