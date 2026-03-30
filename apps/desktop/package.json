@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit",
     "with-env": "dotenv -e ../../.env --",
     "lint": "eslint",
-    "format": "prettier --check . --ignore-path ../../.gitignore",
+    "format": "prettier --check . --ignore-path ../../.gitignore --ignore-path ../../.prettierignore",
     "test": "vitest",
     "db:generate": "pnpm with-env prisma generate",
     "db:migrate": "pnpm with-env prisma migrate dev",
