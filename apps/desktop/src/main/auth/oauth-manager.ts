@@ -186,11 +186,8 @@ export const createOAuthManager = (
       throw new Error("リフレッシュ対象のトークンが存在しません");
     }
 
-    // リフレッシュトークンを復号化
+    // リフレッシュトークンを復号化（失敗時はエラーをスロー）
     const refreshToken = await decryptToken(token.refreshToken);
-    if (!refreshToken) {
-      throw new Error("リフレッシュトークンの復号化に失敗しました");
-    }
 
     // トークンをリフレッシュ
     const tokenResponse = await keycloakClient.refreshToken(refreshToken);
@@ -372,11 +369,8 @@ export const createOAuthManager = (
       });
 
       if (token) {
-        // トークンを復号化
+        // トークンを復号化（失敗時はエラーをスロー）
         const refreshToken = await decryptToken(token.refreshToken);
-        if (!refreshToken) {
-          throw new Error("リフレッシュトークンの復号化に失敗しました");
-        }
         const idToken = token.idToken
           ? await decryptToken(token.idToken)
           : undefined;

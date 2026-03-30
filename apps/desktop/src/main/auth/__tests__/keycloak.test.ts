@@ -235,10 +235,10 @@ describe("KeycloakClient", () => {
       await client.logout({ refreshToken: "refresh-token" });
     });
 
-    test("ネットワークエラーでもエラーをスローしない", async () => {
+    test("タイムアウト（DOMException）でもエラーをスローしない", async () => {
       vi.stubGlobal(
         "fetch",
-        vi.fn().mockRejectedValue(new Error("Network error")),
+        vi.fn().mockRejectedValue(new DOMException("Aborted", "AbortError")),
       );
 
       const client = createKeycloakClient(createConfig());
@@ -246,7 +246,20 @@ describe("KeycloakClient", () => {
       await client.logout({ refreshToken: "refresh-token" });
     });
 
-    test("TypeErrorはプログラミングエラーとして再スローする", async () => {
+    test("fetch関連エラーでもエラーをスローしない", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockRejectedValue(new Error("fetch failed: connection refused")),
+      );
+
+      const client = createKeycloakClient(createConfig());
+      // エラーなしで完了すればOK
+      await client.logout({ refreshToken: "refresh-token" });
+    });
+
+    test("プログラミングエラーは再スローする", async () => {
       vi.stubGlobal(
         "fetch",
         vi.fn().mockRejectedValue(new TypeError("Invalid URL")),

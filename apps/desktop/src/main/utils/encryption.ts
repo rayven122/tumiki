@@ -140,7 +140,10 @@ const getOrCreateEncryptionKey = async (): Promise<Buffer> => {
   // 既存のキーファイルが存在する場合は読み込む
   const keyFileExists = await access(keyPath)
     .then(() => true)
-    .catch(() => false);
+    .catch((err: NodeJS.ErrnoException) => {
+      if (err.code === "ENOENT") return false;
+      throw err;
+    });
   if (keyFileExists) {
     try {
       await validateFilePermissions(keyPath, "600");
@@ -182,7 +185,10 @@ const getOrCreateEncryptionKey = async (): Promise<Buffer> => {
   // userDataディレクトリが存在しない場合は作成（所有者のみアクセス可能）
   const userDataDirExists = await access(userDataPath)
     .then(() => true)
-    .catch(() => false);
+    .catch((err: NodeJS.ErrnoException) => {
+      if (err.code === "ENOENT") return false;
+      throw err;
+    });
   if (!userDataDirExists) {
     await mkdir(userDataPath, { recursive: true, mode: 0o700 });
 
@@ -209,7 +215,10 @@ const getOrCreateEncryptionKey = async (): Promise<Buffer> => {
   } catch (error) {
     const tempFileExists = await access(tempPath)
       .then(() => true)
-      .catch(() => false);
+      .catch((err: NodeJS.ErrnoException) => {
+        if (err.code === "ENOENT") return false;
+        throw err;
+      });
     if (tempFileExists) {
       try {
         await unlink(tempPath);

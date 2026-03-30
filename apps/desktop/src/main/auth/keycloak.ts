@@ -252,14 +252,19 @@ export const createKeycloakClient = (
 
       logger.info("Successfully logged out from Keycloak");
     } catch (error) {
-      // プログラミングエラー（URL構築失敗等）は再スローして検知可能にする
-      if (error instanceof TypeError) {
-        throw error;
+      // ネットワーク系エラー（タイムアウト・接続失敗）は警告ログのみ
+      // ローカルのトークン削除は呼び出し元のfinallyブロックで実行される
+      const isNetworkError =
+        error instanceof DOMException ||
+        (error instanceof Error && error.message.includes("fetch"));
+      if (isNetworkError) {
+        logger.warn("Keycloak logout request failed", {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        return;
       }
-      // ネットワークエラー・タイムアウト等は警告ログのみ（ローカルのトークン削除は別途実行される）
-      logger.warn("Keycloak logout request failed", {
-        error: error instanceof Error ? error.message : String(error),
-      });
+      // それ以外（プログラミングエラー等）は再スローして検知可能にする
+      throw error;
     }
   };
 

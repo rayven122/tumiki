@@ -79,22 +79,40 @@ export const runMigrations = async (db: PrismaClient): Promise<void> => {
     if (appliedSet.has(name)) continue;
 
     const sqlPath = join(migrationsDir, name, "migration.sql");
-    const sql = await readFile(sqlPath, "utf-8");
+
+    let sql: string;
+    try {
+      sql = await readFile(sqlPath, "utf-8");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error(`Migration file read failed: ${name}`, { error: message });
+      throw new Error(
+        `マイグレーションファイルの読み込みに失敗しました: ${name} (${message})`,
+      );
+    }
 
     logger.info(`Applying migration: ${name}`);
 
-    // SQL実行と適用記録をトランザクションでアトミックに実行
-    await db.$transaction(async (tx) => {
-      for (const statement of splitSql(sql)) {
-        await tx.$executeRawUnsafe(statement);
-      }
+    try {
+      // SQL実行と適用記録をトランザクションでアトミックに実行
+      await db.$transaction(async (tx) => {
+        for (const statement of splitSql(sql)) {
+          await tx.$executeRawUnsafe(statement);
+        }
 
-      await tx.$executeRawUnsafe(
-        `INSERT INTO "_prisma_migrations" (id, migration_name) VALUES (?, ?)`,
-        randomUUID(),
-        name,
+        await tx.$executeRawUnsafe(
+          `INSERT INTO "_prisma_migrations" (id, migration_name) VALUES (?, ?)`,
+          randomUUID(),
+          name,
+        );
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error(`Migration execution failed: ${name}`, { error: message });
+      throw new Error(
+        `マイグレーションの実行に失敗しました: ${name} (${message})`,
       );
-    });
+    }
 
     logger.info(`Migration applied: ${name}`);
   }

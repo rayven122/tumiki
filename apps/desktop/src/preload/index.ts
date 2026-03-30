@@ -20,7 +20,9 @@ const api = {
     cancelLogin: (): Promise<void> => ipcRenderer.invoke("auth:cancelLogin"),
     logout: (): Promise<void> => ipcRenderer.invoke("auth:logout"),
     onCallbackSuccess: (callback: () => void): (() => void) => {
-      const listener = (): void => callback();
+      // ipcRenderer.onのコールバック型に合わせるため、引数を受け取って無視する
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- IPC eventは型整合性のため受け取るが使用しない
+      const listener = (_event: Electron.IpcRendererEvent): void => callback();
       ipcRenderer.on("auth:callbackSuccess", listener);
       return () => ipcRenderer.removeListener("auth:callbackSuccess", listener);
     },

@@ -121,14 +121,14 @@ describe("setupAuthIpc", () => {
       };
 
       mockDbAuthToken.findFirst.mockResolvedValue(expiredToken);
-      mockDbAuthToken.delete.mockResolvedValue(expiredToken);
+      mockDbAuthToken.deleteMany.mockResolvedValue({ count: 1 });
 
       const handler = mockIpcHandlers.get("auth:getToken");
       const result = await handler!({} as IpcMainInvokeEvent);
 
       expect(result).toBeNull();
-      expect(mockDbAuthToken.delete).toHaveBeenCalledWith({
-        where: { id: "token-id" },
+      expect(mockDbAuthToken.deleteMany).toHaveBeenCalledWith({
+        where: { expiresAt: { lte: expect.any(Date) } },
       });
     });
 

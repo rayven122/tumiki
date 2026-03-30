@@ -20,7 +20,9 @@ const findValidToken = async (): Promise<AuthToken | null> => {
 
   if (new Date() > token.expiresAt) {
     logger.debug("Token expired, deleting from database");
-    await db.authToken.delete({ where: { id: token.id } });
+    await db.authToken.deleteMany({
+      where: { expiresAt: { lte: new Date() } },
+    });
     return null;
   }
 
@@ -43,6 +45,11 @@ export const setupAuthIpc = (): void => {
       // 暗号化されたトークンを非同期で復号化（失敗時はエラーをスロー）
       const decryptedAccessToken = await decryptToken(token.accessToken);
 
+      // 復号化結果が空文字の場合は無効なトークンとして扱う
+      if (!decryptedAccessToken) {
+        return null;
+      }
+
       // idTokenはmainプロセス内（ログアウト時）でのみ使用し、レンダラーには返さない
       return { accessToken: decryptedAccessToken };
     } catch (error) {
@@ -50,21 +57,14 @@ export const setupAuthIpc = (): void => {
         "Failed to get auth token",
         error instanceof Error ? error : { error },
       );
-      throw new Error("認証トークンの取得に失敗しました");
+      throw new Error("認証トークンの取得に失敗しました", { cause: error });
     }
   });
 
   // 認証フローキャンセル
   ipcMain.handle("auth:cancelLogin", () => {
-    try {
-      const oauthManager = getOAuthManager();
-      oauthManager?.cancelAuthFlow();
-    } catch (error) {
-      logger.error(
-        "Failed to cancel auth flow",
-        error instanceof Error ? error : { error },
-      );
-    }
+    const oauthManager = getOAuthManager();
+    oauthManager?.cancelAuthFlow();
   });
 
   // ログイン（OAuth認証フロー開始）
