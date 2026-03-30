@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { useAtomValue } from "jotai";
 import { Search, ArrowRight } from "lucide-react";
 import { themeAtom } from "../store/atoms";
-import { TOOLS, CATEGORIES } from "../data/mock";
+import { TOOLS, CATEGORIES, MCP_BASE_URL, MCP_CLI_COMMAND } from "../data/mock";
 import type { ToolStatus } from "../data/mock";
 
 /** ステータス表示定義 */
@@ -246,15 +246,15 @@ export const MyTools = (): JSX.Element => {
                   {[
                     {
                       ai: "Cursor",
-                      path: `npx tumiki-mcp@latest --connector=${tool.id}`,
+                      path: `${MCP_CLI_COMMAND} --connector=${tool.id}`,
                     },
                     {
                       ai: "Claude",
-                      path: `https://mcp.tumiki.cloud/${tool.id}/sse`,
+                      path: `${MCP_BASE_URL}/${tool.id}/sse`,
                     },
                     {
                       ai: "ChatGPT",
-                      path: `https://mcp.tumiki.cloud/${tool.id}/http`,
+                      path: `${MCP_BASE_URL}/${tool.id}/http`,
                     },
                   ].map((p) => (
                     <div

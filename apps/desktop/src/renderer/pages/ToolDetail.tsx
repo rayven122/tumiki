@@ -4,7 +4,7 @@ import { useParams, Link } from "react-router-dom";
 import { useAtomValue } from "jotai";
 import { ArrowLeft, ExternalLink, Shield, ChevronDown } from "lucide-react";
 import { themeAtom } from "../store/atoms";
-import { TOOLS, HISTORY } from "../data/mock";
+import { TOOLS, HISTORY, MCP_BASE_URL, MCP_CLI_COMMAND } from "../data/mock";
 import type { ToolStatus } from "../data/mock";
 import { statusBadge, cardStyle } from "../utils/theme-styles";
 
@@ -38,7 +38,7 @@ const AI_CLIENT_CONNECTIONS = [
       t === "dark"
         ? "/logos/ai-clients/cursor.webp"
         : "/logos/ai-clients/cursor.svg",
-    path: (id: string) => `npx tumiki-mcp@latest --connector=${id}`,
+    path: (id: string) => `${MCP_CLI_COMMAND} --connector=${id}`,
     type: "コマンド",
   },
   {
@@ -47,7 +47,7 @@ const AI_CLIENT_CONNECTIONS = [
       t === "dark"
         ? "/logos/ai-clients/claude.webp"
         : "/logos/ai-clients/claude.svg",
-    path: (id: string) => `npx tumiki-mcp@latest --connector=${id}`,
+    path: (id: string) => `${MCP_CLI_COMMAND} --connector=${id}`,
     type: "コマンド",
   },
   {
@@ -56,7 +56,7 @@ const AI_CLIENT_CONNECTIONS = [
       t === "dark"
         ? "/logos/ai-clients/cline.webp"
         : "/logos/ai-clients/cline.svg",
-    path: (id: string) => `npx tumiki-mcp@latest --connector=${id}`,
+    path: (id: string) => `${MCP_CLI_COMMAND} --connector=${id}`,
     type: "コマンド",
   },
   {
@@ -65,7 +65,7 @@ const AI_CLIENT_CONNECTIONS = [
       t === "dark"
         ? "/logos/ai-clients/claude.webp"
         : "/logos/ai-clients/claude.svg",
-    path: (id: string) => `https://mcp.tumiki.cloud/${id}/sse`,
+    path: (id: string) => `${MCP_BASE_URL}/${id}/sse`,
     type: "SSE",
   },
   {
@@ -74,7 +74,7 @@ const AI_CLIENT_CONNECTIONS = [
       t === "dark"
         ? "/logos/ai-clients/chatgpt.webp"
         : "/logos/ai-clients/chatgpt.svg",
-    path: (id: string) => `https://mcp.tumiki.cloud/${id}/http`,
+    path: (id: string) => `${MCP_BASE_URL}/${id}/http`,
     type: "HTTP",
   },
   {
@@ -83,7 +83,7 @@ const AI_CLIENT_CONNECTIONS = [
       t === "dark"
         ? "/logos/ai-clients/copilot.webp"
         : "/logos/ai-clients/copilot.svg",
-    path: (id: string) => `https://mcp.tumiki.cloud/${id}/http`,
+    path: (id: string) => `${MCP_BASE_URL}/${id}/http`,
     type: "HTTP",
   },
   {
@@ -92,13 +92,13 @@ const AI_CLIENT_CONNECTIONS = [
       t === "dark"
         ? "/logos/ai-clients/antigravity.webp"
         : "/logos/ai-clients/antigravity.svg",
-    path: (id: string) => `https://mcp.tumiki.cloud/${id}/sse`,
+    path: (id: string) => `${MCP_BASE_URL}/${id}/sse`,
     type: "SSE",
   },
   {
     name: "API",
     logo: () => "",
-    path: (id: string) => `https://mcp.tumiki.cloud/${id}/http`,
+    path: (id: string) => `${MCP_BASE_URL}/${id}/http`,
     type: "HTTP",
   },
 ];

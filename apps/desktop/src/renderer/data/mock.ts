@@ -8,10 +8,10 @@ export const CURRENT_USER = {
   name: "田中太郎",
   email: "tanaka@example.co.jp",
   department: "営業部",
-  role: "Member",
+  role: "Admin" as "Member" | "Manager" | "Admin" | "Developer", // デモ用: 変更して確認可能
   employeeId: "EMP-00123",
   lastLogin: "2026/03/29 09:00",
-} as const;
+};
 
 /* ===== ツール ===== */
 export type ToolStatus = "active" | "degraded" | "down";
@@ -774,3 +774,8 @@ export const CATEGORIES = [
   "デザイン",
   "データベース",
 ] as const;
+
+/* ===== MCP接続定数 ===== */
+/** MCP接続ベースURL */
+export const MCP_BASE_URL = "https://mcp.tumiki.cloud";
+export const MCP_CLI_COMMAND = "npx tumiki-mcp@latest";

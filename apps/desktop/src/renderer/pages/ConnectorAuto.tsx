@@ -1,19 +1,20 @@
 import type { JSX } from "react";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAtomValue } from "jotai";
 import { ArrowLeft, Send, Sparkles, Check, Play } from "lucide-react";
 import { themeAtom } from "../store/atoms";
-import { TOOLS } from "../data/mock";
+import { TOOLS, MCP_BASE_URL, MCP_CLI_COMMAND } from "../data/mock";
 
 /** AIの応答メッセージ型 */
-type Message = { role: "user" | "ai"; content: string };
+type Message = { id: string; role: "user" | "ai"; content: string };
 
 export const ConnectorAuto = (): JSX.Element => {
   const theme = useAtomValue(themeAtom);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([
     {
+      id: "init",
       role: "ai",
       content:
         "どのような業務を自動化したいですか？\n例:「GitHub の Issue を週次でまとめて Slack に投稿したい」",
@@ -27,18 +28,30 @@ export const ConnectorAuto = (): JSX.Element => {
   } | null>(null);
   const [saved, setSaved] = useState(false);
   const [testing, setTesting] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    },
+    [],
+  );
 
   /** 送信ハンドラ（モック: 2回目のメッセージでコネクタ生成） */
   const handleSend = () => {
     if (!input.trim()) return;
-    const userMsg: Message = { role: "user", content: input };
+    const userMsg: Message = {
+      id: `user-${Date.now()}`,
+      role: "user",
+      content: input,
+    };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
 
     // AIの応答をシミュレート
-    setTimeout(() => {
+    timerRef.current = setTimeout(() => {
       if (!generatedConnector) {
         const aiMsg: Message = {
+          id: `ai-${Date.now()}`,
           role: "ai",
           content: `了解しました。「${input}」を実現するために、以下のコネクタを作成しました。\n\n内容を確認して、問題なければ「作成する」を押してください。`,
         };
@@ -71,20 +84,21 @@ export const ConnectorAuto = (): JSX.Element => {
           paths: [
             {
               ai: "Cursor",
-              path: `npx tumiki-mcp@latest --connector=${slug}`,
+              path: `${MCP_CLI_COMMAND} --connector=${slug}`,
             },
             {
               ai: "Claude",
-              path: `https://mcp.tumiki.cloud/custom/${slug}/sse`,
+              path: `${MCP_BASE_URL}/custom/${slug}/sse`,
             },
             {
               ai: "ChatGPT",
-              path: `https://mcp.tumiki.cloud/custom/${slug}/http`,
+              path: `${MCP_BASE_URL}/custom/${slug}/http`,
             },
           ],
         });
       } else {
         const aiMsg: Message = {
+          id: `ai-${Date.now()}`,
           role: "ai",
           content: "コネクタの設定を更新しました。",
         };
@@ -123,9 +137,9 @@ export const ConnectorAuto = (): JSX.Element => {
         }}
       >
         <div className="space-y-4">
-          {messages.map((msg, i) => (
+          {messages.map((msg) => (
             <div
-              key={i}
+              key={msg.id}
               className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
             >
               <div

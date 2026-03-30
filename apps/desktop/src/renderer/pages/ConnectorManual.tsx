@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { useAtomValue } from "jotai";
 import { ArrowLeft, Check, Play } from "lucide-react";
 import { themeAtom } from "../store/atoms";
-import { TOOLS } from "../data/mock";
+import { TOOLS, MCP_BASE_URL, MCP_CLI_COMMAND } from "../data/mock";
 
 export const ConnectorManual = (): JSX.Element => {
   const theme = useAtomValue(themeAtom);
@@ -372,15 +372,15 @@ export const ConnectorManual = (): JSX.Element => {
                 {[
                   {
                     ai: "Cursor",
-                    path: `npx tumiki-mcp@latest --connector=${slug}`,
+                    path: `${MCP_CLI_COMMAND} --connector=${slug}`,
                   },
                   {
                     ai: "Claude",
-                    path: `https://mcp.tumiki.cloud/custom/${slug}/sse`,
+                    path: `${MCP_BASE_URL}/custom/${slug}/sse`,
                   },
                   {
                     ai: "ChatGPT",
-                    path: `https://mcp.tumiki.cloud/custom/${slug}/http`,
+                    path: `${MCP_BASE_URL}/custom/${slug}/http`,
                   },
                 ].map((p) => (
                   <div
