@@ -118,8 +118,7 @@ export const createKeycloakClient = (
       // レスポンスボディが長い場合は200文字に切り詰めてログ出力
       logger.error("Token exchange failed", {
         status: response.status,
-        body:
-          body.length > 200 ? `${body.slice(0, 200)}...(truncated)` : body,
+        body: body.length > 200 ? `${body.slice(0, 200)}...(truncated)` : body,
       });
       throw new Error(`トークン取得に失敗しました（${response.status}）`);
     }
@@ -131,9 +130,7 @@ export const createKeycloakClient = (
       logger.warn("Failed to parse token exchange response", {
         status: response.status,
         error:
-          parseError instanceof Error
-            ? parseError.message
-            : String(parseError),
+          parseError instanceof Error ? parseError.message : String(parseError),
       });
       throw new Error(
         `トークン取得に失敗しました（レスポンス解析エラー: ${response.status}）`,
@@ -171,8 +168,7 @@ export const createKeycloakClient = (
       // レスポンスボディが長い場合は200文字に切り詰めてログ出力
       logger.error("Token refresh failed", {
         status: response.status,
-        body:
-          body.length > 200 ? `${body.slice(0, 200)}...(truncated)` : body,
+        body: body.length > 200 ? `${body.slice(0, 200)}...(truncated)` : body,
       });
       throw new Error(
         `トークンリフレッシュに失敗しました（${response.status}）`,
@@ -186,9 +182,7 @@ export const createKeycloakClient = (
       logger.warn("Failed to parse token refresh response", {
         status: response.status,
         error:
-          parseError instanceof Error
-            ? parseError.message
-            : String(parseError),
+          parseError instanceof Error ? parseError.message : String(parseError),
       });
       throw new Error(
         `トークンリフレッシュに失敗しました（レスポンス解析エラー: ${response.status}）`,

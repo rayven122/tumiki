@@ -35,6 +35,11 @@ const splitSql = (sql: string): string[] =>
       s
         .split("\n")
         .filter((line) => !line.trim().startsWith("--"))
+        .map((line) => {
+          // インラインコメント（例: `CREATE TABLE foo -- comment`）を除去
+          const commentIdx = line.indexOf("--");
+          return commentIdx >= 0 ? line.slice(0, commentIdx) : line;
+        })
         .join("\n")
         .trim(),
     )

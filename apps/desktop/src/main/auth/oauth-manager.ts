@@ -61,7 +61,7 @@ export const createOAuthManager = (
   const keycloakClient: KeycloakClient = createKeycloakClient(config);
   let currentSession: OAuthSession | null = null;
   let refreshTimerId: NodeJS.Timeout | null = null;
-  let isRefreshing = false;
+  let refreshPromise: Promise<void> | null = null;
 
   /**
    * トークンを暗号化してデータベースに保存
@@ -118,18 +118,12 @@ export const createOAuthManager = (
     // 有効期限の5分前にリフレッシュ（最低でも60秒後）
     const refreshDelay = Math.max((expiresIn - 5 * 60) * 1000, 60 * 1000);
 
-    refreshTimerId = setTimeout(async () => {
+    refreshTimerId = setTimeout(() => {
       const { MAX_ATTEMPTS, INITIAL_DELAY_MS } = AUTO_REFRESH_RETRY;
 
-      // TODO: isRefreshingフラグをPromiseベースのガードに置き換えてシンプル化を検討
-      // isRefreshingフラグは2経路から操作される:
-      //   1. refreshTokenInternal(): initialize()から呼ばれ、単発リフレッシュを管理
-      //   2. startAutoRefresh()のsetTimeoutコールバック（この箇所）: リトライループ全体を保護
-      // どちらの経路でもtrueの間はinitialize()の重複実行を防止する
-      // リトライループ全体でisRefreshingを保持し、
-      // リトライ間の待機中にinitialize()が並行実行されるのを防止
-      isRefreshing = true;
-      try {
+      // Promiseベースのガードでリフレッシュ中の重複実行を防止
+      // refreshPromiseが非nullの間はinitialize()等からの並行実行をスキップする
+      const doAutoRefresh = async (): Promise<void> => {
         for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
           try {
             await doRefresh();
@@ -163,9 +157,11 @@ export const createOAuthManager = (
           });
         }
         options.onAuthExpired?.();
-      } finally {
-        isRefreshing = false;
-      }
+      };
+
+      refreshPromise = doAutoRefresh().finally(() => {
+        refreshPromise = null;
+      });
     }, refreshDelay);
 
     logger.info(`Auto refresh scheduled in ${refreshDelay / 1000} seconds`);
@@ -173,7 +169,7 @@ export const createOAuthManager = (
 
   /**
    * トークンリフレッシュのコア処理
-   * isRefreshingフラグの管理は呼び出し元が担当
+   * refreshPromiseガードの管理は呼び出し元が担当
    */
   const doRefresh = async (): Promise<void> => {
     const db = await getDb();
@@ -204,27 +200,28 @@ export const createOAuthManager = (
 
   /**
    * トークンをリフレッシュ（内部用）
-   * isRefreshingガードで重複実行を防止
+   * Promiseベースのガードで重複実行を防止
    */
   const refreshTokenInternal = async (): Promise<void> => {
-    if (isRefreshing) {
+    if (refreshPromise) {
       logger.info("Token refresh already in progress, skipping");
       return;
     }
 
-    isRefreshing = true;
-    try {
-      await doRefresh();
-    } catch (error) {
-      if (error instanceof Error) {
-        logger.error("Failed to refresh token", error);
-      } else {
-        logger.error("Failed to refresh token", { error });
-      }
-      throw error;
-    } finally {
-      isRefreshing = false;
-    }
+    refreshPromise = doRefresh()
+      .catch((error) => {
+        if (error instanceof Error) {
+          logger.error("Failed to refresh token", error);
+        } else {
+          logger.error("Failed to refresh token", { error });
+        }
+        throw error;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+
+    await refreshPromise;
   };
 
   /**
@@ -427,7 +424,7 @@ export const createOAuthManager = (
    */
   const initialize = async (): Promise<void> => {
     // リフレッシュ中の重複実行を防止（スリープ復帰の連続発火対策）
-    if (isRefreshing) {
+    if (refreshPromise) {
       logger.info("Token refresh already in progress, skipping initialize");
       return;
     }
