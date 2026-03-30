@@ -54,11 +54,9 @@ const createMockDb = () => {
   return {
     $executeRawUnsafe: vi.fn().mockResolvedValue(0),
     $queryRaw: vi.fn().mockResolvedValue([]),
-    $transaction: vi.fn(
-      async (fn: (tx: typeof txMock) => Promise<void>) => {
-        await fn(txMock);
-      },
-    ),
+    $transaction: vi.fn(async (fn: (tx: typeof txMock) => Promise<void>) => {
+      await fn(txMock);
+    }),
     /** トランザクション内のモック */
     tx: txMock,
   };
@@ -120,9 +118,7 @@ describe("runMigrations", () => {
     mockReadFileSync
       .mockReturnValueOnce("CREATE TABLE foo (id TEXT);")
       .mockReturnValueOnce("CREATE TABLE bar (id TEXT);");
-    mockRandomUUID
-      .mockReturnValueOnce("uuid-1")
-      .mockReturnValueOnce("uuid-2");
+    mockRandomUUID.mockReturnValueOnce("uuid-1").mockReturnValueOnce("uuid-2");
 
     await runMigrations(mockDb as never);
 
@@ -145,9 +141,7 @@ describe("runMigrations", () => {
   });
 
   test("適用済みのマイグレーションをスキップする", async () => {
-    mockDb.$queryRaw.mockResolvedValue([
-      { migration_name: "20240101_init" },
-    ]);
+    mockDb.$queryRaw.mockResolvedValue([{ migration_name: "20240101_init" }]);
     mockReaddirSync.mockReturnValue([
       makeDirent("20240101_init", true),
       makeDirent("20240102_add_users", true),
@@ -201,9 +195,9 @@ describe("runMigrations", () => {
     // 3: INSERT INTO _prisma_migrations
     expect(txCalls).toHaveLength(3);
     expect(txCalls[0]?.[0]).toContain("CREATE TABLE foo");
-    expect((txCalls[0]?.[0] as string)).not.toContain("--");
+    expect(txCalls[0]?.[0] as string).not.toContain("--");
     expect(txCalls[1]?.[0]).toContain("CREATE INDEX idx ON foo(id)");
-    expect((txCalls[1]?.[0] as string)).not.toContain("--");
+    expect(txCalls[1]?.[0] as string).not.toContain("--");
   });
 
   test("複数ステートメントを含むSQLを個別に実行する", async () => {

@@ -24,7 +24,6 @@ type OAuthSession = {
   createdAt: Date;
 };
 
-
 /**
  * OAuthManager型
  */
