@@ -93,62 +93,53 @@ export const createKeycloakClient = (
     const { code, codeVerifier } = params;
     const tokenUrl = `${normalizedConfig.issuer}/protocol/openid-connect/token`;
 
-    try {
-      const response = await fetch(tokenUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          grant_type: "authorization_code",
-          client_id: normalizedConfig.clientId,
-          code,
-          redirect_uri: normalizedConfig.redirectUri,
-          code_verifier: codeVerifier,
-        }),
-        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      });
+    const response = await fetch(tokenUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        client_id: normalizedConfig.clientId,
+        code,
+        redirect_uri: normalizedConfig.redirectUri,
+        code_verifier: codeVerifier,
+      }),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
 
-      if (!response.ok) {
-        let body = "";
-        try {
-          body = await response.text();
-        } catch {
-          // レスポンスボディ読み取り失敗は無視
-        }
-        // レスポンスボディが長い場合は200文字に切り詰めてログ出力
-        logger.error("Token exchange failed", {
-          status: response.status,
-          body:
-            body.length > 200 ? `${body.slice(0, 200)}...(truncated)` : body,
-        });
-        throw new Error(`トークン取得に失敗しました（${response.status}）`);
-      }
-
-      let data: unknown;
+    if (!response.ok) {
+      let body = "";
       try {
-        data = await response.json();
-      } catch (parseError) {
-        logger.warn("Failed to parse token exchange response", {
-          status: response.status,
-          error:
-            parseError instanceof Error
-              ? parseError.message
-              : String(parseError),
-        });
-        throw new Error(
-          `トークン取得に失敗しました（レスポンス解析エラー: ${response.status}）`,
-        );
+        body = await response.text();
+      } catch {
+        // レスポンスボディ読み取り失敗は無視
       }
-      return tokenResponseSchema.parse(data);
-    } catch (error) {
-      if (error instanceof Error) {
-        logger.error("Failed to exchange code for token", error);
-      } else {
-        logger.error("Failed to exchange code for token", { error });
-      }
-      throw error;
+      // レスポンスボディが長い場合は200文字に切り詰めてログ出力
+      logger.error("Token exchange failed", {
+        status: response.status,
+        body:
+          body.length > 200 ? `${body.slice(0, 200)}...(truncated)` : body,
+      });
+      throw new Error(`トークン取得に失敗しました（${response.status}）`);
     }
+
+    let data: unknown;
+    try {
+      data = await response.json();
+    } catch (parseError) {
+      logger.warn("Failed to parse token exchange response", {
+        status: response.status,
+        error:
+          parseError instanceof Error
+            ? parseError.message
+            : String(parseError),
+      });
+      throw new Error(
+        `トークン取得に失敗しました（レスポンス解析エラー: ${response.status}）`,
+      );
+    }
+    return tokenResponseSchema.parse(data);
   };
 
   /**
@@ -157,62 +148,53 @@ export const createKeycloakClient = (
   const refreshToken = async (token: string): Promise<TokenResponse> => {
     const tokenUrl = `${normalizedConfig.issuer}/protocol/openid-connect/token`;
 
-    try {
-      const response = await fetch(tokenUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          grant_type: "refresh_token",
-          client_id: normalizedConfig.clientId,
-          refresh_token: token,
-        }),
-        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      });
+    const response = await fetch(tokenUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        client_id: normalizedConfig.clientId,
+        refresh_token: token,
+      }),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
 
-      if (!response.ok) {
-        let body = "";
-        try {
-          body = await response.text();
-        } catch {
-          // レスポンスボディ読み取り失敗は無視
-        }
-        // レスポンスボディが長い場合は200文字に切り詰めてログ出力
-        logger.error("Token refresh failed", {
-          status: response.status,
-          body:
-            body.length > 200 ? `${body.slice(0, 200)}...(truncated)` : body,
-        });
-        throw new Error(
-          `トークンリフレッシュに失敗しました（${response.status}）`,
-        );
-      }
-
-      let data: unknown;
+    if (!response.ok) {
+      let body = "";
       try {
-        data = await response.json();
-      } catch (parseError) {
-        logger.warn("Failed to parse token refresh response", {
-          status: response.status,
-          error:
-            parseError instanceof Error
-              ? parseError.message
-              : String(parseError),
-        });
-        throw new Error(
-          `トークンリフレッシュに失敗しました（レスポンス解析エラー: ${response.status}）`,
-        );
+        body = await response.text();
+      } catch {
+        // レスポンスボディ読み取り失敗は無視
       }
-      return tokenResponseSchema.parse(data);
-    } catch (error) {
-      if (error instanceof Error) {
-        logger.error("Failed to refresh token", error);
-      } else {
-        logger.error("Failed to refresh token", { error });
-      }
-      throw error;
+      // レスポンスボディが長い場合は200文字に切り詰めてログ出力
+      logger.error("Token refresh failed", {
+        status: response.status,
+        body:
+          body.length > 200 ? `${body.slice(0, 200)}...(truncated)` : body,
+      });
+      throw new Error(
+        `トークンリフレッシュに失敗しました（${response.status}）`,
+      );
     }
+
+    let data: unknown;
+    try {
+      data = await response.json();
+    } catch (parseError) {
+      logger.warn("Failed to parse token refresh response", {
+        status: response.status,
+        error:
+          parseError instanceof Error
+            ? parseError.message
+            : String(parseError),
+      });
+      throw new Error(
+        `トークンリフレッシュに失敗しました（レスポンス解析エラー: ${response.status}）`,
+      );
+    }
+    return tokenResponseSchema.parse(data);
   };
 
   /**
@@ -252,19 +234,11 @@ export const createKeycloakClient = (
 
       logger.info("Successfully logged out from Keycloak");
     } catch (error) {
-      // ネットワーク系エラー（タイムアウト・接続失敗）は警告ログのみ
-      // ローカルのトークン削除は呼び出し元のfinallyブロックで実行される
-      const isNetworkError =
-        error instanceof DOMException ||
-        (error instanceof Error && error.message.includes("fetch"));
-      if (isNetworkError) {
-        logger.warn("Keycloak logout request failed", {
-          error: error instanceof Error ? error.message : String(error),
-        });
-        return;
-      }
-      // それ以外（プログラミングエラー等）は再スローして検知可能にする
-      throw error;
+      // ログアウトAPIへの通信失敗は警告のみ — ローカルクリーンアップは呼び出し元のfinallyブロックで実施
+      // Keycloak側のセッションは有効期限で自然失効するため、エラーを再スローしない
+      logger.warn("Keycloak logout request failed", {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   };
 

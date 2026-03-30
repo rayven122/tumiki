@@ -369,26 +369,23 @@ export const createOAuthManager = (
       });
 
       if (token) {
-        // トークンを復号化（失敗時はエラーをスロー）
-        const refreshToken = await decryptToken(token.refreshToken);
-        const idToken = token.idToken
-          ? await decryptToken(token.idToken)
-          : undefined;
-
-        // Keycloakからログアウト
-        await keycloakClient.logout({ refreshToken, idToken });
+        try {
+          // トークンを復号化してKeycloakからログアウト
+          const refreshToken = await decryptToken(token.refreshToken);
+          const idToken = token.idToken
+            ? await decryptToken(token.idToken)
+            : undefined;
+          await keycloakClient.logout({ refreshToken, idToken });
+        } catch (error) {
+          // 復号化・Keycloak通信の失敗はローカルクリーンアップを優先して警告のみ
+          // Keycloak側のセッションは有効期限で自然失効する
+          logger.warn("Keycloak server-side logout failed, proceeding with local cleanup", {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
       }
 
       logger.info("Logout completed successfully");
-    } catch (error) {
-      if (error instanceof Error) {
-        logger.error("Failed to logout", error);
-      } else {
-        logger.error("Failed to logout", { error });
-      }
-      throw error instanceof Error
-        ? error
-        : new Error("ログアウトに失敗しました");
     } finally {
       // 例外発生時もローカルトークン・タイマー・セッションを確実にクリア
       try {
@@ -457,7 +454,16 @@ export const createOAuthManager = (
             logger.warn("Failed to refresh expired token", { error });
           }
           // リフレッシュ失敗時はトークンを削除
-          await db.authToken.deleteMany({});
+          try {
+            await db.authToken.deleteMany({});
+          } catch (cleanupError) {
+            logger.error("Failed to delete expired tokens during initialization", {
+              error:
+                cleanupError instanceof Error
+                  ? cleanupError.message
+                  : String(cleanupError),
+            });
+          }
         }
         return;
       }

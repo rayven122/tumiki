@@ -162,11 +162,10 @@ app
         await manager.initialize();
         logger.info("OAuthManager initialized");
       } catch (error) {
-        logger.error("OAuthManager initialization failed", {
+        // 既存トークンの復元に失敗しても、新規ログインフローは利用可能なためマネージャーは維持
+        logger.error("OAuthManager initialization failed (new login still available)", {
           error: error instanceof Error ? error.message : error,
         });
-        // 初期化失敗時はマネージャーを無効化して一貫性を保つ
-        setOAuthManager(null);
       }
     } else {
       logger.warn("Keycloak environment variables not set, OAuth disabled");

@@ -126,13 +126,9 @@ export const SettingsForm = (): React.ReactElement => {
       timeouts.set(
         "login",
         () => {
-          setIsLoading((current) => {
-            if (current) {
-              void window.electronAPI.auth.cancelLogin();
-              showAuthError("認証がタイムアウトしました。再度お試しください。");
-            }
-            return false;
-          });
+          void window.electronAPI.auth.cancelLogin();
+          showAuthError("認証がタイムアウトしました。再度お試しください。");
+          setIsLoading(false);
         },
         AUTH_SESSION_TIMEOUT_MS,
       );

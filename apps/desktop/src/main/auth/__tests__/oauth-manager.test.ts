@@ -419,7 +419,8 @@ describe("OAuthManager", () => {
       mockLogout.mockRejectedValue(new Error("Keycloak logout failed"));
 
       const manager = createTestOAuthManager();
-      await expect(manager.logout()).rejects.toThrow("Keycloak logout failed");
+      // Keycloak側の失敗は警告のみでresolveする（ローカルクリーンアップ優先）
+      await expect(manager.logout()).resolves.toBeUndefined();
 
       // Keycloakログアウトが失敗しても、finallyブロックでローカルトークンは削除される
       expect(mockDbAuthToken.deleteMany).toHaveBeenCalledWith({});

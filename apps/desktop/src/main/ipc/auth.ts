@@ -45,8 +45,9 @@ export const setupAuthIpc = (): void => {
       // 暗号化されたトークンを非同期で復号化（失敗時はエラーをスロー）
       const decryptedAccessToken = await decryptToken(token.accessToken);
 
-      // 復号化結果が空文字の場合は無効なトークンとして扱う
+      // 復号化結果が空文字の場合はトークンデータ破損の可能性
       if (!decryptedAccessToken) {
+        logger.warn("Decrypted access token is empty, token data may be corrupted");
         return null;
       }
 

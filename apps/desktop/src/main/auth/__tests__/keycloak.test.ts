@@ -259,16 +259,17 @@ describe("KeycloakClient", () => {
       await client.logout({ refreshToken: "refresh-token" });
     });
 
-    test("プログラミングエラーは再スローする", async () => {
+    test("プログラミングエラーも警告のみでresolveする（ローカルクリーンアップ優先）", async () => {
       vi.stubGlobal(
         "fetch",
         vi.fn().mockRejectedValue(new TypeError("Invalid URL")),
       );
 
       const client = createKeycloakClient(createConfig());
+      // ログアウトAPIの失敗は全て警告のみ — ローカルクリーンアップは呼び出し元で実施
       await expect(
         client.logout({ refreshToken: "refresh-token" }),
-      ).rejects.toThrow(TypeError);
+      ).resolves.toBeUndefined();
     });
 
     test("リクエストボディにclient_idとrefresh_tokenが含まれる", async () => {
