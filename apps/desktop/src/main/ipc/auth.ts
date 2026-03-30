@@ -40,18 +40,8 @@ export const setupAuthIpc = (): void => {
         return null;
       }
 
-      // 暗号化されたトークンを非同期で復号化
+      // 暗号化されたトークンを非同期で復号化（失敗時はエラーをスロー）
       const decryptedAccessToken = await decryptToken(token.accessToken);
-
-      // 復号化されたトークンの有効性検証（破損トークンはDBから削除）
-      if (!decryptedAccessToken) {
-        logger.warn(
-          "Decrypted token is invalid or empty, deleting corrupted token",
-        );
-        const db = await getDb();
-        await db.authToken.delete({ where: { id: token.id } });
-        return null;
-      }
 
       // idTokenはmainプロセス内（ログアウト時）でのみ使用し、レンダラーには返さない
       return { accessToken: decryptedAccessToken };

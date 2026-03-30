@@ -122,6 +122,10 @@ const validateFilePermissions = async (
  * セキュリティ上の制限: マスターキーはファイルシステムに保存されるため、
  * 同一デバイス上でファイルアクセス権を持つ攻撃者には暗号化の保護が効かない。
  * 可能な限りsafeStorage（OS提供のキーストア）を優先して使用すること。
+ *
+ * 注意: headless Linux環境（ディスプレイサーバーなし）ではsafeStorageが
+ * 常に利用不可となり、このフォールバックが常時使用される。
+ * そのような環境でOAuthトークンを扱う場合は、追加のアクセス制御が必要。
  */
 // メモリキャッシュ：初回読み込み後はディスクI/Oを回避
 let cachedEncryptionKey: Buffer | null = null;

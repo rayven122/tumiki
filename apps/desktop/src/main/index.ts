@@ -55,24 +55,33 @@ const handleDeepLink = async (url: string): Promise<void> => {
     createWindow();
   }
 
+  // ロード完了を待ってからIPCを送信（ウィンドウ再作成直後はロード中の場合がある）
+  const sendToWindow = (channel: string, ...args: unknown[]): void => {
+    if (!mainWindow) return;
+    if (mainWindow.webContents.isLoading()) {
+      mainWindow.webContents.once("did-finish-load", () => {
+        mainWindow?.webContents.send(channel, ...args);
+      });
+    } else {
+      mainWindow.webContents.send(channel, ...args);
+    }
+  };
+
   const manager = getOAuthManager();
   if (!manager) {
     logger.error("OAuthManager not initialized when handling deep link");
-    mainWindow?.webContents.send(
-      "auth:callbackError",
-      "認証マネージャーが初期化されていません",
-    );
+    sendToWindow("auth:callbackError", "認証マネージャーが初期化されていません");
     return;
   }
 
   try {
     await manager.handleAuthCallback(url);
-    mainWindow?.webContents.send("auth:callbackSuccess");
+    sendToWindow("auth:callbackSuccess");
     logger.info("Deep link auth callback handled successfully");
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "認証コールバックに失敗しました";
-    mainWindow?.webContents.send("auth:callbackError", message);
+    sendToWindow("auth:callbackError", message);
     logger.error("Deep link auth callback failed", { error });
   }
 
