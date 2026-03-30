@@ -9,7 +9,7 @@ Electronベースのtumikiデスクトップアプリケーション。MCPサー
    ルートの `.env` に以下を追加:
 
    ```bash
-   DESKTOP_DATABASE_URL="file:./prisma/db.sqlite"
+   DESKTOP_DATABASE_URL="file:./db.sqlite"
    ```
 
 2. **DBのセットアップ**

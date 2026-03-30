@@ -75,7 +75,7 @@ const getDatabasePath = (): string => {
   }
 
   // テスト環境など
-  return process.env.DESKTOP_DATABASE_URL || "file:./data/desktop.db";
+  return process.env.DESKTOP_DATABASE_URL || "file:./db.sqlite";
 };
 
 /**
