@@ -5,6 +5,14 @@ import { resolve } from "path";
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
+    define: {
+      "process.env.KEYCLOAK_ISSUER": JSON.stringify(
+        process.env.KEYCLOAK_ISSUER ?? "",
+      ),
+      "process.env.KEYCLOAK_DESKTOP_CLIENT_ID": JSON.stringify(
+        process.env.KEYCLOAK_DESKTOP_CLIENT_ID ?? "",
+      ),
+    },
     build: {
       outDir: "dist-electron/main",
       rollupOptions: {

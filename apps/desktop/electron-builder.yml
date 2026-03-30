@@ -1,6 +1,6 @@
 appId: com.tumiki.desktop
 productName: Tumiki
-copyright: Copyright © 2025-2026 Tumiki
+copyright: Copyright © 2025 Tumiki
 
 directories:
   output: out
@@ -9,6 +9,7 @@ directories:
 files:
   - dist-electron/**/*
   - prisma/generated/**/*
+  - prisma/migrations/**/*
   - package.json
   - "!**/*.{ts,tsx,map}"
   - "!**/tsconfig*.json"
@@ -22,6 +23,7 @@ files:
 asarUnpack:
   - "**/*.node"
   - "**/prisma/generated/**/*"
+  - "**/prisma/migrations/**/*"
   - "dist-electron/renderer/**/*"
 
 # node_modulesの処理方法を指定
@@ -44,7 +46,7 @@ mac:
       arch: [x64, arm64]
     - target: zip
       arch: [x64, arm64]
-  # TODO(#934): コード署名・公証の実装時に true に変更する（Apple Developer Program登録後）
+  # TODO: コード署名・公証の実装時に true に変更する（Apple Developer Program登録後）
   # 現時点では署名なし（WIP）のため意図的に false を設定
   # セキュリティリスク: falseの場合、DYLD_INSERT_LIBRARIESによるコードインジェクションや
   # デバッガアタッチが可能。メモリ内のOAuthトークンが攻撃対象となりうるため、
@@ -103,9 +105,6 @@ dmg:
 # notarize:
 #   teamId: ${APPLE_TEAM_ID}
 
-# electron-updater の自動アップデート機能で使用（--publish never 時は無視される）
-# 注意: owner/repo がハードコードされているため、フォーク先で自動アップデートを
-# 有効化する場合は値の変更が必要
 publish:
   provider: github
   owner: rayven122
