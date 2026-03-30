@@ -282,6 +282,20 @@ export const createOAuthManager = (
       if (oauthError) {
         const description =
           parsedUrl.searchParams.get("error_description") ?? oauthError;
+        // ユーザー操作起因のエラーはwarnレベル、システムエラーはerrorレベル
+        const userCausedErrors = [
+          "access_denied",
+          "login_required",
+          "interaction_required",
+          "consent_required",
+        ];
+        if (userCausedErrors.includes(oauthError)) {
+          logger.warn(`OAuthユーザー操作エラー: ${oauthError}`, {
+            description,
+          });
+        } else {
+          logger.error(`OAuthシステムエラー: ${oauthError}`, { description });
+        }
         throw new Error(`認証エラー: ${description}`);
       }
 

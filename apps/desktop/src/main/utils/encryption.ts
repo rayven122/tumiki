@@ -362,26 +362,10 @@ export const decryptToken = async (encryptedText: string): Promise<string> => {
     }
   }
 
-  // 古い形式（プレフィックスなし）のサポート
-  logger.warn("Decrypting token without prefix (legacy format)");
-  const safeStorageStrategy = createSafeStorageStrategy();
-  if (safeStorageStrategy.isAvailable()) {
-    try {
-      return await safeStorageStrategy.decrypt(encryptedText);
-    } catch (safeStorageError) {
-      logger.warn(
-        "safeStorage decryption failed for legacy format, trying fallback",
-        {
-          message:
-            safeStorageError instanceof Error
-              ? safeStorageError.message
-              : String(safeStorageError),
-        },
-      );
-    }
-  }
-
-  return await createFallbackEncryptionStrategy().decrypt(encryptedText);
+  // プレフィックスなしのトークンは不正なフォーマット
+  throw new Error(
+    "暗号化トークンのフォーマットが不正です（プレフィックスがありません）",
+  );
 };
 
 /**

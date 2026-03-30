@@ -220,7 +220,7 @@ export const SettingsForm = (): React.ReactElement => {
             <button
               onClick={handleLogout}
               disabled={isLoading}
-              className="flex items-center space-x-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex items-center space-x-2 rounded-lg bg-red-600 px-4 py-3 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <LogOut size={16} />
               <span>{isLoading ? "ログアウト中..." : "ログアウト"}</span>
@@ -229,14 +229,14 @@ export const SettingsForm = (): React.ReactElement => {
             <>
               <button
                 disabled
-                className="flex cursor-not-allowed items-center space-x-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white opacity-50"
+                className="flex cursor-not-allowed items-center space-x-2 rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white opacity-50"
               >
                 <LogIn size={16} />
                 <span>ログイン中...</span>
               </button>
               <button
                 onClick={handleCancelLogin}
-                className="flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                className="flex items-center rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
                 キャンセル
               </button>
@@ -245,7 +245,7 @@ export const SettingsForm = (): React.ReactElement => {
             <button
               onClick={handleLogin}
               disabled={isAuthenticated === null}
-              className="flex items-center space-x-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex items-center space-x-2 rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <LogIn size={16} />
               <span>ログイン</span>
