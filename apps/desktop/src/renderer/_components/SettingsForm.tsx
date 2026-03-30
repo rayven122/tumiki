@@ -294,7 +294,10 @@ export const SettingsForm = (): React.ReactElement => {
               />
             </div>
             <div className="ml-3">
-              <label htmlFor="autoStart" className="font-medium text-gray-700">
+              <label
+                htmlFor="autoStart"
+                className="text-sm font-medium text-gray-700"
+              >
                 システム起動時に自動起動
               </label>
               <p className="text-xs text-gray-500">
@@ -316,7 +319,7 @@ export const SettingsForm = (): React.ReactElement => {
             <div className="ml-3">
               <label
                 htmlFor="minimizeToTray"
-                className="font-medium text-gray-700"
+                className="text-sm font-medium text-gray-700"
               >
                 システムトレイに最小化
               </label>

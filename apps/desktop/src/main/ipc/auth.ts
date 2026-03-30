@@ -18,10 +18,11 @@ const findValidToken = async (): Promise<AuthToken | null> => {
     return null;
   }
 
-  if (new Date() > token.expiresAt) {
+  const now = new Date();
+  if (now > token.expiresAt) {
     logger.debug("Token expired, deleting from database");
     await db.authToken.deleteMany({
-      where: { expiresAt: { lte: new Date() } },
+      where: { expiresAt: { lte: now } },
     });
     return null;
   }
@@ -47,7 +48,9 @@ export const setupAuthIpc = (): void => {
 
       // 復号化結果が空文字の場合はトークンデータ破損の可能性
       if (!decryptedAccessToken) {
-        logger.warn("Decrypted access token is empty, token data may be corrupted");
+        logger.warn(
+          "Decrypted access token is empty, token data may be corrupted",
+        );
         return null;
       }
 

@@ -121,6 +121,7 @@ export const createOAuthManager = (
     refreshTimerId = setTimeout(async () => {
       const { MAX_ATTEMPTS, INITIAL_DELAY_MS } = AUTO_REFRESH_RETRY;
 
+      // TODO: isRefreshingフラグをPromiseベースのガードに置き換えてシンプル化を検討
       // isRefreshingフラグは2経路から操作される:
       //   1. refreshTokenInternal(): initialize()から呼ばれ、単発リフレッシュを管理
       //   2. startAutoRefresh()のsetTimeoutコールバック（この箇所）: リトライループ全体を保護
@@ -379,9 +380,12 @@ export const createOAuthManager = (
         } catch (error) {
           // 復号化・Keycloak通信の失敗はローカルクリーンアップを優先して警告のみ
           // Keycloak側のセッションは有効期限で自然失効する
-          logger.warn("Keycloak server-side logout failed, proceeding with local cleanup", {
-            error: error instanceof Error ? error.message : String(error),
-          });
+          logger.warn(
+            "Keycloak server-side logout failed, proceeding with local cleanup",
+            {
+              error: error instanceof Error ? error.message : String(error),
+            },
+          );
         }
       }
 
@@ -457,12 +461,15 @@ export const createOAuthManager = (
           try {
             await db.authToken.deleteMany({});
           } catch (cleanupError) {
-            logger.error("Failed to delete expired tokens during initialization", {
-              error:
-                cleanupError instanceof Error
-                  ? cleanupError.message
-                  : String(cleanupError),
-            });
+            logger.error(
+              "Failed to delete expired tokens during initialization",
+              {
+                error:
+                  cleanupError instanceof Error
+                    ? cleanupError.message
+                    : String(cleanupError),
+              },
+            );
           }
         }
         return;
