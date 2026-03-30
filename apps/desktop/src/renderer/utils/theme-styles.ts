@@ -84,7 +84,7 @@ export const sectionBorderStyle: CSSProperties = {
 
 /** 認証種別バッジのスタイルを返す */
 export const authBadgeStyle = (
-  authType: "NONE" | "API_KEY" | "OAuth",
+  authType: "NONE" | "BEARER" | "API_KEY" | "OAUTH",
 ): { backgroundColor: string; color: string } => {
   switch (authType) {
     case "NONE":
@@ -97,7 +97,8 @@ export const authBadgeStyle = (
         backgroundColor: "var(--badge-warn-bg)",
         color: "var(--badge-warn-text)",
       };
-    case "OAuth":
+    case "BEARER":
+    case "OAUTH":
       return {
         backgroundColor: "var(--badge-info-bg)",
         color: "var(--badge-info-text)",

@@ -1,31 +1,21 @@
 import type { JSX } from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { useAtomValue } from "jotai";
 import { Search, Plus } from "lucide-react";
-import { themeAtom } from "../store/atoms";
-import { TOOLS, CATEGORIES } from "../data/mock";
-import type { Tool, ToolStatus, AuthType } from "../data/mock";
+import type { CatalogItem } from "../../types/catalog";
 import {
   cardStyle,
-  selectStyle,
   inputStyle,
   sectionBorderStyle,
   authBadgeStyle,
 } from "../utils/theme-styles";
 
-/** ステータスドット色 */
-const statusDotColor: Record<ToolStatus, string> = {
-  active: "bg-emerald-400",
-  degraded: "bg-amber-400",
-  down: "bg-red-400",
-};
-
 /** 認証種別ラベル */
-const authTypeLabel: Record<AuthType, string> = {
+const authTypeLabel: Record<CatalogItem["authType"], string> = {
   NONE: "設定不要",
+  BEARER: "Bearer",
   API_KEY: "API Key",
-  OAuth: "OAuth",
+  OAUTH: "OAuth",
 };
 
 /** セクション見出し */
@@ -49,12 +39,12 @@ const SectionHeader = ({
   </div>
 );
 
-/** テーマに応じたロゴURLを返す */
-const toolLogo = (tool: Tool, theme: string): string =>
-  theme === "dark" ? tool.logoDark : tool.logoLight;
-
 /** 認証種別バッジ */
-const AuthBadge = ({ authType }: { authType: AuthType }): JSX.Element => (
+const AuthBadge = ({
+  authType,
+}: {
+  authType: CatalogItem["authType"];
+}): JSX.Element => (
   <span
     className="rounded-full px-2 py-0.5 text-[9px] font-medium"
     style={authBadgeStyle(authType)}
@@ -64,21 +54,36 @@ const AuthBadge = ({ authType }: { authType: AuthType }): JSX.Element => (
 );
 
 export const ToolCatalog = (): JSX.Element => {
-  const theme = useAtomValue(themeAtom);
+  const [catalogs, setCatalogs] = useState<CatalogItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<string>("すべて");
+
+  useEffect(() => {
+    window.electronAPI.catalog
+      .getAll()
+      .then(setCatalogs)
+      .catch(() => setCatalogs([]))
+      .finally(() => setLoading(false));
+  }, []);
 
   const lowerQuery = query.toLowerCase();
-  const allFiltered = TOOLS.filter((t) => {
-    const matchesQuery =
+  const filtered = catalogs.filter(
+    (c) =>
       query === "" ||
-      t.name.toLowerCase().includes(lowerQuery) ||
-      t.description.includes(query);
-    const matchesCategory = category === "すべて" || t.category === category;
-    return matchesQuery && matchesCategory;
-  });
+      c.name.toLowerCase().includes(lowerQuery) ||
+      c.description.includes(query),
+  );
 
-  const approvedTools = allFiltered.filter((t) => t.approved);
+  if (loading) {
+    return (
+      <div
+        className="flex h-full items-center justify-center text-sm"
+        style={{ color: "var(--text-subtle)" }}
+      >
+        読み込み中...
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-6">
@@ -91,11 +96,11 @@ export const ToolCatalog = (): JSX.Element => {
           ツールカタログ
         </h1>
         <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
-          組織で利用可能なツールを検索・申請できます
+          利用可能なMCPサーバーを検索・追加できます
         </p>
       </div>
 
-      {/* フィルタ */}
+      {/* 検索バー */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative min-w-[200px] flex-1">
           <Search
@@ -112,63 +117,51 @@ export const ToolCatalog = (): JSX.Element => {
             style={inputStyle}
           />
         </div>
-
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="rounded-lg px-3 py-2 text-sm outline-none"
-          style={selectStyle}
-        >
-          {CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
       </div>
 
-      {/* 承認済みセクション */}
-      {approvedTools.length > 0 && (
+      {/* カタログ一覧 */}
+      {filtered.length > 0 && (
         <div>
-          <SectionHeader title="利用中のツール" count={approvedTools.length} />
+          <SectionHeader title="MCPカタログ" count={filtered.length} />
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-            {approvedTools.map((tool) => (
+            {filtered.map((item) => (
               <div
-                key={tool.id}
+                key={item.id}
                 className="flex flex-col rounded-xl p-4 transition-all hover:-translate-y-0.5 hover:shadow-lg"
                 style={cardStyle}
               >
-                {/* ロゴ + 認証種別 + ステータス */}
+                {/* アイコン + 認証種別 */}
                 <div className="mb-3 flex items-start justify-between">
-                  <img
-                    src={toolLogo(tool, theme)}
-                    alt={tool.name}
-                    className="h-8 w-8 rounded-lg"
-                  />
-                  <div className="flex items-center gap-1.5">
-                    <AuthBadge authType={tool.authType} />
-                    <span
-                      className={`h-2 w-2 rounded-full ${statusDotColor[tool.status]}`}
+                  {item.iconPath ? (
+                    <img
+                      src={item.iconPath}
+                      alt={item.name}
+                      className="h-8 w-8 rounded-lg"
                     />
-                  </div>
+                  ) : (
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-700 text-xs text-gray-400">
+                      MCP
+                    </div>
+                  )}
+                  <AuthBadge authType={item.authType} />
                 </div>
                 {/* 名前 */}
                 <div
                   className="mb-1 text-sm font-medium"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  {tool.name}
+                  {item.name}
                 </div>
                 {/* 説明 */}
                 <div
                   className="mb-3 line-clamp-2 text-[10px] leading-relaxed"
                   style={{ color: "var(--text-subtle)" }}
                 >
-                  {tool.description}
+                  {item.description}
                 </div>
                 {/* 追加ボタン */}
                 <Link
-                  to={`/tools/${tool.id}`}
+                  to={`/tools/catalog/${item.id}`}
                   className="mt-auto flex w-full items-center justify-center gap-1 rounded-md py-1.5 text-[10px] font-medium transition hover:opacity-90"
                   style={{
                     backgroundColor: "var(--text-primary)",
@@ -184,7 +177,7 @@ export const ToolCatalog = (): JSX.Element => {
         </div>
       )}
 
-      {allFiltered.length === 0 && (
+      {filtered.length === 0 && (
         <div
           className="py-12 text-center text-sm"
           style={{ color: "var(--text-subtle)" }}
