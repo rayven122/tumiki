@@ -67,3 +67,31 @@ export const selectStyle: CSSProperties = {
   backgroundColor: "var(--bg-card)",
   color: "var(--text-secondary)",
 };
+
+/** テキスト入力の共通スタイル */
+export const inputStyle: CSSProperties = {
+  border: "1px solid var(--border)",
+  backgroundColor: "var(--bg-card)",
+  color: "var(--text-primary)",
+};
+
+/** セクション区切りの共通スタイル */
+export const sectionBorderStyle: CSSProperties = {
+  borderBottomWidth: 1,
+  borderBottomStyle: "solid",
+  borderBottomColor: "var(--border)",
+};
+
+/** 認証種別バッジのスタイルを返す */
+export const authBadgeStyle = (
+  authType: string,
+): { backgroundColor: string; color: string } =>
+  authType === "NONE"
+    ? {
+        backgroundColor: "var(--badge-success-bg)",
+        color: "var(--badge-success-text)",
+      }
+    : {
+        backgroundColor: "var(--badge-warn-bg)",
+        color: "var(--badge-warn-text)",
+      };
