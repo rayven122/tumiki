@@ -23,6 +23,8 @@ export type ToolOperation = {
   allowed: boolean;
 };
 
+export type AuthType = "NONE" | "API_KEY" | "OAuth";
+
 export type Tool = {
   id: string;
   name: string;
@@ -40,6 +42,7 @@ export type Tool = {
   stats: { requests: number; successRate: number; avgLatency: number };
   approved: boolean;
   category: string;
+  authType: AuthType;
   requiredApproval?: string;
   availableDepartments?: string;
 };
@@ -89,6 +92,7 @@ export const TOOLS: Tool[] = [
     stats: { requests: 234, successRate: 98.7, avgLatency: 142 },
     approved: true,
     category: "コミュニケーション",
+    authType: "OAuth",
   },
   {
     id: "github",
@@ -116,6 +120,7 @@ export const TOOLS: Tool[] = [
     stats: { requests: 189, successRate: 97.8, avgLatency: 210 },
     approved: true,
     category: "開発",
+    authType: "API_KEY",
   },
   {
     id: "google-drive",
@@ -142,6 +147,7 @@ export const TOOLS: Tool[] = [
     stats: { requests: 178, successRate: 99.4, avgLatency: 120 },
     approved: true,
     category: "ファイル管理",
+    authType: "OAuth",
   },
   {
     id: "notion",
@@ -165,6 +171,7 @@ export const TOOLS: Tool[] = [
     stats: { requests: 289, successRate: 99.3, avgLatency: 110 },
     approved: true,
     category: "ドキュメント",
+    authType: "OAuth",
   },
   {
     id: "figma",
@@ -195,6 +202,7 @@ export const TOOLS: Tool[] = [
     stats: { requests: 145, successRate: 98.6, avgLatency: 195 },
     approved: true,
     category: "デザイン",
+    authType: "API_KEY",
   },
   {
     id: "sentry",
@@ -221,6 +229,7 @@ export const TOOLS: Tool[] = [
     stats: { requests: 98, successRate: 100, avgLatency: 85 },
     approved: true,
     category: "開発",
+    authType: "API_KEY",
   },
   {
     id: "microsoft-teams",
@@ -247,6 +256,7 @@ export const TOOLS: Tool[] = [
     stats: { requests: 210, successRate: 97.6, avgLatency: 165 },
     approved: true,
     category: "コミュニケーション",
+    authType: "OAuth",
   },
   {
     id: "postgresql",
@@ -273,6 +283,7 @@ export const TOOLS: Tool[] = [
     stats: { requests: 167, successRate: 99.4, avgLatency: 45 },
     approved: true,
     category: "データベース",
+    authType: "API_KEY",
   },
   {
     id: "onedrive",
@@ -303,6 +314,7 @@ export const TOOLS: Tool[] = [
     stats: { requests: 78, successRate: 100, avgLatency: 130 },
     approved: true,
     category: "ファイル管理",
+    authType: "OAuth",
   },
   {
     id: "playwright",
@@ -329,6 +341,7 @@ export const TOOLS: Tool[] = [
     stats: { requests: 0, successRate: 0, avgLatency: 0 },
     approved: false,
     category: "開発",
+    authType: "NONE",
     requiredApproval: "情シス承認",
     availableDepartments: "開発部",
   },
@@ -356,6 +369,7 @@ export const TOOLS: Tool[] = [
     stats: { requests: 0, successRate: 0, avgLatency: 0 },
     approved: false,
     category: "開発",
+    authType: "API_KEY",
     requiredApproval: "部長承認",
     availableDepartments: "開発部",
   },
