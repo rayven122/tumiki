@@ -2,7 +2,6 @@ import { safeStorage, app } from "electron";
 import { randomBytes, createCipheriv, createDecipheriv, scrypt } from "crypto";
 import { promisify } from "util";
 import { join } from "path";
-import { existsSync } from "fs";
 import {
   readFile,
   writeFile,
@@ -139,7 +138,10 @@ const getOrCreateEncryptionKey = async (): Promise<Buffer> => {
   const keyPath = join(userDataPath, "tumiki-encryption.key");
 
   // 既存のキーファイルが存在する場合は読み込む
-  if (existsSync(keyPath)) {
+  const keyFileExists = await access(keyPath)
+    .then(() => true)
+    .catch(() => false);
+  if (keyFileExists) {
     try {
       await validateFilePermissions(keyPath, "600");
       const key = await readFile(keyPath);
@@ -178,7 +180,10 @@ const getOrCreateEncryptionKey = async (): Promise<Buffer> => {
   }
 
   // userDataディレクトリが存在しない場合は作成（所有者のみアクセス可能）
-  if (!existsSync(userDataPath)) {
+  const userDataDirExists = await access(userDataPath)
+    .then(() => true)
+    .catch(() => false);
+  if (!userDataDirExists) {
     await mkdir(userDataPath, { recursive: true, mode: 0o700 });
 
     // ディレクトリ権限の検証（Unix系のみ）
@@ -202,7 +207,10 @@ const getOrCreateEncryptionKey = async (): Promise<Buffer> => {
     await rename(tempPath, keyPath);
     await validateFilePermissions(keyPath, "600");
   } catch (error) {
-    if (existsSync(tempPath)) {
+    const tempFileExists = await access(tempPath)
+      .then(() => true)
+      .catch(() => false);
+    if (tempFileExists) {
       try {
         await unlink(tempPath);
       } catch (cleanupError) {

@@ -121,6 +121,10 @@ export const createOAuthManager = (
     refreshTimerId = setTimeout(async () => {
       const { MAX_ATTEMPTS, INITIAL_DELAY_MS } = AUTO_REFRESH_RETRY;
 
+      // isRefreshingフラグは2経路から操作される:
+      //   1. refreshTokenInternal(): initialize()から呼ばれ、単発リフレッシュを管理
+      //   2. startAutoRefresh()のsetTimeoutコールバック（この箇所）: リトライループ全体を保護
+      // どちらの経路でもtrueの間はinitialize()の重複実行を防止する
       // リトライループ全体でisRefreshingを保持し、
       // リトライ間の待機中にinitialize()が並行実行されるのを防止
       isRefreshing = true;
@@ -184,6 +188,9 @@ export const createOAuthManager = (
 
     // リフレッシュトークンを復号化
     const refreshToken = await decryptToken(token.refreshToken);
+    if (!refreshToken) {
+      throw new Error("リフレッシュトークンの復号化に失敗しました");
+    }
 
     // トークンをリフレッシュ
     const tokenResponse = await keycloakClient.refreshToken(refreshToken);
@@ -367,6 +374,9 @@ export const createOAuthManager = (
       if (token) {
         // トークンを復号化
         const refreshToken = await decryptToken(token.refreshToken);
+        if (!refreshToken) {
+          throw new Error("リフレッシュトークンの復号化に失敗しました");
+        }
         const idToken = token.idToken
           ? await decryptToken(token.idToken)
           : undefined;

@@ -116,9 +116,11 @@ export const createKeycloakClient = (
         } catch {
           // レスポンスボディ読み取り失敗は無視
         }
+        // レスポンスボディが長い場合は200文字に切り詰めてログ出力
         logger.error("Token exchange failed", {
           status: response.status,
-          body,
+          body:
+            body.length > 200 ? `${body.slice(0, 200)}...(truncated)` : body,
         });
         throw new Error(`トークン取得に失敗しました（${response.status}）`);
       }
@@ -176,7 +178,12 @@ export const createKeycloakClient = (
         } catch {
           // レスポンスボディ読み取り失敗は無視
         }
-        logger.error("Token refresh failed", { status: response.status, body });
+        // レスポンスボディが長い場合は200文字に切り詰めてログ出力
+        logger.error("Token refresh failed", {
+          status: response.status,
+          body:
+            body.length > 200 ? `${body.slice(0, 200)}...(truncated)` : body,
+        });
         throw new Error(
           `トークンリフレッシュに失敗しました（${response.status}）`,
         );
