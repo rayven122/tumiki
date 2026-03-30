@@ -70,7 +70,10 @@ const handleDeepLink = async (url: string): Promise<void> => {
   const manager = getOAuthManager();
   if (!manager) {
     logger.error("OAuthManager not initialized when handling deep link");
-    sendToWindow("auth:callbackError", "認証マネージャーが初期化されていません");
+    sendToWindow(
+      "auth:callbackError",
+      "認証マネージャーが初期化されていません",
+    );
     return;
   }
 

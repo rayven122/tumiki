@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from "fs";
+import { readdir, readFile } from "fs/promises";
 import { join } from "path";
 import { app } from "electron";
 import { randomUUID } from "crypto";
@@ -65,7 +65,8 @@ export const runMigrations = async (db: PrismaClient): Promise<void> => {
 
   // マイグレーションディレクトリを昇順で列挙（タイムスタンプ付き名前でソート確定）
   const migrationsDir = getMigrationsDir();
-  const migrationNames = readdirSync(migrationsDir, { withFileTypes: true })
+  const entries = await readdir(migrationsDir, { withFileTypes: true });
+  const migrationNames = entries
     .filter((d) => d.isDirectory())
     .map((d) => d.name)
     .sort();
@@ -74,7 +75,7 @@ export const runMigrations = async (db: PrismaClient): Promise<void> => {
     if (appliedSet.has(name)) continue;
 
     const sqlPath = join(migrationsDir, name, "migration.sql");
-    const sql = readFileSync(sqlPath, "utf-8");
+    const sql = await readFile(sqlPath, "utf-8");
 
     logger.info(`Applying migration: ${name}`);
 
