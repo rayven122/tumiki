@@ -39,18 +39,46 @@ erDiagram
 "McpCatalog" {
   Int id PK
   String name
-  String slug UK
   String description
   String iconPath "nullable"
   TransportType transportType
   String command "nullable"
   String args
   String url "nullable"
-  String envVarKeys
+  String credentialKeys
   AuthType authType
   Boolean isOfficial
   DateTime createdAt
   DateTime updatedAt
+}
+"McpConnection" {
+  Int id PK
+  String name
+  String slug
+  TransportType transportType
+  String command "nullable"
+  String args
+  String url "nullable"
+  String credentials
+  AuthType authType
+  Boolean isEnabled
+  Int displayOrder
+  DateTime createdAt
+  DateTime updatedAt
+  Int serverId FK
+  Int catalogId FK "nullable"
+}
+"McpTool" {
+  Int id PK
+  String name
+  String description
+  String inputSchema
+  String customName "nullable"
+  String customDescription "nullable"
+  Boolean isAllowed
+  DateTime createdAt
+  DateTime updatedAt
+  Int connectionId FK
 }
 "McpServer" {
   Int id PK
@@ -63,41 +91,11 @@ erDiagram
   DateTime createdAt
   DateTime updatedAt
 }
-"McpConnection" {
-  Int id PK
-  Int serverId FK
-  String name
-  TransportType transportType
-  String command "nullable"
-  String args
-  String url "nullable"
-  String envVars
-  AuthType authType
-  String authToken "nullable"
-  Boolean isEnabled
-  Int displayOrder
-  Int catalogId FK "nullable"
-  DateTime createdAt
-  DateTime updatedAt
-}
-"McpTool" {
-  Int id PK
-  Int connectionId FK
-  String name
-  String description
-  String inputSchema
-  String customName "nullable"
-  String customDescription "nullable"
-  Boolean isAllowed
-  DateTime createdAt
-  DateTime updatedAt
-}
 "AuditLog" {
   Int id PK
-  Int serverId FK
-  Int connectionId "nullable"
   String toolName
   String method
+  TransportType transportType
   Int durationMs
   Int inputBytes
   Int outputBytes
@@ -105,6 +103,8 @@ erDiagram
   Int errorCode "nullable"
   String errorSummary "nullable"
   DateTime createdAt
+  Int serverId FK
+  String connectionName "nullable"
 }
 "McpConnection" }o--|| "McpServer" : server
 "McpConnection" }o--o| "McpCatalog" : catalog
@@ -120,18 +120,56 @@ MCPカタログ（プリセットMCPサーバーのテンプレート）
 
 - `id`:
 - `name`: カタログ表示名
-- `slug`: URL識別子（小文字・ハイフン区切り）
 - `description`: カタログ説明
 - `iconPath`: アイコンパス
 - `transportType`: トランスポートタイプ
 - `command`: STDIO用コマンド
 - `args`: STDIO用引数（JSON配列文字列）
 - `url`: SSE/Streamable HTTP用URL
-- `envVarKeys`: 必要な環境変数キー名（JSON配列文字列）
+- `credentialKeys`: 必要な設定キー名（STDIO: 環境変数キー / SSE・Streamable HTTP: ヘッダー名、JSON配列文字列）
 - `authType`: 認証タイプ
 - `isOfficial`: 公式カタログフラグ
 - `createdAt`:
 - `updatedAt`:
+
+### `McpConnection`
+
+MCP接続（個別のMCPサーバーへの接続設定）
+
+**Properties**
+
+- `id`:
+- `name`: 接続表示名
+- `slug`: URL識別子（小文字・ハイフン区切り）
+- `transportType`: トランスポートタイプ
+- `command`: STDIO用コマンド（例: "npx", "uvx", "node"）
+- `args`: STDIO用引数（JSON配列文字列）
+- `url`: SSE/Streamable HTTP用URL
+- `credentials`: 接続設定値（STDIO: 環境変数 / SSE・Streamable HTTP: HTTPヘッダー）
+- `authType`: 認証タイプ
+- `isEnabled`: 有効/無効フラグ
+- `displayOrder`: 統合サーバー内での表示順序
+- `createdAt`:
+- `updatedAt`:
+- `serverId`: 所属するMcpServer
+- `catalogId`: カタログ参照（カタログから登録した場合）
+
+### `McpTool`
+
+MCPツール（接続が提供するツールの定義・権限管理）
+
+**Properties**
+
+- `id`:
+- `name`: ツール名（大元のMCPから取得、ルーティングに使用）
+- `description`: ツール説明（大元のMCPから取得）
+- `inputSchema`: 入力スキーマ（JSON Schema文字列）
+- `customName`: カスタム表示名（nullなら元のnameを使用）
+- `customDescription`: カスタム説明（nullなら元のdescriptionを使用）
+- `isAllowed`: ツールの使用を許可するか
+- `createdAt`:
+- `updatedAt`:
+- `connectionId`: 対象MCP接続
 
 ### `McpServer`
 
@@ -150,45 +188,6 @@ MCPサーバー（仮想・統合サーバー = Proxyエンドポイント）
 - `createdAt`:
 - `updatedAt`:
 
-### `McpConnection`
-
-MCP接続（個別のMCPサーバーへの接続設定）
-
-**Properties**
-
-- `id`:
-- `serverId`: 所属するMcpServerのID
-- `name`: 接続表示名
-- `transportType`: トランスポートタイプ
-- `command`: STDIO用コマンド（例: "npx", "uvx", "node"）
-- `args`: STDIO用引数（JSON配列文字列）
-- `url`: SSE/Streamable HTTP用URL
-- `envVars`: 環境変数（JSON object文字列）
-- `authType`: 認証タイプ
-- `authToken`: 認証トークン/APIキー
-- `isEnabled`: 有効/無効フラグ
-- `displayOrder`: 統合サーバー内での表示順序
-- `catalogId`: カタログ参照（カタログから登録した場合）
-- `createdAt`:
-- `updatedAt`:
-
-### `McpTool`
-
-MCPツール（接続が提供するツールの定義・権限管理）
-
-**Properties**
-
-- `id`:
-- `connectionId`: 対象MCP接続ID
-- `name`: ツール名（大元のMCPから取得、ルーティングに使用）
-- `description`: ツール説明（大元のMCPから取得）
-- `inputSchema`: 入力スキーマ（JSON Schema文字列）
-- `customName`: カスタム表示名（nullなら元のnameを使用）
-- `customDescription`: カスタム説明（nullなら元のdescriptionを使用）
-- `isAllowed`: ツールの使用を許可するか
-- `createdAt`:
-- `updatedAt`:
-
 ### `AuditLog`
 
 監査ログ（MCPツール呼び出しの記録）
@@ -197,10 +196,9 @@ MCPツール（接続が提供するツールの定義・権限管理）
 **Properties**
 
 - `id`:
-- `serverId`: 対象MCPサーバーID
-- `connectionId`: 対象MCP接続ID（接続削除後もログ保持のためリレーション未定義）
 - `toolName`: 実行されたツール名
 - `method`: MCPメソッド（例: "tools/call", "resources/read"）
+- `transportType`: リクエスト時のトランスポートタイプ
 - `durationMs`: 実行時間（ミリ秒）
 - `inputBytes`: 入力データサイズ（バイト）
 - `outputBytes`: 出力データサイズ（バイト）
@@ -208,3 +206,5 @@ MCPツール（接続が提供するツールの定義・権限管理）
 - `errorCode`: MCPエラーコード（エラー時のみ）
 - `errorSummary`: エラーメッセージ要約
 - `createdAt`:
+- `serverId`: 対象MCPサーバー
+- `connectionName`: 対象MCP接続名（接続削除後もログで識別可能にするため名前で保持）
