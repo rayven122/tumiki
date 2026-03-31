@@ -1,7 +1,6 @@
 import { ipcMain } from "electron";
 import { z } from "zod";
-import { getDb } from "../db";
-import { encryptToken, decryptToken } from "../utils/encryption";
+import * as authService from "../services/auth.service";
 import * as logger from "../utils/logger";
 
 /**
@@ -44,35 +43,7 @@ export const setupAuthIpc = (): void => {
   // 認証トークン取得
   ipcMain.handle("auth:getToken", async () => {
     try {
-      const db = await getDb();
-      const token = await db.authToken.findFirst({
-        orderBy: { createdAt: "desc" },
-      });
-
-      if (!token) {
-        return null;
-      }
-
-      // トークン期限チェック（期限切れの場合はDBから削除）
-      if (new Date() > token.expiresAt) {
-        logger.debug("Token expired, deleting from database");
-        await db.authToken.delete({ where: { id: token.id } });
-        return null;
-      }
-
-      // 暗号化されたトークンを非同期で復号化
-      const decryptedToken = await decryptToken(token.accessToken);
-
-      // 復号化されたトークンの有効性検証（破損トークンはDBから削除）
-      if (!decryptedToken || decryptedToken.length === 0) {
-        logger.warn(
-          "Decrypted token is invalid or empty, deleting corrupted token",
-        );
-        await db.authToken.delete({ where: { id: token.id } });
-        return null;
-      }
-
-      return decryptedToken;
+      return await authService.getToken();
     } catch (error) {
       logger.error(
         "Failed to get auth token",
@@ -88,27 +59,7 @@ export const setupAuthIpc = (): void => {
     try {
       // 入力データのバリデーション
       const validatedData = authTokenSchema.parse(tokenData);
-
-      const db = await getDb();
-
-      // 新しいトークンを非同期で暗号化して保存
-      const newToken = await db.authToken.create({
-        data: {
-          accessToken: await encryptToken(validatedData.accessToken),
-          refreshToken: await encryptToken(validatedData.refreshToken),
-          expiresAt: validatedData.expiresAt,
-        },
-      });
-
-      // 最新のトークンのみ残し、古いトークンを削除
-      await db.authToken.deleteMany({
-        where: {
-          id: { not: newToken.id },
-        },
-      });
-
-      logger.info("Auth token saved successfully");
-      return { success: true };
+      return await authService.saveToken(validatedData);
     } catch (error) {
       // Zodバリデーションエラーの処理
       if (error instanceof z.ZodError) {
@@ -130,10 +81,7 @@ export const setupAuthIpc = (): void => {
   // トークン削除（ログアウト時）
   ipcMain.handle("auth:clearToken", async () => {
     try {
-      const db = await getDb();
-      await db.authToken.deleteMany({});
-      logger.info("Auth token cleared");
-      return { success: true };
+      return await authService.clearToken();
     } catch (error) {
       logger.error(
         "Failed to clear auth token",
@@ -146,17 +94,7 @@ export const setupAuthIpc = (): void => {
   // 認証状態確認
   ipcMain.handle("auth:isAuthenticated", async () => {
     try {
-      const db = await getDb();
-      const token = await db.authToken.findFirst({
-        orderBy: { createdAt: "desc" },
-      });
-
-      if (!token) {
-        return false;
-      }
-
-      // トークンが有効期限内か確認
-      return new Date() <= token.expiresAt;
+      return await authService.isAuthenticated();
     } catch (error) {
       logger.error(
         "Failed to check authentication status",

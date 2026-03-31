@@ -45,6 +45,10 @@ vi.mock("../../utils/logger", () => ({
   error: () => undefined,
 }));
 
+vi.mock("../../services/catalog.service", () => ({
+  seedCatalogs: vi.fn().mockResolvedValue(undefined),
+}));
+
 // グローバルなクリーンアップ - すべてのテスト後にタイマーを実タイマーに戻す
 afterEach(() => {
   // すべてのタイマーをクリアしてから実タイマーに戻す

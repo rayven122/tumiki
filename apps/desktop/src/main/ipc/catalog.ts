@@ -1,5 +1,5 @@
 import { ipcMain } from "electron";
-import { getDb } from "../db";
+import * as catalogService from "../services/catalog.service";
 import * as logger from "../utils/logger";
 
 /**
@@ -9,12 +9,7 @@ export const setupCatalogIpc = (): void => {
   // カタログ一覧取得
   ipcMain.handle("catalog:getAll", async () => {
     try {
-      const db = await getDb();
-      const catalogs = await db.mcpCatalog.findMany({
-        orderBy: { name: "asc" },
-      });
-
-      return catalogs;
+      return await catalogService.getAllCatalogs();
     } catch (error) {
       logger.error(
         "Failed to get catalog list",
