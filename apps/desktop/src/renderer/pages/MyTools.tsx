@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Search, ArrowRight, Server, Plus } from "lucide-react";
 import type { McpServerItem } from "../../types/mcp";
-import { MCP_BASE_URL, MCP_CLI_COMMAND } from "../data/mock";
 
 /** MCPサーバーステータス表示 */
 const STATUS_CONFIG: Record<
@@ -201,57 +200,6 @@ export const MyTools = (): JSX.Element => {
                     >
                       {status.label}
                     </span>
-                  </div>
-
-                  {/* AIクライアント別接続パス */}
-                  <div
-                    className="mt-3 space-y-1.5"
-                    style={{
-                      borderTop: "1px solid var(--border)",
-                      paddingTop: 8,
-                    }}
-                  >
-                    <span
-                      className="text-[9px]"
-                      style={{ color: "var(--text-subtle)" }}
-                    >
-                      接続パス
-                    </span>
-                    {[
-                      {
-                        ai: "Cursor",
-                        path: `${MCP_CLI_COMMAND} --connector=${server.slug}`,
-                      },
-                      {
-                        ai: "Claude",
-                        path: `${MCP_BASE_URL}/${server.slug}/sse`,
-                      },
-                      {
-                        ai: "ChatGPT",
-                        path: `${MCP_BASE_URL}/${server.slug}/http`,
-                      },
-                    ].map((p) => (
-                      <div
-                        key={p.ai}
-                        className="flex items-center gap-2 text-[9px]"
-                      >
-                        <span
-                          className="w-12 shrink-0"
-                          style={{ color: "var(--text-muted)" }}
-                        >
-                          {p.ai}
-                        </span>
-                        <code
-                          className="flex-1 truncate rounded px-1.5 py-0.5 font-mono"
-                          style={{
-                            backgroundColor: "var(--bg-card-hover)",
-                            color: "var(--text-secondary)",
-                          }}
-                        >
-                          {p.path}
-                        </code>
-                      </div>
-                    ))}
                   </div>
                 </div>
               );

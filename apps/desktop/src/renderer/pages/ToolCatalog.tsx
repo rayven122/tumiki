@@ -1,6 +1,7 @@
 import type { JSX } from "react";
 import { useState, useEffect } from "react";
-import { Search, Plus } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Search, Plus, ArrowLeft } from "lucide-react";
 import type { CatalogItem } from "../../types/catalog";
 import { AddMcpModal } from "../_components/AddMcpModal";
 import { cardStyle } from "../utils/theme-styles";
@@ -62,16 +63,26 @@ export const ToolCatalog = (): JSX.Element => {
   return (
     <div className="space-y-6 p-6">
       {/* ヘッダー */}
-      <div>
-        <h1
-          className="text-2xl font-bold"
-          style={{ color: "var(--text-primary)" }}
+      <div className="flex items-start justify-between">
+        <div>
+          <h1
+            className="text-2xl font-bold"
+            style={{ color: "var(--text-primary)" }}
+          >
+            ツールカタログ
+          </h1>
+          <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
+            利用可能なMCPサーバーを検索・追加できます
+          </p>
+        </div>
+        <Link
+          to="/tools"
+          className="flex items-center gap-1 text-xs transition-opacity hover:opacity-80"
+          style={{ color: "var(--text-muted)" }}
         >
-          ツールカタログ
-        </h1>
-        <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
-          利用可能なMCPサーバーを検索・追加できます
-        </p>
+          <ArrowLeft size={12} />
+          コネクトに戻る
+        </Link>
       </div>
 
       {/* 検索バー */}
