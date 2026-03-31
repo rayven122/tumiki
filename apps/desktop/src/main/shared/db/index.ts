@@ -1,4 +1,4 @@
-import { PrismaClient } from "../../../prisma/generated/client";
+import { PrismaClient } from "../../../../prisma/generated/client";
 import { join } from "path";
 import { app } from "electron";
 import { existsSync, mkdirSync } from "fs";
@@ -266,6 +266,7 @@ export const getDb = async (): Promise<PrismaClient> => {
 /**
  * データベース初期化
  * アプリケーション起動時に接続を確立し、接続状態を確認
+ * 注意: シードデータの投入はここでは行わない（呼び出し元で実施）
  */
 export const initializeDb = async (): Promise<void> => {
   try {

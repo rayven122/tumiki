@@ -1,8 +1,10 @@
 import { app, BrowserWindow } from "electron";
 import { createMainWindow } from "./window";
-import { initializeDb, closeDb } from "./db";
+import { initializeDb, closeDb } from "./shared/db";
 import { setupAuthIpc } from "./ipc/auth";
-import * as logger from "./utils/logger";
+import { setupCatalogIpc } from "./features/catalog/catalog.ipc";
+import { seedCatalogs } from "./features/catalog/catalog.service";
+import * as logger from "./shared/utils/logger";
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -21,8 +23,12 @@ app
     // データベース初期化
     await initializeDb();
 
+    // カタログ初期データを投入（冪等）
+    await seedCatalogs();
+
     // IPC ハンドラー登録
     setupAuthIpc();
+    setupCatalogIpc();
 
     createWindow();
 
