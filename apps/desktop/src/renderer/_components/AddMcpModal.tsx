@@ -38,6 +38,7 @@ export const AddMcpModal = ({
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSlugInfo, setShowSlugInfo] = useState(false);
 
   const slug = useMemo(() => toSlug(serverName), [serverName]);
 
@@ -182,17 +183,54 @@ export const AddMcpModal = ({
         </div>
 
         {/* MCP識別子 */}
-        <div
-          className="mb-6 flex items-center justify-between rounded-lg px-4 py-3"
-          style={{
-            backgroundColor: "var(--bg-app)",
-            border: "1px solid var(--border-subtle)",
-          }}
-        >
-          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-            MCPサーバー識別子: {slug || "—"}
-          </span>
-          <Info size={14} style={{ color: "var(--text-subtle)" }} />
+        <div className="relative mb-6">
+          <div
+            className="flex items-center justify-between rounded-lg px-4 py-3"
+            style={{
+              backgroundColor: "var(--bg-app)",
+              border: "1px solid var(--border-subtle)",
+            }}
+          >
+            <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+              MCPサーバー識別子: {slug || "—"}
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowSlugInfo((prev) => !prev)}
+              className="transition hover:opacity-70"
+            >
+              <Info size={14} style={{ color: "var(--text-subtle)" }} />
+            </button>
+          </div>
+          {/* ツールチップ */}
+          {showSlugInfo && (
+            <div
+              className="absolute bottom-full left-1/2 z-10 mb-2 w-80 -translate-x-1/2 rounded-lg px-4 py-3 text-xs shadow-lg"
+              style={{
+                backgroundColor: "var(--text-primary)",
+                color: "var(--bg-card)",
+              }}
+            >
+              <div className="mb-1.5 font-semibold">
+                MCPサーバー識別子の用途
+              </div>
+              <ul className="list-inside list-disc space-y-1">
+                <li>ツール名の接頭辞として使用（例:{slug}__tool_name）</li>
+                <li>
+                  設定ファイルのキーとして使用（Claude Desktop、Cursor等）
+                </li>
+              </ul>
+              {/* 矢印 */}
+              <div
+                className="absolute top-full left-1/2 h-0 w-0 -translate-x-1/2"
+                style={{
+                  borderLeft: "6px solid transparent",
+                  borderRight: "6px solid transparent",
+                  borderTop: "6px solid var(--text-primary)",
+                }}
+              />
+            </div>
+          )}
         </div>
 
         {/* APIキー入力（API_KEY認証の場合のみ） */}
