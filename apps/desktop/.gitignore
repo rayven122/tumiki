@@ -1,1 +1,3 @@
 .serena/
+*.db
+*.db-journal

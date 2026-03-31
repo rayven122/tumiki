@@ -21,9 +21,9 @@ vi.mock("electron", () => ({
   },
 }));
 
-vi.mock("../../db");
+vi.mock("../../shared/db");
 vi.mock("../../utils/encryption");
-vi.mock("../../utils/logger");
+vi.mock("../../shared/utils/logger");
 
 // manager-registryのOAuthManager参照をモック
 const mockGetOAuthManager = vi.fn().mockReturnValue(null);
@@ -33,7 +33,7 @@ vi.mock("../../auth/manager-registry", () => ({
 
 // テスト対象のインポート（モックの後に行う）
 import { setupAuthIpc } from "../auth";
-import { getDb } from "../../db";
+import { getDb } from "../../shared/db";
 import { decryptToken } from "../../utils/encryption";
 
 describe("setupAuthIpc", () => {

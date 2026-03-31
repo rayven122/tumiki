@@ -1,37 +1,60 @@
 import type { JSX } from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { useAtomValue } from "jotai";
-import { Search, Plus, Settings } from "lucide-react";
-import { themeAtom } from "../store/atoms";
-import { TOOLS, CATEGORIES } from "../data/mock";
-import type { ToolStatus } from "../data/mock";
+import { Search, Plus } from "lucide-react";
+import type { CatalogItem } from "../../types/catalog";
 import { cardStyle } from "../utils/theme-styles";
 
-/** ステータスドット色 */
-const statusDotColor: Record<ToolStatus, string> = {
-  active: "bg-emerald-400",
-  degraded: "bg-amber-400",
-  down: "bg-red-400",
+/** 認証種別ラベル */
+const authTypeLabel: Record<CatalogItem["authType"], string> = {
+  NONE: "設定不要",
+  BEARER: "Bearer",
+  API_KEY: "API Key",
+  OAUTH: "OAuth",
+};
+
+/** 認証種別バッジスタイル */
+const authBadgeColor: Record<
+  CatalogItem["authType"],
+  { bg: string; text: string }
+> = {
+  NONE: { bg: "var(--badge-success-bg)", text: "var(--badge-success-text)" },
+  BEARER: { bg: "var(--badge-warn-bg)", text: "var(--badge-warn-text)" },
+  API_KEY: { bg: "var(--badge-warn-bg)", text: "var(--badge-warn-text)" },
+  OAUTH: { bg: "var(--badge-warn-bg)", text: "var(--badge-warn-text)" },
 };
 
 export const ToolCatalog = (): JSX.Element => {
-  const theme = useAtomValue(themeAtom);
+  const [catalogs, setCatalogs] = useState<CatalogItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<string>("すべて");
 
-  // 承認済み / 未承認で分離
-  const allFiltered = TOOLS.filter((t) => {
-    const matchesQuery =
+  useEffect(() => {
+    window.electronAPI.catalog
+      .getAll()
+      .then(setCatalogs)
+      .catch(() => setCatalogs([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const lowerQuery = query.toLowerCase();
+  const filtered = catalogs.filter(
+    (c) =>
       query === "" ||
-      t.name.toLowerCase().includes(query.toLowerCase()) ||
-      t.description.includes(query);
-    const matchesCategory = category === "すべて" || t.category === category;
-    return matchesQuery && matchesCategory;
-  });
+      c.name.toLowerCase().includes(lowerQuery) ||
+      c.description.includes(query),
+  );
 
-  const approvedTools = allFiltered.filter((t) => t.approved);
-  const unapprovedTools = allFiltered.filter((t) => !t.approved);
+  if (loading) {
+    return (
+      <div
+        className="flex h-full items-center justify-center text-sm"
+        style={{ color: "var(--text-subtle)" }}
+      >
+        読み込み中...
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-6">
@@ -44,13 +67,12 @@ export const ToolCatalog = (): JSX.Element => {
           ツールカタログ
         </h1>
         <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
-          組織で利用可能なツールを検索・申請できます
+          利用可能なMCPサーバーを検索・追加できます
         </p>
       </div>
 
-      {/* フィルタ */}
+      {/* 検索バー */}
       <div className="flex flex-wrap items-center gap-3">
-        {/* 検索バー */}
         <div className="relative min-w-[200px] flex-1">
           <Search
             size={14}
@@ -72,30 +94,10 @@ export const ToolCatalog = (): JSX.Element => {
             }}
           />
         </div>
-
-        {/* カテゴリフィルタ */}
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="rounded-lg px-3 py-2 text-sm outline-none"
-          style={{
-            borderWidth: 1,
-            borderStyle: "solid",
-            borderColor: "var(--border)",
-            backgroundColor: "var(--bg-card)",
-            color: "var(--text-secondary)",
-          }}
-        >
-          {CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
       </div>
 
-      {/* 承認済みセクション（カードグリッド） */}
-      {approvedTools.length > 0 && (
+      {/* カタログ一覧 */}
+      {filtered.length > 0 && (
         <div>
           <div
             className="mb-4 flex items-center justify-between pb-2"
@@ -109,166 +111,70 @@ export const ToolCatalog = (): JSX.Element => {
               className="text-sm font-medium"
               style={{ color: "var(--text-muted)" }}
             >
-              利用中のツール
+              MCPカタログ
             </h2>
             <span
               className="text-[10px]"
               style={{ color: "var(--text-subtle)" }}
             >
-              {approvedTools.length}件
+              {filtered.length}件
             </span>
           </div>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-            {approvedTools.map((tool) => (
-              <Link
-                key={tool.id}
-                to={`/tools/${tool.id}`}
-                className="rounded-xl p-4 transition-all hover:-translate-y-0.5 hover:shadow-lg"
+            {filtered.map((item) => (
+              <div
+                key={item.id}
+                className="flex flex-col rounded-xl p-4 transition-all hover:-translate-y-0.5 hover:shadow-lg"
                 style={cardStyle}
               >
-                {/* ロゴ + ステータスドット */}
+                {/* アイコン + 認証種別 */}
                 <div className="mb-3 flex items-start justify-between">
-                  <img
-                    src={theme === "dark" ? tool.logoDark : tool.logoLight}
-                    alt={tool.name}
-                    className="h-8 w-8 rounded-lg"
-                  />
+                  {item.iconPath ? (
+                    <img
+                      src={item.iconPath}
+                      alt={item.name}
+                      className="h-8 w-8 rounded-lg"
+                    />
+                  ) : (
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-700 text-xs text-gray-400">
+                      MCP
+                    </div>
+                  )}
                   <span
-                    className={`h-2 w-2 rounded-full ${statusDotColor[tool.status]}`}
-                  />
-                </div>
-                {/* 名前 */}
-                <div
-                  className="mb-1 text-sm font-medium"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {tool.name}
-                </div>
-                {/* カテゴリ */}
-                <div
-                  className="mb-3 text-[10px] leading-relaxed"
-                  style={{ color: "var(--text-subtle)" }}
-                >
-                  {tool.category}
-                </div>
-                {/* フッター */}
-                <div className="flex items-center justify-between">
-                  <span
-                    className="font-mono text-[9px]"
-                    style={{ color: "var(--text-subtle)" }}
-                  >
-                    {tool.operations.length} tools
-                  </span>
-                  <span
-                    className="flex items-center gap-1 rounded-md px-2.5 py-1 text-[10px] font-medium"
+                    className="rounded-full px-2 py-0.5 text-[9px] font-medium"
                     style={{
-                      backgroundColor: "var(--bg-card-hover)",
-                      color: "var(--text-muted)",
+                      backgroundColor: authBadgeColor[item.authType].bg,
+                      color: authBadgeColor[item.authType].text,
                     }}
                   >
-                    <Settings size={10} />
-                    管理
+                    {authTypeLabel[item.authType]}
                   </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 申請可能セクション（LP風カード） */}
-      {unapprovedTools.length > 0 && (
-        <div>
-          <div
-            className="mb-4 flex items-center justify-between pb-2"
-            style={{
-              borderBottomWidth: 1,
-              borderBottomStyle: "solid",
-              borderBottomColor: "var(--border)",
-            }}
-          >
-            <h2
-              className="text-sm font-medium"
-              style={{ color: "var(--text-muted)" }}
-            >
-              申請可能なツール
-            </h2>
-            <span
-              className="text-[10px]"
-              style={{ color: "var(--text-subtle)" }}
-            >
-              {unapprovedTools.length}件
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-            {unapprovedTools.map((tool) => (
-              <div
-                key={tool.id}
-                className="rounded-xl p-4 transition-all hover:-translate-y-0.5 hover:shadow-lg"
-                style={cardStyle}
-              >
-                {/* ロゴ */}
-                <div className="mb-3">
-                  <img
-                    src={theme === "dark" ? tool.logoDark : tool.logoLight}
-                    alt={tool.name}
-                    className="h-8 w-8 rounded-lg"
-                  />
                 </div>
                 {/* 名前 */}
                 <div
                   className="mb-1 text-sm font-medium"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  {tool.name}
+                  {item.name}
                 </div>
                 {/* 説明 */}
                 <div
-                  className="mb-3 text-[10px] leading-relaxed"
+                  className="mb-3 line-clamp-2 text-[10px] leading-relaxed"
                   style={{ color: "var(--text-subtle)" }}
                 >
-                  {tool.description}
+                  {item.description}
                 </div>
-
-                {/* 追加情報 */}
-                <div className="mb-3 space-y-1.5 text-[10px]">
-                  <div className="flex justify-between">
-                    <span style={{ color: "var(--text-subtle)" }}>
-                      カテゴリ
-                    </span>
-                    <span style={{ color: "var(--text-secondary)" }}>
-                      {tool.category}
-                    </span>
-                  </div>
-                  {tool.requiredApproval && (
-                    <div className="flex justify-between">
-                      <span style={{ color: "var(--text-subtle)" }}>承認</span>
-                      <span style={{ color: "var(--text-secondary)" }}>
-                        {tool.requiredApproval}
-                      </span>
-                    </div>
-                  )}
-                  {tool.availableDepartments && (
-                    <div className="flex justify-between">
-                      <span style={{ color: "var(--text-subtle)" }}>対象</span>
-                      <span style={{ color: "var(--text-secondary)" }}>
-                        {tool.availableDepartments}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* 申請ボタン（LP風の白ボタン） */}
+                {/* 追加ボタン */}
                 <Link
-                  to="/requests/new"
-                  className="flex w-full items-center justify-center gap-1 rounded-md py-1.5 text-[10px] font-medium transition hover:opacity-90"
+                  to={`/tools/catalog/${item.id}`}
+                  className="mt-auto flex w-full items-center justify-center gap-1 rounded-md py-1.5 text-[10px] font-medium transition hover:opacity-90"
                   style={{
                     backgroundColor: "var(--text-primary)",
                     color: "var(--bg-card)",
                   }}
                 >
                   <Plus size={10} />
-                  申請
+                  追加
                 </Link>
               </div>
             ))}
@@ -276,7 +182,7 @@ export const ToolCatalog = (): JSX.Element => {
         </div>
       )}
 
-      {allFiltered.length === 0 && (
+      {filtered.length === 0 && (
         <div
           className="py-12 text-center text-sm"
           style={{ color: "var(--text-subtle)" }}

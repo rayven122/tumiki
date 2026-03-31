@@ -1,5 +1,5 @@
 import { z } from "zod";
-import * as logger from "./logger";
+import * as logger from "../shared/utils/logger";
 
 /**
  * Keycloak認証用の環境変数スキーマ（デスクトップアプリ用）

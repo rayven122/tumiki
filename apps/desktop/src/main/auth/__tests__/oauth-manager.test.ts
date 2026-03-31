@@ -7,9 +7,9 @@ vi.mock("electron", () => ({
   },
 }));
 
-vi.mock("../../db");
+vi.mock("../../shared/db");
 vi.mock("../../utils/encryption");
-vi.mock("../../utils/logger");
+vi.mock("../../shared/utils/logger");
 
 // KeycloakClientのモック（vi.hoistedでvi.mock factory内から参照可能にする）
 const {
@@ -38,7 +38,7 @@ vi.mock("../keycloak", () => ({
 import { shell } from "electron";
 import { createOAuthManager } from "../oauth-manager";
 import type { OAuthManager } from "../oauth-manager";
-import { getDb } from "../../db";
+import { getDb } from "../../shared/db";
 import { encryptToken, decryptToken } from "../../utils/encryption";
 
 const createTestOAuthManager = (): OAuthManager =>

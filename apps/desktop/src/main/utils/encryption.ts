@@ -12,7 +12,7 @@ import {
   access,
   constants as fsPromiseConstants,
 } from "fs/promises";
-import * as logger from "./logger";
+import * as logger from "../shared/utils/logger";
 
 // フォールバック暗号化用の定数
 const ALGORITHM = "aes-256-gcm";

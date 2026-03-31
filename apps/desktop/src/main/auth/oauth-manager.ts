@@ -10,9 +10,10 @@ import {
   generateCodeChallenge,
   generateState,
 } from "./pkce";
-import { getDb } from "../db";
+import { getDb } from "../shared/db";
 import { encryptToken, decryptToken } from "../utils/encryption";
-import * as logger from "../utils/logger";
+import * as logger from "../shared/utils/logger";
+import type { Prisma } from "../../../prisma/generated/client";
 import { AUTH_SESSION_TIMEOUT_MS } from "../../shared/types";
 
 /**
@@ -84,7 +85,7 @@ export const createOAuthManager = (
       : null;
 
     // 暗号化済みトークンを保存（アトミックにcreate+delete）
-    await db.$transaction(async (tx) => {
+    await db.$transaction(async (tx: Prisma.TransactionClient) => {
       const newToken = await tx.authToken.create({
         data: {
           accessToken: encryptedAccessToken,

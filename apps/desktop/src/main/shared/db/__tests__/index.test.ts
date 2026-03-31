@@ -23,7 +23,7 @@ vi.mock("fs/promises", () => ({
   readFile: () => Promise.resolve(""),
 }));
 
-vi.mock("../../../../prisma/generated/client", () => {
+vi.mock("../../../../../prisma/generated/client", () => {
   // シングルトンインスタンスを作成（全てのnew PrismaClient()呼び出しで同じインスタンスを返す）
   let instance: {
     $connect: ReturnType<typeof vi.fn>;
@@ -95,7 +95,8 @@ const setupBeforeEach = async () => {
   vi.resetModules();
 
   // 新しいモックインスタンスへの参照を取得
-  const { PrismaClient } = await import("../../../../prisma/generated/client");
+  const { PrismaClient } =
+    await import("../../../../../prisma/generated/client");
   mockPrismaClient = new PrismaClient() as unknown as typeof mockPrismaClient;
 
   // モジュールを再インポート

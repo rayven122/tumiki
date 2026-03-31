@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { AuthTokenResult } from "../types/auth";
+import type { CatalogItem } from "../types/catalog";
 
 // Electron APIを安全に公開
 const api = {
@@ -42,6 +43,11 @@ const api = {
       ipcRenderer.on("auth:sessionExpired", listener);
       return () => ipcRenderer.removeListener("auth:sessionExpired", listener);
     },
+  },
+
+  // カタログ関連 API
+  catalog: {
+    getAll: (): Promise<CatalogItem[]> => ipcRenderer.invoke("catalog:getAll"),
   },
 };
 
