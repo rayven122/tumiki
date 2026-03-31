@@ -183,7 +183,11 @@ export const AddMcpModal = ({
         </div>
 
         {/* MCP識別子 */}
-        <div className="relative mb-6">
+        <div
+          className="relative mb-6"
+          onMouseEnter={() => setShowSlugInfo(true)}
+          onMouseLeave={() => setShowSlugInfo(false)}
+        >
           <div
             className="flex items-center justify-between rounded-lg px-4 py-3"
             style={{
@@ -194,15 +198,9 @@ export const AddMcpModal = ({
             <span className="text-xs" style={{ color: "var(--text-muted)" }}>
               MCPサーバー識別子: {slug || "—"}
             </span>
-            <button
-              type="button"
-              onClick={() => setShowSlugInfo((prev) => !prev)}
-              className="transition hover:opacity-70"
-            >
-              <Info size={14} style={{ color: "var(--text-subtle)" }} />
-            </button>
+            <Info size={14} style={{ color: "var(--text-subtle)" }} />
           </div>
-          {/* ツールチップ */}
+          {/* ツールチップ（ホバーで表示） */}
           {showSlugInfo && (
             <div
               className="absolute bottom-full left-1/2 z-10 mb-2 w-80 -translate-x-1/2 rounded-lg px-4 py-3 text-xs shadow-lg"
