@@ -37,8 +37,8 @@ const seedData: CatalogSeedData = {
   iconPath: "/logos/test.svg",
   transportType: "STDIO",
   command: "npx",
-  args: JSON.stringify(["-y", "test-server"]),
-  credentialKeys: JSON.stringify([]),
+  args: ["-y", "test-server"],
+  credentialKeys: [],
   authType: "NONE",
   isOfficial: true,
 };

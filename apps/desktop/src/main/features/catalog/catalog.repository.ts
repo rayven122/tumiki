@@ -9,8 +9,8 @@ export type CatalogSeedData = {
   iconPath: string;
   transportType: "STDIO" | "SSE" | "STREAMABLE_HTTP";
   command: string;
-  args: string;
-  credentialKeys: string;
+  args: string[];
+  credentialKeys: string[];
   authType: "NONE" | "BEARER" | "API_KEY" | "OAUTH";
   isOfficial: boolean;
 };
@@ -28,18 +28,24 @@ export const findAll = async (db: PrismaClient) => {
  * カタログデータをupsert（nameをキーとして冪等に投入）
  */
 export const upsert = async (db: PrismaClient, data: CatalogSeedData) => {
+  const dbData = {
+    ...data,
+    args: JSON.stringify(data.args),
+    credentialKeys: JSON.stringify(data.credentialKeys),
+  };
+
   return db.mcpCatalog.upsert({
     where: { name: data.name },
     update: {
-      description: data.description,
-      iconPath: data.iconPath,
-      transportType: data.transportType,
-      command: data.command,
-      args: data.args,
-      credentialKeys: data.credentialKeys,
-      authType: data.authType,
-      isOfficial: data.isOfficial,
+      description: dbData.description,
+      iconPath: dbData.iconPath,
+      transportType: dbData.transportType,
+      command: dbData.command,
+      args: dbData.args,
+      credentialKeys: dbData.credentialKeys,
+      authType: dbData.authType,
+      isOfficial: dbData.isOfficial,
     },
-    create: data,
+    create: dbData,
   });
 };
