@@ -1,8 +1,8 @@
 import type { JSX } from "react";
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 import { Search, Plus } from "lucide-react";
 import type { CatalogItem } from "../../types/catalog";
+import { AddMcpModal } from "../_components/AddMcpModal";
 import { cardStyle } from "../utils/theme-styles";
 
 /** 認証種別ラベル */
@@ -28,6 +28,9 @@ export const ToolCatalog = (): JSX.Element => {
   const [catalogs, setCatalogs] = useState<CatalogItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const [selectedCatalog, setSelectedCatalog] = useState<CatalogItem | null>(
+    null,
+  );
 
   useEffect(() => {
     window.electronAPI.catalog
@@ -165,8 +168,9 @@ export const ToolCatalog = (): JSX.Element => {
                   {item.description}
                 </div>
                 {/* 追加ボタン */}
-                <Link
-                  to={`/tools/catalog/${item.id}`}
+                <button
+                  type="button"
+                  onClick={() => setSelectedCatalog(item)}
                   className="mt-auto flex w-full items-center justify-center gap-1 rounded-md py-1.5 text-[10px] font-medium transition hover:opacity-90"
                   style={{
                     backgroundColor: "var(--text-primary)",
@@ -175,7 +179,7 @@ export const ToolCatalog = (): JSX.Element => {
                 >
                   <Plus size={10} />
                   追加
-                </Link>
+                </button>
               </div>
             ))}
           </div>
@@ -189,6 +193,15 @@ export const ToolCatalog = (): JSX.Element => {
         >
           条件に一致するツールが見つかりません
         </div>
+      )}
+
+      {/* 追加モーダル */}
+      {selectedCatalog && (
+        <AddMcpModal
+          catalog={selectedCatalog}
+          onClose={() => setSelectedCatalog(null)}
+          onSuccess={() => setSelectedCatalog(null)}
+        />
       )}
     </div>
   );

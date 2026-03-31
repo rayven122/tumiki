@@ -21,6 +21,7 @@ import { AdminTools } from "./pages/admin/AdminTools";
 import { AdminApprovals } from "./pages/admin/AdminApprovals";
 import { ConnectorAuto } from "./pages/ConnectorAuto";
 import { ConnectorManual } from "./pages/ConnectorManual";
+import { McpServers } from "./pages/McpServers";
 
 export const App = (): JSX.Element => {
   return (
@@ -29,6 +30,7 @@ export const App = (): JSX.Element => {
         <Route path="/" element={<Layout />}>
           <Route index element={<Dashboard />} />
           <Route path="tools" element={<MyTools />} />
+          <Route path="mcp-servers" element={<McpServers />} />
           <Route path="tools/catalog" element={<ToolCatalog />} />
           <Route path="tools/connector/auto" element={<ConnectorAuto />} />
           <Route path="tools/connector/manual" element={<ConnectorManual />} />

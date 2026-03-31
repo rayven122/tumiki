@@ -3,6 +3,7 @@ import { createMainWindow } from "./window";
 import { initializeDb, closeDb } from "./shared/db";
 import { setupAuthIpc } from "./ipc/auth";
 import { setupCatalogIpc } from "./features/catalog/catalog.ipc";
+import { setupMcpIpc } from "./features/mcp/mcp.ipc";
 import { seedCatalogs } from "./features/catalog/catalog.service";
 import * as logger from "./shared/utils/logger";
 
@@ -29,6 +30,7 @@ app
     // IPC ハンドラー登録
     setupAuthIpc();
     setupCatalogIpc();
+    setupMcpIpc();
 
     createWindow();
 
