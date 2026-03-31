@@ -20,6 +20,8 @@
   --badge-warn-text: #fbbf24;
   --badge-error-bg: rgba(248, 113, 113, 0.1);
   --badge-error-text: #f87171;
+  --badge-info-bg: rgba(96, 165, 250, 0.1);
+  --badge-info-text: #60a5fa;
   --btn-primary-bg: #ffffff;
   --btn-primary-text: #000000;
   --btn-primary-hover: #e4e4e7;
@@ -47,6 +49,8 @@
   --badge-warn-text: #d97706;
   --badge-error-bg: rgba(239, 68, 68, 0.1);
   --badge-error-text: #dc2626;
+  --badge-info-bg: rgba(37, 99, 235, 0.1);
+  --badge-info-text: #2563eb;
   --btn-primary-bg: #111827;
   --btn-primary-text: #ffffff;
   --btn-primary-hover: #1f2937;
