@@ -43,8 +43,8 @@ describe("catalog.service", () => {
 
       await catalogService.seedCatalogs();
 
-      // CATALOG_SEEDSの件数分upsertが呼ばれる（7件）
-      expect(catalogRepository.upsert).toHaveBeenCalledTimes(7);
+      // CATALOG_SEEDSの件数分upsertが呼ばれる（2件）
+      expect(catalogRepository.upsert).toHaveBeenCalledTimes(2);
       // 最初の呼び出しを検証
       expect(catalogRepository.upsert).toHaveBeenCalledWith(
         mockDb,

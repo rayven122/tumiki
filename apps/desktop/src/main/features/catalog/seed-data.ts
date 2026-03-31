@@ -2,7 +2,7 @@ import type { CatalogSeedData } from "./catalog.repository";
 
 /**
  * Desktop用MCPカタログのシードデータ
- * packages/scripts/src/constants/stdioMcpServers.ts を参考に定義
+ * 動作確認済みのMCPのみ登録。追加はDEV-1461で調査後に実施。
  */
 export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
   {
@@ -18,68 +18,12 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "GitHub STDIO",
-    description: "GitHub API - リポジトリ、イシュー、PR の操作",
-    iconPath: "/logos/services/github_black.svg",
-    transportType: "STDIO",
-    command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-github"],
-    credentialKeys: ["GITHUB_PERSONAL_ACCESS_TOKEN"],
-    authType: "API_KEY",
-    isOfficial: true,
-  },
-  {
-    name: "GitLab STDIO",
-    description: "GitLab API - プロジェクト、イシュー、MR の操作",
-    iconPath: "/logos/services/database.svg",
-    transportType: "STDIO",
-    command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-gitlab"],
-    credentialKeys: ["GITLAB_PERSONAL_ACCESS_TOKEN", "GITLAB_API_URL"],
-    authType: "API_KEY",
-    isOfficial: true,
-  },
-  {
-    name: "PostgreSQL STDIO",
-    description: "PostgreSQL データベース - SQL クエリの実行とスキーマ操作",
-    iconPath: "/logos/services/postgresql.svg",
-    transportType: "STDIO",
-    command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-postgres"],
-    credentialKeys: ["POSTGRESQL_CONNECTION_STRING"],
-    authType: "API_KEY",
-    isOfficial: true,
-  },
-  {
-    name: "Slack STDIO",
-    description: "Slack API - メッセージの送受信とチャンネル操作",
-    iconPath: "/logos/services/slack.svg",
-    transportType: "STDIO",
-    command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-slack"],
-    credentialKeys: ["SLACK_BOT_TOKEN", "SLACK_TEAM_ID"],
-    authType: "API_KEY",
-    isOfficial: true,
-  },
-  {
     name: "Sequential Thinking STDIO",
     description: "段階的思考サーバー - 複雑な問題解決のための段階的推論支援",
     iconPath: "/logos/services/database.svg",
     transportType: "STDIO",
     command: "npx",
     args: ["-y", "@modelcontextprotocol/server-sequential-thinking"],
-    credentialKeys: [],
-    authType: "NONE",
-    isOfficial: true,
-  },
-  {
-    name: "Serena MCP",
-    description:
-      "Serena コードベース分析 - プロジェクト構造の理解とコードナビゲーション",
-    iconPath: "/logos/services/database.svg",
-    transportType: "STDIO",
-    command: "npx",
-    args: ["-y", "@anthropic/serena-mcp"],
     credentialKeys: [],
     authType: "NONE",
     isOfficial: true,
