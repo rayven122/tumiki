@@ -41,9 +41,11 @@ export const AddMcpModal = ({
 
   const slug = useMemo(() => toSlug(serverName), [serverName]);
 
-  // API_KEY認証の場合、全キーが入力されているか
+  const needsApiKey =
+    catalog.authType === "API_KEY" && credentialKeys.length > 0;
+
   const hasRequiredCredentials =
-    catalog.authType !== "API_KEY" ||
+    !needsApiKey ||
     credentialKeys.every((key) => (credentials[key] ?? "").trim() !== "");
 
   const handleSubmit = async (): Promise<void> => {
@@ -52,7 +54,7 @@ export const AddMcpModal = ({
       return;
     }
 
-    if (catalog.authType === "API_KEY" && !hasRequiredCredentials) {
+    if (!hasRequiredCredentials) {
       setError("すべてのAPIキーを入力してください");
       return;
     }
@@ -87,38 +89,38 @@ export const AddMcpModal = ({
       style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
     >
       <div
-        className="w-full max-w-lg rounded-xl p-6"
+        className="w-full max-w-lg rounded-2xl p-8"
         style={{
           backgroundColor: "var(--bg-card)",
           border: "1px solid var(--border)",
         }}
       >
-        {/* ヘッダー */}
-        <div className="mb-2 flex items-start justify-between">
-          <div>
-            <h2
-              className="text-lg font-semibold"
-              style={{ color: "var(--text-primary)" }}
-            >
-              APIトークンの設定
-            </h2>
-            <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
-              {catalog.name}
-              に接続するために必要なAPIトークンを設定してください。
-            </p>
-          </div>
+        {/* タイトル + 閉じるボタン */}
+        <div className="mb-1 flex items-start justify-between">
+          <h2
+            className="text-xl font-bold"
+            style={{ color: "var(--text-primary)" }}
+          >
+            APIトークンの設定
+          </h2>
           <button
             type="button"
             onClick={onClose}
             className="rounded-md p-1 transition hover:opacity-70"
             style={{ color: "var(--text-muted)" }}
           >
-            <X size={18} />
+            <X size={20} />
           </button>
         </div>
 
-        {/* カタログ情報 */}
-        <div className="mb-5 flex items-center gap-3">
+        {/* 説明文 */}
+        <p className="mb-6 text-sm" style={{ color: "var(--text-muted)" }}>
+          {catalog.name}
+          に接続するために必要なAPIトークンを設定してください。
+        </p>
+
+        {/* アイコン + 名前 + 認証バッジ */}
+        <div className="mb-6 flex items-center gap-3">
           {catalog.iconPath ? (
             <img
               src={catalog.iconPath}
@@ -138,22 +140,16 @@ export const AddMcpModal = ({
           )}
           <div>
             <div
-              className="text-sm font-semibold"
+              className="text-base font-semibold"
               style={{ color: "var(--text-primary)" }}
             >
               {catalog.name}
             </div>
             <span
-              className="mt-0.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-medium"
+              className="mt-0.5 inline-block rounded-full border px-2.5 py-0.5 text-[11px] font-medium"
               style={{
-                backgroundColor:
-                  catalog.authType === "NONE"
-                    ? "var(--badge-success-bg)"
-                    : "var(--badge-warn-bg)",
-                color:
-                  catalog.authType === "NONE"
-                    ? "var(--badge-success-text)"
-                    : "var(--badge-warn-text)",
+                borderColor: "var(--border)",
+                color: "var(--text-secondary)",
               }}
             >
               {authTypeLabel[catalog.authType]}
@@ -161,10 +157,10 @@ export const AddMcpModal = ({
           </div>
         </div>
 
-        {/* サーバー名入力 */}
-        <div className="mb-4">
+        {/* サーバー名 */}
+        <div className="mb-2">
           <label
-            className="mb-1.5 block text-xs font-medium"
+            className="mb-2 block text-sm font-medium"
             style={{ color: "var(--text-primary)" }}
           >
             サーバー名
@@ -173,37 +169,39 @@ export const AddMcpModal = ({
             type="text"
             value={serverName}
             onChange={(e) => setServerName(e.target.value)}
-            className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+            className="w-full rounded-lg px-4 py-3 text-sm outline-none"
             style={{
               border: "1px solid var(--border)",
               backgroundColor: "var(--bg-input)",
               color: "var(--text-primary)",
             }}
           />
-          <p
-            className="mt-1 text-[10px]"
-            style={{ color: "var(--text-subtle)" }}
-          >
+          <p className="mt-1.5 text-xs" style={{ color: "var(--text-muted)" }}>
             表示されるサーバー名を設定できます（空白や大文字を含むことができます）
           </p>
+        </div>
 
-          {/* slug表示 */}
-          <div
-            className="mt-2 flex items-center gap-1 text-[11px]"
-            style={{ color: "var(--text-subtle)" }}
-          >
-            <span>MCPサーバー識別子: {slug || "—"}</span>
-            <Info size={12} />
-          </div>
+        {/* MCP識別子 */}
+        <div
+          className="mb-6 flex items-center justify-between rounded-lg px-4 py-3"
+          style={{
+            backgroundColor: "var(--bg-app)",
+            border: "1px solid var(--border-subtle)",
+          }}
+        >
+          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+            MCPサーバー識別子: {slug || "—"}
+          </span>
+          <Info size={14} style={{ color: "var(--text-subtle)" }} />
         </div>
 
         {/* APIキー入力（API_KEY認証の場合のみ） */}
-        {catalog.authType === "API_KEY" && credentialKeys.length > 0 && (
-          <div className="mb-4 space-y-3">
+        {needsApiKey && (
+          <div className="mb-6 space-y-4">
             {credentialKeys.map((key) => (
               <div key={key}>
                 <label
-                  className="mb-1.5 block text-xs font-medium"
+                  className="mb-2 block text-sm font-medium"
                   style={{ color: "var(--text-primary)" }}
                 >
                   {key}
@@ -218,7 +216,7 @@ export const AddMcpModal = ({
                     }))
                   }
                   placeholder={`${key}を入力...`}
-                  className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+                  className="w-full rounded-lg px-4 py-3 text-sm outline-none"
                   style={{
                     border: "1px solid var(--border)",
                     backgroundColor: "var(--bg-input)",
@@ -233,7 +231,7 @@ export const AddMcpModal = ({
         {/* エラー表示 */}
         {error && (
           <div
-            className="mb-4 rounded-md px-3 py-2 text-xs"
+            className="mb-4 rounded-lg px-4 py-2.5 text-xs"
             style={{
               backgroundColor: "var(--badge-error-bg)",
               color: "var(--badge-error-text)",
@@ -243,12 +241,22 @@ export const AddMcpModal = ({
           </div>
         )}
 
-        {/* アクションボタン */}
-        <div className="flex justify-end gap-2">
+        {/* 区切り線 */}
+        <div
+          className="mb-5"
+          style={{
+            borderTopWidth: 1,
+            borderTopStyle: "solid",
+            borderTopColor: "var(--border)",
+          }}
+        />
+
+        {/* ボタン */}
+        <div className="flex justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg px-4 py-2 text-sm font-medium transition hover:opacity-80"
+            className="rounded-lg px-5 py-2.5 text-sm font-medium transition hover:opacity-80"
             style={{
               border: "1px solid var(--border)",
               color: "var(--text-secondary)",
@@ -260,13 +268,17 @@ export const AddMcpModal = ({
             type="button"
             onClick={handleSubmit}
             disabled={loading}
-            className="rounded-lg px-6 py-2 text-sm font-medium transition hover:opacity-90 disabled:opacity-50"
+            className="rounded-lg px-6 py-2.5 text-sm font-medium transition hover:opacity-90 disabled:opacity-50"
             style={{
               backgroundColor: "var(--text-primary)",
               color: "var(--bg-card)",
             }}
           >
-            {loading ? "追加中..." : "追加"}
+            {loading
+              ? "追加中..."
+              : catalog.authType === "NONE"
+                ? "追加"
+                : "認証"}
           </button>
         </div>
       </div>
