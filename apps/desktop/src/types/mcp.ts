@@ -31,6 +31,12 @@ export type McpConnectionItem = {
   catalogId: number | null;
   createdAt: string;
   updatedAt: string;
+  catalog: {
+    id: number;
+    name: string;
+    description: string;
+    iconPath: string | null;
+  } | null;
 };
 
 /**

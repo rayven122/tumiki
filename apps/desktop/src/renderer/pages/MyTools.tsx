@@ -1,11 +1,12 @@
 import type { JSX } from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAtomValue } from "jotai";
-import { Search, ArrowRight } from "lucide-react";
+import { Search, ArrowRight, Server } from "lucide-react";
 import { themeAtom } from "../store/atoms";
 import { TOOLS, CATEGORIES, MCP_BASE_URL, MCP_CLI_COMMAND } from "../data/mock";
 import type { ToolStatus } from "../data/mock";
+import type { McpServerItem } from "../../types/mcp";
 
 /** ステータス表示定義 */
 const STATUS_CONFIG: Record<
@@ -29,11 +30,31 @@ const STATUS_CONFIG: Record<
   },
 };
 
+/** MCPサーバーステータス表示 */
+const MCP_STATUS_CONFIG: Record<
+  McpServerItem["serverStatus"],
+  { dotClass: string; label: string }
+> = {
+  RUNNING: { dotClass: "bg-emerald-400", label: "稼働中" },
+  STOPPED: { dotClass: "bg-gray-400", label: "停止中" },
+  ERROR: { dotClass: "bg-red-400", label: "エラー" },
+  PENDING: { dotClass: "bg-amber-400", label: "接続中" },
+};
+
 export const MyTools = (): JSX.Element => {
   const theme = useAtomValue(themeAtom);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string>("すべて");
   const [statusFilter, setStatusFilter] = useState<ToolStatus | "all">("all");
+  const [mcpServers, setMcpServers] = useState<McpServerItem[]>([]);
+
+  useEffect(() => {
+    window.electronAPI.mcp
+      .getAll()
+      .then(setMcpServers)
+      .catch(() => setMcpServers([]));
+  }, []);
+
   const approvedTools = TOOLS.filter((t) => t.approved);
   const filteredTools = approvedTools.filter((t) => {
     const matchesQuery =
@@ -96,6 +117,79 @@ export const MyTools = (): JSX.Element => {
             </Link>
           </div>
         </div>
+
+        {/* 登録済みMCPサーバー */}
+        {mcpServers.length > 0 && (
+          <div
+            className="px-4 py-3"
+            style={{ borderBottom: "1px solid var(--border)" }}
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <span
+                className="text-[10px] font-medium"
+                style={{ color: "var(--text-muted)" }}
+              >
+                登録済みMCPサーバー
+              </span>
+              <span
+                className="text-[10px]"
+                style={{ color: "var(--text-subtle)" }}
+              >
+                {mcpServers.length}件
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
+              {mcpServers.map((server) => {
+                const status = MCP_STATUS_CONFIG[server.serverStatus];
+                return (
+                  <div
+                    key={server.id}
+                    className="flex items-center gap-2.5 rounded-lg p-2.5 transition-all hover:shadow-sm"
+                    style={{
+                      border: "1px solid var(--border)",
+                      backgroundColor: "var(--bg-card)",
+                    }}
+                  >
+                    <div
+                      className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md"
+                      style={{ backgroundColor: "var(--bg-card-hover)" }}
+                    >
+                      <Server
+                        size={16}
+                        style={{ color: "var(--text-muted)" }}
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div
+                        className="truncate text-xs font-medium"
+                        style={{ color: "var(--text-primary)" }}
+                      >
+                        {server.name}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${status.dotClass}`}
+                        />
+                        <span
+                          className="text-[9px]"
+                          style={{ color: "var(--text-subtle)" }}
+                        >
+                          {status.label}
+                        </span>
+                        <span
+                          className="text-[9px]"
+                          style={{ color: "var(--text-subtle)" }}
+                        >
+                          ・{server.connections.length} 接続
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* フィルタバー */}
         <div

@@ -61,3 +61,13 @@ export const createConnection = async (
 export const findServerBySlug = async (db: PrismaClient, slug: string) => {
   return db.mcpServer.findUnique({ where: { slug } });
 };
+
+/**
+ * MCP接続を全件取得（カタログ情報付き）
+ */
+export const findAllConnections = async (db: PrismaClient) => {
+  return db.mcpConnection.findMany({
+    include: { catalog: true },
+    orderBy: { createdAt: "desc" },
+  });
+};

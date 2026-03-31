@@ -34,4 +34,17 @@ export const setupMcpIpc = (): void => {
       throw new Error("MCPサーバー一覧の取得に失敗しました");
     }
   });
+
+  // 登録済みMCP接続一覧取得
+  ipcMain.handle("mcp:getAllConnections", async () => {
+    try {
+      return await mcpService.getAllConnections();
+    } catch (error) {
+      logger.error(
+        "Failed to get MCP connection list",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error("MCP接続一覧の取得に失敗しました");
+    }
+  });
 };
