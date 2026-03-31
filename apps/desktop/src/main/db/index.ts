@@ -3,6 +3,7 @@ import { join } from "path";
 import { app } from "electron";
 import { existsSync, mkdirSync } from "fs";
 import * as logger from "../utils/logger";
+import { seedCatalog } from "./seed";
 
 // 接続タイムアウト設定（ミリ秒）
 // 環境変数で設定可能（DESKTOP_DB_TIMEOUT_MS）
@@ -274,6 +275,9 @@ export const initializeDb = async (): Promise<void> => {
     // データベース接続を確認（簡単なクエリを実行）
     await db.$queryRaw`SELECT 1`;
     logger.info("Database initialized and connection verified");
+
+    // カタログ初期データを投入（冪等）
+    await seedCatalog(db);
   } catch (error) {
     const err = toError(error);
     logger.error("Failed to initialize database", {

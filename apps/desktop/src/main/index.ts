@@ -2,6 +2,7 @@ import { app, BrowserWindow } from "electron";
 import { createMainWindow } from "./window";
 import { initializeDb, closeDb } from "./db";
 import { setupAuthIpc } from "./ipc/auth";
+import { setupCatalogIpc } from "./ipc/catalog";
 import * as logger from "./utils/logger";
 
 let mainWindow: BrowserWindow | null = null;
@@ -23,6 +24,7 @@ app
 
     // IPC ハンドラー登録
     setupAuthIpc();
+    setupCatalogIpc();
 
     createWindow();
 

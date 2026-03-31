@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { AuthTokenData } from "../types/auth";
+import type { CatalogItem } from "../types/catalog";
 
 // Electron APIを安全に公開
 const api = {
@@ -19,6 +20,11 @@ const api = {
       ipcRenderer.invoke("auth:clearToken"),
     isAuthenticated: (): Promise<boolean> =>
       ipcRenderer.invoke("auth:isAuthenticated"),
+  },
+
+  // カタログ関連 API
+  catalog: {
+    getAll: (): Promise<CatalogItem[]> => ipcRenderer.invoke("catalog:getAll"),
   },
 };
 
