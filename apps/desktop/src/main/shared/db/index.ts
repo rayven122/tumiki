@@ -1,9 +1,8 @@
-import { PrismaClient } from "../../../prisma/generated/client";
+import { PrismaClient } from "../../../../prisma/generated/client";
 import { join } from "path";
 import { app } from "electron";
 import { existsSync, mkdirSync } from "fs";
 import * as logger from "../utils/logger";
-import { seedCatalogs } from "../services/catalog.service";
 
 // 接続タイムアウト設定（ミリ秒）
 // 環境変数で設定可能（DESKTOP_DB_TIMEOUT_MS）
@@ -267,6 +266,7 @@ export const getDb = async (): Promise<PrismaClient> => {
 /**
  * データベース初期化
  * アプリケーション起動時に接続を確立し、接続状態を確認
+ * 注意: シードデータの投入はここでは行わない（呼び出し元で実施）
  */
 export const initializeDb = async (): Promise<void> => {
   try {
@@ -275,9 +275,6 @@ export const initializeDb = async (): Promise<void> => {
     // データベース接続を確認（簡単なクエリを実行）
     await db.$queryRaw`SELECT 1`;
     logger.info("Database initialized and connection verified");
-
-    // カタログ初期データを投入（冪等）
-    await seedCatalogs();
   } catch (error) {
     const err = toError(error);
     logger.error("Failed to initialize database", {

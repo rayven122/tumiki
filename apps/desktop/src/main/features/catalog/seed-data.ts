@@ -1,4 +1,4 @@
-import type { CatalogSeedData } from "../repositories/catalog.repository";
+import type { CatalogSeedData } from "./catalog.repository";
 
 /**
  * Desktop用MCPカタログのシードデータ

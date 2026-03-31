@@ -1,14 +1,14 @@
 import { describe, test, expect, beforeEach, vi } from "vitest";
 
 // モックの設定
-vi.mock("../../db");
-vi.mock("../../utils/logger");
-vi.mock("../../repositories/catalog.repository");
+vi.mock("../../../shared/db");
+vi.mock("../../../shared/utils/logger");
+vi.mock("../catalog.repository");
 
 // テスト対象のインポート（モックの後に行う）
 import * as catalogService from "../catalog.service";
-import { getDb } from "../../db";
-import * as catalogRepository from "../../repositories/catalog.repository";
+import { getDb } from "../../../shared/db";
+import * as catalogRepository from "../catalog.repository";
 
 describe("catalog.service", () => {
   const mockDb = {} as Awaited<ReturnType<typeof getDb>>;

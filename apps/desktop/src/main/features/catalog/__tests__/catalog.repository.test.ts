@@ -6,11 +6,14 @@ import {
   beforeEach,
   afterAll,
 } from "vitest";
-import type { PrismaClient } from "../../../../prisma/generated/client";
+import type { PrismaClient } from "../../../../../prisma/generated/client";
 import * as catalogRepository from "../catalog.repository";
 import type { CatalogSeedData } from "../catalog.repository";
 import { join } from "path";
-import { createTestDb, cleanupTestDb } from "./helpers/test-db";
+import {
+  createTestDb,
+  cleanupTestDb,
+} from "../../../shared/test-helpers/test-db";
 
 const TEST_DB_PATH = join(__dirname, "test-catalog.db");
 

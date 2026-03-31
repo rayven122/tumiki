@@ -21,13 +21,13 @@ vi.mock("electron", () => ({
   },
 }));
 
-vi.mock("../../db");
+vi.mock("../../shared/db");
 vi.mock("../../utils/encryption");
-vi.mock("../../utils/logger");
+vi.mock("../../shared/utils/logger");
 
 // テスト対象のインポート（モックの後に行う）
 import { setupAuthIpc } from "../auth";
-import { getDb } from "../../db";
+import { getDb } from "../../shared/db";
 import { encryptToken, decryptToken } from "../../utils/encryption";
 import type { AuthTokenData } from "../../../types/auth";
 

@@ -1,8 +1,8 @@
 import { ipcMain } from "electron";
 import { z } from "zod";
-import { getDb } from "../db";
+import { getDb } from "../shared/db";
 import { encryptToken, decryptToken } from "../utils/encryption";
-import * as logger from "../utils/logger";
+import * as logger from "../shared/utils/logger";
 
 /**
  * 認証トークンデータのバリデーションスキーマ

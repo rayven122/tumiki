@@ -1,7 +1,7 @@
-import { getDb } from "../db";
-import * as catalogRepository from "../repositories/catalog.repository";
-import { CATALOG_SEEDS } from "../db/seed";
-import * as logger from "../utils/logger";
+import { getDb } from "../../shared/db";
+import * as catalogRepository from "./catalog.repository";
+import { CATALOG_SEEDS } from "./seed-data";
+import * as logger from "../../shared/utils/logger";
 
 /**
  * すべてのカタログを取得

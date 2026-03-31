@@ -1,10 +1,10 @@
-import { PrismaClient } from "../../../../../prisma/generated/client";
+import { PrismaClient } from "../../../../prisma/generated/client";
 import { join } from "path";
 import { readFileSync, unlinkSync, existsSync } from "fs";
 
 const MIGRATION_SQL_PATH = join(
   __dirname,
-  "../../../../../prisma/migrations/20260330004248_init/migration.sql",
+  "../../../../prisma/migrations/20260330004248_init/migration.sql",
 );
 
 /**

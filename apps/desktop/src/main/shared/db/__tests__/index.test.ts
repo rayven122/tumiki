@@ -16,7 +16,7 @@ vi.mock("fs", () => ({
   mkdirSync: () => undefined,
 }));
 
-vi.mock("../../../../prisma/generated/client", () => {
+vi.mock("../../../../../prisma/generated/client", () => {
   // シングルトンインスタンスを作成（全てのnew PrismaClient()呼び出しで同じインスタンスを返す）
   let instance: {
     $connect: ReturnType<typeof vi.fn>;
@@ -43,10 +43,6 @@ vi.mock("../../utils/logger", () => ({
   info: () => undefined,
   warn: () => undefined,
   error: () => undefined,
-}));
-
-vi.mock("../../services/catalog.service", () => ({
-  seedCatalogs: vi.fn().mockResolvedValue(undefined),
 }));
 
 // グローバルなクリーンアップ - すべてのテスト後にタイマーを実タイマーに戻す
@@ -80,7 +76,8 @@ const setupBeforeEach = async () => {
   vi.resetModules();
 
   // 新しいモックインスタンスへの参照を取得
-  const { PrismaClient } = await import("../../../../prisma/generated/client");
+  const { PrismaClient } =
+    await import("../../../../../prisma/generated/client");
   mockPrismaClient = new PrismaClient() as unknown as typeof mockPrismaClient;
 
   // モジュールを再インポート

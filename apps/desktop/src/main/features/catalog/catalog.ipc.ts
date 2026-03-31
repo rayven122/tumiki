@@ -1,6 +1,6 @@
 import { ipcMain } from "electron";
-import * as catalogService from "../services/catalog.service";
-import * as logger from "../utils/logger";
+import * as catalogService from "./catalog.service";
+import * as logger from "../../shared/utils/logger";
 
 /**
  * カタログ関連の IPC ハンドラーを設定
