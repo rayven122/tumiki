@@ -173,41 +173,48 @@ export const SettingsForm = (): React.ReactElement => {
   return (
     <div className="space-y-6">
       {/* 認証セクション */}
-      <div className="rounded-lg border border-gray-200 bg-white p-6">
-        <h3 className="mb-4 text-lg font-semibold text-gray-900">
-          Keycloak 認証
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">
+        <h3 className="mb-4 text-sm font-medium text-[var(--text-primary)]">
+          Manager連携
         </h3>
 
         {/* 認証状態表示 */}
         <div className="mb-4 flex items-center space-x-2">
           {isAuthenticated === null ? (
-            <span className="text-sm text-gray-500">認証状態を確認中...</span>
+            <span className="text-sm text-[var(--text-muted)]">
+              認証状態を確認中...
+            </span>
           ) : isAuthenticated ? (
             <>
-              <CheckCircle className="text-green-600" size={20} />
-              <span className="text-sm font-medium text-green-600">
+              <CheckCircle
+                className="text-[var(--badge-success-text)]"
+                size={20}
+              />
+              <span className="text-sm font-medium text-[var(--badge-success-text)]">
                 認証済み
               </span>
             </>
           ) : (
             <>
-              <XCircle className="text-red-600" size={20} />
-              <span className="text-sm font-medium text-red-600">未認証</span>
+              <XCircle className="text-red-500" size={20} />
+              <span className="text-sm font-medium text-red-500">未認証</span>
             </>
           )}
         </div>
 
         {/* 成功メッセージ */}
         {authSuccess && (
-          <div className="mb-4 rounded-md bg-green-50 p-4">
-            <p className="text-sm text-green-800">{authSuccess}</p>
+          <div className="mb-4 rounded-md bg-green-500/10 p-4">
+            <p className="text-sm text-[var(--badge-success-text)]">
+              {authSuccess}
+            </p>
           </div>
         )}
 
         {/* エラーメッセージ */}
         {authError && (
-          <div className="mb-4 rounded-md bg-red-50 p-4">
-            <p className="text-sm text-red-800">{authError}</p>
+          <div className="mb-4 rounded-md bg-red-500/10 p-4">
+            <p className="text-sm text-red-500">{authError}</p>
           </div>
         )}
 
@@ -217,7 +224,7 @@ export const SettingsForm = (): React.ReactElement => {
             <button
               onClick={handleLogout}
               disabled={isLoading}
-              className="flex items-center space-x-2 rounded-lg bg-red-600 px-4 py-3 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex items-center space-x-2 rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-medium text-[var(--text-secondary)] transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <LogOut size={16} />
               <span>{isLoading ? "ログアウト中..." : "ログアウト"}</span>
@@ -226,14 +233,14 @@ export const SettingsForm = (): React.ReactElement => {
             <>
               <button
                 disabled
-                className="flex cursor-not-allowed items-center space-x-2 rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white opacity-50"
+                className="flex cursor-not-allowed items-center space-x-2 rounded-lg bg-[var(--btn-primary-bg)] px-4 py-2 text-sm font-medium text-[var(--btn-primary-text)] opacity-50"
               >
                 <LogIn size={16} />
                 <span>ログイン中...</span>
               </button>
               <button
                 onClick={handleCancelLogin}
-                className="flex items-center rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                className="flex items-center rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:opacity-90"
               >
                 キャンセル
               </button>
@@ -242,7 +249,7 @@ export const SettingsForm = (): React.ReactElement => {
             <button
               onClick={handleLogin}
               disabled={isAuthenticated === null}
-              className="flex items-center space-x-2 rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex items-center space-x-2 rounded-lg bg-[var(--btn-primary-bg)] px-4 py-2 text-sm font-medium text-[var(--btn-primary-text)] transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <LogIn size={16} />
               <span>ログイン</span>
@@ -250,22 +257,22 @@ export const SettingsForm = (): React.ReactElement => {
           )}
         </div>
 
-        <p className="mt-4 text-xs text-gray-500">
+        <p className="mt-4 text-xs text-[var(--text-muted)]">
           ログインボタンをクリックすると、ブラウザでKeycloakのログインページが開きます。
           認証後、自動的にアプリに戻ります。
         </p>
       </div>
 
       {/* アプリ設定セクション */}
-      <div className="rounded-lg border border-gray-200 bg-white p-6">
-        <h3 className="mb-4 text-lg font-semibold text-gray-900">
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">
+        <h3 className="mb-4 text-sm font-medium text-[var(--text-primary)]">
           アプリケーション設定
         </h3>
         <div className="space-y-6">
           <div>
             <label
               htmlFor="theme"
-              className="block text-sm font-medium text-gray-700"
+              className="block text-sm font-medium text-[var(--text-secondary)]"
             >
               テーマ
             </label>
@@ -273,12 +280,12 @@ export const SettingsForm = (): React.ReactElement => {
               id="theme"
               value={config.theme}
               onChange={handleThemeChange}
-              className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+              className="mt-1 block w-full rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm text-[var(--text-primary)] shadow-sm focus:border-[var(--btn-primary-bg)] focus:ring-1 focus:ring-[var(--btn-primary-bg)] focus:outline-none"
             >
               <option value="light">ライト</option>
               <option value="dark">ダーク</option>
             </select>
-            <p className="mt-2 text-xs text-gray-500">
+            <p className="mt-2 text-xs text-[var(--text-muted)]">
               アプリケーションの表示テーマを選択
             </p>
           </div>
@@ -290,17 +297,17 @@ export const SettingsForm = (): React.ReactElement => {
                 type="checkbox"
                 checked={config.autoStart}
                 onChange={handleAutoStartChange}
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="h-4 w-4 rounded border-[var(--border)] text-[var(--btn-primary-bg)] focus:ring-[var(--btn-primary-bg)]"
               />
             </div>
             <div className="ml-3">
               <label
                 htmlFor="autoStart"
-                className="text-sm font-medium text-gray-700"
+                className="text-sm font-medium text-[var(--text-secondary)]"
               >
                 システム起動時に自動起動
               </label>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-[var(--text-muted)]">
                 コンピューター起動時にtumikiを自動的に起動します
               </p>
             </div>
@@ -313,24 +320,26 @@ export const SettingsForm = (): React.ReactElement => {
                 type="checkbox"
                 checked={config.minimizeToTray}
                 onChange={handleMinimizeToTrayChange}
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="h-4 w-4 rounded border-[var(--border)] text-[var(--btn-primary-bg)] focus:ring-[var(--btn-primary-bg)]"
               />
             </div>
             <div className="ml-3">
               <label
                 htmlFor="minimizeToTray"
-                className="text-sm font-medium text-gray-700"
+                className="text-sm font-medium text-[var(--text-secondary)]"
               >
                 システムトレイに最小化
               </label>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-[var(--text-muted)]">
                 ウィンドウを閉じたときにシステムトレイに最小化します
               </p>
             </div>
           </div>
 
-          <div className="border-t border-gray-200 pt-4">
-            <p className="text-xs text-gray-500">設定は自動的に保存されます</p>
+          <div className="border-t border-[var(--border)] pt-4">
+            <p className="text-xs text-[var(--text-muted)]">
+              設定は自動的に保存されます
+            </p>
           </div>
         </div>
       </div>

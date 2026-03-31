@@ -49,7 +49,7 @@ const splitSql = (sql: string): string[] =>
  * Prismaマイグレーションをアプリ起動時に適用
  *
  * prisma/migrations/ 配下のディレクトリを昇順で列挙し、
- * _prisma_migrations テーブルに記録されていない未適用のマイグレーションを順番に実行する。
+ * _tumiki_migrations テーブルに記録されていない未適用のマイグレーションを順番に実行する。
  *
  * スキーマ変更手順:
  *   1. prisma/schema.prisma を変更
@@ -59,7 +59,7 @@ const splitSql = (sql: string): string[] =>
 export const runMigrations = async (db: PrismaClient): Promise<void> => {
   // マイグレーション追跡テーブルを作成（自己ブートストラップ）
   await db.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "_prisma_migrations" (
+    CREATE TABLE IF NOT EXISTS "_tumiki_migrations" (
       "id" TEXT NOT NULL PRIMARY KEY,
       "migration_name" TEXT NOT NULL,
       "applied_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -68,7 +68,7 @@ export const runMigrations = async (db: PrismaClient): Promise<void> => {
 
   // 適用済みマイグレーション一覧を取得
   const applied = await db.$queryRaw<{ migration_name: string }[]>`
-    SELECT migration_name FROM "_prisma_migrations"
+    SELECT migration_name FROM "_tumiki_migrations"
   `;
   const appliedSet = new Set(applied.map((r) => r.migration_name));
 
@@ -106,7 +106,7 @@ export const runMigrations = async (db: PrismaClient): Promise<void> => {
         }
 
         await tx.$executeRawUnsafe(
-          `INSERT INTO "_prisma_migrations" (id, migration_name) VALUES (?, ?)`,
+          `INSERT INTO "_tumiki_migrations" (id, migration_name) VALUES (?, ?)`,
           randomUUID(),
           name,
         );
