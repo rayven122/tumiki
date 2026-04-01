@@ -6,7 +6,7 @@ import type { CatalogItem } from "../../types/catalog";
 type AddMcpModalProps = {
   catalog: CatalogItem;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (serverName: string) => void;
 };
 
 /** 認証種別ラベル */
@@ -64,7 +64,7 @@ export const AddMcpModal = ({
     setError(null);
 
     try {
-      await window.electronAPI.mcp.createFromCatalog({
+      const result = await window.electronAPI.mcp.createFromCatalog({
         catalogId: catalog.id,
         catalogName: serverName,
         description: catalog.description,
@@ -76,7 +76,7 @@ export const AddMcpModal = ({
         credentials,
         authType: catalog.authType,
       });
-      onSuccess();
+      onSuccess(result.serverName);
     } catch {
       setError("MCPサーバーの登録に失敗しました");
     } finally {

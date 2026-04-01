@@ -35,7 +35,7 @@ const api = {
   mcp: {
     createFromCatalog: (
       input: CreateFromCatalogInput,
-    ): Promise<{ serverId: number }> =>
+    ): Promise<{ serverId: number; serverName: string }> =>
       ipcRenderer.invoke("mcp:createFromCatalog", input),
     getAll: (): Promise<McpServerItem[]> => ipcRenderer.invoke("mcp:getAll"),
   },

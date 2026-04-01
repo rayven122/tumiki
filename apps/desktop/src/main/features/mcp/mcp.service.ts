@@ -55,7 +55,7 @@ const generateUniqueName = async (name: string): Promise<string> => {
  */
 export const createFromCatalog = async (
   input: CreateFromCatalogInput,
-): Promise<{ serverId: number }> => {
+): Promise<{ serverId: number; serverName: string }> => {
   const db = await getDb();
   const uniqueName = await generateUniqueName(input.catalogName);
   const slug = await generateUniqueSlug(uniqueName);
@@ -83,7 +83,7 @@ export const createFromCatalog = async (
 
   logger.info(`MCP server created from catalog: ${uniqueName}`);
 
-  return { serverId: server.id };
+  return { serverId: server.id, serverName: uniqueName };
 };
 
 /**

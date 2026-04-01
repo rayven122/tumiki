@@ -45,7 +45,7 @@ describe("mcp.service", () => {
 
       const result = await mcpService.createFromCatalog(input);
 
-      expect(result).toStrictEqual({ serverId: 1 });
+      expect(result).toStrictEqual({ serverId: 1, serverName: "Test MCP" });
       expect(mcpRepository.createServer).toHaveBeenCalledWith(mockDb, {
         name: "Test MCP",
         slug: "test-mcp",
@@ -81,7 +81,7 @@ describe("mcp.service", () => {
 
       const result = await mcpService.createFromCatalog(input);
 
-      expect(result).toStrictEqual({ serverId: 2 });
+      expect(result).toStrictEqual({ serverId: 2, serverName: "Test MCP 2" });
       expect(mcpRepository.createServer).toHaveBeenCalledWith(
         mockDb,
         expect.objectContaining({ name: "Test MCP 2", slug: "test-mcp-2" }),
@@ -104,7 +104,7 @@ describe("mcp.service", () => {
 
       const result = await mcpService.createFromCatalog(input);
 
-      expect(result).toStrictEqual({ serverId: 3 });
+      expect(result).toStrictEqual({ serverId: 3, serverName: "Test MCP" });
       expect(mcpRepository.createServer).toHaveBeenCalledWith(
         mockDb,
         expect.objectContaining({ slug: "test-mcp-1" }),

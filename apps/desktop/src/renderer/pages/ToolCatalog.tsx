@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Search, Plus, ArrowLeft } from "lucide-react";
 import type { CatalogItem } from "../../types/catalog";
 import { AddMcpModal } from "../_components/AddMcpModal";
+import { toast } from "../_components/Toast";
 import { cardStyle } from "../utils/theme-styles";
 
 /** 認証種別ラベル */
@@ -212,8 +213,9 @@ export const ToolCatalog = (): JSX.Element => {
         <AddMcpModal
           catalog={selectedCatalog}
           onClose={() => setSelectedCatalog(null)}
-          onSuccess={() => {
+          onSuccess={(serverName) => {
             setSelectedCatalog(null);
+            toast.success(`${serverName}が正常に追加されました。`);
             navigate("/tools");
           }}
         />
