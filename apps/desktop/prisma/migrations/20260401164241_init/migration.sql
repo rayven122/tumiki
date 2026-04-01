@@ -1,5 +1,5 @@
 -- CreateTable
-CREATE TABLE "auth_tokens" (
+CREATE TABLE "AuthToken" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "accessToken" TEXT NOT NULL,
     "refreshToken" TEXT NOT NULL,
@@ -10,7 +10,7 @@ CREATE TABLE "auth_tokens" (
 );
 
 -- CreateTable
-CREATE TABLE "mcp_catalog" (
+CREATE TABLE "McpCatalog" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "name" TEXT NOT NULL,
     "description" TEXT NOT NULL DEFAULT '',
@@ -27,7 +27,7 @@ CREATE TABLE "mcp_catalog" (
 );
 
 -- CreateTable
-CREATE TABLE "mcp_connection" (
+CREATE TABLE "McpConnection" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
@@ -43,12 +43,12 @@ CREATE TABLE "mcp_connection" (
     "updatedAt" DATETIME NOT NULL,
     "serverId" INTEGER NOT NULL,
     "catalogId" INTEGER,
-    CONSTRAINT "mcp_connection_serverId_fkey" FOREIGN KEY ("serverId") REFERENCES "mcp_server" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT "mcp_connection_catalogId_fkey" FOREIGN KEY ("catalogId") REFERENCES "mcp_catalog" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+    CONSTRAINT "McpConnection_serverId_fkey" FOREIGN KEY ("serverId") REFERENCES "McpServer" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "McpConnection_catalogId_fkey" FOREIGN KEY ("catalogId") REFERENCES "McpCatalog" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 -- CreateTable
-CREATE TABLE "mcp_tool" (
+CREATE TABLE "McpTool" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "name" TEXT NOT NULL,
     "description" TEXT NOT NULL DEFAULT '',
@@ -59,11 +59,11 @@ CREATE TABLE "mcp_tool" (
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
     "connectionId" INTEGER NOT NULL,
-    CONSTRAINT "mcp_tool_connectionId_fkey" FOREIGN KEY ("connectionId") REFERENCES "mcp_connection" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    CONSTRAINT "McpTool_connectionId_fkey" FOREIGN KEY ("connectionId") REFERENCES "McpConnection" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
-CREATE TABLE "mcp_server" (
+CREATE TABLE "McpServer" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
@@ -76,7 +76,7 @@ CREATE TABLE "mcp_server" (
 );
 
 -- CreateTable
-CREATE TABLE "log_sync_queue" (
+CREATE TABLE "LogSyncQueue" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "serverId" TEXT NOT NULL,
     "logEntry" TEXT NOT NULL,
@@ -87,7 +87,7 @@ CREATE TABLE "log_sync_queue" (
 );
 
 -- CreateTable
-CREATE TABLE "audit_log" (
+CREATE TABLE "AuditLog" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "toolName" TEXT NOT NULL,
     "method" TEXT NOT NULL,
@@ -101,29 +101,29 @@ CREATE TABLE "audit_log" (
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "serverId" INTEGER NOT NULL,
     "connectionName" TEXT,
-    CONSTRAINT "audit_log_serverId_fkey" FOREIGN KEY ("serverId") REFERENCES "mcp_server" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    CONSTRAINT "AuditLog_serverId_fkey" FOREIGN KEY ("serverId") REFERENCES "McpServer" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "mcp_catalog_name_key" ON "mcp_catalog"("name");
+CREATE UNIQUE INDEX "McpCatalog_name_key" ON "McpCatalog"("name");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "mcp_connection_serverId_slug_key" ON "mcp_connection"("serverId", "slug");
+CREATE UNIQUE INDEX "McpConnection_serverId_slug_key" ON "McpConnection"("serverId", "slug");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "mcp_tool_connectionId_name_key" ON "mcp_tool"("connectionId", "name");
+CREATE UNIQUE INDEX "McpTool_connectionId_name_key" ON "McpTool"("connectionId", "name");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "mcp_server_slug_key" ON "mcp_server"("slug");
+CREATE UNIQUE INDEX "McpServer_slug_key" ON "McpServer"("slug");
 
 -- CreateIndex
-CREATE INDEX "log_sync_queue_syncStatus_serverId_idx" ON "log_sync_queue"("syncStatus", "serverId");
+CREATE INDEX "LogSyncQueue_syncStatus_serverId_idx" ON "LogSyncQueue"("syncStatus", "serverId");
 
 -- CreateIndex
-CREATE INDEX "log_sync_queue_serverId_idx" ON "log_sync_queue"("serverId");
+CREATE INDEX "LogSyncQueue_serverId_idx" ON "LogSyncQueue"("serverId");
 
 -- CreateIndex
-CREATE INDEX "audit_log_serverId_createdAt_idx" ON "audit_log"("serverId", "createdAt");
+CREATE INDEX "AuditLog_serverId_createdAt_idx" ON "AuditLog"("serverId", "createdAt");
 
 -- CreateIndex
-CREATE INDEX "audit_log_createdAt_idx" ON "audit_log"("createdAt");
+CREATE INDEX "AuditLog_createdAt_idx" ON "AuditLog"("createdAt");

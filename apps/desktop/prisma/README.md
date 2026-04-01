@@ -7,7 +7,7 @@
 ## Auth
 ```mermaid
 erDiagram
-"auth_tokens" {
+"AuthToken" {
   String id PK
   String accessToken
   String refreshToken
@@ -18,7 +18,7 @@ erDiagram
 }
 ```
 
-### `auth_tokens`
+### `AuthToken`
 認証トークン
 
 **Properties**
@@ -34,7 +34,7 @@ erDiagram
 ## McpServer
 ```mermaid
 erDiagram
-"mcp_catalog" {
+"McpCatalog" {
   Int id PK
   String name UK
   String description
@@ -49,7 +49,7 @@ erDiagram
   DateTime createdAt
   DateTime updatedAt
 }
-"mcp_connection" {
+"McpConnection" {
   Int id PK
   String name
   String slug
@@ -66,7 +66,7 @@ erDiagram
   Int serverId FK
   Int catalogId FK "nullable"
 }
-"mcp_tool" {
+"McpTool" {
   Int id PK
   String name
   String description
@@ -78,7 +78,7 @@ erDiagram
   DateTime updatedAt
   Int connectionId FK
 }
-"mcp_server" {
+"McpServer" {
   Int id PK
   String name
   String slug UK
@@ -89,7 +89,7 @@ erDiagram
   DateTime createdAt
   DateTime updatedAt
 }
-"log_sync_queue" {
+"LogSyncQueue" {
   Int id PK
   String serverId
   String logEntry
@@ -98,7 +98,7 @@ erDiagram
   DateTime createdAt
   DateTime syncedAt "nullable"
 }
-"audit_log" {
+"AuditLog" {
   Int id PK
   String toolName
   String method
@@ -113,13 +113,13 @@ erDiagram
   Int serverId FK
   String connectionName "nullable"
 }
-"mcp_connection" }o--|| "mcp_server" : server
-"mcp_connection" }o--o| "mcp_catalog" : catalog
-"mcp_tool" }o--|| "mcp_connection" : connection
-"audit_log" }o--|| "mcp_server" : server
+"McpConnection" }o--|| "McpServer" : server
+"McpConnection" }o--o| "McpCatalog" : catalog
+"McpTool" }o--|| "McpConnection" : connection
+"AuditLog" }o--|| "McpServer" : server
 ```
 
-### `mcp_catalog`
+### `McpCatalog`
 MCPカタログ（プリセットMCPサーバーのテンプレート）
 
 **Properties**
@@ -137,7 +137,7 @@ MCPカタログ（プリセットMCPサーバーのテンプレート）
   - `createdAt`: 
   - `updatedAt`: 
 
-### `mcp_connection`
+### `McpConnection`
 MCP接続（個別のMCPサーバーへの接続設定）
 
 **Properties**
@@ -157,7 +157,7 @@ MCP接続（個別のMCPサーバーへの接続設定）
   - `serverId`: 所属するMcpServer
   - `catalogId`: カタログ参照（カタログから登録した場合）
 
-### `mcp_tool`
+### `McpTool`
 MCPツール（接続が提供するツールの定義・権限管理）
 
 **Properties**
@@ -172,7 +172,7 @@ MCPツール（接続が提供するツールの定義・権限管理）
   - `updatedAt`: 
   - `connectionId`: 対象MCP接続
 
-### `mcp_server`
+### `McpServer`
 MCPサーバー（仮想・統合サーバー = Proxyエンドポイント）
 1つ以上のMcpConnectionを束ねて1つのMCPサーバーとして公開する
 
@@ -187,7 +187,7 @@ MCPサーバー（仮想・統合サーバー = Proxyエンドポイント）
   - `createdAt`: 
   - `updatedAt`: 
 
-### `log_sync_queue`
+### `LogSyncQueue`
 ログ同期キュー（監査ログのクラウド同期待ちエントリ）
 
 **Properties**
@@ -199,7 +199,7 @@ MCPサーバー（仮想・統合サーバー = Proxyエンドポイント）
   - `createdAt`: 
   - `syncedAt`: 同期完了日時
 
-### `audit_log`
+### `AuditLog`
 監査ログ（MCPツール呼び出しの記録）
 7日以上のレコードは自動削除対象
 

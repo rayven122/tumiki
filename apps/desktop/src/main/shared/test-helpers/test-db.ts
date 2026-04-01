@@ -4,7 +4,7 @@ import { readFileSync, unlinkSync, existsSync } from "fs";
 
 const MIGRATION_SQL_PATH = join(
   __dirname,
-  "../../../../prisma/migrations/20260401163421_init/migration.sql",
+  "../../../../prisma/migrations/20260401164241_init/migration.sql",
 );
 
 /**

@@ -66,7 +66,6 @@ model AuthToken {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  @@map("auth_tokens")
 }
 
 /// MCPカタログ（プリセットMCPサーバーのテンプレート）
@@ -99,7 +98,6 @@ model McpCatalog {
   /// このカタログから作成された接続一覧
   connections McpConnection[]
 
-  @@map("mcp_catalog")
 }
 
 /// MCP接続（個別のMCPサーバーへの接続設定）
@@ -140,7 +138,6 @@ model McpConnection {
   tools McpTool[]
 
   @@unique([serverId, slug])
-  @@map("mcp_connection")
 }
 
 /// MCPツール（接続が提供するツールの定義・権限管理）
@@ -167,7 +164,6 @@ model McpTool {
   connection   McpConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
 
   @@unique([connectionId, name])
-  @@map("mcp_tool")
 }
 
 
@@ -196,7 +192,6 @@ model McpServer {
   /// 監査ログ一覧
   auditLogs   AuditLog[]
 
-  @@map("mcp_server")
 }
 
 
@@ -218,7 +213,6 @@ model LogSyncQueue {
 
   @@index([syncStatus, serverId])
   @@index([serverId])
-  @@map("log_sync_queue")
 }
 
 /// 監査ログ（MCPツール呼び出しの記録）
@@ -254,5 +248,4 @@ model AuditLog {
 
   @@index([serverId, createdAt])
   @@index([createdAt])
-  @@map("audit_log")
 }
