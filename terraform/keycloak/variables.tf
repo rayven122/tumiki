@@ -58,18 +58,6 @@ variable "proxy_client_secret" {
   sensitive   = true
 }
 
-variable "registry_client_id" {
-  description = "Registry App クライアントID"
-  type        = string
-  default     = "tumiki-registry"
-}
-
-variable "registry_client_secret" {
-  description = "Registry App クライアントシークレット（環境変数 TF_VAR_registry_client_secret で設定）"
-  type        = string
-  sensitive   = true
-}
-
 # 許可されるリダイレクトURI
 variable "manager_redirect_uris" {
   description = "Manager App リダイレクトURI一覧"
@@ -99,26 +87,6 @@ variable "proxy_redirect_uris" {
   default = [
     "http://localhost:6277/*",
     "http://localhost:6274/*"
-  ]
-}
-
-variable "registry_redirect_uris" {
-  description = "Registry App リダイレクトURI一覧"
-  type        = list(string)
-  default = [
-    "http://localhost:3100/*",
-    "https://localhost:3100/*",
-    "https://registry.tumiki.cloud/*"
-  ]
-}
-
-variable "registry_web_origins" {
-  description = "Registry App Web Origins一覧"
-  type        = list(string)
-  default = [
-    "http://localhost:3100",
-    "https://localhost:3100",
-    "https://registry.tumiki.cloud"
   ]
 }
 
