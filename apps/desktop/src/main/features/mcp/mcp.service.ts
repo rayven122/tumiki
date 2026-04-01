@@ -1,6 +1,10 @@
 import { getDb } from "../../shared/db";
 import * as mcpRepository from "./mcp.repository";
 import * as logger from "../../shared/utils/logger";
+import type { CreateFromCatalogInput } from "../../../types/mcp";
+
+// IPC / テストから参照できるよう re-export
+export type { CreateFromCatalogInput } from "../../../types/mcp";
 
 /**
  * 名前からslugを生成（小文字・ハイフン区切り）
@@ -31,37 +35,41 @@ const generateUniqueSlug = async (name: string): Promise<string> => {
 };
 
 /**
- * カタログからMCPサーバーを登録
+ * 一意なサーバー名を生成（重複時はサフィックス付与）
  */
-export type CreateFromCatalogInput = {
-  catalogId: number;
-  catalogName: string;
-  description: string;
-  transportType: "STDIO" | "SSE" | "STREAMABLE_HTTP";
-  command: string | null;
-  args: string;
-  url: string | null;
-  credentialKeys: string[];
-  credentials: Record<string, string>;
-  authType: "NONE" | "BEARER" | "API_KEY" | "OAUTH";
+const generateUniqueName = async (name: string): Promise<string> => {
+  const db = await getDb();
+  let candidateName = name;
+  let counter = 2;
+
+  while (await mcpRepository.findServerByName(db, candidateName)) {
+    candidateName = `${name} ${counter}`;
+    counter++;
+  }
+
+  return candidateName;
 };
 
+/**
+ * カタログからMCPサーバーを登録
+ */
 export const createFromCatalog = async (
   input: CreateFromCatalogInput,
 ): Promise<{ serverId: number }> => {
   const db = await getDb();
-  const slug = await generateUniqueSlug(input.catalogName);
+  const uniqueName = await generateUniqueName(input.catalogName);
+  const slug = await generateUniqueSlug(uniqueName);
 
   // MCPサーバー作成
   const server = await mcpRepository.createServer(db, {
-    name: input.catalogName,
+    name: uniqueName,
     slug,
     description: input.description,
   });
 
   // MCP接続作成
   await mcpRepository.createConnection(db, {
-    name: input.catalogName,
+    name: uniqueName,
     slug,
     transportType: input.transportType,
     command: input.command,
@@ -73,7 +81,7 @@ export const createFromCatalog = async (
     catalogId: input.catalogId,
   });
 
-  logger.info(`MCP server created from catalog: ${input.catalogName}`);
+  logger.info(`MCP server created from catalog: ${uniqueName}`);
 
   return { serverId: server.id };
 };

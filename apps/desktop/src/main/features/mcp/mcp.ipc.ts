@@ -1,6 +1,6 @@
 import { ipcMain } from "electron";
 import * as mcpService from "./mcp.service";
-import type { CreateFromCatalogInput } from "./mcp.service";
+import type { CreateFromCatalogInput } from "../../../types/mcp";
 import * as logger from "../../shared/utils/logger";
 
 /**

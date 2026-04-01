@@ -1,4 +1,5 @@
 import { describe, test, expect, beforeEach, vi } from "vitest";
+import type { CreateFromCatalogInput } from "../../../../types/mcp";
 
 // モックの設定
 vi.mock("../../../shared/db");
@@ -19,7 +20,7 @@ describe("mcp.service", () => {
   });
 
   describe("createFromCatalog", () => {
-    const input: mcpService.CreateFromCatalogInput = {
+    const input: CreateFromCatalogInput = {
       catalogId: 1,
       catalogName: "Test MCP",
       description: "テスト用MCP",
@@ -33,6 +34,7 @@ describe("mcp.service", () => {
     };
 
     test("カタログからMCPサーバーと接続を作成する", async () => {
+      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
       vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
       vi.mocked(mcpRepository.createServer).mockResolvedValue({
         id: 1,
@@ -63,12 +65,13 @@ describe("mcp.service", () => {
       });
     });
 
-    test("slug重複時にサフィックスを付与する", async () => {
-      vi.mocked(mcpRepository.findServerBySlug)
+    test("サーバー名重複時にサフィックスを付与する", async () => {
+      vi.mocked(mcpRepository.findServerByName)
         .mockResolvedValueOnce({
           id: 99,
-        } as Awaited<ReturnType<typeof mcpRepository.findServerBySlug>>)
+        } as Awaited<ReturnType<typeof mcpRepository.findServerByName>>)
         .mockResolvedValueOnce(null);
+      vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
       vi.mocked(mcpRepository.createServer).mockResolvedValue({
         id: 2,
       } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
@@ -81,11 +84,35 @@ describe("mcp.service", () => {
       expect(result).toStrictEqual({ serverId: 2 });
       expect(mcpRepository.createServer).toHaveBeenCalledWith(
         mockDb,
+        expect.objectContaining({ name: "Test MCP 2", slug: "test-mcp-2" }),
+      );
+    });
+
+    test("slug重複時にサフィックスを付与する", async () => {
+      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
+      vi.mocked(mcpRepository.findServerBySlug)
+        .mockResolvedValueOnce({
+          id: 99,
+        } as Awaited<ReturnType<typeof mcpRepository.findServerBySlug>>)
+        .mockResolvedValueOnce(null);
+      vi.mocked(mcpRepository.createServer).mockResolvedValue({
+        id: 3,
+      } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue(
+        {} as Awaited<ReturnType<typeof mcpRepository.createConnection>>,
+      );
+
+      const result = await mcpService.createFromCatalog(input);
+
+      expect(result).toStrictEqual({ serverId: 3 });
+      expect(mcpRepository.createServer).toHaveBeenCalledWith(
+        mockDb,
         expect.objectContaining({ slug: "test-mcp-1" }),
       );
     });
 
     test("credentialsをJSON文字列に変換する", async () => {
+      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
       vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
       vi.mocked(mcpRepository.createServer).mockResolvedValue({
         id: 1,
