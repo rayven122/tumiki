@@ -75,6 +75,8 @@ export default async function OrgSlugLayout({
     // リカバリー処理で個人組織またはオンボーディングにリダイレクトする
 
     // アクセスエラーの場合、個人組織をdefaultに設定してリダイレクト
+    let redirectPath = "/onboarding";
+
     try {
       // ユーザーの組織一覧を取得（個人組織が最初）
       const organizations = await api.organization.getUserOrganizations();
@@ -88,17 +90,12 @@ export default async function OrgSlugLayout({
           organizationId: personalOrg.id,
         });
 
-        // 個人組織にリダイレクト
-        redirect(`/${personalOrg.slug}/mcps`);
+        redirectPath = `/${personalOrg.slug}/mcps`;
       }
-    } catch (recoveryError) {
-      console.error(
-        "[OrgSlugLayout] Failed to recover from error:",
-        recoveryError,
-      );
+    } catch {
+      // リカバリー失敗時はオンボーディングへフォールバック
     }
 
-    // リカバリー失敗時はオンボーディングへ
-    redirect("/onboarding");
+    redirect(redirectPath);
   }
 }
