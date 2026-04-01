@@ -1,6 +1,6 @@
 import type { JSX } from "react";
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Search, Plus, ArrowLeft } from "lucide-react";
 import type { CatalogItem } from "../../types/catalog";
 import { AddMcpModal } from "../_components/AddMcpModal";
@@ -26,6 +26,7 @@ const authBadgeColor: Record<
 };
 
 export const ToolCatalog = (): JSX.Element => {
+  const navigate = useNavigate();
   const [catalogs, setCatalogs] = useState<CatalogItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -211,7 +212,10 @@ export const ToolCatalog = (): JSX.Element => {
         <AddMcpModal
           catalog={selectedCatalog}
           onClose={() => setSelectedCatalog(null)}
-          onSuccess={() => setSelectedCatalog(null)}
+          onSuccess={() => {
+            setSelectedCatalog(null);
+            navigate("/tools");
+          }}
         />
       )}
     </div>
