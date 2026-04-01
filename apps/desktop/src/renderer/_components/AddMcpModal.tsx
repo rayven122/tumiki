@@ -102,7 +102,9 @@ export const AddMcpModal = ({
             className="text-xl font-bold"
             style={{ color: "var(--text-primary)" }}
           >
-            APIトークンの設定
+            {catalog.authType === "NONE"
+              ? "MCPサーバーの追加"
+              : "APIトークンの設定"}
           </h2>
           <button
             type="button"
@@ -116,8 +118,9 @@ export const AddMcpModal = ({
 
         {/* 説明文 */}
         <p className="mb-6 text-sm" style={{ color: "var(--text-muted)" }}>
-          {catalog.name}
-          に接続するために必要なAPIトークンを設定してください。
+          {catalog.authType === "NONE"
+            ? `${catalog.name}をMCPサーバーとして追加します。`
+            : `${catalog.name}に接続するために必要なAPIトークンを設定してください。`}
         </p>
 
         {/* アイコン + 名前 + 認証バッジ */}
