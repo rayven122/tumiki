@@ -34,7 +34,7 @@ erDiagram
 ## McpServer
 ```mermaid
 erDiagram
-"McpCatalog" {
+"mcp_catalog" {
   Int id PK
   String name UK
   String description
@@ -49,7 +49,7 @@ erDiagram
   DateTime createdAt
   DateTime updatedAt
 }
-"McpConnection" {
+"mcp_connection" {
   Int id PK
   String name
   String slug
@@ -66,7 +66,7 @@ erDiagram
   Int serverId FK
   Int catalogId FK "nullable"
 }
-"McpTool" {
+"mcp_tool" {
   Int id PK
   String name
   String description
@@ -78,7 +78,7 @@ erDiagram
   DateTime updatedAt
   Int connectionId FK
 }
-"McpServer" {
+"mcp_server" {
   Int id PK
   String name
   String slug UK
@@ -98,7 +98,7 @@ erDiagram
   DateTime createdAt
   DateTime syncedAt "nullable"
 }
-"AuditLog" {
+"audit_log" {
   Int id PK
   String toolName
   String method
@@ -113,13 +113,13 @@ erDiagram
   Int serverId FK
   String connectionName "nullable"
 }
-"McpConnection" }o--|| "McpServer" : server
-"McpConnection" }o--o| "McpCatalog" : catalog
-"McpTool" }o--|| "McpConnection" : connection
-"AuditLog" }o--|| "McpServer" : server
+"mcp_connection" }o--|| "mcp_server" : server
+"mcp_connection" }o--o| "mcp_catalog" : catalog
+"mcp_tool" }o--|| "mcp_connection" : connection
+"audit_log" }o--|| "mcp_server" : server
 ```
 
-### `McpCatalog`
+### `mcp_catalog`
 MCPカタログ（プリセットMCPサーバーのテンプレート）
 
 **Properties**
@@ -137,7 +137,7 @@ MCPカタログ（プリセットMCPサーバーのテンプレート）
   - `createdAt`: 
   - `updatedAt`: 
 
-### `McpConnection`
+### `mcp_connection`
 MCP接続（個別のMCPサーバーへの接続設定）
 
 **Properties**
@@ -157,7 +157,7 @@ MCP接続（個別のMCPサーバーへの接続設定）
   - `serverId`: 所属するMcpServer
   - `catalogId`: カタログ参照（カタログから登録した場合）
 
-### `McpTool`
+### `mcp_tool`
 MCPツール（接続が提供するツールの定義・権限管理）
 
 **Properties**
@@ -172,7 +172,7 @@ MCPツール（接続が提供するツールの定義・権限管理）
   - `updatedAt`: 
   - `connectionId`: 対象MCP接続
 
-### `McpServer`
+### `mcp_server`
 MCPサーバー（仮想・統合サーバー = Proxyエンドポイント）
 1つ以上のMcpConnectionを束ねて1つのMCPサーバーとして公開する
 
@@ -199,7 +199,7 @@ MCPサーバー（仮想・統合サーバー = Proxyエンドポイント）
   - `createdAt`: 
   - `syncedAt`: 同期完了日時
 
-### `AuditLog`
+### `audit_log`
 監査ログ（MCPツール呼び出しの記録）
 7日以上のレコードは自動削除対象
 

@@ -98,6 +98,8 @@ model McpCatalog {
 
   /// このカタログから作成された接続一覧
   connections McpConnection[]
+
+  @@map("mcp_catalog")
 }
 
 /// MCP接続（個別のMCPサーバーへの接続設定）
@@ -138,6 +140,7 @@ model McpConnection {
   tools McpTool[]
 
   @@unique([serverId, slug])
+  @@map("mcp_connection")
 }
 
 /// MCPツール（接続が提供するツールの定義・権限管理）
@@ -164,6 +167,7 @@ model McpTool {
   connection   McpConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
 
   @@unique([connectionId, name])
+  @@map("mcp_tool")
 }
 
 
@@ -191,6 +195,8 @@ model McpServer {
   connections McpConnection[]
   /// 監査ログ一覧
   auditLogs   AuditLog[]
+
+  @@map("mcp_server")
 }
 
 
@@ -248,4 +254,5 @@ model AuditLog {
 
   @@index([serverId, createdAt])
   @@index([createdAt])
+  @@map("audit_log")
 }

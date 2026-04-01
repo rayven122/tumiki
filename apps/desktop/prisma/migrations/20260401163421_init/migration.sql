@@ -10,7 +10,7 @@ CREATE TABLE "auth_tokens" (
 );
 
 -- CreateTable
-CREATE TABLE "McpCatalog" (
+CREATE TABLE "mcp_catalog" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "name" TEXT NOT NULL,
     "description" TEXT NOT NULL DEFAULT '',
@@ -27,7 +27,7 @@ CREATE TABLE "McpCatalog" (
 );
 
 -- CreateTable
-CREATE TABLE "McpConnection" (
+CREATE TABLE "mcp_connection" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
@@ -43,12 +43,12 @@ CREATE TABLE "McpConnection" (
     "updatedAt" DATETIME NOT NULL,
     "serverId" INTEGER NOT NULL,
     "catalogId" INTEGER,
-    CONSTRAINT "McpConnection_serverId_fkey" FOREIGN KEY ("serverId") REFERENCES "McpServer" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT "McpConnection_catalogId_fkey" FOREIGN KEY ("catalogId") REFERENCES "McpCatalog" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+    CONSTRAINT "mcp_connection_serverId_fkey" FOREIGN KEY ("serverId") REFERENCES "mcp_server" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "mcp_connection_catalogId_fkey" FOREIGN KEY ("catalogId") REFERENCES "mcp_catalog" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 -- CreateTable
-CREATE TABLE "McpTool" (
+CREATE TABLE "mcp_tool" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "name" TEXT NOT NULL,
     "description" TEXT NOT NULL DEFAULT '',
@@ -59,11 +59,11 @@ CREATE TABLE "McpTool" (
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
     "connectionId" INTEGER NOT NULL,
-    CONSTRAINT "McpTool_connectionId_fkey" FOREIGN KEY ("connectionId") REFERENCES "McpConnection" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    CONSTRAINT "mcp_tool_connectionId_fkey" FOREIGN KEY ("connectionId") REFERENCES "mcp_connection" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
-CREATE TABLE "McpServer" (
+CREATE TABLE "mcp_server" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
@@ -87,7 +87,7 @@ CREATE TABLE "log_sync_queue" (
 );
 
 -- CreateTable
-CREATE TABLE "AuditLog" (
+CREATE TABLE "audit_log" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "toolName" TEXT NOT NULL,
     "method" TEXT NOT NULL,
@@ -101,20 +101,20 @@ CREATE TABLE "AuditLog" (
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "serverId" INTEGER NOT NULL,
     "connectionName" TEXT,
-    CONSTRAINT "AuditLog_serverId_fkey" FOREIGN KEY ("serverId") REFERENCES "McpServer" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    CONSTRAINT "audit_log_serverId_fkey" FOREIGN KEY ("serverId") REFERENCES "mcp_server" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "McpCatalog_name_key" ON "McpCatalog"("name");
+CREATE UNIQUE INDEX "mcp_catalog_name_key" ON "mcp_catalog"("name");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "McpConnection_serverId_slug_key" ON "McpConnection"("serverId", "slug");
+CREATE UNIQUE INDEX "mcp_connection_serverId_slug_key" ON "mcp_connection"("serverId", "slug");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "McpTool_connectionId_name_key" ON "McpTool"("connectionId", "name");
+CREATE UNIQUE INDEX "mcp_tool_connectionId_name_key" ON "mcp_tool"("connectionId", "name");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "McpServer_slug_key" ON "McpServer"("slug");
+CREATE UNIQUE INDEX "mcp_server_slug_key" ON "mcp_server"("slug");
 
 -- CreateIndex
 CREATE INDEX "log_sync_queue_syncStatus_serverId_idx" ON "log_sync_queue"("syncStatus", "serverId");
@@ -123,7 +123,7 @@ CREATE INDEX "log_sync_queue_syncStatus_serverId_idx" ON "log_sync_queue"("syncS
 CREATE INDEX "log_sync_queue_serverId_idx" ON "log_sync_queue"("serverId");
 
 -- CreateIndex
-CREATE INDEX "AuditLog_serverId_createdAt_idx" ON "AuditLog"("serverId", "createdAt");
+CREATE INDEX "audit_log_serverId_createdAt_idx" ON "audit_log"("serverId", "createdAt");
 
 -- CreateIndex
-CREATE INDEX "AuditLog_createdAt_idx" ON "AuditLog"("createdAt");
+CREATE INDEX "audit_log_createdAt_idx" ON "audit_log"("createdAt");
