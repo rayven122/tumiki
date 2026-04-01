@@ -17,21 +17,21 @@ const authTypeLabel: Record<CatalogItem["authType"], string> = {
   OAUTH: "OAuth",
 };
 
-/** 名前からslugを生成 */
-const toSlug = (name: string): string =>
-  name
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
+import { toSlug } from "../../main/features/mcp/mcp.slug";
 
 export const AddMcpModal = ({
   catalog,
   onClose,
   onSuccess,
 }: AddMcpModalProps): JSX.Element => {
-  const credentialKeys: string[] = JSON.parse(catalog.credentialKeys);
+  const credentialKeys: string[] = (() => {
+    try {
+      const parsed: unknown = JSON.parse(catalog.credentialKeys);
+      return Array.isArray(parsed) ? (parsed as string[]) : [];
+    } catch {
+      return [];
+    }
+  })();
   const [serverName, setServerName] = useState(catalog.name);
   const [credentials, setCredentials] = useState<Record<string, string>>(
     Object.fromEntries(credentialKeys.map((key) => [key, ""])),

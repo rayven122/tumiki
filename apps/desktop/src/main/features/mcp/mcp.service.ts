@@ -1,21 +1,11 @@
 import { getDb } from "../../shared/db";
 import * as mcpRepository from "./mcp.repository";
 import * as logger from "../../shared/utils/logger";
+import { toSlug } from "./mcp.slug";
 import type { CreateFromCatalogInput } from "./mcp.types";
 
 // IPC / テストから参照できるよう re-export
 export type { CreateFromCatalogInput } from "./mcp.types";
-
-/**
- * 名前からslugを生成（小文字・ハイフン区切り）
- */
-const toSlug = (name: string): string =>
-  name
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
 
 /**
  * 一意なslugを生成（重複時はサフィックス付与）
