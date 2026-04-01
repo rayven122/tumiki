@@ -130,15 +130,15 @@ app.on("second-instance", (_event, argv) => {
   }
 });
 
-// カスタムURLスキームを登録
-if (!app.isDefaultProtocolClient(PROTOCOL)) {
-  app.setAsDefaultProtocolClient(PROTOCOL);
-}
-
 // アプリケーション準備完了時
 app
   .whenReady()
   .then(async () => {
+    // カスタムURLスキームを登録（Linuxではready後に呼ぶ必要がある）
+    if (!app.isDefaultProtocolClient(PROTOCOL)) {
+      app.setAsDefaultProtocolClient(PROTOCOL);
+    }
+
     // データベース初期化
     await initializeDb();
 

@@ -1,6 +1,5 @@
 import { safeStorage, app } from "electron";
 import { randomBytes, createCipheriv, createDecipheriv, scrypt } from "crypto";
-import { promisify } from "util";
 import { join } from "path";
 import {
   readFile,
@@ -27,8 +26,19 @@ const ENCRYPTION_PREFIX = {
   FALLBACK: "fallback",
 } as const;
 
-// scryptの非同期版
-const scryptAsync = promisify(scrypt);
+// scryptの非同期版（コストパラメータを明示指定してNode.jsバージョン間の互換性を保証）
+const SCRYPT_OPTIONS = { N: 16384, r: 8, p: 1 } as const;
+const scryptAsync = (
+  password: Buffer,
+  salt: Buffer,
+  keylen: number,
+): Promise<Buffer> =>
+  new Promise((resolve, reject) => {
+    scrypt(password, salt, keylen, SCRYPT_OPTIONS, (err, derivedKey) => {
+      if (err) reject(err);
+      else resolve(derivedKey);
+    });
+  });
 
 /**
  * 暗号化戦略の型
@@ -267,7 +277,7 @@ const createFallbackEncryptionStrategy = (): EncryptionStrategy => ({
     const iv = randomBytes(IV_LENGTH);
 
     const masterKey = await getOrCreateEncryptionKey();
-    const key = (await scryptAsync(masterKey, salt, KEY_LENGTH)) as Buffer;
+    const key = await scryptAsync(masterKey, salt, KEY_LENGTH);
 
     const cipher = createCipheriv(ALGORITHM, key, iv);
     const encrypted = Buffer.concat([
@@ -291,7 +301,7 @@ const createFallbackEncryptionStrategy = (): EncryptionStrategy => ({
     const encrypted = data.subarray(SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH);
 
     const masterKey = await getOrCreateEncryptionKey();
-    const key = (await scryptAsync(masterKey, salt, KEY_LENGTH)) as Buffer;
+    const key = await scryptAsync(masterKey, salt, KEY_LENGTH);
 
     const decipher = createDecipheriv(ALGORITHM, key, iv);
     decipher.setAuthTag(authTag);
@@ -386,7 +396,9 @@ export const decryptToken = async (encryptedText: string): Promise<string> => {
 };
 
 /**
- * 暗号化キーのメモリキャッシュをクリア（テスト用）
+ * 暗号化キーのメモリキャッシュをクリア
+ * @internal テスト専用。プロダクションコードからの呼び出し禁止。
+ * ランタイムガードにより、テスト環境以外では例外をスローする。
  */
 export const _resetEncryptionKeyCache = (): void => {
   if (process.env.NODE_ENV !== "test") {
