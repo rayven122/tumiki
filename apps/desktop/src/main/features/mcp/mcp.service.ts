@@ -83,11 +83,3 @@ export const getAllServers = async () => {
   const db = await getDb();
   return mcpRepository.findAllWithConnections(db);
 };
-
-/**
- * 登録済みMCP接続一覧を取得
- */
-export const getAllConnections = async () => {
-  const db = await getDb();
-  return mcpRepository.findAllConnections(db);
-};

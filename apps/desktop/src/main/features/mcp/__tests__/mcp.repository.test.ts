@@ -176,44 +176,4 @@ describe("mcp.repository（実DB）", () => {
       expect(result).toBeNull();
     });
   });
-
-  describe("findAllConnections", () => {
-    test("接続が存在しない場合は空配列を返す", async () => {
-      const result = await mcpRepository.findAllConnections(db);
-      expect(result).toStrictEqual([]);
-    });
-
-    test("カタログ情報付きで全接続を取得する", async () => {
-      const server = await mcpRepository.createServer(db, serverData);
-      await mcpRepository.createConnection(db, buildConnectionData(server.id));
-
-      const result = await mcpRepository.findAllConnections(db);
-
-      expect(result).toHaveLength(1);
-      expect(result[0]!.name).toBe("Test Connection");
-      // catalogIdがnullの場合、catalogもnull
-      expect(result[0]!.catalog).toBeNull();
-    });
-
-    test("複数の接続を取得できる", async () => {
-      const server = await mcpRepository.createServer(db, serverData);
-      await mcpRepository.createConnection(db, {
-        ...buildConnectionData(server.id),
-        name: "Connection A",
-        slug: "connection-a",
-      });
-      await mcpRepository.createConnection(db, {
-        ...buildConnectionData(server.id),
-        name: "Connection B",
-        slug: "connection-b",
-      });
-
-      const result = await mcpRepository.findAllConnections(db);
-
-      expect(result).toHaveLength(2);
-      const names = result.map((c) => c.name);
-      expect(names).toContain("Connection A");
-      expect(names).toContain("Connection B");
-    });
-  });
 });

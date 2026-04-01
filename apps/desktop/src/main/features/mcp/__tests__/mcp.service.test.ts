@@ -150,20 +150,4 @@ describe("mcp.service", () => {
       expect(mcpRepository.findAllWithConnections).toHaveBeenCalledWith(mockDb);
     });
   });
-
-  describe("getAllConnections", () => {
-    test("全接続を取得する", async () => {
-      const mockConnections = [{ id: 1, name: "Connection A", catalog: null }];
-      vi.mocked(mcpRepository.findAllConnections).mockResolvedValue(
-        mockConnections as Awaited<
-          ReturnType<typeof mcpRepository.findAllConnections>
-        >,
-      );
-
-      const result = await mcpService.getAllConnections();
-
-      expect(result).toStrictEqual(mockConnections);
-      expect(mcpRepository.findAllConnections).toHaveBeenCalledWith(mockDb);
-    });
-  });
 });

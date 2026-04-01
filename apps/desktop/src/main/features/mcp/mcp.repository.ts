@@ -68,13 +68,3 @@ export const findServerBySlug = async (db: PrismaClient, slug: string) => {
 export const findServerByName = async (db: PrismaClient, name: string) => {
   return db.mcpServer.findFirst({ where: { name } });
 };
-
-/**
- * MCP接続を全件取得（カタログ情報付き）
- */
-export const findAllConnections = async (db: PrismaClient) => {
-  return db.mcpConnection.findMany({
-    include: { catalog: true },
-    orderBy: { createdAt: "desc" },
-  });
-};
