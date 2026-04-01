@@ -82,7 +82,7 @@ describe("runMigrations", () => {
     mockDb = createMockDb();
   });
 
-  test("_prisma_migrationsテーブルを作成する", async () => {
+  test("_tumiki_migrationsテーブルを作成する", async () => {
     mockReaddir.mockResolvedValue([]);
 
     await runMigrations(mockDb as unknown as PrismaClient);
@@ -90,7 +90,7 @@ describe("runMigrations", () => {
     // 最初の呼び出しがCREATE TABLE
     const firstCall = mockDb.$executeRawUnsafe.mock.calls[0]?.[0] as string;
     expect(firstCall).toContain("CREATE TABLE IF NOT EXISTS");
-    expect(firstCall).toContain("_prisma_migrations");
+    expect(firstCall).toContain("_tumiki_migrations");
   });
 
   test("適用済みマイグレーション一覧を取得する", async () => {
@@ -193,7 +193,7 @@ describe("runMigrations", () => {
     const txCalls = mockDb.tx.$executeRawUnsafe.mock.calls;
     // 1: CREATE TABLE foo (...)
     // 2: CREATE INDEX idx ON foo(id)
-    // 3: INSERT INTO _prisma_migrations
+    // 3: INSERT INTO _tumiki_migrations
     expect(txCalls).toHaveLength(3);
     expect(txCalls[0]?.[0]).toContain("CREATE TABLE foo");
     expect(txCalls[0]?.[0] as string).not.toContain("--");
