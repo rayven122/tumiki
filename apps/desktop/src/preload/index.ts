@@ -1,10 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { AuthTokenData } from "../types/auth";
 import type { CatalogItem } from "../types/catalog";
-import type {
-  McpServerItem,
-  CreateFromCatalogInput,
-} from "../main/features/mcp/mcp.types";
+import type { McpServerItem, CreateFromCatalogInput } from "../main/types";
 
 // Electron APIを安全に公開
 const api = {

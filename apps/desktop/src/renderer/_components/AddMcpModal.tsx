@@ -17,7 +17,7 @@ const authTypeLabel: Record<CatalogItem["authType"], string> = {
   OAUTH: "OAuth",
 };
 
-import { toSlug } from "../../main/features/mcp/mcp.slug";
+import { toSlug } from "../../main/types";
 
 export const AddMcpModal = ({
   catalog,
