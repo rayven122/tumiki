@@ -5,6 +5,11 @@ import { resolve } from "path";
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
+    resolve: {
+      alias: {
+        "@prisma/desktop-client": resolve(__dirname, "prisma/generated/client"),
+      },
+    },
     build: {
       outDir: "dist-electron/main",
       rollupOptions: {

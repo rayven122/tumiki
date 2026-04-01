@@ -13,7 +13,8 @@
     "strict": true,
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@/*": ["./src/renderer/*"]
+      "@/*": ["./src/renderer/*"],
+      "@prisma/desktop-client": ["./prisma/generated/client"]
     }
   },
   "include": ["src/**/*"],
