@@ -387,7 +387,6 @@ export const createOAuthManager = (
           );
         }
       }
-
     } finally {
       // 例外発生時もローカルトークン・タイマー・セッションを確実にクリア
       try {
