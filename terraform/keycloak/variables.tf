@@ -58,18 +58,6 @@ variable "proxy_client_secret" {
   sensitive   = true
 }
 
-variable "registry_client_id" {
-  description = "Registry App クライアントID"
-  type        = string
-  default     = "tumiki-registry"
-}
-
-variable "registry_client_secret" {
-  description = "Registry App クライアントシークレット（環境変数 TF_VAR_registry_client_secret で設定）"
-  type        = string
-  sensitive   = true
-}
-
 # 許可されるリダイレクトURI
 variable "manager_redirect_uris" {
   description = "Manager App リダイレクトURI一覧"
@@ -102,26 +90,6 @@ variable "proxy_redirect_uris" {
   ]
 }
 
-variable "registry_redirect_uris" {
-  description = "Registry App リダイレクトURI一覧"
-  type        = list(string)
-  default = [
-    "http://localhost:3100/*",
-    "https://localhost:3100/*",
-    "https://registry.tumiki.cloud/*"
-  ]
-}
-
-variable "registry_web_origins" {
-  description = "Registry App Web Origins一覧"
-  type        = list(string)
-  default = [
-    "http://localhost:3100",
-    "https://localhost:3100",
-    "https://registry.tumiki.cloud"
-  ]
-}
-
 # Desktop App クライアント設定
 variable "desktop_client_id" {
   description = "Desktop App クライアントID"
@@ -136,7 +104,6 @@ variable "desktop_redirect_uris" {
     "tumiki-desktop://auth/callback"
   ]
 }
-
 # セキュリティ設定
 variable "ssl_required" {
   description = "SSL要求レベル（none/external/all）"

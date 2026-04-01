@@ -19,13 +19,6 @@ locals {
     keycloak_openid_client_scope.tumiki_claims.name,
   ])
 
-  # Registry クライアント用デフォルトスコープ（Managerと同じ）
-  registry_default_scopes = concat(local.base_scopes, [
-    "profile",
-    "email",
-    keycloak_openid_client_scope.tumiki_claims.name,
-  ])
-
   # Proxy クライアント用デフォルトスコープ
   proxy_default_scopes = concat(local.base_scopes, [
     keycloak_openid_client_scope.mcp_access.name,
@@ -41,10 +34,7 @@ locals {
 
   # Proxy クライアント用オプショナルスコープ
   proxy_optional_scopes = [
-    "address",
-    "phone",
     "offline_access",
-    "microprofile-jwt",
   ]
 }
 
@@ -85,45 +75,6 @@ resource "keycloak_openid_client_default_scopes" "manager_default_scopes" {
   realm_id       = keycloak_realm.tumiki.id
   client_id      = keycloak_openid_client.manager.id
   default_scopes = local.manager_default_scopes
-}
-
-# =============================================================================
-# tumiki-registry クライアント
-# =============================================================================
-
-# Next.js Registry Application用のOIDCクライアント
-resource "keycloak_openid_client" "registry" {
-  realm_id    = keycloak_realm.tumiki.id
-  client_id   = var.registry_client_id
-  name        = "Tumiki Registry Application"
-  description = "Next.js Registry Application"
-
-  enabled       = true
-  access_type   = "CONFIDENTIAL"
-  client_secret = var.registry_client_secret
-
-  # 認証フロー設定
-  standard_flow_enabled        = true
-  implicit_flow_enabled        = false
-  direct_access_grants_enabled = false
-  service_accounts_enabled     = false
-
-  # PKCE設定
-  pkce_code_challenge_method = "S256"
-
-  # リダイレクトURI設定
-  valid_redirect_uris = var.registry_redirect_uris
-  web_origins         = var.registry_web_origins
-
-  # ログイン設定
-  login_theme = ""
-}
-
-# Registry クライアントのデフォルトスコープ設定
-resource "keycloak_openid_client_default_scopes" "registry_default_scopes" {
-  realm_id       = keycloak_realm.tumiki.id
-  client_id      = keycloak_openid_client.registry.id
-  default_scopes = local.registry_default_scopes
 }
 
 # =============================================================================

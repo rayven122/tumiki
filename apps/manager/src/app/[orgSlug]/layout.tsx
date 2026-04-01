@@ -5,7 +5,8 @@ import { SimpleHeader } from "./_components/SimpleHeader";
 import { OrgSidebar } from "./_components/OrgSidebar";
 import { MainContent } from "./_components/MainContent";
 import { auth } from "~/auth";
-import { getSessionInfo } from "~/lib/auth/session-utils";
+import { hasAdminRole } from "~/lib/auth/session-utils";
+import { parseOrgRolesFromGroupPaths } from "@/features/user/api/getTumikiClaims";
 
 type OrgSlugLayoutProps = {
   children: ReactNode;
@@ -35,13 +36,21 @@ export default async function OrgSlugLayout({
       slug: decodedSlug,
     });
 
-    // DBのdefaultOrgSlugとURLのslugが不一致の場合はエラー
+    // デフォルト組織とURLの組織が異なる場合、デフォルト組織を更新
+    // （次回ログイン時に最後に使用した組織へリダイレクトするため）
     if (organization.defaultOrgSlug !== decodedSlug) {
-      throw new Error("defaultOrgSlug mismatch");
+      await api.organization.setDefaultOrganization({
+        organizationId: organization.id,
+      });
     }
 
-    // セッションからisAdminを取得
-    const { isAdmin } = getSessionInfo(session);
+    // URLの組織に基づいてロールを判定
+    // セッションのデフォルト組織ではなく、現在アクセス中の組織のロールを使用
+    const tumikiGroupRoles = session.user?.tumiki?.group_roles ?? [];
+    const currentOrgRoles = organization.isPersonal
+      ? ["Owner"]
+      : parseOrgRolesFromGroupPaths(tumikiGroupRoles, decodedSlug);
+    const isAdmin = hasAdminRole(currentOrgRoles);
 
     return (
       <div className="flex min-h-screen flex-col">
@@ -66,6 +75,8 @@ export default async function OrgSlugLayout({
     // リカバリー処理で個人組織またはオンボーディングにリダイレクトする
 
     // アクセスエラーの場合、個人組織をdefaultに設定してリダイレクト
+    let redirectPath = "/onboarding";
+
     try {
       // ユーザーの組織一覧を取得（個人組織が最初）
       const organizations = await api.organization.getUserOrganizations();
@@ -79,17 +90,12 @@ export default async function OrgSlugLayout({
           organizationId: personalOrg.id,
         });
 
-        // 個人組織にリダイレクト
-        redirect(`/${personalOrg.slug}/mcps`);
+        redirectPath = `/${personalOrg.slug}/mcps`;
       }
-    } catch (recoveryError) {
-      console.error(
-        "[OrgSlugLayout] Failed to recover from error:",
-        recoveryError,
-      );
+    } catch {
+      // リカバリー失敗時はオンボーディングへフォールバック
     }
 
-    // リカバリー失敗時はオンボーディングへ
-    redirect("/onboarding");
+    redirect(redirectPath);
   }
 }

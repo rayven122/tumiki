@@ -24,19 +24,6 @@ manager_web_origins = [
   "https://manager.tumiki.cloud"
 ]
 
-# Registry Appクライアント設定
-registry_client_id = "tumiki-registry"
-registry_redirect_uris = [
-  "http://localhost:3100/*",
-  "https://localhost:3100/*",
-  "https://registry.tumiki.cloud/*"
-]
-registry_web_origins = [
-  "http://localhost:3100",
-  "https://localhost:3100",
-  "https://registry.tumiki.cloud"
-]
-
 # MCP Proxyクライアント設定
 proxy_client_id = "tumiki-proxy"
 proxy_redirect_uris = [
