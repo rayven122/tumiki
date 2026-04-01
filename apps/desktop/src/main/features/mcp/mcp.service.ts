@@ -1,7 +1,7 @@
 import { getDb } from "../../shared/db";
 import * as mcpRepository from "./mcp.repository";
 import * as logger from "../../shared/utils/logger";
-import { toSlug } from "./mcp.slug";
+import { toSlug } from "../../../shared/mcp.slug";
 import type { CreateFromCatalogInput } from "./mcp.types";
 
 // IPC / テストから参照できるよう re-export
