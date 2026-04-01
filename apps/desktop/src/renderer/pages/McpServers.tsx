@@ -2,7 +2,7 @@ import type { JSX } from "react";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Server, Plus } from "lucide-react";
-import type { McpServerItem } from "../../types/mcp";
+import type { McpServerItem } from "../../main/features/mcp/mcp.types";
 import { cardStyle } from "../utils/theme-styles";
 
 /** サーバーステータスの表示設定 */

@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, vi } from "vitest";
-import type { CreateFromCatalogInput } from "../../../../types/mcp";
+import type { CreateFromCatalogInput } from "../mcp.types";
 
 // モックの設定
 vi.mock("../../../shared/db");
