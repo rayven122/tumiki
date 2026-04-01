@@ -1,14 +1,14 @@
+import type {
+  McpServer,
+  McpConnection,
+  McpCatalog,
+} from "../../prisma/generated/client";
+
 /**
  * MCPサーバー情報型（IPC通信用）
+ * Prisma型を起点に、Date→stringへ変換 + connections を付与
  */
-export type McpServerItem = {
-  id: number;
-  name: string;
-  slug: string;
-  description: string;
-  serverStatus: "RUNNING" | "STOPPED" | "ERROR" | "PENDING";
-  isEnabled: boolean;
-  displayOrder: number;
+export type McpServerItem = Omit<McpServer, "createdAt" | "updatedAt"> & {
   createdAt: string;
   updatedAt: string;
   connections: McpConnectionItem[];
@@ -16,41 +16,30 @@ export type McpServerItem = {
 
 /**
  * MCP接続情報型（IPC通信用）
+ * Prisma型を起点に、Date→stringへ変換 + catalog を付与
  */
-export type McpConnectionItem = {
-  id: number;
-  name: string;
-  slug: string;
-  transportType: "STDIO" | "SSE" | "STREAMABLE_HTTP";
-  command: string | null;
-  args: string;
-  url: string | null;
-  credentials: string;
-  authType: "NONE" | "BEARER" | "API_KEY" | "OAUTH";
-  isEnabled: boolean;
-  catalogId: number | null;
+export type McpConnectionItem = Omit<
+  McpConnection,
+  "createdAt" | "updatedAt" | "serverId" | "displayOrder"
+> & {
   createdAt: string;
   updatedAt: string;
-  catalog: {
-    id: number;
-    name: string;
-    description: string;
-    iconPath: string | null;
-  } | null;
+  catalog: Pick<McpCatalog, "id" | "name" | "description" | "iconPath"> | null;
 };
 
 /**
  * カタログからMCP登録する際の入力型（renderer → main）
+ * preload / ipc / service で共通使用する唯一の定義
  */
 export type CreateFromCatalogInput = {
   catalogId: number;
   catalogName: string;
   description: string;
-  transportType: "STDIO" | "SSE" | "STREAMABLE_HTTP";
+  transportType: McpConnection["transportType"];
   command: string | null;
   args: string;
   url: string | null;
   credentialKeys: string[];
   credentials: Record<string, string>;
-  authType: "NONE" | "BEARER" | "API_KEY" | "OAUTH";
+  authType: McpConnection["authType"];
 };
