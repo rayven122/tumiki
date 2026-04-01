@@ -1,4 +1,4 @@
-import type { PrismaClient } from "../../../../prisma/generated/client";
+import type { PrismaClient } from "@prisma/desktop-client";
 
 /**
  * カタログシードデータの型
