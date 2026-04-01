@@ -22,16 +22,6 @@ output "manager_client_internal_id" {
   value       = keycloak_openid_client.manager.id
 }
 
-output "registry_client_id" {
-  description = "Registry App クライアントID"
-  value       = keycloak_openid_client.registry.client_id
-}
-
-output "registry_client_internal_id" {
-  description = "Registry App 内部ID"
-  value       = keycloak_openid_client.registry.id
-}
-
 output "proxy_client_id" {
   description = "MCP Proxy クライアントID"
   value       = keycloak_openid_client.proxy.client_id
