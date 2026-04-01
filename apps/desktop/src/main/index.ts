@@ -4,7 +4,7 @@ import { initializeDb, closeDb } from "./shared/db";
 import { setupAuthIpc } from "./ipc/auth";
 import { setupCatalogIpc } from "./features/catalog/catalog.ipc";
 import { setupMcpIpc } from "./features/mcp/mcp.ipc";
-import { seedCatalogs } from "./features/catalog/catalog.service";
+import { seedCatalogs } from "./features/catalog/catalog.seed";
 import * as logger from "./shared/utils/logger";
 
 let mainWindow: BrowserWindow | null = null;
