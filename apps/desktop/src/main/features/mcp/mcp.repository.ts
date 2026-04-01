@@ -56,10 +56,17 @@ export const createConnection = async (
 };
 
 /**
- * slugの重複チェック
+ * slugでサーバーを検索
  */
 export const findServerBySlug = async (db: PrismaClient, slug: string) => {
   return db.mcpServer.findUnique({ where: { slug } });
+};
+
+/**
+ * 名前でサーバーを検索（重複チェック用）
+ */
+export const findServerByName = async (db: PrismaClient, name: string) => {
+  return db.mcpServer.findFirst({ where: { name } });
 };
 
 /**

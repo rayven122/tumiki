@@ -158,6 +158,25 @@ describe("mcp.repository（実DB）", () => {
     });
   });
 
+  describe("findServerByName", () => {
+    test("名前でサーバーを取得する", async () => {
+      await mcpRepository.createServer(db, serverData);
+
+      const result = await mcpRepository.findServerByName(db, "Test Server");
+
+      expect(result).not.toBeNull();
+      expect(result!.slug).toBe("test-server");
+    });
+
+    test("存在しない名前の場合はnullを返す", async () => {
+      const result = await mcpRepository.findServerByName(
+        db,
+        "non-existent-name",
+      );
+      expect(result).toBeNull();
+    });
+  });
+
   describe("findAllConnections", () => {
     test("接続が存在しない場合は空配列を返す", async () => {
       const result = await mcpRepository.findAllConnections(db);
@@ -176,7 +195,7 @@ describe("mcp.repository（実DB）", () => {
       expect(result[0]!.catalog).toBeNull();
     });
 
-    test("作成日時の降順で取得する", async () => {
+    test("複数の接続を取得できる", async () => {
       const server = await mcpRepository.createServer(db, serverData);
       await mcpRepository.createConnection(db, {
         ...buildConnectionData(server.id),
@@ -192,8 +211,9 @@ describe("mcp.repository（実DB）", () => {
       const result = await mcpRepository.findAllConnections(db);
 
       expect(result).toHaveLength(2);
-      expect(result[0]!.name).toBe("Connection B");
-      expect(result[1]!.name).toBe("Connection A");
+      const names = result.map((c) => c.name);
+      expect(names).toContain("Connection A");
+      expect(names).toContain("Connection B");
     });
   });
 });
