@@ -228,8 +228,10 @@ app.on("will-quit", (event) => {
   if (isQuitting) return;
   isQuitting = true;
   event.preventDefault();
-  getOAuthManager()?.stopAutoRefresh();
-  closeDb()
+  const oauthManager = getOAuthManager();
+  oauthManager?.stopAutoRefresh();
+  (oauthManager?.waitForPendingRefresh() ?? Promise.resolve())
+    .then(() => closeDb())
     .then(() => {
       logger.info("Database connection closed successfully");
     })

@@ -34,6 +34,7 @@ export type OAuthManager = {
   cancelAuthFlow: () => void;
   logout: () => Promise<void>;
   stopAutoRefresh: () => void;
+  waitForPendingRefresh: () => Promise<void>;
   initialize: () => Promise<void>;
 };
 
@@ -387,7 +388,6 @@ export const createOAuthManager = (
         }
       }
 
-      logger.info("Logout completed successfully");
     } finally {
       // 例外発生時もローカルトークン・タイマー・セッションを確実にクリア
       try {
@@ -405,6 +405,7 @@ export const createOAuthManager = (
         refreshTimerId = null;
       }
       currentSession = null;
+      logger.info("Logout completed successfully");
     }
   };
 
@@ -416,6 +417,14 @@ export const createOAuthManager = (
       clearTimeout(refreshTimerId);
       refreshTimerId = null;
       logger.info("Auto refresh stopped");
+    }
+  };
+
+  /** 進行中のリフレッシュがあれば完了を待機する */
+  const waitForPendingRefresh = async (): Promise<void> => {
+    if (refreshPromise) {
+      logger.info("Waiting for pending refresh to complete");
+      await refreshPromise;
     }
   };
 
@@ -507,6 +516,7 @@ export const createOAuthManager = (
     cancelAuthFlow,
     logout,
     stopAutoRefresh,
+    waitForPendingRefresh,
     initialize,
   };
 };

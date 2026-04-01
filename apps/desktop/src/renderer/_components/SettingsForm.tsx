@@ -77,6 +77,7 @@ export const SettingsForm = (): React.ReactElement => {
     });
 
     const cleanupError = window.electronAPI.auth.onCallbackError((error) => {
+      timeouts.clear("login");
       setIsLoading(false);
       showAuthError(`ログインに失敗しました: ${error}`);
     });
