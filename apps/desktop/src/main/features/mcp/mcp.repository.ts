@@ -1,4 +1,4 @@
-import type { PrismaClient } from "../../../../prisma/generated/client";
+import type { PrismaClient } from "@prisma/desktop-client";
 
 /**
  * MCPサーバー作成時の入力データ型

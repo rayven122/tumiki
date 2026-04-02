@@ -2,7 +2,7 @@ import type {
   McpServer,
   McpConnection,
   McpCatalog,
-} from "../../../../prisma/generated/client";
+} from "@prisma/desktop-client";
 
 /**
  * MCPサーバー情報型（IPC通信用）

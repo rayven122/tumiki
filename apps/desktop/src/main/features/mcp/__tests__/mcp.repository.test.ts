@@ -6,7 +6,7 @@ import {
   beforeEach,
   afterAll,
 } from "vitest";
-import type { PrismaClient } from "../../../../../prisma/generated/client";
+import type { PrismaClient } from "@prisma/desktop-client";
 import * as mcpRepository from "../mcp.repository";
 import { join } from "path";
 import {
