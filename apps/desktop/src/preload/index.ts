@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { AuthTokenData } from "../types/auth";
 import type { CatalogItem } from "../types/catalog";
+import type { McpServerItem, CreateFromCatalogInput } from "../main/types";
 
 // Electron APIを安全に公開
 const api = {
@@ -25,6 +26,15 @@ const api = {
   // カタログ関連 API
   catalog: {
     getAll: (): Promise<CatalogItem[]> => ipcRenderer.invoke("catalog:getAll"),
+  },
+
+  // MCP管理 API
+  mcp: {
+    createFromCatalog: (
+      input: CreateFromCatalogInput,
+    ): Promise<{ serverId: number; serverName: string }> =>
+      ipcRenderer.invoke("mcp:createFromCatalog", input),
+    getAll: (): Promise<McpServerItem[]> => ipcRenderer.invoke("mcp:getAll"),
   },
 };
 
