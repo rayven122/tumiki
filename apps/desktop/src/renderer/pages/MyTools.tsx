@@ -135,8 +135,9 @@ export const MyTools = (): JSX.Element => {
             {filteredServers.map((server) => {
               const status = STATUS_CONFIG[server.serverStatus];
               return (
-                <div
+                <Link
                   key={server.id}
+                  to={`/tools/${server.id}`}
                   className="flex flex-col rounded-xl p-4 transition-all hover:-translate-y-0.5 hover:shadow-lg"
                   style={cardStyle}
                 >
@@ -190,7 +191,7 @@ export const MyTools = (): JSX.Element => {
                       {status.label}
                     </span>
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>

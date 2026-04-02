@@ -106,30 +106,9 @@ const AI_CLIENT_CONNECTIONS = [
 export const ToolDetail = (): JSX.Element => {
   const theme = useAtomValue(themeAtom);
   const { toolId } = useParams<{ toolId: string }>();
-  const tool = TOOLS.find((t) => t.id === toolId);
+  // モックデータから検索し、見つからない場合は先頭のツールをフォールバック表示
+  const tool = TOOLS.find((t) => t.id === toolId) ?? TOOLS[0]!;
   const [showAiClients, setShowAiClients] = useState(false);
-
-  // ツールが見つからない場合
-  if (!tool) {
-    return (
-      <div className="p-6">
-        <Link
-          to="/tools"
-          className="flex items-center gap-1 text-sm hover:opacity-80"
-          style={{ color: "var(--text-muted)" }}
-        >
-          <ArrowLeft size={14} />
-          コネクト
-        </Link>
-        <div
-          className="mt-12 text-center text-sm"
-          style={{ color: "var(--text-subtle)" }}
-        >
-          ツールが見つかりません
-        </div>
-      </div>
-    );
-  }
 
   const badge = toolStatusBadge[tool.status];
 
