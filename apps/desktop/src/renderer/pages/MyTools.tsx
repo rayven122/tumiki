@@ -137,7 +137,7 @@ export const MyTools = (): JSX.Element => {
               return (
                 <Link
                   key={server.id}
-                  to={`/tools/${server.id}`}
+                  to="/tools/slack"
                   className="flex flex-col rounded-xl p-4 transition-all hover:-translate-y-0.5 hover:shadow-lg"
                   style={cardStyle}
                 >
