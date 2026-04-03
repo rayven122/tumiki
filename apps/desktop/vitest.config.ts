@@ -7,7 +7,6 @@ export default defineConfig({
     ...nodeTestConfig,
     name: "desktop",
     include: ["src/**/*.test.ts"],
-    setupFiles: ["./vitest.setup.ts"],
     env: {
       DESKTOP_DB_RETRY_INITIAL_MS: "0",
       DESKTOP_DB_RETRY_MAX_MS: "0",
