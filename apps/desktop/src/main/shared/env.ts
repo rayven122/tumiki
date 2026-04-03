@@ -1,8 +1,8 @@
 import { z } from "zod";
 
-/** 非負整数ミリ秒のスキーマ（未設定・空文字・不正値はデフォルトにフォールバック） */
+/** 非負整数ミリ秒のスキーマ（未設定時はデフォルト値、不正値はエラー） */
 const nonNegativeIntMs = (defaultValue: number) =>
-  z.coerce.number().int().nonnegative().catch(defaultValue);
+  z.coerce.number().int().nonnegative().default(defaultValue);
 
 /**
  * Desktop アプリの環境変数スキーマ
