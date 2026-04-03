@@ -2,19 +2,17 @@ import { PrismaClient } from "@prisma/desktop-client";
 import { join } from "path";
 import { app } from "electron";
 import { existsSync, mkdirSync } from "fs";
+import { env } from "../env";
 import * as logger from "../utils/logger";
 
 // 接続タイムアウト設定（ミリ秒）
-// 環境変数で設定可能（DESKTOP_DB_TIMEOUT_MS）
-// デフォルト: 10秒（UX向上のため30秒から短縮）
-const CONNECTION_TIMEOUT_MS =
-  Number(process.env.DESKTOP_DB_TIMEOUT_MS) || 10000;
+const CONNECTION_TIMEOUT_MS = env.DESKTOP_DB_TIMEOUT_MS;
 
-// リトライ設定
+// リトライ設定（指数バックオフ）
 const RETRY_CONFIG = {
   MAX_RETRIES: 3,
-  INITIAL_DELAY_MS: 1000, // 初回遅延: 1秒
-  MAX_DELAY_MS: 15000, // 最大遅延: 15秒（5秒から延長）
+  INITIAL_DELAY_MS: env.DESKTOP_DB_RETRY_INITIAL_MS,
+  MAX_DELAY_MS: env.DESKTOP_DB_RETRY_MAX_MS,
 } as const;
 
 /**
@@ -173,12 +171,19 @@ const createConnectionManager = (): ConnectionManager => {
         // 最後の試行でない場合は待機してからリトライ
         if (attempt < MAX_RETRIES - 1) {
           // 指数バックオフ: 1秒 → 2秒 → 4秒 → 8秒 → 15秒（最大）
-          const delay = Math.min(
+          const delayMs = Math.min(
             INITIAL_DELAY_MS * Math.pow(2, attempt),
             MAX_DELAY_MS,
           );
-          logger.debug(`Retrying database connection in ${delay}ms`);
-          await new Promise((resolve) => setTimeout(resolve, delay));
+          logger.debug(`Retrying database connection in ${delayMs}ms`);
+          // delay が 0 のとき setTimeout を使わない（Vitest の偽タイマー下でも進む）
+          if (delayMs === 0) {
+            await Promise.resolve();
+          } else {
+            await new Promise<void>((resolve) => {
+              setTimeout(resolve, delayMs);
+            });
+          }
         }
       }
     }

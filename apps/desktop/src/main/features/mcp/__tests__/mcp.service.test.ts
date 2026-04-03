@@ -2,6 +2,12 @@ import { describe, test, expect, beforeEach, vi } from "vitest";
 import type { CreateFromCatalogInput } from "../mcp.types";
 
 // モックの設定
+vi.mock("electron", () => ({
+  app: {
+    getPath: (name: string) =>
+      name === "userData" ? "/test/user/data" : "/test",
+  },
+}));
 vi.mock("../../../shared/db");
 vi.mock("../../../shared/utils/logger");
 vi.mock("../mcp.repository");
