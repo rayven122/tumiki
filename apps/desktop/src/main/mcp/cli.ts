@@ -37,7 +37,8 @@ export const runMcpProxy = async (): Promise<void> => {
   process.on("SIGTERM", shutdown);
 };
 
-// 直接実行時のエントリーポイント（node mcp-cli.cjs）
+// mcp-cli.cjs として直接実行された場合のエントリーポイント
+// index.ts からの動的importでは呼ばれない（index.ts は独自にrunMcpProxyを呼ぶ必要がある場合のみimportする）
 void runMcpProxy().catch((error: unknown) => {
   logger.error("起動に失敗しました", error);
   process.exit(1);

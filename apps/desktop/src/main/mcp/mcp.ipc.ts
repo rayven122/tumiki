@@ -12,7 +12,7 @@ export const setupMcpIpc = (): void => {
       return await mcpService.startMcpServers();
     } catch (error) {
       logger.error(
-        "Failed to start MCP servers",
+        "MCPサーバーの起動に失敗しました",
         error instanceof Error ? error : { error },
       );
       const message = error instanceof Error ? error.message : "不明なエラー";
@@ -26,7 +26,7 @@ export const setupMcpIpc = (): void => {
       await mcpService.stopMcpServers();
     } catch (error) {
       logger.error(
-        "Failed to stop MCP servers",
+        "MCPサーバーの停止に失敗しました",
         error instanceof Error ? error : { error },
       );
       const message = error instanceof Error ? error.message : "不明なエラー";
@@ -40,7 +40,7 @@ export const setupMcpIpc = (): void => {
       return await mcpService.listMcpTools();
     } catch (error) {
       logger.error(
-        "Failed to list MCP tools",
+        "ツール一覧の取得に失敗しました",
         error instanceof Error ? error : { error },
       );
       const message = error instanceof Error ? error.message : "不明なエラー";
@@ -59,7 +59,7 @@ export const setupMcpIpc = (): void => {
         return await mcpService.callMcpTool(params.name, params.arguments);
       } catch (error) {
         logger.error(
-          "Failed to call MCP tool",
+          "ツール実行に失敗しました",
           error instanceof Error ? error : { error },
         );
         const message = error instanceof Error ? error.message : "不明なエラー";
@@ -74,7 +74,7 @@ export const setupMcpIpc = (): void => {
       return await mcpService.getMcpStatus();
     } catch (error) {
       logger.error(
-        "Failed to get MCP status",
+        "状態取得に失敗しました",
         error instanceof Error ? error : { error },
       );
       const message = error instanceof Error ? error.message : "不明なエラー";

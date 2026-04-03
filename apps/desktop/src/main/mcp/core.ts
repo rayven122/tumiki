@@ -8,6 +8,7 @@ import type {
   Logger,
 } from "./types";
 
+// TODO: 設定ファイルまたはDBから読み込むように変更する
 // PoCハードコード設定（.mcp.json の設定に合わせる）
 export const HARDCODED_CONFIGS: McpServerConfig[] = [
   {

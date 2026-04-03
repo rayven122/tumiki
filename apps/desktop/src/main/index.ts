@@ -12,15 +12,8 @@ import { getKeycloakEnvOptional } from "./utils/env";
 import * as logger from "./shared/utils/logger";
 
 // --mcp-proxy モード: GUI不要、stdioでMCPプロキシとして動作
+// 実際のプロキシ処理は mcp-cli.cjs（cli.ts の独立ビルドエントリーポイント）で実行
 const isMcpProxyMode = process.argv.includes("--mcp-proxy");
-if (isMcpProxyMode) {
-  void import("./mcp/cli").then(({ runMcpProxy }) =>
-    runMcpProxy().catch((error: unknown) => {
-      console.error("MCP Proxy の起動に失敗しました", error);
-      process.exit(1);
-    }),
-  );
-}
 
 const PROTOCOL = "tumiki-desktop";
 const CALLBACK_HOST = "auth";

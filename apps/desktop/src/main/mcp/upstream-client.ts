@@ -49,15 +49,11 @@ export const createUpstreamClient = (
   let retryCount = 0;
   let retryTimer: ReturnType<typeof setTimeout> | null = null;
   let lastError: string | undefined;
+  // handleCrashの二重呼び出し防止フラグ（onclose/onerrorが両方発火するケース対策）
+  let crashHandled = false;
 
-  // process.envのキャッシュ（リトライ毎にコピーしない）
-  const baseEnv: Record<string, string> = {};
-  for (const [key, value] of Object.entries(process.env)) {
-    if (value !== undefined) {
-      baseEnv[key] = value;
-    }
-  }
-  Object.assign(baseEnv, config.env);
+  // process.envにサーバー固有の環境変数をマージ
+  const mergedEnv = { ...process.env, ...config.env } as Record<string, string>;
 
   /**
    * 状態を更新し、コールバックを呼び出す
@@ -89,7 +85,7 @@ export const createUpstreamClient = (
       transport = new StdioClientTransport({
         command: config.command,
         args: config.args,
-        env: baseEnv,
+        env: mergedEnv,
       });
 
       client = new Client({
@@ -98,8 +94,12 @@ export const createUpstreamClient = (
       });
 
       // 子プロセスのクラッシュを検知
+      // onclose/onerrorが両方発火するケースがあるため、crashHandledで二重呼び出しを防止
+      crashHandled = false;
+
       transport.onclose = () => {
-        if (status === "running") {
+        if (status === "running" && !crashHandled) {
+          crashHandled = true;
           logger.warn(
             `MCPサーバー "${config.name}" の接続が切断されました`,
           );
@@ -113,7 +113,8 @@ export const createUpstreamClient = (
           error,
         );
         // oncloseが発火しない場合に備えて、エラー状態に遷移
-        if (status === "running") {
+        if (status === "running" && !crashHandled) {
+          crashHandled = true;
           setStatus(
             "error",
             error instanceof Error ? error.message : "トランスポートエラー",

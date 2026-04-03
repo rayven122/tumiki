@@ -120,8 +120,19 @@ describe("HARDCODED_CONFIGS", () => {
     expect(HARDCODED_CONFIGS).toHaveLength(1);
     expect(HARDCODED_CONFIGS[0]).toStrictEqual({
       name: "serena",
-      command: "npx",
-      args: ["-y", "@anthropics/serena-mcp"],
+      command: "uvx",
+      args: [
+        "--from",
+        "git+https://github.com/oraios/serena",
+        "serena",
+        "start-mcp-server",
+        "--enable-web-dashboard",
+        "false",
+        "--context",
+        "ide-assistant",
+        "--project",
+        ".",
+      ],
       env: {},
     });
   });

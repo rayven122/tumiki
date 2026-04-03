@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from "electron";
 import type { AuthTokenResult } from "../types/auth";
 import type { CatalogItem } from "../types/catalog";
 import type { McpServerItem, CreateFromCatalogInput } from "../main/types";
+import type { McpServerState, McpToolInfo, CallToolResult } from "../main/mcp/types";
 
 // Electron APIを安全に公開
 const api = {
@@ -58,6 +59,18 @@ const api = {
     ): Promise<{ serverId: number; serverName: string }> =>
       ipcRenderer.invoke("mcp:createFromCatalog", input),
     getAll: (): Promise<McpServerItem[]> => ipcRenderer.invoke("mcp:getAll"),
+    // MCP Proxy API
+    start: (): Promise<McpServerState[]> => ipcRenderer.invoke("mcp:start"),
+    stop: (): Promise<void> => ipcRenderer.invoke("mcp:stop"),
+    listTools: (): Promise<McpToolInfo[]> =>
+      ipcRenderer.invoke("mcp:list-tools"),
+    callTool: (
+      name: string,
+      args: Record<string, unknown>,
+    ): Promise<CallToolResult> =>
+      ipcRenderer.invoke("mcp:call-tool", { name, arguments: args }),
+    getStatus: (): Promise<McpServerState[]> =>
+      ipcRenderer.invoke("mcp:status"),
   },
 };
 
