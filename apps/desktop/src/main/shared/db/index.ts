@@ -2,33 +2,32 @@ import { PrismaClient } from "@prisma/desktop-client";
 import { join } from "path";
 import { app } from "electron";
 import { existsSync, mkdirSync } from "fs";
+import { z } from "zod";
 import * as logger from "../utils/logger";
+
+/** 非負整数ミリ秒のスキーマ（未設定・空文字・不正値は undefined） */
+const nonNegativeIntMsSchema = z.coerce
+  .number()
+  .int()
+  .nonnegative()
+  .optional()
+  .catch(undefined);
 
 // 接続タイムアウト設定（ミリ秒）
 // 環境変数で設定可能（DESKTOP_DB_TIMEOUT_MS）
 // デフォルト: 10秒（UX向上のため30秒から短縮）
 const CONNECTION_TIMEOUT_MS =
-  Number(process.env.DESKTOP_DB_TIMEOUT_MS) || 10000;
-
-/** 環境変数から非負整数 ms を読む（0 は有効。未設定時は fallback） */
-const readNonNegativeIntMs = (name: string, fallback: number): number => {
-  const raw = process.env[name];
-  if (raw === undefined || raw === "") {
-    return fallback;
-  }
-  const n = Number(raw);
-  if (!Number.isFinite(n) || n < 0) {
-    return fallback;
-  }
-  return Math.trunc(n);
-};
+  nonNegativeIntMsSchema.parse(process.env.DESKTOP_DB_TIMEOUT_MS) ?? 10000;
 
 // リトライ設定（指数バックオフ）
 // DESKTOP_DB_RETRY_INITIAL_MS / DESKTOP_DB_RETRY_MAX_MS で上書き可能（Vitest では 0 にして待ちを省略）
 const RETRY_CONFIG = {
   MAX_RETRIES: 3,
-  INITIAL_DELAY_MS: readNonNegativeIntMs("DESKTOP_DB_RETRY_INITIAL_MS", 1000),
-  MAX_DELAY_MS: readNonNegativeIntMs("DESKTOP_DB_RETRY_MAX_MS", 15000),
+  INITIAL_DELAY_MS:
+    nonNegativeIntMsSchema.parse(process.env.DESKTOP_DB_RETRY_INITIAL_MS) ??
+    1000,
+  MAX_DELAY_MS:
+    nonNegativeIntMsSchema.parse(process.env.DESKTOP_DB_RETRY_MAX_MS) ?? 15000,
 } as const;
 
 /**
