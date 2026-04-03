@@ -6,15 +6,13 @@ import { env } from "../env";
 import * as logger from "../utils/logger";
 
 // 接続タイムアウト設定（ミリ秒）
-// デフォルト: 10秒（UX向上のため30秒から短縮）
-const CONNECTION_TIMEOUT_MS = env.DESKTOP_DB_TIMEOUT_MS ?? 10000;
+const CONNECTION_TIMEOUT_MS = env.DESKTOP_DB_TIMEOUT_MS;
 
 // リトライ設定（指数バックオフ）
-// Vitest では 0 にして待ちを省略
 const RETRY_CONFIG = {
   MAX_RETRIES: 3,
-  INITIAL_DELAY_MS: env.DESKTOP_DB_RETRY_INITIAL_MS ?? 1000,
-  MAX_DELAY_MS: env.DESKTOP_DB_RETRY_MAX_MS ?? 15000,
+  INITIAL_DELAY_MS: env.DESKTOP_DB_RETRY_INITIAL_MS,
+  MAX_DELAY_MS: env.DESKTOP_DB_RETRY_MAX_MS,
 } as const;
 
 /**
