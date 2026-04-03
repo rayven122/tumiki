@@ -54,7 +54,7 @@ enum ServerStatus {
 /// 認証トークン
 /// @namespace Auth
 model AuthToken {
-  id           String   @id @default(uuid())
+  id           Int      @id @default(autoincrement())
   /// 暗号化されたアクセストークン
   accessToken  String
   /// 暗号化されたリフレッシュトークン
@@ -192,27 +192,6 @@ model McpServer {
   /// 監査ログ一覧
   auditLogs   AuditLog[]
 
-}
-
-
-/// ログ同期キュー（監査ログのクラウド同期待ちエントリ）
-/// @namespace McpServer
-model LogSyncQueue {
-  id         Int       @id @default(autoincrement())
-  /// 同期対象サーバーID
-  serverId   String
-  /// ログエントリ（JSON文字列）
-  logEntry   String
-  /// 同期状態（pending / synced / failed）
-  syncStatus String    @default("pending")
-  /// リトライ回数
-  retryCount Int       @default(0)
-  createdAt  DateTime  @default(now())
-  /// 同期完了日時
-  syncedAt   DateTime?
-
-  @@index([syncStatus, serverId])
-  @@index([serverId])
 }
 
 /// 監査ログ（MCPツール呼び出しの記録）

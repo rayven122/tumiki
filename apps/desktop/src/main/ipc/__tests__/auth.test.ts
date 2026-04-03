@@ -77,7 +77,7 @@ describe("setupAuthIpc", () => {
   describe("auth:getToken", () => {
     test("有効なトークンを取得できる", async () => {
       const mockToken = {
-        id: "token-id",
+        id: 1,
         accessToken: "encrypted:test-access-token",
         refreshToken: "encrypted:test-refresh-token",
         idToken: null,
@@ -112,7 +112,7 @@ describe("setupAuthIpc", () => {
 
     test("有効期限切れのトークンの場合はnullを返し、DBから削除する", async () => {
       const expiredToken = {
-        id: "token-id",
+        id: 1,
         accessToken: "encrypted:test-access-token",
         refreshToken: "encrypted:test-refresh-token",
         expiresAt: new Date(Date.now() - 1000), // 過去の日時
@@ -134,7 +134,7 @@ describe("setupAuthIpc", () => {
 
     test("復号化されたトークンが空の場合はnullを返す", async () => {
       const mockToken = {
-        id: "token-id",
+        id: 1,
         accessToken: "encrypted:",
         refreshToken: "encrypted:test-refresh-token",
         expiresAt: new Date(Date.now() + 3600000),
@@ -186,7 +186,7 @@ describe("setupAuthIpc", () => {
   describe("auth:isAuthenticated", () => {
     test("有効なトークンが存在する場合はtrueを返す", async () => {
       const mockToken = {
-        id: "token-id",
+        id: 1,
         accessToken: "encrypted:test-access-token",
         refreshToken: "encrypted:test-refresh-token",
         expiresAt: new Date(Date.now() + 3600000), // 1時間後
@@ -213,7 +213,7 @@ describe("setupAuthIpc", () => {
 
     test("有効期限切れのトークンの場合はfalseを返す", async () => {
       const expiredToken = {
-        id: "token-id",
+        id: 1,
         accessToken: "encrypted:test-access-token",
         refreshToken: "encrypted:test-refresh-token",
         expiresAt: new Date(Date.now() - 1000), // 過去の日時

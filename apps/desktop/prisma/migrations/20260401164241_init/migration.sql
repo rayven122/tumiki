@@ -1,6 +1,6 @@
 -- CreateTable
 CREATE TABLE "AuthToken" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "accessToken" TEXT NOT NULL,
     "refreshToken" TEXT NOT NULL,
     "idToken" TEXT,
@@ -76,17 +76,6 @@ CREATE TABLE "McpServer" (
 );
 
 -- CreateTable
-CREATE TABLE "LogSyncQueue" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "serverId" TEXT NOT NULL,
-    "logEntry" TEXT NOT NULL,
-    "syncStatus" TEXT NOT NULL DEFAULT 'pending',
-    "retryCount" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "syncedAt" DATETIME
-);
-
--- CreateTable
 CREATE TABLE "AuditLog" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "toolName" TEXT NOT NULL,
@@ -115,12 +104,6 @@ CREATE UNIQUE INDEX "McpTool_connectionId_name_key" ON "McpTool"("connectionId",
 
 -- CreateIndex
 CREATE UNIQUE INDEX "McpServer_slug_key" ON "McpServer"("slug");
-
--- CreateIndex
-CREATE INDEX "LogSyncQueue_syncStatus_serverId_idx" ON "LogSyncQueue"("syncStatus", "serverId");
-
--- CreateIndex
-CREATE INDEX "LogSyncQueue_serverId_idx" ON "LogSyncQueue"("serverId");
 
 -- CreateIndex
 CREATE INDEX "AuditLog_serverId_createdAt_idx" ON "AuditLog"("serverId", "createdAt");

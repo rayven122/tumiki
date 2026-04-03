@@ -135,7 +135,7 @@ describe("OAuthManager", () => {
       };
       mockExchangeCodeForToken.mockResolvedValue(tokenResponse);
       mockDbAuthToken.create.mockResolvedValue({
-        id: "token-id",
+        id: 1,
         createdAt: new Date(),
       });
       mockDbAuthToken.deleteMany.mockResolvedValue({ count: 0 });
@@ -266,7 +266,7 @@ describe("OAuthManager", () => {
   describe("logout", () => {
     test("Keycloakとローカルの両方からログアウトする", async () => {
       const mockToken = {
-        id: "token-id",
+        id: 1,
         refreshToken: "encrypted:refresh-token",
         createdAt: new Date(),
       };
@@ -286,7 +286,7 @@ describe("OAuthManager", () => {
 
     test("idTokenが存在する場合はid_token_hintを含めてログアウトする", async () => {
       const mockToken = {
-        id: "token-id",
+        id: 1,
         refreshToken: "encrypted:refresh-token",
         idToken: "encrypted:id-token",
         createdAt: new Date(),
@@ -322,7 +322,7 @@ describe("OAuthManager", () => {
   describe("initialize", () => {
     test("有効なトークンがある場合は自動リフレッシュを開始する", async () => {
       const mockToken = {
-        id: "token-id",
+        id: 1,
         expiresAt: new Date(Date.now() + 3600000), // 1時間後
         createdAt: new Date(),
       };
@@ -346,7 +346,7 @@ describe("OAuthManager", () => {
 
     test("有効期限切れのトークンがある場合はリフレッシュを試みる", async () => {
       const mockToken = {
-        id: "token-id",
+        id: 1,
         refreshToken: "encrypted:refresh-token",
         expiresAt: new Date(Date.now() - 1000), // 期限切れ
         createdAt: new Date(),
@@ -377,7 +377,7 @@ describe("OAuthManager", () => {
 
     test("有効期限切れトークンのリフレッシュに失敗した場合はトークンを削除する", async () => {
       const mockToken = {
-        id: "token-id",
+        id: 1,
         refreshToken: "encrypted:refresh-token",
         expiresAt: new Date(Date.now() - 1000),
         createdAt: new Date(),
@@ -419,7 +419,7 @@ describe("OAuthManager", () => {
   describe("logout - エッジケース", () => {
     test("Keycloakログアウト失敗時もローカルトークンは削除される", async () => {
       const mockToken = {
-        id: "token-id",
+        id: 1,
         refreshToken: "encrypted:refresh-token",
         createdAt: new Date(),
       };
@@ -440,7 +440,7 @@ describe("OAuthManager", () => {
     test("リトライ後にリフレッシュが成功する", async () => {
       // expiresAt: 70秒後 → refreshDelay = max((70 - 300) * 1000, 60_000) = 60_000
       const mockToken = {
-        id: "token-id",
+        id: 1,
         refreshToken: "encrypted:refresh-token",
         expiresAt: new Date(Date.now() + 70_000),
         createdAt: new Date(),
@@ -480,7 +480,7 @@ describe("OAuthManager", () => {
       const onAuthExpired = vi.fn();
       // expiresAt: 70秒後 → refreshDelay = 60_000
       const mockToken = {
-        id: "token-id",
+        id: 1,
         refreshToken: "encrypted:refresh-token",
         expiresAt: new Date(Date.now() + 70_000),
         createdAt: new Date(),

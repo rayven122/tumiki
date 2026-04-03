@@ -8,7 +8,7 @@
 ```mermaid
 erDiagram
 "AuthToken" {
-  String id PK
+  Int id PK
   String accessToken
   String refreshToken
   String idToken "nullable"
@@ -88,15 +88,6 @@ erDiagram
   Int displayOrder
   DateTime createdAt
   DateTime updatedAt
-}
-"LogSyncQueue" {
-  Int id PK
-  String serverId
-  String logEntry
-  String syncStatus
-  Int retryCount
-  DateTime createdAt
-  DateTime syncedAt "nullable"
 }
 "AuditLog" {
   Int id PK
@@ -186,18 +177,6 @@ MCPサーバー（仮想・統合サーバー = Proxyエンドポイント）
   - `displayOrder`: 一覧画面での表示順序
   - `createdAt`: 
   - `updatedAt`: 
-
-### `LogSyncQueue`
-ログ同期キュー（監査ログのクラウド同期待ちエントリ）
-
-**Properties**
-  - `id`: 
-  - `serverId`: 同期対象サーバーID
-  - `logEntry`: ログエントリ（JSON文字列）
-  - `syncStatus`: 同期状態（pending / synced / failed）
-  - `retryCount`: リトライ回数
-  - `createdAt`: 
-  - `syncedAt`: 同期完了日時
 
 ### `AuditLog`
 監査ログ（MCPツール呼び出しの記録）
