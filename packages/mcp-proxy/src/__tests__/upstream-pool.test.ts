@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, vi } from "vitest";
-import type { Logger, McpServerConfig } from "../types";
-import type { UpstreamPool } from "../upstream-pool";
+import type { Logger, McpServerConfig } from "../types.js";
+import type { UpstreamPool } from "../upstream-pool.js";
 
 // UpstreamClientのモック
 const mockConnect = vi.fn();
@@ -26,8 +26,8 @@ vi.mock("../upstream-client", () => ({
     })),
 }));
 
-import { createUpstreamPool } from "../upstream-pool";
-import { createMockLogger } from "./test-helpers";
+import { createUpstreamPool } from "../upstream-pool.js";
+import { createMockLogger } from "./test-helpers.js";
 
 const createTestConfig = (name: string): McpServerConfig => ({
   name,

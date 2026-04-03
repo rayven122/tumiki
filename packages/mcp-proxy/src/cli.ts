@@ -3,9 +3,9 @@
  * --mcp-proxy CLIエントリーポイント
  * claude code → tumiki --mcp-proxy → Serena MCP の接続フロー
  */
-import { createProxyCore, HARDCODED_CONFIGS } from "./core";
-import { startStdioInbound } from "./stdio-inbound";
-import { stderrLogger as logger } from "./stderr-logger";
+import { createProxyCore, HARDCODED_CONFIGS } from "./core.js";
+import { startStdioInbound } from "./stdio-inbound.js";
+import { stderrLogger as logger } from "./stderr-logger.js";
 
 export const runMcpProxy = async (): Promise<void> => {
   logger.info("tumiki-mcp-proxy を起動しています...");

@@ -11,8 +11,8 @@ import {
   ListToolsRequestSchema,
   CallToolRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import type { ProxyCore } from "./core";
-import type { Logger } from "./types";
+import type { ProxyCore } from "./core.js";
+import type { Logger } from "./types.js";
 
 /**
  * stdio inboundサーバーを起動

@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, vi } from "vitest";
-import type { Logger, McpServerConfig } from "../types";
-import type { UpstreamClient } from "../upstream-client";
+import type { Logger, McpServerConfig } from "../types.js";
+import type { UpstreamClient } from "../upstream-client.js";
 
 // MCP SDK のモック
 const mockConnect = vi.fn();
@@ -43,8 +43,8 @@ vi.mock("@modelcontextprotocol/sdk/client/stdio.js", () => ({
   }),
 }));
 
-import { createUpstreamClient } from "../upstream-client";
-import { createMockLogger } from "./test-helpers";
+import { createUpstreamClient } from "../upstream-client.js";
+import { createMockLogger } from "./test-helpers.js";
 
 const createTestConfig = (): McpServerConfig => ({
   name: "test-server",
@@ -87,7 +87,7 @@ describe("UpstreamClient", () => {
 
     test("接続中はstatusが'pending'になる", async () => {
       const statusChanges: string[] = [];
-      client.onStatusChange((_name, status) => {
+      client.onStatusChange((_name: string, status: string) => {
         statusChanges.push(status);
       });
 
@@ -196,21 +196,53 @@ describe("UpstreamClient", () => {
       expect(mockConnect).toHaveBeenCalledTimes(2);
     });
 
-    test("リトライ上限到達時にstatusが'error'になる", async () => {
-      mockConnect.mockResolvedValue(undefined);
+    test("リトライ上限（3回）到達時にstatusが'error'になる", async () => {
+      mockConnect.mockResolvedValueOnce(undefined);
       await client.connect();
+      expect(client.getStatus()).toBe("running");
 
-      // クラッシュ → リトライ1（失敗）→ リトライ2（失敗）→ リトライ3（失敗）
+      // 以降の接続は全て失敗
       mockConnect.mockRejectedValue(new Error("失敗"));
 
-      // 1回目のクラッシュ
+      // クラッシュをシミュレート
       transportOnClose?.();
-      await vi.advanceTimersByTimeAsync(1000); // リトライ1
+      expect(client.getStatus()).toBe("pending");
 
-      // 2回目のクラッシュ（リトライ1で接続失敗→error状態→handleCrashは呼ばれない）
-      // 接続失敗時はsetStatus("error")で終わるため、3回のクラッシュリトライではなく
-      // 最初のクラッシュ→1回のリトライ失敗でerrorになる
+      // リトライ1（1秒後）→ 失敗 → まだpending
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(client.getStatus()).toBe("pending");
+
+      // リトライ2（3秒後）→ 失敗 → まだpending
+      await vi.advanceTimersByTimeAsync(3000);
+      expect(client.getStatus()).toBe("pending");
+
+      // リトライ3（9秒後）→ 失敗 → error
+      await vi.advanceTimersByTimeAsync(9000);
       expect(client.getStatus()).toBe("error");
+
+      // 初回接続(1) + リトライ(3) = 4回
+      expect(mockConnect).toHaveBeenCalledTimes(4);
+    });
+
+    test("リトライ中に接続成功するとstatusが'running'に復帰する", async () => {
+      mockConnect.mockResolvedValueOnce(undefined);
+      await client.connect();
+
+      // 1回目のリトライで復旧
+      mockConnect
+        .mockRejectedValueOnce(new Error("失敗"))
+        .mockResolvedValueOnce(undefined);
+
+      transportOnClose?.();
+      expect(client.getStatus()).toBe("pending");
+
+      // リトライ1（1秒後）→ 失敗 → pending継続
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(client.getStatus()).toBe("pending");
+
+      // リトライ2（3秒後）→ 成功 → running
+      await vi.advanceTimersByTimeAsync(3000);
+      expect(client.getStatus()).toBe("running");
     });
   });
 

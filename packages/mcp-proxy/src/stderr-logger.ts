@@ -1,4 +1,4 @@
-import type { Logger } from "./types";
+import type { Logger } from "./types.js";
 
 /**
  * stderr出力のLogger（stdoutはMCPプロトコル/IPC用のため）

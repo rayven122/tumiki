@@ -23,8 +23,14 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, "src/main/index.ts"),
-          "mcp-process": resolve(__dirname, "src/main/mcp/process.ts"),
-          "mcp-cli": resolve(__dirname, "src/main/mcp/cli.ts"),
+          "mcp-process": resolve(
+            __dirname,
+            "../../packages/mcp-proxy/src/process.ts",
+          ),
+          "mcp-cli": resolve(
+            __dirname,
+            "../../packages/mcp-proxy/src/cli.ts",
+          ),
         },
         output: {
           format: "cjs",

@@ -1,5 +1,5 @@
-import { createUpstreamClient } from "./upstream-client";
-import type { UpstreamClient } from "./upstream-client";
+import { createUpstreamClient } from "./upstream-client.js";
+import type { UpstreamClient } from "./upstream-client.js";
 import type {
   McpServerConfig,
   McpServerState,
@@ -7,7 +7,7 @@ import type {
   CallToolResult,
   ServerStatus,
   Logger,
-} from "./types";
+} from "./types.js";
 
 /**
  * UpstreamPool型

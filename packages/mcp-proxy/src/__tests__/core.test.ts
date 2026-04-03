@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, vi } from "vitest";
-import type { Logger } from "../types";
+import type { Logger } from "../types.js";
 
 // UpstreamPoolのモック
 const mockAddServer = vi.fn();
@@ -26,8 +26,8 @@ vi.mock("../upstream-pool", () => ({
   })),
 }));
 
-import { createProxyCore, HARDCODED_CONFIGS } from "../core";
-import { createMockLogger } from "./test-helpers";
+import { createProxyCore, HARDCODED_CONFIGS } from "../core.js";
+import { createMockLogger } from "./test-helpers.js";
 
 describe("createProxyCore", () => {
   let mockLogger: Logger;

@@ -12,7 +12,7 @@ import type {
   McpServerState,
   McpToolInfo,
   CallToolResult,
-} from "./types";
+} from "@tumiki/mcp-proxy-core";
 
 // リトライ設定（Proxy Processクラッシュ時）
 const MAX_PROCESS_RETRIES = 3;
@@ -155,6 +155,9 @@ const handleProcessCrash = (): void => {
  * Proxy Processを起動
  */
 const spawnProxy = async (): Promise<void> => {
+  // 再起動時にクラッシュリトライを有効化
+  intentionalStop = false;
+
   // 既存のリトライタイマーをキャンセル
   if (processRetryTimer) {
     clearTimeout(processRetryTimer);

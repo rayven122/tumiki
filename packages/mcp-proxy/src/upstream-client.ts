@@ -6,7 +6,7 @@ import type {
   CallToolResult,
   ServerStatus,
   Logger,
-} from "./types";
+} from "./types.js";
 
 // リトライ設定
 const MAX_RETRIES = 3;
@@ -138,6 +138,12 @@ export const createUpstreamClient = (
       // クリーンアップ
       client = null;
       transport = null;
+
+      // リトライ中の再接続失敗時はバックオフを継続
+      if (retryCount > 0) {
+        handleCrash();
+        return;
+      }
 
       setStatus("error", message);
     }

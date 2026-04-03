@@ -2,10 +2,10 @@
  * fork() エントリーポイント
  * Electron Main から fork() で起動され、IPC message で通信する
  */
-import { createProxyCore, HARDCODED_CONFIGS } from "./core";
-import type { ProxyCore } from "./core";
-import type { ProxyRequest, ProxyResponse, ProxyEvent } from "./types";
-import { stderrLogger as logger } from "./stderr-logger";
+import { createProxyCore, HARDCODED_CONFIGS } from "./core.js";
+import type { ProxyCore } from "./core.js";
+import type { ProxyRequest, ProxyResponse, ProxyEvent } from "./types.js";
+import { stderrLogger as logger } from "./stderr-logger.js";
 
 /**
  * IPCでメッセージを送信（チャネル切断時はログ出力）
