@@ -15,7 +15,7 @@ const mockCallTool = vi.fn();
 const mockGetStatus = vi.fn();
 const mockOnStatusChange = vi.fn();
 
-vi.mock("../upstream-pool", () => ({
+vi.mock("../outbound/upstream-pool", () => ({
   createUpstreamPool: vi.fn().mockImplementation(() => ({
     addServer: mockAddServer,
     startAll: mockStartAll,

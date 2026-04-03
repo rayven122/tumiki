@@ -6,7 +6,7 @@ import type {
   McpToolInfo,
   ServerStatus,
 } from "./types.js";
-import { createUpstreamPool } from "./upstream-pool.js";
+import { createUpstreamPool } from "./outbound/upstream-pool.js";
 
 // TODO: 設定ファイルまたはDBから読み込むように変更する
 // PoCハードコード設定（.mcp.json の設定に合わせる）

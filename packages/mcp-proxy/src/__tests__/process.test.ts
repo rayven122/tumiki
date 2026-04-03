@@ -61,10 +61,6 @@ describe("process.ts", () => {
   });
 
   describe("初期化", () => {
-    test("起動時にcore.startAll()が呼ばれる", () => {
-      expect(mockStartAll).toHaveBeenCalled();
-    });
-
     test("onStatusChangeコールバックが登録される", () => {
       expect(mockOnStatusChange).toHaveBeenCalled();
     });

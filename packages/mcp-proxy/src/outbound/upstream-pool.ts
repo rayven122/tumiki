@@ -5,7 +5,7 @@ import type {
   McpServerState,
   McpToolInfo,
   ServerStatus,
-} from "./types.js";
+} from "../types.js";
 import type { UpstreamClient } from "./upstream-client.js";
 import { createUpstreamClient } from "./upstream-client.js";
 

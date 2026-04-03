@@ -4,7 +4,7 @@ import { initializeDb, closeDb } from "./shared/db";
 import { setupAuthIpc } from "./ipc/auth";
 import { setupCatalogIpc } from "./features/catalog/catalog.ipc";
 import { setupMcpIpc } from "./features/mcp/mcp.ipc";
-import { setupMcpIpc as setupMcpProxyIpc } from "./mcp/mcp.ipc";
+import { setupMcpProxyIpc } from "./mcp/mcp.ipc";
 import { stopProxy } from "./mcp/mcp.service";
 import { seedCatalogs } from "./features/catalog/catalog.seed";
 import { createOAuthManager } from "./auth/oauth-manager";

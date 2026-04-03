@@ -7,7 +7,7 @@ import type {
   McpServerConfig,
   McpToolInfo,
   ServerStatus,
-} from "./types.js";
+} from "../types.js";
 
 // リトライ設定
 const MAX_RETRIES = 3;

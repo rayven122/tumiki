@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import type { UpstreamClient } from "../outbound/upstream-client.js";
 import type { Logger, McpServerConfig } from "../types.js";
-import type { UpstreamClient } from "../upstream-client.js";
-import { createUpstreamClient } from "../upstream-client.js";
+import { createUpstreamClient } from "../outbound/upstream-client.js";
 import { createMockLogger } from "./test-helpers.js";
 
 // MCP SDK のモック

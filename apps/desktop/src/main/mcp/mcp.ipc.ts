@@ -5,7 +5,7 @@ import * as logger from "../shared/utils/logger";
 /**
  * MCP関連の IPC ハンドラーを設定
  */
-export const setupMcpIpc = (): void => {
+export const setupMcpProxyIpc = (): void => {
   // MCPサーバー起動
   ipcMain.handle("mcp:start", async () => {
     try {

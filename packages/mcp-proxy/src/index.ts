@@ -16,7 +16,7 @@ export { createProxyCore, HARDCODED_CONFIGS } from "./core.js";
 export type { ProxyCore } from "./core.js";
 
 // Inbound
-export { startStdioInbound } from "./stdio-inbound.js";
+export { startStdioInbound } from "./inbound/stdio-inbound.js";
 
 // CLI
 export { runMcpProxy } from "./cli.js";

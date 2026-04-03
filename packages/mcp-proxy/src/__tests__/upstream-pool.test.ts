@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import type { UpstreamPool } from "../outbound/upstream-pool.js";
 import type { Logger, McpServerConfig } from "../types.js";
-import type { UpstreamPool } from "../upstream-pool.js";
-import { createUpstreamPool } from "../upstream-pool.js";
+import { createUpstreamPool } from "../outbound/upstream-pool.js";
 import { createMockLogger } from "./test-helpers.js";
 
 // UpstreamClientのモック
@@ -14,7 +14,7 @@ const mockGetStatus = vi.fn();
 const mockGetLastError = vi.fn();
 const mockOnStatusChange = vi.fn();
 
-vi.mock("../upstream-client", () => ({
+vi.mock("../outbound/upstream-client", () => ({
   createUpstreamClient: vi
     .fn()
     .mockImplementation((config: McpServerConfig) => ({
