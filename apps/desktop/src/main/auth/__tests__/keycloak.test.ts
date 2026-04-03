@@ -1,6 +1,10 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 
-vi.mock("../../utils/logger");
+vi.mock("electron", () => ({
+  app: { getPath: vi.fn().mockReturnValue("/tmp") },
+}));
+
+vi.mock("../../shared/utils/logger");
 
 import { createKeycloakClient } from "../keycloak";
 import type { KeycloakConfig } from "../keycloak";
