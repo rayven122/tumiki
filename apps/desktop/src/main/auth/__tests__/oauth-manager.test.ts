@@ -36,6 +36,7 @@ vi.mock("../keycloak", () => ({
 }));
 
 import { shell } from "electron";
+import { createKeycloakClient } from "../keycloak";
 import { createOAuthManager } from "../oauth-manager";
 import type { OAuthManager } from "../oauth-manager";
 import { getDb } from "../../shared/db";
@@ -59,6 +60,14 @@ describe("OAuthManager", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers({ shouldAdvanceTime: false });
+
+    // vi.clearAllMocks()でcreateKeycloakClientのmockReturnValueがリセットされるため再設定
+    vi.mocked(createKeycloakClient).mockReturnValue({
+      generateAuthUrl: mockGenerateAuthUrl,
+      exchangeCodeForToken: mockExchangeCodeForToken,
+      refreshToken: mockRefreshToken,
+      logout: mockLogout,
+    });
 
     vi.mocked(getDb).mockResolvedValue({
       authToken: mockDbAuthToken,
