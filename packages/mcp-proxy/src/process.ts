@@ -43,11 +43,10 @@ const handleRequest = async (
         return { id: request.id, ok: true, result: tools };
       }
       case "call-tool": {
-        const payload = request.payload as {
-          name: string;
-          arguments: Record<string, unknown>;
-        };
-        const result = await core.callTool(payload.name, payload.arguments);
+        const result = await core.callTool(
+          request.payload.name,
+          request.payload.arguments,
+        );
         return { id: request.id, ok: true, result };
       }
       case "status": {
@@ -55,10 +54,11 @@ const handleRequest = async (
         return { id: request.id, ok: true, result: status };
       }
       default: {
+        const _exhaustive: never = request;
         return {
-          id: request.id,
+          id: (_exhaustive as ProxyRequest).id,
           ok: false,
-          error: `不明なリクエストタイプ: ${request.type as string}`,
+          error: `不明なリクエストタイプ`,
         };
       }
     }

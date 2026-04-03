@@ -38,12 +38,19 @@ export type Logger = {
   debug: (msg: string, meta?: unknown) => void;
 };
 
-// Main → Proxy Process（リクエスト）
-export type ProxyRequest = {
-  id: string;
-  type: "start" | "stop" | "list-tools" | "call-tool" | "status";
-  payload?: unknown;
+// call-toolリクエストのペイロード
+export type CallToolPayload = {
+  name: string;
+  arguments: Record<string, unknown>;
 };
+
+// Main → Proxy Process（リクエスト）— discriminated union でペイロードの型安全性を保証
+export type ProxyRequest =
+  | { id: string; type: "start" }
+  | { id: string; type: "stop" }
+  | { id: string; type: "list-tools" }
+  | { id: string; type: "call-tool"; payload: CallToolPayload }
+  | { id: string; type: "status" };
 
 // Proxy → Main（レスポンス）
 export type ProxyResponse = {

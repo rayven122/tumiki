@@ -53,8 +53,12 @@ export const createUpstreamClient = (
   // handleCrashの二重呼び出し防止フラグ（onclose/onerrorが両方発火するケース対策）
   let crashHandled = false;
 
-  // process.envにサーバー固有の環境変数をマージ
-  const mergedEnv = { ...process.env, ...config.env } as Record<string, string>;
+  // process.envにサーバー固有の環境変数をマージ（undefined値を除外）
+  const mergedEnv = Object.fromEntries(
+    Object.entries({ ...process.env, ...config.env }).filter(
+      (entry): entry is [string, string] => entry[1] !== undefined,
+    ),
+  );
 
   /**
    * 状態を更新し、コールバックを呼び出す
@@ -219,6 +223,9 @@ export const createUpstreamClient = (
    */
   const listTools = async (): Promise<McpToolInfo[]> => {
     if (!client || status !== "running") {
+      logger.warn(
+        `MCPサーバー "${config.name}" は未接続のためツール一覧をスキップ（status: ${status}）`,
+      );
       return [];
     }
 

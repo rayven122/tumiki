@@ -12,6 +12,7 @@ import type {
   McpServerState,
   McpToolInfo,
   CallToolResult,
+  CallToolPayload,
 } from "@tumiki/mcp-proxy-core";
 
 // リトライ設定（Proxy Processクラッシュ時）
@@ -37,7 +38,7 @@ let intentionalStop = false;
  */
 const sendRequest = (
   type: ProxyRequest["type"],
-  payload?: unknown,
+  payload?: CallToolPayload,
 ): Promise<ProxyResponse> => {
   return new Promise((resolve, reject) => {
     if (!proxyProcess) {
@@ -46,7 +47,11 @@ const sendRequest = (
     }
 
     const id = randomUUID();
-    const request: ProxyRequest = { id, type, payload };
+    const request = (
+      type === "call-tool"
+        ? { id, type, payload: payload as CallToolPayload }
+        : { id, type }
+    ) as ProxyRequest;
 
     const timer = setTimeout(() => {
       const pending = pendingRequests.get(id);
@@ -68,7 +73,17 @@ const sendRequest = (
         reject(error);
       },
     });
-    proxyProcess.send(request);
+    try {
+      proxyProcess.send(request);
+    } catch (error) {
+      pendingRequests.delete(id);
+      clearTimeout(timer);
+      reject(
+        new Error(
+          `IPCメッセージの送信に失敗しました: ${error instanceof Error ? error.message : "不明なエラー"}`,
+        ),
+      );
+    }
   });
 };
 
@@ -147,7 +162,14 @@ const handleProcessCrash = (): void => {
 
   processRetryTimer = setTimeout(() => {
     processRetryTimer = null;
-    void spawnProxy();
+    // プロセス再起動後にMCPサーバーへの再接続も行う
+    void spawnProxy()
+      .then(() => sendRequest("start"))
+      .catch((error) => {
+        logger.error("Proxy Process再起動後のMCPサーバー再接続に失敗しました", {
+          error: error instanceof Error ? error.message : error,
+        });
+      });
   }, delay);
 };
 
@@ -169,6 +191,8 @@ const spawnProxy = async (): Promise<void> => {
   // 開発時: 同じディレクトリ
   const processPath = join(__dirname, "mcp-process.cjs");
 
+  // NOTE: detached: true はUnix専用。Windowsでは process.kill(-pid) が動作しない
+  // Windows対応が必要な場合はプラットフォーム分岐を追加すること
   proxyProcess = fork(processPath, [], {
     stdio: ["pipe", "pipe", "pipe", "ipc"],
     detached: true,
@@ -227,8 +251,7 @@ export const stopMcpServers = async (): Promise<void> => {
  */
 export const listMcpTools = async (): Promise<McpToolInfo[]> => {
   if (!proxyProcess) {
-    logger.warn("listMcpTools: Proxy Processが起動していません");
-    return [];
+    throw new Error("Proxy Processが起動していません");
   }
 
   const response = await sendRequest("list-tools");
@@ -263,8 +286,7 @@ export const callMcpTool = async (
  */
 export const getMcpStatus = async (): Promise<McpServerState[]> => {
   if (!proxyProcess) {
-    logger.warn("getMcpStatus: Proxy Processが起動していません");
-    return [];
+    throw new Error("Proxy Processが起動していません");
   }
 
   const response = await sendRequest("status");
@@ -301,8 +323,17 @@ export const stopProxy = async (): Promise<void> => {
   if (proxyProcess.pid) {
     try {
       process.kill(-proxyProcess.pid, "SIGTERM");
-    } catch {
-      // プロセスが既に終了している場合は無視
+    } catch (error) {
+      // ESRCHはプロセスが既に終了している場合のため無視、それ以外はログ出力
+      const code =
+        error instanceof Error && "code" in error
+          ? (error as NodeJS.ErrnoException).code
+          : undefined;
+      if (code !== "ESRCH") {
+        logger.warn("プロセスグループのSIGTERMに失敗しました", {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
       proxyProcess.kill();
     }
   } else {

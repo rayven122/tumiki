@@ -52,10 +52,18 @@ const handleDeepLink = async (url: string): Promise<void> => {
       parsed.pathname === CALLBACK_PATHNAME;
   } catch {
     logger.warn("Received malformed deep link URL", { url });
+    mainWindow?.webContents.send(
+      "auth:callbackError",
+      "不正なコールバックURLを受信しました",
+    );
     return;
   }
   if (!isValidCallback) {
     logger.warn("Received unknown deep link", { url });
+    mainWindow?.webContents.send(
+      "auth:callbackError",
+      "不明なディープリンクを受信しました",
+    );
     return;
   }
 

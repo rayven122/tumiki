@@ -109,8 +109,20 @@ export const createUpstreamPool = (logger: Logger): UpstreamPool => {
    * 全サーバーを停止
    */
   const stopAll = async (): Promise<void> => {
-    const promises = [...clients.values()].map((client) => client.disconnect());
-    await Promise.all(promises);
+    const results = await Promise.allSettled(
+      [...clients.values()].map((client) => client.disconnect()),
+    );
+
+    for (const result of results) {
+      if (result.status === "rejected") {
+        logger.error("MCPサーバーの停止に失敗", {
+          error:
+            result.reason instanceof Error
+              ? result.reason.message
+              : String(result.reason),
+        });
+      }
+    }
   };
 
   /**
