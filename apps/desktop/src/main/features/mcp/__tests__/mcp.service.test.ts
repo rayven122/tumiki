@@ -4,7 +4,8 @@ import type { CreateFromCatalogInput } from "../mcp.types";
 // モックの設定
 vi.mock("electron", () => ({
   app: {
-    getPath: (name: string) => (name === "userData" ? "/test/user/data" : "/test"),
+    getPath: (name: string) =>
+      name === "userData" ? "/test/user/data" : "/test",
   },
 }));
 vi.mock("../../../shared/db");
