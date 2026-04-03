@@ -125,6 +125,8 @@ describe("mcp.repository（実DB）", () => {
         name: "Server A",
         slug: "server-a",
       });
+      // SQLiteのcreatedAtは秒精度のため、同一秒に作成すると順序が不定になる
+      await new Promise((resolve) => setTimeout(resolve, 1100));
       await mcpRepository.createServer(db, {
         ...serverData,
         name: "Server B",
