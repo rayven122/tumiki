@@ -23,7 +23,7 @@ vi.mock("fs/promises", () => ({
   readFile: () => Promise.resolve(""),
 }));
 
-vi.mock("../../../../../prisma/generated/client", () => {
+vi.mock("@prisma/desktop-client", () => {
   // シングルトンインスタンスを作成（全てのnew PrismaClient()呼び出しで同じインスタンスを返す）
   let instance: {
     $connect: ReturnType<typeof vi.fn>;
@@ -61,6 +61,11 @@ vi.mock("../../utils/logger", () => ({
   error: () => undefined,
 }));
 
+// 偽タイマーが有効なままだとリトライの setTimeout が進まずハングするため、各テストの最初に必ず実タイマーへ戻す
+beforeEach(() => {
+  vi.useRealTimers();
+});
+
 // グローバルなクリーンアップ - すべてのテスト後にタイマーを実タイマーに戻す
 afterEach(() => {
   // すべてのタイマーをクリアしてから実タイマーに戻す
@@ -95,8 +100,7 @@ const setupBeforeEach = async () => {
   vi.resetModules();
 
   // 新しいモックインスタンスへの参照を取得
-  const { PrismaClient } =
-    await import("../../../../../prisma/generated/client");
+  const { PrismaClient } = await import("@prisma/desktop-client");
   mockPrismaClient = new PrismaClient() as unknown as typeof mockPrismaClient;
 
   // モジュールを再インポート
@@ -138,6 +142,12 @@ const setupBeforeEach = async () => {
 describe("getDb", () => {
   beforeEach(async () => {
     await setupBeforeEach();
+  });
+
+  // 偽タイマーを使うテストで expect 失敗などが起きると実タイマーに戻らず、
+  // 後続 describe の withTimeout が進まず 30s でタイムアウトするため必ず戻す
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   test("データベース接続を取得できる", async () => {
@@ -182,38 +192,35 @@ describe("getDb", () => {
 
   test("リトライ時に指数バックオフで待機する", async () => {
     let callCount = 0;
+    let setTimeoutSpy: { mockRestore: () => void } | undefined;
 
-    vi.useFakeTimers({ shouldAdvanceTime: false });
+    try {
+      vi.useFakeTimers({ shouldAdvanceTime: false });
 
-    mockPrismaClient.$connect.mockImplementation(() => {
-      callCount++;
-      if (callCount < 3) {
-        return Promise.reject(new Error("Connection failed"));
-      }
-      return Promise.resolve(undefined);
-    });
+      mockPrismaClient.$connect.mockImplementation(() => {
+        callCount++;
+        if (callCount < 3) {
+          return Promise.reject(new Error("Connection failed"));
+        }
+        return Promise.resolve(undefined);
+      });
 
-    // setTimeout のスパイ
-    const setTimeoutSpy = vi.spyOn(global, "setTimeout");
+      // useFakeTimers 後にスパイしないと、遅延用 setTimeout が観測できない
+      setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
 
-    const promise = getDb();
+      const promise = getDb();
 
-    // タイマーを進める（タイムアウト + リトライのdelay）
-    // withTimeoutでCONNECTION_TIMEOUT_MS(30秒)が設定されるため、十分な時間を進める
-    await vi.advanceTimersByTimeAsync(1000); // 1回目のリトライ（1秒待機）
-    await vi.advanceTimersByTimeAsync(2000); // 2回目のリトライ（2秒待機）
+      // Vitest の env でリトライ遅延は 0（Promise.resolve のみ）のため、setTimeout は withTimeout のみ
+      await vi.runAllTimersAsync();
 
-    await promise;
+      await promise;
 
-    // setTimeoutが呼ばれた回数を確認
-    // - withTimeout: 3回（各接続試行に1回）
-    // - リトライのdelay: 2回（3回目の試行は成功するので delay なし）
-    // 合計: 5回
-    expect(setTimeoutSpy).toHaveBeenCalledTimes(5);
-
-    // スパイを復元してからタイマーを戻す
-    setTimeoutSpy.mockRestore();
-    vi.useRealTimers();
+      // setTimeout が呼ばれた回数: withTimeout が各接続試行で 1 回ずつ（計 3 回）
+      expect(setTimeoutSpy).toHaveBeenCalledTimes(3);
+    } finally {
+      setTimeoutSpy?.mockRestore();
+      vi.useRealTimers();
+    }
   });
 
   test("並行して接続要求があっても同じPromiseを返す（競合状態回避）", async () => {

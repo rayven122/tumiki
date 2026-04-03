@@ -1,5 +1,6 @@
 import type { JSX } from "react";
 import { HashRouter, Routes, Route } from "react-router-dom";
+import { Toaster } from "sonner";
 import { Layout } from "./_components/Layout";
 import { Dashboard } from "./pages/Dashboard";
 import { MyTools } from "./pages/MyTools";
@@ -23,30 +24,36 @@ import { ConnectorManual } from "./pages/ConnectorManual";
 
 export const App = (): JSX.Element => {
   return (
-    <HashRouter>
-      <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="tools" element={<MyTools />} />
-          <Route path="tools/catalog" element={<ToolCatalog />} />
-          <Route path="tools/connector/auto" element={<ConnectorAuto />} />
-          <Route path="tools/connector/manual" element={<ConnectorManual />} />
-          <Route path="tools/:toolId" element={<ToolDetail />} />
-          <Route path="history" element={<HistoryList />} />
-          <Route path="history/:historyId" element={<HistoryDetail />} />
-          <Route path="requests" element={<RequestList />} />
-          <Route path="requests/new" element={<RequestForm />} />
-          <Route path="requests/:requestId" element={<RequestDetail />} />
-          <Route path="settings" element={<SettingsPage />} />
-          <Route path="notifications" element={<Notifications />} />
-          <Route path="admin" element={<AdminDashboard />} />
-          <Route path="admin/history" element={<AdminHistory />} />
-          <Route path="admin/users" element={<AdminUsers />} />
-          <Route path="admin/roles" element={<AdminRoles />} />
-          <Route path="admin/tools" element={<AdminTools />} />
-          <Route path="admin/approvals" element={<AdminApprovals />} />
-        </Route>
-      </Routes>
-    </HashRouter>
+    <>
+      <Toaster position="top-center" duration={3000} />
+      <HashRouter>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="tools" element={<MyTools />} />
+            <Route path="tools/catalog" element={<ToolCatalog />} />
+            <Route path="tools/connector/auto" element={<ConnectorAuto />} />
+            <Route
+              path="tools/connector/manual"
+              element={<ConnectorManual />}
+            />
+            <Route path="tools/:toolId" element={<ToolDetail />} />
+            <Route path="history" element={<HistoryList />} />
+            <Route path="history/:historyId" element={<HistoryDetail />} />
+            <Route path="requests" element={<RequestList />} />
+            <Route path="requests/new" element={<RequestForm />} />
+            <Route path="requests/:requestId" element={<RequestDetail />} />
+            <Route path="settings" element={<SettingsPage />} />
+            <Route path="notifications" element={<Notifications />} />
+            <Route path="admin" element={<AdminDashboard />} />
+            <Route path="admin/history" element={<AdminHistory />} />
+            <Route path="admin/users" element={<AdminUsers />} />
+            <Route path="admin/roles" element={<AdminRoles />} />
+            <Route path="admin/tools" element={<AdminTools />} />
+            <Route path="admin/approvals" element={<AdminApprovals />} />
+          </Route>
+        </Routes>
+      </HashRouter>
+    </>
   );
 };

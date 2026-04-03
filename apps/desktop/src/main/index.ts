@@ -3,7 +3,8 @@ import { createMainWindow } from "./window";
 import { initializeDb, closeDb } from "./shared/db";
 import { setupAuthIpc } from "./ipc/auth";
 import { setupCatalogIpc } from "./features/catalog/catalog.ipc";
-import { seedCatalogs } from "./features/catalog/catalog.service";
+import { setupMcpIpc } from "./features/mcp/mcp.ipc";
+import { seedCatalogs } from "./features/catalog/catalog.seed";
 import { createOAuthManager } from "./auth/oauth-manager";
 import { getOAuthManager, setOAuthManager } from "./auth/manager-registry";
 import { getKeycloakEnvOptional } from "./utils/env";
@@ -183,6 +184,7 @@ app
     // IPC ハンドラー登録
     setupAuthIpc();
     setupCatalogIpc();
+    setupMcpIpc();
 
     createWindow();
 

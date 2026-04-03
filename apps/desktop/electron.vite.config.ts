@@ -13,6 +13,11 @@ export default defineConfig({
         process.env.KEYCLOAK_DESKTOP_CLIENT_ID ?? "",
       ),
     },
+    resolve: {
+      alias: {
+        "@prisma/desktop-client": resolve(__dirname, "prisma/generated/client"),
+      },
+    },
     build: {
       outDir: "dist-electron/main",
       rollupOptions: {
