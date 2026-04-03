@@ -171,6 +171,7 @@ const spawnProxy = async (): Promise<void> => {
 
   proxyProcess = fork(processPath, [], {
     stdio: ["pipe", "pipe", "pipe", "ipc"],
+    detached: true,
   });
 
   proxyProcess.on("message", handleMessage);
@@ -295,7 +296,18 @@ export const stopProxy = async (): Promise<void> => {
     });
   }
 
-  proxyProcess.kill();
+  // detached: true で起動しているため、プロセスグループごと終了
+  // -pid でグループ内の全子プロセス（Serena等）も確実に終了させる
+  if (proxyProcess.pid) {
+    try {
+      process.kill(-proxyProcess.pid, "SIGTERM");
+    } catch {
+      // プロセスが既に終了している場合は無視
+      proxyProcess.kill();
+    }
+  } else {
+    proxyProcess.kill();
+  }
   proxyProcess = null;
 
   // 保留中のリクエストを全てエラーにしてからクリア

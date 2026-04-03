@@ -118,10 +118,7 @@ const main = async (): Promise<void> => {
       });
   });
 
-  // 初期起動
-  await core.startAll();
-
-  logger.info("Proxy Process の起動が完了しました");
+  logger.info("Proxy Process の起動が完了しました（リクエスト待機中）");
 };
 
 void main().catch((error) => {
