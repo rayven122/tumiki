@@ -137,3 +137,37 @@ jobs:
           docker logs manager
           docker logs mcp-proxy
           exit 1
+
+  desktop-migration-check:
+    name: 🗄️ Desktop Migration Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout branch
+        uses: actions/checkout@v6
+
+      - name: ⚙️ Setup
+        uses: ./.github/actions/setup
+
+      - name: 🗄️ Check desktop migration status
+        working-directory: apps/desktop
+        env:
+          DESKTOP_DATABASE_URL: file:/tmp/desktop-ci.db
+        run: |
+          pnpm prisma migrate deploy --schema=./prisma/schema.prisma
+          pnpm prisma migrate status --schema=./prisma/schema.prisma
+
+      - name: 🔍 Check schema and migration consistency
+        working-directory: apps/desktop
+        run: |
+          rm -f /tmp/desktop-ci-shadow.db
+          DIFF=$(pnpm prisma migrate diff \
+            --from-migrations ./prisma/migrations \
+            --to-schema-datamodel ./prisma/schema.prisma \
+            --shadow-database-url "file:/tmp/desktop-ci-shadow.db" \
+            --exit-code 2>&1) || {
+            echo "❌ スキーマとマイグレーションに差分があります。"
+            echo "   prisma migrate dev を実行してマイグレーションファイルを生成してください。"
+            echo ""
+            echo "$DIFF"
+            exit 1
+          }

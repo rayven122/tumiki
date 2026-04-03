@@ -55,14 +55,17 @@ enum ServerStatus {
 /// @namespace Auth
 model AuthToken {
   id           Int      @id @default(autoincrement())
-  /// アクセストークン
+  /// 暗号化されたアクセストークン
   accessToken  String
-  /// リフレッシュトークン
+  /// 暗号化されたリフレッシュトークン
   refreshToken String
+  /// 暗号化されたIDトークン（OIDCログアウト用）
+  idToken      String?
   /// トークンの有効期限
   expiresAt    DateTime
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
 }
 
 /// MCPカタログ（プリセットMCPサーバーのテンプレート）
@@ -94,6 +97,7 @@ model McpCatalog {
 
   /// このカタログから作成された接続一覧
   connections McpConnection[]
+
 }
 
 /// MCP接続（個別のMCPサーバーへの接続設定）
@@ -187,8 +191,8 @@ model McpServer {
   connections McpConnection[]
   /// 監査ログ一覧
   auditLogs   AuditLog[]
-}
 
+}
 
 /// 監査ログ（MCPツール呼び出しの記録）
 /// 7日以上のレコードは自動削除対象

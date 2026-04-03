@@ -11,6 +11,7 @@ erDiagram
   Int id PK
   String accessToken
   String refreshToken
+  String idToken "nullable"
   DateTime expiresAt
   DateTime createdAt
   DateTime updatedAt
@@ -22,8 +23,9 @@ erDiagram
 
 **Properties**
   - `id`: 
-  - `accessToken`: アクセストークン
-  - `refreshToken`: リフレッシュトークン
+  - `accessToken`: 暗号化されたアクセストークン
+  - `refreshToken`: 暗号化されたリフレッシュトークン
+  - `idToken`: 暗号化されたIDトークン（OIDCログアウト用）
   - `expiresAt`: トークンの有効期限
   - `createdAt`: 
   - `updatedAt`: 

@@ -4,6 +4,7 @@ import { app } from "electron";
 import { existsSync, mkdirSync } from "fs";
 import { env } from "../env";
 import * as logger from "../utils/logger";
+import { runMigrations } from "./migrationRunner";
 
 // 接続タイムアウト設定（ミリ秒）
 const CONNECTION_TIMEOUT_MS = env.DESKTOP_DB_TIMEOUT_MS;
@@ -270,12 +271,15 @@ export const getDb = async (): Promise<PrismaClient> => {
 
 /**
  * データベース初期化
- * アプリケーション起動時に接続を確立し、接続状態を確認
+ * アプリケーション起動時に接続を確立し、マイグレーションを適用して接続状態を確認
  * 注意: シードデータの投入はここでは行わない（呼び出し元で実施）
  */
 export const initializeDb = async (): Promise<void> => {
   try {
     const db = await connectionManager.getConnection();
+
+    // マイグレーションを適用
+    await runMigrations(db);
 
     // データベース接続を確認（簡単なクエリを実行）
     await db.$queryRaw`SELECT 1`;

@@ -1,8 +1,6 @@
 import { safeStorage, app } from "electron";
 import { randomBytes, createCipheriv, createDecipheriv, scrypt } from "crypto";
-import { promisify } from "util";
 import { join } from "path";
-import { existsSync } from "fs";
 import {
   readFile,
   writeFile,
@@ -28,8 +26,19 @@ const ENCRYPTION_PREFIX = {
   FALLBACK: "fallback",
 } as const;
 
-// scryptの非同期版
-const scryptAsync = promisify(scrypt);
+// scryptの非同期版（コストパラメータを明示指定してNode.jsバージョン間の互換性を保証）
+const SCRYPT_OPTIONS = { N: 16384, r: 8, p: 1 } as const;
+const scryptAsync = (
+  password: Buffer,
+  salt: Buffer,
+  keylen: number,
+): Promise<Buffer> =>
+  new Promise((resolve, reject) => {
+    scrypt(password, salt, keylen, SCRYPT_OPTIONS, (err, derivedKey) => {
+      if (err) reject(err);
+      else resolve(derivedKey);
+    });
+  });
 
 /**
  * 暗号化戦略の型
@@ -85,7 +94,7 @@ const validateFilePermissions = async (
 
     // ファイルがユーザーデータディレクトリ内にあることを確認
     const userDataPath = app.getPath("userData");
-    if (!filePath.startsWith(userDataPath)) {
+    if (!filePath.toLowerCase().startsWith(userDataPath.toLowerCase())) {
       throw new Error(
         `Encryption key file must be in user data directory for security. Path: ${filePath}`,
       );
@@ -122,6 +131,10 @@ const validateFilePermissions = async (
  * セキュリティ上の制限: マスターキーはファイルシステムに保存されるため、
  * 同一デバイス上でファイルアクセス権を持つ攻撃者には暗号化の保護が効かない。
  * 可能な限りsafeStorage（OS提供のキーストア）を優先して使用すること。
+ *
+ * 注意: headless Linux環境（ディスプレイサーバーなし）ではsafeStorageが
+ * 常に利用不可となり、このフォールバックが常時使用される。
+ * そのような環境でOAuthトークンを扱う場合は、追加のアクセス制御が必要。
  */
 // メモリキャッシュ：初回読み込み後はディスクI/Oを回避
 let cachedEncryptionKey: Buffer | null = null;
@@ -135,7 +148,13 @@ const getOrCreateEncryptionKey = async (): Promise<Buffer> => {
   const keyPath = join(userDataPath, "tumiki-encryption.key");
 
   // 既存のキーファイルが存在する場合は読み込む
-  if (existsSync(keyPath)) {
+  const keyFileExists = await access(keyPath)
+    .then(() => true)
+    .catch((err: NodeJS.ErrnoException) => {
+      if (err.code === "ENOENT") return false;
+      throw err;
+    });
+  if (keyFileExists) {
     try {
       await validateFilePermissions(keyPath, "600");
       const key = await readFile(keyPath);
@@ -174,7 +193,13 @@ const getOrCreateEncryptionKey = async (): Promise<Buffer> => {
   }
 
   // userDataディレクトリが存在しない場合は作成（所有者のみアクセス可能）
-  if (!existsSync(userDataPath)) {
+  const userDataDirExists = await access(userDataPath)
+    .then(() => true)
+    .catch((err: NodeJS.ErrnoException) => {
+      if (err.code === "ENOENT") return false;
+      throw err;
+    });
+  if (!userDataDirExists) {
     await mkdir(userDataPath, { recursive: true, mode: 0o700 });
 
     // ディレクトリ権限の検証（Unix系のみ）
@@ -198,7 +223,13 @@ const getOrCreateEncryptionKey = async (): Promise<Buffer> => {
     await rename(tempPath, keyPath);
     await validateFilePermissions(keyPath, "600");
   } catch (error) {
-    if (existsSync(tempPath)) {
+    const tempFileExists = await access(tempPath)
+      .then(() => true)
+      .catch((err: NodeJS.ErrnoException) => {
+        if (err.code === "ENOENT") return false;
+        throw err;
+      });
+    if (tempFileExists) {
       try {
         await unlink(tempPath);
       } catch (cleanupError) {
@@ -246,7 +277,7 @@ const createFallbackEncryptionStrategy = (): EncryptionStrategy => ({
     const iv = randomBytes(IV_LENGTH);
 
     const masterKey = await getOrCreateEncryptionKey();
-    const key = (await scryptAsync(masterKey, salt, KEY_LENGTH)) as Buffer;
+    const key = await scryptAsync(masterKey, salt, KEY_LENGTH);
 
     const cipher = createCipheriv(ALGORITHM, key, iv);
     const encrypted = Buffer.concat([
@@ -270,7 +301,7 @@ const createFallbackEncryptionStrategy = (): EncryptionStrategy => ({
     const encrypted = data.subarray(SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH);
 
     const masterKey = await getOrCreateEncryptionKey();
-    const key = (await scryptAsync(masterKey, salt, KEY_LENGTH)) as Buffer;
+    const key = await scryptAsync(masterKey, salt, KEY_LENGTH);
 
     const decipher = createDecipheriv(ALGORITHM, key, iv);
     decipher.setAuthTag(authTag);
@@ -358,30 +389,16 @@ export const decryptToken = async (encryptedText: string): Promise<string> => {
     }
   }
 
-  // 古い形式（プレフィックスなし）のサポート
-  logger.warn("Decrypting token without prefix (legacy format)");
-  const safeStorageStrategy = createSafeStorageStrategy();
-  if (safeStorageStrategy.isAvailable()) {
-    try {
-      return await safeStorageStrategy.decrypt(encryptedText);
-    } catch (safeStorageError) {
-      logger.warn(
-        "safeStorage decryption failed for legacy format, trying fallback",
-        {
-          message:
-            safeStorageError instanceof Error
-              ? safeStorageError.message
-              : String(safeStorageError),
-        },
-      );
-    }
-  }
-
-  return await createFallbackEncryptionStrategy().decrypt(encryptedText);
+  // プレフィックスなしのトークンは不正なフォーマット
+  throw new Error(
+    "暗号化トークンのフォーマットが不正です（プレフィックスがありません）",
+  );
 };
 
 /**
- * 暗号化キーのメモリキャッシュをクリア（テスト用）
+ * 暗号化キーのメモリキャッシュをクリア
+ * @internal テスト専用。プロダクションコードからの呼び出し禁止。
+ * ランタイムガードにより、テスト環境以外では例外をスローする。
  */
 export const _resetEncryptionKeyCache = (): void => {
   if (process.env.NODE_ENV !== "test") {

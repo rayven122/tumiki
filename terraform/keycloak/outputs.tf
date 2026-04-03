@@ -32,6 +32,16 @@ output "proxy_client_internal_id" {
   value       = keycloak_openid_client.proxy.id
 }
 
+output "desktop_client_id" {
+  description = "Desktop App クライアントID"
+  value       = keycloak_openid_client.desktop.client_id
+}
+
+output "desktop_client_internal_id" {
+  description = "Desktop App 内部ID"
+  value       = keycloak_openid_client.desktop.id
+}
+
 # テストユーザー情報
 output "test_user_id" {
   description = "テストユーザーID"
