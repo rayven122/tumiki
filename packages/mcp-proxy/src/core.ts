@@ -1,12 +1,12 @@
-import { createUpstreamPool } from "./upstream-pool.js";
 import type {
+  CallToolResult,
+  Logger,
   McpServerConfig,
   McpServerState,
   McpToolInfo,
-  CallToolResult,
   ServerStatus,
-  Logger,
 } from "./types.js";
+import { createUpstreamPool } from "./upstream-pool.js";
 
 // TODO: 設定ファイルまたはDBから読み込むように変更する
 // PoCハードコード設定（.mcp.json の設定に合わせる）

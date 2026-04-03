@@ -16,7 +16,9 @@ export const setupMcpIpc = (): void => {
         error instanceof Error ? error : { error },
       );
       const message = error instanceof Error ? error.message : "不明なエラー";
-      throw new Error(`MCPサーバーの起動に失敗しました: ${message}`, { cause: error });
+      throw new Error(`MCPサーバーの起動に失敗しました: ${message}`, {
+        cause: error,
+      });
     }
   });
 
@@ -30,7 +32,9 @@ export const setupMcpIpc = (): void => {
         error instanceof Error ? error : { error },
       );
       const message = error instanceof Error ? error.message : "不明なエラー";
-      throw new Error(`MCPサーバーの停止に失敗しました: ${message}`, { cause: error });
+      throw new Error(`MCPサーバーの停止に失敗しました: ${message}`, {
+        cause: error,
+      });
     }
   });
 
@@ -44,7 +48,9 @@ export const setupMcpIpc = (): void => {
         error instanceof Error ? error : { error },
       );
       const message = error instanceof Error ? error.message : "不明なエラー";
-      throw new Error(`ツール一覧の取得に失敗しました: ${message}`, { cause: error });
+      throw new Error(`ツール一覧の取得に失敗しました: ${message}`, {
+        cause: error,
+      });
     }
   });
 
@@ -63,7 +69,9 @@ export const setupMcpIpc = (): void => {
           error instanceof Error ? error : { error },
         );
         const message = error instanceof Error ? error.message : "不明なエラー";
-        throw new Error(`ツール実行に失敗しました: ${message}`, { cause: error });
+        throw new Error(`ツール実行に失敗しました: ${message}`, {
+          cause: error,
+        });
       }
     },
   );

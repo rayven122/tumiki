@@ -108,162 +108,165 @@ const handleDeepLink = async (url: string): Promise<void> => {
 
 // --mcp-proxyモードではGUI関連イベント登録をスキップ
 if (!isMcpProxyMode) {
-
-// macOS: アプリが既に起動している場合のディープリンク処理
-app.on("open-url", (event, url) => {
-  event.preventDefault();
-  handleDeepLink(url).catch((error) => {
-    logger.error("Unhandled error in open-url handler", { error });
-  });
-});
-
-// Windows/Linux: second-instanceイベントでディープリンクを処理
-// Electronの仕様上、readyイベント前に登録する必要がある
-app.on("second-instance", (_event, argv) => {
-  // argv末尾にURLが含まれる
-  const deepLinkUrl = argv.find((arg) => {
-    try {
-      return new URL(arg).protocol === `${PROTOCOL}:`;
-    } catch {
-      return false;
-    }
-  });
-  if (deepLinkUrl) {
-    // handleDeepLink内でウィンドウフォーカスも行うため、ここでは不要
-    handleDeepLink(deepLinkUrl).catch((error) => {
-      logger.error("Unhandled error in second-instance handler", { error });
+  // macOS: アプリが既に起動している場合のディープリンク処理
+  app.on("open-url", (event, url) => {
+    event.preventDefault();
+    handleDeepLink(url).catch((error) => {
+      logger.error("Unhandled error in open-url handler", { error });
     });
-  } else {
-    // ディープリンクなしの場合のみ、既存ウィンドウをフォーカス
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
-    }
-  }
-});
+  });
 
-// アプリケーション準備完了時
-app
-  .whenReady()
-  .then(async () => {
-    // カスタムURLスキームを登録（Linuxではready後に呼ぶ必要がある）
-    if (!app.isDefaultProtocolClient(PROTOCOL)) {
-      app.setAsDefaultProtocolClient(PROTOCOL);
-    }
-
-    // データベース初期化
-    await initializeDb();
-
-    // OAuthManager初期化（環境変数が設定されている場合のみ）
-    const keycloakEnv = getKeycloakEnvOptional();
-    if (keycloakEnv) {
-      const manager = createOAuthManager(
-        {
-          issuer: keycloakEnv.KEYCLOAK_ISSUER,
-          clientId: keycloakEnv.KEYCLOAK_DESKTOP_CLIENT_ID,
-          redirectUri: `${PROTOCOL}://${CALLBACK_HOST}${CALLBACK_PATHNAME}`,
-        },
-        {
-          onAuthExpired: () => {
-            mainWindow?.webContents.send(
-              "auth:sessionExpired",
-              "認証セッションの有効期限が切れました。再度ログインしてください。",
-            );
-          },
-        },
-      );
-      setOAuthManager(manager);
+  // Windows/Linux: second-instanceイベントでディープリンクを処理
+  // Electronの仕様上、readyイベント前に登録する必要がある
+  app.on("second-instance", (_event, argv) => {
+    // argv末尾にURLが含まれる
+    const deepLinkUrl = argv.find((arg) => {
       try {
-        await manager.initialize();
-        logger.info("OAuthManager initialized");
+        return new URL(arg).protocol === `${PROTOCOL}:`;
+      } catch {
+        return false;
+      }
+    });
+    if (deepLinkUrl) {
+      // handleDeepLink内でウィンドウフォーカスも行うため、ここでは不要
+      handleDeepLink(deepLinkUrl).catch((error) => {
+        logger.error("Unhandled error in second-instance handler", { error });
+      });
+    } else {
+      // ディープリンクなしの場合のみ、既存ウィンドウをフォーカス
+      if (mainWindow) {
+        if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.focus();
+      }
+    }
+  });
+
+  // アプリケーション準備完了時
+  app
+    .whenReady()
+    .then(async () => {
+      // カスタムURLスキームを登録（Linuxではready後に呼ぶ必要がある）
+      if (!app.isDefaultProtocolClient(PROTOCOL)) {
+        app.setAsDefaultProtocolClient(PROTOCOL);
+      }
+
+      // データベース初期化
+      await initializeDb();
+
+      // OAuthManager初期化（環境変数が設定されている場合のみ）
+      const keycloakEnv = getKeycloakEnvOptional();
+      if (keycloakEnv) {
+        const manager = createOAuthManager(
+          {
+            issuer: keycloakEnv.KEYCLOAK_ISSUER,
+            clientId: keycloakEnv.KEYCLOAK_DESKTOP_CLIENT_ID,
+            redirectUri: `${PROTOCOL}://${CALLBACK_HOST}${CALLBACK_PATHNAME}`,
+          },
+          {
+            onAuthExpired: () => {
+              mainWindow?.webContents.send(
+                "auth:sessionExpired",
+                "認証セッションの有効期限が切れました。再度ログインしてください。",
+              );
+            },
+          },
+        );
+        setOAuthManager(manager);
+        try {
+          await manager.initialize();
+          logger.info("OAuthManager initialized");
+        } catch (error) {
+          // 既存トークンの復元に失敗しても、新規ログインフローは利用可能なためマネージャーは維持
+          logger.error(
+            "OAuthManager initialization failed (new login still available)",
+            {
+              error: error instanceof Error ? error.message : error,
+            },
+          );
+        }
+      } else {
+        logger.warn("Keycloak environment variables not set, OAuth disabled");
+      }
+
+      // カタログ初期データを投入（冪等・失敗してもアプリ起動は継続）
+      try {
+        await seedCatalogs();
       } catch (error) {
-        // 既存トークンの復元に失敗しても、新規ログインフローは利用可能なためマネージャーは維持
         logger.error(
-          "OAuthManager initialization failed (new login still available)",
+          "Failed to seed catalogs (non-critical, continuing startup)",
           {
             error: error instanceof Error ? error.message : error,
           },
         );
       }
-    } else {
-      logger.warn("Keycloak environment variables not set, OAuth disabled");
-    }
 
-    // カタログ初期データを投入（冪等・失敗してもアプリ起動は継続）
-    try {
-      await seedCatalogs();
-    } catch (error) {
-      logger.error("Failed to seed catalogs (non-critical, continuing startup)", {
-        error: error instanceof Error ? error.message : error,
+      // IPC ハンドラー登録
+      setupAuthIpc();
+      setupCatalogIpc();
+      setupMcpIpc();
+
+      createWindow();
+
+      // スリープ復帰時にトークンの有効期限を再チェック
+      powerMonitor.on("resume", () => {
+        const manager = getOAuthManager();
+        if (manager) {
+          manager.initialize().catch((error) => {
+            logger.error("Failed to re-initialize OAuth after resume", {
+              error,
+            });
+            mainWindow?.webContents.send(
+              "auth:sessionExpired",
+              "スリープ復帰後の認証状態の復元に失敗しました",
+            );
+          });
+        }
       });
-    }
 
-    // IPC ハンドラー登録
-    setupAuthIpc();
-    setupCatalogIpc();
-    setupMcpIpc();
-
-    createWindow();
-
-    // スリープ復帰時にトークンの有効期限を再チェック
-    powerMonitor.on("resume", () => {
-      const manager = getOAuthManager();
-      if (manager) {
-        manager.initialize().catch((error) => {
-          logger.error("Failed to re-initialize OAuth after resume", { error });
-          mainWindow?.webContents.send(
-            "auth:sessionExpired",
-            "スリープ復帰後の認証状態の復元に失敗しました",
-          );
-        });
-      }
-    });
-
-    app.on("activate", () => {
-      // macOSでDockアイコンクリック時、ウィンドウがなければ作成
-      if (BrowserWindow.getAllWindows().length === 0) {
-        createWindow();
-      }
-    });
-  })
-  .catch((error) => {
-    logger.error("Failed to initialize application", error);
-    app.quit();
-  });
-
-// すべてのウィンドウが閉じられた時
-app.on("window-all-closed", () => {
-  // macOS以外はアプリケーションを終了
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
-});
-
-// アプリケーション終了時にデータベース接続をクリーンアップ
-// Electronはasyncイベントハンドラを待たないため、preventDefaultで終了を遅延
-// app.exit() が再度 will-quit を発火するため、フラグで無限ループを防止
-let isQuitting = false;
-app.on("will-quit", (event) => {
-  if (isQuitting) return;
-  isQuitting = true;
-  event.preventDefault();
-  const oauthManager = getOAuthManager();
-  oauthManager?.stopAutoRefresh();
-  stopProxy()
-    .then(() => oauthManager?.waitForPendingRefresh() ?? Promise.resolve())
-    .then(() => closeDb())
-    .then(() => {
-      logger.info("Database connection closed successfully");
+      app.on("activate", () => {
+        // macOSでDockアイコンクリック時、ウィンドウがなければ作成
+        if (BrowserWindow.getAllWindows().length === 0) {
+          createWindow();
+        }
+      });
     })
     .catch((error) => {
-      logger.error(
-        "Failed to close database during app quit",
-        error instanceof Error ? error : { error },
-      );
-    })
-    .finally(() => {
-      app.exit();
+      logger.error("Failed to initialize application", error);
+      app.quit();
     });
-});
 
+  // すべてのウィンドウが閉じられた時
+  app.on("window-all-closed", () => {
+    // macOS以外はアプリケーションを終了
+    if (process.platform !== "darwin") {
+      app.quit();
+    }
+  });
+
+  // アプリケーション終了時にデータベース接続をクリーンアップ
+  // Electronはasyncイベントハンドラを待たないため、preventDefaultで終了を遅延
+  // app.exit() が再度 will-quit を発火するため、フラグで無限ループを防止
+  let isQuitting = false;
+  app.on("will-quit", (event) => {
+    if (isQuitting) return;
+    isQuitting = true;
+    event.preventDefault();
+    const oauthManager = getOAuthManager();
+    oauthManager?.stopAutoRefresh();
+    stopProxy()
+      .then(() => oauthManager?.waitForPendingRefresh() ?? Promise.resolve())
+      .then(() => closeDb())
+      .then(() => {
+        logger.info("Database connection closed successfully");
+      })
+      .catch((error) => {
+        logger.error(
+          "Failed to close database during app quit",
+          error instanceof Error ? error : { error },
+        );
+      })
+      .finally(() => {
+        app.exit();
+      });
+  });
 } // if (!isMcpProxyMode)

@@ -1,11 +1,12 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+
 import type {
+  CallToolResult,
+  Logger,
   McpServerConfig,
   McpToolInfo,
-  CallToolResult,
   ServerStatus,
-  Logger,
 } from "./types.js";
 
 // リトライ設定
@@ -100,18 +101,13 @@ export const createUpstreamClient = (
       transport.onclose = () => {
         if (status === "running" && !crashHandled) {
           crashHandled = true;
-          logger.warn(
-            `MCPサーバー "${config.name}" の接続が切断されました`,
-          );
+          logger.warn(`MCPサーバー "${config.name}" の接続が切断されました`);
           handleCrash();
         }
       };
 
       transport.onerror = (error) => {
-        logger.error(
-          `MCPサーバー "${config.name}" でエラー発生`,
-          error,
-        );
+        logger.error(`MCPサーバー "${config.name}" でエラー発生`, error);
         // oncloseが発火しない場合に備えて、エラー状態に遷移
         if (status === "running" && !crashHandled) {
           crashHandled = true;
@@ -131,9 +127,7 @@ export const createUpstreamClient = (
     } catch (error) {
       const message = error instanceof Error ? error.message : "不明なエラー";
       lastError = message;
-      logger.error(
-        `MCPサーバー "${config.name}" への接続に失敗: ${message}`,
-      );
+      logger.error(`MCPサーバー "${config.name}" への接続に失敗: ${message}`);
 
       // クリーンアップ
       client = null;
@@ -160,9 +154,7 @@ export const createUpstreamClient = (
       const message = `リトライ上限（${MAX_RETRIES}回）に達しました`;
       lastError = message;
       setStatus("error", message);
-      logger.error(
-        `MCPサーバー "${config.name}" のリトライ上限に達しました`,
-      );
+      logger.error(`MCPサーバー "${config.name}" のリトライ上限に達しました`);
       return;
     }
 

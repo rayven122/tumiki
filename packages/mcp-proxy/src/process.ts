@@ -2,9 +2,9 @@
  * fork() エントリーポイント
  * Electron Main から fork() で起動され、IPC message で通信する
  */
-import { createProxyCore, HARDCODED_CONFIGS } from "./core.js";
 import type { ProxyCore } from "./core.js";
-import type { ProxyRequest, ProxyResponse, ProxyEvent } from "./types.js";
+import type { ProxyEvent, ProxyRequest, ProxyResponse } from "./types.js";
+import { createProxyCore, HARDCODED_CONFIGS } from "./core.js";
 import { stderrLogger as logger } from "./stderr-logger.js";
 
 /**
@@ -58,7 +58,7 @@ const handleRequest = async (
         return {
           id: request.id,
           ok: false,
-          error: `不明なリクエストタイプ: ${request.type}`,
+          error: `不明なリクエストタイプ: ${request.type as string}`,
         };
       }
     }
@@ -107,7 +107,7 @@ const main = async (): Promise<void> => {
       .catch((error) => {
         logger.error("リクエスト処理中に予期しないエラー", {
           id: request.id,
-          error: error instanceof Error ? error.message : error,
+          error: error instanceof Error ? error.message : String(error),
         });
         // リクエスト元にエラーレスポンスを返す試行
         sendToParent({

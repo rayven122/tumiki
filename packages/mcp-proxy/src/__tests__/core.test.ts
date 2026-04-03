@@ -1,5 +1,8 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import type { Logger } from "../types.js";
+import { createProxyCore, HARDCODED_CONFIGS } from "../core.js";
+import { createMockLogger } from "./test-helpers.js";
 
 // UpstreamPoolのモック
 const mockAddServer = vi.fn();
@@ -25,9 +28,6 @@ vi.mock("../upstream-pool", () => ({
     onStatusChange: mockOnStatusChange,
   })),
 }));
-
-import { createProxyCore, HARDCODED_CONFIGS } from "../core.js";
-import { createMockLogger } from "./test-helpers.js";
 
 describe("createProxyCore", () => {
   let mockLogger: Logger;

@@ -1,6 +1,9 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import type { Logger, McpServerConfig } from "../types.js";
 import type { UpstreamClient } from "../upstream-client.js";
+import { createUpstreamClient } from "../upstream-client.js";
+import { createMockLogger } from "./test-helpers.js";
 
 // MCP SDK のモック
 const mockConnect = vi.fn();
@@ -42,9 +45,6 @@ vi.mock("@modelcontextprotocol/sdk/client/stdio.js", () => ({
     return transport;
   }),
 }));
-
-import { createUpstreamClient } from "../upstream-client.js";
-import { createMockLogger } from "./test-helpers.js";
 
 const createTestConfig = (): McpServerConfig => ({
   name: "test-server",

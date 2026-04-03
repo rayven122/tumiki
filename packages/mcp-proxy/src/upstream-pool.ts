@@ -1,13 +1,13 @@
-import { createUpstreamClient } from "./upstream-client.js";
-import type { UpstreamClient } from "./upstream-client.js";
 import type {
+  CallToolResult,
+  Logger,
   McpServerConfig,
   McpServerState,
   McpToolInfo,
-  CallToolResult,
   ServerStatus,
-  Logger,
 } from "./types.js";
+import type { UpstreamClient } from "./upstream-client.js";
+import { createUpstreamClient } from "./upstream-client.js";
 
 /**
  * UpstreamPool型
@@ -92,7 +92,7 @@ export const createUpstreamPool = (logger: Logger): UpstreamPool => {
           error:
             failure.reason instanceof Error
               ? failure.reason.message
-              : failure.reason,
+              : String(failure.reason),
         });
       }
 
@@ -109,9 +109,7 @@ export const createUpstreamPool = (logger: Logger): UpstreamPool => {
    * 全サーバーを停止
    */
   const stopAll = async (): Promise<void> => {
-    const promises = [...clients.values()].map((client) =>
-      client.disconnect(),
-    );
+    const promises = [...clients.values()].map((client) => client.disconnect());
     await Promise.all(promises);
   };
 
@@ -165,7 +163,7 @@ export const createUpstreamPool = (logger: Logger): UpstreamPool => {
           error:
             result.reason instanceof Error
               ? result.reason.message
-              : result.reason,
+              : String(result.reason),
         });
       }
     }

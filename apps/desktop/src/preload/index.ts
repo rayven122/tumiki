@@ -2,7 +2,11 @@ import { contextBridge, ipcRenderer } from "electron";
 import type { AuthTokenResult } from "../types/auth";
 import type { CatalogItem } from "../types/catalog";
 import type { McpServerItem, CreateFromCatalogInput } from "../main/types";
-import type { McpServerState, McpToolInfo, CallToolResult } from "@tumiki/mcp-proxy-core";
+import type {
+  McpServerState,
+  McpToolInfo,
+  CallToolResult,
+} from "@tumiki/mcp-proxy-core";
 
 // Electron APIを安全に公開
 const api = {

@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeAll, beforeEach, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 
 // core のモック
 const mockStartAll = vi.fn().mockResolvedValue(undefined);
@@ -171,7 +171,7 @@ describe("process.ts", () => {
       expect(mockProcessSend).toHaveBeenCalledWith({
         id: "req-6",
         ok: false,
-        error: expect.stringContaining("不明なリクエストタイプ"),
+        error: expect.stringContaining("不明なリクエストタイプ") as string,
       });
     });
 

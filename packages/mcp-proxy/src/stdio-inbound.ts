@@ -8,9 +8,10 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
-  ListToolsRequestSchema,
   CallToolRequestSchema,
+  ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+
 import type { ProxyCore } from "./core.js";
 import type { Logger } from "./types.js";
 
@@ -43,10 +44,7 @@ export const startStdioInbound = async (
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
     try {
-      const result = await core.callTool(
-        name,
-        (args ?? {}) as Record<string, unknown>,
-      );
+      const result = await core.callTool(name, args ?? {});
       return {
         content: result.content.map((c) => {
           if (typeof c === "object" && c !== null && "type" in c) {
