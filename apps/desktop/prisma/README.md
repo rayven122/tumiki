@@ -178,6 +178,18 @@ MCPサーバー（仮想・統合サーバー = Proxyエンドポイント）
   - `createdAt`: 
   - `updatedAt`: 
 
+### `log_sync_queue`
+ログ同期キュー（監査ログのクラウド同期待ちエントリ）
+
+**Properties**
+  - `id`: 
+  - `serverId`: 同期対象サーバーID
+  - `logEntry`: ログエントリ（JSON文字列）
+  - `syncStatus`: 同期状態（pending / synced / failed）
+  - `retryCount`: リトライ回数
+  - `createdAt`: 
+  - `syncedAt`: 同期完了日時
+
 ### `AuditLog`
 監査ログ（MCPツール呼び出しの記録）
 7日以上のレコードは自動削除対象

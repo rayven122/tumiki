@@ -4,20 +4,35 @@ import { initializeDb, closeDb } from "./shared/db";
 import { setupAuthIpc } from "./ipc/auth";
 import { setupCatalogIpc } from "./features/catalog/catalog.ipc";
 import { setupMcpIpc } from "./features/mcp/mcp.ipc";
+import { stopProxy } from "./mcp/mcp.service";
 import { seedCatalogs } from "./features/catalog/catalog.seed";
 import { createOAuthManager } from "./auth/oauth-manager";
 import { getOAuthManager, setOAuthManager } from "./auth/manager-registry";
 import { getKeycloakEnvOptional } from "./utils/env";
 import * as logger from "./shared/utils/logger";
 
+// --mcp-proxy モード: GUI不要、stdioでMCPプロキシとして動作
+const isMcpProxyMode = process.argv.includes("--mcp-proxy");
+if (isMcpProxyMode) {
+  void import("./mcp/cli").then(({ runMcpProxy }) =>
+    runMcpProxy().catch((error: unknown) => {
+      console.error("MCP Proxy の起動に失敗しました", error);
+      process.exit(1);
+    }),
+  );
+}
+
 const PROTOCOL = "tumiki-desktop";
 const CALLBACK_HOST = "auth";
 const CALLBACK_PATHNAME = "/callback";
 
 // シングルインスタンスロック（Windows/Linuxでsecond-instanceイベントに必要）
-const gotTheLock = app.requestSingleInstanceLock();
-if (!gotTheLock) {
-  app.quit();
+// --mcp-proxyモードではGUI不要のためスキップ
+if (!isMcpProxyMode) {
+  const gotTheLock = app.requestSingleInstanceLock();
+  if (!gotTheLock) {
+    app.quit();
+  }
 }
 
 let mainWindow: BrowserWindow | null = null;
@@ -97,6 +112,9 @@ const handleDeepLink = async (url: string): Promise<void> => {
     mainWindow.focus();
   }
 };
+
+// --mcp-proxyモードではGUI関連イベント登録をスキップ
+if (!isMcpProxyMode) {
 
 // macOS: アプリが既に起動している場合のディープリンク処理
 app.on("open-url", (event, url) => {
@@ -178,8 +196,14 @@ app
       logger.warn("Keycloak environment variables not set, OAuth disabled");
     }
 
-    // カタログ初期データを投入（冪等）
-    await seedCatalogs();
+    // カタログ初期データを投入（冪等・失敗してもアプリ起動は継続）
+    try {
+      await seedCatalogs();
+    } catch (error) {
+      logger.error("Failed to seed catalogs (non-critical, continuing startup)", {
+        error: error instanceof Error ? error.message : error,
+      });
+    }
 
     // IPC ハンドラー登録
     setupAuthIpc();
@@ -232,7 +256,8 @@ app.on("will-quit", (event) => {
   event.preventDefault();
   const oauthManager = getOAuthManager();
   oauthManager?.stopAutoRefresh();
-  (oauthManager?.waitForPendingRefresh() ?? Promise.resolve())
+  stopProxy()
+    .then(() => oauthManager?.waitForPendingRefresh() ?? Promise.resolve())
     .then(() => closeDb())
     .then(() => {
       logger.info("Database connection closed successfully");
@@ -247,3 +272,5 @@ app.on("will-quit", (event) => {
       app.exit();
     });
 });
+
+} // if (!isMcpProxyMode)

@@ -25,6 +25,7 @@
     "build:release": "electron-builder --config electron-builder.yml --publish never"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "@prisma/client": "^6.19.0",
     "@tanstack/react-query": "catalog:",
     "@trpc/client": "catalog:",
