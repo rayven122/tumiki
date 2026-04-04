@@ -1,4 +1,12 @@
-import { beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  test,
+  vi,
+} from "vitest";
 
 // core のモック
 const mockStartAll = vi.fn().mockResolvedValue(undefined);
@@ -51,6 +59,10 @@ vi.stubGlobal("process", {
 // Promise flushヘルパー
 const flushPromises = () =>
   new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+afterAll(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("process.ts", () => {
   beforeAll(async () => {

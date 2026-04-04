@@ -65,10 +65,7 @@ export const setupMcpProxyIpc = (): void => {
   ipcMain.handle("mcp:call-tool", async (_event, params: unknown) => {
     try {
       const validated = callToolSchema.parse(params);
-      return await mcpService.callMcpTool(
-        validated.name,
-        validated.arguments as Record<string, unknown>,
-      );
+      return await mcpService.callMcpTool(validated.name, validated.arguments);
     } catch (error) {
       logger.error(
         "ツール実行に失敗しました",

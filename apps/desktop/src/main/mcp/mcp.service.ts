@@ -36,6 +36,8 @@ let intentionalStop = false;
 let spawnPromise: Promise<void> | null = null;
 // spawnProxy の世代管理（stale な exit イベントを無視するため）
 let processGeneration = 0;
+// exit/error イベントの二重発火によるcrash処理の多重実行を防止
+let crashHandled = false;
 
 /**
  * Proxy Processにリクエストを送信し、レスポンスを待つ
@@ -127,6 +129,7 @@ const handleMessage = (msg: unknown): void => {
       status: event.payload.status,
       error: event.payload.error,
     });
+    // TODO: Renderer UIが実装されたら mainWindow?.webContents.send("mcp:status-changed", event.payload) で通知する
     return;
   }
 
@@ -200,12 +203,14 @@ const spawnProxy = async (): Promise<void> => {
     const processPath = join(__dirname, "mcp-process.cjs");
 
     const generation = ++processGeneration;
+    crashHandled = false;
 
-    // NOTE: detached: true はUnix専用。Windowsでは process.kill(-pid) が動作しない
-    // Windows対応が必要な場合はプラットフォーム分岐を追加すること
+    // Windowsでは detached: true が新しいコンソールウィンドウを作成し、
+    // process.kill(-pid) が動作しないため、プラットフォームで分岐する
+    const isWindows = process.platform === "win32";
     proxyProcess = fork(processPath, [], {
       stdio: ["pipe", "pipe", "pipe", "ipc"],
-      detached: true,
+      detached: !isWindows,
     });
 
     proxyProcess.on("message", handleMessage);
@@ -213,6 +218,8 @@ const spawnProxy = async (): Promise<void> => {
     proxyProcess.on("exit", (code, signal) => {
       // 世代が異なる（新しい spawnProxy が呼ばれた後の古いプロセス）場合は無視
       if (generation !== processGeneration) return;
+      if (crashHandled) return;
+      crashHandled = true;
       logger.warn("Proxy Processが終了しました", { code, signal });
       handleProcessCrash();
     });
@@ -220,7 +227,8 @@ const spawnProxy = async (): Promise<void> => {
     proxyProcess.on("error", (error) => {
       logger.error("Proxy Processでエラーが発生しました", error);
       // fork()パス不正等でexitイベントが発火しないケースに備えてリカバリ
-      if (generation === processGeneration && proxyProcess) {
+      if (generation === processGeneration && !crashHandled) {
+        crashHandled = true;
         handleProcessCrash();
       }
     });
@@ -228,6 +236,24 @@ const spawnProxy = async (): Promise<void> => {
     // stderr出力をログに転送
     proxyProcess.stderr?.on("data", (data: Buffer) => {
       logger.debug(`[proxy] ${data.toString().trim()}`);
+    });
+
+    // プロセスが正常に起動したことを確認（fork失敗時は即座にエラーを返す）
+    await new Promise<void>((resolve, reject) => {
+      const onSpawn = (): void => {
+        cleanup();
+        resolve();
+      };
+      const onError = (err: Error): void => {
+        cleanup();
+        reject(err);
+      };
+      const cleanup = (): void => {
+        proxyProcess?.removeListener("spawn", onSpawn);
+        proxyProcess?.removeListener("error", onError);
+      };
+      proxyProcess!.once("spawn", onSpawn);
+      proxyProcess!.once("error", onError);
     });
 
     processRetryCount = 0;
@@ -251,6 +277,9 @@ export const startMcpServers = async (): Promise<McpServerState[]> => {
   const response = await sendRequest("start");
   if (!response.ok) {
     throw new Error(response.error);
+  }
+  if (!Array.isArray(response.result)) {
+    throw new Error("不正なレスポンス形式: resultが配列ではありません");
   }
 
   return response.result as McpServerState[];
@@ -280,6 +309,9 @@ export const listMcpTools = async (): Promise<McpToolInfo[]> => {
   if (!response.ok) {
     throw new Error(response.error);
   }
+  if (!Array.isArray(response.result)) {
+    throw new Error("不正なレスポンス形式: resultが配列ではありません");
+  }
 
   return response.result as McpToolInfo[];
 };
@@ -299,6 +331,9 @@ export const callMcpTool = async (
   if (!response.ok) {
     throw new Error(response.error);
   }
+  if (typeof response.result !== "object" || response.result === null) {
+    throw new Error("不正なレスポンス形式: resultがオブジェクトではありません");
+  }
 
   return response.result as CallToolResult;
 };
@@ -314,6 +349,9 @@ export const getMcpStatus = async (): Promise<McpServerState[]> => {
   const response = await sendRequest("status");
   if (!response.ok) {
     throw new Error(response.error);
+  }
+  if (!Array.isArray(response.result)) {
+    throw new Error("不正なレスポンス形式: resultが配列ではありません");
   }
 
   return response.result as McpServerState[];
@@ -340,11 +378,16 @@ export const stopProxy = async (): Promise<void> => {
     });
   }
 
-  // detached: true で起動しているため、プロセスグループごと���了
+  // detached: true で起動しているため、プロセスグループごと終了
   // -pid でグループ内の全子プロセス（Serena等）も確実に終了させる
+  const isWindows = process.platform === "win32";
   if (proxyProcess.pid) {
     try {
-      process.kill(-proxyProcess.pid, "SIGTERM");
+      if (isWindows) {
+        proxyProcess.kill("SIGTERM");
+      } else {
+        process.kill(-proxyProcess.pid, "SIGTERM");
+      }
     } catch (error) {
       const code =
         error instanceof Error && "code" in error
@@ -356,7 +399,11 @@ export const stopProxy = async (): Promise<void> => {
           error: error instanceof Error ? error.message : String(error),
         });
         try {
-          process.kill(-proxyProcess.pid, "SIGKILL");
+          if (isWindows) {
+            proxyProcess.kill("SIGKILL");
+          } else {
+            process.kill(-proxyProcess.pid, "SIGKILL");
+          }
         } catch (killError) {
           if ((killError as NodeJS.ErrnoException).code !== "ESRCH") {
             logger.error("プロセスグループのSIGKILLにも失敗しました", {
@@ -366,8 +413,20 @@ export const stopProxy = async (): Promise<void> => {
                   : String(killError),
             });
           }
-          // 最終手段: 直接プロセスのみkill
-          proxyProcess.kill("SIGKILL");
+          // 最終手段: 直接プロセスのみkill（既に終了済みの場合もあるためtry-catch）
+          try {
+            proxyProcess.kill("SIGKILL");
+          } catch (finalError) {
+            logger.warn(
+              "直接プロセスのSIGKILLも失敗しました（既に終了済みの可能性）",
+              {
+                error:
+                  finalError instanceof Error
+                    ? finalError.message
+                    : String(finalError),
+              },
+            );
+          }
         }
       }
     }

@@ -20,8 +20,11 @@ export const runMcpProxy = async (): Promise<void> => {
 
   logger.info("tumiki-mcp-proxy の起動が完了しました");
 
-  // シグナルでクリーンシャットダウン
+  // シグナルでクリーンシャットダウン（SIGINT+SIGTERM同時受信の二重実行を防止）
+  let shuttingDown = false;
   const shutdown = (): void => {
+    if (shuttingDown) return;
+    shuttingDown = true;
     logger.info("シャットダウン中...");
     let exitCode = 0;
     void core
@@ -39,9 +42,15 @@ export const runMcpProxy = async (): Promise<void> => {
   process.on("SIGTERM", shutdown);
 };
 
-// mcp-cli.cjs として直接実行された場合のみ自動起動
-// index.ts からの動的importでは二重実行を防ぐためスキップ
-if (require.main === module) {
+// bin エントリーとして直接実行された場合のみ自動起動
+// desktop の index.ts から動的importされた場合は runMcpProxy() を明示的に呼ぶため、ここではスキップ
+// ESM環境: import.meta.url で判定、CJS環境（electron-viteバンドル時）: require.main === module で判定
+const isDirectExecution =
+  typeof require !== "undefined" && typeof module !== "undefined"
+    ? require.main === module
+    : import.meta.url === `file://${process.argv[1]}`;
+
+if (isDirectExecution) {
   void runMcpProxy().catch((error: unknown) => {
     logger.error("起動に失敗しました", error);
     process.exit(1);

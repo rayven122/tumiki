@@ -120,12 +120,22 @@ const main = async (): Promise<void> => {
       return;
     }
     const record = msg as Record<string, unknown>;
-    if (!VALID_REQUEST_TYPES.has(record.type as string)) {
+    if (typeof record.id !== "string" || typeof record.type !== "string") {
+      logger.warn(
+        "不正なリクエスト形式です（id/typeがstring型ではありません）",
+        {
+          id: typeof record.id,
+          type: typeof record.type,
+        },
+      );
+      return;
+    }
+    if (!VALID_REQUEST_TYPES.has(record.type)) {
       logger.warn("不明なリクエストタイプを受信しました", {
         type: record.type,
       });
       sendToParent({
-        id: record.id as string,
+        id: record.id,
         ok: false,
         error: `不明なリクエストタイプ: ${String(record.type)}`,
       });
