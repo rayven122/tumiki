@@ -47,9 +47,11 @@ export const startStdioInbound = async (
       const result = await core.callTool(name, args ?? {});
       return {
         content: result.content.map((c) => {
+          // MCP SDKのコンテンツ型（text, image, audio, resource, resource_link）をそのまま返す
           if (typeof c === "object" && c !== null && "type" in c) {
-            return c as { type: "text"; text: string };
+            return c as Record<string, unknown>;
           }
+          // 不明な形式はテキストに変換
           return { type: "text" as const, text: JSON.stringify(c) };
         }),
         isError: result.isError,

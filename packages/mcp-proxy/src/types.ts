@@ -22,6 +22,7 @@ export type McpToolInfo = {
   name: string;
   description?: string;
   inputSchema: unknown;
+  serverName?: string;
 };
 
 // ツール実行結果

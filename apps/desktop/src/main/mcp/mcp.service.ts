@@ -4,6 +4,7 @@
 import { fork, type ChildProcess } from "child_process";
 import { join } from "path";
 import { randomUUID } from "crypto";
+import { z } from "zod";
 import * as logger from "../shared/utils/logger";
 import type {
   ProxyRequest,
@@ -15,6 +16,26 @@ import type {
   CallToolPayload,
 } from "@tumiki/mcp-proxy-core";
 
+// IPC戻り値のzodスキーマ
+const mcpToolInfoSchema = z.object({
+  name: z.string(),
+  description: z.string().optional(),
+  inputSchema: z.unknown(),
+  serverName: z.string().optional(),
+});
+
+const mcpServerStateSchema = z.object({
+  name: z.string(),
+  status: z.enum(["running", "stopped", "error", "pending"]),
+  error: z.string().optional(),
+  tools: z.array(mcpToolInfoSchema),
+});
+
+const callToolResultSchema = z.object({
+  content: z.array(z.unknown()),
+  isError: z.boolean().optional(),
+});
+
 // リトライ設定（Proxy Processクラッシュ時）
 const MAX_PROCESS_RETRIES = 3;
 const PROCESS_RETRY_BASE_DELAY_MS = 1000;
@@ -22,6 +43,9 @@ const PROCESS_RETRY_MULTIPLIER = 3;
 
 // リクエストタイムアウト（30秒）
 const REQUEST_TIMEOUT_MS = 30_000;
+
+// シャットダウン時のタイムアウト（3秒）
+const SHUTDOWN_TIMEOUT_MS = 3_000;
 
 let proxyProcess: ChildProcess | null = null;
 let pendingRequests = new Map<
@@ -278,11 +302,12 @@ export const startMcpServers = async (): Promise<McpServerState[]> => {
   if (!response.ok) {
     throw new Error(response.error);
   }
-  if (!Array.isArray(response.result)) {
-    throw new Error("不正なレスポンス形式: resultが配列ではありません");
-  }
 
-  return response.result as McpServerState[];
+  const parsed = z.array(mcpServerStateSchema).safeParse(response.result);
+  if (!parsed.success) {
+    throw new Error(`不正なレスポンス形式: ${parsed.error.message}`);
+  }
+  return parsed.data as McpServerState[];
 };
 
 /**
@@ -309,11 +334,12 @@ export const listMcpTools = async (): Promise<McpToolInfo[]> => {
   if (!response.ok) {
     throw new Error(response.error);
   }
-  if (!Array.isArray(response.result)) {
-    throw new Error("不正なレスポンス形式: resultが配列ではありません");
-  }
 
-  return response.result as McpToolInfo[];
+  const parsed = z.array(mcpToolInfoSchema).safeParse(response.result);
+  if (!parsed.success) {
+    throw new Error(`不正なレスポンス形式: ${parsed.error.message}`);
+  }
+  return parsed.data as McpToolInfo[];
 };
 
 /**
@@ -331,11 +357,12 @@ export const callMcpTool = async (
   if (!response.ok) {
     throw new Error(response.error);
   }
-  if (typeof response.result !== "object" || response.result === null) {
-    throw new Error("不正なレスポンス形式: resultがオブジェクトではありません");
-  }
 
-  return response.result as CallToolResult;
+  const parsed = callToolResultSchema.safeParse(response.result);
+  if (!parsed.success) {
+    throw new Error(`不正なレスポンス形式: ${parsed.error.message}`);
+  }
+  return parsed.data as CallToolResult;
 };
 
 /**
@@ -350,11 +377,12 @@ export const getMcpStatus = async (): Promise<McpServerState[]> => {
   if (!response.ok) {
     throw new Error(response.error);
   }
-  if (!Array.isArray(response.result)) {
-    throw new Error("不正なレスポンス形式: resultが配列ではありません");
-  }
 
-  return response.result as McpServerState[];
+  const parsed = z.array(mcpServerStateSchema).safeParse(response.result);
+  if (!parsed.success) {
+    throw new Error(`不正なレスポンス形式: ${parsed.error.message}`);
+  }
+  return parsed.data as McpServerState[];
 };
 
 /**
@@ -371,7 +399,17 @@ export const stopProxy = async (): Promise<void> => {
   if (!proxyProcess) return;
 
   try {
-    await stopMcpServers();
+    // シャットダウン時は短いタイムアウトでMCPサーバーの正常停止を試みる
+    // REQUEST_TIMEOUT_MS（30秒）だとアプリ終了が長時間ハングする可能性がある
+    await Promise.race([
+      sendRequest("stop"),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error("シャットダウンタイムアウト")),
+          SHUTDOWN_TIMEOUT_MS,
+        ),
+      ),
+    ]);
   } catch (error) {
     logger.warn("MCPサーバーの正常停止に失敗、強制終了します", {
       error: error instanceof Error ? error.message : error,

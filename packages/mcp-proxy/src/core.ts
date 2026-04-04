@@ -6,10 +6,12 @@ import type {
   McpToolInfo,
   ServerStatus,
 } from "./types.js";
+import { createToolAggregator } from "./outbound/tool-aggregator.js";
 import { createUpstreamPool } from "./outbound/upstream-pool.js";
 
 // TODO: 設定ファイルまたはDBから読み込むように変更する
-// PoCハードコード設定（.mcp.json の設定に合わせる）
+// PoCハードコード設定（本番化時に削除）
+// ⚠️ サプライチェーンリスク: GitHubから直接実行するため、リポジトリ改ざん時に影響を受ける
 export const HARDCODED_CONFIGS: McpServerConfig[] = [
   {
     name: "serena",
@@ -48,6 +50,7 @@ export type ProxyCore = {
 
 /**
  * ProxyCoreを生成（cli.ts / process.ts で共通利用）
+ * UpstreamPool（ライフサイクル管理）+ ToolAggregator（ツール集約・ルーティング）を組み合わせる
  */
 export const createProxyCore = (
   configs: McpServerConfig[],
@@ -58,14 +61,16 @@ export const createProxyCore = (
     pool.addServer(config);
   }
 
+  const aggregator = createToolAggregator(pool.getClients(), logger);
+
   return {
     startAll: () => pool.startAll(),
     stopAll: () => pool.stopAll(),
     start: (name: string) => pool.start(name),
     stop: (name: string) => pool.stop(name),
-    listTools: () => pool.listTools(),
+    listTools: () => aggregator.listTools(),
     callTool: (name: string, args: Record<string, unknown>) =>
-      pool.callTool(name, args),
+      aggregator.callTool(name, args),
     getStatus: () => pool.getStatus(),
     onStatusChange: (
       cb: (name: string, status: ServerStatus, error?: string) => void,

@@ -46,7 +46,8 @@ const handleRequest = async (
         if (
           !request.payload ||
           typeof request.payload.name !== "string" ||
-          typeof request.payload.arguments !== "object"
+          typeof request.payload.arguments !== "object" ||
+          request.payload.arguments === null
         ) {
           return {
             id: request.id,

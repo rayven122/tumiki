@@ -1,9 +1,7 @@
 import type {
-  CallToolResult,
   Logger,
   McpServerConfig,
   McpServerState,
-  McpToolInfo,
   ServerStatus,
 } from "../types.js";
 import type { UpstreamClient } from "./upstream-client.js";
@@ -11,6 +9,7 @@ import { createUpstreamClient } from "./upstream-client.js";
 
 /**
  * UpstreamPool型
+ * クライアントのライフサイクル管理に特化（ツール集約はToolAggregatorが担当）
  */
 export type UpstreamPool = {
   addServer: (config: McpServerConfig) => void;
@@ -18,12 +17,8 @@ export type UpstreamPool = {
   stopAll: () => Promise<void>;
   start: (name: string) => Promise<McpServerState>;
   stop: (name: string) => Promise<void>;
-  listTools: () => Promise<McpToolInfo[]>;
-  callTool: (
-    toolName: string,
-    args: Record<string, unknown>,
-  ) => Promise<CallToolResult>;
   getStatus: () => McpServerState[];
+  getClients: () => ReadonlyMap<string, UpstreamClient>;
   onStatusChange: (
     callback: (name: string, status: ServerStatus, error?: string) => void,
   ) => void;
@@ -37,8 +32,6 @@ export const createUpstreamPool = (logger: Logger): UpstreamPool => {
   const statusChangeCallbacks: Array<
     (name: string, status: ServerStatus, error?: string) => void
   > = [];
-  // ツール名 → クライアントのインデックス（callToolの高速化）
-  let toolIndex = new Map<string, UpstreamClient>();
 
   /**
    * クライアントを名前で取得
@@ -150,62 +143,6 @@ export const createUpstreamPool = (logger: Logger): UpstreamPool => {
   };
 
   /**
-   * 全サーバーのツール一覧を集約して返す（並列取得 + インデックス構築）
-   */
-  const listTools = async (): Promise<McpToolInfo[]> => {
-    const clientList = [...clients.values()];
-    const results = await Promise.allSettled(
-      clientList.map(async (client) => {
-        const tools = await client.listTools();
-        return { client, tools };
-      }),
-    );
-
-    // ツールインデックスを再構築
-    toolIndex = new Map<string, UpstreamClient>();
-    const allTools: McpToolInfo[] = [];
-    for (const result of results) {
-      if (result.status === "fulfilled") {
-        for (const tool of result.value.tools) {
-          toolIndex.set(tool.name, result.value.client);
-          allTools.push(tool);
-        }
-      } else {
-        logger.error("ツール一覧の取得に失敗したサーバーがあります", {
-          error:
-            result.reason instanceof Error
-              ? result.reason.message
-              : String(result.reason),
-        });
-      }
-    }
-    return allTools;
-  };
-
-  /**
-   * ツールを実行（インデックスから適切なサーバーを特定）
-   */
-  const callTool = async (
-    toolName: string,
-    args: Record<string, unknown>,
-  ): Promise<CallToolResult> => {
-    // インデックスからクライアントを特定
-    const client = toolIndex.get(toolName);
-    if (client && client.getStatus() === "running") {
-      return await client.callTool(toolName, args);
-    }
-
-    // インデックスにない場合はlistToolsで再構築してリトライ
-    await listTools();
-    const retryClient = toolIndex.get(toolName);
-    if (retryClient && retryClient.getStatus() === "running") {
-      return await retryClient.callTool(toolName, args);
-    }
-
-    throw new Error(`ツール "${toolName}" が見つかりません`);
-  };
-
-  /**
    * 全サーバーの状態を取得
    */
   const getStatus = (): McpServerState[] => {
@@ -223,9 +160,8 @@ export const createUpstreamPool = (logger: Logger): UpstreamPool => {
     stopAll,
     start,
     stop,
-    listTools,
-    callTool,
     getStatus,
+    getClients: () => clients,
     onStatusChange: (
       callback: (name: string, status: ServerStatus, error?: string) => void,
     ) => {

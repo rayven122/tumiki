@@ -120,51 +120,22 @@ describe("UpstreamPool", () => {
     });
   });
 
-  describe("listTools", () => {
-    test("全サーバーのツール一覧を集約して返す", async () => {
-      mockListTools.mockResolvedValue([
-        { name: "tool1", description: "desc1", inputSchema: {} },
-      ]);
-
+  describe("getClients", () => {
+    test("登録済みクライアントのMapを返す", () => {
       pool.addServer(createTestConfig("server-1"));
       pool.addServer(createTestConfig("server-2"));
 
-      const tools = await pool.listTools();
+      const clients = pool.getClients();
 
-      expect(tools).toHaveLength(2);
-      expect(mockListTools).toHaveBeenCalledTimes(2);
-    });
-  });
-
-  describe("callTool", () => {
-    test("ツール名から適切なサーバーに転送する", async () => {
-      mockGetStatus.mockReturnValue("running");
-      mockListTools.mockResolvedValue([
-        { name: "tool1", description: "desc", inputSchema: {} },
-      ]);
-      mockCallTool.mockResolvedValue({
-        content: [{ type: "text", text: "result" }],
-        isError: false,
-      });
-
-      pool.addServer(createTestConfig("server-1"));
-      const result = await pool.callTool("tool1", { key: "value" });
-
-      expect(result).toStrictEqual({
-        content: [{ type: "text", text: "result" }],
-        isError: false,
-      });
+      expect(clients.size).toBe(2);
+      expect(clients.has("server-1")).toBe(true);
+      expect(clients.has("server-2")).toBe(true);
     });
 
-    test("ツールが見つからない場合はエラーになる", async () => {
-      mockGetStatus.mockReturnValue("running");
-      mockListTools.mockResolvedValue([]);
+    test("クライアント未登録の場合は空Mapを返す", () => {
+      const clients = pool.getClients();
 
-      pool.addServer(createTestConfig("server-1"));
-
-      await expect(pool.callTool("unknown", {})).rejects.toThrow(
-        "見つかりません",
-      );
+      expect(clients.size).toBe(0);
     });
   });
 

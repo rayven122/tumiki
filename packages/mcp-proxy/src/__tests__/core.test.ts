@@ -10,10 +10,9 @@ const mockStartAll = vi.fn();
 const mockStopAll = vi.fn();
 const mockStart = vi.fn();
 const mockStop = vi.fn();
-const mockListTools = vi.fn();
-const mockCallTool = vi.fn();
 const mockGetStatus = vi.fn();
 const mockOnStatusChange = vi.fn();
+const mockGetClients = vi.fn().mockReturnValue(new Map());
 
 vi.mock("../outbound/upstream-pool", () => ({
   createUpstreamPool: vi.fn().mockImplementation(() => ({
@@ -22,10 +21,20 @@ vi.mock("../outbound/upstream-pool", () => ({
     stopAll: mockStopAll,
     start: mockStart,
     stop: mockStop,
+    getStatus: mockGetStatus,
+    getClients: mockGetClients,
+    onStatusChange: mockOnStatusChange,
+  })),
+}));
+
+// ToolAggregatorのモック
+const mockListTools = vi.fn();
+const mockCallTool = vi.fn();
+
+vi.mock("../outbound/tool-aggregator", () => ({
+  createToolAggregator: vi.fn().mockImplementation(() => ({
     listTools: mockListTools,
     callTool: mockCallTool,
-    getStatus: mockGetStatus,
-    onStatusChange: mockOnStatusChange,
   })),
 }));
 
@@ -50,9 +59,14 @@ describe("createProxyCore", () => {
     expect(mockAddServer).toHaveBeenCalledWith(configs[1]);
   });
 
-  test("listTools()がPool経由でツール一覧を返す", async () => {
+  test("listTools()がAggregator経由でツール一覧を返す", async () => {
     mockListTools.mockResolvedValue([
-      { name: "tool1", description: "desc", inputSchema: {} },
+      {
+        name: "serena__tool1",
+        description: "desc",
+        inputSchema: {},
+        serverName: "serena",
+      },
     ]);
 
     const core = createProxyCore([], mockLogger);
@@ -62,16 +76,18 @@ describe("createProxyCore", () => {
     expect(tools).toHaveLength(1);
   });
 
-  test("callTool()がPool経由で正しいサーバーに転送する", async () => {
+  test("callTool()がAggregator経由で正しいサーバーに転送する", async () => {
     mockCallTool.mockResolvedValue({
       content: [{ type: "text", text: "ok" }],
       isError: false,
     });
 
     const core = createProxyCore([], mockLogger);
-    const result = await core.callTool("tool1", { key: "value" });
+    const result = await core.callTool("serena__tool1", { key: "value" });
 
-    expect(mockCallTool).toHaveBeenCalledWith("tool1", { key: "value" });
+    expect(mockCallTool).toHaveBeenCalledWith("serena__tool1", {
+      key: "value",
+    });
     expect(result.content).toHaveLength(1);
   });
 
