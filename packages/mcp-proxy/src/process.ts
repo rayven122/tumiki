@@ -99,6 +99,15 @@ const main = async (): Promise<void> => {
     sendToParent(event);
   });
 
+  // 既知のリクエストタイプ
+  const VALID_REQUEST_TYPES = new Set([
+    "start",
+    "stop",
+    "list-tools",
+    "call-tool",
+    "status",
+  ]);
+
   // Mainからのリクエストを受信
   process.on("message", (msg: unknown) => {
     if (
@@ -108,6 +117,18 @@ const main = async (): Promise<void> => {
       !("type" in msg)
     ) {
       logger.warn("不正なリクエストを受信しました", { msg });
+      return;
+    }
+    const record = msg as Record<string, unknown>;
+    if (!VALID_REQUEST_TYPES.has(record.type as string)) {
+      logger.warn("不明なリクエストタイプを受信しました", {
+        type: record.type,
+      });
+      sendToParent({
+        id: record.id as string,
+        ok: false,
+        error: `不明なリクエストタイプ: ${String(record.type)}`,
+      });
       return;
     }
     const request = msg as ProxyRequest;

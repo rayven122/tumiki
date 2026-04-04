@@ -53,12 +53,30 @@ export const createUpstreamClient = (
   // handleCrashの二重呼び出し防止フラグ（onclose/onerrorが両方発火するケース対策）
   let crashHandled = false;
 
-  // process.envにサーバー固有の環境変数をマージ（undefined値を除外）
-  const mergedEnv = Object.fromEntries(
-    Object.entries({ ...process.env, ...config.env }).filter(
-      (entry): entry is [string, string] => entry[1] !== undefined,
-    ),
+  // 子プロセスに渡す環境変数を最小限に制限（Credential Leak防止）
+  // process.env全体を渡すとDB接続文字列やOAuthトークン等が漏洩するリスクがある
+  const SAFE_ENV_KEYS = [
+    "PATH",
+    "HOME",
+    "USERPROFILE",
+    "APPDATA",
+    "TEMP",
+    "TMP",
+    "TMPDIR",
+    "LANG",
+    "USER",
+    "USERNAME",
+    "SHELL",
+    "TERM",
+    "NODE_ENV",
+  ];
+  const safeBaseEnv = Object.fromEntries(
+    SAFE_ENV_KEYS.flatMap((key) => {
+      const val = process.env[key];
+      return val !== undefined ? [[key, val]] : [];
+    }),
   );
+  const mergedEnv = { ...safeBaseEnv, ...config.env };
 
   /**
    * 状態を更新し、コールバックを呼び出す
@@ -195,6 +213,12 @@ export const createUpstreamClient = (
    * MCPサーバーに接続
    */
   const connect = async (): Promise<void> => {
+    // 既存のリトライタイマーをキャンセル（手動再起動時の二重接続防止）
+    if (retryTimer) {
+      clearTimeout(retryTimer);
+      retryTimer = null;
+    }
+
     setStatus("pending");
     retryCount = 0;
 

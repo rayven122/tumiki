@@ -219,6 +219,10 @@ const spawnProxy = async (): Promise<void> => {
 
     proxyProcess.on("error", (error) => {
       logger.error("Proxy Processでエラーが発生しました", error);
+      // fork()パス不正等でexitイベントが発火しないケースに備えてリカバリ
+      if (generation === processGeneration && proxyProcess) {
+        handleProcessCrash();
+      }
     });
 
     // stderr出力をログに転送

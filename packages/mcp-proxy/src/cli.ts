@@ -23,13 +23,15 @@ export const runMcpProxy = async (): Promise<void> => {
   // シグナルでクリーンシャットダウン
   const shutdown = (): void => {
     logger.info("シャットダウン中...");
+    let exitCode = 0;
     void core
       .stopAll()
       .catch((error) => {
         logger.error("シャットダウン中にエラーが発生しました", error);
+        exitCode = 1;
       })
       .finally(() => {
-        process.exit(0);
+        process.exit(exitCode);
       });
   };
 
@@ -37,9 +39,11 @@ export const runMcpProxy = async (): Promise<void> => {
   process.on("SIGTERM", shutdown);
 };
 
-// mcp-cli.cjs として直接実行された場合のエントリーポイント
-// index.ts からの動的importでは呼ばれない（index.ts は独自にrunMcpProxyを呼ぶ必要がある場合のみimportする）
-void runMcpProxy().catch((error: unknown) => {
-  logger.error("起動に失敗しました", error);
-  process.exit(1);
-});
+// mcp-cli.cjs として直接実行された場合のみ自動起動
+// index.ts からの動的importでは二重実行を防ぐためスキップ
+if (require.main === module) {
+  void runMcpProxy().catch((error: unknown) => {
+    logger.error("起動に失敗しました", error);
+    process.exit(1);
+  });
+}

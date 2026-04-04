@@ -13,110 +13,117 @@ import { getKeycloakEnvOptional } from "./utils/env";
 import * as logger from "./shared/utils/logger";
 
 // --mcp-proxy モード: GUI不要、stdioでMCPプロキシとして動作
-// 実際のプロキシ処理は mcp-cli.cjs（cli.ts の独立ビルドエントリーポイント）で実行
 const isMcpProxyMode = process.argv.includes("--mcp-proxy");
 
-const PROTOCOL = "tumiki-desktop";
-const CALLBACK_HOST = "auth";
-const CALLBACK_PATHNAME = "/callback";
+if (isMcpProxyMode) {
+  // Electronのready後にcli.tsのrunMcpProxyを実行
+  // stdioを使うためGUI・シングルインスタンスロック等は不要
+  void app.whenReady().then(async () => {
+    const { join } = await import("path");
+    const mod = (await import(join(__dirname, "mcp-cli.cjs"))) as {
+      runMcpProxy: () => Promise<void>;
+    };
+    await mod.runMcpProxy();
+  });
+} else {
+  const PROTOCOL = "tumiki-desktop";
+  const CALLBACK_HOST = "auth";
+  const CALLBACK_PATHNAME = "/callback";
 
-// シングルインスタンスロック（Windows/Linuxでsecond-instanceイベントに必要）
-// --mcp-proxyモードではGUI不要のためスキップ
-if (!isMcpProxyMode) {
+  // シングルインスタンスロック（Windows/Linuxでsecond-instanceイベントに必要）
   const gotTheLock = app.requestSingleInstanceLock();
   if (!gotTheLock) {
     app.quit();
   }
-}
 
-let mainWindow: BrowserWindow | null = null;
+  let mainWindow: BrowserWindow | null = null;
 
-const createWindow = (): void => {
-  mainWindow = createMainWindow();
+  const createWindow = (): void => {
+    mainWindow = createMainWindow();
 
-  mainWindow.on("closed", () => {
-    mainWindow = null;
-  });
-};
+    mainWindow.on("closed", () => {
+      mainWindow = null;
+    });
+  };
 
-/**
- * カスタムURLスキーム（tumiki-desktop://）のコールバックを処理
- */
-const handleDeepLink = async (url: string): Promise<void> => {
-  let isValidCallback = false;
-  try {
-    const parsed = new URL(url);
-    isValidCallback =
-      parsed.protocol === `${PROTOCOL}:` &&
-      parsed.hostname === CALLBACK_HOST &&
-      parsed.pathname === CALLBACK_PATHNAME;
-  } catch {
-    logger.warn("Received malformed deep link URL", { url });
-    mainWindow?.webContents.send(
-      "auth:callbackError",
-      "不正なコールバックURLを受信しました",
-    );
-    return;
-  }
-  if (!isValidCallback) {
-    logger.warn("Received unknown deep link", { url });
-    mainWindow?.webContents.send(
-      "auth:callbackError",
-      "不明なディープリンクを受信しました",
-    );
-    return;
-  }
+  /**
+   * カスタムURLスキーム（tumiki-desktop://）のコールバックを処理
+   */
+  const handleDeepLink = async (url: string): Promise<void> => {
+    let isValidCallback = false;
+    try {
+      const parsed = new URL(url);
+      isValidCallback =
+        parsed.protocol === `${PROTOCOL}:` &&
+        parsed.hostname === CALLBACK_HOST &&
+        parsed.pathname === CALLBACK_PATHNAME;
+    } catch {
+      logger.warn("Received malformed deep link URL", { url });
+      mainWindow?.webContents.send(
+        "auth:callbackError",
+        "不正なコールバックURLを受信しました",
+      );
+      return;
+    }
+    if (!isValidCallback) {
+      logger.warn("Received unknown deep link", { url });
+      mainWindow?.webContents.send(
+        "auth:callbackError",
+        "不明なディープリンクを受信しました",
+      );
+      return;
+    }
 
-  // ウィンドウが閉じられていた場合は再作成（コールバックがサイレントに失われるのを防止）
-  if (!mainWindow) {
-    logger.info(
-      "mainWindow is null during deep link callback, creating window",
-    );
-    createWindow();
-  }
+    // ウィンドウが閉じられていた場合は再作成（コールバックがサイレントに失われるのを防止）
+    if (!mainWindow) {
+      logger.info(
+        "mainWindow is null during deep link callback, creating window",
+      );
+      createWindow();
+    }
 
-  // ロード完了を待ってからIPCを送信（ウィンドウ再作成直後はロード中の場合がある）
-  const sendToWindow = (channel: string, ...args: unknown[]): void => {
-    if (!mainWindow) return;
-    if (mainWindow.webContents.isLoading()) {
-      mainWindow.webContents.once("did-finish-load", () => {
-        mainWindow?.webContents.send(channel, ...args);
-      });
-    } else {
-      mainWindow.webContents.send(channel, ...args);
+    // ロード完了を待ってからIPCを送信（ウィンドウ再作成直後はロード中の場合がある）
+    const sendToWindow = (channel: string, ...args: unknown[]): void => {
+      if (!mainWindow) return;
+      if (mainWindow.webContents.isLoading()) {
+        mainWindow.webContents.once("did-finish-load", () => {
+          mainWindow?.webContents.send(channel, ...args);
+        });
+      } else {
+        mainWindow.webContents.send(channel, ...args);
+      }
+    };
+
+    const manager = getOAuthManager();
+    if (!manager) {
+      logger.error("OAuthManager not initialized when handling deep link");
+      sendToWindow(
+        "auth:callbackError",
+        "認証マネージャーが初期化されていません",
+      );
+      return;
+    }
+
+    try {
+      await manager.handleAuthCallback(url);
+      sendToWindow("auth:callbackSuccess");
+      logger.info("Deep link auth callback handled successfully");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "認証コールバックに失敗しました";
+      sendToWindow("auth:callbackError", message);
+      logger.error("Deep link auth callback failed", { error });
+    }
+
+    // コールバック後にウィンドウをフォーカス
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
     }
   };
 
-  const manager = getOAuthManager();
-  if (!manager) {
-    logger.error("OAuthManager not initialized when handling deep link");
-    sendToWindow(
-      "auth:callbackError",
-      "認証マネージャーが初期化されていません",
-    );
-    return;
-  }
-
-  try {
-    await manager.handleAuthCallback(url);
-    sendToWindow("auth:callbackSuccess");
-    logger.info("Deep link auth callback handled successfully");
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "認証コールバックに失敗しました";
-    sendToWindow("auth:callbackError", message);
-    logger.error("Deep link auth callback failed", { error });
-  }
-
-  // コールバック後にウィンドウをフォーカス
-  if (mainWindow) {
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.focus();
-  }
-};
-
-// --mcp-proxyモードではGUI関連イベント登録をスキップ
-if (!isMcpProxyMode) {
   // macOS: アプリが既に起動している場合のディープリンク処理
   app.on("open-url", (event, url) => {
     event.preventDefault();
@@ -279,4 +286,4 @@ if (!isMcpProxyMode) {
         app.exit();
       });
   });
-} // if (!isMcpProxyMode)
+} // if (isMcpProxyMode)

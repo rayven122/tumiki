@@ -55,6 +55,10 @@ export const startStdioInbound = async (
         isError: result.isError,
       };
     } catch (error) {
+      logger.error(`ツール "${name}" の実行に失敗しました`, {
+        error: error instanceof Error ? error.message : String(error),
+        args,
+      });
       return {
         content: [
           {
