@@ -111,9 +111,10 @@ export const createUpstreamPool = (logger: Logger): UpstreamPool => {
       [...clients.values()].map((client) => client.disconnect()),
     );
 
-    for (const result of results) {
+    const clientNames = [...clients.keys()];
+    for (const [i, result] of results.entries()) {
       if (result.status === "rejected") {
-        logger.error("MCPサーバーの停止に失敗", {
+        logger.error(`MCPサーバー "${clientNames[i]}" の停止に失敗`, {
           error:
             result.reason instanceof Error
               ? result.reason.message
@@ -130,7 +131,14 @@ export const createUpstreamPool = (logger: Logger): UpstreamPool => {
     const client = getClient(name);
     await client.connect();
 
-    const tools = await client.listTools();
+    let tools;
+    try {
+      tools = await client.listTools();
+    } catch (error) {
+      // listTools失敗時はconnect済みの接続を切断して状態を一貫させる
+      await client.disconnect();
+      throw error;
+    }
     return {
       name,
       status: client.getStatus(),

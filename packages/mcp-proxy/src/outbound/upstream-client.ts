@@ -14,6 +14,31 @@ const MAX_RETRIES = 3;
 const RETRY_BASE_DELAY_MS = 1000;
 const RETRY_MULTIPLIER = 3;
 
+// 子プロセスに渡す環境変数を最小限に制限（Credential Leak防止）
+// process.env全体を渡すとDB接続文字列やOAuthトークン等が漏洩するリスクがある
+const SAFE_ENV_KEYS = [
+  "PATH",
+  "HOME",
+  "USERPROFILE",
+  "APPDATA",
+  "TEMP",
+  "TMP",
+  "TMPDIR",
+  "LANG",
+  "USER",
+  "USERNAME",
+  "SHELL",
+  "TERM",
+  "NODE_ENV",
+] as const;
+
+const safeBaseEnv = Object.fromEntries(
+  SAFE_ENV_KEYS.flatMap((key) => {
+    const val = process.env[key];
+    return val !== undefined ? [[key, val]] : [];
+  }),
+);
+
 /**
  * UpstreamClient型
  */
@@ -53,29 +78,6 @@ export const createUpstreamClient = (
   // handleCrashの二重呼び出し防止フラグ（onclose/onerrorが両方発火するケース対策）
   let crashHandled = false;
 
-  // 子プロセスに渡す環境変数を最小限に制限（Credential Leak防止）
-  // process.env全体を渡すとDB接続文字列やOAuthトークン等が漏洩するリスクがある
-  const SAFE_ENV_KEYS = [
-    "PATH",
-    "HOME",
-    "USERPROFILE",
-    "APPDATA",
-    "TEMP",
-    "TMP",
-    "TMPDIR",
-    "LANG",
-    "USER",
-    "USERNAME",
-    "SHELL",
-    "TERM",
-    "NODE_ENV",
-  ];
-  const safeBaseEnv = Object.fromEntries(
-    SAFE_ENV_KEYS.flatMap((key) => {
-      const val = process.env[key];
-      return val !== undefined ? [[key, val]] : [];
-    }),
-  );
   const mergedEnv = { ...safeBaseEnv, ...config.env };
 
   /**

@@ -268,6 +268,8 @@ const spawnProxy = async (): Promise<void> => {
     });
 
     // プロセスが正常に起動したことを確認（fork失敗時は即座にエラーを返す）
+    const proc = proxyProcess;
+    if (!proc) throw new Error("プロセスの起動に失敗しました");
     await new Promise<void>((resolve, reject) => {
       const onSpawn = (): void => {
         cleanup();
@@ -278,11 +280,11 @@ const spawnProxy = async (): Promise<void> => {
         reject(err);
       };
       const cleanup = (): void => {
-        proxyProcess?.removeListener("spawn", onSpawn);
-        proxyProcess?.removeListener("error", onError);
+        proc.removeListener("spawn", onSpawn);
+        proc.removeListener("error", onError);
       };
-      proxyProcess!.once("spawn", onSpawn);
-      proxyProcess!.once("error", onError);
+      proc.once("spawn", onSpawn);
+      proc.once("error", onError);
     });
 
     processRetryCount = 0;
