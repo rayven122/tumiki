@@ -52,13 +52,10 @@ export type ProxyRequest =
   | { id: string; type: "call-tool"; payload: CallToolPayload }
   | { id: string; type: "status" };
 
-// Proxy → Main（レスポンス）
-export type ProxyResponse = {
-  id: string;
-  ok: boolean;
-  result?: unknown;
-  error?: string;
-};
+// Proxy → Main（レスポンス）— discriminated union で ok/error の型安全性を保証
+export type ProxyResponse =
+  | { id: string; ok: true; result?: unknown }
+  | { id: string; ok: false; error: string };
 
 // Proxy → Main（Push通知）
 export type ProxyEvent = {

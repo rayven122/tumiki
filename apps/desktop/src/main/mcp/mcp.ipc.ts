@@ -1,6 +1,13 @@
 import { ipcMain } from "electron";
+import { z } from "zod";
 import * as mcpService from "./mcp.service";
 import * as logger from "../shared/utils/logger";
+
+// IPC入力のバリデーションスキーマ
+const callToolSchema = z.object({
+  name: z.string().min(1),
+  arguments: z.record(z.string(), z.unknown()),
+});
 
 /**
  * MCP関連の IPC ハンドラーを設定
@@ -55,26 +62,24 @@ export const setupMcpProxyIpc = (): void => {
   });
 
   // ツール実行
-  ipcMain.handle(
-    "mcp:call-tool",
-    async (
-      _event,
-      params: { name: string; arguments: Record<string, unknown> },
-    ) => {
-      try {
-        return await mcpService.callMcpTool(params.name, params.arguments);
-      } catch (error) {
-        logger.error(
-          "ツール実行に失敗しました",
-          error instanceof Error ? error : { error },
-        );
-        const message = error instanceof Error ? error.message : "不明なエラー";
-        throw new Error(`ツール実行に失敗しました: ${message}`, {
-          cause: error,
-        });
-      }
-    },
-  );
+  ipcMain.handle("mcp:call-tool", async (_event, params: unknown) => {
+    try {
+      const validated = callToolSchema.parse(params);
+      return await mcpService.callMcpTool(
+        validated.name,
+        validated.arguments as Record<string, unknown>,
+      );
+    } catch (error) {
+      logger.error(
+        "ツール実行に失敗しました",
+        error instanceof Error ? error : { error },
+      );
+      const message = error instanceof Error ? error.message : "不明なエラー";
+      throw new Error(`ツール実行に失敗しました: ${message}`, {
+        cause: error,
+      });
+    }
+  });
 
   // 状態取得
   ipcMain.handle("mcp:status", async () => {

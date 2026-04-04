@@ -32,6 +32,10 @@ let processRetryCount = 0;
 let processRetryTimer: ReturnType<typeof setTimeout> | null = null;
 // 意図的な停止中はクラッシュリトライを抑制
 let intentionalStop = false;
+// spawnProxy の並列呼び出し防止用 Promise キャッシュ
+let spawnPromise: Promise<void> | null = null;
+// spawnProxy の世代管理（stale な exit イベントを無視するため）
+let processGeneration = 0;
 
 /**
  * Proxy Processにリクエストを送信し、レスポンスを待つ
@@ -89,6 +93,7 @@ const sendRequest = (
 
 /**
  * Proxy Processからのメッセージを処理
+ * レスポンスはidフィールドを持ち、イベントは持たないことで判別する
  */
 const handleMessage = (msg: unknown): void => {
   if (typeof msg !== "object" || msg === null) {
@@ -96,11 +101,27 @@ const handleMessage = (msg: unknown): void => {
     return;
   }
 
-  const message = msg as ProxyResponse | ProxyEvent;
+  const record = msg as Record<string, unknown>;
 
-  // ProxyEventの場合
-  if ("type" in message && message.type === "status-changed") {
-    const event = message as ProxyEvent;
+  // ProxyResponseの判別: idフィールドを持つメッセージはレスポンス
+  if ("id" in record && typeof record.id === "string") {
+    const response = msg as ProxyResponse;
+    const pending = pendingRequests.get(response.id);
+    if (pending) {
+      pendingRequests.delete(response.id);
+      pending.resolve(response);
+    } else {
+      logger.debug(
+        "対応するリクエストがないレスポンスを受信（タイムアウト済みの可能性）",
+        { id: response.id },
+      );
+    }
+    return;
+  }
+
+  // ProxyEventの判別: typeフィールドを持つメッセージはイベント
+  if ("type" in record && record.type === "status-changed") {
+    const event = msg as ProxyEvent;
     logger.info("MCPサーバー状態変更", {
       name: event.payload.name,
       status: event.payload.status,
@@ -109,25 +130,7 @@ const handleMessage = (msg: unknown): void => {
     return;
   }
 
-  // ProxyResponseの場合
-  const response = message as ProxyResponse;
-  if (!("id" in response) || typeof response.id !== "string") {
-    logger.warn("Proxy Processから不明な形式のメッセージを受信しました", {
-      msg,
-    });
-    return;
-  }
-
-  const pending = pendingRequests.get(response.id);
-  if (pending) {
-    pendingRequests.delete(response.id);
-    pending.resolve(response);
-  } else {
-    logger.debug(
-      "対応するリクエストがないレスポンスを受信（タイムアウト済みの可能性）",
-      { id: response.id },
-    );
-  }
+  logger.warn("Proxy Processから未分類のメッセージを受信しました", { msg });
 };
 
 /**
@@ -175,47 +178,62 @@ const handleProcessCrash = (): void => {
 
 /**
  * Proxy Processを起動
+ * 並列呼び出し時は既存の Promise を返して二重起動を防止する
  */
 const spawnProxy = async (): Promise<void> => {
-  // 再起動時にクラッシュリトライを有効化
-  intentionalStop = false;
+  // 既に起動中なら既存の Promise を返す（並列呼び出し防止）
+  if (spawnPromise) return spawnPromise;
 
-  // 既存のリトライタイマーをキャンセル
-  if (processRetryTimer) {
-    clearTimeout(processRetryTimer);
-    processRetryTimer = null;
-  }
+  const doSpawn = async (): Promise<void> => {
+    // 再起動時にクラッシュリトライを有効化
+    intentionalStop = false;
 
-  // process.ts のビルド成果物パスを解決
-  // electron-viteビルド時: dist-electron/main/mcp-process.cjs
-  // 開発時: 同じディレクトリ
-  const processPath = join(__dirname, "mcp-process.cjs");
+    // 既存のリトライタイマーをキャンセル
+    if (processRetryTimer) {
+      clearTimeout(processRetryTimer);
+      processRetryTimer = null;
+    }
 
-  // NOTE: detached: true はUnix専用。Windowsでは process.kill(-pid) が動作しない
-  // Windows対応が必要な場合はプラットフォーム分岐を追加すること
-  proxyProcess = fork(processPath, [], {
-    stdio: ["pipe", "pipe", "pipe", "ipc"],
-    detached: true,
+    // process.ts のビルド成果物パスを解決
+    // electron-viteビルド時: dist-electron/main/mcp-process.cjs
+    // 開発時: 同じディレクトリ
+    const processPath = join(__dirname, "mcp-process.cjs");
+
+    const generation = ++processGeneration;
+
+    // NOTE: detached: true はUnix専用。Windowsでは process.kill(-pid) が動作しない
+    // Windows対応が必要な場合はプラットフォーム分岐を追加すること
+    proxyProcess = fork(processPath, [], {
+      stdio: ["pipe", "pipe", "pipe", "ipc"],
+      detached: true,
+    });
+
+    proxyProcess.on("message", handleMessage);
+
+    proxyProcess.on("exit", (code, signal) => {
+      // 世代が異なる（新しい spawnProxy が呼ばれた後の古いプロセス）場合は無視
+      if (generation !== processGeneration) return;
+      logger.warn("Proxy Processが終了しました", { code, signal });
+      handleProcessCrash();
+    });
+
+    proxyProcess.on("error", (error) => {
+      logger.error("Proxy Processでエラーが発生しました", error);
+    });
+
+    // stderr出力をログに転送
+    proxyProcess.stderr?.on("data", (data: Buffer) => {
+      logger.debug(`[proxy] ${data.toString().trim()}`);
+    });
+
+    processRetryCount = 0;
+    logger.info("Proxy Processを起動しました");
+  };
+
+  spawnPromise = doSpawn().finally(() => {
+    spawnPromise = null;
   });
-
-  proxyProcess.on("message", handleMessage);
-
-  proxyProcess.on("exit", (code, signal) => {
-    logger.warn("Proxy Processが終了しました", { code, signal });
-    handleProcessCrash();
-  });
-
-  proxyProcess.on("error", (error) => {
-    logger.error("Proxy Processでエラーが発生しました", error);
-  });
-
-  // stderr出力をログに転送
-  proxyProcess.stderr?.on("data", (data: Buffer) => {
-    logger.debug(`[proxy] ${data.toString().trim()}`);
-  });
-
-  processRetryCount = 0;
-  logger.info("Proxy Processを起動しました");
+  return spawnPromise;
 };
 
 /**
@@ -228,7 +246,7 @@ export const startMcpServers = async (): Promise<McpServerState[]> => {
 
   const response = await sendRequest("start");
   if (!response.ok) {
-    throw new Error(response.error ?? "MCPサーバーの起動に失敗しました");
+    throw new Error(response.error);
   }
 
   return response.result as McpServerState[];
@@ -242,7 +260,7 @@ export const stopMcpServers = async (): Promise<void> => {
 
   const response = await sendRequest("stop");
   if (!response.ok) {
-    throw new Error(response.error ?? "MCPサーバーの停止に失敗しました");
+    throw new Error(response.error);
   }
 };
 
@@ -256,7 +274,7 @@ export const listMcpTools = async (): Promise<McpToolInfo[]> => {
 
   const response = await sendRequest("list-tools");
   if (!response.ok) {
-    throw new Error(response.error ?? "ツール一覧の取得に失敗しました");
+    throw new Error(response.error);
   }
 
   return response.result as McpToolInfo[];
@@ -275,7 +293,7 @@ export const callMcpTool = async (
 
   const response = await sendRequest("call-tool", { name, arguments: args });
   if (!response.ok) {
-    throw new Error(response.error ?? "ツール実行に失敗しました");
+    throw new Error(response.error);
   }
 
   return response.result as CallToolResult;
@@ -291,7 +309,7 @@ export const getMcpStatus = async (): Promise<McpServerState[]> => {
 
   const response = await sendRequest("status");
   if (!response.ok) {
-    throw new Error(response.error ?? "状態取得に失敗しました");
+    throw new Error(response.error);
   }
 
   return response.result as McpServerState[];
@@ -318,23 +336,36 @@ export const stopProxy = async (): Promise<void> => {
     });
   }
 
-  // detached: true で起動しているため、プロセスグループごと終了
+  // detached: true で起動しているため、プロセスグループごと���了
   // -pid でグループ内の全子プロセス（Serena等）も確実に終了させる
   if (proxyProcess.pid) {
     try {
       process.kill(-proxyProcess.pid, "SIGTERM");
     } catch (error) {
-      // ESRCHはプロセスが既に終了している場合のため無視、それ以外はログ出力
       const code =
         error instanceof Error && "code" in error
           ? (error as NodeJS.ErrnoException).code
           : undefined;
       if (code !== "ESRCH") {
-        logger.warn("プロセスグループのSIGTERMに失敗しました", {
+        // SIGTERM失敗時はSIGKILLにエスカレーション
+        logger.warn("プロセスグループのSIGTERMに失敗、SIGKILLを試行します", {
           error: error instanceof Error ? error.message : String(error),
         });
+        try {
+          process.kill(-proxyProcess.pid, "SIGKILL");
+        } catch (killError) {
+          if ((killError as NodeJS.ErrnoException).code !== "ESRCH") {
+            logger.error("プロセスグループのSIGKILLにも失敗しました", {
+              error:
+                killError instanceof Error
+                  ? killError.message
+                  : String(killError),
+            });
+          }
+          // 最終手段: 直接プロセスのみkill
+          proxyProcess.kill("SIGKILL");
+        }
       }
-      proxyProcess.kill();
     }
   } else {
     proxyProcess.kill();

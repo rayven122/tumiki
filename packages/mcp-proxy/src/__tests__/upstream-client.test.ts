@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { UpstreamClient } from "../outbound/upstream-client.js";
-import type { Logger, McpServerConfig } from "../types.js";
+import type { Logger, McpServerConfig, ServerStatus } from "../types.js";
 import { createUpstreamClient } from "../outbound/upstream-client.js";
 import { createMockLogger } from "./test-helpers.js";
 
@@ -66,6 +66,10 @@ describe("UpstreamClient", () => {
     client = createUpstreamClient(createTestConfig(), mockLogger);
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   describe("connect", () => {
     test("接続成功時にstatusが'running'になる", async () => {
       mockConnect.mockResolvedValue(undefined);
@@ -87,7 +91,7 @@ describe("UpstreamClient", () => {
 
     test("接続中はstatusが'pending'になる", async () => {
       const statusChanges: string[] = [];
-      client.onStatusChange((_name: string, status: string) => {
+      client.onStatusChange((_name: string, status: ServerStatus) => {
         statusChanges.push(status);
       });
 
@@ -142,9 +146,10 @@ describe("UpstreamClient", () => {
       ]);
     });
 
-    test("未接続の場合は空配列を返す", async () => {
-      const tools = await client.listTools();
-      expect(tools).toStrictEqual([]);
+    test("未接続の場合はエラーをスローする", async () => {
+      await expect(client.listTools()).rejects.toThrow(
+        "未接続のためツール一覧を取得できません",
+      );
     });
   });
 

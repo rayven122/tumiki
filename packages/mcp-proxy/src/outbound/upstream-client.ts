@@ -172,7 +172,22 @@ export const createUpstreamClient = (
     setStatus("pending");
     retryTimer = setTimeout(() => {
       retryTimer = null;
-      void attemptConnect();
+      void attemptConnect().catch((error) => {
+        logger.error(
+          `MCPサーバー "${config.name}" のリトライ中に予期しないエラー`,
+          {
+            error: error instanceof Error ? error.message : String(error),
+          },
+        );
+        if (status !== "error") {
+          setStatus(
+            "error",
+            error instanceof Error
+              ? error.message
+              : "リトライ中の予期しないエラー",
+          );
+        }
+      });
     }, delay);
   };
 
@@ -202,6 +217,9 @@ export const createUpstreamClient = (
       retryTimer = null;
     }
 
+    // onclose/onerrorのcrashHandledガードが通過しないように、close前にstatusを変更
+    status = "stopped";
+
     if (client) {
       try {
         await client.close();
@@ -223,10 +241,9 @@ export const createUpstreamClient = (
    */
   const listTools = async (): Promise<McpToolInfo[]> => {
     if (!client || status !== "running") {
-      logger.warn(
-        `MCPサーバー "${config.name}" は未接続のためツール一覧をスキップ（status: ${status}）`,
+      throw new Error(
+        `MCPサーバー "${config.name}" は未接続のためツール一覧を取得できません（status: ${status}）`,
       );
-      return [];
     }
 
     const result = await client.listTools();

@@ -43,6 +43,17 @@ const handleRequest = async (
         return { id: request.id, ok: true, result: tools };
       }
       case "call-tool": {
+        if (
+          !request.payload ||
+          typeof request.payload.name !== "string" ||
+          typeof request.payload.arguments !== "object"
+        ) {
+          return {
+            id: request.id,
+            ok: false,
+            error: "call-toolリクエストのペイロードが不正です",
+          };
+        }
         const result = await core.callTool(
           request.payload.name,
           request.payload.arguments,
