@@ -48,7 +48,9 @@ export const runMcpProxy = async (): Promise<void> => {
 const isDirectExecution =
   typeof require !== "undefined" && typeof module !== "undefined"
     ? require.main === module
-    : import.meta.url === `file://${process.argv[1]}`;
+    : process.argv[1] !== undefined &&
+      new URL(import.meta.url).pathname ===
+        new URL(process.argv[1], "file://").pathname;
 
 if (isDirectExecution) {
   void runMcpProxy().catch((error: unknown) => {

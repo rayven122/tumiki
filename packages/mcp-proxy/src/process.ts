@@ -68,8 +68,9 @@ const handleRequest = async (
       default: {
         // exhaustiveチェック: 新しいリクエストタイプ追加時にコンパイルエラーになる
         const _exhaustive: never = request;
+        void _exhaustive;
         return {
-          id: (_exhaustive as unknown as { id: string }).id,
+          id: "unknown",
           ok: false,
           error: `不明なリクエストタイプ`,
         };
@@ -101,14 +102,15 @@ const main = async (): Promise<void> => {
     sendToParent(event);
   });
 
-  // 既知のリクエストタイプ
-  const VALID_REQUEST_TYPES = new Set([
+  // 既知のリクエストタイプ（satisfiesでProxyRequest["type"]との同期を保証）
+  const validTypes = [
     "start",
     "stop",
     "list-tools",
     "call-tool",
     "status",
-  ]);
+  ] satisfies ProxyRequest["type"][];
+  const VALID_REQUEST_TYPES = new Set<string>(validTypes);
 
   // Mainからのリクエストを受信
   process.on("message", (msg: unknown) => {

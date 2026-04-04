@@ -19,6 +19,8 @@ if (isMcpProxyMode) {
   // Electronのready後にcli.tsのrunMcpProxyを実行
   // stdioを使うためGUI・シングルインスタンスロック等は不要
   void app.whenReady().then(async () => {
+    // macOSでDockアイコンを非表示にする（CLIモードのためGUI不要）
+    app.dock?.hide();
     const { join } = await import("path");
     const mod = (await import(join(__dirname, "mcp-cli.cjs"))) as {
       runMcpProxy: () => Promise<void>;

@@ -47,8 +47,9 @@ const REQUEST_TIMEOUT_MS = 30_000;
 // シャットダウン時のタイムアウト（3秒）
 const SHUTDOWN_TIMEOUT_MS = 3_000;
 
+// TODO: 本番化時にファクトリ関数パターンに変更し、テスタビリティを改善する（DEV-1450）
 let proxyProcess: ChildProcess | null = null;
-let pendingRequests = new Map<
+const pendingRequests = new Map<
   string,
   { resolve: (value: ProxyResponse) => void; reject: (error: Error) => void }
 >();
@@ -173,7 +174,7 @@ const handleProcessCrash = (): void => {
   for (const [, pending] of pendingRequests) {
     pending.reject(new Error("Proxy Processがクラッシュしました"));
   }
-  pendingRequests = new Map();
+  pendingRequests.clear();
 
   if (processRetryCount >= MAX_PROCESS_RETRIES) {
     logger.error(
@@ -477,7 +478,7 @@ export const stopProxy = async (): Promise<void> => {
   for (const [, pending] of pendingRequests) {
     pending.reject(new Error("Proxy Processが停止されました"));
   }
-  pendingRequests = new Map();
+  pendingRequests.clear();
   processRetryCount = 0;
 
   logger.info("Proxy Processを停止しました");

@@ -61,6 +61,9 @@ export const createProxyCore = (
     pool.addServer(config);
   }
 
+  // 既知の制約: pool.getClients()は現時点のReadonlyMapを返すため、
+  // 動的にサーバーを追加・削除する場合はaggregatorが古い状態を参照し続ける。
+  // 本番化時は都度参照またはコールバック更新に変更すること（DEV-1450）
   const aggregator = createToolAggregator(pool.getClients(), logger);
 
   return {

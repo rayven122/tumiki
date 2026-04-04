@@ -130,13 +130,9 @@ export const createUpstreamClient = (
 
       transport.onerror = (error) => {
         logger.error(`MCPサーバー "${config.name}" でエラー発生`, error);
-        // oncloseが発火しない場合に備えて、エラー状態に遷移
+        // oncloseが発火しない場合に備えて、handleCrashでリトライ/エラー状態遷移を一元管理
         if (status === "running" && !crashHandled) {
           crashHandled = true;
-          setStatus(
-            "error",
-            error instanceof Error ? error.message : "トランスポートエラー",
-          );
           handleCrash();
         }
       };
