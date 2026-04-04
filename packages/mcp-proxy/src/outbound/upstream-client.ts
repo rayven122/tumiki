@@ -237,9 +237,8 @@ export const createUpstreamClient = (
       retryTimer = null;
     }
 
-    // 意図的な切断時はonclose/onerrorのcrashHandledガードが通過しないように、
-    // setStatus()ではなく直接statusを変更する（コールバック通知は下のsetStatus("stopped")で行う）
-    status = "stopped";
+    // 意図的な切断時はonclose/onerrorのcrashハンドラを無効化
+    crashHandled = true;
 
     if (client) {
       try {

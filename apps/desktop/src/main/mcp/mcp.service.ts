@@ -66,8 +66,12 @@ let crashHandled = false;
 
 /**
  * Proxy Processにリクエストを送信し、レスポンスを待つ
+ * call-toolリクエスト時はpayloadを必須にする
  */
-const sendRequest = (
+const sendRequest: {
+  (type: "call-tool", payload: CallToolPayload): Promise<ProxyResponse>;
+  (type: Exclude<ProxyRequest["type"], "call-tool">): Promise<ProxyResponse>;
+} = (
   type: ProxyRequest["type"],
   payload?: CallToolPayload,
 ): Promise<ProxyResponse> => {
@@ -370,8 +374,9 @@ export const callMcpTool = async (
  * MCPサーバーの状態を取得（IPC経由）
  */
 export const getMcpStatus = async (): Promise<McpServerState[]> => {
+  // Proxy未起動時はUIポーリングを考慮して空配列を返す（startMcpServersと異なり自動起動しない）
   if (!proxyProcess) {
-    throw new Error("Proxy Processが起動していません");
+    return [];
   }
 
   const response = await sendRequest("status");
@@ -444,7 +449,11 @@ export const stopProxy = async (): Promise<void> => {
             process.kill(-proxyProcess.pid, "SIGKILL");
           }
         } catch (killError) {
-          if ((killError as NodeJS.ErrnoException).code !== "ESRCH") {
+          const killErrCode =
+            killError instanceof Error
+              ? (killError as NodeJS.ErrnoException).code
+              : undefined;
+          if (killErrCode !== "ESRCH") {
             logger.error("プロセスグループのSIGKILLにも失敗しました", {
               error:
                 killError instanceof Error
