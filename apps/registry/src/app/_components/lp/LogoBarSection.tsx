@@ -24,22 +24,33 @@ const LOGOS: Logo[] = [
   { name: "PostgreSQL", src: "/logos/services/postgresql.webp", invert: false },
 ];
 
+const LogoItem = ({ logo }: { logo: Logo }) => (
+  <div className="flex shrink-0 items-center gap-1.5 px-4">
+    <img
+      src={logo.src}
+      alt={logo.name}
+      className="h-4 opacity-40 transition hover:opacity-70"
+    />
+    <span className="text-[10px] whitespace-nowrap text-zinc-600">
+      {logo.name}
+    </span>
+  </div>
+);
+
 const LogoBarSection = () => {
   return (
     <section className="overflow-hidden border-t border-b border-white/[0.06] bg-[#0a0a0a] py-6">
-      <div className="mx-auto flex min-w-max flex-nowrap items-center justify-center gap-5 px-5 md:gap-8">
-        {LOGOS.map((logo) => (
-          <div key={logo.name} className="flex shrink-0 items-center gap-1.5">
-            <img
-              src={logo.src}
-              alt={logo.name}
-              className="h-4 opacity-40 transition hover:opacity-70"
-            />
-            <span className="text-[10px] whitespace-nowrap text-zinc-600">
-              {logo.name}
-            </span>
-          </div>
-        ))}
+      <div className="relative">
+        {/* 左右フェード */}
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-20 bg-gradient-to-r from-[#0a0a0a] to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-20 bg-gradient-to-l from-[#0a0a0a] to-transparent" />
+
+        <div className="flex animate-[scroll_30s_linear_infinite]">
+          {/* 2セット配置して無限ループを実現 */}
+          {[...LOGOS, ...LOGOS].map((logo, i) => (
+            <LogoItem key={`${logo.name}-${i}`} logo={logo} />
+          ))}
+        </div>
       </div>
     </section>
   );

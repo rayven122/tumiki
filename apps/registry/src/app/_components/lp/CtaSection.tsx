@@ -43,7 +43,7 @@ const CtaSection = () => {
           <p className="mt-16 text-xs text-zinc-600">
             OEM・ホワイトラベル・パートナー提携をご検討の方は{" "}
             <a
-              href="mailto:partner@rayven.co.jp?subject=パートナー提携のご相談"
+              href="/contact?type=partner"
               className="text-zinc-500 underline underline-offset-4 transition-colors hover:text-zinc-400"
             >
               こちらからお問い合わせ
