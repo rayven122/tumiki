@@ -66,9 +66,10 @@ const handleRequest = async (
         return { id: request.id, ok: true, result: status };
       }
       default: {
+        // exhaustiveチェック: 新しいリクエストタイプ追加時にコンパイルエラーになる
         const _exhaustive: never = request;
         return {
-          id: (_exhaustive as ProxyRequest).id,
+          id: (_exhaustive as unknown as { id: string }).id,
           ok: false,
           error: `不明なリクエストタイプ`,
         };

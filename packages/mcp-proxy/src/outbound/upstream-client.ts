@@ -241,7 +241,8 @@ export const createUpstreamClient = (
       retryTimer = null;
     }
 
-    // onclose/onerrorのcrashHandledガードが通過しないように、close前にstatusを変更
+    // 意図的な切断時はonclose/onerrorのcrashHandledガードが通過しないように、
+    // setStatus()ではなく直接statusを変更する（コールバック通知は下のsetStatus("stopped")で行う）
     status = "stopped";
 
     if (client) {
@@ -296,9 +297,12 @@ export const createUpstreamClient = (
       arguments: args,
     });
 
+    // SDK型からCallToolResult型へ変換
     return {
-      content: result.content as unknown[],
-      isError: result.isError as boolean | undefined,
+      content: Array.isArray(result.content)
+        ? (result.content as unknown[])
+        : [],
+      isError: typeof result.isError === "boolean" ? result.isError : undefined,
     };
   };
 

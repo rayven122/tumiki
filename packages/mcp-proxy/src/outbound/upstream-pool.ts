@@ -91,8 +91,13 @@ export const createUpstreamPool = (logger: Logger): UpstreamPool => {
 
       // 全サーバー失敗時はエラーをスロー
       if (failures.length === results.length) {
+        const details = failures
+          .map((f) =>
+            f.reason instanceof Error ? f.reason.message : String(f.reason),
+          )
+          .join(", ");
         throw new Error(
-          `全てのMCPサーバー（${failures.length}件）の起動に失敗しました`,
+          `全てのMCPサーバー（${failures.length}件）の起動に失敗しました: ${details}`,
         );
       }
     }

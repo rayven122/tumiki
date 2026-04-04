@@ -307,7 +307,7 @@ export const startMcpServers = async (): Promise<McpServerState[]> => {
   if (!parsed.success) {
     throw new Error(`不正なレスポンス形式: ${parsed.error.message}`);
   }
-  return parsed.data as McpServerState[];
+  return parsed.data;
 };
 
 /**
@@ -339,7 +339,7 @@ export const listMcpTools = async (): Promise<McpToolInfo[]> => {
   if (!parsed.success) {
     throw new Error(`不正なレスポンス形式: ${parsed.error.message}`);
   }
-  return parsed.data as McpToolInfo[];
+  return parsed.data;
 };
 
 /**
@@ -362,7 +362,7 @@ export const callMcpTool = async (
   if (!parsed.success) {
     throw new Error(`不正なレスポンス形式: ${parsed.error.message}`);
   }
-  return parsed.data as CallToolResult;
+  return parsed.data;
 };
 
 /**
@@ -382,7 +382,7 @@ export const getMcpStatus = async (): Promise<McpServerState[]> => {
   if (!parsed.success) {
     throw new Error(`不正なレスポンス形式: ${parsed.error.message}`);
   }
-  return parsed.data as McpServerState[];
+  return parsed.data;
 };
 
 /**

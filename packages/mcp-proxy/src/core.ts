@@ -9,9 +9,9 @@ import type {
 import { createToolAggregator } from "./outbound/tool-aggregator.js";
 import { createUpstreamPool } from "./outbound/upstream-pool.js";
 
-// TODO: 設定ファイルまたはDBから読み込むように変更する
-// PoCハードコード設定（本番化時に削除）
-// ⚠️ サプライチェーンリスク: GitHubから直接実行するため、リポジトリ改ざん時に影響を受ける
+// PoCハードコード設定（本番化時に設定ファイルまたはDB読み込みに移行予定）
+// 既知の制約: uvx --from git+... はGitHubリポジトリを直接実行するためサプライチェーンリスクがある。
+// 本番化時にPyPI経由またはコミットSHA固定に移行する（DEV-1450で追跡中）。PoCスコープでは許容。
 export const HARDCODED_CONFIGS: McpServerConfig[] = [
   {
     name: "serena",
