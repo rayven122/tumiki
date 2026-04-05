@@ -16,16 +16,24 @@ import * as logger from "./shared/utils/logger";
 const isMcpProxyMode = process.argv.includes("--mcp-proxy");
 
 if (isMcpProxyMode) {
-  // Electronのready後にcli.tsのrunMcpProxyを実行
+  // Electronのready後にDB初期化 → 設定読み込み → cli.tsのrunMcpProxyを実行
   // stdioを使うためGUI・シングルインスタンスロック等は不要
   void app.whenReady().then(async () => {
     // macOSでDockアイコンを非表示にする（CLIモードのためGUI不要）
     app.dock?.hide();
+
+    // DB初期化 → 有効なMCPサーバー設定を取得
+    await initializeDb();
+    const { getEnabledConfigs } = await import("./features/mcp/mcp.service");
+    const configs = await getEnabledConfigs();
+
     const { join } = await import("path");
     const mod = (await import(join(__dirname, "mcp-cli.cjs"))) as {
-      runMcpProxy: () => Promise<void>;
+      runMcpProxy: (
+        configs: import("@tumiki/mcp-proxy-core").McpServerConfig[],
+      ) => Promise<void>;
     };
-    await mod.runMcpProxy();
+    await mod.runMcpProxy(configs);
   });
 } else {
   const PROTOCOL = "tumiki-desktop";
