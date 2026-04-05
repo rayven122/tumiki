@@ -30,7 +30,7 @@ const CtaSection = () => {
               お問い合わせ
             </a>
             <a
-              href="/contact"
+              href="/contact?type=demo"
               className="inline-flex min-h-[44px] items-center rounded-full border border-white/[0.1] px-7 py-3.5 text-sm text-zinc-400 transition-all hover:border-white/[0.2] hover:text-white"
             >
               デモを申し込む

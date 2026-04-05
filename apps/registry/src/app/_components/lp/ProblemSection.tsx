@@ -10,7 +10,7 @@ const ProblemSection = () => {
   return (
     <section
       id="problem"
-      className="border-t border-white/8 bg-[#0c0c0f] py-24 md:py-32"
+      className="border-t border-white/[0.08] bg-[#0c0c0f] py-24 md:py-32"
     >
       <div className="mx-auto max-w-7xl px-5">
         {/* 見出し */}

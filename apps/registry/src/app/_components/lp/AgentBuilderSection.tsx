@@ -124,6 +124,7 @@ const AgentBuilderSection = () => {
 
               <div className="grid grid-cols-1 divide-y divide-white/[0.04] md:grid-cols-3 md:divide-x md:divide-y-0">
                 {TOOLS.map((t, i) => (
+                  // インデックスごとに異なるdelayを動的に算出するため、インラインスタイルを使用
                   <div
                     key={t.tool}
                     className="px-6 py-4"

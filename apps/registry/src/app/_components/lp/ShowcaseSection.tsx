@@ -1,6 +1,7 @@
 import { Activity, ShieldCheck, User } from "lucide-react";
 
 import AnimateIn from "./AnimateIn";
+import { SUMMARY_CARDS } from "./_constants";
 
 /* ===== ストリームデータ ===== */
 
@@ -172,12 +173,7 @@ const ShowcaseSection = () => {
         {/* サマリーカード */}
         <AnimateIn delay={0.05}>
           <div className="mt-12 grid grid-cols-2 gap-3 md:grid-cols-4">
-            {[
-              { value: "342,800", label: "総リクエスト", color: "text-white" },
-              { value: "1,247", label: "ブロック", color: "text-red-400" },
-              { value: "99.6%", label: "成功率", color: "text-emerald-400" },
-              { value: "8,420", label: "PIIマスキング", color: "text-amber-400" },
-            ].map((s) => (
+            {SUMMARY_CARDS.map((s) => (
               <div
                 key={s.label}
                 className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-center"
@@ -214,8 +210,9 @@ const ShowcaseSection = () => {
               <div className="divide-y divide-white/[0.03]">
                 {STREAM_ROWS.map((row, i) => (
                   <div
-                    key={i}
+                    key={`${row.time}-${row.tool}`}
                     className={`px-5 py-3.5 transition-colors hover:bg-white/[0.02] ${row.status === "blocked" ? "bg-red-500/[0.03]" : ""}`}
+                    // 動的delayのためインラインスタイルを使用
                     style={{
                       animation: `fade-in 0.4s ease-out ${i * 0.08}s both`,
                     }}

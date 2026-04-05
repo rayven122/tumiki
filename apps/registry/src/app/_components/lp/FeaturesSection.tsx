@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Activity, User } from "lucide-react";
 
 import AnimateIn from "./AnimateIn";
+import { SUMMARY_CARDS } from "./_constants";
 
 /** サービス一覧（ツール付き） */
 const SERVICES = [
@@ -40,30 +41,8 @@ const SERVICES = [
   },
 ] as const;
 
-/** アバターURL */
-const AVATARS = {
-  admin: [
-    "https://i.pravatar.cc/80?img=68",
-    "https://i.pravatar.cc/80?img=60",
-    "https://i.pravatar.cc/80?img=59",
-  ],
-  dev: [
-    "https://i.pravatar.cc/80?img=11",
-    "https://i.pravatar.cc/80?img=12",
-    "https://i.pravatar.cc/80?img=14",
-    "https://i.pravatar.cc/80?img=15",
-  ],
-  designer: [
-    "https://i.pravatar.cc/80?img=44",
-    "https://i.pravatar.cc/80?img=45",
-    "https://i.pravatar.cc/80?img=47",
-  ],
-  sales: [
-    "https://i.pravatar.cc/80?img=32",
-    "https://i.pravatar.cc/80?img=36",
-    "https://i.pravatar.cc/80?img=38",
-  ],
-} as const;
+/** イニシャルアバター用のラベル */
+const INITIALS = ["A", "B", "C", "D"] as const;
 
 /** ロール定義 */
 const ROLES = [
@@ -75,7 +54,6 @@ const ROLES = [
     color: "text-amber-400",
     bg: "bg-amber-400/10",
     border: "border-amber-500/20",
-    avatars: AVATARS.admin,
     defaults: [true, true, true, true, true, true],
     toolDefaults: [
       [true, true, true, true],
@@ -94,7 +72,6 @@ const ROLES = [
     color: "text-blue-400",
     bg: "bg-blue-400/10",
     border: "border-blue-500/20",
-    avatars: AVATARS.dev,
     defaults: [true, true, true, false, false, false],
     toolDefaults: [
       [true, true, false, true],
@@ -113,7 +90,6 @@ const ROLES = [
     color: "text-purple-400",
     bg: "bg-purple-400/10",
     border: "border-purple-500/20",
-    avatars: AVATARS.designer,
     defaults: [false, false, true, true, true, false],
     toolDefaults: [
       [false, false, false, false],
@@ -132,7 +108,6 @@ const ROLES = [
     color: "text-emerald-400",
     bg: "bg-emerald-400/10",
     border: "border-emerald-500/20",
-    avatars: AVATARS.sales,
     defaults: [false, true, true, false, true, false],
     toolDefaults: [
       [false, false, false, false],
@@ -225,20 +200,7 @@ const FeaturesSection = () => {
           {/* サマリーカード */}
           <AnimateIn delay={0.08}>
             <div className="mt-8 grid max-w-5xl grid-cols-2 gap-3 md:grid-cols-4">
-              {[
-                { value: "342,800", label: "総リクエスト", color: "text-white" },
-                { value: "1,247", label: "ブロック", color: "text-red-400" },
-                {
-                  value: "99.6%",
-                  label: "成功率",
-                  color: "text-emerald-400",
-                },
-                {
-                  value: "8,420",
-                  label: "PIIマスキング",
-                  color: "text-amber-400",
-                },
-              ].map((s) => (
+              {SUMMARY_CARDS.map((s) => (
                 <div
                   key={s.label}
                   className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-center"
@@ -387,8 +349,9 @@ const FeaturesSection = () => {
                   },
                 ].map((row, i) => (
                   <div
-                    key={i}
+                    key={`${row.time}-${row.tool}`}
                     className={`px-5 py-3 text-xs transition-colors hover:bg-white/[0.02] ${row.status === "blocked" ? "bg-red-500/[0.03]" : ""}`}
+                    // Tailwind v4のarbitrary valueではCSS変数を参照できないため、インラインスタイルでアニメーション遅延を指定
                     style={{
                       animation: `fade-in 0.4s ease-out ${i * 0.06}s both`,
                     }}
@@ -540,14 +503,18 @@ const FeaturesSection = () => {
 
                       {/* アバタースタック（固定幅） */}
                       <div className="flex w-28 shrink-0 -space-x-1.5">
-                        {role.avatars.slice(0, 3).map((src, i) => (
-                          <img
-                            key={i}
-                            src={src}
-                            alt=""
-                            className="h-6 w-6 rounded-full border-2 border-[#0e0e10] object-cover"
-                          />
-                        ))}
+                        {INITIALS.slice(0, Math.min(3, role.members)).map(
+                          (initial) => (
+                            <div
+                              key={initial}
+                              className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#0e0e10] bg-zinc-700"
+                            >
+                              <span className="text-[10px] font-semibold text-zinc-300">
+                                {initial}
+                              </span>
+                            </div>
+                          ),
+                        )}
                         {role.members > 3 && (
                           <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#0e0e10] bg-zinc-800">
                             <span className="text-[8px] font-semibold text-zinc-300">
