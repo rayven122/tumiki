@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import type { Logger } from "../types.js";
+import type { Logger, McpServerConfig } from "../types.js";
 import { createProxyCore } from "../core.js";
 import { createMockLogger } from "./test-helpers.js";
 
@@ -47,9 +47,21 @@ describe("createProxyCore", () => {
   });
 
   test("Poolを正しく初期化する", () => {
-    const configs = [
-      { name: "server-1", command: "echo", args: [], env: {} },
-      { name: "server-2", command: "echo", args: [], env: {} },
+    const configs: McpServerConfig[] = [
+      {
+        name: "server-1",
+        transportType: "STDIO",
+        command: "echo",
+        args: [],
+        env: {},
+      },
+      {
+        name: "server-2",
+        transportType: "STDIO",
+        command: "echo",
+        args: [],
+        env: {},
+      },
     ];
 
     createProxyCore(configs, mockLogger);

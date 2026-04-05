@@ -48,6 +48,7 @@ vi.mock("@modelcontextprotocol/sdk/client/stdio.js", () => ({
 
 const createTestConfig = (): McpServerConfig => ({
   name: "test-server",
+  transportType: "STDIO",
   command: "echo",
   args: ["hello"],
   env: {},

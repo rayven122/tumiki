@@ -31,6 +31,7 @@ vi.mock("../outbound/upstream-client", () => ({
 
 const createTestConfig = (name: string): McpServerConfig => ({
   name,
+  transportType: "STDIO",
   command: "echo",
   args: ["hello"],
   env: {},
