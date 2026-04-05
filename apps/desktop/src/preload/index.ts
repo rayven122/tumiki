@@ -1,7 +1,12 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { AuthTokenResult } from "../types/auth";
 import type { CatalogItem } from "../types/catalog";
-import type { McpServerItem, CreateFromCatalogInput } from "../main/types";
+import type {
+  McpServerItem,
+  CreateFromCatalogInput,
+  StartOAuthInput,
+  OAuthResult,
+} from "../main/types";
 
 // Electron APIを安全に公開
 const api = {
@@ -58,6 +63,29 @@ const api = {
     ): Promise<{ serverId: number; serverName: string }> =>
       ipcRenderer.invoke("mcp:createFromCatalog", input),
     getAll: (): Promise<McpServerItem[]> => ipcRenderer.invoke("mcp:getAll"),
+  },
+
+  // MCP OAuth認証 API
+  oauth: {
+    startAuth: (input: StartOAuthInput): Promise<void> =>
+      ipcRenderer.invoke("oauth:startAuth", input),
+    cancelAuth: (): Promise<void> => ipcRenderer.invoke("oauth:cancelAuth"),
+    onOAuthSuccess: (callback: (result: OAuthResult) => void): (() => void) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        result: OAuthResult,
+      ): void => callback(result);
+      ipcRenderer.on("oauth:success", listener);
+      return () => ipcRenderer.removeListener("oauth:success", listener);
+    },
+    onOAuthError: (callback: (error: string) => void): (() => void) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        error: string,
+      ): void => callback(error);
+      ipcRenderer.on("oauth:error", listener);
+      return () => ipcRenderer.removeListener("oauth:error", listener);
+    },
   },
 };
 
