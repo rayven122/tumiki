@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@prisma/desktop-client";
+import { encryptToken, decryptToken } from "../../utils/encryption";
 
 /**
  * カタログシードデータの型
@@ -21,22 +22,36 @@ export type CatalogSeedData = {
 };
 
 /**
- * すべてのカタログを名前の昇順で取得
+ * すべてのカタログを名前の昇順で取得（oauthClientSecretを復号化）
  */
 export const findAll = async (db: PrismaClient) => {
-  return db.mcpCatalog.findMany({
+  const catalogs = await db.mcpCatalog.findMany({
     orderBy: { name: "asc" },
   });
+
+  return Promise.all(
+    catalogs.map(async (catalog) => ({
+      ...catalog,
+      oauthClientSecret: catalog.oauthClientSecret
+        ? await decryptToken(catalog.oauthClientSecret)
+        : null,
+    })),
+  );
 };
 
 /**
  * カタログデータをupsert（nameをキーとして冪等に投入）
  */
 export const upsert = async (db: PrismaClient, data: CatalogSeedData) => {
+  const encryptedOauthClientSecret = data.oauthClientSecret
+    ? await encryptToken(data.oauthClientSecret)
+    : null;
+
   const dbData = {
     ...data,
     args: JSON.stringify(data.args ?? []),
     credentialKeys: JSON.stringify(data.credentialKeys),
+    oauthClientSecret: encryptedOauthClientSecret,
   };
 
   return db.mcpCatalog.upsert({
