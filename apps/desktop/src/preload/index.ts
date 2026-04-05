@@ -1,7 +1,13 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { AuthTokenResult } from "../types/auth";
 import type { CatalogItem } from "../types/catalog";
-import type { McpServerItem, CreateFromCatalogInput } from "../main/types";
+import type {
+  McpServerItem,
+  CreateFromCatalogInput,
+  UpdateServerInput,
+  DeleteServerInput,
+  ToggleServerInput,
+} from "../main/types";
 import type {
   McpServerState,
   McpToolInfo,
@@ -63,6 +69,12 @@ const api = {
     ): Promise<{ serverId: number; serverName: string }> =>
       ipcRenderer.invoke("mcp:createFromCatalog", input),
     getAll: (): Promise<McpServerItem[]> => ipcRenderer.invoke("mcp:getAll"),
+    updateServer: (input: UpdateServerInput): Promise<McpServerItem> =>
+      ipcRenderer.invoke("mcp:updateServer", input),
+    deleteServer: (input: DeleteServerInput): Promise<void> =>
+      ipcRenderer.invoke("mcp:deleteServer", input),
+    toggleServer: (input: ToggleServerInput): Promise<McpServerItem> =>
+      ipcRenderer.invoke("mcp:toggleServer", input),
     // MCP Proxy API
     start: (): Promise<McpServerState[]> => ipcRenderer.invoke("mcp:start"),
     stop: (): Promise<void> => ipcRenderer.invoke("mcp:stop"),
