@@ -30,7 +30,7 @@ const CtaSection = () => {
               お問い合わせ
             </a>
             <a
-              href="/contact"
+              href="/contact?type=demo"
               className="inline-flex min-h-[44px] items-center rounded-full border border-white/[0.1] px-7 py-3.5 text-sm text-zinc-400 transition-all hover:border-white/[0.2] hover:text-white"
             >
               デモを申し込む
@@ -43,7 +43,7 @@ const CtaSection = () => {
           <p className="mt-16 text-xs text-zinc-600">
             OEM・ホワイトラベル・パートナー提携をご検討の方は{" "}
             <a
-              href="mailto:partner@rayven.co.jp?subject=パートナー提携のご相談"
+              href="/contact?type=partner"
               className="text-zinc-500 underline underline-offset-4 transition-colors hover:text-zinc-400"
             >
               こちらからお問い合わせ

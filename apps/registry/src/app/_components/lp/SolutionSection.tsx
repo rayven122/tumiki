@@ -16,23 +16,23 @@ import AnimateIn from "./AnimateIn";
 const customerComponents = [
   {
     icon: Shield,
-    title: "MCP Gateway",
-    sub: "認証・監査・制御",
+    title: "Proxy MCP",
+    sub: "認証・監査・アクセス制御",
     color: "text-emerald-400",
     bg: "bg-emerald-400/10",
     border: "border-emerald-500/20",
   },
   {
     icon: Server,
-    title: "MCPサーバー群",
-    sub: "Slack / GitHub / DB",
+    title: "stdio MCP",
+    sub: "ファイル / Git / ローカルDB",
     color: "text-blue-400",
     bg: "bg-blue-400/10",
     border: "border-blue-500/20",
   },
   {
     icon: Database,
-    title: "監査ログDB",
+    title: "監査ログ",
     sub: "全証跡を暗号化保存",
     color: "text-amber-400",
     bg: "bg-amber-400/10",
@@ -40,8 +40,8 @@ const customerComponents = [
   },
   {
     icon: Lock,
-    title: "Keycloak",
-    sub: "JWT / OAuth 2.1",
+    title: "OIDC認証",
+    sub: "Entra ID / Okta / Google",
     color: "text-purple-400",
     bg: "bg-purple-400/10",
     border: "border-purple-500/20",
@@ -52,23 +52,23 @@ const customerComponents = [
 const controlPlaneFeatures = [
   {
     icon: Settings,
-    title: "ポリシー管理",
-    sub: "ロール・権限をGUIで設定",
+    title: "アクセス制御",
+    sub: "グループ×MCPの権限をGUIで一括管理",
   },
   {
     icon: Workflow,
-    title: "ツールカタログ",
-    sub: "MCP配布・Description上書き・統合",
+    title: "MCP管理",
+    sub: "サーバー登録・接続設定・Credential一元管理",
   },
   {
     icon: BarChart3,
-    title: "統計ダッシュボード",
-    sub: "AIクライアント別・SaaS別分析",
+    title: "監査・可視化",
+    sub: "利用状況・ブロック数・SIEM連携",
   },
 ] as const;
 
 /** 同期データラベル */
-const syncLabels = ["ポリシー ✓", "メタデータ ✓", "匿名統計 ✓"];
+const syncLabels = ["ポリシー同期 ✓", "MCP設定 ✓", "Credential参照 ✓"];
 
 const SolutionSection = () => {
   return (
@@ -84,7 +84,7 @@ const SolutionSection = () => {
 
       <div className="relative z-10 mx-auto max-w-7xl px-5">
         <AnimateIn>
-          <h2 className="mx-auto max-w-3xl text-center text-3xl font-semibold tracking-tight text-white md:text-5xl">
+          <h2 className="mx-auto max-w-3xl text-center text-3xl font-semibold tracking-tight text-white md:text-4xl">
             データは社内に。
             <span className="text-zinc-500">管理はクラウドで。</span>
           </h2>
@@ -104,10 +104,10 @@ const SolutionSection = () => {
                     </div>
                     <div>
                       <div className="text-sm font-medium text-white">
-                        顧客環境
+                        Tumiki Desktop
                       </div>
                       <div className="text-[10px] text-zinc-600">
-                        オンプレミス / VPC
+                        Local Environment
                       </div>
                     </div>
                   </div>
@@ -146,10 +146,10 @@ const SolutionSection = () => {
 
                 {/* データ保護バッジ */}
                 <div className="mt-4 rounded-lg border border-emerald-500/10 bg-emerald-500/[0.03] p-2.5 text-center">
-                  <div className="text-[10px] font-medium text-emerald-400">
-                    機密データは社外に出ない
+                  <div className="text-[11px] font-medium text-emerald-400">
+                    MCPペイロードは外部に出ない
                   </div>
-                  <div className="mt-0.5 flex justify-center gap-3 text-[8px] text-zinc-600">
+                  <div className="mt-0.5 flex justify-center gap-3 text-[9px] text-zinc-600">
                     <span>プロンプト ✕</span>
                     <span>APIキー ✕</span>
                     <span>PII ✕</span>
@@ -184,21 +184,21 @@ const SolutionSection = () => {
                       />
                     </div>
                   </div>
-                  <div className="font-mono text-[7px] text-emerald-400/60">
-                    統計 →
+                  <div className="font-mono text-xs text-emerald-400/70">
+                    監査ログ →
                   </div>
 
                   {/* HTTPS バッジ */}
-                  <div className="rounded-full border border-white/[0.1] bg-[#0a0a0a] px-3 py-1">
-                    <span className="text-[8px] font-medium text-zinc-400">
+                  <div className="rounded-full border border-white/[0.1] bg-[#0a0a0a] px-3.5 py-1.5">
+                    <span className="text-xs font-medium text-zinc-400">
                       HTTPS
                     </span>
                   </div>
 
                   {/* 同期データ */}
-                  <div className="space-y-0.5 text-center">
+                  <div className="space-y-1.5 text-center">
                     {syncLabels.map((s) => (
-                      <div key={s} className="text-[7px] text-emerald-400/50">
+                      <div key={s} className="text-xs text-emerald-400/60">
                         {s}
                       </div>
                     ))}
@@ -223,8 +223,8 @@ const SolutionSection = () => {
                       />
                     </div>
                   </div>
-                  <div className="font-mono text-[7px] text-zinc-600">
-                    ← ポリシー
+                  <div className="font-mono text-xs text-zinc-500">
+                    ← 設定同期
                   </div>
                 </div>
               </div>
@@ -241,12 +241,14 @@ const SolutionSection = () => {
                       <div className="text-sm font-medium text-white">
                         Tumiki Control Plane
                       </div>
-                      <div className="text-[10px] text-zinc-600">SaaS</div>
+                      <div className="text-[10px] text-zinc-600">
+                        On-Premises / VPC
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 rounded-full bg-white/[0.06] px-2.5 py-1">
                     <span className="h-1.5 w-1.5 rounded-full bg-white/50" />
-                    <span className="text-[9px] text-zinc-500">Cloud</span>
+                    <span className="text-[9px] text-zinc-500">Private</span>
                   </div>
                 </div>
 
@@ -277,12 +279,12 @@ const SolutionSection = () => {
 
                 {/* クラウドバッジ */}
                 <div className="mt-4 rounded-lg border border-white/[0.06] bg-white/[0.02] p-2.5 text-center">
-                  <div className="text-[10px] text-zinc-500">
+                  <div className="text-[11px] text-zinc-500">
                     ポリシーとメタデータのみ管理
                   </div>
-                  <div className="mt-0.5 flex justify-center gap-3 text-[8px] text-zinc-700">
+                  <div className="mt-0.5 flex justify-center gap-3 text-[9px] text-zinc-700">
                     <span>ペイロード保存 ✕</span>
-                    <span>ログ保存 ✕</span>
+                    <span>監査ログ保存 ✕</span>
                   </div>
                 </div>
               </div>

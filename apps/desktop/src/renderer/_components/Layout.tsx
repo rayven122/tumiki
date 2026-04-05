@@ -9,24 +9,13 @@ export const Layout = (): JSX.Element => {
 
   return (
     <div
-      className={`flex h-screen ${theme === "light" ? "light" : ""}`}
-      style={{ backgroundColor: "var(--bg-app)" }}
+      className={`flex h-screen bg-[var(--bg-app)] ${theme === "light" ? "light" : ""}`}
     >
       {/* サイドバー（最下層） */}
       <Sidebar />
       {/* メインコンテンツ（サイドバーの上に載る、上右下に3px余白） */}
-      <div
-        className="flex flex-1 flex-col"
-        style={{ padding: "8px 8px 8px 0" }}
-      >
-        <main
-          className="flex-1 overflow-y-auto rounded-xl"
-          style={{
-            backgroundColor: "var(--bg-main)",
-            border: "1px solid var(--border)",
-            boxShadow: "var(--shadow-main)",
-          }}
-        >
+      <div className="flex flex-1 flex-col py-2 pr-2">
+        <main className="flex-1 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--bg-main)] shadow-[var(--shadow-main)]">
           <Outlet />
         </main>
       </div>

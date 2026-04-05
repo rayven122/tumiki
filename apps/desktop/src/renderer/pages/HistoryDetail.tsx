@@ -14,12 +14,9 @@ const InfoField = ({
   mono?: boolean;
 }): JSX.Element => (
   <div>
-    <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-      {label}
-    </p>
+    <p className="text-xs text-[var(--text-muted)]">{label}</p>
     <p
-      className={`mt-1 text-sm ${mono ? "font-mono" : ""}`}
-      style={{ color: "var(--text-secondary)" }}
+      className={`mt-1 text-sm text-[var(--text-secondary)] ${mono ? "font-mono" : ""}`}
     >
       {value}
     </p>
@@ -35,12 +32,11 @@ export const HistoryDetail = (): JSX.Element => {
       <div className="p-6">
         <Link
           to="/history"
-          className="text-sm hover:opacity-80"
-          style={{ color: "var(--text-secondary)" }}
+          className="text-sm text-[var(--text-secondary)] hover:opacity-80"
         >
           ← 操作履歴
         </Link>
-        <p className="mt-8 text-center" style={{ color: "var(--text-muted)" }}>
+        <p className="mt-8 text-center text-[var(--text-muted)]">
           該当する履歴が見つかりません
         </p>
       </div>
@@ -55,18 +51,14 @@ export const HistoryDetail = (): JSX.Element => {
       {/* 戻るリンク */}
       <Link
         to="/history"
-        className="inline-block text-sm hover:opacity-80"
-        style={{ color: "var(--text-secondary)" }}
+        className="inline-block text-sm text-[var(--text-secondary)] hover:opacity-80"
       >
         ← 操作履歴
       </Link>
 
       {/* ヘッダー */}
       <div className="flex items-center gap-3">
-        <h1
-          className="text-lg font-semibold"
-          style={{ color: "var(--text-primary)" }}
-        >
+        <h1 className="text-lg font-semibold text-[var(--text-primary)]">
           操作詳細
         </h1>
         <span
@@ -78,14 +70,7 @@ export const HistoryDetail = (): JSX.Element => {
       </div>
 
       {/* 操作情報カード */}
-      <div
-        className="rounded-xl p-6"
-        style={{
-          border: "1px solid var(--border)",
-          backgroundColor: "var(--bg-card)",
-          boxShadow: "var(--shadow-card)",
-        }}
-      >
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">
         {/* 2カラムグリッドで情報を配置 */}
         <div className="grid grid-cols-2 gap-6">
           <InfoField label="日時" value={item.datetime} />
@@ -99,41 +84,21 @@ export const HistoryDetail = (): JSX.Element => {
 
       {/* エラー詳細カード（blocked/errorの場合のみ） */}
       {isErrorState && item.errorReason && (
-        <div
-          className="rounded-xl p-6"
-          style={{
-            border: "1px solid var(--badge-error-bg)",
-            backgroundColor: "var(--bg-card)",
-            boxShadow: "var(--shadow-card)",
-          }}
-        >
-          <h2
-            className="mb-3 text-sm font-semibold"
-            style={{ color: "var(--badge-error-text)" }}
-          >
+        <div className="rounded-xl border border-[var(--badge-error-bg)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">
+          <h2 className="mb-3 text-sm font-semibold text-[var(--badge-error-text)]">
             エラー詳細
           </h2>
           <div className="grid grid-cols-2 gap-6">
             <div>
-              <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                理由
-              </p>
-              <p
-                className="mt-1 text-sm"
-                style={{ color: "var(--badge-error-text)" }}
-              >
+              <p className="text-xs text-[var(--text-muted)]">理由</p>
+              <p className="mt-1 text-sm text-[var(--badge-error-text)]">
                 {item.errorReason}
               </p>
             </div>
             {item.requiredRole && (
               <div>
-                <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                  必要なロール
-                </p>
-                <p
-                  className="mt-1 text-sm"
-                  style={{ color: "var(--text-secondary)" }}
-                >
+                <p className="text-xs text-[var(--text-muted)]">必要なロール</p>
+                <p className="mt-1 text-sm text-[var(--text-secondary)]">
                   {item.requiredRole}
                 </p>
               </div>
@@ -145,11 +110,7 @@ export const HistoryDetail = (): JSX.Element => {
             <div className="mt-4">
               <Link
                 to="/requests/new"
-                className="inline-block rounded-lg px-4 py-2 text-sm font-medium transition-colors hover:opacity-90"
-                style={{
-                  backgroundColor: "var(--btn-primary-bg)",
-                  color: "var(--btn-primary-text)",
-                }}
+                className="inline-block rounded-lg bg-[var(--btn-primary-bg)] px-4 py-2 text-sm font-medium text-[var(--btn-primary-text)] transition-colors hover:opacity-90"
               >
                 この操作の権限を申請する
               </Link>
@@ -159,11 +120,8 @@ export const HistoryDetail = (): JSX.Element => {
       )}
 
       {/* 備考 */}
-      <div
-        className="rounded-lg px-4 py-3"
-        style={{ backgroundColor: "var(--bg-card-hover)" }}
-      >
-        <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+      <div className="rounded-lg bg-[var(--bg-card-hover)] px-4 py-3">
+        <p className="text-xs text-[var(--text-muted)]">
           セキュリティポリシーにより、リクエスト/レスポンスのペイロードは表示されません。詳細なログは管理者にお問い合わせください。
         </p>
       </div>

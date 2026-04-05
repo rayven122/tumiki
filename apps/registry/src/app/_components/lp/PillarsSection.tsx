@@ -172,21 +172,21 @@ const PILLARS = [
     Svg: ShieldPlates,
     title: "全通信を監視",
     description:
-      "AIクライアントとMCPサーバー間の全通信を中間で制御。不正なアクセスは即座に遮断。",
+      "AIクライアントとMCPサーバーの間にProxyを配置。すべてのリクエストを中間で捕捉し、ポリシー違反を検知。",
   },
   {
     fig: "FIG 1.1",
     Svg: BlockPlates,
     title: "きめ細かい権限制御",
     description:
-      "役職・部署ごとにサービス単位のR/W/X権限を設定。必要最小限のアクセスを保証。",
+      "役職・部署ごとにサービス単位のR/W/X権限を設定。必要最小限のアクセスだけを許可。",
   },
   {
     fig: "FIG 1.2",
     Svg: FlowPlates,
     title: "すべてを記録",
     description:
-      "誰が、いつ、どのAIで、何をしたか。全MCP通信をオンプレミスに完全記録。",
+      "誰が、いつ、どのAIで、何をしたか。全MCP通信を端末内に完全記録し、監査に対応。",
   },
 ] as const;
 
