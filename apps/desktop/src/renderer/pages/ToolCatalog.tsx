@@ -53,10 +53,7 @@ export const ToolCatalog = (): JSX.Element => {
 
   if (loading) {
     return (
-      <div
-        className="flex h-full items-center justify-center text-sm"
-        style={{ color: "var(--text-subtle)" }}
-      >
+      <div className="flex h-full items-center justify-center text-sm text-[var(--text-subtle)]">
         読み込み中...
       </div>
     );
@@ -67,20 +64,16 @@ export const ToolCatalog = (): JSX.Element => {
       {/* ヘッダー */}
       <div className="flex items-start justify-between">
         <div>
-          <h1
-            className="text-2xl font-bold"
-            style={{ color: "var(--text-primary)" }}
-          >
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">
             ツールカタログ
           </h1>
-          <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
+          <p className="mt-1 text-sm text-[var(--text-muted)]">
             利用可能なMCPサーバーを検索・追加できます
           </p>
         </div>
         <Link
           to="/tools"
-          className="flex items-center gap-1 text-xs transition-opacity hover:opacity-80"
-          style={{ color: "var(--text-muted)" }}
+          className="flex items-center gap-1 text-xs text-[var(--text-muted)] transition-opacity hover:opacity-80"
         >
           <ArrowLeft size={12} />
           コネクトに戻る
@@ -92,22 +85,14 @@ export const ToolCatalog = (): JSX.Element => {
         <div className="relative min-w-[200px] flex-1">
           <Search
             size={14}
-            className="absolute top-1/2 left-3 -translate-y-1/2"
-            style={{ color: "var(--text-subtle)" }}
+            className="absolute top-1/2 left-3 -translate-y-1/2 text-[var(--text-subtle)]"
           />
           <input
             type="text"
             placeholder="ツールを検索..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full rounded-lg py-2 pr-3 pl-9 text-sm outline-none"
-            style={{
-              borderWidth: 1,
-              borderStyle: "solid",
-              borderColor: "var(--border)",
-              backgroundColor: "var(--bg-card)",
-              color: "var(--text-primary)",
-            }}
+            className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] py-2 pr-3 pl-9 text-sm text-[var(--text-primary)] outline-none"
           />
         </div>
       </div>
@@ -115,24 +100,11 @@ export const ToolCatalog = (): JSX.Element => {
       {/* カタログ一覧 */}
       {filtered.length > 0 && (
         <div>
-          <div
-            className="mb-4 flex items-center justify-between pb-2"
-            style={{
-              borderBottomWidth: 1,
-              borderBottomStyle: "solid",
-              borderBottomColor: "var(--border)",
-            }}
-          >
-            <h2
-              className="text-sm font-medium"
-              style={{ color: "var(--text-muted)" }}
-            >
+          <div className="mb-4 flex items-center justify-between border-b border-b-[var(--border)] pb-2">
+            <h2 className="text-sm font-medium text-[var(--text-muted)]">
               MCPカタログ
             </h2>
-            <span
-              className="text-[10px]"
-              style={{ color: "var(--text-subtle)" }}
-            >
+            <span className="text-[10px] text-[var(--text-subtle)]">
               {filtered.length}件
             </span>
           </div>
@@ -167,28 +139,18 @@ export const ToolCatalog = (): JSX.Element => {
                   </span>
                 </div>
                 {/* 名前 */}
-                <div
-                  className="mb-1 text-sm font-medium"
-                  style={{ color: "var(--text-primary)" }}
-                >
+                <div className="mb-1 text-sm font-medium text-[var(--text-primary)]">
                   {item.name}
                 </div>
                 {/* 説明 */}
-                <div
-                  className="mb-3 line-clamp-2 text-[10px] leading-relaxed"
-                  style={{ color: "var(--text-subtle)" }}
-                >
+                <div className="mb-3 line-clamp-2 text-[10px] leading-relaxed text-[var(--text-subtle)]">
                   {item.description}
                 </div>
                 {/* 追加ボタン */}
                 <button
                   type="button"
                   onClick={() => setSelectedCatalog(item)}
-                  className="mt-auto flex w-full items-center justify-center gap-1 rounded-md py-1.5 text-[10px] font-medium transition hover:opacity-90"
-                  style={{
-                    backgroundColor: "var(--text-primary)",
-                    color: "var(--bg-card)",
-                  }}
+                  className="mt-auto flex w-full items-center justify-center gap-1 rounded-md bg-[var(--text-primary)] py-1.5 text-[10px] font-medium text-[var(--bg-card)] transition hover:opacity-90"
                 >
                   <Plus size={10} />
                   追加
@@ -200,10 +162,7 @@ export const ToolCatalog = (): JSX.Element => {
       )}
 
       {filtered.length === 0 && (
-        <div
-          className="py-12 text-center text-sm"
-          style={{ color: "var(--text-subtle)" }}
-        >
+        <div className="py-12 text-center text-sm text-[var(--text-subtle)]">
           条件に一致するツールが見つかりません
         </div>
       )}

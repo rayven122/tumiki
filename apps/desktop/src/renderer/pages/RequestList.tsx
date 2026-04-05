@@ -47,19 +47,12 @@ export const RequestList = (): JSX.Element => {
     <div className="space-y-4 p-6">
       {/* ヘッダー */}
       <div className="flex items-center justify-between">
-        <h1
-          className="text-lg font-semibold"
-          style={{ color: "var(--text-primary)" }}
-        >
+        <h1 className="text-lg font-semibold text-[var(--text-primary)]">
           権限申請
         </h1>
         <Link
           to="/requests/new"
-          className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors hover:opacity-90"
-          style={{
-            backgroundColor: "var(--btn-primary-bg)",
-            color: "var(--btn-primary-text)",
-          }}
+          className="flex items-center gap-1.5 rounded-lg bg-[var(--btn-primary-bg)] px-4 py-2 text-sm font-medium text-[var(--btn-primary-text)] transition-colors hover:opacity-90"
         >
           <Plus size={16} />
           新規申請
@@ -67,23 +60,16 @@ export const RequestList = (): JSX.Element => {
       </div>
 
       {/* ピルナビ */}
-      <div
-        className="flex items-center gap-1 rounded-lg p-0.5"
-        style={{ backgroundColor: "var(--bg-card-hover)" }}
-      >
+      <div className="flex items-center gap-1 rounded-lg bg-[var(--bg-card-hover)] p-0.5">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className="rounded px-3 py-1.5 text-xs transition-colors"
-            style={{
-              backgroundColor:
-                activeTab === tab.key ? "var(--bg-active)" : "transparent",
-              color:
-                activeTab === tab.key
-                  ? "var(--text-primary)"
-                  : "var(--text-subtle)",
-            }}
+            className={`rounded px-3 py-1.5 text-xs transition-colors ${
+              activeTab === tab.key
+                ? "bg-[var(--bg-active)] text-[var(--text-primary)]"
+                : "text-[var(--text-subtle)]"
+            }`}
           >
             {tab.label}
             <span className="ml-1 font-mono text-[10px] opacity-60">
@@ -94,22 +80,10 @@ export const RequestList = (): JSX.Element => {
       </div>
 
       {/* テーブル */}
-      <div
-        className="overflow-hidden rounded-xl"
-        style={{
-          border: "1px solid var(--border)",
-          backgroundColor: "var(--bg-card)",
-          boxShadow: "var(--shadow-card)",
-        }}
-      >
+      <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg-card)] shadow-[var(--shadow-card)]">
         <table className="w-full text-xs">
           <thead>
-            <tr
-              style={{
-                borderBottom: "1px solid var(--border)",
-                color: "var(--text-muted)",
-              }}
-            >
+            <tr className="border-b border-b-[var(--border)] text-[var(--text-muted)]">
               <th className="px-4 py-2.5 text-left font-medium">申請日</th>
               <th className="px-4 py-2.5 text-left font-medium">ツール</th>
               <th className="px-4 py-2.5 text-left font-medium">申請内容</th>
@@ -124,25 +98,15 @@ export const RequestList = (): JSX.Element => {
               return (
                 <tr
                   key={req.id}
-                  className="last:border-0"
-                  style={{ borderBottom: "1px solid var(--border)" }}
+                  className="border-b border-b-[var(--border)] last:border-0"
                 >
-                  <td
-                    className="px-4 py-2.5"
-                    style={{ color: "var(--text-subtle)" }}
-                  >
+                  <td className="px-4 py-2.5 text-[var(--text-subtle)]">
                     {req.date}
                   </td>
-                  <td
-                    className="px-4 py-2.5"
-                    style={{ color: "var(--text-primary)" }}
-                  >
+                  <td className="px-4 py-2.5 text-[var(--text-primary)]">
                     {req.tool}
                   </td>
-                  <td
-                    className="px-4 py-2.5"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
+                  <td className="px-4 py-2.5 text-[var(--text-secondary)]">
                     {req.type}
                   </td>
                   <td className="px-4 py-2.5">
@@ -153,17 +117,13 @@ export const RequestList = (): JSX.Element => {
                       {status.label}
                     </span>
                   </td>
-                  <td
-                    className="px-4 py-2.5"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
+                  <td className="px-4 py-2.5 text-[var(--text-secondary)]">
                     {req.approvers.map((a) => a.name).join(", ")}
                   </td>
                   <td className="px-4 py-2.5">
                     <Link
                       to={`/requests/${req.id}`}
-                      className="flex items-center gap-1 text-[10px] hover:opacity-80"
-                      style={{ color: "var(--text-muted)" }}
+                      className="flex items-center gap-1 text-[10px] text-[var(--text-muted)] hover:opacity-80"
                     >
                       詳細
                       <ChevronRight size={12} />
