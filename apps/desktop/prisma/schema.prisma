@@ -90,6 +90,10 @@ model McpCatalog {
   credentialKeys String       @default("[]")
   /// 認証タイプ
   authType      AuthType      @default(NONE)
+  /// DCR非対応サーバー用: 事前登録済みOAuthクライアントID
+  oauthClientId     String?
+  /// DCR非対応サーバー用: 事前登録済みOAuthクライアントシークレット
+  oauthClientSecret String?
   /// 公式カタログフラグ
   isOfficial    Boolean       @default(false)
   createdAt     DateTime      @default(now())
@@ -192,6 +196,27 @@ model McpServer {
   /// 監査ログ一覧
   auditLogs   AuditLog[]
 
+}
+
+/// OAuthクライアント登録キャッシュ（DCR結果）
+/// MCP OAuth認証時のDynamic Client Registration結果をキャッシュし、再登録を回避する
+/// @namespace OAuth
+model OAuthClient {
+  id                      Int      @id @default(autoincrement())
+  /// MCPサーバーURL（正規化済み、認可サーバー特定用）
+  serverUrl               String   @unique
+  /// OAuth Authorization Server issuer URL
+  issuer                  String
+  /// DCRで取得したクライアントID（暗号化済み）
+  clientId                String
+  /// DCRで取得したクライアントシークレット（暗号化済み、パブリッククライアントの場合null）
+  clientSecret            String?
+  /// トークンエンドポイントの認証方式
+  tokenEndpointAuthMethod String   @default("none")
+  /// Authorization Server Metadata（JSON文字列）
+  authServerMetadata      String
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 }
 
 /// 監査ログ（MCPツール呼び出しの記録）

@@ -3,6 +3,7 @@
 
 - [Auth](#auth)
 - [McpServer](#mcpserver)
+- [OAuth](#oauth)
 
 ## Auth
 ```mermaid
@@ -45,6 +46,8 @@ erDiagram
   String url "nullable"
   String credentialKeys
   AuthType authType
+  String oauthClientId "nullable"
+  String oauthClientSecret "nullable"
   Boolean isOfficial
   DateTime createdAt
   DateTime updatedAt
@@ -124,6 +127,8 @@ MCPカタログ（プリセットMCPサーバーのテンプレート）
   - `url`: SSE/Streamable HTTP用URL
   - `credentialKeys`: 必要な設定キー名（STDIO: 環境変数キー / SSE・Streamable HTTP: ヘッダー名、JSON配列文字列）
   - `authType`: 認証タイプ
+  - `oauthClientId`: DCR非対応サーバー用: 事前登録済みOAuthクライアントID
+  - `oauthClientSecret`: DCR非対応サーバー用: 事前登録済みOAuthクライアントシークレット
   - `isOfficial`: 公式カタログフラグ
   - `createdAt`: 
   - `updatedAt`: 
@@ -196,3 +201,35 @@ MCPサーバー（仮想・統合サーバー = Proxyエンドポイント）
   - `createdAt`: 
   - `serverId`: 対象MCPサーバー
   - `connectionName`: 対象MCP接続名（接続削除後もログで識別可能にするため名前で保持）
+
+
+## OAuth
+```mermaid
+erDiagram
+"OAuthClient" {
+  Int id PK
+  String serverUrl UK
+  String issuer
+  String clientId
+  String clientSecret "nullable"
+  String tokenEndpointAuthMethod
+  String authServerMetadata
+  DateTime createdAt
+  DateTime updatedAt
+}
+```
+
+### `OAuthClient`
+OAuthクライアント登録キャッシュ（DCR結果）
+MCP OAuth認証時のDynamic Client Registration結果をキャッシュし、再登録を回避する
+
+**Properties**
+  - `id`: 
+  - `serverUrl`: MCPサーバーURL（正規化済み、認可サーバー特定用）
+  - `issuer`: OAuth Authorization Server issuer URL
+  - `clientId`: DCRで取得したクライアントID（暗号化済み）
+  - `clientSecret`: DCRで取得したクライアントシークレット（暗号化済み、パブリッククライアントの場合null）
+  - `tokenEndpointAuthMethod`: トークンエンドポイントの認証方式
+  - `authServerMetadata`: Authorization Server Metadata（JSON文字列）
+  - `createdAt`: 
+  - `updatedAt`: 
