@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, vi } from "vitest";
 import type { Dirent } from "fs";
-import type { PrismaClient } from "../../../../../prisma/generated/client";
+import type { PrismaClient } from "@prisma/desktop-client";
 
 // --- モック定義 ---
 

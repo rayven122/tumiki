@@ -2,7 +2,7 @@ import { readdir, readFile } from "fs/promises";
 import { join } from "path";
 import { app } from "electron";
 import { randomUUID } from "crypto";
-import type { PrismaClient } from "../../../../prisma/generated/client";
+import type { PrismaClient } from "@prisma/desktop-client";
 import * as logger from "../utils/logger";
 
 /**
