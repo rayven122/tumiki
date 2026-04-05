@@ -195,6 +195,7 @@ describe("mcp.service", () => {
       expect(result).toStrictEqual([
         {
           name: "test-server/serena",
+          transportType: "STDIO",
           command: "uvx",
           args: ["serena", "start-mcp-server"],
           env: { API_KEY: "test-key" },
@@ -202,7 +203,7 @@ describe("mcp.service", () => {
       ]);
     });
 
-    test("SSE接続はスキップする", async () => {
+    test("SSE接続をMcpServerConfigに変換する", async () => {
       vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([
         {
           id: 1,
@@ -212,6 +213,96 @@ describe("mcp.service", () => {
           command: null,
           args: "[]",
           url: "http://localhost:3000/sse",
+          credentials: "{}",
+          authType: "NONE",
+          isEnabled: true,
+          displayOrder: 0,
+          serverId: 1,
+          catalogId: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          server: {
+            id: 1,
+            name: "Test",
+            slug: "test",
+            description: "",
+            serverStatus: "STOPPED",
+            isEnabled: true,
+            displayOrder: 0,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        },
+      ] as Awaited<ReturnType<typeof mcpRepository.findEnabledConnections>>);
+
+      const result = await mcpService.getEnabledConfigs();
+
+      expect(result).toStrictEqual([
+        {
+          name: "test/sse-server",
+          transportType: "SSE",
+          url: "http://localhost:3000/sse",
+          authType: "NONE",
+          headers: {},
+        },
+      ]);
+    });
+
+    test("STREAMABLE_HTTP接続をMcpServerConfigに変換する", async () => {
+      vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([
+        {
+          id: 1,
+          name: "HTTP Server",
+          slug: "http-server",
+          transportType: "STREAMABLE_HTTP",
+          command: null,
+          args: "[]",
+          url: "http://localhost:3000/mcp",
+          credentials: '{"token":"secret-token"}',
+          authType: "BEARER",
+          isEnabled: true,
+          displayOrder: 0,
+          serverId: 1,
+          catalogId: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          server: {
+            id: 1,
+            name: "Test",
+            slug: "test",
+            description: "",
+            serverStatus: "STOPPED",
+            isEnabled: true,
+            displayOrder: 0,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        },
+      ] as Awaited<ReturnType<typeof mcpRepository.findEnabledConnections>>);
+
+      const result = await mcpService.getEnabledConfigs();
+
+      expect(result).toStrictEqual([
+        {
+          name: "test/http-server",
+          transportType: "STREAMABLE_HTTP",
+          url: "http://localhost:3000/mcp",
+          authType: "BEARER",
+          headers: { Authorization: "Bearer secret-token" },
+        },
+      ]);
+    });
+
+    test("urlがnullのSSE接続はスキップする", async () => {
+      vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([
+        {
+          id: 1,
+          name: "No URL",
+          slug: "no-url",
+          transportType: "SSE",
+          command: null,
+          args: "[]",
+          url: null,
           credentials: "{}",
           authType: "NONE",
           isEnabled: true,

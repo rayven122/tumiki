@@ -1,5 +1,8 @@
+import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
 import type {
   CallToolResult,
@@ -67,7 +70,7 @@ export const createUpstreamClient = (
 ): UpstreamClient => {
   // 内部状態
   let client: Client | null = null;
-  let transport: StdioClientTransport | null = null;
+  let transport: Transport | null = null;
   let status: ServerStatus = "stopped";
   const statusChangeCallbacks: Array<
     (name: string, status: ServerStatus, error?: string) => void
@@ -78,7 +81,43 @@ export const createUpstreamClient = (
   // handleCrashの二重呼び出し防止フラグ（onclose/onerrorが両方発火するケース対策）
   let crashHandled = false;
 
-  const mergedEnv = { ...safeBaseEnv, ...config.env };
+  /**
+   * トランスポートタイプに応じたTransportインスタンスを生成
+   */
+  const createTransport = (): Transport => {
+    switch (config.transportType) {
+      case "STDIO": {
+        const mergedEnv = { ...safeBaseEnv, ...config.env };
+        return new StdioClientTransport({
+          command: config.command,
+          args: config.args,
+          env: mergedEnv,
+        });
+      }
+      case "SSE":
+        return new SSEClientTransport(new URL(config.url), {
+          requestInit: { headers: config.headers },
+          // EventSourceはネイティブでカスタムヘッダー非対応のため、fetchを差し替えて注入
+          eventSourceInit: {
+            fetch: (url: string | URL, init?: RequestInit) =>
+              fetch(url, {
+                ...init,
+                headers: { ...init?.headers, ...config.headers },
+              }),
+          },
+        });
+      case "STREAMABLE_HTTP":
+        return new StreamableHTTPClientTransport(new URL(config.url), {
+          requestInit: { headers: config.headers },
+        });
+      default: {
+        const _exhaustive: never = config;
+        throw new Error(
+          `未対応のトランスポートタイプ: ${JSON.stringify(_exhaustive)}`,
+        );
+      }
+    }
+  };
 
   /**
    * 状態を更新し、コールバックを呼び出す
@@ -107,11 +146,7 @@ export const createUpstreamClient = (
    */
   const attemptConnect = async (): Promise<void> => {
     try {
-      transport = new StdioClientTransport({
-        command: config.command,
-        args: config.args,
-        env: mergedEnv,
-      });
+      transport = createTransport();
 
       client = new Client({
         name: "tumiki-proxy",

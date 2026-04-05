@@ -86,20 +86,91 @@ export const getAllServers = async () => {
 };
 
 /**
+ * 認証ヘッダーを組み立て
+ */
+const buildHeaders = (
+  authType: string,
+  credentials: Record<string, string>,
+): Record<string, string> => {
+  switch (authType) {
+    case "BEARER": {
+      const token = credentials["token"] ?? credentials["accessToken"] ?? "";
+      return token ? { Authorization: `Bearer ${token}` } : {};
+    }
+    case "API_KEY":
+      return { ...credentials };
+    case "NONE":
+    default:
+      return {};
+  }
+};
+
+/**
+ * Prisma AuthType → proxy AuthType マッピング
+ */
+const toProxyAuthType = (
+  prismaAuthType: string,
+): "NONE" | "BEARER" | "API_KEY" => {
+  if (prismaAuthType === "BEARER") return "BEARER";
+  if (prismaAuthType === "API_KEY") return "API_KEY";
+  return "NONE";
+};
+
+/**
  * 有効な接続からMcpServerConfig[]を生成（Proxy起動時に使用）
  */
 export const getEnabledConfigs = async (): Promise<McpServerConfig[]> => {
   const db = await getDb();
   const connections = await mcpRepository.findEnabledConnections(db);
 
-  return connections
-    .filter((conn) => conn.transportType === "STDIO" && conn.command)
-    .map((conn) => ({
-      name: `${conn.server.slug}/${conn.slug}`,
-      command: conn.command as string,
-      args: JSON.parse(conn.args) as string[],
-      env: JSON.parse(conn.credentials) as Record<string, string>,
-    }));
+  return connections.flatMap((conn): McpServerConfig[] => {
+    const name = `${conn.server.slug}/${conn.slug}`;
+    const credentials = JSON.parse(conn.credentials) as Record<string, string>;
+
+    switch (conn.transportType) {
+      case "STDIO": {
+        if (!conn.command) return [];
+        return [
+          {
+            name,
+            transportType: "STDIO" as const,
+            command: conn.command,
+            args: JSON.parse(conn.args) as string[],
+            env: credentials,
+          },
+        ];
+      }
+      case "SSE": {
+        if (!conn.url) return [];
+        return [
+          {
+            name,
+            transportType: "SSE" as const,
+            url: conn.url,
+            authType: toProxyAuthType(conn.authType),
+            headers: buildHeaders(conn.authType, credentials),
+          },
+        ];
+      }
+      case "STREAMABLE_HTTP": {
+        if (!conn.url) return [];
+        return [
+          {
+            name,
+            transportType: "STREAMABLE_HTTP" as const,
+            url: conn.url,
+            authType: toProxyAuthType(conn.authType),
+            headers: buildHeaders(conn.authType, credentials),
+          },
+        ];
+      }
+      default:
+        logger.warn(
+          `未対応のトランスポートタイプ: ${String(conn.transportType)}`,
+        );
+        return [];
+    }
+  });
 };
 
 /**
