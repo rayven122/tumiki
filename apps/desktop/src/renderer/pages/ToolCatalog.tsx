@@ -23,7 +23,7 @@ const authBadgeColor: Record<
   NONE: { bg: "var(--badge-success-bg)", text: "var(--badge-success-text)" },
   BEARER: { bg: "var(--badge-warn-bg)", text: "var(--badge-warn-text)" },
   API_KEY: { bg: "var(--badge-warn-bg)", text: "var(--badge-warn-text)" },
-  OAUTH: { bg: "var(--badge-warn-bg)", text: "var(--badge-warn-text)" },
+  OAUTH: { bg: "var(--badge-info-bg)", text: "var(--badge-info-text)" },
 };
 
 export const ToolCatalog = (): JSX.Element => {
