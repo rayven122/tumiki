@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { Logger } from "../types.js";
-import { createProxyCore, HARDCODED_CONFIGS } from "../core.js";
+import { createProxyCore } from "../core.js";
 import { createMockLogger } from "./test-helpers.js";
 
 // UpstreamPoolのモック
@@ -128,28 +128,5 @@ describe("createProxyCore", () => {
     core.onStatusChange(callback);
 
     expect(mockOnStatusChange).toHaveBeenCalledWith(callback);
-  });
-});
-
-describe("HARDCODED_CONFIGS", () => {
-  test("Serena MCPの設定が含まれている", () => {
-    expect(HARDCODED_CONFIGS).toHaveLength(1);
-    expect(HARDCODED_CONFIGS[0]).toStrictEqual({
-      name: "serena",
-      command: "uvx",
-      args: [
-        "--from",
-        "git+https://github.com/oraios/serena",
-        "serena",
-        "start-mcp-server",
-        "--enable-web-dashboard",
-        "false",
-        "--context",
-        "ide-assistant",
-        "--project",
-        ".",
-      ],
-      env: {},
-    });
   });
 });

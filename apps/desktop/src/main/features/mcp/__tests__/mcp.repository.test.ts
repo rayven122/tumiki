@@ -178,4 +178,153 @@ describe("mcp.repository（実DB）", () => {
       expect(result).toBeNull();
     });
   });
+
+  describe("findEnabledConnections", () => {
+    test("有効なサーバーの有効な接続のみ取得する", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+      await mcpRepository.createConnection(db, buildConnectionData(server.id));
+
+      const result = await mcpRepository.findEnabledConnections(db);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]!.name).toBe("Test Connection");
+      expect(result[0]!.server.name).toBe("Test Server");
+    });
+
+    test("無効なサーバーの接続は除外する", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+      await mcpRepository.createConnection(db, buildConnectionData(server.id));
+      // サーバーを無効化
+      await mcpRepository.toggleServerEnabled(db, server.id, false);
+
+      const result = await mcpRepository.findEnabledConnections(db);
+
+      expect(result).toStrictEqual([]);
+    });
+
+    test("無効な接続は除外する", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+      await db.mcpConnection.create({
+        data: {
+          ...buildConnectionData(server.id),
+          isEnabled: false,
+        },
+      });
+
+      const result = await mcpRepository.findEnabledConnections(db);
+
+      expect(result).toStrictEqual([]);
+    });
+
+    test("接続が存在しない場合は空配列を返す", async () => {
+      const result = await mcpRepository.findEnabledConnections(db);
+      expect(result).toStrictEqual([]);
+    });
+  });
+
+  describe("findServerById", () => {
+    test("IDでサーバーを取得する", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+
+      const result = await mcpRepository.findServerById(db, server.id);
+
+      expect(result).not.toBeNull();
+      expect(result!.name).toBe("Test Server");
+    });
+
+    test("存在しないIDの場合はnullを返す", async () => {
+      const result = await mcpRepository.findServerById(db, 99999);
+      expect(result).toBeNull();
+    });
+  });
+
+  describe("updateServer", () => {
+    test("サーバー名を更新する", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+
+      const result = await mcpRepository.updateServer(db, server.id, {
+        name: "Updated Server",
+      });
+
+      expect(result.name).toBe("Updated Server");
+      expect(result.description).toBe("テスト用サーバー");
+    });
+
+    test("サーバー説明を更新する", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+
+      const result = await mcpRepository.updateServer(db, server.id, {
+        description: "更新された説明",
+      });
+
+      expect(result.name).toBe("Test Server");
+      expect(result.description).toBe("更新された説明");
+    });
+
+    test("存在しないIDの場合はエラーになる", async () => {
+      await expect(
+        mcpRepository.updateServer(db, 99999, { name: "X" }),
+      ).rejects.toThrow();
+    });
+  });
+
+  describe("deleteServer", () => {
+    test("サーバーを削除する", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+
+      await mcpRepository.deleteServer(db, server.id);
+
+      const result = await mcpRepository.findServerById(db, server.id);
+      expect(result).toBeNull();
+    });
+
+    test("カスケードで接続も削除される", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+      await mcpRepository.createConnection(db, buildConnectionData(server.id));
+
+      await mcpRepository.deleteServer(db, server.id);
+
+      const connections = await db.mcpConnection.findMany({
+        where: { serverId: server.id },
+      });
+      expect(connections).toStrictEqual([]);
+    });
+
+    test("存在しないIDの場合はエラーになる", async () => {
+      await expect(mcpRepository.deleteServer(db, 99999)).rejects.toThrow();
+    });
+  });
+
+  describe("toggleServerEnabled", () => {
+    test("サーバーを無効化する", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+
+      const result = await mcpRepository.toggleServerEnabled(
+        db,
+        server.id,
+        false,
+      );
+
+      expect(result.isEnabled).toBe(false);
+    });
+
+    test("サーバーを有効化する", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+      await mcpRepository.toggleServerEnabled(db, server.id, false);
+
+      const result = await mcpRepository.toggleServerEnabled(
+        db,
+        server.id,
+        true,
+      );
+
+      expect(result.isEnabled).toBe(true);
+    });
+
+    test("存在しないIDの場合はエラーになる", async () => {
+      await expect(
+        mcpRepository.toggleServerEnabled(db, 99999, false),
+      ).rejects.toThrow();
+    });
+  });
 });
