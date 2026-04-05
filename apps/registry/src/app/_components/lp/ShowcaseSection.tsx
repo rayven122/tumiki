@@ -178,7 +178,9 @@ const ShowcaseSection = () => {
                 key={s.label}
                 className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-center"
               >
-                <div className={`text-2xl font-semibold tabular-nums ${s.color}`}>
+                <div
+                  className={`text-2xl font-semibold tabular-nums ${s.color}`}
+                >
                   {s.value}
                 </div>
                 <div className="mt-1 text-[10px] text-zinc-600">{s.label}</div>
