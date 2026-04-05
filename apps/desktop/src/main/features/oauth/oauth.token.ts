@@ -23,7 +23,7 @@ const FigmaErrorResponseSchema = z.object({
  * クライアント認証方式を決定
  * client.token_endpoint_auth_method に基づいて適切な認証方式を選択
  */
-const getClientAuth = (client: oauth.Client): ReturnType<typeof oauth.None> => {
+const getClientAuth = (client: oauth.Client): oauth.ClientAuth => {
   if (client.token_endpoint_auth_method) {
     switch (client.token_endpoint_auth_method) {
       case "none":

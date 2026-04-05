@@ -22,6 +22,7 @@ import { exchangeCodeForToken } from "./oauth.token";
 import { parseOAuthCallback } from "./oauth.protocol";
 import * as oauthRepository from "./oauth.repository";
 import { createFromCatalog } from "../mcp/mcp.service";
+import { findOAuthClientById } from "../catalog/catalog.repository";
 import type {
   McpOAuthSession,
   StartOAuthInput,
@@ -140,11 +141,15 @@ export const createMcpOAuthManager = (): McpOAuthManager => {
     }
 
     try {
-      // 1. DCRキャッシュ取得 or Discovery + DCR（フォールバック付き）
+      // 1. カタログからOAuthクライアント情報をDB直接取得（rendererを経由しない）
+      const db = await getDb();
+      const catalogOAuth = await findOAuthClientById(db, input.catalogId);
+
+      // 2. DCRキャッシュ取得 or Discovery + DCR（フォールバック付き）
       const { metadata, client } = await getOrRegisterClient(
         input.url,
-        input.oauthClientId,
-        input.oauthClientSecret,
+        catalogOAuth.oauthClientId ?? undefined,
+        catalogOAuth.oauthClientSecret ?? undefined,
       );
 
       // 2. PKCE パラメータ生成
@@ -175,8 +180,6 @@ export const createMcpOAuthManager = (): McpOAuthManager => {
         command: input.command,
         args: input.args,
         url: input.url,
-        oauthClientId: input.oauthClientId,
-        oauthClientSecret: input.oauthClientSecret,
         createdAt: new Date(),
       };
 
@@ -222,11 +225,14 @@ export const createMcpOAuthManager = (): McpOAuthManager => {
       const session = currentSession;
       currentSession = null;
 
-      // 5. OAuthClientをDBから取得
+      // 5. カタログからOAuthクライアント情報をDB直接取得
+      const db = await getDb();
+      const catalogOAuth = await findOAuthClientById(db, session.catalogId);
+
       const { metadata, client } = await getOrRegisterClient(
         session.serverUrl,
-        session.oauthClientId,
-        session.oauthClientSecret,
+        catalogOAuth.oauthClientId ?? undefined,
+        catalogOAuth.oauthClientSecret ?? undefined,
       );
 
       // 6. トークン交換

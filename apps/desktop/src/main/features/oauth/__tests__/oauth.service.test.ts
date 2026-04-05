@@ -19,6 +19,7 @@ vi.mock("../oauth.token");
 vi.mock("../oauth.protocol");
 vi.mock("../oauth.repository");
 vi.mock("../../mcp/mcp.service");
+vi.mock("../../catalog/catalog.repository");
 
 import { shell } from "electron";
 import { getDb } from "../../../shared/db";
@@ -34,6 +35,7 @@ import { exchangeCodeForToken } from "../oauth.token";
 import { parseOAuthCallback } from "../oauth.protocol";
 import * as oauthRepository from "../oauth.repository";
 import { createFromCatalog } from "../../mcp/mcp.service";
+import { findOAuthClientById } from "../../catalog/catalog.repository";
 import { createMcpOAuthManager } from "../oauth.service";
 import type { StartOAuthInput } from "../oauth.types";
 import type * as oauth from "oauth4webapi";
@@ -74,6 +76,11 @@ describe("oauth.service", () => {
     vi.mocked(generateAuthorizationUrl).mockReturnValue(
       new URL("https://www.figma.com/oauth?client_id=test"),
     );
+    // カタログからのOAuthクライアント情報（DCR非対応フォールバック用）
+    vi.mocked(findOAuthClientById).mockResolvedValue({
+      oauthClientId: null,
+      oauthClientSecret: null,
+    });
   });
 
   describe("startAuthFlow", () => {

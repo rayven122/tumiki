@@ -16,10 +16,6 @@ export type McpOAuthSession = {
   command: string | null;
   args: string;
   url: string | null;
-  /** DCR非対応サーバー用: 事前登録済みOAuthクライアントID */
-  oauthClientId?: string;
-  /** DCR非対応サーバー用: 事前登録済みOAuthクライアントシークレット */
-  oauthClientSecret?: string;
   /** セッション開始時刻 */
   createdAt: Date;
 };
@@ -43,10 +39,6 @@ export type StartOAuthInput = {
   command: string | null;
   args: string;
   url: string;
-  /** DCR非対応サーバー用: 事前登録済みOAuthクライアントID */
-  oauthClientId?: string;
-  /** DCR非対応サーバー用: 事前登録済みOAuthクライアントシークレット */
-  oauthClientSecret?: string;
 };
 
 /** OAuthフロー成功時の結果型 */

@@ -1,6 +1,7 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
 
-// oauth4webapiをモック
+// モック設定
+vi.mock("../../../shared/utils/logger");
 vi.mock("oauth4webapi", () => ({
   discoveryRequest: vi.fn(),
   processDiscoveryResponse: vi.fn(),
@@ -62,6 +63,8 @@ describe("oauth.discovery", () => {
       });
 
       // Step 2: AS Metadata 成功
+      // normalizeUrl("https://www.figma.com").toString() = "https://www.figma.com/"
+      // issuer "https://www.figma.com" と末尾スラッシュ差異でリトライが走る
       const mockResponse = {
         ok: true,
         clone: () => ({
@@ -70,6 +73,16 @@ describe("oauth.discovery", () => {
       };
       vi.mocked(oauth.discoveryRequest).mockResolvedValueOnce(
         mockResponse as unknown as Response,
+      );
+      // 末尾スラッシュ差異のリトライ用モック
+      const retryResponse = {
+        ok: true,
+        clone: () => ({
+          json: async () => mockMetadata,
+        }),
+      };
+      vi.mocked(oauth.discoveryRequest).mockResolvedValueOnce(
+        retryResponse as unknown as Response,
       );
       vi.mocked(oauth.processDiscoveryResponse).mockResolvedValueOnce(
         mockMetadata,

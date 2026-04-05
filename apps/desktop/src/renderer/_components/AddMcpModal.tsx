@@ -103,8 +103,6 @@ export const AddMcpModal = ({
           command: catalog.command,
           args: catalog.args,
           url: catalog.url!,
-          oauthClientId: catalog.oauthClientId ?? undefined,
-          oauthClientSecret: catalog.oauthClientSecret ?? undefined,
         });
         // ブラウザで認証中 — oauth:success / oauth:error イベントを待つ
       } catch {

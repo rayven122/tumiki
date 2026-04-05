@@ -9,6 +9,7 @@
  */
 
 import * as oauth from "oauth4webapi";
+import * as logger from "../../shared/utils/logger";
 
 export class DiscoveryError extends Error {
   constructor(
@@ -71,7 +72,7 @@ export const discoverOAuthMetadata = async (
       !(error instanceof SyntaxError) &&
       !(error instanceof Error && error.name === "AbortError")
     ) {
-      console.warn(
+      logger.warn(
         `Unexpected error fetching Protected Resource Metadata: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
@@ -104,15 +105,26 @@ export const discoverOAuthMetadata = async (
         .clone()
         .json()) as oauth.AuthorizationServer;
       if (metadata.issuer !== issuer.toString()) {
-        // 末尾スラッシュの差異のみの場合はissuerを正規化して一致させる
+        // 末尾スラッシュの差異のみの場合はissuerを正規化して再試行
         const normalizedIssuer = issuer.toString().replace(/\/$/, "");
         const normalizedMetadataIssuer = metadata.issuer.replace(/\/$/, "");
         if (normalizedIssuer === normalizedMetadataIssuer) {
-          // 末尾スラッシュの差異のみ — processDiscoveryResponseのissuer検証をスキップ
+          // 正規化したissuerでprocessDiscoveryResponseを呼び直す
+          const correctedIssuer = normalizeUrl(metadata.issuer);
+          const retryResponse = await oauth.discoveryRequest(correctedIssuer, {
+            algorithm: "oauth2",
+          });
+          if (retryResponse.ok) {
+            return await oauth.processDiscoveryResponse(
+              correctedIssuer,
+              retryResponse,
+            );
+          }
+          // リトライ失敗時はメタデータをそのまま使用
           return metadata;
         }
 
-        console.warn(
+        logger.warn(
           `Issuer mismatch: expected ${issuer.toString()}, got ${metadata.issuer}`,
         );
 

@@ -1,8 +1,19 @@
 import { ipcMain } from "electron";
+import { z } from "zod";
 import type { McpOAuthManager } from "./oauth.service";
-import type { StartOAuthInput } from "./oauth.types";
 import { DiscoveryError } from "./oauth.discovery";
 import * as logger from "../../shared/utils/logger";
+
+/** IPC入力のバリデーションスキーマ */
+const StartOAuthInputSchema = z.object({
+  catalogId: z.number().int().positive(),
+  catalogName: z.string().min(1),
+  description: z.string(),
+  transportType: z.enum(["STDIO", "SSE", "STREAMABLE_HTTP"]),
+  command: z.string().nullable(),
+  args: z.string(),
+  url: z.url(),
+});
 
 /**
  * OAuthエラーをユーザー向けメッセージに変換
@@ -36,7 +47,8 @@ export const setupOAuthIpc = (manager: McpOAuthManager): void => {
   // OAuth認証フロー開始（ブラウザを開く）
   ipcMain.handle("oauth:startAuth", async (_, input: unknown) => {
     try {
-      await manager.startAuthFlow(input as StartOAuthInput);
+      const parsed = StartOAuthInputSchema.parse(input);
+      await manager.startAuthFlow(parsed);
     } catch (error) {
       logger.error(
         "Failed to start MCP OAuth flow",

@@ -22,21 +22,44 @@ export type CatalogSeedData = {
 };
 
 /**
- * すべてのカタログを名前の昇順で取得（oauthClientSecretを復号化）
+ * すべてのカタログを名前の昇順で取得
+ * oauthClientSecretはrendererに露出させないためnullに置換
  */
 export const findAll = async (db: PrismaClient) => {
   const catalogs = await db.mcpCatalog.findMany({
     orderBy: { name: "asc" },
   });
 
-  return Promise.all(
-    catalogs.map(async (catalog) => ({
-      ...catalog,
-      oauthClientSecret: catalog.oauthClientSecret
-        ? await decryptToken(catalog.oauthClientSecret)
-        : null,
-    })),
-  );
+  // シークレットをrendererに渡さない
+  return catalogs.map((catalog) => ({
+    ...catalog,
+    oauthClientSecret: null,
+  }));
+};
+
+/**
+ * カタログIDからOAuthクライアント情報を復号化して取得（mainプロセス専用）
+ */
+export const findOAuthClientById = async (
+  db: PrismaClient,
+  catalogId: number,
+): Promise<{
+  oauthClientId: string | null;
+  oauthClientSecret: string | null;
+}> => {
+  const catalog = await db.mcpCatalog.findUnique({
+    where: { id: catalogId },
+    select: { oauthClientId: true, oauthClientSecret: true },
+  });
+
+  if (!catalog) return { oauthClientId: null, oauthClientSecret: null };
+
+  return {
+    oauthClientId: catalog.oauthClientId,
+    oauthClientSecret: catalog.oauthClientSecret
+      ? await decryptToken(catalog.oauthClientSecret)
+      : null,
+  };
 };
 
 /**
