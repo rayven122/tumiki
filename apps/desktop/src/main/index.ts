@@ -5,7 +5,7 @@ import { setupAuthIpc } from "./ipc/auth";
 import { setupCatalogIpc } from "./features/catalog/catalog.ipc";
 import { setupMcpIpc } from "./features/mcp/mcp.ipc";
 import { setupMcpProxyIpc } from "./mcp/mcp-proxy.ipc";
-import { stopProxy } from "./mcp/mcp.service";
+import { startMcpServers, stopProxy } from "./mcp/mcp.service";
 import { seedCatalogs } from "./features/catalog/catalog.seed";
 import { createOAuthManager } from "./auth/oauth-manager";
 import { getOAuthManager, setOAuthManager } from "./auth/manager-registry";
@@ -16,16 +16,24 @@ import * as logger from "./shared/utils/logger";
 const isMcpProxyMode = process.argv.includes("--mcp-proxy");
 
 if (isMcpProxyMode) {
-  // Electronのready後にcli.tsのrunMcpProxyを実行
+  // Electronのready後にDB初期化 → 設定読み込み → cli.tsのrunMcpProxyを実行
   // stdioを使うためGUI・シングルインスタンスロック等は不要
   void app.whenReady().then(async () => {
     // macOSでDockアイコンを非表示にする（CLIモードのためGUI不要）
     app.dock?.hide();
+
+    // DB初期化 → 有効なMCPサーバー設定を取得
+    await initializeDb();
+    const { getEnabledConfigs } = await import("./features/mcp/mcp.service");
+    const configs = await getEnabledConfigs();
+
     const { join } = await import("path");
     const mod = (await import(join(__dirname, "mcp-cli.cjs"))) as {
-      runMcpProxy: () => Promise<void>;
+      runMcpProxy: (
+        configs: import("@tumiki/mcp-proxy-core").McpServerConfig[],
+      ) => Promise<void>;
     };
-    await mod.runMcpProxy();
+    await mod.runMcpProxy(configs);
   });
 } else {
   const PROTOCOL = "tumiki-desktop";
@@ -225,6 +233,16 @@ if (isMcpProxyMode) {
       setupMcpProxyIpc();
 
       createWindow();
+
+      // 有効なMCPサーバーを自動起動（失敗してもアプリ起動は継続）
+      startMcpServers().catch((error) => {
+        logger.error(
+          "Failed to auto-start MCP servers (non-critical, continuing startup)",
+          {
+            error: error instanceof Error ? error.message : error,
+          },
+        );
+      });
 
       // スリープ復帰時にトークンの有効期限を再チェック
       powerMonitor.on("resume", () => {

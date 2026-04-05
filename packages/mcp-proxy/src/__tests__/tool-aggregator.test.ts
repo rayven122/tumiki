@@ -45,7 +45,7 @@ describe("ToolAggregator", () => {
         ]),
       });
       const clients = new Map([["serena", client]]);
-      const aggregator = createToolAggregator(clients, mockLogger);
+      const aggregator = createToolAggregator(() => clients, mockLogger);
 
       const tools = await aggregator.listTools();
 
@@ -84,7 +84,7 @@ describe("ToolAggregator", () => {
         ["serena", serenaClient],
         ["github", githubClient],
       ]);
-      const aggregator = createToolAggregator(clients, mockLogger);
+      const aggregator = createToolAggregator(() => clients, mockLogger);
 
       const tools = await aggregator.listTools();
 
@@ -114,7 +114,7 @@ describe("ToolAggregator", () => {
         ["serena", serenaClient],
         ["other", otherClient],
       ]);
-      const aggregator = createToolAggregator(clients, mockLogger);
+      const aggregator = createToolAggregator(() => clients, mockLogger);
 
       const tools = await aggregator.listTools();
 
@@ -138,7 +138,7 @@ describe("ToolAggregator", () => {
         ["good", goodClient],
         ["bad", badClient],
       ]);
-      const aggregator = createToolAggregator(clients, mockLogger);
+      const aggregator = createToolAggregator(() => clients, mockLogger);
 
       const tools = await aggregator.listTools();
 
@@ -149,7 +149,7 @@ describe("ToolAggregator", () => {
 
     test("クライアントが0件の場合は空配列を返す", async () => {
       const clients = new Map<string, UpstreamClient>();
-      const aggregator = createToolAggregator(clients, mockLogger);
+      const aggregator = createToolAggregator(() => clients, mockLogger);
 
       const tools = await aggregator.listTools();
 
@@ -165,7 +165,7 @@ describe("ToolAggregator", () => {
       });
       const client = createMockClient("serena", { callTool: mockCallTool });
       const clients = new Map([["serena", client]]);
-      const aggregator = createToolAggregator(clients, mockLogger);
+      const aggregator = createToolAggregator(() => clients, mockLogger);
 
       const result = await aggregator.callTool("serena__read_file", {
         path: "/tmp/test",
@@ -182,7 +182,7 @@ describe("ToolAggregator", () => {
 
     test("存在しないサーバー名の場合はエラーになる", async () => {
       const clients = new Map<string, UpstreamClient>();
-      const aggregator = createToolAggregator(clients, mockLogger);
+      const aggregator = createToolAggregator(() => clients, mockLogger);
 
       await expect(aggregator.callTool("unknown__tool1", {})).rejects.toThrow(
         'サーバー "unknown" が見つかりません',
@@ -191,7 +191,7 @@ describe("ToolAggregator", () => {
 
     test("プレフィックスのないツール名の場合はエラーになる", async () => {
       const clients = new Map<string, UpstreamClient>();
-      const aggregator = createToolAggregator(clients, mockLogger);
+      const aggregator = createToolAggregator(() => clients, mockLogger);
 
       await expect(aggregator.callTool("tool1", {})).rejects.toThrow(
         "フォーマットが不正です",
@@ -203,7 +203,7 @@ describe("ToolAggregator", () => {
         getStatus: vi.fn().mockReturnValue("error"),
       });
       const clients = new Map([["serena", client]]);
-      const aggregator = createToolAggregator(clients, mockLogger);
+      const aggregator = createToolAggregator(() => clients, mockLogger);
 
       await expect(
         aggregator.callTool("serena__read_file", {}),
@@ -217,7 +217,7 @@ describe("ToolAggregator", () => {
       });
       const client = createMockClient("serena", { callTool: mockCallTool });
       const clients = new Map([["serena", client]]);
-      const aggregator = createToolAggregator(clients, mockLogger);
+      const aggregator = createToolAggregator(() => clients, mockLogger);
 
       await aggregator.callTool("serena__some__tool", {});
 

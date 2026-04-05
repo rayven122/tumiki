@@ -156,4 +156,180 @@ describe("mcp.service", () => {
       expect(mcpRepository.findAllWithConnections).toHaveBeenCalledWith(mockDb);
     });
   });
+
+  describe("getEnabledConfigs", () => {
+    test("有効なSTDIO接続をMcpServerConfig[]に変換する", async () => {
+      vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([
+        {
+          id: 1,
+          name: "Serena",
+          slug: "serena",
+          transportType: "STDIO",
+          command: "uvx",
+          args: '["serena","start-mcp-server"]',
+          url: null,
+          credentials: '{"API_KEY":"test-key"}',
+          authType: "NONE",
+          isEnabled: true,
+          displayOrder: 0,
+          serverId: 1,
+          catalogId: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          server: {
+            id: 1,
+            name: "Test Server",
+            slug: "test-server",
+            description: "",
+            serverStatus: "STOPPED",
+            isEnabled: true,
+            displayOrder: 0,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        },
+      ] as Awaited<ReturnType<typeof mcpRepository.findEnabledConnections>>);
+
+      const result = await mcpService.getEnabledConfigs();
+
+      expect(result).toStrictEqual([
+        {
+          name: "test-server/serena",
+          command: "uvx",
+          args: ["serena", "start-mcp-server"],
+          env: { API_KEY: "test-key" },
+        },
+      ]);
+    });
+
+    test("SSE接続はスキップする", async () => {
+      vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([
+        {
+          id: 1,
+          name: "SSE Server",
+          slug: "sse-server",
+          transportType: "SSE",
+          command: null,
+          args: "[]",
+          url: "http://localhost:3000/sse",
+          credentials: "{}",
+          authType: "NONE",
+          isEnabled: true,
+          displayOrder: 0,
+          serverId: 1,
+          catalogId: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          server: {
+            id: 1,
+            name: "Test",
+            slug: "test",
+            description: "",
+            serverStatus: "STOPPED",
+            isEnabled: true,
+            displayOrder: 0,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        },
+      ] as Awaited<ReturnType<typeof mcpRepository.findEnabledConnections>>);
+
+      const result = await mcpService.getEnabledConfigs();
+
+      expect(result).toStrictEqual([]);
+    });
+
+    test("commandがnullのSTDIO接続はスキップする", async () => {
+      vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([
+        {
+          id: 1,
+          name: "No Command",
+          slug: "no-command",
+          transportType: "STDIO",
+          command: null,
+          args: "[]",
+          url: null,
+          credentials: "{}",
+          authType: "NONE",
+          isEnabled: true,
+          displayOrder: 0,
+          serverId: 1,
+          catalogId: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          server: {
+            id: 1,
+            name: "Test",
+            slug: "test",
+            description: "",
+            serverStatus: "STOPPED",
+            isEnabled: true,
+            displayOrder: 0,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        },
+      ] as Awaited<ReturnType<typeof mcpRepository.findEnabledConnections>>);
+
+      const result = await mcpService.getEnabledConfigs();
+
+      expect(result).toStrictEqual([]);
+    });
+
+    test("接続が0件の場合は空配列を返す", async () => {
+      vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([]);
+
+      const result = await mcpService.getEnabledConfigs();
+
+      expect(result).toStrictEqual([]);
+    });
+  });
+
+  describe("updateServer", () => {
+    test("サーバー情報を更新する", async () => {
+      const mockUpdated = { id: 1, name: "Updated" };
+      vi.mocked(mcpRepository.updateServer).mockResolvedValue(
+        mockUpdated as Awaited<ReturnType<typeof mcpRepository.updateServer>>,
+      );
+
+      const result = await mcpService.updateServer(1, { name: "Updated" });
+
+      expect(result).toStrictEqual(mockUpdated);
+      expect(mcpRepository.updateServer).toHaveBeenCalledWith(mockDb, 1, {
+        name: "Updated",
+      });
+    });
+  });
+
+  describe("deleteServer", () => {
+    test("サーバーを削除する", async () => {
+      vi.mocked(mcpRepository.deleteServer).mockResolvedValue(
+        {} as Awaited<ReturnType<typeof mcpRepository.deleteServer>>,
+      );
+
+      await mcpService.deleteServer(1);
+
+      expect(mcpRepository.deleteServer).toHaveBeenCalledWith(mockDb, 1);
+    });
+  });
+
+  describe("toggleServer", () => {
+    test("サーバーのenabled状態を切り替える", async () => {
+      const mockToggled = { id: 1, isEnabled: false };
+      vi.mocked(mcpRepository.toggleServerEnabled).mockResolvedValue(
+        mockToggled as Awaited<
+          ReturnType<typeof mcpRepository.toggleServerEnabled>
+        >,
+      );
+
+      const result = await mcpService.toggleServer(1, false);
+
+      expect(result).toStrictEqual(mockToggled);
+      expect(mcpRepository.toggleServerEnabled).toHaveBeenCalledWith(
+        mockDb,
+        1,
+        false,
+      );
+    });
+  });
 });

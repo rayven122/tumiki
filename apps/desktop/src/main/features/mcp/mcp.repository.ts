@@ -68,3 +68,53 @@ export const findServerBySlug = async (db: PrismaClient, slug: string) => {
 export const findServerByName = async (db: PrismaClient, name: string) => {
   return db.mcpServer.findFirst({ where: { name } });
 };
+
+/**
+ * 有効なサーバーの有効な接続を全件取得（Proxy起動時のconfig生成用）
+ */
+export const findEnabledConnections = async (db: PrismaClient) => {
+  return db.mcpConnection.findMany({
+    where: {
+      isEnabled: true,
+      server: { isEnabled: true },
+    },
+    include: { server: true },
+    orderBy: { displayOrder: "asc" },
+  });
+};
+
+/**
+ * IDでサーバーを取得
+ */
+export const findServerById = async (db: PrismaClient, id: number) => {
+  return db.mcpServer.findUnique({ where: { id } });
+};
+
+/**
+ * サーバー情報を更新
+ */
+export const updateServer = async (
+  db: PrismaClient,
+  id: number,
+  data: { name?: string; description?: string },
+) => {
+  return db.mcpServer.update({ where: { id }, data });
+};
+
+/**
+ * サーバーを削除（カスケードで接続も削除）
+ */
+export const deleteServer = async (db: PrismaClient, id: number) => {
+  return db.mcpServer.delete({ where: { id } });
+};
+
+/**
+ * サーバーのenabled状態を切り替え
+ */
+export const toggleServerEnabled = async (
+  db: PrismaClient,
+  id: number,
+  isEnabled: boolean,
+) => {
+  return db.mcpServer.update({ where: { id }, data: { isEnabled } });
+};

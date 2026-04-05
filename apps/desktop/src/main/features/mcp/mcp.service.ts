@@ -1,3 +1,4 @@
+import type { McpServerConfig } from "@tumiki/mcp-proxy-core";
 import { getDb } from "../../shared/db";
 import * as mcpRepository from "./mcp.repository";
 import * as logger from "../../shared/utils/logger";
@@ -82,4 +83,48 @@ export const createFromCatalog = async (
 export const getAllServers = async () => {
   const db = await getDb();
   return mcpRepository.findAllWithConnections(db);
+};
+
+/**
+ * 有効な接続からMcpServerConfig[]を生成（Proxy起動時に使用）
+ */
+export const getEnabledConfigs = async (): Promise<McpServerConfig[]> => {
+  const db = await getDb();
+  const connections = await mcpRepository.findEnabledConnections(db);
+
+  return connections
+    .filter((conn) => conn.transportType === "STDIO" && conn.command)
+    .map((conn) => ({
+      name: `${conn.server.slug}/${conn.slug}`,
+      command: conn.command as string,
+      args: JSON.parse(conn.args) as string[],
+      env: JSON.parse(conn.credentials) as Record<string, string>,
+    }));
+};
+
+/**
+ * サーバー情報を更新
+ */
+export const updateServer = async (
+  id: number,
+  data: { name?: string; description?: string },
+) => {
+  const db = await getDb();
+  return mcpRepository.updateServer(db, id, data);
+};
+
+/**
+ * サーバーを削除
+ */
+export const deleteServer = async (id: number) => {
+  const db = await getDb();
+  return mcpRepository.deleteServer(db, id);
+};
+
+/**
+ * サーバーのenabled状態を切り替え
+ */
+export const toggleServer = async (id: number, isEnabled: boolean) => {
+  const db = await getDb();
+  return mcpRepository.toggleServerEnabled(db, id, isEnabled);
 };

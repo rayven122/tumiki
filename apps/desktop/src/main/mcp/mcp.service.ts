@@ -14,7 +14,9 @@ import type {
   McpToolInfo,
   CallToolResult,
   CallToolPayload,
+  McpServerConfig,
 } from "@tumiki/mcp-proxy-core";
+import { getEnabledConfigs } from "../features/mcp/mcp.service";
 
 // IPC戻り値のzodスキーマ
 const mcpToolInfoSchema = z.object({
@@ -66,15 +68,18 @@ let crashHandled = false;
 
 /**
  * Proxy Processにリクエストを送信し、レスポンスを待つ
- * call-toolリクエスト時はpayloadを必須にする
+ * start/call-toolリクエスト時はpayloadを必須にする
  */
 const sendRequest: {
+  (
+    type: "start",
+    payload: { configs: McpServerConfig[] },
+  ): Promise<ProxyResponse>;
   (type: "call-tool", payload: CallToolPayload): Promise<ProxyResponse>;
-  (type: Exclude<ProxyRequest["type"], "call-tool">): Promise<ProxyResponse>;
-} = (
-  type: ProxyRequest["type"],
-  payload?: CallToolPayload,
-): Promise<ProxyResponse> => {
+  (
+    type: Exclude<ProxyRequest["type"], "start" | "call-tool">,
+  ): Promise<ProxyResponse>;
+} = (type: ProxyRequest["type"], payload?: unknown): Promise<ProxyResponse> => {
   return new Promise((resolve, reject) => {
     if (!proxyProcess) {
       reject(new Error("Proxy Processが起動していません"));
@@ -83,9 +88,7 @@ const sendRequest: {
 
     const id = randomUUID();
     const request = (
-      type === "call-tool"
-        ? { id, type, payload: payload as CallToolPayload }
-        : { id, type }
+      payload ? { id, type, payload } : { id, type }
     ) as ProxyRequest;
 
     const timer = setTimeout(() => {
@@ -199,7 +202,7 @@ const handleProcessCrash = (): void => {
     processRetryTimer = null;
     // プロセス再起動後にMCPサーバーへの再接続も行う
     void spawnProxy()
-      .then(() => sendRequest("start"))
+      .then(() => startMcpServers())
       .catch((error) => {
         logger.error("Proxy Process再起動後のMCPサーバー再接続に失敗しました", {
           error: error instanceof Error ? error.message : error,
@@ -299,13 +302,15 @@ const spawnProxy = async (): Promise<void> => {
 
 /**
  * MCPサーバーを起動（IPC経由）
+ * DBから有効な接続設定を読み込み、Proxy Processに渡す
  */
 export const startMcpServers = async (): Promise<McpServerState[]> => {
   if (!proxyProcess) {
     await spawnProxy();
   }
 
-  const response = await sendRequest("start");
+  const configs = await getEnabledConfigs();
+  const response = await sendRequest("start", { configs });
   if (!response.ok) {
     throw new Error(response.error);
   }
