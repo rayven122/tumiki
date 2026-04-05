@@ -1,0 +1,40 @@
+/**
+ * OAuth 2.0 認可URL生成
+ *
+ * 参考: apps/manager/src/lib/oauth/oauth-client.ts
+ */
+
+import type * as oauth from "oauth4webapi";
+
+/**
+ * Authorization URLを生成
+ *
+ * ブラウザで開くOAuth認可URLを組み立てる。
+ * PKCE (S256) + state パラメータを含む。
+ */
+export const generateAuthorizationUrl = (
+  authServer: oauth.AuthorizationServer,
+  client: oauth.Client,
+  params: {
+    redirectUri: string;
+    scopes: string[];
+    state: string;
+    codeChallenge: string;
+  },
+): URL => {
+  if (!authServer.authorization_endpoint) {
+    throw new Error("Authorization endpoint not found in server metadata");
+  }
+
+  const authUrl = new URL(authServer.authorization_endpoint);
+
+  authUrl.searchParams.set("client_id", client.client_id);
+  authUrl.searchParams.set("redirect_uri", params.redirectUri);
+  authUrl.searchParams.set("response_type", "code");
+  authUrl.searchParams.set("scope", params.scopes.join(" "));
+  authUrl.searchParams.set("state", params.state);
+  authUrl.searchParams.set("code_challenge", params.codeChallenge);
+  authUrl.searchParams.set("code_challenge_method", "S256");
+
+  return authUrl;
+};
