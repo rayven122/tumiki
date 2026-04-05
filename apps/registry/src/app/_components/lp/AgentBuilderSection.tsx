@@ -1,4 +1,11 @@
-import { Bot, Briefcase, Code, Headphones, Search, Sparkles } from "lucide-react";
+import {
+  Bot,
+  Briefcase,
+  Code,
+  Headphones,
+  Search,
+  Sparkles,
+} from "lucide-react";
 
 import AnimateIn from "./AnimateIn";
 
@@ -133,11 +140,7 @@ const AgentBuilderSection = () => {
                     }}
                   >
                     <div className="mb-3 flex items-center gap-2">
-                      <img
-                        src={t.logo}
-                        alt={t.service}
-                        className="h-5 w-5"
-                      />
+                      <img src={t.logo} alt={t.service} className="h-5 w-5" />
                       <span className="font-mono text-xs font-medium text-white">
                         {t.service}/{t.tool}
                       </span>
@@ -202,11 +205,7 @@ const AgentBuilderSection = () => {
                       key={ai.name}
                       className={`flex items-center gap-2 rounded-lg px-4 py-2.5 ${ai.on ? "border border-emerald-500/20 bg-emerald-500/[0.03]" : "border border-white/[0.04] bg-white/[0.01]"}`}
                     >
-                      <img
-                        src={ai.logo}
-                        alt={ai.name}
-                        className="h-4 w-4"
-                      />
+                      <img src={ai.logo} alt={ai.name} className="h-4 w-4" />
                       <span
                         className={`text-[11px] ${ai.on ? "text-white" : "text-zinc-600"}`}
                       >

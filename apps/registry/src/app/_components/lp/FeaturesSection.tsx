@@ -129,11 +129,7 @@ const FeaturesSection = () => {
   );
 
   // ツール単位のトグル
-  const flipTool = (
-    roleIdx: number,
-    svcIdx: number,
-    toolIdx: number,
-  ) => {
+  const flipTool = (roleIdx: number, svcIdx: number, toolIdx: number) => {
     setToolMatrix((prev) =>
       prev.map((role, ri) =>
         ri === roleIdx
@@ -464,11 +460,8 @@ const FeaturesSection = () => {
               {ROLES.map((role, ri) => {
                 const isActive = activeRoles.has(ri);
                 const enabledTools =
-                  toolMatrix[ri]
-                    ?.flat()
-                    .filter(Boolean).length ?? 0;
-                const totalTools =
-                  toolMatrix[ri]?.flat().length ?? 0;
+                  toolMatrix[ri]?.flat().filter(Boolean).length ?? 0;
+                const totalTools = toolMatrix[ri]?.flat().length ?? 0;
 
                 return (
                   <div
@@ -539,7 +532,7 @@ const FeaturesSection = () => {
                         })}
                       </div>
 
-                      <span className="ml-auto text-[9px] tabular-nums text-zinc-600">
+                      <span className="ml-auto text-[9px] text-zinc-600 tabular-nums">
                         {isActive
                           ? `${enabledTools}/${totalTools} tools`
                           : `${getEnabledSvcCount(ri)}/${SERVICES.length} サービス`}
@@ -587,7 +580,7 @@ const FeaturesSection = () => {
                                       {svc.name}
                                     </span>
                                     <div className="ml-auto flex items-center gap-2">
-                                      <span className="text-[9px] tabular-nums text-zinc-600">
+                                      <span className="text-[9px] text-zinc-600 tabular-nums">
                                         {toolMatrix[ri]?.[si]?.filter(Boolean)
                                           .length ?? 0}
                                         /{svc.tools.length}

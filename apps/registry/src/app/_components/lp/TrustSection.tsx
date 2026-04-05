@@ -113,21 +113,56 @@ const ProtocolSvg = ({ mx, my }: { mx: number; my: number }) => {
     >
       {/* === 軌道トラック（固定） === */}
       <g style={mouseStyle(mx, my, 0.1)}>
-        <circle cx="100" cy="100" r={orbitR} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="0.6" />
-        <circle cx="100" cy="100" r={orbitR - 16} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="0.4" strokeDasharray="3 5" />
-        <circle cx="100" cy="100" r={orbitR + 16} fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="0.3" strokeDasharray="2 6" />
+        <circle
+          cx="100"
+          cy="100"
+          r={orbitR}
+          fill="none"
+          stroke="rgba(255,255,255,0.1)"
+          strokeWidth="0.6"
+        />
+        <circle
+          cx="100"
+          cy="100"
+          r={orbitR - 16}
+          fill="none"
+          stroke="rgba(255,255,255,0.04)"
+          strokeWidth="0.4"
+          strokeDasharray="3 5"
+        />
+        <circle
+          cx="100"
+          cy="100"
+          r={orbitR + 16}
+          fill="none"
+          stroke="rgba(255,255,255,0.03)"
+          strokeWidth="0.3"
+          strokeDasharray="2 6"
+        />
       </g>
 
       {/* === 中央ハブ（固定、ラベルなし） === */}
       <g style={mouseStyle(mx, my, 0.4)}>
         <g style={floatStyle(0.15)}>
-          <circle cx="100" cy="100" r="14" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.2)" strokeWidth="0.7" />
+          <circle
+            cx="100"
+            cy="100"
+            r="14"
+            fill="rgba(255,255,255,0.03)"
+            stroke="rgba(255,255,255,0.2)"
+            strokeWidth="0.7"
+          />
           <circle cx="100" cy="100" r="4" fill="rgba(52,211,153,0.2)" />
         </g>
       </g>
 
       {/* === 回転する5衛星 === */}
-      <g style={{ transformOrigin: "100px 100px", animation: "orbit 28s linear infinite" }}>
+      <g
+        style={{
+          transformOrigin: "100px 100px",
+          animation: "orbit 28s linear infinite",
+        }}
+      >
         {satellites.map((sat) => {
           const rad = (sat.angle * Math.PI) / 180;
           const sx = 100 + orbitR * Math.cos(rad);
@@ -135,9 +170,24 @@ const ProtocolSvg = ({ mx, my }: { mx: number; my: number }) => {
           return (
             <g key={sat.label}>
               {/* ハブへの接続線 */}
-              <line x1={100} y1={100} x2={sx} y2={sy} stroke={`rgba(${sat.color},0.1)`} strokeWidth="0.4" strokeDasharray="2 3" />
+              <line
+                x1={100}
+                y1={100}
+                x2={sx}
+                y2={sy}
+                stroke={`rgba(${sat.color},0.1)`}
+                strokeWidth="0.4"
+                strokeDasharray="2 3"
+              />
               {/* ノード */}
-              <circle cx={sx} cy={sy} r="13" fill={`rgba(${sat.color},0.04)`} stroke={`rgba(${sat.color},0.35)`} strokeWidth="0.7" />
+              <circle
+                cx={sx}
+                cy={sy}
+                r="13"
+                fill={`rgba(${sat.color},0.04)`}
+                stroke={`rgba(${sat.color},0.35)`}
+                strokeWidth="0.7"
+              />
               <circle cx={sx} cy={sy} r="3" fill={`rgba(${sat.color},0.15)`} />
               {/* ラベル（逆回転で水平維持） */}
               <text
@@ -147,7 +197,10 @@ const ProtocolSvg = ({ mx, my }: { mx: number; my: number }) => {
                 fill={`rgba(${sat.color},0.65)`}
                 fontSize="7"
                 fontFamily="monospace"
-                style={{ transformOrigin: `${sx}px ${sy + 4}px`, animation: "orbit 28s linear infinite reverse" }}
+                style={{
+                  transformOrigin: `${sx}px ${sy + 4}px`,
+                  animation: "orbit 28s linear infinite reverse",
+                }}
               >
                 {sat.label}
               </text>
@@ -178,9 +231,24 @@ const Block = ({
   const h = size * 0.7;
   return (
     <>
-      <path d={`M${cx},${cy - hh} L${cx + hw},${cy} L${cx},${cy + hh} L${cx - hw},${cy} Z`} fill={`rgba(${color},${fo * 1.5})`} stroke={`rgba(${color},0.3)`} strokeWidth="0.5" />
-      <path d={`M${cx - hw},${cy} L${cx},${cy + hh} L${cx},${cy + hh + h} L${cx - hw},${cy + h} Z`} fill={`rgba(${color},${fo})`} stroke={`rgba(${color},0.2)`} strokeWidth="0.5" />
-      <path d={`M${cx + hw},${cy} L${cx},${cy + hh} L${cx},${cy + hh + h} L${cx + hw},${cy + h} Z`} fill={`rgba(${color},${fo * 0.7})`} stroke={`rgba(${color},0.15)`} strokeWidth="0.5" />
+      <path
+        d={`M${cx},${cy - hh} L${cx + hw},${cy} L${cx},${cy + hh} L${cx - hw},${cy} Z`}
+        fill={`rgba(${color},${fo * 1.5})`}
+        stroke={`rgba(${color},0.3)`}
+        strokeWidth="0.5"
+      />
+      <path
+        d={`M${cx - hw},${cy} L${cx},${cy + hh} L${cx},${cy + hh + h} L${cx - hw},${cy + h} Z`}
+        fill={`rgba(${color},${fo})`}
+        stroke={`rgba(${color},0.2)`}
+        strokeWidth="0.5"
+      />
+      <path
+        d={`M${cx + hw},${cy} L${cx},${cy + hh} L${cx},${cy + hh + h} L${cx + hw},${cy + h} Z`}
+        fill={`rgba(${color},${fo * 0.7})`}
+        stroke={`rgba(${color},0.15)`}
+        strokeWidth="0.5"
+      />
     </>
   );
 };
@@ -206,7 +274,15 @@ const SplitPlaneSvg = ({ mx, my }: { mx: number; my: number }) => (
     {/* === VPC→Desktopへの接続線 === */}
     {[45, 100, 155].map((cx, i) => (
       <g key={`conn-${i}`} style={mouseStyle(mx, my, 0.2)}>
-        <line x1={100} y1={95} x2={cx} y2={130} stroke="rgba(255,255,255,0.08)" strokeWidth="0.5" strokeDasharray="3 4" />
+        <line
+          x1={100}
+          y1={95}
+          x2={cx}
+          y2={130}
+          stroke="rgba(255,255,255,0.08)"
+          strokeWidth="0.5"
+          strokeDasharray="3 4"
+        />
       </g>
     ))}
 
@@ -233,7 +309,9 @@ const SplitPlaneSvg = ({ mx, my }: { mx: number; my: number }) => (
             fill="none"
             stroke="rgba(52,211,153,0.4)"
             strokeWidth="0.3"
-            style={{ animation: `pillar-pulse 3s ease-in-out ${i * 0.5}s infinite` }}
+            style={{
+              animation: `pillar-pulse 3s ease-in-out ${i * 0.5}s infinite`,
+            }}
           />
         </g>
       </g>
@@ -241,7 +319,17 @@ const SplitPlaneSvg = ({ mx, my }: { mx: number; my: number }) => (
 
     {/* ラベル */}
     {[45, 100, 155].map((cx, i) => (
-      <text key={`label-${i}`} x={cx} y={168} textAnchor="middle" fill="rgba(255,255,255,0.12)" fontSize="6" fontFamily="monospace">Desktop</text>
+      <text
+        key={`label-${i}`}
+        x={cx}
+        y={168}
+        textAnchor="middle"
+        fill="rgba(255,255,255,0.12)"
+        fontSize="6"
+        fontFamily="monospace"
+      >
+        Desktop
+      </text>
     ))}
   </svg>
 );

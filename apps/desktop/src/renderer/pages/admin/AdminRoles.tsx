@@ -1,9 +1,5 @@
 import { type JSX, useState } from "react";
-import {
-  ORG_USERS,
-  ROLE_DEFINITIONS,
-  SERVICES,
-} from "../../data/admin-mock";
+import { ORG_USERS, ROLE_DEFINITIONS, SERVICES } from "../../data/admin-mock";
 import type { UserRole } from "../../data/admin-mock";
 
 /** イニシャルアバター用ラベル */
@@ -51,7 +47,7 @@ const ModalOverlay = ({
 const AddRoleModal = ({ onClose }: { onClose: () => void }) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [selectedColor, setSelectedColor] = useState(ROLE_COLORS[4]);
+  const [selectedColor, setSelectedColor] = useState<string>(ROLE_COLORS[4]);
 
   return (
     <ModalOverlay onClose={onClose}>
@@ -176,9 +172,7 @@ const EditMembersModal = ({
 }) => {
   // 全ユーザーに対して、このロールに所属しているかの状態
   const [members, setMembers] = useState<Set<string>>(
-    new Set(
-      ORG_USERS.filter((u) => u.role === roleName).map((u) => u.id),
-    ),
+    new Set(ORG_USERS.filter((u) => u.role === roleName).map((u) => u.id)),
   );
 
   const toggleMember = (id: string) => {
@@ -230,9 +224,7 @@ const EditMembersModal = ({
               onClick={() => toggleMember(user.id)}
               className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors"
               style={{
-                backgroundColor: isMember
-                  ? `${roleColor}08`
-                  : "transparent",
+                backgroundColor: isMember ? `${roleColor}08` : "transparent",
               }}
             >
               {/* アバター */}
@@ -247,9 +239,7 @@ const EditMembersModal = ({
                 <span
                   className="text-[10px] font-semibold"
                   style={{
-                    color: isMember
-                      ? roleColor
-                      : "var(--text-secondary)",
+                    color: isMember ? roleColor : "var(--text-secondary)",
                   }}
                 >
                   {user.name.charAt(0)}
@@ -284,17 +274,11 @@ const EditMembersModal = ({
               <div
                 className="flex h-4 w-4 shrink-0 items-center justify-center rounded"
                 style={{
-                  backgroundColor: isMember
-                    ? roleColor
-                    : "transparent",
-                  border: isMember
-                    ? "none"
-                    : "1px solid var(--border)",
+                  backgroundColor: isMember ? roleColor : "transparent",
+                  border: isMember ? "none" : "1px solid var(--border)",
                 }}
               >
-                {isMember && (
-                  <span className="text-[10px] text-black">✓</span>
-                )}
+                {isMember && <span className="text-[10px] text-black">✓</span>}
               </div>
             </button>
           );
@@ -302,10 +286,7 @@ const EditMembersModal = ({
       </div>
 
       {/* 選択数 */}
-      <div
-        className="mt-3 text-[11px]"
-        style={{ color: "var(--text-muted)" }}
-      >
+      <div className="mt-3 text-[11px]" style={{ color: "var(--text-muted)" }}>
         {members.size}名 選択中
       </div>
 
@@ -357,7 +338,7 @@ const Toggle = ({
     className="relative h-3.5 w-6 shrink-0 cursor-pointer rounded-full transition-colors duration-300"
     style={{
       backgroundColor: on
-        ? color ?? "var(--accent, #34d399)"
+        ? (color ?? "var(--accent, #34d399)")
         : partial
           ? "#f59e0b"
           : "var(--bg-tertiary, rgba(255,255,255,0.15))",
