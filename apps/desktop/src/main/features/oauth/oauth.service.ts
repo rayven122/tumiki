@@ -100,9 +100,7 @@ export const createMcpOAuthManager = (): McpOAuthManager => {
       });
       clientId = fallbackClientId;
       clientSecret = fallbackClientSecret ?? null;
-      tokenEndpointAuthMethod = clientSecret
-        ? "client_secret_post"
-        : "none";
+      tokenEndpointAuthMethod = clientSecret ? "client_secret_post" : "none";
     } else {
       throw new DiscoveryError(
         "Server does not support Dynamic Client Registration",
