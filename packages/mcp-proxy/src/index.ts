@@ -7,6 +7,7 @@ export type {
   CallToolResult,
   CallToolPayload,
   Logger,
+  StartPayload,
   ProxyRequest,
   ProxyResponse,
   ProxyEvent,

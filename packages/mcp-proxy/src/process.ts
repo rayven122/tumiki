@@ -4,7 +4,7 @@
  */
 import type { ProxyCore } from "./core.js";
 import type { ProxyEvent, ProxyRequest, ProxyResponse } from "./types.js";
-import { createProxyCore, HARDCODED_CONFIGS } from "./core.js";
+import { createProxyCore } from "./core.js";
 import { stderrLogger as logger } from "./stderr-logger.js";
 
 /**
@@ -22,27 +22,62 @@ const sendToParent = (message: ProxyResponse | ProxyEvent): void => {
 
 /**
  * リクエストを処理してレスポンスを返す
+ * start時にconfigsを受け取り、ProxyCoreを（再）生成する
  */
 const handleRequest = async (
-  core: ProxyCore,
+  getCore: () => ProxyCore | null,
+  setCore: (core: ProxyCore) => void,
   request: ProxyRequest,
 ): Promise<ProxyResponse> => {
   try {
     switch (request.type) {
       case "start": {
-        await core.startAll();
-        const status = core.getStatus();
+        // 既存のcoreがあれば停止してから再生成
+        const existingCore = getCore();
+        if (existingCore) {
+          await existingCore.stopAll();
+        }
+        const newCore = createProxyCore(request.payload.configs, logger);
+        // 状態変更をMainに通知
+        newCore.onStatusChange((name, status, error) => {
+          const event: ProxyEvent = {
+            type: "status-changed",
+            payload: { name, status, error },
+          };
+          sendToParent(event);
+        });
+        setCore(newCore);
+        await newCore.startAll();
+        const status = newCore.getStatus();
         return { id: request.id, ok: true, result: status };
       }
       case "stop": {
+        const core = getCore();
+        if (!core) return { id: request.id, ok: true };
         await core.stopAll();
         return { id: request.id, ok: true };
       }
       case "list-tools": {
+        const core = getCore();
+        if (!core) {
+          return {
+            id: request.id,
+            ok: false,
+            error: "ProxyCoreが初期化されていません",
+          };
+        }
         const tools = await core.listTools();
         return { id: request.id, ok: true, result: tools };
       }
       case "call-tool": {
+        const core = getCore();
+        if (!core) {
+          return {
+            id: request.id,
+            ok: false,
+            error: "ProxyCoreが初期化されていません",
+          };
+        }
         if (
           !request.payload ||
           typeof request.payload.name !== "string" ||
@@ -62,6 +97,8 @@ const handleRequest = async (
         return { id: request.id, ok: true, result };
       }
       case "status": {
+        const core = getCore();
+        if (!core) return { id: request.id, ok: true, result: [] };
         const status = core.getStatus();
         return { id: request.id, ok: true, result: status };
       }
@@ -91,16 +128,12 @@ const handleRequest = async (
 const main = async (): Promise<void> => {
   logger.info("Proxy Process を起動しています...");
 
-  const core = createProxyCore(HARDCODED_CONFIGS, logger);
-
-  // 状態変更をMainに通知
-  core.onStatusChange((name, status, error) => {
-    const event: ProxyEvent = {
-      type: "status-changed",
-      payload: { name, status, error },
-    };
-    sendToParent(event);
-  });
+  // ProxyCoreはstart時にconfigsを受け取って動的に生成する
+  let core: ProxyCore | null = null;
+  const getCore = (): ProxyCore | null => core;
+  const setCore = (newCore: ProxyCore): void => {
+    core = newCore;
+  };
 
   // 既知のリクエストタイプ（satisfiesでProxyRequest["type"]との同期を保証）
   const validTypes = [
@@ -146,7 +179,7 @@ const main = async (): Promise<void> => {
       return;
     }
     const request = msg as ProxyRequest;
-    void handleRequest(core, request)
+    void handleRequest(getCore, setCore, request)
       .then((response) => {
         sendToParent(response);
       })
