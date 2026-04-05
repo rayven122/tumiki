@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { X, Info } from "lucide-react";
 import type { CatalogItem } from "../../types/catalog";
 
@@ -49,6 +49,35 @@ export const AddMcpModal = ({
     !needsApiKey ||
     credentialKeys.every((key) => (credentials[key] ?? "").trim() !== "");
 
+  const isOAuth = catalog.authType === "OAUTH";
+
+  // OAuth成功/エラーイベントのリスナー
+  const handleOAuthSuccess = useCallback(
+    (result: { serverId: number; serverName: string }) => {
+      setLoading(false);
+      onSuccess(result.serverName);
+    },
+    [onSuccess],
+  );
+
+  const handleOAuthError = useCallback((errorMsg: string) => {
+    setLoading(false);
+    setError(errorMsg);
+  }, []);
+
+  useEffect(() => {
+    if (!isOAuth) return;
+
+    const unsubSuccess =
+      window.electronAPI.oauth.onOAuthSuccess(handleOAuthSuccess);
+    const unsubError = window.electronAPI.oauth.onOAuthError(handleOAuthError);
+
+    return () => {
+      unsubSuccess();
+      unsubError();
+    };
+  }, [isOAuth, handleOAuthSuccess, handleOAuthError]);
+
   const handleSubmit = async (): Promise<void> => {
     if (!serverName.trim()) {
       setError("サーバー名を入力してください");
@@ -63,6 +92,27 @@ export const AddMcpModal = ({
     setLoading(true);
     setError(null);
 
+    // OAuth認証フロー
+    if (isOAuth) {
+      try {
+        await window.electronAPI.oauth.startAuth({
+          catalogId: catalog.id,
+          catalogName: serverName,
+          description: catalog.description,
+          transportType: catalog.transportType,
+          command: catalog.command,
+          args: catalog.args,
+          url: catalog.url!,
+        });
+        // ブラウザで認証中 — oauth:success / oauth:error イベントを待つ
+      } catch {
+        setError("OAuth認証の開始に失敗しました");
+        setLoading(false);
+      }
+      return;
+    }
+
+    // 通常フロー（NONE / API_KEY / BEARER）
     try {
       const result = await window.electronAPI.mcp.createFromCatalog({
         catalogId: catalog.id,
@@ -102,9 +152,11 @@ export const AddMcpModal = ({
             className="text-xl font-bold"
             style={{ color: "var(--text-primary)" }}
           >
-            {catalog.authType === "NONE"
-              ? "MCPサーバーの追加"
-              : "APIトークンの設定"}
+            {isOAuth
+              ? "OAuth認証"
+              : catalog.authType === "NONE"
+                ? "MCPサーバーの追加"
+                : "APIトークンの設定"}
           </h2>
           <button
             type="button"
@@ -118,9 +170,11 @@ export const AddMcpModal = ({
 
         {/* 説明文 */}
         <p className="mb-6 text-sm" style={{ color: "var(--text-muted)" }}>
-          {catalog.authType === "NONE"
-            ? `${catalog.name}をMCPサーバーとして追加します。`
-            : `${catalog.name}に接続するために必要なAPIトークンを設定してください。`}
+          {isOAuth
+            ? `${catalog.name}に接続するためにブラウザでOAuth認証を行います。`
+            : catalog.authType === "NONE"
+              ? `${catalog.name}をMCPサーバーとして追加します。`
+              : `${catalog.name}に接続するために必要なAPIトークンを設定してください。`}
         </p>
 
         {/* アイコン + 名前 + 認証バッジ */}
@@ -308,7 +362,12 @@ export const AddMcpModal = ({
         <div className="flex justify-end gap-3">
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => {
+              if (isOAuth && loading) {
+                window.electronAPI.oauth.cancelAuth();
+              }
+              onClose();
+            }}
             className="rounded-lg px-5 py-2.5 text-sm font-medium transition hover:opacity-80"
             style={{
               border: "1px solid var(--border)",
@@ -328,10 +387,14 @@ export const AddMcpModal = ({
             }}
           >
             {loading
-              ? "追加中..."
-              : catalog.authType === "NONE"
-                ? "追加"
-                : "認証"}
+              ? isOAuth
+                ? "ブラウザで認証中..."
+                : "追加中..."
+              : isOAuth
+                ? "ブラウザで認証"
+                : catalog.authType === "NONE"
+                  ? "追加"
+                  : "認証"}
           </button>
         </div>
       </div>

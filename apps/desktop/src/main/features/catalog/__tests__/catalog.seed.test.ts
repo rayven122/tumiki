@@ -13,6 +13,7 @@ vi.mock("../catalog.repository");
 
 // テスト対象のインポート（モックの後に行う）
 import { seedCatalogs } from "../catalog.seed";
+import { CATALOG_SEEDS } from "../seed-data";
 import { getDb } from "../../../shared/db";
 import * as catalogRepository from "../catalog.repository";
 
@@ -32,8 +33,10 @@ describe("catalog.seed", () => {
 
       await seedCatalogs();
 
-      // CATALOG_SEEDSの件数分upsertが呼ばれる（2件）
-      expect(catalogRepository.upsert).toHaveBeenCalledTimes(2);
+      // CATALOG_SEEDSの件数分upsertが呼ばれる
+      expect(catalogRepository.upsert).toHaveBeenCalledTimes(
+        CATALOG_SEEDS.length,
+      );
       // 最初の呼び出しを検証
       expect(catalogRepository.upsert).toHaveBeenCalledWith(
         mockDb,

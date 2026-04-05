@@ -4,13 +4,19 @@ import { resolve } from "path";
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()],
+    plugins: [externalizeDepsPlugin({ exclude: ["oauth4webapi"] })],
     define: {
       "process.env.KEYCLOAK_ISSUER": JSON.stringify(
         process.env.KEYCLOAK_ISSUER ?? "",
       ),
       "process.env.KEYCLOAK_DESKTOP_CLIENT_ID": JSON.stringify(
         process.env.KEYCLOAK_DESKTOP_CLIENT_ID ?? "",
+      ),
+      "process.env.GITHUB_MCP_CLIENT_ID": JSON.stringify(
+        process.env.GITHUB_MCP_CLIENT_ID ?? "",
+      ),
+      "process.env.GITHUB_MCP_CLIENT_SECRET": JSON.stringify(
+        process.env.GITHUB_MCP_CLIENT_SECRET ?? "",
       ),
     },
     resolve: {
