@@ -17,7 +17,6 @@ out
 apps/desktop
 apps/mcp-proxy
 apps/mcp-wrapper
-apps/registry
 
 # infrastructure
 docker
