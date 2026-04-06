@@ -52,7 +52,7 @@
     "@tumiki/slack": "workspace:*",
     "@tumiki/ui": "workspace:*",
     "@uiw/react-json-view": "2.0.0-alpha.41",
-    "@vercel/functions": "^2.2.13",
+    "@vercel/functions": "^3.4.3",
     "@xyflow/react": "^12.10.0",
     "ai": "^6.0.111",
     "classnames": "^2.5.1",
