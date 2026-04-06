@@ -16,6 +16,8 @@ out
 # apps not deployed to Vercel
 apps/desktop
 apps/mcp-proxy
+apps/mcp-wrapper
+apps/registry
 
 # infrastructure
 docker
@@ -40,6 +42,7 @@ test-results
 docs
 
 # misc
+tooling
 *.db
 *.db-journal
 *.tsbuildinfo
