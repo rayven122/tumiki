@@ -1,0 +1,49 @@
+# dependencies
+node_modules
+
+# git
+.git
+
+# build & cache
+.next
+.turbo
+.cache
+.vite
+dist
+build
+out
+
+# apps not deployed to Vercel
+apps/desktop
+apps/mcp-proxy
+apps/mcp-wrapper
+
+# infrastructure
+docker
+terraform
+scripts
+
+# testing
+coverage
+test-results
+.playwright-mcp
+.playwright-cli
+.nyc_output
+
+# editor & tools
+.claude
+.serena
+.vercel
+.vscode
+.idea
+
+# docs
+docs
+
+# misc
+tooling
+*.db
+*.db-journal
+*.tsbuildinfo
+*.log
+reports
