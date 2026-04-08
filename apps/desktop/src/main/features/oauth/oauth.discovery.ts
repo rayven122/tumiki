@@ -42,9 +42,9 @@ export const normalizeUrl = (serverUrl: string): URL => {
 };
 
 /** Protected Resource Metadata の JSON から、最初の authorization server URL を取る */
-async function fetchAuthorizationServerHint(
+const fetchAuthorizationServerHint = async (
   protectedResourceUrl: URL,
-): Promise<string | null> {
+): Promise<string | null> => {
   try {
     const res = await fetch(protectedResourceUrl.toString(), {
       headers: { Accept: "application/json" },
@@ -67,7 +67,7 @@ async function fetchAuthorizationServerHint(
     }
     return null;
   }
-}
+};
 
 /**
  * AS メタデータ取得に試す issuer URL の列。
@@ -75,12 +75,12 @@ async function fetchAuthorizationServerHint(
  * 未対応時は元の server URL と origin の順で試す（パス付き MCP のフォールバック）。
  */
 /** AS discovery で試す issuer URL の列（試行順のテスト用に export） */
-export function issuerUrlsToTry(params: {
+export const issuerUrlsToTry = (params: {
   authorizationServerHint: string | null;
   resourcePath: string;
   serverUrl: string;
   origin: string;
-}): string[] {
+}): string[] => {
   const { authorizationServerHint, resourcePath, serverUrl, origin } = params;
   if (authorizationServerHint) {
     return resourcePath
@@ -88,11 +88,11 @@ export function issuerUrlsToTry(params: {
       : [authorizationServerHint];
   }
   return resourcePath ? [serverUrl, origin] : [origin];
-}
+};
 
-async function parseAuthorizationServerBody(
+const parseAuthorizationServerBody = async (
   response: Response,
-): Promise<oauth.AuthorizationServer> {
+): Promise<oauth.AuthorizationServer> => {
   const raw: unknown = await response.clone().json();
   if (
     typeof raw !== "object" ||
@@ -105,14 +105,14 @@ async function parseAuthorizationServerBody(
     );
   }
   return raw as oauth.AuthorizationServer;
-}
+};
 
 /**
  * 単一の issuer URL で AS メタデータ取得を試みる。次の候補へ進むべき失敗は DiscoveryError を投げる。
  */
-async function tryDiscoverIssuer(
+const tryDiscoverIssuer = async (
   issuerUrl: string,
-): Promise<oauth.AuthorizationServer> {
+): Promise<oauth.AuthorizationServer> => {
   const issuer = normalizeUrl(issuerUrl);
   const response = await oauth.discoveryRequest(issuer, {
     algorithm: "oauth2",
@@ -131,16 +131,16 @@ async function tryDiscoverIssuer(
     return resolveIssuerMismatch(issuer, metadata);
   }
   return oauth.processDiscoveryResponse(issuer, response);
-}
+};
 
 /**
  * discovery レスポンスの issuer とリクエスト issuer が一致しないときの扱い。
  * 末尾スラッシュ差のみなら正規化 issuer で再取得。それ以外（CDN 等）でも実務上メタデータを採用する。
  */
-async function resolveIssuerMismatch(
+const resolveIssuerMismatch = async (
   requestedIssuer: URL,
   metadata: oauth.AuthorizationServer,
-): Promise<oauth.AuthorizationServer> {
+): Promise<oauth.AuthorizationServer> => {
   const req = requestedIssuer.toString().replace(/\/$/, "");
   const declared = metadata.issuer.replace(/\/$/, "");
   if (req === declared) {
@@ -154,6 +154,9 @@ async function resolveIssuerMismatch(
         retryResponse,
       );
     }
+    logger.warn(
+      `resolveIssuerMismatch retry failed, using raw metadata: issuer=${metadata.issuer}`,
+    );
     return metadata;
   }
 
@@ -161,7 +164,7 @@ async function resolveIssuerMismatch(
     `Issuer mismatch: expected ${requestedIssuer.toString()}, got ${metadata.issuer}`,
   );
   return metadata;
-}
+};
 
 /**
  * OAuth Authorization Server Metadataを取得

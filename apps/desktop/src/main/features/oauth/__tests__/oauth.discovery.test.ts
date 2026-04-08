@@ -64,7 +64,7 @@ describe("oauth.discovery", () => {
           serverUrl: "https://mcp.example.com/mcp",
           origin: "https://mcp.example.com",
         }),
-      ).toEqual(["https://auth.example.com", "https://auth.example.com/mcp"]);
+      ).toStrictEqual(["https://auth.example.com", "https://auth.example.com/mcp"]);
     });
 
     test("hint のみ（ルート PRM）のときは hint だけ試す", () => {
@@ -75,7 +75,7 @@ describe("oauth.discovery", () => {
           serverUrl: "https://example.com/",
           origin: "https://example.com",
         }),
-      ).toEqual(["https://auth.example.com"]);
+      ).toStrictEqual(["https://auth.example.com"]);
     });
 
     test("hint がないときパス付き MCP は serverUrl → origin の順", () => {
@@ -86,7 +86,7 @@ describe("oauth.discovery", () => {
           serverUrl: "https://example.com/mcp",
           origin: "https://example.com",
         }),
-      ).toEqual(["https://example.com/mcp", "https://example.com"]);
+      ).toStrictEqual(["https://example.com/mcp", "https://example.com"]);
     });
 
     test("hint がなくパスもルートのみのときは origin のみ", () => {
@@ -97,7 +97,7 @@ describe("oauth.discovery", () => {
           serverUrl: "https://example.com/",
           origin: "https://example.com",
         }),
-      ).toEqual(["https://example.com"]);
+      ).toStrictEqual(["https://example.com"]);
     });
   });
 
