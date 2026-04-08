@@ -5,8 +5,19 @@ import {
   beforeAll,
   beforeEach,
   afterAll,
+  vi,
 } from "vitest";
 import type { PrismaClient } from "@prisma/desktop-client";
+
+vi.mock("electron", () => ({
+  app: {
+    getPath: (name: string) =>
+      name === "userData" ? "/test/user/data" : "/test",
+  },
+  safeStorage: {
+    isEncryptionAvailable: () => false,
+  },
+}));
 import * as catalogRepository from "../catalog.repository";
 import type { CatalogSeedData } from "../catalog.repository";
 import { join } from "path";

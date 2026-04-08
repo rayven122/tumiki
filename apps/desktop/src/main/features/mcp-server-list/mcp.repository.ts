@@ -30,7 +30,15 @@ export type CreateMcpConnectionInput = {
  */
 export const findAllWithConnections = async (db: PrismaClient) => {
   return db.mcpServer.findMany({
-    include: { connections: true },
+    include: {
+      connections: {
+        include: {
+          catalog: {
+            select: { id: true, name: true, description: true, iconPath: true },
+          },
+        },
+      },
+    },
     orderBy: { createdAt: "desc" },
   });
 };

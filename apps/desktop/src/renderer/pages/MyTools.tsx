@@ -111,9 +111,20 @@ export const MyTools = (): JSX.Element => {
                 >
                   {/* アイコン + ステータスドット */}
                   <div className="mb-3 flex items-start justify-between">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--bg-card-hover)]">
-                      <Server size={18} className="text-[var(--text-muted)]" />
-                    </div>
+                    {server.connections[0]?.catalog?.iconPath ? (
+                      <img
+                        src={server.connections[0].catalog.iconPath}
+                        alt={server.name}
+                        className="h-8 w-8 rounded-lg"
+                      />
+                    ) : (
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--bg-card-hover)]">
+                        <Server
+                          size={18}
+                          className="text-[var(--text-muted)]"
+                        />
+                      </div>
+                    )}
                     <span
                       className={`h-2 w-2 rounded-full ${status.dotClass}`}
                     />
