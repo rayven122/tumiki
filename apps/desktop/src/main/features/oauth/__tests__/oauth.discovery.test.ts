@@ -64,7 +64,10 @@ describe("oauth.discovery", () => {
           serverUrl: "https://mcp.example.com/mcp",
           origin: "https://mcp.example.com",
         }),
-      ).toStrictEqual(["https://auth.example.com", "https://auth.example.com/mcp"]);
+      ).toStrictEqual([
+        "https://auth.example.com",
+        "https://auth.example.com/mcp",
+      ]);
     });
 
     test("hint のみ（ルート PRM）のときは hint だけ試す", () => {
