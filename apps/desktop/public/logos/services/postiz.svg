@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" aria-hidden="true">
+  <defs>
+    <linearGradient id="postiz-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="26" fill="url(#postiz-bg)"/>
+  <path
+    fill="#fff"
+    d="M38 88V40h28c14 0 22 8 22 20 0 12-8 20-22 20H52v8H38zm14-36v16h12c6 0 10-3 10-8s-4-8-10-8H52z"
+  />
+</svg>
