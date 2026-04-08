@@ -77,27 +77,11 @@ export const Sidebar = (): JSX.Element => {
       <Link
         key={item.path}
         to={item.path}
-        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors"
-        style={
+        className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
           isActive
-            ? {
-                backgroundColor: "var(--bg-active)",
-                color: "var(--text-primary)",
-              }
-            : { color: "var(--text-muted)" }
-        }
-        onMouseEnter={(e) => {
-          if (!isActive) {
-            e.currentTarget.style.backgroundColor = "var(--bg-card-hover)";
-            e.currentTarget.style.color = "var(--text-secondary)";
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (!isActive) {
-            e.currentTarget.style.backgroundColor = "transparent";
-            e.currentTarget.style.color = "var(--text-muted)";
-          }
-        }}
+            ? "bg-[var(--bg-active)] text-[var(--text-primary)]"
+            : "text-[var(--text-muted)] hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-secondary)]"
+        }`}
         title={!isOpen ? item.label : undefined}
       >
         {item.icon}
@@ -108,12 +92,9 @@ export const Sidebar = (): JSX.Element => {
 
   return (
     <aside
-      className="flex flex-col py-3 transition-all duration-200"
-      style={{
-        width: isOpen ? 220 : 56,
-        backgroundColor: "var(--bg-app)",
-        flexShrink: 0,
-      }}
+      className={`flex shrink-0 flex-col bg-[var(--bg-app)] py-3 transition-all duration-200 ${
+        isOpen ? "w-[220px]" : "w-14"
+      }`}
     >
       {/* ワークスペース */}
       <div className="mb-4 flex items-center justify-between px-3">
@@ -121,14 +102,10 @@ export const Sidebar = (): JSX.Element => {
           <img
             src="/rayven_white.png"
             alt="RAYVEN"
-            className="h-6 w-6 shrink-0"
-            style={{ filter: theme === "light" ? "invert(1)" : "none" }}
+            className={`h-6 w-6 shrink-0 ${theme === "light" ? "invert" : ""}`}
           />
           {isOpen && (
-            <span
-              className="truncate text-sm font-semibold"
-              style={{ color: "var(--text-primary)" }}
-            >
+            <span className="truncate text-sm font-semibold text-[var(--text-primary)]">
               RAYVEN
             </span>
           )}
@@ -136,14 +113,7 @@ export const Sidebar = (): JSX.Element => {
         {isOpen && (
           <button
             onClick={() => setIsOpen(false)}
-            className="shrink-0 rounded-md p-1 transition-colors"
-            style={{ color: "var(--text-subtle)" }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "var(--text-secondary)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "var(--text-subtle)";
-            }}
+            className="shrink-0 rounded-md p-1 text-[var(--text-subtle)] transition-colors hover:text-[var(--text-secondary)]"
             aria-label="サイドバーを閉じる"
           >
             <PanelLeftClose size={16} />
@@ -156,16 +126,7 @@ export const Sidebar = (): JSX.Element => {
         <div className="mb-2 px-3">
           <button
             onClick={() => setIsOpen(true)}
-            className="flex w-full items-center justify-center rounded-md p-1.5 transition-colors"
-            style={{ color: "var(--text-subtle)" }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "var(--text-secondary)";
-              e.currentTarget.style.backgroundColor = "var(--bg-card-hover)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "var(--text-subtle)";
-              e.currentTarget.style.backgroundColor = "transparent";
-            }}
+            className="flex w-full items-center justify-center rounded-md p-1.5 text-[var(--text-subtle)] transition-colors hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-secondary)]"
             aria-label="サイドバーを開く"
           >
             <PanelLeft size={16} />
@@ -178,15 +139,9 @@ export const Sidebar = (): JSX.Element => {
         <div className="space-y-0.5">{mainNav.map(renderLink)}</div>
 
         {/* カスタムコネクタ */}
-        <div
-          className="mt-2 space-y-0.5 pt-2"
-          style={{ borderTop: "1px solid var(--border)" }}
-        >
+        <div className="mt-2 space-y-0.5 border-t border-t-[var(--border)] pt-2">
           {isOpen && (
-            <div
-              className="px-3 pt-1 pb-1 text-[10px] font-medium tracking-wider uppercase"
-              style={{ color: "var(--text-subtle)" }}
-            >
+            <div className="px-3 pt-1 pb-1 text-[10px] font-medium tracking-wider text-[var(--text-subtle)] uppercase">
               カスタムコネクタ
             </div>
           )}
@@ -204,15 +159,9 @@ export const Sidebar = (): JSX.Element => {
 
         {/* 管理セクション（Admin/Managerのみ表示） */}
         {(CURRENT_USER.role === "Admin" || CURRENT_USER.role === "Manager") && (
-          <div
-            className="mt-2 space-y-0.5 pt-2"
-            style={{ borderTop: "1px solid var(--border)" }}
-          >
+          <div className="mt-2 space-y-0.5 border-t border-t-[var(--border)] pt-2">
             {isOpen && (
-              <div
-                className="px-3 pt-1 pb-1 text-[10px] font-medium tracking-wider uppercase"
-                style={{ color: "var(--text-subtle)" }}
-              >
+              <div className="px-3 pt-1 pb-1 text-[10px] font-medium tracking-wider text-[var(--text-subtle)] uppercase">
                 管理
               </div>
             )}
@@ -221,45 +170,20 @@ export const Sidebar = (): JSX.Element => {
         )}
 
         {/* 通知リンク */}
-        <div
-          className="mt-2 space-y-0.5 pt-2"
-          style={{ borderTop: "1px solid var(--border)" }}
-        >
+        <div className="mt-2 space-y-0.5 border-t border-t-[var(--border)] pt-2">
           <Link
             to={notificationNav.path}
-            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors"
-            style={
+            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
               location.pathname.startsWith(notificationNav.path)
-                ? {
-                    backgroundColor: "var(--bg-active)",
-                    color: "var(--text-primary)",
-                  }
-                : { color: "var(--text-muted)" }
-            }
-            onMouseEnter={(e) => {
-              if (!location.pathname.startsWith(notificationNav.path)) {
-                e.currentTarget.style.backgroundColor = "var(--bg-card-hover)";
-                e.currentTarget.style.color = "var(--text-secondary)";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!location.pathname.startsWith(notificationNav.path)) {
-                e.currentTarget.style.backgroundColor = "transparent";
-                e.currentTarget.style.color = "var(--text-muted)";
-              }
-            }}
+                ? "bg-[var(--bg-active)] text-[var(--text-primary)]"
+                : "text-[var(--text-muted)] hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-secondary)]"
+            }`}
             title={!isOpen ? notificationNav.label : undefined}
           >
             <div className="relative">
               {notificationNav.icon}
               {UNREAD_COUNT > 0 && (
-                <span
-                  className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[8px] font-bold"
-                  style={{
-                    backgroundColor: "var(--badge-error-text)",
-                    color: "var(--bg-card)",
-                  }}
-                >
+                <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[var(--badge-error-text)] text-[8px] font-bold text-[var(--bg-card)]">
                   {UNREAD_COUNT}
                 </span>
               )}
@@ -269,25 +193,13 @@ export const Sidebar = (): JSX.Element => {
         </div>
 
         {/* 下部: 設定 + テーマ切替 */}
-        <div
-          className="mt-auto space-y-0.5 pt-3"
-          style={{ borderTop: "1px solid var(--border)" }}
-        >
+        <div className="mt-auto space-y-0.5 border-t border-t-[var(--border)] pt-3">
           {subNav.map(renderLink)}
 
           {/* テーマ切替 */}
           <button
             onClick={toggleTheme}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors"
-            style={{ color: "var(--text-muted)" }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "var(--bg-card-hover)";
-              e.currentTarget.style.color = "var(--text-secondary)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "transparent";
-              e.currentTarget.style.color = "var(--text-muted)";
-            }}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-secondary)]"
             aria-label={
               theme === "dark" ? "ライトモードに切替" : "ダークモードに切替"
             }

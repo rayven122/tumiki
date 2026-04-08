@@ -119,7 +119,7 @@ export const RequestDetail = (): JSX.Element => {
   if (!request) {
     return (
       <div className="p-6">
-        <p style={{ color: "var(--text-secondary)" }}>申請が見つかりません</p>
+        <p className="text-[var(--text-secondary)]">申請が見つかりません</p>
       </div>
     );
   }
@@ -132,8 +132,7 @@ export const RequestDetail = (): JSX.Element => {
       {/* 戻るリンク */}
       <Link
         to="/requests"
-        className="inline-flex items-center gap-1.5 text-sm hover:opacity-80"
-        style={{ color: "var(--text-muted)" }}
+        className="inline-flex items-center gap-1.5 text-sm text-[var(--text-muted)] hover:opacity-80"
       >
         <ArrowLeft size={14} />
         権限申請
@@ -141,10 +140,7 @@ export const RequestDetail = (): JSX.Element => {
 
       {/* タイトル + ステータス */}
       <div className="flex items-center gap-3">
-        <h1
-          className="text-lg font-semibold"
-          style={{ color: "var(--text-primary)" }}
-        >
+        <h1 className="text-lg font-semibold text-[var(--text-primary)]">
           申請詳細
         </h1>
         <span
@@ -156,83 +152,49 @@ export const RequestDetail = (): JSX.Element => {
       </div>
 
       {/* 申請内容 */}
-      <div
-        className="space-y-4 rounded-xl p-6"
-        style={{
-          border: "1px solid var(--border)",
-          backgroundColor: "var(--bg-card)",
-          boxShadow: "var(--shadow-card)",
-        }}
-      >
-        <h2
-          className="text-sm font-medium"
-          style={{ color: "var(--text-primary)" }}
-        >
+      <div className="space-y-4 rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">
+        <h2 className="text-sm font-medium text-[var(--text-primary)]">
           申請内容
         </h2>
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div className="space-y-1">
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-              申請日
-            </p>
-            <p style={{ color: "var(--text-secondary)" }}>{request.date}</p>
+            <p className="text-xs text-[var(--text-muted)]">申請日</p>
+            <p className="text-[var(--text-secondary)]">{request.date}</p>
           </div>
           <div className="space-y-1">
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-              対象ツール
-            </p>
-            <p style={{ color: "var(--text-secondary)" }}>{request.tool}</p>
+            <p className="text-xs text-[var(--text-muted)]">対象ツール</p>
+            <p className="text-[var(--text-secondary)]">{request.tool}</p>
           </div>
           <div className="space-y-1">
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-              申請種別
-            </p>
-            <p style={{ color: "var(--text-secondary)" }}>{request.type}</p>
+            <p className="text-xs text-[var(--text-muted)]">申請種別</p>
+            <p className="text-[var(--text-secondary)]">{request.type}</p>
           </div>
           <div className="space-y-1">
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-              希望権限
-            </p>
-            <p style={{ color: "var(--text-secondary)" }}>
+            <p className="text-xs text-[var(--text-muted)]">希望権限</p>
+            <p className="text-[var(--text-secondary)]">
               {request.requestedPermissions.join(", ")}
             </p>
           </div>
           <div className="space-y-1">
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-              希望操作
-            </p>
-            <p style={{ color: "var(--text-secondary)" }}>
+            <p className="text-xs text-[var(--text-muted)]">希望操作</p>
+            <p className="text-[var(--text-secondary)]">
               {request.requestedOperations.join(", ")}
             </p>
           </div>
           <div className="space-y-1">
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-              利用期間
-            </p>
-            <p style={{ color: "var(--text-secondary)" }}>{request.period}</p>
+            <p className="text-xs text-[var(--text-muted)]">利用期間</p>
+            <p className="text-[var(--text-secondary)]">{request.period}</p>
           </div>
           <div className="col-span-2 space-y-1">
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-              利用目的
-            </p>
-            <p style={{ color: "var(--text-secondary)" }}>{request.purpose}</p>
+            <p className="text-xs text-[var(--text-muted)]">利用目的</p>
+            <p className="text-[var(--text-secondary)]">{request.purpose}</p>
           </div>
         </div>
       </div>
 
       {/* 承認状況 ステッパー */}
-      <div
-        className="space-y-4 rounded-xl p-6"
-        style={{
-          border: "1px solid var(--border)",
-          backgroundColor: "var(--bg-card)",
-          boxShadow: "var(--shadow-card)",
-        }}
-      >
-        <h2
-          className="text-sm font-medium"
-          style={{ color: "var(--text-primary)" }}
-        >
+      <div className="space-y-4 rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">
+        <h2 className="text-sm font-medium text-[var(--text-primary)]">
           承認状況
         </h2>
 
@@ -287,10 +249,7 @@ export const RequestDetail = (): JSX.Element => {
         </div>
 
         {/* 承認者一覧 */}
-        <div
-          className="mt-2 space-y-2 pt-4"
-          style={{ borderTop: "1px solid var(--border)" }}
-        >
+        <div className="mt-2 space-y-2 border-t border-t-[var(--border)] pt-4">
           {request.approvers.map((approver) => {
             const approverStatus = approverStatusStyle(approver.status);
             return (
@@ -299,22 +258,16 @@ export const RequestDetail = (): JSX.Element => {
                 className="flex items-center justify-between text-sm"
               >
                 <div>
-                  <span style={{ color: "var(--text-secondary)" }}>
+                  <span className="text-[var(--text-secondary)]">
                     {approver.name}
                   </span>
-                  <span
-                    className="ml-2 text-xs"
-                    style={{ color: "var(--text-subtle)" }}
-                  >
+                  <span className="ml-2 text-xs text-[var(--text-subtle)]">
                     {approver.department}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   {approver.date && (
-                    <span
-                      className="text-xs"
-                      style={{ color: "var(--text-subtle)" }}
-                    >
+                    <span className="text-xs text-[var(--text-subtle)]">
                       {approver.date}
                     </span>
                   )}
@@ -330,21 +283,11 @@ export const RequestDetail = (): JSX.Element => {
 
       {/* 却下理由 */}
       {request.rejectReason && (
-        <div
-          className="space-y-2 rounded-xl p-6"
-          style={{
-            border: "1px solid var(--badge-error-bg)",
-            backgroundColor: "var(--bg-card)",
-            boxShadow: "var(--shadow-card)",
-          }}
-        >
-          <h2
-            className="text-sm font-medium"
-            style={{ color: "var(--badge-error-text)" }}
-          >
+        <div className="space-y-2 rounded-xl border border-[var(--badge-error-bg)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">
+          <h2 className="text-sm font-medium text-[var(--badge-error-text)]">
             却下理由
           </h2>
-          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+          <p className="text-sm text-[var(--text-secondary)]">
             {request.rejectReason}
           </p>
         </div>
@@ -352,13 +295,7 @@ export const RequestDetail = (): JSX.Element => {
 
       {/* 取り消しボタン（pending時のみ） */}
       {request.status === "pending" && (
-        <button
-          className="rounded-lg px-4 py-2 text-sm transition-colors hover:opacity-80"
-          style={{
-            border: "1px solid var(--badge-error-bg)",
-            color: "var(--badge-error-text)",
-          }}
-        >
+        <button className="rounded-lg border border-[var(--badge-error-bg)] px-4 py-2 text-sm text-[var(--badge-error-text)] transition-colors hover:opacity-80">
           申請を取り消す
         </button>
       )}

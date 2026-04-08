@@ -109,7 +109,57 @@ export const ORG_USERS: OrgUser[] = [
   },
 ];
 
-/* ===== ロール定義 ===== */
+/* ===== サービス一覧（LPと同じ構造） ===== */
+export type ServiceDef = {
+  name: string;
+  logo: string;
+  tools: string[];
+};
+
+export const SERVICES: ServiceDef[] = [
+  {
+    name: "Slack",
+    logo: "/logos/services/slack.webp",
+    tools: ["send_message", "list_channels", "search"],
+  },
+  {
+    name: "GitHub",
+    logo: "/logos/services/github.webp",
+    tools: ["create_pr", "list_issues", "merge", "review"],
+  },
+  {
+    name: "Notion",
+    logo: "/logos/services/notion.webp",
+    tools: ["search_pages", "create_page", "export"],
+  },
+  {
+    name: "Microsoft Teams",
+    logo: "/logos/services/microsoft-teams.webp",
+    tools: ["send_message", "list_channels"],
+  },
+  {
+    name: "Figma",
+    logo: "/logos/services/figma.webp",
+    tools: ["get_design", "export_svg", "comments"],
+  },
+  {
+    name: "Google Drive",
+    logo: "/logos/services/one-drive.webp",
+    tools: ["search_files", "upload", "share"],
+  },
+  {
+    name: "PostgreSQL",
+    logo: "/logos/services/postgresql.webp",
+    tools: ["query", "export", "schema"],
+  },
+  {
+    name: "Sentry",
+    logo: "/logos/services/sentry.webp",
+    tools: ["list_issues", "resolve", "assign"],
+  },
+];
+
+/* ===== ロール定義（サービス×ツールのマトリクス） ===== */
 export type RolePermission = {
   tool: string;
   read: boolean;
@@ -123,6 +173,8 @@ export type RoleDefinition = {
   color: string;
   userCount: number;
   permissions: RolePermission[];
+  /** サービス単位のツールON/OFFマトリクス（SERVICES順） */
+  toolDefaults: boolean[][];
 };
 
 export const ROLE_DEFINITIONS: RoleDefinition[] = [
@@ -141,6 +193,16 @@ export const ROLE_DEFINITIONS: RoleDefinition[] = [
       { tool: "PostgreSQL", read: true, write: true, execute: true },
       { tool: "Sentry", read: true, write: true, execute: true },
     ],
+    toolDefaults: [
+      [true, true, true],
+      [true, true, true, true],
+      [true, true, true],
+      [true, true],
+      [true, true, true],
+      [true, true, true],
+      [true, true, true],
+      [true, true, true],
+    ],
   },
   {
     name: "Manager",
@@ -156,6 +218,16 @@ export const ROLE_DEFINITIONS: RoleDefinition[] = [
       { tool: "Google Drive", read: true, write: true, execute: false },
       { tool: "PostgreSQL", read: true, write: false, execute: false },
       { tool: "Sentry", read: true, write: false, execute: false },
+    ],
+    toolDefaults: [
+      [true, true, true],
+      [true, true, false, false],
+      [true, true, true],
+      [true, true],
+      [true, false, false],
+      [true, true, false],
+      [true, false, false],
+      [true, false, false],
     ],
   },
   {
@@ -173,6 +245,16 @@ export const ROLE_DEFINITIONS: RoleDefinition[] = [
       { tool: "PostgreSQL", read: true, write: true, execute: true },
       { tool: "Sentry", read: true, write: true, execute: true },
     ],
+    toolDefaults: [
+      [true, true, false],
+      [true, true, true, true],
+      [true, false, false],
+      [true, true],
+      [true, false, false],
+      [false, false, false],
+      [true, true, true],
+      [true, true, true],
+    ],
   },
   {
     name: "Member",
@@ -188,6 +270,16 @@ export const ROLE_DEFINITIONS: RoleDefinition[] = [
       { tool: "Google Drive", read: true, write: false, execute: false },
       { tool: "PostgreSQL", read: false, write: false, execute: false },
       { tool: "Sentry", read: false, write: false, execute: false },
+    ],
+    toolDefaults: [
+      [true, true, false],
+      [true, false, false, false],
+      [true, false, false],
+      [true, false],
+      [true, false, false],
+      [true, false, false],
+      [false, false, false],
+      [false, false, false],
     ],
   },
 ];

@@ -34,13 +34,10 @@ export const HistoryList = (): JSX.Element => {
     <div className="space-y-4 p-6">
       {/* ヘッダー */}
       <div>
-        <h1
-          className="text-lg font-semibold"
-          style={{ color: "var(--text-primary)" }}
-        >
+        <h1 className="text-lg font-semibold text-[var(--text-primary)]">
           操作履歴
         </h1>
-        <p className="mt-1 text-xs" style={{ color: "var(--text-secondary)" }}>
+        <p className="mt-1 text-xs text-[var(--text-secondary)]">
           あなたのAIエージェント操作の記録
         </p>
       </div>
@@ -67,14 +64,9 @@ export const HistoryList = (): JSX.Element => {
         ].map((card) => (
           <div
             key={card.label}
-            className="rounded-xl p-4"
-            style={{
-              backgroundColor: "var(--bg-card)",
-              border: "1px solid var(--border)",
-              boxShadow: "var(--shadow-card)",
-            }}
+            className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-4 shadow-[var(--shadow-card)]"
           >
-            <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+            <span className="text-xs text-[var(--text-muted)]">
               {card.label}
             </span>
             <div
@@ -88,34 +80,15 @@ export const HistoryList = (): JSX.Element => {
       </div>
 
       {/* メインカード（フィルタ + テーブル） */}
-      <div
-        className="overflow-hidden rounded-xl"
-        style={{
-          backgroundColor: "var(--bg-card)",
-          border: "1px solid var(--border)",
-          boxShadow: "var(--shadow-card)",
-        }}
-      >
+      <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg-card)] shadow-[var(--shadow-card)]">
         {/* フィルタバー */}
-        <div
-          className="flex items-center justify-between px-5 py-3"
-          style={{ borderBottom: "1px solid var(--border)" }}
-        >
+        <div className="flex items-center justify-between border-b border-b-[var(--border)] px-5 py-3">
           <div className="flex items-center gap-2">
-            <Activity
-              className="h-4 w-4"
-              style={{ color: "var(--text-muted)" }}
-            />
-            <span
-              className="text-sm font-medium"
-              style={{ color: "var(--text-primary)" }}
-            >
+            <Activity className="h-4 w-4 text-[var(--text-muted)]" />
+            <span className="text-sm font-medium text-[var(--text-primary)]">
               コネクタログ
             </span>
-            <span
-              className="ml-1 text-xs"
-              style={{ color: "var(--text-muted)" }}
-            >
+            <span className="ml-1 text-xs text-[var(--text-muted)]">
               {total}件
             </span>
           </div>
@@ -170,13 +143,7 @@ export const HistoryList = (): JSX.Element => {
         </div>
 
         {/* テーブルヘッダー */}
-        <div
-          className="grid grid-cols-[80px_90px_120px_1fr_85px_56px] items-center gap-2 px-5 py-2 text-[10px]"
-          style={{
-            borderBottom: "1px solid var(--border)",
-            color: "var(--text-subtle)",
-          }}
-        >
+        <div className="grid grid-cols-[80px_90px_120px_1fr_85px_56px] items-center gap-2 border-b border-b-[var(--border)] px-5 py-2 text-[10px] text-[var(--text-subtle)]">
           <span>日時</span>
           <span>AIクライアント</span>
           <span>接続先サービス</span>
@@ -192,19 +159,15 @@ export const HistoryList = (): JSX.Element => {
             <Link
               key={item.id}
               to={`/history/${item.id}`}
-              className="grid grid-cols-[80px_90px_120px_1fr_85px_56px] items-center gap-2 px-5 py-2.5 text-xs transition-colors hover:opacity-90"
+              className="grid grid-cols-[80px_90px_120px_1fr_85px_56px] items-center gap-2 border-b border-b-[var(--border-subtle)] px-5 py-2.5 text-xs transition-colors hover:opacity-90"
               style={{
-                borderBottom: "1px solid var(--border-subtle)",
                 backgroundColor: isErrorRow(item.status)
                   ? "rgba(239,68,68,0.03)"
                   : "transparent",
               }}
             >
               {/* 日時 */}
-              <span
-                className="font-mono text-[11px]"
-                style={{ color: "var(--text-subtle)" }}
-              >
+              <span className="font-mono text-[11px] text-[var(--text-subtle)]">
                 {item.datetime.split(" ")[1]?.slice(0, 8)}
               </span>
 
@@ -219,10 +182,7 @@ export const HistoryList = (): JSX.Element => {
                   alt={item.aiClient.name}
                   className="h-4 w-4 rounded-sm"
                 />
-                <span
-                  className="text-[11px]"
-                  style={{ color: "var(--text-muted)" }}
-                >
+                <span className="text-[11px] text-[var(--text-muted)]">
                   {item.aiClient.name}
                 </span>
               </div>
@@ -238,16 +198,13 @@ export const HistoryList = (): JSX.Element => {
                   alt={item.service.name}
                   className="h-4 w-4 rounded-sm"
                 />
-                <span style={{ color: "var(--text-secondary)" }}>
+                <span className="text-[var(--text-secondary)]">
                   {item.service.name}
                 </span>
               </div>
 
               {/* ツール / アクション */}
-              <span
-                className="truncate font-mono text-[11px]"
-                style={{ color: "var(--text-muted)" }}
-              >
+              <span className="truncate font-mono text-[11px] text-[var(--text-muted)]">
                 {item.operation}
               </span>
 
@@ -260,10 +217,7 @@ export const HistoryList = (): JSX.Element => {
               </span>
 
               {/* 応答時間 */}
-              <span
-                className="text-right font-mono text-[11px]"
-                style={{ color: "var(--text-subtle)" }}
-              >
+              <span className="text-right font-mono text-[11px] text-[var(--text-subtle)]">
                 {item.latency}
               </span>
             </Link>

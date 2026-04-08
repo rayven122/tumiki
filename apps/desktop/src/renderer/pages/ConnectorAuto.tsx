@@ -112,30 +112,20 @@ export const ConnectorAuto = (): JSX.Element => {
       {/* 戻るリンク */}
       <Link
         to="/tools"
-        className="mb-4 inline-flex items-center gap-1 text-sm hover:opacity-80"
-        style={{ color: "var(--text-muted)" }}
+        className="mb-4 inline-flex items-center gap-1 text-sm text-[var(--text-muted)] hover:opacity-80"
       >
         <ArrowLeft size={14} /> コネクト
       </Link>
 
-      <h1
-        className="mb-1 text-lg font-semibold"
-        style={{ color: "var(--text-primary)" }}
-      >
+      <h1 className="mb-1 text-lg font-semibold text-[var(--text-primary)]">
         AIで自動作成
       </h1>
-      <p className="mb-4 text-xs" style={{ color: "var(--text-muted)" }}>
+      <p className="mb-4 text-xs text-[var(--text-muted)]">
         自動化したい業務を伝えると、AIが最適なコネクタを作成します
       </p>
 
       {/* チャットエリア */}
-      <div
-        className="flex-1 overflow-y-auto rounded-xl p-4"
-        style={{
-          backgroundColor: "var(--bg-card)",
-          border: "1px solid var(--border)",
-        }}
-      >
+      <div className="flex-1 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-4">
         <div className="space-y-4">
           {messages.map((msg) => (
             <div
@@ -143,20 +133,14 @@ export const ConnectorAuto = (): JSX.Element => {
               className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
             >
               <div
-                className="max-w-[80%] rounded-xl px-4 py-3 text-sm whitespace-pre-line"
-                style={{
-                  backgroundColor:
-                    msg.role === "user"
-                      ? "var(--bg-active)"
-                      : "var(--bg-card-hover)",
-                  color: "var(--text-primary)",
-                }}
+                className={`max-w-[80%] rounded-xl px-4 py-3 text-sm whitespace-pre-line text-[var(--text-primary)] ${
+                  msg.role === "user"
+                    ? "bg-[var(--bg-active)]"
+                    : "bg-[var(--bg-card-hover)]"
+                }`}
               >
                 {msg.role === "ai" && (
-                  <div
-                    className="mb-1 flex items-center gap-1 text-[10px]"
-                    style={{ color: "var(--badge-success-text)" }}
-                  >
+                  <div className="mb-1 flex items-center gap-1 text-[10px] text-[var(--badge-success-text)]">
                     <Sparkles size={10} /> AI
                   </div>
                 )}
@@ -168,32 +152,20 @@ export const ConnectorAuto = (): JSX.Element => {
 
         {/* 生成されたコネクタのプレビュー */}
         {generatedConnector && (
-          <div
-            className="mt-4 rounded-xl p-4"
-            style={{
-              border: "1px solid rgba(52,211,153,0.2)",
-              backgroundColor: "var(--bg-card-hover)",
-            }}
-          >
+          <div className="mt-4 rounded-xl border border-emerald-400/20 bg-[var(--bg-card-hover)] p-4">
             <div className="mb-3 flex items-center gap-2">
               <Sparkles
                 size={14}
-                style={{ color: "var(--badge-success-text)" }}
+                className="text-[var(--badge-success-text)]"
               />
-              <span
-                className="text-sm font-medium"
-                style={{ color: "var(--text-primary)" }}
-              >
+              <span className="text-sm font-medium text-[var(--text-primary)]">
                 {generatedConnector.name}
               </span>
             </div>
 
             {/* 選択されたツール + オペレーション詳細 */}
             <div className="mb-3">
-              <span
-                className="text-[10px]"
-                style={{ color: "var(--text-subtle)" }}
-              >
+              <span className="text-[10px] text-[var(--text-subtle)]">
                 使用ツール
               </span>
               <div className="mt-2 space-y-2">
@@ -203,8 +175,7 @@ export const ConnectorAuto = (): JSX.Element => {
                   return (
                     <div
                       key={t.id}
-                      className="rounded-lg p-3"
-                      style={{ backgroundColor: "var(--bg-input)" }}
+                      className="rounded-lg bg-[var(--bg-input)] p-3"
                     >
                       <div className="mb-2 flex items-center gap-2">
                         <img
@@ -214,10 +185,7 @@ export const ConnectorAuto = (): JSX.Element => {
                           alt={tool.name}
                           className="h-4 w-4 rounded"
                         />
-                        <span
-                          className="text-xs font-medium"
-                          style={{ color: "var(--text-primary)" }}
-                        >
+                        <span className="text-xs font-medium text-[var(--text-primary)]">
                           {tool.name}
                         </span>
                       </div>
@@ -226,21 +194,14 @@ export const ConnectorAuto = (): JSX.Element => {
                         {t.operations.map((op) => (
                           <span
                             key={op}
-                            className="rounded px-1.5 py-0.5 font-mono text-[8px]"
-                            style={{
-                              backgroundColor: "var(--bg-active)",
-                              color: "var(--text-muted)",
-                            }}
+                            className="rounded bg-[var(--bg-active)] px-1.5 py-0.5 font-mono text-[8px] text-[var(--text-muted)]"
                           >
                             {op}
                           </span>
                         ))}
                       </div>
                       {/* カスタムDescription */}
-                      <p
-                        className="text-[10px] leading-relaxed"
-                        style={{ color: "var(--text-secondary)" }}
-                      >
+                      <p className="text-[10px] leading-relaxed text-[var(--text-secondary)]">
                         {t.description}
                       </p>
                     </div>
@@ -251,16 +212,10 @@ export const ConnectorAuto = (): JSX.Element => {
 
             {/* Description */}
             <div className="mb-3">
-              <span
-                className="text-[10px]"
-                style={{ color: "var(--text-subtle)" }}
-              >
+              <span className="text-[10px] text-[var(--text-subtle)]">
                 Description
               </span>
-              <p
-                className="mt-1 text-xs leading-relaxed"
-                style={{ color: "var(--text-secondary)" }}
-              >
+              <p className="mt-1 text-xs leading-relaxed text-[var(--text-secondary)]">
                 {generatedConnector.description}
               </p>
             </div>
@@ -270,21 +225,13 @@ export const ConnectorAuto = (): JSX.Element => {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setSaved(true)}
-                  className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-medium transition-colors hover:opacity-90"
-                  style={{
-                    backgroundColor: "var(--btn-primary-bg)",
-                    color: "var(--btn-primary-text)",
-                  }}
+                  className="flex items-center gap-1.5 rounded-lg bg-[var(--btn-primary-bg)] px-4 py-2 text-xs font-medium text-[var(--btn-primary-text)] transition-colors hover:opacity-90"
                 >
                   <Check size={14} /> 保存する
                 </button>
                 <button
                   onClick={() => setTesting(true)}
-                  className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs transition-colors hover:opacity-80"
-                  style={{
-                    border: "1px solid var(--border)",
-                    color: "var(--text-muted)",
-                  }}
+                  className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-4 py-2 text-xs text-[var(--text-muted)] transition-colors hover:opacity-80"
                 >
                   <Play size={14} /> 検証する
                 </button>
@@ -292,31 +239,19 @@ export const ConnectorAuto = (): JSX.Element => {
             ) : (
               <div className="space-y-3">
                 {/* 保存完了 */}
-                <div
-                  className="flex items-center gap-2 rounded-lg px-3 py-2"
-                  style={{
-                    backgroundColor: "rgba(52,211,153,0.08)",
-                    border: "1px solid rgba(52,211,153,0.2)",
-                  }}
-                >
+                <div className="flex items-center gap-2 rounded-lg border border-emerald-400/20 bg-emerald-400/[0.08] px-3 py-2">
                   <Check
                     size={14}
-                    style={{ color: "var(--badge-success-text)" }}
+                    className="text-[var(--badge-success-text)]"
                   />
-                  <span
-                    className="text-xs"
-                    style={{ color: "var(--badge-success-text)" }}
-                  >
+                  <span className="text-xs text-[var(--badge-success-text)]">
                     コネクタを保存しました
                   </span>
                 </div>
 
                 {/* 接続パス（保存後に表示） */}
                 <div>
-                  <span
-                    className="text-[10px]"
-                    style={{ color: "var(--text-subtle)" }}
-                  >
+                  <span className="text-[10px] text-[var(--text-subtle)]">
                     接続パス
                   </span>
                   {generatedConnector.paths.map((p) => (
@@ -324,19 +259,10 @@ export const ConnectorAuto = (): JSX.Element => {
                       key={p.ai}
                       className="mt-1 flex items-center gap-2 text-[9px]"
                     >
-                      <span
-                        className="w-14 shrink-0"
-                        style={{ color: "var(--text-muted)" }}
-                      >
+                      <span className="w-14 shrink-0 text-[var(--text-muted)]">
                         {p.ai}
                       </span>
-                      <code
-                        className="flex-1 truncate rounded px-1.5 py-0.5 font-mono"
-                        style={{
-                          backgroundColor: "var(--bg-input)",
-                          color: "var(--text-secondary)",
-                        }}
-                      >
+                      <code className="flex-1 truncate rounded bg-[var(--bg-input)] px-1.5 py-0.5 font-mono text-[var(--text-secondary)]">
                         {p.path}
                       </code>
                     </div>
@@ -346,11 +272,7 @@ export const ConnectorAuto = (): JSX.Element => {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setTesting(true)}
-                    className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs transition-colors hover:opacity-80"
-                    style={{
-                      border: "1px solid var(--border)",
-                      color: "var(--text-muted)",
-                    }}
+                    className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-4 py-2 text-xs text-[var(--text-muted)] transition-colors hover:opacity-80"
                   >
                     <Play size={14} /> 検証する
                   </button>
@@ -360,46 +282,34 @@ export const ConnectorAuto = (): JSX.Element => {
 
             {/* 検証パネル */}
             {testing && (
-              <div
-                className="mt-3 rounded-lg p-3"
-                style={{
-                  border: "1px solid var(--border)",
-                  backgroundColor: "var(--bg-input)",
-                }}
-              >
+              <div className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--bg-input)] p-3">
                 <div className="mb-2 flex items-center gap-2">
-                  <Play size={12} style={{ color: "var(--badge-warn-text)" }} />
-                  <span
-                    className="text-[10px] font-medium"
-                    style={{ color: "var(--text-primary)" }}
-                  >
+                  <Play size={12} className="text-[var(--badge-warn-text)]" />
+                  <span className="text-[10px] font-medium text-[var(--text-primary)]">
                     検証結果
                   </span>
                 </div>
                 <div className="space-y-1.5 font-mono text-[9px]">
                   <div className="flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                    <span style={{ color: "var(--text-secondary)" }}>
+                    <span className="text-[var(--text-secondary)]">
                       Slack / send_message → 200 OK (142ms)
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                    <span style={{ color: "var(--text-secondary)" }}>
+                    <span className="text-[var(--text-secondary)]">
                       GitHub / list_repos → 200 OK (210ms)
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                    <span style={{ color: "var(--text-secondary)" }}>
+                    <span className="text-[var(--text-secondary)]">
                       Notion / create_page → 200 OK (95ms)
                     </span>
                   </div>
                 </div>
-                <div
-                  className="mt-2 text-[9px]"
-                  style={{ color: "var(--badge-success-text)" }}
-                >
+                <div className="mt-2 text-[9px] text-[var(--badge-success-text)]">
                   全ツールの接続を確認しました
                 </div>
               </div>
@@ -418,20 +328,11 @@ export const ConnectorAuto = (): JSX.Element => {
             if (e.key === "Enter") handleSend();
           }}
           placeholder="自動化したい業務を入力..."
-          className="flex-1 rounded-xl px-4 py-3 text-sm outline-none"
-          style={{
-            border: "1px solid var(--border)",
-            backgroundColor: "var(--bg-card)",
-            color: "var(--text-primary)",
-          }}
+          className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--bg-card)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none"
         />
         <button
           onClick={handleSend}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors hover:opacity-80"
-          style={{
-            backgroundColor: "var(--btn-primary-bg)",
-            color: "var(--btn-primary-text)",
-          }}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] transition-colors hover:opacity-80"
         >
           <Send size={16} />
         </button>

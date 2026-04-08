@@ -194,6 +194,26 @@
   }
 }
 
+/* プロトコル衛星回転 */
+@keyframes orbit {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* ロゴバー無限スクロール */
+@keyframes scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
 /* グレインノイズテクスチャ */
 body::before {
   content: "";

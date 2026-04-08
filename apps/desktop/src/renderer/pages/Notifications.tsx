@@ -115,20 +115,11 @@ export const Notifications = (): JSX.Element => {
       {/* ヘッダー */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h2
-            className="text-lg font-semibold"
-            style={{ color: "var(--text-primary)" }}
-          >
+          <h2 className="text-lg font-semibold text-[var(--text-primary)]">
             通知
           </h2>
           {unreadCount > 0 && (
-            <span
-              className="rounded-full px-2 py-0.5 text-xs font-medium"
-              style={{
-                backgroundColor: "var(--badge-error-bg)",
-                color: "var(--badge-error-text)",
-              }}
-            >
+            <span className="rounded-full bg-[var(--badge-error-bg)] px-2 py-0.5 text-xs font-medium text-[var(--badge-error-text)]">
               {unreadCount}
             </span>
           )}
@@ -136,17 +127,7 @@ export const Notifications = (): JSX.Element => {
         {unreadCount > 0 && (
           <button
             onClick={markAllRead}
-            className="rounded-lg px-3 py-1.5 text-xs transition-colors"
-            style={{
-              backgroundColor: "var(--bg-active)",
-              color: "var(--text-secondary)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "var(--bg-card-hover)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "var(--bg-active)";
-            }}
+            className="rounded-lg bg-[var(--bg-active)] px-3 py-1.5 text-xs text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-card-hover)]"
           >
             すべて既読にする
           </button>
@@ -159,29 +140,16 @@ export const Notifications = (): JSX.Element => {
           <button
             key={n.id}
             onClick={() => toggleRead(n.id)}
-            className="flex w-full items-start gap-3 rounded-xl p-4 text-left transition-colors"
-            style={{
-              backgroundColor: n.read ? "var(--bg-card)" : "var(--bg-active)",
-              border: "1px solid var(--border)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "var(--bg-card-hover)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = n.read
-                ? "var(--bg-card)"
-                : "var(--bg-active)";
-            }}
+            className={`flex w-full items-start gap-3 rounded-xl border border-[var(--border)] p-4 text-left transition-colors hover:bg-[var(--bg-card-hover)] ${
+              n.read ? "bg-[var(--bg-card)]" : "bg-[var(--bg-active)]"
+            }`}
           >
             {/* 未読インジケータ */}
             <div className="flex shrink-0 items-center pt-1">
               <span
-                className="inline-block h-2 w-2 rounded-full"
-                style={{
-                  backgroundColor: n.read
-                    ? "transparent"
-                    : "var(--badge-warn-text)",
-                }}
+                className={`inline-block h-2 w-2 rounded-full ${
+                  n.read ? "bg-transparent" : "bg-[var(--badge-warn-text)]"
+                }`}
               />
             </div>
 
@@ -195,25 +163,16 @@ export const Notifications = (): JSX.Element => {
 
             {/* コンテンツ */}
             <div className="min-w-0 flex-1">
-              <div
-                className="text-sm font-medium"
-                style={{ color: "var(--text-primary)" }}
-              >
+              <div className="text-sm font-medium text-[var(--text-primary)]">
                 {n.title}
               </div>
-              <div
-                className="mt-0.5 text-xs leading-relaxed"
-                style={{ color: "var(--text-muted)" }}
-              >
+              <div className="mt-0.5 text-xs leading-relaxed text-[var(--text-muted)]">
                 {n.body}
               </div>
             </div>
 
             {/* 日付 */}
-            <span
-              className="shrink-0 text-[10px]"
-              style={{ color: "var(--text-subtle)" }}
-            >
+            <span className="shrink-0 text-[10px] text-[var(--text-subtle)]">
               {n.date}
             </span>
           </button>
