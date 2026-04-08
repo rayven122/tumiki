@@ -21,7 +21,7 @@ vi.mock("../oauth.auth-url");
 vi.mock("../oauth.token");
 vi.mock("../oauth.protocol");
 vi.mock("../oauth.repository");
-vi.mock("../../mcp/mcp.service");
+vi.mock("../../mcp-server-list/mcp.service");
 
 import { shell } from "electron";
 import { getDb } from "../../../shared/db";
@@ -36,7 +36,7 @@ import { generateAuthorizationUrl } from "../oauth.auth-url";
 import { exchangeCodeForToken } from "../oauth.token";
 import { parseOAuthCallback } from "../oauth.protocol";
 import * as oauthRepository from "../oauth.repository";
-import { createFromCatalog } from "../../mcp/mcp.service";
+import { createFromCatalog } from "../../mcp-server-list/mcp.service";
 import { createMcpOAuthManager } from "../oauth.service";
 import type { StartOAuthInput } from "../oauth.types";
 import type * as oauth from "oauth4webapi";
