@@ -33,9 +33,9 @@ export type DecryptedOAuthClient = {
   authServerMetadata: string;
 };
 
-async function toDecryptedClient(
+const toDecryptedClient = async (
   row: StoredOAuthClient,
-): Promise<DecryptedOAuthClient> {
+): Promise<DecryptedOAuthClient> => {
   const clientId = await decryptToken(row.clientId);
   const clientSecret = row.clientSecret
     ? await decryptToken(row.clientSecret)
@@ -50,10 +50,10 @@ async function toDecryptedClient(
     tokenEndpointAuthMethod: row.tokenEndpointAuthMethod,
     authServerMetadata: row.authServerMetadata,
   };
-}
+};
 
 /** upsert の create/update に共通するフィールド（暗号化済み） */
-async function buildEncryptedRowPayload(
+const buildEncryptedRowPayload = async (
   input: Omit<UpsertOAuthClientInput, "serverUrl">,
 ): Promise<{
   issuer: string;
@@ -61,7 +61,7 @@ async function buildEncryptedRowPayload(
   clientSecret: string | null;
   tokenEndpointAuthMethod: string;
   authServerMetadata: string;
-}> {
+}> => {
   return {
     issuer: input.issuer,
     clientId: await encryptToken(input.clientId),
@@ -71,7 +71,7 @@ async function buildEncryptedRowPayload(
     tokenEndpointAuthMethod: input.tokenEndpointAuthMethod,
     authServerMetadata: input.authServerMetadata,
   };
-}
+};
 
 /**
  * MCPサーバーURLでOAuthClientを検索し、復号化して返す
