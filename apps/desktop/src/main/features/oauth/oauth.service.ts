@@ -46,9 +46,9 @@ type OAuthClientBundle = {
   client: oauth.Client;
 };
 
-function isCacheableAuthorizationServerMetadata(
+const isCacheableAuthorizationServerMetadata = (
   parsed: unknown,
-): parsed is oauth.AuthorizationServer {
+): parsed is oauth.AuthorizationServer => {
   if (typeof parsed !== "object" || parsed === null) return false;
   const o = parsed as Record<string, unknown>;
   return (
@@ -56,24 +56,22 @@ function isCacheableAuthorizationServerMetadata(
     typeof o.authorization_endpoint === "string" &&
     typeof o.token_endpoint === "string"
   );
-}
+};
 
-function oauthClientFromParts(
+const oauthClientFromParts = (
   clientId: string,
   clientSecret: string | null,
   tokenEndpointAuthMethod: string,
-): oauth.Client {
-  return {
-    client_id: clientId,
-    client_secret: clientSecret ?? undefined,
-    token_endpoint_auth_method: tokenEndpointAuthMethod,
-  };
-}
+): oauth.Client => ({
+  client_id: clientId,
+  client_secret: clientSecret ?? undefined,
+  token_endpoint_auth_method: tokenEndpointAuthMethod,
+});
 
-async function loadCachedOAuthClientBundle(
+const loadCachedOAuthClientBundle = async (
   db: Awaited<ReturnType<typeof getDb>>,
   serverUrl: string,
-): Promise<OAuthClientBundle | null> {
+): Promise<OAuthClientBundle | null> => {
   const cached = await oauthRepository.findByServerUrl(db, serverUrl);
   if (!cached) return null;
 
@@ -96,7 +94,7 @@ async function loadCachedOAuthClientBundle(
       cached.tokenEndpointAuthMethod,
     ),
   };
-}
+};
 
 type ClientCredentials = {
   clientId: string;
@@ -104,12 +102,12 @@ type ClientCredentials = {
   tokenEndpointAuthMethod: string;
 };
 
-async function resolveClientCredentials(
+const resolveClientCredentials = async (
   metadata: oauth.AuthorizationServer,
   serverUrl: string,
   fallbackClientId?: string,
   fallbackClientSecret?: string,
-): Promise<ClientCredentials> {
+): Promise<ClientCredentials> => {
   if (metadata.registration_endpoint) {
     logger.info("Performing DCR", { serverUrl });
     const { registration } = await performDCR(metadata);
@@ -142,14 +140,14 @@ async function resolveClientCredentials(
     "Server does not support Dynamic Client Registration",
     DISCOVERY_ERROR_CODE.DCR_NOT_SUPPORTED,
   );
-}
+};
 
-async function discoverPersistAndBundle(
+const discoverPersistAndBundle = async (
   db: Awaited<ReturnType<typeof getDb>>,
   serverUrl: string,
   fallbackClientId?: string,
   fallbackClientSecret?: string,
-): Promise<OAuthClientBundle> {
+): Promise<OAuthClientBundle> => {
   logger.info("DCR cache miss, performing discovery", { serverUrl });
   const metadata = await discoverOAuthMetadata(serverUrl);
 
@@ -178,12 +176,13 @@ async function discoverPersistAndBundle(
       tokenEndpointAuthMethod,
     ),
   };
-}
+};
 
-function assertValidCallbackSession(
+/** セッションを検証し、有効なセッションを返す（無効な場合はthrow） */
+const validateCallbackSession = (
   session: McpOAuthSession | null,
   state: string,
-): asserts session is McpOAuthSession {
+): McpOAuthSession => {
   if (!session) {
     throw new Error("MCP OAuth認証セッションが存在しません");
   }
@@ -194,22 +193,21 @@ function assertValidCallbackSession(
   if (sessionAge > AUTH_SESSION_TIMEOUT_MS) {
     throw new Error("MCP OAuth認証セッションの有効期限が切れています");
   }
-}
+  return session;
+};
 
-function credentialsPayloadFromTokenData(
+const credentialsPayloadFromTokenData = (
   tokenData: McpOAuthTokenData,
-): Record<string, string> {
-  return {
-    access_token: tokenData.access_token,
-    ...(tokenData.refresh_token && {
-      refresh_token: tokenData.refresh_token,
-    }),
-    ...(tokenData.expires_at && {
-      expires_at: String(tokenData.expires_at),
-    }),
-    ...(tokenData.scope && { scope: tokenData.scope }),
-  };
-}
+): Record<string, string> => ({
+  access_token: tokenData.access_token,
+  ...(tokenData.refresh_token && {
+    refresh_token: tokenData.refresh_token,
+  }),
+  ...(tokenData.expires_at && {
+    expires_at: String(tokenData.expires_at),
+  }),
+  ...(tokenData.scope && { scope: tokenData.scope }),
+});
 
 /**
  * MCP OAuthマネージャーを作成
@@ -295,8 +293,7 @@ export const createMcpOAuthManager = (): McpOAuthManager => {
   const handleCallback = async (url: string): Promise<OAuthResult> => {
     try {
       const { state } = parseOAuthCallback(url);
-      assertValidCallbackSession(currentSession, state);
-      const session = currentSession;
+      const session = validateCallbackSession(currentSession, state);
       currentSession = null;
 
       const { metadata, client } = await getOrRegisterClient(
