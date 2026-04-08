@@ -7,4 +7,4 @@ export type {
   McpServerItem,
   McpConnectionItem,
   CreateFromCatalogInput,
-} from "./features/mcp/mcp.types";
+} from "./features/mcp-server-list/mcp.types";

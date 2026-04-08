@@ -1,7 +1,7 @@
 import { ipcMain } from "electron";
 import { z } from "zod";
 import * as mcpService from "./mcp.service";
-import * as logger from "../shared/utils/logger";
+import * as logger from "../../shared/utils/logger";
 
 // IPC入力のバリデーションスキーマ
 const callToolSchema = z.object({

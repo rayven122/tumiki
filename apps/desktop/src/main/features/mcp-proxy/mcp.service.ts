@@ -5,7 +5,7 @@ import { fork, type ChildProcess } from "child_process";
 import { join } from "path";
 import { randomUUID } from "crypto";
 import { z } from "zod";
-import * as logger from "../shared/utils/logger";
+import * as logger from "../../shared/utils/logger";
 import type {
   ProxyRequest,
   ProxyResponse,
