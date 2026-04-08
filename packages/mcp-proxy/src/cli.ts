@@ -1,24 +1,50 @@
 #!/usr/bin/env node
 /**
  * --mcp-proxy CLIエントリーポイント
- * claude code → tumiki --mcp-proxy → Serena MCP の接続フロー
+ * claude code → tumiki --mcp-proxy --server serena → Serena MCP の接続フロー
+ *
+ * 各MCPサーバーごとに個別のプロキシプロセスとして起動する。
+ * AIツール側では、MCPサーバーごとに別々のエントリを設定する:
+ *   { "command": "tumiki", "args": ["--mcp-proxy", "--server", "serena"] }
  */
-import { createProxyCore, HARDCODED_CONFIGS } from "./core.js";
+import {
+  createProxyCore,
+  createSingleServerCore,
+  resolveServerConfigs,
+} from "./core.js";
 import { startStdioInbound } from "./inbound/stdio-inbound.js";
 import { stderrLogger as logger } from "./stderr-logger.js";
 
+/**
+ * process.argvから --server <name> を取得する
+ */
+const parseServerName = (): string => {
+  const idx = process.argv.indexOf("--server");
+  if (idx === -1 || idx + 1 >= process.argv.length) {
+    throw new Error(`--server <name> の指定が必要です`);
+  }
+  return process.argv[idx + 1]!;
+};
+
 export const runMcpProxy = async (): Promise<void> => {
-  logger.info("tumiki-mcp-proxy を起動しています...");
+  const serverName = parseServerName();
+  const configs = resolveServerConfigs(serverName);
 
-  const core = createProxyCore(HARDCODED_CONFIGS, logger);
+  logger.info(`tumiki-mcp-proxy を起動しています（server: ${serverName}）...`);
 
-  // 全MCPサーバーに接続
+  // 単体サーバー: prefixなしで直接委譲、複数: ToolAggregator経由で集約
+  const core =
+    configs.length === 1
+      ? createSingleServerCore(configs[0]!, logger)
+      : createProxyCore(configs, logger);
+
+  // 指定MCPサーバーに接続
   await core.startAll();
 
   // stdio inboundサーバーを起動（AIツールからのリクエストを受け付け）
   await startStdioInbound(core, logger);
 
-  logger.info("tumiki-mcp-proxy の起動が完了しました");
+  logger.info(`tumiki-mcp-proxy の起動が完了しました（server: ${serverName}）`);
 
   // シグナルでクリーンシャットダウン（SIGINT+SIGTERM同時受信の二重実行を防止）
   let shuttingDown = false;

@@ -2,11 +2,13 @@ import type {
   CallToolResult,
   Logger,
   McpServerConfig,
+  McpServerGroupConfig,
   McpServerState,
   McpToolInfo,
   ServerStatus,
 } from "./types.js";
 import { createToolAggregator } from "./outbound/tool-aggregator.js";
+import { createUpstreamClient } from "./outbound/upstream-client.js";
 import { createUpstreamPool } from "./outbound/upstream-pool.js";
 
 // PoCハードコード設定（本番化時に設定ファイルまたはDB読み込みに移行予定）
@@ -32,6 +34,34 @@ export const HARDCODED_CONFIGS: McpServerConfig[] = [
   },
 ];
 
+// グループ設定（本番化時に設定ファイルまたはDB読み込みに移行予定）
+export const HARDCODED_GROUPS: McpServerGroupConfig[] = [];
+
+/**
+ * --server <name> で指定された名前からサーバー設定を解決する
+ * グループ → 単体の順で検索し、見つかった設定を返す
+ */
+export const resolveServerConfigs = (name: string): McpServerConfig[] => {
+  // グループから検索
+  const group = HARDCODED_GROUPS.find((g) => g.name === name);
+  if (group) {
+    return group.servers;
+  }
+
+  // 単体サーバーから検索
+  const single = HARDCODED_CONFIGS.find((c) => c.name === name);
+  if (single) {
+    return [single];
+  }
+
+  const availableSingles = HARDCODED_CONFIGS.map((c) => c.name);
+  const availableGroups = HARDCODED_GROUPS.map((g) => g.name);
+  const available = [...availableSingles, ...availableGroups].join(", ");
+  throw new Error(
+    `サーバー "${name}" が見つかりません（利用可能: ${available || "なし"}）`,
+  );
+};
+
 export type ProxyCore = {
   startAll: () => Promise<void>;
   stopAll: () => Promise<void>;
@@ -46,6 +76,55 @@ export type ProxyCore = {
   onStatusChange: (
     cb: (name: string, status: ServerStatus, error?: string) => void,
   ) => void;
+};
+
+/**
+ * 単一サーバー用ProxyCoreを生成（--server指定時のCLIモードで使用）
+ * ToolAggregatorを使わず、UpstreamClientに直接委譲する（prefixなし）
+ */
+export const createSingleServerCore = (
+  config: McpServerConfig,
+  logger: Logger,
+): ProxyCore => {
+  const client = createUpstreamClient(config, logger);
+
+  return {
+    startAll: () => client.connect(),
+    stopAll: () => client.disconnect(),
+    start: async (name: string) => {
+      if (name !== config.name) {
+        throw new Error(`サーバー "${name}" は登録されていません`);
+      }
+      await client.connect();
+      const tools = await client.listTools();
+      return {
+        name: config.name,
+        status: client.getStatus(),
+        error: client.getLastError(),
+        tools,
+      };
+    },
+    stop: async (name: string) => {
+      if (name !== config.name) {
+        throw new Error(`サーバー "${name}" は登録されていません`);
+      }
+      await client.disconnect();
+    },
+    listTools: () => client.listTools(),
+    callTool: (name: string, args: Record<string, unknown>) =>
+      client.callTool(name, args),
+    getStatus: () => [
+      {
+        name: config.name,
+        status: client.getStatus(),
+        error: client.getLastError(),
+        tools: [],
+      },
+    ],
+    onStatusChange: (
+      cb: (name: string, status: ServerStatus, error?: string) => void,
+    ) => client.onStatusChange(cb),
+  };
 };
 
 /**

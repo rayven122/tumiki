@@ -9,6 +9,12 @@ export type McpServerConfig = {
   env: Record<string, string>;
 };
 
+// 複数MCPサーバーを束ねたグループ設定
+export type McpServerGroupConfig = {
+  name: string;
+  servers: McpServerConfig[];
+};
+
 // MCPサーバーの状態
 export type McpServerState = {
   name: string;
