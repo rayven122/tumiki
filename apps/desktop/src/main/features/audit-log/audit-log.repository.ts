@@ -6,8 +6,8 @@ import type { PrismaClient, Prisma } from "@prisma/desktop-client";
  */
 type AuditLogQueryParams = {
   serverId?: number;
-  cursor?: { createdAt: string; id: number };
-  limit: number;
+  skip: number;
+  take: number;
   statusFilter?: "all" | "success" | "error";
   dateFrom?: string;
   dateTo?: string;
@@ -18,7 +18,7 @@ type AuditLogQueryParams = {
  * serverIdの有無で単一サーバー/全サーバー検索を切り替える
  */
 const buildWhereClause = (
-  params: AuditLogQueryParams,
+  params: Omit<AuditLogQueryParams, "skip" | "take">,
 ): Prisma.AuditLogWhereInput => {
   const where: Prisma.AuditLogWhereInput = {};
 
@@ -45,23 +45,11 @@ const buildWhereClause = (
     }
   }
 
-  // カーソルベースページネーション
-  if (params.cursor) {
-    const cursorDate = new Date(params.cursor.createdAt);
-    where.OR = [
-      { createdAt: { lt: cursorDate } },
-      {
-        createdAt: cursorDate,
-        id: { lt: params.cursor.id },
-      },
-    ];
-  }
-
   return where;
 };
 
 /**
- * サーバー指定で監査ログを取得（カーソルベースページネーション）
+ * サーバー指定で監査ログを取得（オフセットベースページネーション）
  */
 export const findByServer = async (
   db: PrismaClient,
@@ -70,7 +58,8 @@ export const findByServer = async (
   return db.auditLog.findMany({
     where: buildWhereClause(params),
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    take: params.limit + 1,
+    skip: params.skip,
+    take: params.take,
   });
 };
 
@@ -79,10 +68,7 @@ export const findByServer = async (
  */
 export const countByServer = async (
   db: PrismaClient,
-  params: Omit<AuditLogQueryParams, "cursor" | "limit"> & { serverId: number },
+  params: Omit<AuditLogQueryParams, "skip" | "take"> & { serverId: number },
 ) => {
-  const where = buildWhereClause({ ...params, limit: 0 });
-  // カーソル条件はカウントには不要なので除去
-  delete where.OR;
-  return db.auditLog.count({ where });
+  return db.auditLog.count({ where: buildWhereClause(params) });
 };

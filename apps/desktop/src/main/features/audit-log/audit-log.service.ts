@@ -6,7 +6,7 @@ import type {
   AuditLogListResult,
 } from "./audit-log.types";
 
-const DEFAULT_LIMIT = 20;
+const DEFAULT_PER_PAGE = 20;
 
 /**
  * AuditLogレコードをIPC通信用の型に変換
@@ -37,36 +37,30 @@ export const listByServer = async (
   input: AuditLogListInput,
 ): Promise<AuditLogListResult> => {
   const db = await getDb();
-  const limit = input.limit ?? DEFAULT_LIMIT;
+  const page = input.page ?? 1;
+  const perPage = input.perPage ?? DEFAULT_PER_PAGE;
+  const skip = (page - 1) * perPage;
+
+  const filterParams = {
+    serverId: input.serverId,
+    statusFilter: input.statusFilter,
+    dateFrom: input.dateFrom,
+    dateTo: input.dateTo,
+  };
 
   const [records, totalCount] = await Promise.all([
     repository.findByServer(db, {
-      serverId: input.serverId,
-      cursor: input.cursor,
-      limit,
-      statusFilter: input.statusFilter,
-      dateFrom: input.dateFrom,
-      dateTo: input.dateTo,
+      ...filterParams,
+      skip,
+      take: perPage,
     }),
-    repository.countByServer(db, {
-      serverId: input.serverId,
-      statusFilter: input.statusFilter,
-      dateFrom: input.dateFrom,
-      dateTo: input.dateTo,
-    }),
+    repository.countByServer(db, filterParams),
   ]);
 
-  // limit + 1 件取得しているので、超過分があれば次ページあり
-  const hasMore = records.length > limit;
-  const items = hasMore ? records.slice(0, limit) : records;
-  const lastItem = items[items.length - 1];
-
   return {
-    items: items.map(toAuditLogItem),
-    nextCursor:
-      hasMore && lastItem
-        ? { createdAt: lastItem.createdAt.toISOString(), id: lastItem.id }
-        : null,
+    items: records.map(toAuditLogItem),
     totalCount,
+    totalPages: Math.ceil(totalCount / perPage),
+    currentPage: page,
   };
 };

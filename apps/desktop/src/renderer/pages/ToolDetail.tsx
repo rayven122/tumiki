@@ -11,11 +11,7 @@ import {
 } from "lucide-react";
 import { themeAtom } from "../store/atoms";
 import { MCP_BASE_URL, MCP_CLI_COMMAND } from "../data/mock";
-import type {
-  McpServerDetailItem,
-  AuditLogItem,
-  AuditLogListInput,
-} from "../../main/types";
+import type { McpServerDetailItem, AuditLogItem } from "../../main/types";
 import { statusBadge, cardStyle, selectStyle } from "../utils/theme-styles";
 
 /** MCPサーバーステータスバッジの表示定義 */
@@ -142,11 +138,9 @@ export const ToolDetail = (): JSX.Element => {
 
   // 監査ログ（実データ）
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
-  const [auditNextCursor, setAuditNextCursor] = useState<{
-    createdAt: string;
-    id: number;
-  } | null>(null);
   const [auditTotal, setAuditTotal] = useState(0);
+  const [auditTotalPages, setAuditTotalPages] = useState(0);
+  const [auditPage, setAuditPage] = useState(1);
   const [auditLoading, setAuditLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<"all" | "success" | "error">(
     "all",
@@ -166,38 +160,35 @@ export const ToolDetail = (): JSX.Element => {
 
   // 監査ログ取得
   const loadAuditLogs = useCallback(
-    async (reset: boolean) => {
+    async (page: number) => {
       if (Number.isNaN(serverId)) return;
       setAuditLoading(true);
       try {
-        const input: AuditLogListInput = {
+        const result = await window.electronAPI.audit.listByServer({
           serverId,
-          limit: AUDIT_LOG_LIMIT,
+          page,
+          perPage: AUDIT_LOG_LIMIT,
           statusFilter: statusFilter === "all" ? undefined : statusFilter,
           dateFrom: dateFrom || undefined,
           dateTo: dateTo || undefined,
-        };
-        if (!reset && auditNextCursor) {
-          input.cursor = auditNextCursor;
-        }
-        const result = await window.electronAPI.audit.listByServer(input);
-        setAuditLogs((prev) =>
-          reset ? result.items : [...prev, ...result.items],
-        );
-        setAuditNextCursor(result.nextCursor);
+        });
+        setAuditLogs(result.items);
         setAuditTotal(result.totalCount);
+        setAuditTotalPages(result.totalPages);
+        setAuditPage(result.currentPage);
       } catch {
-        if (reset) setAuditLogs([]);
+        setAuditLogs([]);
       } finally {
         setAuditLoading(false);
       }
     },
-    [serverId, statusFilter, dateFrom, dateTo, auditNextCursor],
+    [serverId, statusFilter, dateFrom, dateTo],
   );
 
+  // フィルター変更時にページ1にリセット
   useEffect(() => {
-    loadAuditLogs(true);
-  }, [serverId, statusFilter, dateFrom, dateTo]);  
+    loadAuditLogs(1);
+  }, [loadAuditLogs]);
 
   // ローディング中
   if (serverLoading) {
@@ -572,20 +563,41 @@ export const ToolDetail = (): JSX.Element => {
               );
             })}
 
-            {/* さらに読み込むボタン */}
-            {auditNextCursor && (
-              <div className="pt-2 text-center">
+            {/* ページネーション */}
+            {auditTotalPages > 1 && (
+              <div className="flex items-center justify-center gap-1 pt-3">
                 <button
                   type="button"
-                  onClick={() => loadAuditLogs(false)}
-                  disabled={auditLoading}
-                  className="rounded-lg px-4 py-1.5 text-xs font-medium text-[var(--text-secondary)] transition hover:opacity-80 disabled:opacity-50"
-                  style={{
-                    border: "1px solid var(--border)",
-                    backgroundColor: "var(--bg-card)",
-                  }}
+                  onClick={() => loadAuditLogs(auditPage - 1)}
+                  disabled={auditPage <= 1 || auditLoading}
+                  className="rounded-lg px-2 py-1 text-xs text-[var(--text-muted)] transition hover:opacity-80 disabled:opacity-30"
                 >
-                  {auditLoading ? "読み込み中..." : "さらに読み込む"}
+                  &lt;
+                </button>
+                {Array.from({ length: auditTotalPages }, (_, i) => i + 1).map(
+                  (p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => loadAuditLogs(p)}
+                      disabled={auditLoading}
+                      className={`h-7 w-7 rounded-lg text-xs font-medium transition hover:opacity-80 disabled:opacity-50 ${
+                        p === auditPage
+                          ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]"
+                          : "text-[var(--text-muted)]"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ),
+                )}
+                <button
+                  type="button"
+                  onClick={() => loadAuditLogs(auditPage + 1)}
+                  disabled={auditPage >= auditTotalPages || auditLoading}
+                  className="rounded-lg px-2 py-1 text-xs text-[var(--text-muted)] transition hover:opacity-80 disabled:opacity-30"
+                >
+                  &gt;
                 </button>
               </div>
             )}

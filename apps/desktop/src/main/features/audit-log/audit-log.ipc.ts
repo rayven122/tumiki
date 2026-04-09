@@ -6,13 +6,8 @@ import * as logger from "../../shared/utils/logger";
 // IPC入力のバリデーションスキーマ
 const listByServerSchema = z.object({
   serverId: z.number().int().positive(),
-  cursor: z
-    .object({
-      createdAt: z.string(),
-      id: z.number().int(),
-    })
-    .optional(),
-  limit: z.number().int().min(1).max(100).optional(),
+  page: z.number().int().min(1).optional(),
+  perPage: z.number().int().min(1).max(100).optional(),
   statusFilter: z.enum(["all", "success", "error"]).optional(),
   dateFrom: z.string().optional(),
   dateTo: z.string().optional(),

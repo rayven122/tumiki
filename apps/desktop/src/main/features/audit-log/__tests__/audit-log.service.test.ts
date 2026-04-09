@@ -70,32 +70,41 @@ describe("audit-log.service", () => {
             createdAt: "2026-04-01T10:00:00.000Z",
           }),
         ],
-        nextCursor: null,
         totalCount: 2,
+        totalPages: 1,
+        currentPage: 1,
       });
     });
 
-    test("limit+1件取得時にnextCursorを返す", async () => {
-      // デフォルトlimit=20 → 21件返すと次ページあり
-      const records = Array.from({ length: 21 }, (_, i) =>
-        createMockAuditLog({
-          id: 21 - i,
-          createdAt: new Date(
-            `2026-04-01T${String(23 - i).padStart(2, "0")}:00:00.000Z`,
-          ),
-        }),
+    test("複数ページある場合にtotalPagesを正しく返す", async () => {
+      const records = Array.from({ length: 20 }, (_, i) =>
+        createMockAuditLog({ id: 20 - i }),
       );
       vi.mocked(repository.findByServer).mockResolvedValue(records);
-      vi.mocked(repository.countByServer).mockResolvedValue(30);
+      vi.mocked(repository.countByServer).mockResolvedValue(50);
 
       const result = await service.listByServer({ serverId: 1 });
 
       expect(result.items).toHaveLength(20);
-      expect(result.nextCursor).toStrictEqual({
-        createdAt: records[19]!.createdAt.toISOString(),
-        id: records[19]!.id,
-      });
-      expect(result.totalCount).toBe(30);
+      expect(result.totalPages).toBe(3);
+      expect(result.currentPage).toBe(1);
+      expect(result.totalCount).toBe(50);
+    });
+
+    test("2ページ目を取得する", async () => {
+      const records = Array.from({ length: 20 }, (_, i) =>
+        createMockAuditLog({ id: 40 - i }),
+      );
+      vi.mocked(repository.findByServer).mockResolvedValue(records);
+      vi.mocked(repository.countByServer).mockResolvedValue(50);
+
+      const result = await service.listByServer({ serverId: 1, page: 2 });
+
+      expect(result.currentPage).toBe(2);
+      expect(repository.findByServer).toHaveBeenCalledWith(
+        mockDb,
+        expect.objectContaining({ skip: 20, take: 20 }),
+      );
     });
 
     test("空結果の場合", async () => {
@@ -106,8 +115,9 @@ describe("audit-log.service", () => {
 
       expect(result).toStrictEqual({
         items: [],
-        nextCursor: null,
         totalCount: 0,
+        totalPages: 0,
+        currentPage: 1,
       });
     });
 
@@ -120,13 +130,13 @@ describe("audit-log.service", () => {
         statusFilter: "error",
         dateFrom: "2026-04-01",
         dateTo: "2026-04-07",
-        limit: 10,
+        perPage: 10,
       });
 
       expect(repository.findByServer).toHaveBeenCalledWith(mockDb, {
         serverId: 1,
-        cursor: undefined,
-        limit: 10,
+        skip: 0,
+        take: 10,
         statusFilter: "error",
         dateFrom: "2026-04-01",
         dateTo: "2026-04-07",
@@ -137,19 +147,6 @@ describe("audit-log.service", () => {
         dateFrom: "2026-04-01",
         dateTo: "2026-04-07",
       });
-    });
-
-    test("カーソル指定でrepositoryに渡す", async () => {
-      vi.mocked(repository.findByServer).mockResolvedValue([]);
-      vi.mocked(repository.countByServer).mockResolvedValue(0);
-
-      const cursor = { createdAt: "2026-04-01T10:00:00.000Z", id: 5 };
-      await service.listByServer({ serverId: 1, cursor });
-
-      expect(repository.findByServer).toHaveBeenCalledWith(
-        mockDb,
-        expect.objectContaining({ cursor }),
-      );
     });
   });
 });

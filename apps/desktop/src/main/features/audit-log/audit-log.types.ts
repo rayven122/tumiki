@@ -23,8 +23,8 @@ export type AuditLogItem = {
  */
 export type AuditLogListInput = {
   serverId: number;
-  cursor?: { createdAt: string; id: number };
-  limit?: number;
+  page?: number;
+  perPage?: number;
   statusFilter?: "all" | "success" | "error";
   dateFrom?: string;
   dateTo?: string;
@@ -35,6 +35,7 @@ export type AuditLogListInput = {
  */
 export type AuditLogListResult = {
   items: AuditLogItem[];
-  nextCursor: { createdAt: string; id: number } | null;
   totalCount: number;
+  totalPages: number;
+  currentPage: number;
 };
