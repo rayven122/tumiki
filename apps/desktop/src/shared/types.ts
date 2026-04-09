@@ -6,7 +6,7 @@ export type McpServer = {
   id: string;
   name: string;
   description: string;
-  status: "running" | "stopped" | "error";
+  status: "running" | "stopped" | "error" | "pending";
   command: string;
   args: string[];
   env?: Record<string, string>;

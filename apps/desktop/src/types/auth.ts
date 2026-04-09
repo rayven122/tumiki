@@ -1,4 +1,4 @@
-export type { AuthToken } from "../../prisma/generated/client";
+export type { AuthToken } from "@prisma/desktop-client";
 
 /**
  * auth:getToken の返却型
