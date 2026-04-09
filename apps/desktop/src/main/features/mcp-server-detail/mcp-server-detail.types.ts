@@ -20,7 +20,7 @@ export type McpToolItem = Omit<McpTool, "createdAt" | "updatedAt"> & {
  */
 export type McpConnectionDetailItem = Omit<
   McpConnection,
-  "createdAt" | "updatedAt" | "serverId" | "displayOrder"
+  "createdAt" | "updatedAt" | "serverId" | "displayOrder" | "credentials"
 > & {
   createdAt: string;
   updatedAt: string;

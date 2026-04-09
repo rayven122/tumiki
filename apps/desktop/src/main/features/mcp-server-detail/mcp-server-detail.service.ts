@@ -26,7 +26,6 @@ export const getServerDetail = async (
       command: conn.command,
       args: conn.args,
       url: conn.url,
-      credentials: conn.credentials,
       authType: conn.authType,
       isEnabled: conn.isEnabled,
       catalogId: conn.catalogId,

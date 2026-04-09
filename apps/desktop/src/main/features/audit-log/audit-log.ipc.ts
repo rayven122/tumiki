@@ -9,8 +9,8 @@ const listByServerSchema = z.object({
   page: z.number().int().min(1).optional(),
   perPage: z.number().int().min(1).max(100).optional(),
   statusFilter: z.enum(["all", "success", "error"]).optional(),
-  dateFrom: z.string().optional(),
-  dateTo: z.string().optional(),
+  dateFrom: z.iso.date().optional(),
+  dateTo: z.iso.date().optional(),
 });
 
 /**

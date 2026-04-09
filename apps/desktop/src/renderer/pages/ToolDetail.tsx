@@ -235,7 +235,9 @@ export const ToolDetail = (): JSX.Element => {
   // 利用統計をログから算出
   const successCount = auditLogs.filter((l) => l.isSuccess).length;
   const successRate =
-    auditTotal > 0 ? Math.round((successCount / auditLogs.length) * 100) : 0;
+    auditLogs.length > 0
+      ? Math.round((successCount / auditLogs.length) * 100)
+      : 0;
   const avgLatency =
     auditLogs.length > 0
       ? Math.round(
@@ -585,23 +587,43 @@ export const ToolDetail = (): JSX.Element => {
                 >
                   &lt;
                 </button>
-                {Array.from({ length: auditTotalPages }, (_, i) => i + 1).map(
-                  (p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => loadAuditLogs(p)}
-                      disabled={auditLoading}
-                      className={`h-7 w-7 rounded-lg text-xs font-medium transition hover:opacity-80 disabled:opacity-50 ${
-                        p === auditPage
-                          ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]"
-                          : "text-[var(--text-muted)]"
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  ),
-                )}
+                {Array.from({ length: auditTotalPages }, (_, i) => i + 1)
+                  .filter(
+                    (p) =>
+                      p === 1 ||
+                      p === auditTotalPages ||
+                      Math.abs(p - auditPage) <= 2,
+                  )
+                  .reduce<(number | "ellipsis")[]>((acc, p, i, arr) => {
+                    if (i > 0 && p - (arr[i - 1] as number) > 1)
+                      acc.push("ellipsis");
+                    acc.push(p);
+                    return acc;
+                  }, [])
+                  .map((p, i) =>
+                    p === "ellipsis" ? (
+                      <span
+                        key={`e-${i}`}
+                        className="px-1 text-xs text-[var(--text-subtle)]"
+                      >
+                        …
+                      </span>
+                    ) : (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => loadAuditLogs(p)}
+                        disabled={auditLoading}
+                        className={`h-7 w-7 rounded-lg text-xs font-medium transition hover:opacity-80 disabled:opacity-50 ${
+                          p === auditPage
+                            ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]"
+                            : "text-[var(--text-muted)]"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    ),
+                  )}
                 <button
                   type="button"
                   onClick={() => loadAuditLogs(auditPage + 1)}

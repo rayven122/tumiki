@@ -98,7 +98,6 @@ describe("mcp-server-detail.service", () => {
             command: "npx",
             args: '["test"]',
             url: null,
-            credentials: "{}",
             authType: "NONE",
             isEnabled: true,
             catalogId: null,
