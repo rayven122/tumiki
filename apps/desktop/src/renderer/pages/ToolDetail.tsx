@@ -228,6 +228,9 @@ export const ToolDetail = (): JSX.Element => {
 
   const badge = serverStatusBadge[server.serverStatus];
   const primaryConnection = server.connections[0];
+  // 接続のカタログからアイコンを取得（最初に見つかったものを使用）
+  const serverIcon = server.connections.find((c) => c.catalog?.iconPath)
+    ?.catalog?.iconPath;
 
   // 利用統計をログから算出
   const successCount = auditLogs.filter((l) => l.isSuccess).length;
@@ -257,9 +260,17 @@ export const ToolDetail = (): JSX.Element => {
 
       {/* ツール名 + ステータス */}
       <div className="flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[var(--bg-card-hover)]">
-          <Server size={24} className="text-[var(--text-muted)]" />
-        </div>
+        {serverIcon ? (
+          <img
+            src={serverIcon}
+            alt={server.name}
+            className="h-12 w-12 rounded-lg"
+          />
+        ) : (
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[var(--bg-card-hover)]">
+            <Server size={24} className="text-[var(--text-muted)]" />
+          </div>
+        )}
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold text-[var(--text-primary)]">
