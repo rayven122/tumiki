@@ -3,12 +3,15 @@ import type { AuthTokenResult } from "../types/auth";
 import type { CatalogItem } from "../types/catalog";
 import type {
   McpServerItem,
+  McpServerDetailItem,
   CreateFromCatalogInput,
   UpdateServerInput,
   DeleteServerInput,
   ToggleServerInput,
   StartOAuthInput,
   OAuthResult,
+  AuditLogListInput,
+  AuditLogListResult,
 } from "../main/types";
 import type {
   McpServerState,
@@ -89,6 +92,14 @@ const api = {
       ipcRenderer.invoke("mcp:call-tool", { name, arguments: args }),
     getStatus: (): Promise<McpServerState[]> =>
       ipcRenderer.invoke("mcp:status"),
+    getDetail: (serverId: number): Promise<McpServerDetailItem | null> =>
+      ipcRenderer.invoke("mcp-server:getDetail", serverId),
+  },
+
+  // 監査ログ API
+  audit: {
+    listByServer: (input: AuditLogListInput): Promise<AuditLogListResult> =>
+      ipcRenderer.invoke("audit:list-by-server", input),
   },
 
   // MCP OAuth認証 API
