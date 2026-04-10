@@ -48,7 +48,12 @@ export const AddMcpModal = ({
   const slug = useMemo(() => toSlug(serverName), [serverName]);
 
   const needsApiKey =
-    catalog.authType === "API_KEY" && credentialKeys.length > 0;
+    (catalog.authType === "API_KEY" || catalog.authType === "BEARER") &&
+    credentialKeys.length > 0;
+
+  const isRemote =
+    catalog.transportType === "STREAMABLE_HTTP" ||
+    catalog.transportType === "SSE";
 
   const hasRequiredCredentials =
     !needsApiKey ||
@@ -166,8 +171,10 @@ export const AddMcpModal = ({
         authType: catalog.authType,
       });
       onSuccess(result.serverName);
-    } catch {
-      setError("MCPサーバーの登録に失敗しました");
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "MCPサーバーの登録に失敗しました";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -478,7 +485,9 @@ export const AddMcpModal = ({
             {loading
               ? isOAuth
                 ? "ブラウザで認証中..."
-                : "追加中..."
+                : isRemote && needsApiKey
+                  ? "接続確認中..."
+                  : "追加中..."
               : isOAuth
                 ? "ブラウザで認証"
                 : catalog.authType === "NONE"

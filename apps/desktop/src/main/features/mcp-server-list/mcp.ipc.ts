@@ -33,7 +33,7 @@ export const setupMcpIpc = (): void => {
         "Failed to create MCP server from catalog",
         error instanceof Error ? error : { error },
       );
-      throw new Error(`MCPサーバーの登録に失敗しました: ${message}`);
+      throw new Error(message);
     }
   });
 

@@ -360,6 +360,16 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
+    name: "Firecrawl MCP",
+    description: "Firecrawl ウェブスクレイピング・クローリングサービス",
+    iconPath: "/logos/services/firecrawl.svg",
+    transportType: "STREAMABLE_HTTP",
+    url: "https://mcp.firecrawl.dev/sse",
+    credentialKeys: ["API Key"],
+    authType: "BEARER",
+    isOfficial: true,
+  },
+  {
     name: "HubSpot MCP",
     description:
       "HubSpot CRM MCP - コンタクト、会社、取引、マーケティング活動の管理",
