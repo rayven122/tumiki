@@ -171,8 +171,8 @@ describe("mcp.service", () => {
           id: 1,
           name: "Server A",
           connections: [
-            { id: 1, credentials: 'safe:encrypted-data' },
-            { id: 2, credentials: 'fallback:encrypted-data' },
+            { id: 1, credentials: "safe:encrypted-data" },
+            { id: 2, credentials: "fallback:encrypted-data" },
           ],
         },
       ];
