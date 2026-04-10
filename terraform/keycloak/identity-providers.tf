@@ -66,6 +66,14 @@ resource "keycloak_oidc_google_identity_provider" "google" {
   # 注: Terraformではカスタム認証フローの完全な設定が難しいため、
   # 基本的なIdP設定のみを行い、First Broker Loginフローは
   # デフォルトを使用する
+
+  # Keycloak → Google への認可リクエストで使う prompt を固定値で上書き
+  # クライアントから prompt=create (OIDC Prompt Values 1.0拡張) が来た場合、
+  # Google は受け付けず invalid_request 400 を返すため、ここで select_account に固定する
+  # 参考: PR #1013 で /signup フローに prompt=create を導入した際、本問題が発生した
+  extra_config = {
+    prompt = "select_account"
+  }
 }
 
 # =============================================================================
