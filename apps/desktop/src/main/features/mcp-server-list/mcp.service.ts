@@ -88,6 +88,22 @@ const fetchTools = async (
 };
 
 /**
+ * SDKエラーメッセージをユーザー向けに変換
+ */
+const toConnectionErrorMessage = (raw: string): string => {
+  if (/unauthorized/i.test(raw)) {
+    return "認証に失敗しました。APIキーが正しいか確認してください。";
+  }
+  if (/timeout/i.test(raw)) {
+    return "サーバーへの接続がタイムアウトしました。URLが正しいか確認してください。";
+  }
+  if (/ENOTFOUND|ECONNREFUSED/i.test(raw)) {
+    return "サーバーに接続できません。URLが正しいか確認してください。";
+  }
+  return `接続確認に失敗しました: ${raw}`;
+};
+
+/**
  * カタログからMCPサーバーを登録
  */
 export const createFromCatalog = async (
@@ -104,7 +120,13 @@ export const createFromCatalog = async (
       url: input.url,
       transportType: input.transportType,
     });
-    tools = await fetchTools(input);
+    try {
+      tools = await fetchTools(input);
+    } catch (error) {
+      const raw = error instanceof Error ? error.message : String(error);
+      logger.error("リモートMCPサーバーへの接続確認に失敗", { url: input.url, error: raw });
+      throw new Error(toConnectionErrorMessage(raw));
+    }
     logger.info(`ツール${tools.length}件を取得しました`, { url: input.url });
   }
 
