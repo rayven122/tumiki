@@ -83,12 +83,37 @@ describe("mcp.connection", () => {
       expect(mockClose).toHaveBeenCalled();
     });
 
-    test("接続失敗時にエラーをthrowする", async () => {
+    test("接続失敗時にエラーをthrowしcloseを呼ぶ", async () => {
       mockConnect.mockRejectedValue(new Error("Connection refused"));
 
       await expect(
         listToolsHTTP("https://example.com/mcp", { "X-API-Key": "bad-key" }),
       ).rejects.toThrow("Connection refused");
+      expect(mockClose).toHaveBeenCalled();
+    });
+
+    test("タイムアウト発生時にエラーをthrowする", async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: false });
+
+      mockConnect.mockImplementation(
+        () => new Promise(() => {}), // 永遠に解決しない
+      );
+
+      const promise = listToolsHTTP("https://example.com/mcp", {
+        "X-API-Key": "test-key",
+      });
+
+      // unhandled rejection警告を抑制（Promise.race内部のタイミング問題）
+      promise.catch(() => {});
+
+      await vi.advanceTimersByTimeAsync(10_000);
+
+      await expect(promise).rejects.toThrow(
+        "MCPサーバーへの接続がタイムアウトしました（10秒）",
+      );
+      expect(mockClose).toHaveBeenCalled();
+
+      vi.useRealTimers();
     });
 
     test("descriptionが未定義のツールは空文字になる", async () => {
@@ -132,12 +157,37 @@ describe("mcp.connection", () => {
       expect(mockClose).toHaveBeenCalled();
     });
 
-    test("接続失敗時にエラーをthrowする", async () => {
+    test("接続失敗時にエラーをthrowしcloseを呼ぶ", async () => {
       mockConnect.mockRejectedValue(new Error("SSE connection failed"));
 
       await expect(listToolsSSE("https://example.com/sse", {})).rejects.toThrow(
         "SSE connection failed",
       );
+      expect(mockClose).toHaveBeenCalled();
+    });
+
+    test("タイムアウト発生時にエラーをthrowする", async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: false });
+
+      mockConnect.mockImplementation(
+        () => new Promise(() => {}), // 永遠に解決しない
+      );
+
+      const promise = listToolsSSE("https://example.com/sse", {
+        Authorization: "Bearer test-token",
+      });
+
+      // unhandled rejection警告を抑制（Promise.race内部のタイミング問題）
+      promise.catch(() => {});
+
+      await vi.advanceTimersByTimeAsync(10_000);
+
+      await expect(promise).rejects.toThrow(
+        "MCPサーバーへの接続がタイムアウトしました（10秒）",
+      );
+      expect(mockClose).toHaveBeenCalled();
+
+      vi.useRealTimers();
     });
   });
 });

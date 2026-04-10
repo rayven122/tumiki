@@ -261,6 +261,76 @@ describe("mcp.service", () => {
       );
     });
 
+    test("接続確認失敗時にサーバーが保存されない", async () => {
+      const remoteInput: CreateFromCatalogInput = {
+        catalogId: 20,
+        catalogName: "Failing API",
+        description: "接続失敗MCP",
+        transportType: "STREAMABLE_HTTP",
+        command: null,
+        args: "[]",
+        url: "https://example.com/mcp",
+        credentialKeys: ["X-API-Key"],
+        credentials: { "X-API-Key": "bad-key" },
+        authType: "API_KEY",
+      };
+
+      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
+      vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
+      vi.mocked(mcpConnection.listToolsHTTP).mockRejectedValue(
+        new Error("接続に失敗しました"),
+      );
+
+      await expect(mcpService.createFromCatalog(remoteInput)).rejects.toThrow(
+        "接続に失敗しました",
+      );
+
+      expect(mcpRepository.createServer).not.toHaveBeenCalled();
+      expect(mcpRepository.createConnection).not.toHaveBeenCalled();
+      expect(mcpRepository.createTools).not.toHaveBeenCalled();
+      expect(mcpRepository.updateServerStatus).not.toHaveBeenCalled();
+    });
+
+    test("ツール0件時にcreateToolsとupdateServerStatusが呼ばれない", async () => {
+      const remoteInput: CreateFromCatalogInput = {
+        catalogId: 21,
+        catalogName: "Empty Tools API",
+        description: "ツール0件MCP",
+        transportType: "STREAMABLE_HTTP",
+        command: null,
+        args: "[]",
+        url: "https://example.com/mcp",
+        credentialKeys: ["X-API-Key"],
+        credentials: { "X-API-Key": "valid-key" },
+        authType: "API_KEY",
+      };
+
+      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
+      vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
+      vi.mocked(mcpRepository.createServer).mockResolvedValue({
+        id: 8,
+      } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 80,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
+      vi.mocked(mcpConnection.listToolsHTTP).mockResolvedValue([]);
+
+      const result = await mcpService.createFromCatalog(remoteInput);
+
+      expect(result).toStrictEqual({
+        serverId: 8,
+        serverName: "Empty Tools API",
+      });
+      expect(mcpConnection.listToolsHTTP).toHaveBeenCalledWith(
+        "https://example.com/mcp",
+        { "X-API-Key": "valid-key" },
+      );
+      expect(mcpRepository.createServer).toHaveBeenCalled();
+      expect(mcpRepository.createConnection).toHaveBeenCalled();
+      expect(mcpRepository.createTools).not.toHaveBeenCalled();
+      expect(mcpRepository.updateServerStatus).not.toHaveBeenCalled();
+    });
+
     test("STDIOサーバーは接続確認をスキップする", async () => {
       vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
       vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);

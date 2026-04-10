@@ -430,8 +430,8 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     iconPath: "/logos/services/outline.svg",
     transportType: "STREAMABLE_HTTP",
     url: "http://127.0.0.1:3000/mcp",
-    credentialKeys: [],
-    authType: "OAUTH",
+    credentialKeys: ["Authorization"],
+    authType: "API_KEY",
     isOfficial: true,
   },
 ];

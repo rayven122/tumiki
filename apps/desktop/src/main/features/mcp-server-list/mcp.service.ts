@@ -75,7 +75,10 @@ const buildHeaders = (
 const fetchTools = async (
   input: CreateFromCatalogInput,
 ): Promise<mcpConnection.McpToolData[]> => {
-  const url = input.url!;
+  if (input.url === null || input.url === undefined) {
+    throw new Error("fetchTools: urlが未設定です");
+  }
+  const url = input.url;
   const headers = buildHeaders(input);
 
   if (input.transportType === "SSE") {
