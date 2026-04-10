@@ -11,11 +11,13 @@ vi.mock("electron", () => ({
 vi.mock("../../../shared/db");
 vi.mock("../../../shared/utils/logger");
 vi.mock("../mcp.repository");
+vi.mock("../../../utils/encryption");
 
 // テスト対象のインポート（モックの後に行う）
 import * as mcpService from "../mcp.service";
 import { getDb } from "../../../shared/db";
 import * as mcpRepository from "../mcp.repository";
+import { encryptToken, decryptToken } from "../../../utils/encryption";
 
 describe("mcp.service", () => {
   const mockDb = {} as Awaited<ReturnType<typeof getDb>>;
@@ -23,6 +25,12 @@ describe("mcp.service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getDb).mockResolvedValue(mockDb);
+    // encryptToken: "encrypted:{入力}" を返す
+    vi.mocked(encryptToken).mockImplementation(async (v) => `encrypted:${v}`);
+    // decryptToken: "encrypted:" プレフィックスを除去して返す
+    vi.mocked(decryptToken).mockImplementation(async (v) =>
+      v.replace(/^encrypted:/, ""),
+    );
   });
 
   describe("createFromCatalog", () => {
@@ -64,7 +72,7 @@ describe("mcp.service", () => {
         command: "npx",
         args: '["test-server"]',
         url: null,
-        credentials: JSON.stringify({ API_KEY: "test-key" }),
+        credentials: `encrypted:${JSON.stringify({ API_KEY: "test-key" })}`,
         authType: "API_KEY",
         serverId: 1,
         catalogId: 1,
@@ -117,7 +125,7 @@ describe("mcp.service", () => {
       );
     });
 
-    test("credentialsをJSON文字列に変換する", async () => {
+    test("credentialsを暗号化してJSON文字列で保存する", async () => {
       vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
       vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
       vi.mocked(mcpRepository.createServer).mockResolvedValue({
@@ -129,10 +137,11 @@ describe("mcp.service", () => {
 
       await mcpService.createFromCatalog(input);
 
+      expect(encryptToken).toHaveBeenCalledWith('{"API_KEY":"test-key"}');
       expect(mcpRepository.createConnection).toHaveBeenCalledWith(
         mockDb,
         expect.objectContaining({
-          credentials: '{"API_KEY":"test-key"}',
+          credentials: 'encrypted:{"API_KEY":"test-key"}',
         }),
       );
     });
@@ -154,6 +163,56 @@ describe("mcp.service", () => {
 
       expect(result).toStrictEqual(mockServers);
       expect(mcpRepository.findAllWithConnections).toHaveBeenCalledWith(mockDb);
+    });
+
+    test("暗号化されたcredentialsを復号して返す", async () => {
+      const mockServers = [
+        {
+          id: 1,
+          name: "Server A",
+          connections: [
+            { id: 1, credentials: "safe:encrypted-data" },
+            { id: 2, credentials: "fallback:encrypted-data" },
+          ],
+        },
+      ];
+      vi.mocked(mcpRepository.findAllWithConnections).mockResolvedValue(
+        mockServers as unknown as Awaited<
+          ReturnType<typeof mcpRepository.findAllWithConnections>
+        >,
+      );
+      vi.mocked(decryptToken).mockResolvedValue('{"API_KEY":"decrypted"}');
+
+      const result = await mcpService.getAllServers();
+
+      expect(decryptToken).toHaveBeenCalledTimes(2);
+      expect(result[0]?.connections[0]?.credentials).toBe(
+        '{"API_KEY":"decrypted"}',
+      );
+      expect(result[0]?.connections[1]?.credentials).toBe(
+        '{"API_KEY":"decrypted"}',
+      );
+    });
+
+    test("平文の既存credentialsはそのまま返す（マイグレーション互換）", async () => {
+      const plainCredentials = '{"API_KEY":"plain-text-key"}';
+      const mockServers = [
+        {
+          id: 1,
+          name: "Server A",
+          connections: [{ id: 1, credentials: plainCredentials }],
+        },
+      ];
+      vi.mocked(mcpRepository.findAllWithConnections).mockResolvedValue(
+        mockServers as unknown as Awaited<
+          ReturnType<typeof mcpRepository.findAllWithConnections>
+        >,
+      );
+
+      const result = await mcpService.getAllServers();
+
+      expect(decryptToken).not.toHaveBeenCalled();
+      expect(result[0]?.connections[0]?.credentials).toBe(plainCredentials);
     });
   });
 });

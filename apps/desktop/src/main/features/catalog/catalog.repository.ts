@@ -8,8 +8,9 @@ export type CatalogSeedData = {
   description: string;
   iconPath: string;
   transportType: "STDIO" | "SSE" | "STREAMABLE_HTTP";
-  command: string;
-  args: string[];
+  command?: string;
+  args?: string[];
+  url?: string;
   credentialKeys: string[];
   authType: "NONE" | "BEARER" | "API_KEY" | "OAUTH";
   isOfficial: boolean;
@@ -30,7 +31,7 @@ export const findAll = async (db: PrismaClient) => {
 export const upsert = async (db: PrismaClient, data: CatalogSeedData) => {
   const dbData = {
     ...data,
-    args: JSON.stringify(data.args),
+    args: JSON.stringify(data.args ?? []),
     credentialKeys: JSON.stringify(data.credentialKeys),
   };
 
@@ -42,6 +43,7 @@ export const upsert = async (db: PrismaClient, data: CatalogSeedData) => {
       transportType: dbData.transportType,
       command: dbData.command,
       args: dbData.args,
+      url: dbData.url,
       credentialKeys: dbData.credentialKeys,
       authType: dbData.authType,
       isOfficial: dbData.isOfficial,

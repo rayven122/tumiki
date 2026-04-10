@@ -1,40 +1,63 @@
+import { execFileSync } from "node:child_process";
+import { existsSync, readdirSync, statSync, unlinkSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { PrismaClient } from "@prisma/desktop-client";
-import { join } from "path";
-import { readFileSync, unlinkSync, existsSync } from "fs";
 
-const MIGRATION_SQL_PATH = join(
-  __dirname,
-  "../../../../prisma/migrations/20260401164241_init/migration.sql",
-);
+/** apps/desktop（prisma 一式があるディレクトリ） */
+const DESKTOP_ROOT = join(__dirname, "../../../..");
+const MIGRATIONS_DIR = join(DESKTOP_ROOT, "prisma/migrations");
 
 /**
- * テスト用SQLite DBを作成し、マイグレーション済みPrismaClientを返す
+ * テスト用SQLite DBを作成し、全マイグレーション適用済みのPrismaClientを返す
+ *
+ * 以前は migration.sql を `;` で分割して `$executeRawUnsafe` していたが、
+ * CREATE 文と CREATE INDEX が 1 ステートメントとして結合されるなど環境依存で壊れ、
+ * UNIQUE インデックス未作成のままになり `upsert` が失敗することがあった。
+ * `prisma db execute --file` はスクリプト全文を一度に送るため分割不要。
+ * （OAuth 周りのコード変更とは無関係で、マイグレーション SQL・テストヘルパー側の問題。）
  */
 export const createTestDb = async (dbPath: string): Promise<PrismaClient> => {
-  // 既存のDBファイルを削除
   if (existsSync(dbPath)) {
     unlinkSync(dbPath);
   }
-
-  const db = new PrismaClient({
-    datasources: { db: { url: `file:${dbPath}` } },
-  });
-
-  // マイグレーションSQLを実行してテーブルを作成
-  const migrationSql = readFileSync(MIGRATION_SQL_PATH, "utf8");
-  const statements = migrationSql
-    .split("\n")
-    .filter((line) => !line.trimStart().startsWith("--"))
-    .join("\n")
-    .split(";")
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0);
-
-  for (const statement of statements) {
-    await db.$executeRawUnsafe(`${statement};`);
+  const journalPath = `${dbPath}-journal`;
+  if (existsSync(journalPath)) {
+    unlinkSync(journalPath);
   }
 
-  return db;
+  const databaseUrl = pathToFileURL(resolve(dbPath)).href;
+
+  const migrationDirs = readdirSync(MIGRATIONS_DIR)
+    .filter((name) => statSync(join(MIGRATIONS_DIR, name)).isDirectory())
+    .sort();
+
+  for (const dir of migrationDirs) {
+    const sqlPath = join(MIGRATIONS_DIR, dir, "migration.sql");
+    if (!existsSync(sqlPath)) continue;
+
+    execFileSync(
+      "pnpm",
+      [
+        "exec",
+        "prisma",
+        "db",
+        "execute",
+        "--file",
+        sqlPath,
+        "--url",
+        databaseUrl,
+      ],
+      {
+        cwd: DESKTOP_ROOT,
+        stdio: "pipe",
+      },
+    );
+  }
+
+  return new PrismaClient({
+    datasources: { db: { url: databaseUrl } },
+  });
 };
 
 /**

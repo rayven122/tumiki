@@ -48,6 +48,19 @@ CREATE TABLE "McpConnection" (
 );
 
 -- CreateTable
+CREATE TABLE "OAuthClient" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "serverUrl" TEXT NOT NULL,
+    "issuer" TEXT NOT NULL,
+    "clientId" TEXT NOT NULL,
+    "clientSecret" TEXT,
+    "tokenEndpointAuthMethod" TEXT NOT NULL DEFAULT 'none',
+    "authServerMetadata" TEXT NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL
+);
+
+-- CreateTable
 CREATE TABLE "McpTool" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "name" TEXT NOT NULL,
@@ -95,6 +108,9 @@ CREATE TABLE "AuditLog" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "McpCatalog_name_key" ON "McpCatalog"("name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "OAuthClient_serverUrl_key" ON "OAuthClient"("serverUrl");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "McpConnection_serverId_slug_key" ON "McpConnection"("serverId", "slug");
