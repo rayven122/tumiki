@@ -17,26 +17,22 @@ import { statusBadge, cardStyle, selectStyle } from "../utils/theme-styles";
 /** MCPサーバーステータスバッジの表示定義 */
 const serverStatusBadge: Record<
   McpServerDetailItem["serverStatus"],
-  { bg: string; text: string; label: string }
+  { className: string; label: string }
 > = {
   RUNNING: {
-    bg: "var(--badge-success-bg)",
-    text: "var(--badge-success-text)",
+    className: "bg-[var(--badge-success-bg)] text-[var(--badge-success-text)]",
     label: "稼働中",
   },
   STOPPED: {
-    bg: "var(--bg-active)",
-    text: "var(--text-muted)",
+    className: "bg-[var(--bg-active)] text-[var(--text-muted)]",
     label: "停止中",
   },
   ERROR: {
-    bg: "var(--badge-error-bg)",
-    text: "var(--badge-error-text)",
+    className: "bg-[var(--badge-error-bg)] text-[var(--badge-error-text)]",
     label: "エラー",
   },
   PENDING: {
-    bg: "var(--badge-warn-bg)",
-    text: "var(--badge-warn-text)",
+    className: "bg-[var(--badge-warn-bg)] text-[var(--badge-warn-text)]",
     label: "接続中",
   },
 };
@@ -283,8 +279,7 @@ export const ToolDetail = (): JSX.Element => {
               {server.name}
             </h1>
             <span
-              className="rounded-full px-2 py-0.5 text-xs"
-              style={{ backgroundColor: badge.bg, color: badge.text }}
+              className={`rounded-full px-2 py-0.5 text-xs ${badge.className}`}
             >
               {badge.label}
             </span>
@@ -479,11 +474,13 @@ export const ToolDetail = (): JSX.Element => {
               label: "成功率",
               value: successRate.toString(),
               suffix: "%",
+              note: "※表示中のデータから算出",
             },
             {
               label: "平均応答",
               value: avgLatency.toString(),
               suffix: "ms",
+              note: "※表示中のデータから算出",
             },
           ].map((stat) => (
             <div
@@ -499,6 +496,11 @@ export const ToolDetail = (): JSX.Element => {
               <p className="mt-1 text-[10px] text-[var(--text-subtle)]">
                 {stat.label}
               </p>
+              {"note" in stat && stat.note && (
+                <p className="mt-0.5 text-[8px] text-[var(--text-subtle)]">
+                  {stat.note}
+                </p>
+              )}
             </div>
           ))}
         </div>

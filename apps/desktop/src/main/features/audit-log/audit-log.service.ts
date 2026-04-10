@@ -6,7 +6,8 @@ import type {
   AuditLogListResult,
 } from "./audit-log.types";
 
-const DEFAULT_PER_PAGE = 20;
+/** レンダラーがperPageを省略した場合のフォールバック値 */
+const FALLBACK_PER_PAGE = 20;
 
 /**
  * AuditLogレコードをIPC通信用の型に変換
@@ -38,7 +39,7 @@ export const listByServer = async (
 ): Promise<AuditLogListResult> => {
   const db = await getDb();
   const page = input.page ?? 1;
-  const perPage = input.perPage ?? DEFAULT_PER_PAGE;
+  const perPage = input.perPage ?? FALLBACK_PER_PAGE;
   const skip = (page - 1) * perPage;
 
   const filterParams = {
