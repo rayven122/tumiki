@@ -122,7 +122,11 @@ const DUMMY_OPERATIONS = [
   { name: "tools/call", description: "ツールの実行", allowed: true },
   { name: "tools/list", description: "ツール一覧の取得", allowed: true },
   { name: "resources/read", description: "リソースの読み取り", allowed: true },
-  { name: "resources/write", description: "リソースの書き込み", allowed: false },
+  {
+    name: "resources/write",
+    description: "リソースの書き込み",
+    allowed: false,
+  },
   { name: "prompts/get", description: "プロンプトの取得", allowed: true },
 ];
 
