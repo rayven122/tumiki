@@ -37,11 +37,11 @@ const buildWhereClause = (
   if (params.dateFrom || params.dateTo) {
     where.createdAt = {};
     if (params.dateFrom) {
-      where.createdAt.gte = new Date(params.dateFrom);
+      where.createdAt.gte = new Date(`${params.dateFrom}T00:00:00`);
     }
     if (params.dateTo) {
-      // dateTo は日付の終わりまでを含む
-      where.createdAt.lte = new Date(`${params.dateTo}T23:59:59.999Z`);
+      // dateTo は日付の終わりまでを含む（ローカルタイム基準）
+      where.createdAt.lte = new Date(`${params.dateTo}T23:59:59.999`);
     }
   }
 
