@@ -474,13 +474,11 @@ export const ToolDetail = (): JSX.Element => {
               label: "成功率",
               value: successRate.toString(),
               suffix: "%",
-              note: "※表示中のデータから算出",
             },
             {
               label: "平均応答",
               value: avgLatency.toString(),
               suffix: "ms",
-              note: "※表示中のデータから算出",
             },
           ].map((stat) => (
             <div
@@ -496,11 +494,6 @@ export const ToolDetail = (): JSX.Element => {
               <p className="mt-1 text-[10px] text-[var(--text-subtle)]">
                 {stat.label}
               </p>
-              {"note" in stat && stat.note && (
-                <p className="mt-0.5 text-[8px] text-[var(--text-subtle)]">
-                  {stat.note}
-                </p>
-              )}
             </div>
           ))}
         </div>
