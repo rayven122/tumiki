@@ -1,6 +1,5 @@
 import { getDb } from "../../shared/db";
 import * as mcpRepository from "./mcp.repository";
-import * as mcpConnection from "./mcp.connection";
 import * as logger from "../../shared/utils/logger";
 import { toSlug } from "../../../shared/mcp.slug";
 import { encryptToken, decryptToken } from "../../utils/encryption";
@@ -43,67 +42,6 @@ const generateUniqueName = async (name: string): Promise<string> => {
 };
 
 /**
- * 接続確認が必要か判定
- * リモート（Streamable HTTP / SSE）+ API_KEY/BEARER認証時のみ接続確認を行う
- * STDIOはtools/listでAPIキー検証が行われないため接続確認の対象外
- */
-const needsConnectionVerification = (input: CreateFromCatalogInput): boolean =>
-  (input.transportType === "STREAMABLE_HTTP" ||
-    input.transportType === "SSE") &&
-  (input.authType === "API_KEY" || input.authType === "BEARER") &&
-  input.url !== null;
-
-/**
- * credentialsからHTTPヘッダーを構築
- *
- * - API_KEY: credentialsのキー=ヘッダー名、値=ヘッダー値としてそのまま使用
- * - BEARER: 最初のcredential値を Authorization: Bearer <value> として送信
- */
-const buildHeaders = (
-  input: CreateFromCatalogInput,
-): Record<string, string> => {
-  if (input.authType === "BEARER") {
-    const token = Object.values(input.credentials)[0];
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  }
-  return input.credentials;
-};
-
-/**
- * リモートMCPサーバーに接続してツール一覧を取得
- */
-const fetchTools = async (
-  input: CreateFromCatalogInput,
-): Promise<mcpConnection.McpToolData[]> => {
-  if (input.url === null || input.url === undefined) {
-    throw new Error("fetchTools: urlが未設定です");
-  }
-  const url = input.url;
-  const headers = buildHeaders(input);
-
-  if (input.transportType === "SSE") {
-    return mcpConnection.listToolsSSE(url, headers);
-  }
-  return mcpConnection.listToolsHTTP(url, headers);
-};
-
-/**
- * SDKエラーメッセージをユーザー向けに変換
- */
-const toConnectionErrorMessage = (raw: string): string => {
-  if (/unauthorized/i.test(raw)) {
-    return "認証に失敗しました。APIキーが正しいか確認してください。";
-  }
-  if (/timeout/i.test(raw)) {
-    return "サーバーへの接続がタイムアウトしました。URLが正しいか確認してください。";
-  }
-  if (/ENOTFOUND|ECONNREFUSED/i.test(raw)) {
-    return "サーバーに接続できません。URLが正しいか確認してください。";
-  }
-  return `接続確認に失敗しました: ${raw}`;
-};
-
-/**
  * カタログからMCPサーバーを登録
  */
 export const createFromCatalog = async (
@@ -113,23 +51,6 @@ export const createFromCatalog = async (
   const uniqueName = await generateUniqueName(input.catalogName);
   const slug = await generateUniqueSlug(uniqueName);
 
-  // 接続確認 + ツール取得
-  let tools: mcpConnection.McpToolData[] = [];
-  if (needsConnectionVerification(input)) {
-    logger.info("リモートMCPサーバーへの接続確認を開始", {
-      url: input.url,
-      transportType: input.transportType,
-    });
-    try {
-      tools = await fetchTools(input);
-    } catch (error) {
-      const raw = error instanceof Error ? error.message : String(error);
-      logger.error("リモートMCPサーバーへの接続確認に失敗", { url: input.url, error: raw });
-      throw new Error(toConnectionErrorMessage(raw));
-    }
-    logger.info(`ツール${tools.length}件を取得しました`, { url: input.url });
-  }
-
   // MCPサーバー作成
   const server = await mcpRepository.createServer(db, {
     name: uniqueName,
@@ -138,7 +59,7 @@ export const createFromCatalog = async (
   });
 
   // MCP接続作成
-  const connection = await mcpRepository.createConnection(db, {
+  await mcpRepository.createConnection(db, {
     name: uniqueName,
     slug,
     transportType: input.transportType,
@@ -150,22 +71,6 @@ export const createFromCatalog = async (
     serverId: server.id,
     catalogId: input.catalogId,
   });
-
-  // ツールをDB保存（接続確認で取得した場合）
-  if (tools.length > 0) {
-    await mcpRepository.createTools(
-      db,
-      tools.map((tool) => ({
-        name: tool.name,
-        description: tool.description,
-        inputSchema: tool.inputSchema,
-        connectionId: connection.id,
-      })),
-    );
-
-    // 接続確認成功 → サーバーステータスをRUNNINGに
-    await mcpRepository.updateServerStatus(db, server.id, "RUNNING");
-  }
 
   logger.info(`MCP server created from catalog: ${uniqueName}`);
 

@@ -76,37 +76,3 @@ export const findServerBySlug = async (db: PrismaClient, slug: string) => {
 export const findServerByName = async (db: PrismaClient, name: string) => {
   return db.mcpServer.findFirst({ where: { name } });
 };
-
-/**
- * MCPツール作成時の入力データ型
- */
-export type CreateMcpToolInput = {
-  name: string;
-  description: string;
-  inputSchema: string;
-  connectionId: number;
-};
-
-/**
- * MCPツールを一括作成
- */
-export const createTools = async (
-  db: PrismaClient,
-  tools: CreateMcpToolInput[],
-) => {
-  return db.mcpTool.createMany({ data: tools });
-};
-
-/**
- * サーバーステータスを更新
- */
-export const updateServerStatus = async (
-  db: PrismaClient,
-  serverId: number,
-  status: "RUNNING" | "STOPPED" | "ERROR" | "PENDING",
-) => {
-  return db.mcpServer.update({
-    where: { id: serverId },
-    data: { serverStatus: status },
-  });
-};

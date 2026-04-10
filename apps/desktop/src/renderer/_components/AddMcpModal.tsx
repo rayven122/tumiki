@@ -51,10 +51,6 @@ export const AddMcpModal = ({
     (catalog.authType === "API_KEY" || catalog.authType === "BEARER") &&
     credentialKeys.length > 0;
 
-  const isRemote =
-    catalog.transportType === "STREAMABLE_HTTP" ||
-    catalog.transportType === "SSE";
-
   const hasRequiredCredentials =
     !needsApiKey ||
     credentialKeys.every((key) => (credentials[key] ?? "").trim() !== "");
@@ -485,9 +481,7 @@ export const AddMcpModal = ({
             {loading
               ? isOAuth
                 ? "ブラウザで認証中..."
-                : isRemote && needsApiKey
-                  ? "接続確認中..."
-                  : "追加中..."
+                : "追加中..."
               : isOAuth
                 ? "ブラウザで認証"
                 : catalog.authType === "NONE"
