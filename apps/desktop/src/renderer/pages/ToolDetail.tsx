@@ -557,7 +557,7 @@ export const ToolDetail = (): JSX.Element => {
                       {log.toolName}
                     </span>
                     <span className="text-xs text-[var(--text-subtle)]">
-                      {log.method}
+                      {log.detail ?? log.method}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">

@@ -13,6 +13,7 @@ export type AuditLogItem = {
   isSuccess: boolean;
   errorCode: number | null;
   errorSummary: string | null;
+  detail: string | null;
   createdAt: string;
   serverId: number;
   connectionName: string | null;

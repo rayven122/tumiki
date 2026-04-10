@@ -23,6 +23,7 @@ const toAuditLogItem = (record: {
   isSuccess: boolean;
   errorCode: number | null;
   errorSummary: string | null;
+  detail: string | null;
   createdAt: Date;
   serverId: number;
   connectionName: string | null;
