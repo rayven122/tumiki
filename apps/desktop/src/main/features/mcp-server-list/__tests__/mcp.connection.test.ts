@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
+import { describe, test, expect, beforeEach, afterEach, vi } from "vitest";
 
 vi.mock("electron", () => ({
   app: {
@@ -38,6 +38,10 @@ describe("mcp.connection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockClose.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   const mockTools = [
@@ -112,8 +116,6 @@ describe("mcp.connection", () => {
         "MCPサーバーへの接続がタイムアウトしました（10秒）",
       );
       expect(mockClose).toHaveBeenCalled();
-
-      vi.useRealTimers();
     });
 
     test("descriptionが未定義のツールは空文字になる", async () => {
@@ -186,8 +188,6 @@ describe("mcp.connection", () => {
         "MCPサーバーへの接続がタイムアウトしました（10秒）",
       );
       expect(mockClose).toHaveBeenCalled();
-
-      vi.useRealTimers();
     });
   });
 });
