@@ -9,6 +9,7 @@ import { setupMcpServerDetailIpc } from "./features/mcp-server-detail/mcp-server
 import { setupAuditLogIpc } from "./features/audit-log/audit-log.ipc";
 import { startMcpServers, stopProxy } from "./features/mcp-proxy/mcp.service";
 import { seedCatalogs } from "./features/catalog/catalog.seed";
+import { seedAuditLogs } from "./features/audit-log/audit-log.seed";
 import { createOAuthManager } from "./auth/oauth-manager";
 import { getOAuthManager, setOAuthManager } from "./auth/manager-registry";
 import { getKeycloakEnvOptional } from "./utils/env";
@@ -290,6 +291,18 @@ if (isMcpProxyMode) {
       } catch (error) {
         logger.error(
           "Failed to seed catalogs (non-critical, continuing startup)",
+          {
+            error: error instanceof Error ? error.message : error,
+          },
+        );
+      }
+
+      // 監査ログのシードデータを投入（冪等・失敗してもアプリ起動は継続）
+      try {
+        await seedAuditLogs();
+      } catch (error) {
+        logger.error(
+          "Failed to seed audit logs (non-critical, continuing startup)",
           {
             error: error instanceof Error ? error.message : error,
           },
