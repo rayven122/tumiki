@@ -100,6 +100,7 @@ CREATE TABLE "AuditLog" (
     "isSuccess" BOOLEAN NOT NULL DEFAULT true,
     "errorCode" INTEGER,
     "errorSummary" TEXT,
+    "detail" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "serverId" INTEGER NOT NULL,
     "connectionName" TEXT,
