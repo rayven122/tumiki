@@ -363,7 +363,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     name: "Firecrawl MCP",
     description: "Firecrawl ウェブスクレイピング・クローリングサービス",
     iconPath: "/logos/services/firecrawl.svg",
-    transportType: "STREAMABLE_HTTP",
+    transportType: "STREAMABLE_HTTP", // Firecrawlは /sse パスでStreamable HTTPを提供
     url: "https://mcp.firecrawl.dev/sse",
     credentialKeys: ["API Key"],
     authType: "BEARER",
