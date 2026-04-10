@@ -111,14 +111,7 @@ export const exchangeCodeForToken = async (
   );
 
   let processedResponse = response;
-  if (response.ok) {
-    const responseBody = await response.clone().text();
-    processedResponse = new Response(responseBody, {
-      status: 200,
-      statusText: "OK",
-      headers: response.headers,
-    });
-  } else {
+  if (!response.ok) {
     try {
       const errorBody: unknown = await response.clone().json();
       const parseResult = FigmaErrorResponseSchema.safeParse(errorBody);
@@ -176,20 +169,10 @@ export const refreshAccessToken = async (
     { [oauth.customFetch]: customFetch },
   );
 
-  let processedResponse = response;
-  if (response.ok) {
-    const responseBody = await response.clone().text();
-    processedResponse = new Response(responseBody, {
-      status: 200,
-      statusText: "OK",
-      headers: response.headers,
-    });
-  }
-
   const result = await oauth.processRefreshTokenResponse(
     authServer,
     client,
-    processedResponse,
+    response,
   );
 
   return {

@@ -68,6 +68,7 @@ export const AddMcpModal = ({
   const handleOAuthError = useCallback((errorMsg: string) => {
     setLoading(false);
     setError(errorMsg);
+    setNeedsManualOAuthClient(false);
   }, []);
 
   useEffect(() => {
