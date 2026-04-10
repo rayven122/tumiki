@@ -143,6 +143,7 @@ export const AddMcpModal = ({
           setNeedsManualOAuthClient(true);
           setError(null);
         } else {
+          setNeedsManualOAuthClient(false);
           setError(displayMessage);
         }
         setLoading(false);
