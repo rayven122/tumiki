@@ -47,6 +47,15 @@ vi.mock("../../../shared/utils/logger", () => ({
   debug: vi.fn(),
 }));
 
+// features/mcp-server-list/mcp.service の getEnabledConfigs をモック（DB非依存にする）
+vi.mock("../../mcp-server-list/mcp.service", () => ({
+  getEnabledConfigs: vi
+    .fn()
+    .mockResolvedValue([
+      { name: "test-server", command: "echo", args: ["hello"], env: {} },
+    ]),
+}));
+
 // --- ヘルパー ---
 
 /**

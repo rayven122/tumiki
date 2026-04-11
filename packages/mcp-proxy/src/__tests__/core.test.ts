@@ -1,13 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { Logger } from "../types.js";
-import {
-  createProxyCore,
-  createSingleServerCore,
-  HARDCODED_CONFIGS,
-  HARDCODED_GROUPS,
-  resolveServerConfigs,
-} from "../core.js";
+import { createProxyCore, createSingleServerCore } from "../core.js";
 import { createMockLogger } from "./test-helpers.js";
 
 // UpstreamClientのモック（createSingleServerCore用）
@@ -257,53 +251,5 @@ describe("createSingleServerCore", () => {
     core.onStatusChange(callback);
 
     expect(mockClientOnStatusChange).toHaveBeenCalledWith(callback);
-  });
-});
-
-describe("HARDCODED_CONFIGS", () => {
-  test("Serena MCPの設定が含まれている", () => {
-    expect(HARDCODED_CONFIGS).toHaveLength(1);
-    expect(HARDCODED_CONFIGS[0]).toStrictEqual({
-      name: "serena",
-      command: "uvx",
-      args: [
-        "--from",
-        "git+https://github.com/oraios/serena",
-        "serena",
-        "start-mcp-server",
-        "--enable-web-dashboard",
-        "false",
-        "--context",
-        "ide-assistant",
-        "--project",
-        ".",
-      ],
-      env: {},
-    });
-  });
-});
-
-describe("HARDCODED_GROUPS", () => {
-  test("初期状態は空配列", () => {
-    expect(HARDCODED_GROUPS).toStrictEqual([]);
-  });
-});
-
-describe("resolveServerConfigs", () => {
-  test("単体サーバー名で設定を1件返す", () => {
-    const configs = resolveServerConfigs("serena");
-
-    expect(configs).toHaveLength(1);
-    expect(configs[0]!.name).toBe("serena");
-  });
-
-  test("存在しない名前でエラーをスローする", () => {
-    expect(() => resolveServerConfigs("unknown")).toThrow(
-      'サーバー "unknown" が見つかりません',
-    );
-  });
-
-  test("エラーメッセージに利用可能なサーバー名が含まれる", () => {
-    expect(() => resolveServerConfigs("unknown")).toThrow("serena");
   });
 });

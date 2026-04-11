@@ -4,6 +4,9 @@ import type { CatalogItem } from "../types/catalog";
 import type {
   McpServerItem,
   CreateFromCatalogInput,
+  UpdateServerInput,
+  DeleteServerInput,
+  ToggleServerInput,
   StartOAuthInput,
   OAuthResult,
 } from "../main/types";
@@ -68,6 +71,12 @@ const api = {
     ): Promise<{ serverId: number; serverName: string }> =>
       ipcRenderer.invoke("mcp:createFromCatalog", input),
     getAll: (): Promise<McpServerItem[]> => ipcRenderer.invoke("mcp:getAll"),
+    updateServer: (input: UpdateServerInput): Promise<McpServerItem> =>
+      ipcRenderer.invoke("mcp:updateServer", input),
+    deleteServer: (input: DeleteServerInput): Promise<void> =>
+      ipcRenderer.invoke("mcp:deleteServer", input),
+    toggleServer: (input: ToggleServerInput): Promise<McpServerItem> =>
+      ipcRenderer.invoke("mcp:toggleServer", input),
     // MCP Proxy API
     start: (): Promise<McpServerState[]> => ipcRenderer.invoke("mcp:start"),
     stop: (): Promise<void> => ipcRenderer.invoke("mcp:stop"),

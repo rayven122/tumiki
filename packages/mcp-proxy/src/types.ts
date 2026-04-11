@@ -51,9 +51,14 @@ export type CallToolPayload = {
   arguments: Record<string, unknown>;
 };
 
+// startリクエストのペイロード
+export type StartPayload = {
+  configs: McpServerConfig[];
+};
+
 // Main → Proxy Process（リクエスト）— discriminated union でペイロードの型安全性を保証
 export type ProxyRequest =
-  | { id: string; type: "start" }
+  | { id: string; type: "start"; payload: StartPayload }
   | { id: string; type: "stop" }
   | { id: string; type: "list-tools" }
   | { id: string; type: "call-tool"; payload: CallToolPayload }

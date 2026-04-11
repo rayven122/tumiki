@@ -1,50 +1,33 @@
 #!/usr/bin/env node
 /**
  * --mcp-proxy CLIエントリーポイント
- * claude code → tumiki --mcp-proxy --server serena → Serena MCP の接続フロー
+ * claude code → tumiki --mcp-proxy → MCPサーバーへの接続フロー
  *
- * 各MCPサーバーごとに個別のプロキシプロセスとして起動する。
- * AIツール側では、MCPサーバーごとに別々のエントリを設定する:
- *   { "command": "tumiki", "args": ["--mcp-proxy", "--server", "serena"] }
+ * configs は呼び出し元（desktop 側など）から動的に受け取る。
  */
-import {
-  createProxyCore,
-  createSingleServerCore,
-  resolveServerConfigs,
-} from "./core.js";
+import type { McpServerConfig } from "./types.js";
+import { createProxyCore } from "./core.js";
 import { startStdioInbound } from "./inbound/stdio-inbound.js";
 import { stderrLogger as logger } from "./stderr-logger.js";
 
-/**
- * process.argvから --server <name> を取得する
- */
-const parseServerName = (): string => {
-  const idx = process.argv.indexOf("--server");
-  if (idx === -1 || idx + 1 >= process.argv.length) {
-    throw new Error(`--server <name> の指定が必要です`);
-  }
-  return process.argv[idx + 1]!;
-};
+export const runMcpProxy = async (
+  configs: McpServerConfig[] = [],
+): Promise<void> => {
+  logger.info("tumiki-mcp-proxy を起動しています...");
 
-export const runMcpProxy = async (): Promise<void> => {
-  const serverName = parseServerName();
-  const configs = resolveServerConfigs(serverName);
+  // Desktop (process.ts) と同じく常に createProxyCore を使用し、
+  // サーバー数に関わらずツール名は `<server>__<tool>` の prefix 付きで統一する。
+  // これにより toggleServer で enabled 数が変動しても Claude Code 側から見た
+  // ツール名が変わらない（サーバー増減で名前が書き換わらない）。
+  const core = createProxyCore(configs, logger);
 
-  logger.info(`tumiki-mcp-proxy を起動しています（server: ${serverName}）...`);
-
-  // 単体サーバー: prefixなしで直接委譲、複数: ToolAggregator経由で集約
-  const core =
-    configs.length === 1
-      ? createSingleServerCore(configs[0]!, logger)
-      : createProxyCore(configs, logger);
-
-  // 指定MCPサーバーに接続
+  // 全MCPサーバーに接続
   await core.startAll();
 
   // stdio inboundサーバーを起動（AIツールからのリクエストを受け付け）
   await startStdioInbound(core, logger);
 
-  logger.info(`tumiki-mcp-proxy の起動が完了しました（server: ${serverName}）`);
+  logger.info("tumiki-mcp-proxy の起動が完了しました");
 
   // シグナルでクリーンシャットダウン（SIGINT+SIGTERM同時受信の二重実行を防止）
   let shuttingDown = false;
