@@ -15,7 +15,7 @@ export type {
 } from "./types.js";
 
 // コア
-export { createProxyCore, createSingleServerCore } from "./core.js";
+export { createProxyCore } from "./core.js";
 export type { ProxyCore } from "./core.js";
 
 // Inbound

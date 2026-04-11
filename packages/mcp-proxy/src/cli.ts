@@ -6,7 +6,7 @@
  * configs は呼び出し元（desktop 側など）から動的に受け取る。
  */
 import type { McpServerConfig } from "./types.js";
-import { createProxyCore, createSingleServerCore } from "./core.js";
+import { createProxyCore } from "./core.js";
 import { startStdioInbound } from "./inbound/stdio-inbound.js";
 import { stderrLogger as logger } from "./stderr-logger.js";
 
@@ -15,11 +15,11 @@ export const runMcpProxy = async (
 ): Promise<void> => {
   logger.info("tumiki-mcp-proxy を起動しています...");
 
-  // 単体サーバー: prefixなしで直接委譲、複数: ToolAggregator経由で集約
-  const core =
-    configs.length === 1
-      ? createSingleServerCore(configs[0]!, logger)
-      : createProxyCore(configs, logger);
+  // Desktop (process.ts) と同じく常に createProxyCore を使用し、
+  // サーバー数に関わらずツール名は `<server>__<tool>` の prefix 付きで統一する。
+  // これにより toggleServer で enabled 数が変動しても Claude Code 側から見た
+  // ツール名が変わらない（サーバー増減で名前が書き換わらない）。
+  const core = createProxyCore(configs, logger);
 
   // 全MCPサーバーに接続
   await core.startAll();
