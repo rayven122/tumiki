@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 const NAV_LINKS = [
-  { href: "#solution", label: "Product" },
+  { href: "#solution", label: "プロダクト" },
   { href: "#features", label: "機能" },
   { href: "#cta", label: "お問い合わせ" },
 ] as const;

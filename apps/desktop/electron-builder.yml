@@ -36,6 +36,7 @@ protocols:
   - name: "Tumiki Desktop"
     schemes:
       - tumiki-desktop
+      - tumiki
     role: Viewer
 
 # macOS設定

@@ -4,7 +4,7 @@ import { resolve } from "path";
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()],
+    plugins: [externalizeDepsPlugin({ exclude: ["oauth4webapi"] })],
     define: {
       "process.env.KEYCLOAK_ISSUER": JSON.stringify(
         process.env.KEYCLOAK_ISSUER ?? "",

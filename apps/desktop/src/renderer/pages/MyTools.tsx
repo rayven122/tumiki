@@ -42,32 +42,24 @@ export const MyTools = (): JSX.Element => {
       {/* ヘッダー */}
       <div className="flex items-start justify-between">
         <div>
-          <h1
-            className="text-2xl font-bold"
-            style={{ color: "var(--text-primary)" }}
-          >
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">
             コネクト
           </h1>
-          <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
+          <p className="mt-1 text-sm text-[var(--text-muted)]">
             登録済みのMCPサーバーを管理
           </p>
         </div>
         <div className="flex items-center gap-3">
           <Link
             to="/tools/catalog"
-            className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-90"
-            style={{
-              backgroundColor: "var(--btn-primary-bg)",
-              color: "var(--btn-primary-text)",
-            }}
+            className="flex items-center gap-1 rounded-lg bg-[var(--btn-primary-bg)] px-3 py-1.5 text-xs font-medium text-[var(--btn-primary-text)] transition-opacity hover:opacity-90"
           >
             <Plus size={12} />
             追加
           </Link>
           <Link
             to="/tools/catalog"
-            className="flex items-center gap-1 text-xs transition-opacity hover:opacity-80"
-            style={{ color: "var(--text-muted)" }}
+            className="flex items-center gap-1 text-xs text-[var(--text-muted)] transition-opacity hover:opacity-80"
           >
             カタログ
             <ArrowRight size={12} />
@@ -80,54 +72,30 @@ export const MyTools = (): JSX.Element => {
         <div className="relative min-w-[200px] flex-1">
           <Search
             size={14}
-            className="absolute top-1/2 left-3 -translate-y-1/2"
-            style={{ color: "var(--text-subtle)" }}
+            className="absolute top-1/2 left-3 -translate-y-1/2 text-[var(--text-subtle)]"
           />
           <input
             type="text"
             placeholder="サーバーを検索..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full rounded-lg py-2 pr-3 pl-9 text-sm outline-none"
-            style={{
-              borderWidth: 1,
-              borderStyle: "solid",
-              borderColor: "var(--border)",
-              backgroundColor: "var(--bg-card)",
-              color: "var(--text-primary)",
-            }}
+            className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] py-2 pr-3 pl-9 text-sm text-[var(--text-primary)] outline-none"
           />
         </div>
       </div>
 
       {/* MCPサーバー一覧 */}
       {loading ? (
-        <div
-          className="py-12 text-center text-sm"
-          style={{ color: "var(--text-subtle)" }}
-        >
+        <div className="py-12 text-center text-sm text-[var(--text-subtle)]">
           読み込み中...
         </div>
       ) : filteredServers.length > 0 ? (
         <div>
-          <div
-            className="mb-4 flex items-center justify-between pb-2"
-            style={{
-              borderBottomWidth: 1,
-              borderBottomStyle: "solid",
-              borderBottomColor: "var(--border)",
-            }}
-          >
-            <h2
-              className="text-sm font-medium"
-              style={{ color: "var(--text-muted)" }}
-            >
+          <div className="mb-4 flex items-center justify-between border-b border-b-[var(--border)] pb-2">
+            <h2 className="text-sm font-medium text-[var(--text-muted)]">
               MCPサーバー
             </h2>
-            <span
-              className="text-[10px]"
-              style={{ color: "var(--text-subtle)" }}
-            >
+            <span className="text-[10px] text-[var(--text-subtle)]">
               {filteredServers.length}件
             </span>
           </div>
@@ -143,51 +111,41 @@ export const MyTools = (): JSX.Element => {
                 >
                   {/* アイコン + ステータスドット */}
                   <div className="mb-3 flex items-start justify-between">
-                    <div
-                      className="flex h-8 w-8 items-center justify-center rounded-lg"
-                      style={{ backgroundColor: "var(--bg-card-hover)" }}
-                    >
-                      <Server
-                        size={18}
-                        style={{ color: "var(--text-muted)" }}
+                    {server.connections[0]?.catalog?.iconPath ? (
+                      <img
+                        src={server.connections[0].catalog.iconPath}
+                        alt={server.name}
+                        className="h-8 w-8 rounded-lg"
                       />
-                    </div>
+                    ) : (
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--bg-card-hover)]">
+                        <Server
+                          size={18}
+                          className="text-[var(--text-muted)]"
+                        />
+                      </div>
+                    )}
                     <span
                       className={`h-2 w-2 rounded-full ${status.dotClass}`}
                     />
                   </div>
 
                   {/* サーバー名 */}
-                  <div
-                    className="mb-1 text-sm font-medium"
-                    style={{ color: "var(--text-primary)" }}
-                  >
+                  <div className="mb-1 text-sm font-medium text-[var(--text-primary)]">
                     {server.name}
                   </div>
 
                   {/* 説明 */}
-                  <div
-                    className="mb-3 line-clamp-2 text-[10px] leading-relaxed"
-                    style={{ color: "var(--text-subtle)" }}
-                  >
+                  <div className="mb-3 line-clamp-2 text-[10px] leading-relaxed text-[var(--text-subtle)]">
                     {server.description || server.slug}
                   </div>
 
                   {/* 接続数 + ステータス */}
                   <div className="mt-auto flex items-center justify-between">
-                    <span
-                      className="font-mono text-[9px]"
-                      style={{ color: "var(--text-subtle)" }}
-                    >
+                    <span className="font-mono text-[9px] text-[var(--text-subtle)]">
                       {server.connections.length} 接続
                     </span>
-                    <span
-                      className="rounded px-1.5 py-0.5 text-[8px] font-medium"
-                      style={{
-                        backgroundColor: "var(--bg-card-hover)",
-                        color: "var(--text-muted)",
-                      }}
-                    >
+                    <span className="rounded bg-[var(--bg-card-hover)] px-1.5 py-0.5 text-[8px] font-medium text-[var(--text-muted)]">
                       {status.label}
                     </span>
                   </div>
@@ -197,19 +155,12 @@ export const MyTools = (): JSX.Element => {
           </div>
         </div>
       ) : (
-        <div
-          className="flex flex-col items-center py-16 text-center"
-          style={{ color: "var(--text-subtle)" }}
-        >
+        <div className="flex flex-col items-center py-16 text-center text-[var(--text-subtle)]">
           <Server size={32} />
           <p className="mt-3 text-sm">MCPサーバーがまだ登録されていません</p>
           <Link
             to="/tools/catalog"
-            className="mt-4 flex items-center gap-1 rounded-lg px-4 py-2 text-xs font-medium transition hover:opacity-90"
-            style={{
-              backgroundColor: "var(--btn-primary-bg)",
-              color: "var(--btn-primary-text)",
-            }}
+            className="mt-4 flex items-center gap-1 rounded-lg bg-[var(--btn-primary-bg)] px-4 py-2 text-xs font-medium text-[var(--btn-primary-text)] transition hover:opacity-90"
           >
             <Plus size={14} />
             カタログから追加

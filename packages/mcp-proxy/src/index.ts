@@ -2,6 +2,7 @@
 export type {
   ServerStatus,
   McpServerConfig,
+  McpServerGroupConfig,
   McpServerState,
   McpToolInfo,
   CallToolResult,
@@ -14,7 +15,7 @@ export type {
 } from "./types.js";
 
 // コア
-export { createProxyCore } from "./core.js";
+export { createProxyCore, createSingleServerCore } from "./core.js";
 export type { ProxyCore } from "./core.js";
 
 // Inbound

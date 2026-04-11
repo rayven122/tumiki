@@ -194,6 +194,27 @@ model McpServer {
 
 }
 
+/// OAuthクライアント登録キャッシュ（DCR結果）
+/// MCP OAuth認証時のDynamic Client Registration結果をキャッシュし、再登録を回避する
+/// @namespace OAuth
+model OAuthClient {
+  id                      Int      @id @default(autoincrement())
+  /// MCPサーバーURL（正規化済み、認可サーバー特定用）
+  serverUrl               String   @unique
+  /// OAuth Authorization Server issuer URL
+  issuer                  String
+  /// DCRで取得したクライアントID（暗号化済み）
+  clientId                String
+  /// DCRで取得したクライアントシークレット（暗号化済み、パブリッククライアントの場合null）
+  clientSecret            String?
+  /// トークンエンドポイントの認証方式
+  tokenEndpointAuthMethod String   @default("none")
+  /// Authorization Server Metadata（JSON文字列）
+  authServerMetadata      String
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
 /// 監査ログ（MCPツール呼び出しの記録）
 /// 7日以上のレコードは自動削除対象
 /// @namespace McpServer

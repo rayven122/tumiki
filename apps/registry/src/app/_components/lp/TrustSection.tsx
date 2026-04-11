@@ -89,210 +89,248 @@ const PatentSvg = ({ mx, my }: { mx: number; my: number }) => (
   </svg>
 );
 
-/* ===== SVG 2: 4プロトコル（4つの接続ノード） ===== */
-const ProtocolSvg = ({ mx, my }: { mx: number; my: number }) => (
-  <svg
-    viewBox="0 0 200 200"
-    fill="none"
-    className="mx-auto h-40 w-40 md:h-48 md:w-48"
-    style={{
-      transform: `perspective(800px) rotateX(${my * -4}deg) rotateY(${mx * 4}deg)`,
-      transition: "transform 0.2s ease-out",
-    }}
-  >
-    {/* 中央ハブ（固定） */}
-    <g>
-      <circle
-        cx="100"
-        cy="100"
-        r="18"
-        fill="rgba(255,255,255,0.03)"
-        stroke="rgba(255,255,255,0.2)"
-        strokeWidth="0.8"
-      />
-      <circle cx="100" cy="100" r="5" fill="rgba(96,165,250,0.3)" />
-    </g>
-    {/* 5つのノード + 接続線（固定、SVG全体がマウスで動く） */}
-    {[
-      { x: 100, y: 40, label: "MCP", color: "255,255,255", pulse: false },
-      { x: 40, y: 80, label: "A2A", color: "96,165,250", pulse: false },
-      { x: 160, y: 80, label: "API", color: "251,191,36", pulse: false },
-      { x: 55, y: 150, label: "AP2", color: "52,211,153", pulse: false },
-      { x: 145, y: 150, label: "+", color: "167,139,250", pulse: true },
-    ].map((node) => (
-      <g key={node.label}>
-        <line
-          x1="100"
-          y1="100"
-          x2={node.x}
-          y2={node.y}
-          stroke={`rgba(${node.color},0.1)`}
-          strokeWidth="0.5"
-          strokeDasharray="3 3"
+/* ===== SVG 2: 回転リング型（中央ハブ + 5衛星が周回） ===== */
+const ProtocolSvg = ({ mx, my }: { mx: number; my: number }) => {
+  const satellites = [
+    { angle: 0, label: "MCP", color: "255,255,255" },
+    { angle: 72, label: "API", color: "251,191,36" },
+    { angle: 144, label: "A2A", color: "96,165,250" },
+    { angle: 216, label: "AP2", color: "52,211,153" },
+    { angle: 288, label: "+", color: "167,139,250" },
+  ] as const;
+
+  const orbitR = 56;
+
+  return (
+    <svg
+      viewBox="0 0 200 200"
+      fill="none"
+      className="mx-auto h-44 w-44 md:h-52 md:w-52"
+      style={{
+        transform: `perspective(800px) rotateX(${my * -4}deg) rotateY(${mx * 4}deg)`,
+        transition: "transform 0.2s ease-out",
+      }}
+    >
+      {/* === 軌道トラック（固定） === */}
+      <g style={mouseStyle(mx, my, 0.1)}>
+        <circle
+          cx="100"
+          cy="100"
+          r={orbitR}
+          fill="none"
+          stroke="rgba(255,255,255,0.1)"
+          strokeWidth="0.6"
         />
         <circle
-          cx={node.x}
-          cy={node.y}
-          r="20"
-          fill="rgba(255,255,255,0.02)"
-          stroke={`rgba(${node.color},0.3)`}
-          strokeWidth="0.5"
+          cx="100"
+          cy="100"
+          r={orbitR - 16}
+          fill="none"
+          stroke="rgba(255,255,255,0.04)"
+          strokeWidth="0.4"
+          strokeDasharray="3 5"
         />
-        <text
-          x={node.x}
-          y={node.y + 4}
-          textAnchor="middle"
-          fill={`rgba(${node.color},0.5)`}
-          fontSize="12"
-          fontFamily="monospace"
-          style={
-            node.pulse
-              ? { animation: "pillar-pulse 2s ease-in-out infinite" }
-              : undefined
-          }
-        >
-          {node.label}
-        </text>
+        <circle
+          cx="100"
+          cy="100"
+          r={orbitR + 16}
+          fill="none"
+          stroke="rgba(255,255,255,0.03)"
+          strokeWidth="0.3"
+          strokeDasharray="2 6"
+        />
       </g>
-    ))}
-  </svg>
-);
 
-/* ===== SVG 3: Split-Plane（左右分離+接続線上をドットが流れる） ===== */
+      {/* === 中央ハブ（固定、ラベルなし） === */}
+      <g style={mouseStyle(mx, my, 0.4)}>
+        <g style={floatStyle(0.15)}>
+          <circle
+            cx="100"
+            cy="100"
+            r="14"
+            fill="rgba(255,255,255,0.03)"
+            stroke="rgba(255,255,255,0.2)"
+            strokeWidth="0.7"
+          />
+          <circle cx="100" cy="100" r="4" fill="rgba(52,211,153,0.2)" />
+        </g>
+      </g>
+
+      {/* === 回転する5衛星 === */}
+      <g
+        style={{
+          transformOrigin: "100px 100px",
+          animation: "orbit 28s linear infinite",
+        }}
+      >
+        {satellites.map((sat) => {
+          const rad = (sat.angle * Math.PI) / 180;
+          const sx = 100 + orbitR * Math.cos(rad);
+          const sy = 100 + orbitR * Math.sin(rad);
+          return (
+            <g key={sat.label}>
+              {/* ハブへの接続線 */}
+              <line
+                x1={100}
+                y1={100}
+                x2={sx}
+                y2={sy}
+                stroke={`rgba(${sat.color},0.1)`}
+                strokeWidth="0.4"
+                strokeDasharray="2 3"
+              />
+              {/* ノード */}
+              <circle
+                cx={sx}
+                cy={sy}
+                r="13"
+                fill={`rgba(${sat.color},0.04)`}
+                stroke={`rgba(${sat.color},0.35)`}
+                strokeWidth="0.7"
+              />
+              <circle cx={sx} cy={sy} r="3" fill={`rgba(${sat.color},0.15)`} />
+              {/* ラベル（逆回転で水平維持） */}
+              <text
+                x={sx}
+                y={sy + 4}
+                textAnchor="middle"
+                fill={`rgba(${sat.color},0.65)`}
+                fontSize="7"
+                fontFamily="monospace"
+                style={{
+                  transformOrigin: `${sx}px ${sy + 4}px`,
+                  animation: "orbit 28s linear infinite reverse",
+                }}
+              >
+                {sat.label}
+              </text>
+            </g>
+          );
+        })}
+      </g>
+    </svg>
+  );
+};
+
+/* アイソメトリック立方体ヘルパー */
+const Block = ({
+  cx,
+  cy,
+  size,
+  color,
+  fo,
+}: {
+  cx: number;
+  cy: number;
+  size: number;
+  color: string;
+  fo: number;
+}) => {
+  const hw = size * 0.866;
+  const hh = size * 0.5;
+  const h = size * 0.7;
+  return (
+    <>
+      <path
+        d={`M${cx},${cy - hh} L${cx + hw},${cy} L${cx},${cy + hh} L${cx - hw},${cy} Z`}
+        fill={`rgba(${color},${fo * 1.5})`}
+        stroke={`rgba(${color},0.3)`}
+        strokeWidth="0.5"
+      />
+      <path
+        d={`M${cx - hw},${cy} L${cx},${cy + hh} L${cx},${cy + hh + h} L${cx - hw},${cy + h} Z`}
+        fill={`rgba(${color},${fo})`}
+        stroke={`rgba(${color},0.2)`}
+        strokeWidth="0.5"
+      />
+      <path
+        d={`M${cx + hw},${cy} L${cx},${cy + hh} L${cx},${cy + hh + h} L${cx + hw},${cy + h} Z`}
+        fill={`rgba(${color},${fo * 0.7})`}
+        stroke={`rgba(${color},0.15)`}
+        strokeWidth="0.5"
+      />
+    </>
+  );
+};
+
+/* ===== SVG 3: Split-Plane（ブロック型） ===== */
 const SplitPlaneSvg = ({ mx, my }: { mx: number; my: number }) => (
   <svg
     viewBox="0 0 200 200"
     fill="none"
-    className="mx-auto h-40 w-40 md:h-48 md:w-48"
+    className="mx-auto h-44 w-44 md:h-52 md:w-52"
     style={{
       transform: `perspective(800px) rotateX(${my * -4}deg) rotateY(${mx * 4}deg)`,
       transition: "transform 0.2s ease-out",
     }}
   >
-    {/* 左: オンプレ */}
-    <g style={mouseStyle(mx, my, 0.5)}>
-      <g style={floatStyle(0)}>
-        <Plate x={50} y={80} w={65} h={55} opacity={0.2} />
-        <Plate x={50} y={100} w={65} h={55} opacity={0.15} />
-        <Plate x={50} y={120} w={65} h={55} opacity={0.1} />
-      </g>
-    </g>
-    {/* 右: クラウド */}
-    <g style={mouseStyle(mx, my, 0.8)}>
-      <g style={floatStyle(0.4)}>
-        <Plate x={150} y={85} w={55} h={45} opacity={0.25} />
-        <Plate x={150} y={105} w={55} h={45} opacity={0.2} />
+    {/* === 上: VPC管理層（大きなブロック） === */}
+    <g style={mouseStyle(mx, my, 0.7)}>
+      <g style={floatStyle(0.3)}>
+        <Block cx={100} cy={62} size={38} color="255,255,255" fo={0.05} />
       </g>
     </g>
 
-    {/* 接続線（左プレートから右プレートへ） */}
-    <g style={mouseStyle(mx, my, 0.3)}>
-      <line
-        x1="75"
-        y1="90"
-        x2="125"
-        y2="90"
-        stroke="rgba(52,211,153,0.1)"
-        strokeWidth="0.5"
-        strokeDasharray="3 3"
-      />
-      <line
-        x1="75"
-        y1="110"
-        x2="125"
-        y2="110"
-        stroke="rgba(255,255,255,0.06)"
-        strokeWidth="0.5"
-        strokeDasharray="3 3"
-      />
-    </g>
+    {/* === VPC→Desktopへの接続線 === */}
+    {[45, 100, 155].map((cx, i) => (
+      <g key={`conn-${i}`} style={mouseStyle(mx, my, 0.2)}>
+        <line
+          x1={100}
+          y1={95}
+          x2={cx}
+          y2={130}
+          stroke="rgba(255,255,255,0.08)"
+          strokeWidth="0.5"
+          strokeDasharray="3 4"
+        />
+      </g>
+    ))}
 
-    {/* 左→右: 統計データ送信ドット */}
-    <circle
-      cx="75"
-      cy="90"
-      r="2.5"
-      fill="rgba(52,211,153,0.8)"
-      style={{ animation: "dot-lr 2s ease-in-out infinite" }}
-    />
-    <circle
-      cx="75"
-      cy="90"
-      r="2"
-      fill="rgba(52,211,153,0.4)"
-      style={{ animation: "dot-lr 2s ease-in-out 0.6s infinite" }}
-    />
-
-    {/* 右→左: ポリシー配信ドット */}
-    <circle
-      cx="125"
-      cy="110"
-      r="2"
-      fill="rgba(255,255,255,0.6)"
-      style={{ animation: "dot-rl 2.5s ease-in-out infinite" }}
-    />
-    <circle
-      cx="125"
-      cy="110"
-      r="1.5"
-      fill="rgba(255,255,255,0.3)"
-      style={{ animation: "dot-rl 2.5s ease-in-out 0.8s infinite" }}
-    />
-
-    {/* 中央の分離線 */}
-    <g style={mouseStyle(mx, my, 0.2)}>
-      <line
-        x1="100"
-        y1="55"
-        x2="100"
-        y2="155"
-        stroke="rgba(255,255,255,0.06)"
-        strokeWidth="0.5"
-        strokeDasharray="2 4"
-      />
-    </g>
+    {/* === 下: 3つのDesktopブロック === */}
+    {[
+      { cx: 45, depth: 0.25, d: 0 },
+      { cx: 100, depth: 0.4, d: 0.12 },
+      { cx: 155, depth: 0.55, d: 0.24 },
+    ].map((b, i) => (
+      <g key={`desktop-${i}`} style={mouseStyle(mx, my, b.depth)}>
+        <g style={floatStyle(b.d)}>
+          <Block cx={b.cx} cy={140} size={22} color="52,211,153" fo={0.06} />
+          {/* 盾マーク */}
+          <path
+            d={`M${b.cx} ${140 - 4} L${b.cx - 3} ${140 - 1.5} L${b.cx - 3} ${140 + 1.5} L${b.cx} ${140 + 4} L${b.cx + 3} ${140 + 1.5} L${b.cx + 3} ${140 - 1.5} Z`}
+            fill="rgba(52,211,153,0.04)"
+            stroke="rgba(52,211,153,0.3)"
+            strokeWidth="0.4"
+          />
+          <circle
+            cx={b.cx}
+            cy={140}
+            r="2"
+            fill="none"
+            stroke="rgba(52,211,153,0.4)"
+            strokeWidth="0.3"
+            style={{
+              animation: `pillar-pulse 3s ease-in-out ${i * 0.5}s infinite`,
+            }}
+          />
+        </g>
+      </g>
+    ))}
 
     {/* ラベル */}
-    <text
-      x="50"
-      y="155"
-      textAnchor="middle"
-      fill="rgba(255,255,255,0.15)"
-      fontSize="7"
-      fontFamily="monospace"
-    >
-      ON-PREM
-    </text>
-    <text
-      x="150"
-      y="155"
-      textAnchor="middle"
-      fill="rgba(255,255,255,0.15)"
-      fontSize="7"
-      fontFamily="monospace"
-    >
-      CLOUD
-    </text>
-    <text
-      x="100"
-      y="82"
-      textAnchor="middle"
-      fill="rgba(52,211,153,0.2)"
-      fontSize="5"
-      fontFamily="monospace"
-    >
-      統計 →
-    </text>
-    <text
-      x="100"
-      y="122"
-      textAnchor="middle"
-      fill="rgba(255,255,255,0.15)"
-      fontSize="5"
-      fontFamily="monospace"
-    >
-      ← ポリシー
-    </text>
+    {[45, 100, 155].map((cx, i) => (
+      <text
+        key={`label-${i}`}
+        x={cx}
+        y={168}
+        textAnchor="middle"
+        fill="rgba(255,255,255,0.12)"
+        fontSize="6"
+        fontFamily="monospace"
+      >
+        Desktop
+      </text>
+    ))}
   </svg>
 );
 

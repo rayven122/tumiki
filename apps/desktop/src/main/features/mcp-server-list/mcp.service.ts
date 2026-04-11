@@ -3,6 +3,7 @@ import { getDb } from "../../shared/db";
 import * as mcpRepository from "./mcp.repository";
 import * as logger from "../../shared/utils/logger";
 import { toSlug } from "../../../shared/mcp.slug";
+import { encryptToken, decryptToken } from "../../utils/encryption";
 import type { CreateFromCatalogInput } from "./mcp.types";
 
 // IPC / テストから参照できるよう re-export
@@ -66,7 +67,7 @@ export const createFromCatalog = async (
     command: input.command,
     args: input.args,
     url: input.url,
-    credentials: JSON.stringify(input.credentials),
+    credentials: await encryptToken(JSON.stringify(input.credentials)),
     authType: input.authType,
     serverId: server.id,
     catalogId: input.catalogId,
@@ -78,11 +79,34 @@ export const createFromCatalog = async (
 };
 
 /**
+ * 暗号化済みか平文かを判定して復号する（既存データとの互換性を保つ）
+ */
+const decryptCredentials = async (credentials: string): Promise<string> => {
+  if (credentials.startsWith("safe:") || credentials.startsWith("fallback:")) {
+    return decryptToken(credentials);
+  }
+  return credentials;
+};
+
+/**
  * 登録済みMCPサーバー一覧を取得
  */
 export const getAllServers = async () => {
   const db = await getDb();
-  return mcpRepository.findAllWithConnections(db);
+  const servers = await mcpRepository.findAllWithConnections(db);
+  return Promise.all(
+    servers.map(async (server) => ({
+      ...server,
+      connections: await Promise.all(
+        server.connections.map(async (conn) => ({
+          ...conn,
+          credentials: conn.credentials
+            ? await decryptCredentials(conn.credentials)
+            : conn.credentials,
+        })),
+      ),
+    })),
+  );
 };
 
 /**

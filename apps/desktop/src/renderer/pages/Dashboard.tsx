@@ -42,18 +42,10 @@ const ChartTooltip = ({
 }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div
-      className="rounded-lg px-3 py-2 text-xs shadow-xl"
-      style={{
-        backgroundColor: "var(--bg-card)",
-        border: "1px solid var(--border)",
-      }}
-    >
-      <p className="mb-1" style={{ color: "var(--text-muted)" }}>
-        {label}
-      </p>
+    <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-xs shadow-xl">
+      <p className="mb-1 text-[var(--text-muted)]">{label}</p>
       {payload.map((p) => (
-        <p key={p.name} style={{ color: "var(--text-primary)" }}>
+        <p key={p.name} className="text-[var(--text-primary)]">
           {p.name}: {p.value}
         </p>
       ))}
@@ -77,27 +69,19 @@ export const Dashboard = (): JSX.Element => {
     <div className="space-y-4 p-6">
       {/* ヘッダー */}
       <div className="flex items-center justify-between">
-        <h2
-          className="text-lg font-semibold"
-          style={{ color: "var(--text-primary)" }}
-        >
+        <h2 className="text-lg font-semibold text-[var(--text-primary)]">
           ダッシュボード
         </h2>
-        <div
-          className="flex items-center gap-1 rounded-lg p-0.5"
-          style={{ backgroundColor: "var(--bg-card-hover)" }}
-        >
+        <div className="flex items-center gap-1 rounded-lg bg-[var(--bg-card-hover)] p-0.5">
           {PERIODS.map((p) => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
-              className="rounded px-2.5 py-1 text-[11px] transition-colors"
-              style={{
-                backgroundColor:
-                  period === p ? "var(--bg-active)" : "transparent",
-                color:
-                  period === p ? "var(--text-primary)" : "var(--text-subtle)",
-              }}
+              className={`rounded px-2.5 py-1 text-[11px] transition-colors ${
+                period === p
+                  ? "bg-[var(--bg-active)] text-[var(--text-primary)]"
+                  : "bg-transparent text-[var(--text-subtle)]"
+              }`}
             >
               {p}
             </button>
@@ -135,13 +119,9 @@ export const Dashboard = (): JSX.Element => {
         ].map((card) => (
           <div
             key={card.label}
-            className="rounded-xl p-4"
-            style={{
-              backgroundColor: "var(--bg-card)",
-              border: "1px solid var(--border)",
-            }}
+            className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-4"
           >
-            <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+            <span className="text-xs text-[var(--text-muted)]">
               {card.label}
             </span>
             <div
@@ -150,10 +130,7 @@ export const Dashboard = (): JSX.Element => {
             >
               {card.value}
             </div>
-            <div
-              className="mt-0.5 text-[10px]"
-              style={{ color: "var(--text-muted)" }}
-            >
+            <div className="mt-0.5 text-[10px] text-[var(--text-muted)]">
               {card.sub}
             </div>
           </div>
@@ -161,25 +138,12 @@ export const Dashboard = (): JSX.Element => {
       </div>
 
       {/* コネクタ別アクセス推移 */}
-      <div
-        className="rounded-xl p-5"
-        style={{
-          backgroundColor: "var(--bg-card)",
-          border: "1px solid var(--border)",
-          boxShadow: "var(--shadow-card)",
-        }}
-      >
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-5 shadow-[var(--shadow-card)]">
         <div className="mb-4 flex items-center justify-between">
-          <span
-            className="text-sm font-medium"
-            style={{ color: "var(--text-secondary)" }}
-          >
+          <span className="text-sm font-medium text-[var(--text-secondary)]">
             コネクタ別アクセス推移
           </span>
-          <div
-            className="flex flex-wrap gap-3 text-[10px]"
-            style={{ color: "var(--text-subtle)" }}
-          >
+          <div className="flex flex-wrap gap-3 text-[10px] text-[var(--text-subtle)]">
             {CONNECTOR_LEGENDS.map((l) => (
               <span key={l.label} className="flex items-center gap-1">
                 <span
@@ -249,18 +213,8 @@ export const Dashboard = (): JSX.Element => {
       {/* 2カラム: AIクライアント別 + コネクタ */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* 左: AIクライアント別 */}
-        <div
-          className="rounded-xl p-5"
-          style={{
-            backgroundColor: "var(--bg-card)",
-            border: "1px solid var(--border)",
-            boxShadow: "var(--shadow-card)",
-          }}
-        >
-          <span
-            className="mb-3 block text-sm font-medium"
-            style={{ color: "var(--text-secondary)" }}
-          >
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-5 shadow-[var(--shadow-card)]">
+          <span className="mb-3 block text-sm font-medium text-[var(--text-secondary)]">
             AIクライアント別
           </span>
           <div className="flex items-center gap-4">
@@ -300,72 +254,53 @@ export const Dashboard = (): JSX.Element => {
                     className="h-2 w-2 shrink-0 rounded-full"
                     style={{ backgroundColor: resolveColor(item.color) }}
                   />
-                  <span style={{ color: "var(--text-secondary)" }}>
+                  <span className="text-[var(--text-secondary)]">
                     {item.name}
                   </span>
-                  <span
-                    className="ml-auto font-mono"
-                    style={{ color: "var(--text-subtle)" }}
-                  >
+                  <span className="ml-auto font-mono text-[var(--text-subtle)]">
                     {item.value}%
                   </span>
                 </div>
               ))}
               {/* AIクライアントバッジ */}
-              <div
-                className="mt-3 flex flex-wrap gap-1.5 pt-2"
-                style={{ borderTop: "1px solid var(--border)" }}
-              >
-                {AI_CLIENTS.map((ai) => (
-                  <button
-                    key={ai.name}
-                    onClick={() =>
-                      setActiveAi(activeAi === ai.name ? null : ai.name)
-                    }
-                    className="flex items-center gap-1.5 rounded-md px-2 py-1 transition-colors"
-                    style={{
-                      backgroundColor:
-                        activeAi === null || activeAi === ai.name
-                          ? "var(--bg-active)"
-                          : "var(--bg-card-hover)",
-                      opacity:
-                        activeAi === null || activeAi === ai.name ? 1 : 0.5,
-                      color: "var(--text-secondary)",
-                    }}
-                  >
-                    <img
-                      src={theme === "dark" ? ai.dark : ai.light}
-                      alt={ai.name}
-                      className="h-3.5 w-3.5 rounded"
-                    />
-                    <span className="text-[10px]">{ai.name}</span>
-                  </button>
-                ))}
+              <div className="mt-3 flex flex-wrap gap-1.5 border-t border-t-[var(--border)] pt-2">
+                {AI_CLIENTS.map((ai) => {
+                  const isActive = activeAi === null || activeAi === ai.name;
+                  return (
+                    <button
+                      key={ai.name}
+                      onClick={() =>
+                        setActiveAi(activeAi === ai.name ? null : ai.name)
+                      }
+                      className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-[var(--text-secondary)] transition-colors ${
+                        isActive
+                          ? "bg-[var(--bg-active)] opacity-100"
+                          : "bg-[var(--bg-card-hover)] opacity-50"
+                      }`}
+                    >
+                      <img
+                        src={theme === "dark" ? ai.dark : ai.light}
+                        alt={ai.name}
+                        className="h-3.5 w-3.5 rounded"
+                      />
+                      <span className="text-[10px]">{ai.name}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
         </div>
 
         {/* 右: コネクタ */}
-        <div
-          className="rounded-xl p-5"
-          style={{
-            backgroundColor: "var(--bg-card)",
-            border: "1px solid var(--border)",
-            boxShadow: "var(--shadow-card)",
-          }}
-        >
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-5 shadow-[var(--shadow-card)]">
           <div className="mb-4 flex items-center justify-between">
-            <span
-              className="text-sm font-medium"
-              style={{ color: "var(--text-secondary)" }}
-            >
+            <span className="text-sm font-medium text-[var(--text-secondary)]">
               コネクタ
             </span>
             <Link
               to="/tools"
-              className="flex items-center gap-1 text-[11px] transition-colors hover:opacity-80"
-              style={{ color: "var(--text-muted)" }}
+              className="flex items-center gap-1 text-[11px] text-[var(--text-muted)] transition-colors hover:opacity-80"
             >
               すべて見る
               <ArrowRight className="h-3 w-3" />
@@ -375,18 +310,14 @@ export const Dashboard = (): JSX.Element => {
             {CONNECTORS.map((s) => (
               <div
                 key={s.name}
-                className="flex items-center gap-2.5 rounded-lg px-3 py-2"
-                style={{ backgroundColor: "var(--bg-card-hover)" }}
+                className="flex items-center gap-2.5 rounded-lg bg-[var(--bg-card-hover)] px-3 py-2"
               >
                 <img
                   src={theme === "dark" ? s.dark : s.light}
                   alt={s.name}
                   className="h-5 w-5 shrink-0 rounded"
                 />
-                <span
-                  className="flex-1 truncate text-xs"
-                  style={{ color: "var(--text-secondary)" }}
-                >
+                <span className="flex-1 truncate text-xs text-[var(--text-secondary)]">
                   {s.name}
                 </span>
                 <span
@@ -401,46 +332,23 @@ export const Dashboard = (): JSX.Element => {
       {/* コネクタログ + お知らせ */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_0.4fr]">
         {/* コネクタログ */}
-        <div
-          className="overflow-hidden rounded-xl"
-          style={{
-            backgroundColor: "var(--bg-card)",
-            border: "1px solid var(--border)",
-            boxShadow: "var(--shadow-card)",
-          }}
-        >
-          <div
-            className="flex items-center justify-between px-5 py-3"
-            style={{ borderBottom: "1px solid var(--border)" }}
-          >
+        <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg-card)] shadow-[var(--shadow-card)]">
+          <div className="flex items-center justify-between border-b border-b-[var(--border)] px-5 py-3">
             <div className="flex items-center gap-2">
-              <Activity
-                className="h-4 w-4"
-                style={{ color: "var(--text-muted)" }}
-              />
-              <span
-                className="text-sm font-medium"
-                style={{ color: "var(--text-primary)" }}
-              >
+              <Activity className="h-4 w-4 text-[var(--text-muted)]" />
+              <span className="text-sm font-medium text-[var(--text-primary)]">
                 コネクタログ
               </span>
             </div>
             <Link
               to="/history"
-              className="flex items-center gap-1 text-[10px] transition-colors hover:opacity-80"
-              style={{ color: "var(--text-muted)" }}
+              className="flex items-center gap-1 text-[10px] text-[var(--text-muted)] transition-colors hover:opacity-80"
             >
               すべて見る
               <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
-          <div
-            className="grid grid-cols-[70px_80px_120px_1fr_85px_50px] items-center gap-2 px-5 py-2 text-[10px]"
-            style={{
-              borderBottom: "1px solid var(--border)",
-              color: "var(--text-subtle)",
-            }}
-          >
+          <div className="grid grid-cols-[70px_80px_120px_1fr_85px_50px] items-center gap-2 border-b border-b-[var(--border)] px-5 py-2 text-[10px] text-[var(--text-subtle)]">
             <span>日時</span>
             <span>AIクライアント</span>
             <span>接続先</span>
@@ -453,18 +361,14 @@ export const Dashboard = (): JSX.Element => {
             return (
               <div
                 key={item.id}
-                className="grid grid-cols-[70px_80px_120px_1fr_85px_50px] items-center gap-2 px-5 py-2.5 text-xs transition-colors"
+                className="grid grid-cols-[70px_80px_120px_1fr_85px_50px] items-center gap-2 border-b border-b-[var(--border-subtle)] px-5 py-2.5 text-xs transition-colors"
                 style={{
-                  borderBottom: "1px solid var(--border-subtle)",
                   backgroundColor: isErrorRow(item.status)
                     ? "rgba(239,68,68,0.03)"
                     : "transparent",
                 }}
               >
-                <span
-                  className="font-mono text-[11px]"
-                  style={{ color: "var(--text-subtle)" }}
-                >
+                <span className="font-mono text-[11px] text-[var(--text-subtle)]">
                   {item.datetime.split(" ")[1]?.slice(0, 8)}
                 </span>
                 <div className="flex items-center gap-1.5">
@@ -477,10 +381,7 @@ export const Dashboard = (): JSX.Element => {
                     alt={item.aiClient.name}
                     className="h-4 w-4 rounded-sm"
                   />
-                  <span
-                    className="text-[11px]"
-                    style={{ color: "var(--text-muted)" }}
-                  >
+                  <span className="text-[11px] text-[var(--text-muted)]">
                     {item.aiClient.name}
                   </span>
                 </div>
@@ -494,14 +395,11 @@ export const Dashboard = (): JSX.Element => {
                     alt={item.service.name}
                     className="h-4 w-4 rounded-sm"
                   />
-                  <span style={{ color: "var(--text-secondary)" }}>
+                  <span className="text-[var(--text-secondary)]">
                     {item.service.name}
                   </span>
                 </div>
-                <span
-                  className="truncate font-mono text-[11px]"
-                  style={{ color: "var(--text-muted)" }}
-                >
+                <span className="truncate font-mono text-[11px] text-[var(--text-muted)]">
                   {item.operation}
                 </span>
                 <span
@@ -510,10 +408,7 @@ export const Dashboard = (): JSX.Element => {
                 >
                   {badge.label}
                 </span>
-                <span
-                  className="text-right font-mono text-[11px]"
-                  style={{ color: "var(--text-subtle)" }}
-                >
+                <span className="text-right font-mono text-[11px] text-[var(--text-subtle)]">
                   {item.latency}
                 </span>
               </div>
@@ -522,42 +417,26 @@ export const Dashboard = (): JSX.Element => {
         </div>
 
         {/* お知らせ */}
-        <div
-          className="rounded-xl p-5"
-          style={{
-            backgroundColor: "var(--bg-card)",
-            border: "1px solid var(--border)",
-            boxShadow: "var(--shadow-card)",
-          }}
-        >
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-5 shadow-[var(--shadow-card)]">
           <div className="mb-4 flex items-center gap-2">
-            <Megaphone
-              className="h-4 w-4"
-              style={{ color: "var(--text-subtle)" }}
-            />
-            <span
-              className="text-sm font-medium"
-              style={{ color: "var(--text-secondary)" }}
-            >
+            <Megaphone className="h-4 w-4 text-[var(--text-subtle)]" />
+            <span className="text-sm font-medium text-[var(--text-secondary)]">
               お知らせ
             </span>
           </div>
           <div className="space-y-3">
             {ANNOUNCEMENTS.map((a) => (
               <div key={a.id} className="flex items-start gap-3 text-xs">
-                <span style={{ color: "var(--text-subtle)" }}>{a.date}</span>
+                <span className="text-[var(--text-subtle)]">{a.date}</span>
                 {a.link ? (
                   <Link
                     to={a.link}
-                    className="transition-colors hover:opacity-80"
-                    style={{ color: "var(--text-primary)" }}
+                    className="text-[var(--text-primary)] transition-colors hover:opacity-80"
                   >
                     {a.message}
                   </Link>
                 ) : (
-                  <span style={{ color: "var(--text-muted)" }}>
-                    {a.message}
-                  </span>
+                  <span className="text-[var(--text-muted)]">{a.message}</span>
                 )}
               </div>
             ))}

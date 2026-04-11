@@ -1,6 +1,7 @@
 import { Activity, ShieldCheck, User } from "lucide-react";
 
 import AnimateIn from "./AnimateIn";
+import { SUMMARY_CARDS } from "./_constants";
 
 /* ===== ストリームデータ ===== */
 
@@ -164,14 +165,33 @@ const ShowcaseSection = () => {
               一画面で把握する
             </h2>
             <p className="max-w-md text-zinc-400 md:text-right">
-              従業員がどのAIクライアントで、どのサービスに、何回アクセスしたか。すべての通信をリアルタイムで可視化し、不正なアクセスを即座にブロックします。
+              ツール呼び出しストリームと権限マトリクスを並べて表示。個別ログの詳細と、ロール全体のアクセス構成を同時に確認できます。
             </p>
+          </div>
+        </AnimateIn>
+
+        {/* サマリーカード */}
+        <AnimateIn delay={0.05}>
+          <div className="mt-12 grid grid-cols-2 gap-3 md:grid-cols-4">
+            {SUMMARY_CARDS.map((s) => (
+              <div
+                key={s.label}
+                className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-center"
+              >
+                <div
+                  className={`text-2xl font-semibold tabular-nums ${s.color}`}
+                >
+                  {s.value}
+                </div>
+                <div className="mt-1 text-[10px] text-zinc-600">{s.label}</div>
+              </div>
+            ))}
           </div>
         </AnimateIn>
 
         {/* プロダクトUIモック */}
         <AnimateIn delay={0.1}>
-          <div className="mt-16 grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
+          <div className="mt-4 grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
             {/* 左パネル: MCPツール呼び出しストリーム */}
             <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-[#111]">
               <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-3">
@@ -192,8 +212,9 @@ const ShowcaseSection = () => {
               <div className="divide-y divide-white/[0.03]">
                 {STREAM_ROWS.map((row, i) => (
                   <div
-                    key={i}
+                    key={`${row.time}-${row.tool}`}
                     className={`px-5 py-3.5 transition-colors hover:bg-white/[0.02] ${row.status === "blocked" ? "bg-red-500/[0.03]" : ""}`}
+                    // 動的delayのためインラインスタイルを使用
                     style={{
                       animation: `fade-in 0.4s ease-out ${i * 0.08}s both`,
                     }}

@@ -19,11 +19,17 @@ export const CatalogCard = ({ item }: CatalogCardProps): React.ReactElement => {
           <span
             className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
               item.authType === "API_KEY"
-                ? "bg-blue-100 text-blue-800"
-                : "bg-purple-100 text-purple-800"
+                ? "bg-amber-100 text-amber-800"
+                : item.authType === "OAUTH"
+                  ? "bg-blue-100 text-blue-800"
+                  : "bg-green-100 text-green-800"
             }`}
           >
-            {item.authType === "API_KEY" ? "API Key" : "設定不要"}
+            {item.authType === "API_KEY"
+              ? "API Key"
+              : item.authType === "OAUTH"
+                ? "OAuth"
+                : "設定不要"}
           </span>
         </div>
       </div>

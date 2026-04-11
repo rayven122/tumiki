@@ -5,7 +5,7 @@ import { fork, type ChildProcess } from "child_process";
 import { join } from "path";
 import { randomUUID } from "crypto";
 import { z } from "zod";
-import * as logger from "../shared/utils/logger";
+import * as logger from "../../shared/utils/logger";
 import type {
   ProxyRequest,
   ProxyResponse,
@@ -16,7 +16,7 @@ import type {
   CallToolPayload,
   McpServerConfig,
 } from "@tumiki/mcp-proxy-core";
-import { getEnabledConfigs } from "../features/mcp/mcp.service";
+import { getEnabledConfigs } from "../mcp-server-list/mcp.service";
 
 // IPC戻り値のzodスキーマ
 const mcpToolInfoSchema = z.object({

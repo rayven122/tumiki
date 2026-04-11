@@ -3,13 +3,17 @@ import { createMainWindow } from "./window";
 import { initializeDb, closeDb } from "./shared/db";
 import { setupAuthIpc } from "./ipc/auth";
 import { setupCatalogIpc } from "./features/catalog/catalog.ipc";
-import { setupMcpIpc } from "./features/mcp/mcp.ipc";
-import { setupMcpProxyIpc } from "./mcp/mcp-proxy.ipc";
-import { startMcpServers, stopProxy } from "./mcp/mcp.service";
+import { setupMcpIpc } from "./features/mcp-server-list/mcp.ipc";
+import { setupMcpProxyIpc } from "./features/mcp-proxy/mcp-proxy.ipc";
+import { startMcpServers, stopProxy } from "./features/mcp-proxy/mcp.service";
 import { seedCatalogs } from "./features/catalog/catalog.seed";
 import { createOAuthManager } from "./auth/oauth-manager";
 import { getOAuthManager, setOAuthManager } from "./auth/manager-registry";
 import { getKeycloakEnvOptional } from "./utils/env";
+import { createMcpOAuthManager } from "./features/oauth/oauth.service";
+import { setupOAuthIpc } from "./features/oauth/oauth.ipc";
+import { isMcpOAuthCallback } from "./features/oauth/oauth.protocol";
+import type { McpOAuthManager } from "./features/oauth/oauth.service";
 import * as logger from "./shared/utils/logger";
 
 // --mcp-proxy モード: GUI不要、stdioでMCPプロキシとして動作
@@ -24,7 +28,8 @@ if (isMcpProxyMode) {
 
     // DB初期化 → 有効なMCPサーバー設定を取得
     await initializeDb();
-    const { getEnabledConfigs } = await import("./features/mcp/mcp.service");
+    const { getEnabledConfigs } =
+      await import("./features/mcp-server-list/mcp.service");
     const configs = await getEnabledConfigs();
 
     const { join } = await import("path");
@@ -40,6 +45,9 @@ if (isMcpProxyMode) {
   const CALLBACK_HOST = "auth";
   const CALLBACK_PATHNAME = "/callback";
 
+  /** MCP OAuth用カスタムプロトコル */
+  const MCP_OAUTH_PROTOCOL = "tumiki";
+
   // シングルインスタンスロック（Windows/Linuxでsecond-instanceイベントに必要）
   const gotTheLock = app.requestSingleInstanceLock();
   if (!gotTheLock) {
@@ -47,6 +55,7 @@ if (isMcpProxyMode) {
   }
 
   let mainWindow: BrowserWindow | null = null;
+  let mcpOAuthManager: McpOAuthManager | null = null;
 
   const createWindow = (): void => {
     mainWindow = createMainWindow();
@@ -57,52 +66,40 @@ if (isMcpProxyMode) {
   };
 
   /**
-   * カスタムURLスキーム（tumiki-desktop://）のコールバックを処理
+   * ウィンドウにIPCメッセージを送信（ロード完了を待機）
    */
-  const handleDeepLink = async (url: string): Promise<void> => {
-    let isValidCallback = false;
-    try {
-      const parsed = new URL(url);
-      isValidCallback =
-        parsed.protocol === `${PROTOCOL}:` &&
-        parsed.hostname === CALLBACK_HOST &&
-        parsed.pathname === CALLBACK_PATHNAME;
-    } catch {
-      logger.warn("Received malformed deep link URL", { url });
-      mainWindow?.webContents.send(
-        "auth:callbackError",
-        "不正なコールバックURLを受信しました",
-      );
-      return;
+  const sendToWindow = (channel: string, ...args: unknown[]): void => {
+    if (!mainWindow) return;
+    if (mainWindow.webContents.isLoading()) {
+      mainWindow.webContents.once("did-finish-load", () => {
+        mainWindow?.webContents.send(channel, ...args);
+      });
+    } else {
+      mainWindow.webContents.send(channel, ...args);
     }
-    if (!isValidCallback) {
-      logger.warn("Received unknown deep link", { url });
-      mainWindow?.webContents.send(
-        "auth:callbackError",
-        "不明なディープリンクを受信しました",
-      );
-      return;
-    }
+  };
 
-    // ウィンドウが閉じられていた場合は再作成（コールバックがサイレントに失われるのを防止）
+  /**
+   * ウィンドウを確保してフォーカスする
+   */
+  const ensureWindowAndFocus = (): void => {
     if (!mainWindow) {
       logger.info(
         "mainWindow is null during deep link callback, creating window",
       );
       createWindow();
     }
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  };
 
-    // ロード完了を待ってからIPCを送信（ウィンドウ再作成直後はロード中の場合がある）
-    const sendToWindow = (channel: string, ...args: unknown[]): void => {
-      if (!mainWindow) return;
-      if (mainWindow.webContents.isLoading()) {
-        mainWindow.webContents.once("did-finish-load", () => {
-          mainWindow?.webContents.send(channel, ...args);
-        });
-      } else {
-        mainWindow.webContents.send(channel, ...args);
-      }
-    };
+  /**
+   * Keycloak認証コールバックを処理（tumiki-desktop://auth/callback）
+   */
+  const handleKeycloakCallback = async (url: string): Promise<void> => {
+    ensureWindowAndFocus();
 
     const manager = getOAuthManager();
     if (!manager) {
@@ -126,12 +123,66 @@ if (isMcpProxyMode) {
       sendToWindow("auth:callbackError", message);
       logger.error("Deep link auth callback failed", { error });
     }
+  };
 
-    // コールバック後にウィンドウをフォーカス
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
+  /**
+   * MCP OAuthコールバックを処理（tumiki://oauth/callback）
+   */
+  const handleMcpOAuthCallback = async (url: string): Promise<void> => {
+    ensureWindowAndFocus();
+
+    if (!mcpOAuthManager) {
+      logger.error("McpOAuthManager not initialized when handling callback");
+      sendToWindow(
+        "oauth:error",
+        "OAuth認証マネージャーが初期化されていません",
+      );
+      return;
     }
+
+    try {
+      const result = await mcpOAuthManager.handleCallback(url);
+      sendToWindow("oauth:success", result);
+      logger.info("MCP OAuth callback handled successfully", {
+        serverId: result.serverId,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "OAuth認証に失敗しました";
+      sendToWindow("oauth:error", message);
+      logger.error("MCP OAuth callback failed", { error });
+    }
+  };
+
+  /**
+   * カスタムURLスキームのコールバックを処理（ルーティング）
+   */
+  const handleDeepLink = async (url: string): Promise<void> => {
+    // MCP OAuthコールバック（tumiki://oauth/callback）
+    if (isMcpOAuthCallback(url)) {
+      await handleMcpOAuthCallback(url);
+      return;
+    }
+
+    // Keycloak認証コールバック（tumiki-desktop://auth/callback）
+    let isKeycloakCallback = false;
+    try {
+      const parsed = new URL(url);
+      isKeycloakCallback =
+        parsed.protocol === `${PROTOCOL}:` &&
+        parsed.hostname === CALLBACK_HOST &&
+        parsed.pathname === CALLBACK_PATHNAME;
+    } catch {
+      logger.warn("Received malformed deep link URL", { url });
+      return;
+    }
+
+    if (isKeycloakCallback) {
+      await handleKeycloakCallback(url);
+      return;
+    }
+
+    logger.warn("Received unknown deep link", { url });
   };
 
   // macOS: アプリが既に起動している場合のディープリンク処理
@@ -145,10 +196,13 @@ if (isMcpProxyMode) {
   // Windows/Linux: second-instanceイベントでディープリンクを処理
   // Electronの仕様上、readyイベント前に登録する必要がある
   app.on("second-instance", (_event, argv) => {
-    // argv末尾にURLが含まれる
+    // argv末尾にURLが含まれる（Keycloak or MCP OAuthいずれか）
     const deepLinkUrl = argv.find((arg) => {
       try {
-        return new URL(arg).protocol === `${PROTOCOL}:`;
+        const protocol = new URL(arg).protocol;
+        return (
+          protocol === `${PROTOCOL}:` || protocol === `${MCP_OAUTH_PROTOCOL}:`
+        );
       } catch {
         return false;
       }
@@ -224,6 +278,15 @@ if (isMcpProxyMode) {
             error: error instanceof Error ? error.message : error,
           },
         );
+      }
+
+      // MCP OAuthマネージャー初期化
+      mcpOAuthManager = createMcpOAuthManager();
+      setupOAuthIpc(mcpOAuthManager);
+
+      // MCP OAuthカスタムプロトコルを登録
+      if (!app.isDefaultProtocolClient(MCP_OAUTH_PROTOCOL)) {
+        app.setAsDefaultProtocolClient(MCP_OAUTH_PROTOCOL);
       }
 
       // IPC ハンドラー登録

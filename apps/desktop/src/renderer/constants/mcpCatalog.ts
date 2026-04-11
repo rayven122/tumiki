@@ -10,7 +10,7 @@ export type McpCatalogItem = {
   command: string;
   args: string[];
   envVarKeys: string[];
-  authType: "NONE" | "API_KEY";
+  authType: "NONE" | "API_KEY" | "OAUTH";
 };
 
 export const MCP_CATALOG_ITEMS: McpCatalogItem[] = [

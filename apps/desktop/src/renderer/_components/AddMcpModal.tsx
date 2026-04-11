@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { X, Info } from "lucide-react";
 import type { CatalogItem } from "../../types/catalog";
 
@@ -18,6 +18,7 @@ const authTypeLabel: Record<CatalogItem["authType"], string> = {
 };
 
 import { toSlug } from "../../shared/mcp.slug";
+import { DISCOVERY_ERROR_CODE } from "../../shared/oauth/discovery-error-codes";
 
 export const AddMcpModal = ({
   catalog,
@@ -39,6 +40,10 @@ export const AddMcpModal = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSlugInfo, setShowSlugInfo] = useState(false);
+  /** DCR非対応サーバー用: client_id/secret入力フォーム表示フラグ */
+  const [needsManualOAuthClient, setNeedsManualOAuthClient] = useState(false);
+  const [oauthClientId, setOauthClientId] = useState("");
+  const [oauthClientSecret, setOauthClientSecret] = useState("");
 
   const slug = useMemo(() => toSlug(serverName), [serverName]);
 
@@ -48,6 +53,36 @@ export const AddMcpModal = ({
   const hasRequiredCredentials =
     !needsApiKey ||
     credentialKeys.every((key) => (credentials[key] ?? "").trim() !== "");
+
+  const isOAuth = catalog.authType === "OAUTH";
+
+  // OAuth成功/エラーイベントのリスナー
+  const handleOAuthSuccess = useCallback(
+    (result: { serverId: number; serverName: string }) => {
+      setLoading(false);
+      onSuccess(result.serverName);
+    },
+    [onSuccess],
+  );
+
+  const handleOAuthError = useCallback((errorMsg: string) => {
+    setLoading(false);
+    setError(errorMsg);
+    setNeedsManualOAuthClient(false);
+  }, []);
+
+  useEffect(() => {
+    if (!isOAuth) return;
+
+    const unsubSuccess =
+      window.electronAPI.oauth.onOAuthSuccess(handleOAuthSuccess);
+    const unsubError = window.electronAPI.oauth.onOAuthError(handleOAuthError);
+
+    return () => {
+      unsubSuccess();
+      unsubError();
+    };
+  }, [isOAuth, handleOAuthSuccess, handleOAuthError]);
 
   const handleSubmit = async (): Promise<void> => {
     if (!serverName.trim()) {
@@ -63,6 +98,60 @@ export const AddMcpModal = ({
     setLoading(true);
     setError(null);
 
+    // OAuth認証フロー
+    if (isOAuth) {
+      if (!catalog.url) {
+        setError("OAuth認証にはURLが必要です");
+        setLoading(false);
+        return;
+      }
+
+      // DCR非対応で手動入力が必要な場合、入力チェック
+      if (needsManualOAuthClient && !oauthClientId.trim()) {
+        setError("Client IDを入力してください");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        await window.electronAPI.oauth.startAuth({
+          catalogId: catalog.id,
+          catalogName: serverName,
+          description: catalog.description,
+          transportType: catalog.transportType,
+          command: catalog.command,
+          args: catalog.args,
+          url: catalog.url,
+          ...(needsManualOAuthClient && {
+            oauthClientId: oauthClientId.trim(),
+            oauthClientSecret: oauthClientSecret.trim() || undefined,
+          }),
+        });
+        // ブラウザで認証中 — oauth:success / oauth:error イベントを待つ
+      } catch (err) {
+        // エラーメッセージからコードを抽出（形式: "[CODE] message"）
+        const message =
+          err instanceof Error ? err.message : "OAuth認証の開始に失敗しました";
+        const codeMatch = message.match(/\[(\w+)]\s/);
+        const code = codeMatch?.[1];
+        const displayMessage = codeMatch
+          ? message.slice((codeMatch.index ?? 0) + codeMatch[0].length)
+          : message;
+
+        // DCR非対応エラーの場合、手動入力フォームを表示
+        if (code === DISCOVERY_ERROR_CODE.DCR_NOT_SUPPORTED) {
+          setNeedsManualOAuthClient(true);
+          setError(null);
+        } else {
+          setNeedsManualOAuthClient(false);
+          setError(displayMessage);
+        }
+        setLoading(false);
+      }
+      return;
+    }
+
+    // 通常フロー（NONE / API_KEY / BEARER）
     try {
       const result = await window.electronAPI.mcp.createFromCatalog({
         catalogId: catalog.id,
@@ -102,9 +191,11 @@ export const AddMcpModal = ({
             className="text-xl font-bold"
             style={{ color: "var(--text-primary)" }}
           >
-            {catalog.authType === "NONE"
-              ? "MCPサーバーの追加"
-              : "APIトークンの設定"}
+            {isOAuth
+              ? "OAuth認証"
+              : catalog.authType === "NONE"
+                ? "MCPサーバーの追加"
+                : "APIトークンの設定"}
           </h2>
           <button
             type="button"
@@ -118,9 +209,11 @@ export const AddMcpModal = ({
 
         {/* 説明文 */}
         <p className="mb-6 text-sm" style={{ color: "var(--text-muted)" }}>
-          {catalog.authType === "NONE"
-            ? `${catalog.name}をMCPサーバーとして追加します。`
-            : `${catalog.name}に接続するために必要なAPIトークンを設定してください。`}
+          {isOAuth
+            ? `${catalog.name}に接続するためにブラウザでOAuth認証を行います。`
+            : catalog.authType === "NONE"
+              ? `${catalog.name}をMCPサーバーとして追加します。`
+              : `${catalog.name}に接続するために必要なAPIトークンを設定してください。`}
         </p>
 
         {/* アイコン + 名前 + 認証バッジ */}
@@ -281,6 +374,56 @@ export const AddMcpModal = ({
           </div>
         )}
 
+        {/* OAuthクライアント手動入力（DCR非対応サーバー用） */}
+        {isOAuth && needsManualOAuthClient && (
+          <div className="mb-6 space-y-4">
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              このサーバーはOAuth自動登録に対応していません。サービスの開発者設定画面でOAuthアプリを作成し、Client
+              IDとClient Secretを入力してください。
+            </p>
+            <div>
+              <label
+                className="mb-2 block text-sm font-medium"
+                style={{ color: "var(--text-primary)" }}
+              >
+                Client ID
+              </label>
+              <input
+                type="text"
+                value={oauthClientId}
+                onChange={(e) => setOauthClientId(e.target.value)}
+                placeholder="Client IDを入力..."
+                className="w-full rounded-lg px-4 py-3 text-sm outline-none"
+                style={{
+                  border: "1px solid var(--border)",
+                  backgroundColor: "var(--bg-input)",
+                  color: "var(--text-primary)",
+                }}
+              />
+            </div>
+            <div>
+              <label
+                className="mb-2 block text-sm font-medium"
+                style={{ color: "var(--text-primary)" }}
+              >
+                Client Secret
+              </label>
+              <input
+                type="password"
+                value={oauthClientSecret}
+                onChange={(e) => setOauthClientSecret(e.target.value)}
+                placeholder="Client Secretを入力（任意）..."
+                className="w-full rounded-lg px-4 py-3 text-sm outline-none"
+                style={{
+                  border: "1px solid var(--border)",
+                  backgroundColor: "var(--bg-input)",
+                  color: "var(--text-primary)",
+                }}
+              />
+            </div>
+          </div>
+        )}
+
         {/* エラー表示 */}
         {error && (
           <div
@@ -308,7 +451,12 @@ export const AddMcpModal = ({
         <div className="flex justify-end gap-3">
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => {
+              if (isOAuth && loading) {
+                window.electronAPI.oauth.cancelAuth();
+              }
+              onClose();
+            }}
             className="rounded-lg px-5 py-2.5 text-sm font-medium transition hover:opacity-80"
             style={{
               border: "1px solid var(--border)",
@@ -328,10 +476,14 @@ export const AddMcpModal = ({
             }}
           >
             {loading
-              ? "追加中..."
-              : catalog.authType === "NONE"
-                ? "追加"
-                : "認証"}
+              ? isOAuth
+                ? "ブラウザで認証中..."
+                : "追加中..."
+              : isOAuth
+                ? "ブラウザで認証"
+                : catalog.authType === "NONE"
+                  ? "追加"
+                  : "認証"}
           </button>
         </div>
       </div>

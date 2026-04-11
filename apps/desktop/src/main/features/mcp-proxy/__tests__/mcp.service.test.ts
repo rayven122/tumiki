@@ -40,15 +40,15 @@ vi.mock("crypto", () => ({
   randomUUID: vi.fn(() => `uuid-${++uuidCounter}`),
 }));
 
-vi.mock("../../shared/utils/logger", () => ({
+vi.mock("../../../shared/utils/logger", () => ({
   info: vi.fn(),
   error: vi.fn(),
   warn: vi.fn(),
   debug: vi.fn(),
 }));
 
-// features/mcp/mcp.service の getEnabledConfigs をモック（DB非依存にする）
-vi.mock("../../features/mcp/mcp.service", () => ({
+// features/mcp-server-list/mcp.service の getEnabledConfigs をモック（DB非依存にする）
+vi.mock("../../mcp-server-list/mcp.service", () => ({
   getEnabledConfigs: vi
     .fn()
     .mockResolvedValue([
@@ -314,7 +314,7 @@ describe("mcp.service", () => {
     });
 
     test("シャットダウンタイムアウト時は強制終了する", async () => {
-      const logger = await import("../../shared/utils/logger");
+      const logger = await import("../../../shared/utils/logger");
       const service = await importService();
       await spawnAndStart(service);
 
@@ -393,7 +393,7 @@ describe("mcp.service", () => {
 
   describe("handleMessage", () => {
     test("不正なメッセージはログに記録される", async () => {
-      const logger = await import("../../shared/utils/logger");
+      const logger = await import("../../../shared/utils/logger");
       const service = await importService();
       await spawnAndStart(service);
 
@@ -406,7 +406,7 @@ describe("mcp.service", () => {
     });
 
     test("status-changedイベントはログに記録される", async () => {
-      const logger = await import("../../shared/utils/logger");
+      const logger = await import("../../../shared/utils/logger");
       const service = await importService();
       await spawnAndStart(service);
 
@@ -422,7 +422,7 @@ describe("mcp.service", () => {
     });
 
     test("対応するリクエストがないレスポンスはデバッグログに記録される", async () => {
-      const logger = await import("../../shared/utils/logger");
+      const logger = await import("../../../shared/utils/logger");
       const service = await importService();
       await spawnAndStart(service);
 
@@ -435,7 +435,7 @@ describe("mcp.service", () => {
     });
 
     test("未分類のメッセージはログに記録される", async () => {
-      const logger = await import("../../shared/utils/logger");
+      const logger = await import("../../../shared/utils/logger");
       const service = await importService();
       await spawnAndStart(service);
 
@@ -495,7 +495,7 @@ describe("mcp.service", () => {
 
     test("リトライ上限（3回）に達した場合はリトライしない", async () => {
       const { fork } = await import("child_process");
-      const logger = await import("../../shared/utils/logger");
+      const logger = await import("../../../shared/utils/logger");
       const service = await importService();
       await spawnAndStart(service);
 
@@ -554,7 +554,7 @@ describe("mcp.service", () => {
     });
 
     test("exit/errorの二重発火時にcrash処理が1回だけ実行される", async () => {
-      const logger = await import("../../shared/utils/logger");
+      const logger = await import("../../../shared/utils/logger");
       const service = await importService();
       await spawnAndStart(service);
 
@@ -572,7 +572,7 @@ describe("mcp.service", () => {
 
     test("世代が異なるプロセスのexitは無視される", async () => {
       const { fork } = await import("child_process");
-      const logger = await import("../../shared/utils/logger");
+      const logger = await import("../../../shared/utils/logger");
       const service = await importService();
       await spawnAndStart(service);
 

@@ -28,6 +28,7 @@
     "lint": "turbo run lint --continue -- --cache --cache-location .cache/.eslintcache",
     "lint:fix": "turbo run lint --continue -- --fix --cache --cache-location .cache/.eslintcache",
     "lint:ws": "pnpm dlx sherif@latest -i ai",
+    "prepare": "test -d .git && prek install -t pre-commit -t pre-push || true",
     "postinstall": "pnpm lint:ws && (command -v bash >/dev/null 2>&1 && bash docker/keycloak/install-themes.sh || echo 'Skipping theme install (bash not available)')",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -64,6 +65,7 @@
     "inspector:mcp-proxy": "mcp-inspector --transport http http://localhost:8080/mcp"
   },
   "devDependencies": {
+    "@j178/prek": "^0.3.8",
     "@modelcontextprotocol/inspector": "^0.21.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@vitest/coverage-v8": "catalog:",
