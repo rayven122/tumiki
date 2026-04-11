@@ -207,15 +207,6 @@ describe("process.ts", () => {
       });
     });
 
-    test("core未初期化時にlist-toolsでエラーレスポンスが返る", async () => {
-      // 新しいprocess.tsでは初期化されていない場合がある
-      // このテストはstartを呼ばずにlist-toolsを送る
-      // ただしモジュールスコープのcoreは前のテストで初期化済みのため、
-      // ここではstop + status で未初期化の振る舞いをテストしない
-      // （モジュールスコープの制約上、完全な未初期化テストは別ファイルが必要）
-      expect(true).toBe(true);
-    });
-
     test("不明なtypeでエラーレスポンスが返る", async () => {
       messageHandler!({ id: "req-6", type: "unknown-type" });
       await flushPromises();

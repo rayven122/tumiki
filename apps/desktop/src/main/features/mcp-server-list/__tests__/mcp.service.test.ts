@@ -217,7 +217,8 @@ describe("mcp.service", () => {
   });
 
   describe("getEnabledConfigs", () => {
-    test("有効なSTDIO接続をMcpServerConfig[]に変換する", async () => {
+    test("暗号化済みSTDIO接続を復号してMcpServerConfig[]に変換する", async () => {
+      // createFromCatalog経由で保存されたのと同じ形式（safe:/fallback:プレフィックス付き）を想定
       vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([
         {
           id: 1,
@@ -227,7 +228,7 @@ describe("mcp.service", () => {
           command: "uvx",
           args: '["serena","start-mcp-server"]',
           url: null,
-          credentials: '{"API_KEY":"test-key"}',
+          credentials: 'safe:{"API_KEY":"test-key"}',
           authType: "NONE",
           isEnabled: true,
           displayOrder: 0,
@@ -248,17 +249,71 @@ describe("mcp.service", () => {
           },
         },
       ] as Awaited<ReturnType<typeof mcpRepository.findEnabledConnections>>);
+      // decryptTokenの振る舞い: "safe:" プレフィックスを除去（beforeEachのモックでは
+      // "encrypted:" のみ剥がすため、ここで上書き）
+      vi.mocked(decryptToken).mockImplementation(async (v) =>
+        v.replace(/^safe:/, "").replace(/^fallback:/, ""),
+      );
 
       const result = await mcpService.getEnabledConfigs();
 
+      // セパレータは `-`（Anthropic API の tool name 制約で `/` は使えないため）
       expect(result).toStrictEqual([
         {
-          name: "test-server/serena",
+          name: "test-server-serena",
           command: "uvx",
           args: ["serena", "start-mcp-server"],
           env: { API_KEY: "test-key" },
         },
       ]);
+      // decryptTokenが暗号化済みcredentialsに対して呼び出されることを確認
+      expect(decryptToken).toHaveBeenCalledWith('safe:{"API_KEY":"test-key"}');
+    });
+
+    test("平文credentials（旧データとの互換性）もそのまま扱える", async () => {
+      vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([
+        {
+          id: 1,
+          name: "Plain",
+          slug: "plain",
+          transportType: "STDIO",
+          command: "echo",
+          args: "[]",
+          url: null,
+          credentials: '{"TOKEN":"plain"}',
+          authType: "NONE",
+          isEnabled: true,
+          displayOrder: 0,
+          serverId: 1,
+          catalogId: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          server: {
+            id: 1,
+            name: "Srv",
+            slug: "srv",
+            description: "",
+            serverStatus: "STOPPED",
+            isEnabled: true,
+            displayOrder: 0,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        },
+      ] as Awaited<ReturnType<typeof mcpRepository.findEnabledConnections>>);
+
+      const result = await mcpService.getEnabledConfigs();
+
+      expect(result).toStrictEqual([
+        {
+          name: "srv-plain",
+          command: "echo",
+          args: [],
+          env: { TOKEN: "plain" },
+        },
+      ]);
+      // プレフィックスなしなのでdecryptTokenは呼ばれない
+      expect(decryptToken).not.toHaveBeenCalled();
     });
 
     test("SSE接続はスキップする", async () => {

@@ -26,19 +26,33 @@ if (isMcpProxyMode) {
     // macOSでDockアイコンを非表示にする（CLIモードのためGUI不要）
     app.dock?.hide();
 
-    // DB初期化 → 有効なMCPサーバー設定を取得
-    await initializeDb();
-    const { getEnabledConfigs } =
-      await import("./features/mcp-server-list/mcp.service");
-    const configs = await getEnabledConfigs();
+    try {
+      // DB初期化 → 有効なMCPサーバー設定を取得
+      await initializeDb();
+      const { getEnabledConfigs } =
+        await import("./features/mcp-server-list/mcp.service");
+      const configs = await getEnabledConfigs();
 
-    const { join } = await import("path");
-    const mod = (await import(join(__dirname, "mcp-cli.cjs"))) as {
-      runMcpProxy: (
-        configs: import("@tumiki/mcp-proxy-core").McpServerConfig[],
-      ) => Promise<void>;
-    };
-    await mod.runMcpProxy(configs);
+      const { join } = await import("path");
+      const mod = (await import(join(__dirname, "mcp-cli.cjs"))) as {
+        runMcpProxy: (
+          configs: import("@tumiki/mcp-proxy-core").McpServerConfig[],
+        ) => Promise<void>;
+      };
+      await mod.runMcpProxy(configs);
+    } catch (error) {
+      // CLIモードではstdoutはMCPプロトコル専用のため、stderrに出す
+      // Claude Code側のログから原因にたどり着けるようエラー詳細を明記
+      const message = error instanceof Error ? error.message : String(error);
+      const stack = error instanceof Error ? error.stack : undefined;
+      process.stderr.write(
+        `[tumiki-mcp-proxy] 起動に失敗しました: ${message}\n`,
+      );
+      if (stack) {
+        process.stderr.write(`${stack}\n`);
+      }
+      process.exit(1);
+    }
   });
 } else {
   const PROTOCOL = "tumiki-desktop";

@@ -111,19 +111,35 @@ export const getAllServers = async () => {
 
 /**
  * 有効な接続からMcpServerConfig[]を生成（Proxy起動時に使用）
+ *
+ * - credentials はDB上で暗号化済みのため、復号してから env に展開する
+ * - STDIO 以外のトランスポートは現時点では未対応のため warn ログを出してスキップする
+ * - Anthropic API の tool name 制約 (^[a-zA-Z0-9_-]{1,64}$) に合わせ、
+ *   サーバー名セパレータは `-` を使用する（`/` は tool name として拒否される）
  */
 export const getEnabledConfigs = async (): Promise<McpServerConfig[]> => {
   const db = await getDb();
   const connections = await mcpRepository.findEnabledConnections(db);
 
-  return connections
-    .filter((conn) => conn.transportType === "STDIO" && conn.command)
-    .map((conn) => ({
-      name: `${conn.server.slug}/${conn.slug}`,
-      command: conn.command as string,
+  const configs: McpServerConfig[] = [];
+  for (const conn of connections) {
+    if (conn.transportType !== "STDIO" || !conn.command) {
+      logger.warn(
+        `MCP接続 "${conn.server.slug}/${conn.slug}" はSTDIO以外のため現時点では未対応です（skip）`,
+        { transportType: conn.transportType },
+      );
+      continue;
+    }
+
+    const plainCredentials = await decryptCredentials(conn.credentials);
+    configs.push({
+      name: `${conn.server.slug}-${conn.slug}`,
+      command: conn.command,
       args: JSON.parse(conn.args) as string[],
-      env: JSON.parse(conn.credentials) as Record<string, string>,
-    }));
+      env: JSON.parse(plainCredentials) as Record<string, string>,
+    });
+  }
+  return configs;
 };
 
 /**
