@@ -50,13 +50,14 @@ export const listByServer = async (
     dateTo: input.dateTo,
   };
 
-  const [records, totalCount] = await Promise.all([
+  const [records, totalCount, stats] = await Promise.all([
     repository.findByServer(db, {
       ...filterParams,
       skip,
       take: perPage,
     }),
     repository.countByServer(db, filterParams),
+    repository.aggregateByServer(db, filterParams),
   ]);
 
   return {
@@ -64,5 +65,8 @@ export const listByServer = async (
     totalCount,
     totalPages: Math.ceil(totalCount / perPage),
     currentPage: page,
+    successRate:
+      totalCount > 0 ? Math.round((stats.successCount / totalCount) * 100) : 0,
+    avgDurationMs: stats.avgDurationMs,
   };
 };

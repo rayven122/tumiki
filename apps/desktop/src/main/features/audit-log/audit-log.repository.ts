@@ -72,3 +72,23 @@ export const countByServer = async (
 ) => {
   return db.auditLog.count({ where: buildWhereClause(params) });
 };
+
+/**
+ * サーバー指定で利用統計を集計（フィルター条件適用、全件対象）
+ */
+export const aggregateByServer = async (
+  db: PrismaClient,
+  params: Omit<AuditLogQueryParams, "skip" | "take"> & { serverId: number },
+) => {
+  const where = buildWhereClause(params);
+
+  const [successCount, avgResult] = await Promise.all([
+    db.auditLog.count({ where: { ...where, isSuccess: true } }),
+    db.auditLog.aggregate({ where, _avg: { durationMs: true } }),
+  ]);
+
+  return {
+    successCount,
+    avgDurationMs: Math.round(avgResult._avg.durationMs ?? 0),
+  };
+};

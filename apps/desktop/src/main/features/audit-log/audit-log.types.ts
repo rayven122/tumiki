@@ -39,4 +39,8 @@ export type AuditLogListResult = {
   totalCount: number;
   totalPages: number;
   currentPage: number;
+  /** 全件ベースの成功率（0〜100） */
+  successRate: number;
+  /** 全件ベースの平均応答時間（ミリ秒） */
+  avgDurationMs: number;
 };

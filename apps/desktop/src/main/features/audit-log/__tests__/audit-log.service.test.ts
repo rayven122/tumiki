@@ -50,6 +50,14 @@ describe("audit-log.service", () => {
   });
 
   describe("listByServer", () => {
+    /** 各テストで共通のaggregate モック設定 */
+    const setupAggregateMock = (successCount = 2, avgDurationMs = 150) => {
+      vi.mocked(repository.aggregateByServer).mockResolvedValue({
+        successCount,
+        avgDurationMs,
+      });
+    };
+
     test("監査ログ一覧を取得しDate→string変換する", async () => {
       const records = [
         createMockAuditLog({ id: 2 }),
@@ -57,6 +65,7 @@ describe("audit-log.service", () => {
       ];
       vi.mocked(repository.findByServer).mockResolvedValue(records);
       vi.mocked(repository.countByServer).mockResolvedValue(2);
+      setupAggregateMock(2, 150);
 
       const result = await service.listByServer({ serverId: 1 });
 
@@ -74,6 +83,8 @@ describe("audit-log.service", () => {
         totalCount: 2,
         totalPages: 1,
         currentPage: 1,
+        successRate: 100,
+        avgDurationMs: 150,
       });
     });
 
@@ -83,6 +94,7 @@ describe("audit-log.service", () => {
       );
       vi.mocked(repository.findByServer).mockResolvedValue(records);
       vi.mocked(repository.countByServer).mockResolvedValue(50);
+      setupAggregateMock(40, 200);
 
       const result = await service.listByServer({ serverId: 1 });
 
@@ -90,6 +102,8 @@ describe("audit-log.service", () => {
       expect(result.totalPages).toBe(3);
       expect(result.currentPage).toBe(1);
       expect(result.totalCount).toBe(50);
+      expect(result.successRate).toBe(80);
+      expect(result.avgDurationMs).toBe(200);
     });
 
     test("2ページ目を取得する", async () => {
@@ -98,6 +112,7 @@ describe("audit-log.service", () => {
       );
       vi.mocked(repository.findByServer).mockResolvedValue(records);
       vi.mocked(repository.countByServer).mockResolvedValue(50);
+      setupAggregateMock();
 
       const result = await service.listByServer({ serverId: 1, page: 2 });
 
@@ -111,6 +126,7 @@ describe("audit-log.service", () => {
     test("空結果の場合", async () => {
       vi.mocked(repository.findByServer).mockResolvedValue([]);
       vi.mocked(repository.countByServer).mockResolvedValue(0);
+      setupAggregateMock(0, 0);
 
       const result = await service.listByServer({ serverId: 1 });
 
@@ -119,12 +135,15 @@ describe("audit-log.service", () => {
         totalCount: 0,
         totalPages: 0,
         currentPage: 1,
+        successRate: 0,
+        avgDurationMs: 0,
       });
     });
 
     test("フィルター条件をrepositoryに渡す", async () => {
       vi.mocked(repository.findByServer).mockResolvedValue([]);
       vi.mocked(repository.countByServer).mockResolvedValue(0);
+      setupAggregateMock(0, 0);
 
       await service.listByServer({
         serverId: 1,

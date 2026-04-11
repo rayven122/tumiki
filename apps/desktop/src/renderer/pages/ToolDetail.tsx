@@ -142,6 +142,8 @@ export const ToolDetail = (): JSX.Element => {
   const [auditTotalPages, setAuditTotalPages] = useState(0);
   const [auditPage, setAuditPage] = useState(1);
   const [auditLoading, setAuditLoading] = useState(false);
+  const [successRate, setSuccessRate] = useState(0);
+  const [avgDurationMs, setAvgDurationMs] = useState(0);
   const [statusFilter, setStatusFilter] = useState<"all" | "success" | "error">(
     "all",
   );
@@ -176,6 +178,8 @@ export const ToolDetail = (): JSX.Element => {
         setAuditTotal(result.totalCount);
         setAuditTotalPages(result.totalPages);
         setAuditPage(result.currentPage);
+        setSuccessRate(result.successRate);
+        setAvgDurationMs(result.avgDurationMs);
       } catch {
         setAuditLogs([]);
       } finally {
@@ -231,20 +235,6 @@ export const ToolDetail = (): JSX.Element => {
   // 接続のカタログからアイコンを取得（最初に見つかったものを使用）
   const serverIcon = server.connections.find((c) => c.catalog?.iconPath)
     ?.catalog?.iconPath;
-
-  // 利用統計をログから算出
-  const successCount = auditLogs.filter((l) => l.isSuccess).length;
-  const successRate =
-    auditLogs.length > 0
-      ? Math.round((successCount / auditLogs.length) * 100)
-      : 0;
-  const avgLatency =
-    auditLogs.length > 0
-      ? Math.round(
-          auditLogs.reduce((sum, l) => sum + l.durationMs, 0) /
-            auditLogs.length,
-        )
-      : 0;
 
   // ダミー権限データ
   const hasLockedOperations = DUMMY_OPERATIONS.some((op) => !op.allowed);
@@ -477,7 +467,7 @@ export const ToolDetail = (): JSX.Element => {
             },
             {
               label: "平均応答",
-              value: avgLatency.toString(),
+              value: avgDurationMs.toString(),
               suffix: "ms",
             },
           ].map((stat) => (
