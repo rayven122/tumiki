@@ -9,25 +9,15 @@ import type {
 /** レンダラーがperPageを省略した場合のフォールバック値 */
 const FALLBACK_PER_PAGE = 20;
 
+/** Prisma AuditLogレコードの型 */
+type AuditLogRecord = Awaited<
+  ReturnType<typeof repository.findByServer>
+>[number];
+
 /**
  * AuditLogレコードをIPC通信用の型に変換
  */
-const toAuditLogItem = (record: {
-  id: number;
-  toolName: string;
-  method: string;
-  transportType: "STDIO" | "SSE" | "STREAMABLE_HTTP";
-  durationMs: number;
-  inputBytes: number;
-  outputBytes: number;
-  isSuccess: boolean;
-  errorCode: number | null;
-  errorSummary: string | null;
-  detail: string | null;
-  createdAt: Date;
-  serverId: number;
-  connectionName: string | null;
-}): AuditLogItem => ({
+const toAuditLogItem = (record: AuditLogRecord): AuditLogItem => ({
   ...record,
   createdAt: record.createdAt.toISOString(),
 });
@@ -45,7 +35,8 @@ export const listByServer = async (
 
   const filterParams = {
     serverId: input.serverId,
-    statusFilter: input.statusFilter,
+    // "all" はフィルターなしと同義なのでundefinedに正規化
+    statusFilter: input.statusFilter === "all" ? undefined : input.statusFilter,
     dateFrom: input.dateFrom,
     dateTo: input.dateTo,
   };

@@ -8,7 +8,7 @@ type AuditLogQueryParams = {
   serverId?: number;
   skip: number;
   take: number;
-  statusFilter?: "all" | "success" | "error";
+  statusFilter?: "success" | "error";
   dateFrom?: string;
   dateTo?: string;
 };

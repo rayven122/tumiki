@@ -40,7 +40,7 @@ const serverStatusBadge: Record<
 /** 監査ログ1ページあたりの件数 */
 const AUDIT_LOG_LIMIT = 20;
 
-/** AIクライアント接続先一覧（ダミー） */
+/** AIクライアント接続先一覧（ダミー） TODO: DB化して実データに置換 */
 const AI_CLIENT_CONNECTIONS = [
   {
     name: "Cursor",
@@ -113,7 +113,7 @@ const AI_CLIENT_CONNECTIONS = [
   },
 ];
 
-/** ダミー: 権限操作一覧（将来DB化予定） */
+/** ダミー: 権限操作一覧 TODO: DB化して実データに置換 */
 const DUMMY_OPERATIONS = [
   { name: "tools/call", description: "ツールの実行", allowed: true },
   { name: "tools/list", description: "ツール一覧の取得", allowed: true },
@@ -152,7 +152,10 @@ export const ToolDetail = (): JSX.Element => {
 
   // サーバー詳細取得
   useEffect(() => {
-    if (Number.isNaN(serverId)) return;
+    if (Number.isNaN(serverId)) {
+      setServerLoading(false);
+      return;
+    }
     window.electronAPI.mcp
       .getDetail(serverId)
       .then(setServer)
