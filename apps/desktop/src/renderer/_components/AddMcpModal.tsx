@@ -48,7 +48,8 @@ export const AddMcpModal = ({
   const slug = useMemo(() => toSlug(serverName), [serverName]);
 
   const needsApiKey =
-    catalog.authType === "API_KEY" && credentialKeys.length > 0;
+    (catalog.authType === "API_KEY" || catalog.authType === "BEARER") &&
+    credentialKeys.length > 0;
 
   const hasRequiredCredentials =
     !needsApiKey ||
