@@ -20,6 +20,30 @@ export type AuditLogItem = {
 };
 
 /**
+ * 監査ログ作成の入力型（ログ記録時に使用）
+ */
+export type AuditLogCreateInput = {
+  toolName: string;
+  method: string;
+  transportType: "STDIO" | "SSE" | "STREAMABLE_HTTP";
+  durationMs: number;
+  inputBytes: number;
+  outputBytes: number;
+  isSuccess: boolean;
+  errorCode: number | null;
+  errorSummary: string | null;
+  serverId: number;
+  connectionName: string | null;
+};
+
+/**
+ * 古いログ削除の結果型
+ */
+export type AuditLogClearResult = {
+  deletedCount: number;
+};
+
+/**
  * 監査ログ一覧取得の入力型（renderer → main）
  */
 export type AuditLogListInput = {

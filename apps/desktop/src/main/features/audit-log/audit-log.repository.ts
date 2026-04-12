@@ -1,4 +1,5 @@
 import type { PrismaClient, Prisma } from "@prisma/desktop-client";
+import type { AuditLogCreateInput } from "./audit-log.types";
 
 /**
  * 監査ログ検索の共通パラメータ型
@@ -91,4 +92,21 @@ export const aggregateByServer = async (
     successCount,
     avgDurationMs: Math.round(avgResult._avg.durationMs ?? 0),
   };
+};
+
+/**
+ * 監査ログを作成
+ */
+export const create = async (db: PrismaClient, data: AuditLogCreateInput) => {
+  return db.auditLog.create({ data });
+};
+
+/**
+ * 指定日時より古い監査ログを削除
+ */
+export const deleteOlderThan = async (db: PrismaClient, threshold: Date) => {
+  const result = await db.auditLog.deleteMany({
+    where: { createdAt: { lt: threshold } },
+  });
+  return result.count;
 };

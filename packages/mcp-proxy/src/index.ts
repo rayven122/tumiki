@@ -12,6 +12,7 @@ export type {
   ProxyRequest,
   ProxyResponse,
   ProxyEvent,
+  ToolCalledPayload,
 } from "./types.js";
 
 // コア

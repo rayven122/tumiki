@@ -8,6 +8,10 @@ import { setupMcpProxyIpc } from "./features/mcp-proxy/mcp-proxy.ipc";
 import { setupMcpServerDetailIpc } from "./features/mcp-server-detail/mcp-server-detail.ipc";
 import { setupAuditLogIpc } from "./features/audit-log/audit-log.ipc";
 import { startMcpServers, stopProxy } from "./features/mcp-proxy/mcp.service";
+import {
+  startAutoCleanup,
+  stopAutoCleanup,
+} from "./features/audit-log/audit-log.service";
 import { seedCatalogs } from "./features/catalog/catalog.seed";
 import { createOAuthManager } from "./auth/oauth-manager";
 import { getOAuthManager, setOAuthManager } from "./auth/manager-registry";
@@ -315,6 +319,9 @@ if (isMcpProxyMode) {
 
       createWindow();
 
+      // 古い監査ログの自動削除を開始
+      startAutoCleanup();
+
       // 有効なMCPサーバーを自動起動（失敗してもアプリ起動は継続）
       startMcpServers().catch((error) => {
         logger.error(
@@ -371,6 +378,7 @@ if (isMcpProxyMode) {
     event.preventDefault();
     const oauthManager = getOAuthManager();
     oauthManager?.stopAutoRefresh();
+    stopAutoCleanup();
     stopProxy()
       .then(() => oauthManager?.waitForPendingRefresh() ?? Promise.resolve())
       .then(() => closeDb())

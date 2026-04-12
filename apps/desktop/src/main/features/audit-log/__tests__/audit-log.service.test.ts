@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
+import { describe, test, expect, beforeEach, afterEach, vi } from "vitest";
 
 // モックの設定
 vi.mock("electron", () => ({
@@ -167,6 +167,163 @@ describe("audit-log.service", () => {
         dateFrom: "2026-04-01",
         dateTo: "2026-04-07",
       });
+    });
+  });
+
+  describe("recordToolCall", () => {
+    test("監査ログをDBに記録する", async () => {
+      vi.mocked(repository.create).mockResolvedValue(undefined as never);
+
+      const input = {
+        toolName: "test_tool",
+        method: "tools/call",
+        transportType: "STDIO" as const,
+        durationMs: 100,
+        inputBytes: 50,
+        outputBytes: 200,
+        isSuccess: true,
+        errorCode: null,
+        errorSummary: null,
+        serverId: 1,
+        connectionName: "conn-1",
+      };
+
+      await service.recordToolCall(input);
+
+      expect(repository.create).toHaveBeenCalledWith(mockDb, input);
+    });
+
+    test("DB記録失敗時に例外を投げない", async () => {
+      vi.mocked(repository.create).mockRejectedValue(new Error("DB error"));
+
+      await expect(
+        service.recordToolCall({
+          toolName: "test_tool",
+          method: "tools/call",
+          transportType: "STDIO",
+          durationMs: 100,
+          inputBytes: 50,
+          outputBytes: 200,
+          isSuccess: true,
+          errorCode: null,
+          errorSummary: null,
+          serverId: 1,
+          connectionName: "conn-1",
+        }),
+      ).resolves.toBeUndefined();
+    });
+  });
+
+  describe("recordMcpToolCall", () => {
+    test("プレフィックス付きツール名を解決してログを記録する", async () => {
+      const mockConnection = {
+        serverId: 1,
+        name: "figma-mcp",
+        transportType: "STREAMABLE_HTTP" as const,
+      };
+      const mockFindFirst = vi.fn().mockResolvedValue(mockConnection);
+      vi.mocked(getDb).mockResolvedValue({
+        mcpConnection: { findFirst: mockFindFirst },
+      } as never);
+      vi.mocked(repository.create).mockResolvedValue(undefined as never);
+
+      await service.recordMcpToolCall({
+        prefixedToolName: "figma-mcp__get_file",
+        durationMs: 320,
+        inputBytes: 128,
+        outputBytes: 4096,
+        isSuccess: true,
+        errorMessage: null,
+      });
+
+      expect(repository.create).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          toolName: "get_file",
+          connectionName: "figma-mcp",
+          serverId: 1,
+          transportType: "STREAMABLE_HTTP",
+        }),
+      );
+    });
+
+    test("プレフィックスなしのツール名は記録しない", async () => {
+      await service.recordMcpToolCall({
+        prefixedToolName: "no_prefix_tool",
+        durationMs: 100,
+        inputBytes: 50,
+        outputBytes: 200,
+        isSuccess: true,
+        errorMessage: null,
+      });
+
+      expect(repository.create).not.toHaveBeenCalled();
+    });
+
+    test("接続が見つからない場合は記録しない", async () => {
+      const mockFindFirst = vi.fn().mockResolvedValue(null);
+      vi.mocked(getDb).mockResolvedValue({
+        mcpConnection: { findFirst: mockFindFirst },
+      } as never);
+
+      await service.recordMcpToolCall({
+        prefixedToolName: "unknown__tool",
+        durationMs: 100,
+        inputBytes: 50,
+        outputBytes: 200,
+        isSuccess: true,
+        errorMessage: null,
+      });
+
+      expect(repository.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("clearOldLogs", () => {
+    test("7日以上古いログを削除する", async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: false });
+      vi.setSystemTime(new Date("2026-04-10T00:00:00.000Z"));
+
+      vi.mocked(repository.deleteOlderThan).mockResolvedValue(5);
+
+      const result = await service.clearOldLogs();
+
+      expect(result).toStrictEqual({ deletedCount: 5 });
+      expect(repository.deleteOlderThan).toHaveBeenCalledWith(
+        mockDb,
+        new Date("2026-04-03T00:00:00.000Z"),
+      );
+
+      vi.useRealTimers();
+    });
+  });
+
+  describe("startAutoCleanup / stopAutoCleanup", () => {
+    afterEach(() => {
+      service.stopAutoCleanup();
+      vi.useRealTimers();
+    });
+
+    test("起動時に即座にクリーンアップを実行する", async () => {
+      vi.mocked(repository.deleteOlderThan).mockResolvedValue(0);
+
+      service.startAutoCleanup();
+
+      // 非同期処理が完了するのを待つ
+      await vi.waitFor(() => {
+        expect(repository.deleteOlderThan).toHaveBeenCalled();
+      });
+    });
+
+    test("二重呼び出しでもタイマーは1つのみ", () => {
+      vi.mocked(repository.deleteOlderThan).mockResolvedValue(0);
+
+      service.startAutoCleanup();
+      service.startAutoCleanup();
+
+      service.stopAutoCleanup();
+      // 2回目のstopAutoCleanupでエラーにならない
+      service.stopAutoCleanup();
     });
   });
 });

@@ -15,8 +15,10 @@ import type {
   CallToolResult,
   CallToolPayload,
   McpServerConfig,
+  ToolCalledPayload,
 } from "@tumiki/mcp-proxy-core";
 import { getEnabledConfigs } from "../mcp-server-list/mcp.service";
+import * as auditLogService from "../audit-log/audit-log.service";
 
 // IPC戻り値のzodスキーマ
 const mcpToolInfoSchema = z.object({
@@ -154,15 +156,20 @@ const handleMessage = (msg: unknown): void => {
   }
 
   // ProxyEventの判別: typeフィールドを持つメッセージはイベント
-  if ("type" in record && record.type === "status-changed") {
+  if ("type" in record && typeof record.type === "string") {
     const event = msg as ProxyEvent;
-    logger.info("MCPサーバー状態変更", {
-      name: event.payload.name,
-      status: event.payload.status,
-      error: event.payload.error,
-    });
-    // TODO: Renderer UIが実装されたら mainWindow?.webContents.send("mcp:status-changed", event.payload) で通知する
-    return;
+    switch (event.type) {
+      case "status-changed":
+        logger.info("MCPサーバー状態変更", {
+          name: event.payload.name,
+          status: event.payload.status,
+          error: event.payload.error,
+        });
+        return;
+      case "tool-called":
+        void auditLogService.recordMcpToolCall(event.payload);
+        return;
+    }
   }
 
   logger.warn("Proxy Processから未分類のメッセージを受信しました", { msg });

@@ -69,8 +69,20 @@ export type ProxyResponse =
   | { id: string; ok: true; result?: unknown }
   | { id: string; ok: false; error: string };
 
-// Proxy → Main（Push通知）
-export type ProxyEvent = {
-  type: "status-changed";
-  payload: { name: string; status: ServerStatus; error?: string };
+// ツール呼び出し計測結果（Proxy → Main 通知用）
+export type ToolCalledPayload = {
+  prefixedToolName: string;
+  durationMs: number;
+  inputBytes: number;
+  outputBytes: number;
+  isSuccess: boolean;
+  errorMessage: string | null;
 };
+
+// Proxy → Main（Push通知）
+export type ProxyEvent =
+  | {
+      type: "status-changed";
+      payload: { name: string; status: ServerStatus; error?: string };
+    }
+  | { type: "tool-called"; payload: ToolCalledPayload };

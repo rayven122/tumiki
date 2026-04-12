@@ -3,7 +3,12 @@
  * Electron Main から fork() で起動され、IPC message で通信する
  */
 import type { ProxyCore } from "./core.js";
-import type { ProxyEvent, ProxyRequest, ProxyResponse } from "./types.js";
+import type {
+  ProxyEvent,
+  ProxyRequest,
+  ProxyResponse,
+  ToolCalledPayload,
+} from "./types.js";
 import { createProxyCore } from "./core.js";
 import { stderrLogger as logger } from "./stderr-logger.js";
 
@@ -90,11 +95,51 @@ const handleRequest = async (
             error: "call-toolリクエストのペイロードが不正です",
           };
         }
-        const result = await core.callTool(
-          request.payload.name,
-          request.payload.arguments,
+
+        // ツール呼び出しの計測
+        const startTime = performance.now();
+        const inputBytes = Buffer.byteLength(
+          JSON.stringify(request.payload.arguments),
+          "utf-8",
         );
-        return { id: request.id, ok: true, result };
+        let callError: string | null = null;
+
+        try {
+          const result = await core.callTool(
+            request.payload.name,
+            request.payload.arguments,
+          );
+          const outputBytes = Buffer.byteLength(
+            JSON.stringify(result),
+            "utf-8",
+          );
+          const toolCalledPayload: ToolCalledPayload = {
+            prefixedToolName: request.payload.name,
+            durationMs: Math.round(performance.now() - startTime),
+            inputBytes,
+            outputBytes,
+            isSuccess: !result.isError,
+            errorMessage: result.isError
+              ? JSON.stringify(result.content).slice(0, 500)
+              : null,
+          };
+          sendToParent({ type: "tool-called", payload: toolCalledPayload });
+
+          return { id: request.id, ok: true, result };
+        } catch (error) {
+          callError = error instanceof Error ? error.message : "不明なエラー";
+          const toolCalledPayload: ToolCalledPayload = {
+            prefixedToolName: request.payload.name,
+            durationMs: Math.round(performance.now() - startTime),
+            inputBytes,
+            outputBytes: 0,
+            isSuccess: false,
+            errorMessage: callError.slice(0, 500),
+          };
+          sendToParent({ type: "tool-called", payload: toolCalledPayload });
+
+          return { id: request.id, ok: false, error: callError };
+        }
       }
       case "status": {
         const core = getCore();
