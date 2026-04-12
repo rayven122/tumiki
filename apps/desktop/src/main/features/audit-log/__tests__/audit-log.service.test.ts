@@ -288,12 +288,19 @@ describe("audit-log.service", () => {
     });
 
     test("二重呼び出しでもタイマーは1つのみ", () => {
+      vi.useFakeTimers({ shouldAdvanceTime: false });
+      const spy = vi.spyOn(global, "setInterval");
+
       service.startAutoCleanup();
       service.startAutoCleanup();
+
+      expect(spy).toHaveBeenCalledTimes(1);
 
       service.stopAutoCleanup();
       // 2回目のstopAutoCleanupでエラーにならない
       service.stopAutoCleanup();
+
+      spy.mockRestore();
     });
   });
 });

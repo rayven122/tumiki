@@ -86,6 +86,9 @@ const resolveServerInfo = async (
   const serverName = prefixedToolName.slice(0, idx);
   const toolName = prefixedToolName.slice(idx + PREFIX_SEPARATOR.length);
 
+  // TODO: McpConnection.nameはユニーク制約なし（@@unique([serverId, slug])のみ）
+  // ToolAggregatorがconfig.nameをプレフィックスに使用するため現状はnameで検索
+  // 将来的にはslugベースのプレフィックスに移行することを検討
   const db = await getDb();
   const connection = await db.mcpConnection.findFirst({
     where: { name: serverName },
