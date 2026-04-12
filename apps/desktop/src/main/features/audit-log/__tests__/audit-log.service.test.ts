@@ -170,50 +170,6 @@ describe("audit-log.service", () => {
     });
   });
 
-  describe("recordToolCall", () => {
-    test("監査ログをDBに記録する", async () => {
-      vi.mocked(repository.create).mockResolvedValue(undefined as never);
-
-      const input = {
-        toolName: "test_tool",
-        method: "tools/call",
-        transportType: "STDIO" as const,
-        durationMs: 100,
-        inputBytes: 50,
-        outputBytes: 200,
-        isSuccess: true,
-        errorCode: null,
-        errorSummary: null,
-        serverId: 1,
-        connectionName: "conn-1",
-      };
-
-      await service.recordToolCall(input);
-
-      expect(repository.create).toHaveBeenCalledWith(mockDb, input);
-    });
-
-    test("DB記録失敗時に例外を投げない", async () => {
-      vi.mocked(repository.create).mockRejectedValue(new Error("DB error"));
-
-      await expect(
-        service.recordToolCall({
-          toolName: "test_tool",
-          method: "tools/call",
-          transportType: "STDIO",
-          durationMs: 100,
-          inputBytes: 50,
-          outputBytes: 200,
-          isSuccess: true,
-          errorCode: null,
-          errorSummary: null,
-          serverId: 1,
-          connectionName: "conn-1",
-        }),
-      ).resolves.toBeUndefined();
-    });
-  });
-
   describe("recordMcpToolCall", () => {
     test("プレフィックス付きツール名を解決してログを記録する", async () => {
       const mockConnection = {
@@ -276,6 +232,31 @@ describe("audit-log.service", () => {
       });
 
       expect(repository.create).not.toHaveBeenCalled();
+    });
+
+    test("DB記録失敗時に例外を投げない", async () => {
+      const mockConnection = {
+        serverId: 1,
+        name: "conn",
+        transportType: "STDIO" as const,
+      };
+      vi.mocked(getDb).mockResolvedValue({
+        mcpConnection: {
+          findFirst: vi.fn().mockResolvedValue(mockConnection),
+        },
+      } as never);
+      vi.mocked(repository.create).mockRejectedValue(new Error("DB error"));
+
+      await expect(
+        service.recordMcpToolCall({
+          prefixedToolName: "conn__tool",
+          durationMs: 100,
+          inputBytes: 50,
+          outputBytes: 200,
+          isSuccess: true,
+          errorMessage: null,
+        }),
+      ).resolves.toBeUndefined();
     });
   });
 

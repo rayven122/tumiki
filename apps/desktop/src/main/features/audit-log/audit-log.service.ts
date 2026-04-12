@@ -4,7 +4,6 @@ import * as logger from "../../shared/utils/logger";
 import type { ToolCalledPayload } from "@tumiki/mcp-proxy-core";
 import type {
   AuditLogItem,
-  AuditLogCreateInput,
   AuditLogClearResult,
   AuditLogListInput,
   AuditLogListResult,
@@ -104,25 +103,8 @@ const resolveServerInfo = async (
 };
 
 /**
- * 監査ログを記録（fire-and-forget用: 例外を投げない）
- */
-export const recordToolCall = async (
-  input: AuditLogCreateInput,
-): Promise<void> => {
-  try {
-    const db = await getDb();
-    await repository.create(db, input);
-  } catch (error) {
-    logger.error(
-      "監査ログの記録に失敗しました",
-      error instanceof Error ? error : { error },
-    );
-  }
-};
-
-/**
  * Proxy Processのtool-calledイベントから監査ログを記録
- * プレフィックス付きツール名の解決からDB記録までを一括で行う
+ * プレフィックス付きツール名の解決からDB記録までを一括で行う（fire-and-forget: 例外を投げない）
  */
 export const recordMcpToolCall = async (
   payload: ToolCalledPayload,
@@ -136,7 +118,8 @@ export const recordMcpToolCall = async (
       return;
     }
 
-    await recordToolCall({
+    const db = await getDb();
+    await repository.create(db, {
       toolName: serverInfo.toolName,
       method: "tools/call",
       transportType: serverInfo.transportType,
