@@ -15,7 +15,6 @@ import type {
   CallToolResult,
   CallToolPayload,
   McpServerConfig,
-  ToolCalledPayload,
 } from "@tumiki/mcp-proxy-core";
 import { getEnabledConfigs } from "../mcp-server-list/mcp.service";
 import * as auditLogService from "../audit-log/audit-log.service";
