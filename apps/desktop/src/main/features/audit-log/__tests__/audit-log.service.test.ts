@@ -261,6 +261,10 @@ describe("audit-log.service", () => {
   });
 
   describe("clearOldLogs", () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
     test("7日以上古いログを削除する", async () => {
       vi.useFakeTimers({ shouldAdvanceTime: false });
       vi.setSystemTime(new Date("2026-04-10T00:00:00.000Z"));
@@ -274,8 +278,6 @@ describe("audit-log.service", () => {
         mockDb,
         new Date("2026-04-03T00:00:00.000Z"),
       );
-
-      vi.useRealTimers();
     });
   });
 

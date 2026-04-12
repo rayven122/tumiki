@@ -20,6 +20,16 @@ import type {
 import { getEnabledConfigs } from "../mcp-server-list/mcp.service";
 import * as auditLogService from "../audit-log/audit-log.service";
 
+// tool-calledイベントペイロードのバリデーション
+const toolCalledPayloadSchema = z.object({
+  prefixedToolName: z.string(),
+  durationMs: z.number().int().nonnegative(),
+  inputBytes: z.number().int().nonnegative(),
+  outputBytes: z.number().int().nonnegative(),
+  isSuccess: z.boolean(),
+  errorMessage: z.string().nullable(),
+});
+
 // IPC戻り値のzodスキーマ
 const mcpToolInfoSchema = z.object({
   name: z.string(),
@@ -166,9 +176,17 @@ const handleMessage = (msg: unknown): void => {
           error: event.payload.error,
         });
         return;
-      case "tool-called":
-        void auditLogService.recordMcpToolCall(event.payload);
+      case "tool-called": {
+        const parsed = toolCalledPayloadSchema.safeParse(
+          (record as { payload?: unknown }).payload,
+        );
+        if (!parsed.success) {
+          logger.warn("tool-called ペイロードが不正です", { msg });
+          return;
+        }
+        void auditLogService.recordMcpToolCall(parsed.data);
         return;
+      }
     }
   }
 
