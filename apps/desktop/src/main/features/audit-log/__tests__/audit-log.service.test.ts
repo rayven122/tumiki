@@ -304,20 +304,7 @@ describe("audit-log.service", () => {
       vi.useRealTimers();
     });
 
-    test("起動時に即座にクリーンアップを実行する", async () => {
-      vi.mocked(repository.deleteOlderThan).mockResolvedValue(0);
-
-      service.startAutoCleanup();
-
-      // 非同期処理が完了するのを待つ
-      await vi.waitFor(() => {
-        expect(repository.deleteOlderThan).toHaveBeenCalled();
-      });
-    });
-
     test("二重呼び出しでもタイマーは1つのみ", () => {
-      vi.mocked(repository.deleteOlderThan).mockResolvedValue(0);
-
       service.startAutoCleanup();
       service.startAutoCleanup();
 

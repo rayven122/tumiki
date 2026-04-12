@@ -175,17 +175,10 @@ export const clearOldLogs = async (): Promise<AuditLogClearResult> => {
 let cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
 /**
- * 古いログの自動削除を開始（アプリ起動時に呼び出し）
+ * 古いログの自動削除を開始（24時間ごとに実行）
  */
 export const startAutoCleanup = (): void => {
   if (cleanupTimer !== null) return;
-
-  void clearOldLogs().catch((error) => {
-    logger.error(
-      "自動ログクリーンアップに失敗しました",
-      error instanceof Error ? error : { error },
-    );
-  });
 
   cleanupTimer = setInterval(() => {
     void clearOldLogs().catch((error) => {
