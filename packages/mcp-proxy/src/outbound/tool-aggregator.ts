@@ -37,17 +37,18 @@ const parsePrefixedName = (prefixedName: string): [string, string] | null => {
 
 /**
  * ToolAggregatorを作成
- * UpstreamClientのMapを受け取り、ツールの集約・ルーティングを行う
+ * getter関数経由でUpstreamClientのMapを取得し、ツールの集約・ルーティングを行う
+ * 毎回getterを呼ぶことで、動的にサーバーが追加・削除された場合も最新状態を参照する
  */
 export const createToolAggregator = (
-  clients: ReadonlyMap<string, UpstreamClient>,
+  getClients: () => ReadonlyMap<string, UpstreamClient>,
   logger: Logger,
 ): ToolAggregator => {
   /**
    * 全サーバーのツール一覧を集約（プレフィックス付き）
    */
   const listTools = async (): Promise<McpToolInfo[]> => {
-    const clientList = [...clients.values()];
+    const clientList = [...getClients().values()];
     const results = await Promise.allSettled(
       clientList.map(async (client) => {
         const tools = await client.listTools();
@@ -94,7 +95,7 @@ export const createToolAggregator = (
     }
 
     const [serverName, toolName] = parsed;
-    const client = clients.get(serverName);
+    const client = getClients().get(serverName);
     if (!client) {
       throw new Error(
         `サーバー "${serverName}" が見つかりません（ツール: "${prefixedToolName}"）`,

@@ -1,10 +1,30 @@
 import { ipcMain } from "electron";
 import { z } from "zod";
 import * as mcpService from "./mcp.service";
-import type { CreateFromCatalogInput } from "./mcp.types";
+import type {
+  CreateFromCatalogInput,
+  UpdateServerInput,
+  DeleteServerInput,
+  ToggleServerInput,
+} from "./mcp.types";
 import * as logger from "../../shared/utils/logger";
 
 // IPC入力のバリデーションスキーマ
+const updateServerSchema = z.object({
+  id: z.number().int(),
+  name: z.string().min(1).optional(),
+  description: z.string().optional(),
+}) satisfies z.ZodType<UpdateServerInput>;
+
+const deleteServerSchema = z.object({
+  id: z.number().int(),
+}) satisfies z.ZodType<DeleteServerInput>;
+
+const toggleServerSchema = z.object({
+  id: z.number().int(),
+  isEnabled: z.boolean(),
+}) satisfies z.ZodType<ToggleServerInput>;
+
 const createFromCatalogSchema = z.object({
   catalogId: z.number().int(),
   catalogName: z.string().min(1),
@@ -48,6 +68,54 @@ export const setupMcpIpc = (): void => {
         error instanceof Error ? error : { error },
       );
       throw new Error(`MCPサーバー一覧の取得に失敗しました: ${message}`);
+    }
+  });
+
+  // MCPサーバー情報を更新
+  ipcMain.handle("mcp:updateServer", async (_, input: unknown) => {
+    try {
+      const validated = updateServerSchema.parse(input);
+      return await mcpService.updateServer(validated.id, {
+        name: validated.name,
+        description: validated.description,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "不明なエラー";
+      logger.error(
+        "Failed to update MCP server",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error(`MCPサーバーの更新に失敗しました: ${message}`);
+    }
+  });
+
+  // MCPサーバーを削除
+  ipcMain.handle("mcp:deleteServer", async (_, input: unknown) => {
+    try {
+      const validated = deleteServerSchema.parse(input);
+      return await mcpService.deleteServer(validated.id);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "不明なエラー";
+      logger.error(
+        "Failed to delete MCP server",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error(`MCPサーバーの削除に失敗しました: ${message}`);
+    }
+  });
+
+  // MCPサーバーのenabled状態を切り替え
+  ipcMain.handle("mcp:toggleServer", async (_, input: unknown) => {
+    try {
+      const validated = toggleServerSchema.parse(input);
+      return await mcpService.toggleServer(validated.id, validated.isEnabled);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "不明なエラー";
+      logger.error(
+        "Failed to toggle MCP server",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error(`MCPサーバーの切り替えに失敗しました: ${message}`);
     }
   });
 };

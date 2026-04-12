@@ -17,7 +17,6 @@ const mockGetStatus = vi.fn();
 const mockOnStatusChange = vi.fn();
 
 vi.mock("../core", () => ({
-  HARDCODED_CONFIGS: [{ name: "test", command: "echo", args: [], env: {} }],
   createProxyCore: vi.fn(() => ({
     startAll: mockStartAll,
     stopAll: mockStopAll,
@@ -64,6 +63,17 @@ afterAll(() => {
   vi.unstubAllGlobals();
 });
 
+// テスト用のstart送信ヘルパー（configsペイロード付き）
+const sendStart = (id: string) => {
+  messageHandler!({
+    id,
+    type: "start",
+    payload: {
+      configs: [{ name: "test", command: "echo", args: [], env: {} }],
+    },
+  });
+};
+
 describe("process.ts", () => {
   beforeAll(async () => {
     // process.tsをインポート → main()が実行される
@@ -73,10 +83,6 @@ describe("process.ts", () => {
   });
 
   describe("初期化", () => {
-    test("onStatusChangeコールバックが登録される", () => {
-      expect(mockOnStatusChange).toHaveBeenCalled();
-    });
-
     test("メッセージハンドラーが登録される", () => {
       expect(messageHandler).toBeDefined();
     });
@@ -85,17 +91,22 @@ describe("process.ts", () => {
   describe("メッセージハンドリング", () => {
     beforeEach(() => {
       mockProcessSend.mockClear();
+      mockStartAll.mockClear();
+      mockStopAll.mockClear();
+      mockOnStatusChange.mockClear();
     });
 
-    test("'start'メッセージでcore.startAll()が呼ばれレスポンスが返る", async () => {
+    test("'start'メッセージでconfigsからProxyCoreを生成しstartAll()が呼ばれる", async () => {
       mockStartAll.mockResolvedValue(undefined);
       mockGetStatus.mockReturnValue([
         { name: "test", status: "running", tools: [] },
       ]);
 
-      messageHandler!({ id: "req-1", type: "start" });
+      sendStart("req-1");
       await flushPromises();
 
+      expect(mockStartAll).toHaveBeenCalled();
+      expect(mockOnStatusChange).toHaveBeenCalled();
       expect(mockProcessSend).toHaveBeenCalledWith({
         id: "req-1",
         ok: true,
@@ -104,6 +115,12 @@ describe("process.ts", () => {
     });
 
     test("'stop'メッセージでcore.stopAll()が呼ばれる", async () => {
+      // まずstartしてcoreを初期化
+      mockStartAll.mockResolvedValue(undefined);
+      mockGetStatus.mockReturnValue([]);
+      sendStart("setup");
+      await flushPromises();
+      mockProcessSend.mockClear();
       mockStopAll.mockResolvedValue(undefined);
 
       messageHandler!({ id: "req-2", type: "stop" });
@@ -117,6 +134,12 @@ describe("process.ts", () => {
     });
 
     test("'list-tools'メッセージでcore.listTools()が呼ばれる", async () => {
+      // まずstartしてcoreを初期化
+      mockStartAll.mockResolvedValue(undefined);
+      mockGetStatus.mockReturnValue([]);
+      sendStart("setup");
+      await flushPromises();
+      mockProcessSend.mockClear();
       mockListTools.mockResolvedValue([
         { name: "tool1", description: "desc", inputSchema: {} },
       ]);
@@ -133,6 +156,12 @@ describe("process.ts", () => {
     });
 
     test("'call-tool'メッセージでcore.callTool()に正しい引数が渡される", async () => {
+      // まずstartしてcoreを初期化
+      mockStartAll.mockResolvedValue(undefined);
+      mockGetStatus.mockReturnValue([]);
+      sendStart("setup");
+      await flushPromises();
+      mockProcessSend.mockClear();
       mockCallTool.mockResolvedValue({
         content: [{ type: "text", text: "result" }],
         isError: false,
@@ -157,6 +186,12 @@ describe("process.ts", () => {
     });
 
     test("'status'メッセージでcore.getStatus()が呼ばれる", async () => {
+      // まずstartしてcoreを初期化
+      mockStartAll.mockResolvedValue(undefined);
+      mockGetStatus.mockReturnValue([]);
+      sendStart("setup");
+      await flushPromises();
+      mockProcessSend.mockClear();
       mockGetStatus.mockReturnValue([
         { name: "test", status: "stopped", tools: [] },
       ]);
@@ -184,6 +219,7 @@ describe("process.ts", () => {
     });
 
     test("不正なメッセージ（id/type欠落）は無視される", async () => {
+      mockProcessSend.mockClear();
       messageHandler!("invalid");
       messageHandler!(null);
       messageHandler!({ noId: true });
@@ -196,7 +232,7 @@ describe("process.ts", () => {
     test("リクエスト処理中のエラーでエラーレスポンスが返る", async () => {
       mockStartAll.mockRejectedValue(new Error("起動エラー"));
 
-      messageHandler!({ id: "req-7", type: "start" });
+      sendStart("req-7");
       await flushPromises();
 
       expect(mockProcessSend).toHaveBeenCalledWith({
@@ -210,9 +246,17 @@ describe("process.ts", () => {
   describe("状態変更通知", () => {
     beforeEach(() => {
       mockProcessSend.mockClear();
+      mockOnStatusChange.mockClear();
+      mockStartAll.mockClear();
     });
 
-    test("状態変更がprocess.send経由でMainに通知される", () => {
+    test("状態変更がprocess.send経由でMainに通知される", async () => {
+      // startを送ってonStatusChangeコールバックを登録させる
+      mockStartAll.mockResolvedValue(undefined);
+      mockGetStatus.mockReturnValue([]);
+      sendStart("setup-status");
+      await flushPromises();
+
       // onStatusChangeに渡されたコールバックを取得
       const statusCallback = mockOnStatusChange.mock.calls[0]?.[0] as (
         name: string,
@@ -221,6 +265,7 @@ describe("process.ts", () => {
       ) => void;
       expect(statusCallback).toBeDefined();
 
+      mockProcessSend.mockClear();
       statusCallback("test-server", "error", "接続エラー");
 
       expect(mockProcessSend).toHaveBeenCalledWith({

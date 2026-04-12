@@ -37,6 +37,15 @@
 | manager開発 | `tumiki-manager` |
 | mcp-proxy開発 | `tumiki-mcp-proxy-architecture` |
 
+## Git Hooks (prek)
+
+prek で Git フック自動管理。`pnpm install` 時に自動インストール。
+
+- **pre-commit**: lint + format（turboキャッシュで高速）
+- **pre-push**: typecheck + test
+
+スキップ: `git commit --no-verify` / `git push --no-verify`
+
 ## 実装後の必須アクション
 
 **⚠️ CRITICAL: コミット・PR作成前に必ず実行すること**

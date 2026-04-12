@@ -2,7 +2,6 @@ import type {
   CallToolResult,
   Logger,
   McpServerConfig,
-  McpServerGroupConfig,
   McpServerState,
   McpToolInfo,
   ServerStatus,
@@ -10,57 +9,6 @@ import type {
 import { createToolAggregator } from "./outbound/tool-aggregator.js";
 import { createUpstreamClient } from "./outbound/upstream-client.js";
 import { createUpstreamPool } from "./outbound/upstream-pool.js";
-
-// PoCハードコード設定（本番化時に設定ファイルまたはDB読み込みに移行予定）
-// 既知の制約: uvx --from git+... はGitHubリポジトリを直接実行するためサプライチェーンリスクがある。
-// 本番化時にPyPI経由またはコミットSHA固定に移行する（DEV-1450で追跡中）。PoCスコープでは許容。
-export const HARDCODED_CONFIGS: McpServerConfig[] = [
-  {
-    name: "serena",
-    command: "uvx",
-    args: [
-      "--from",
-      "git+https://github.com/oraios/serena",
-      "serena",
-      "start-mcp-server",
-      "--enable-web-dashboard",
-      "false",
-      "--context",
-      "ide-assistant",
-      "--project",
-      ".",
-    ],
-    env: {},
-  },
-];
-
-// グループ設定（本番化時に設定ファイルまたはDB読み込みに移行予定）
-export const HARDCODED_GROUPS: McpServerGroupConfig[] = [];
-
-/**
- * --server <name> で指定された名前からサーバー設定を解決する
- * グループ → 単体の順で検索し、見つかった設定を返す
- */
-export const resolveServerConfigs = (name: string): McpServerConfig[] => {
-  // グループから検索
-  const group = HARDCODED_GROUPS.find((g) => g.name === name);
-  if (group) {
-    return group.servers;
-  }
-
-  // 単体サーバーから検索
-  const single = HARDCODED_CONFIGS.find((c) => c.name === name);
-  if (single) {
-    return [single];
-  }
-
-  const availableSingles = HARDCODED_CONFIGS.map((c) => c.name);
-  const availableGroups = HARDCODED_GROUPS.map((g) => g.name);
-  const available = [...availableSingles, ...availableGroups].join(", ");
-  throw new Error(
-    `サーバー "${name}" が見つかりません（利用可能: ${available || "なし"}）`,
-  );
-};
 
 export type ProxyCore = {
   startAll: () => Promise<void>;
@@ -140,10 +88,8 @@ export const createProxyCore = (
     pool.addServer(config);
   }
 
-  // 既知の制約: pool.getClients()は現時点のReadonlyMapを返すため、
-  // 動的にサーバーを追加・削除する場合はaggregatorが古い状態を参照し続ける。
-  // 本番化時は都度参照またはコールバック更新に変更すること（DEV-1450）
-  const aggregator = createToolAggregator(pool.getClients(), logger);
+  // pool.getClients を getter として渡し、listTools/callTool 時に最新のMapを参照する
+  const aggregator = createToolAggregator(() => pool.getClients(), logger);
 
   return {
     startAll: () => pool.startAll(),

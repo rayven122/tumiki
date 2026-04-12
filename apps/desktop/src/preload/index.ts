@@ -3,9 +3,15 @@ import type { AuthTokenResult } from "../types/auth";
 import type { CatalogItem } from "../types/catalog";
 import type {
   McpServerItem,
+  McpServerDetailItem,
   CreateFromCatalogInput,
+  UpdateServerInput,
+  DeleteServerInput,
+  ToggleServerInput,
   StartOAuthInput,
   OAuthResult,
+  AuditLogListInput,
+  AuditLogListResult,
 } from "../main/types";
 import type {
   McpServerState,
@@ -68,6 +74,12 @@ const api = {
     ): Promise<{ serverId: number; serverName: string }> =>
       ipcRenderer.invoke("mcp:createFromCatalog", input),
     getAll: (): Promise<McpServerItem[]> => ipcRenderer.invoke("mcp:getAll"),
+    updateServer: (input: UpdateServerInput): Promise<McpServerItem> =>
+      ipcRenderer.invoke("mcp:updateServer", input),
+    deleteServer: (input: DeleteServerInput): Promise<void> =>
+      ipcRenderer.invoke("mcp:deleteServer", input),
+    toggleServer: (input: ToggleServerInput): Promise<McpServerItem> =>
+      ipcRenderer.invoke("mcp:toggleServer", input),
     // MCP Proxy API
     start: (): Promise<McpServerState[]> => ipcRenderer.invoke("mcp:start"),
     stop: (): Promise<void> => ipcRenderer.invoke("mcp:stop"),
@@ -80,6 +92,14 @@ const api = {
       ipcRenderer.invoke("mcp:call-tool", { name, arguments: args }),
     getStatus: (): Promise<McpServerState[]> =>
       ipcRenderer.invoke("mcp:status"),
+    getDetail: (serverId: number): Promise<McpServerDetailItem | null> =>
+      ipcRenderer.invoke("mcp-server:getDetail", serverId),
+  },
+
+  // 監査ログ API
+  audit: {
+    listByServer: (input: AuditLogListInput): Promise<AuditLogListResult> =>
+      ipcRenderer.invoke("audit:list-by-server", input),
   },
 
   // MCP OAuth認証 API

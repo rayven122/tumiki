@@ -7,6 +7,9 @@ export type {
   McpServerItem,
   McpConnectionItem,
   CreateFromCatalogInput,
+  UpdateServerInput,
+  DeleteServerInput,
+  ToggleServerInput,
 } from "./features/mcp-server-list/mcp.types";
 
 // OAuth feature
@@ -14,3 +17,17 @@ export type {
   StartOAuthInput,
   OAuthResult,
 } from "./features/oauth/oauth.types";
+
+// MCP Server Detail feature
+export type {
+  McpServerDetailItem,
+  McpConnectionDetailItem,
+  McpToolItem,
+} from "./features/mcp-server-detail/mcp-server-detail.types";
+
+// Audit Log feature
+export type {
+  AuditLogItem,
+  AuditLogListInput,
+  AuditLogListResult,
+} from "./features/audit-log/audit-log.types";

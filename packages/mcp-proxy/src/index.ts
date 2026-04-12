@@ -8,17 +8,14 @@ export type {
   CallToolResult,
   CallToolPayload,
   Logger,
+  StartPayload,
   ProxyRequest,
   ProxyResponse,
   ProxyEvent,
 } from "./types.js";
 
 // コア
-export {
-  createProxyCore,
-  createSingleServerCore,
-  resolveServerConfigs,
-} from "./core.js";
+export { createProxyCore, createSingleServerCore } from "./core.js";
 export type { ProxyCore } from "./core.js";
 
 // Inbound

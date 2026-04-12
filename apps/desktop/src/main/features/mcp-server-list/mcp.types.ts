@@ -43,3 +43,27 @@ export type CreateFromCatalogInput = {
   credentials: Record<string, string>;
   authType: McpConnection["authType"];
 };
+
+/**
+ * MCPサーバー更新の入力型（renderer → main）
+ */
+export type UpdateServerInput = {
+  id: number;
+  name?: string;
+  description?: string;
+};
+
+/**
+ * MCPサーバー削除の入力型（renderer → main）
+ */
+export type DeleteServerInput = {
+  id: number;
+};
+
+/**
+ * MCPサーバーenabled切り替えの入力型（renderer → main）
+ */
+export type ToggleServerInput = {
+  id: number;
+  isEnabled: boolean;
+};
