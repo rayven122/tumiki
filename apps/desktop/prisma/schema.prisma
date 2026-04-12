@@ -238,6 +238,8 @@ model AuditLog {
   errorCode      Int?
   /// エラーメッセージ要約
   errorSummary   String?
+  /// 操作の補足情報（例: 引数の概要やリソースパス等）
+  detail         String?
   createdAt      DateTime      @default(now())
 
   /// 対象MCPサーバー

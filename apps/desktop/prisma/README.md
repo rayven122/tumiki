@@ -101,6 +101,7 @@ erDiagram
   Boolean isSuccess
   Int errorCode "nullable"
   String errorSummary "nullable"
+  String detail "nullable"
   DateTime createdAt
   Int serverId FK
   String connectionName "nullable"
@@ -194,6 +195,7 @@ MCPサーバー（仮想・統合サーバー = Proxyエンドポイント）
   - `isSuccess`: 成功/失敗フラグ
   - `errorCode`: MCPエラーコード（エラー時のみ）
   - `errorSummary`: エラーメッセージ要約
+  - `detail`: 操作の補足情報（例: 引数の概要やリソースパス等）
   - `createdAt`: 
   - `serverId`: 対象MCPサーバー
   - `connectionName`: 対象MCP接続名（接続削除後もログで識別可能にするため名前で保持）
