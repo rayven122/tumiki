@@ -47,6 +47,11 @@ vi.mock("../../../shared/utils/logger", () => ({
   debug: vi.fn(),
 }));
 
+// audit-log.service をモック（DB・Electron非依存にする）
+vi.mock("../../audit-log/audit-log.service", () => ({
+  recordMcpToolCall: vi.fn(),
+}));
+
 // features/mcp-server-list/mcp.service の getEnabledConfigs をモック（DB非依存にする）
 vi.mock("../../mcp-server-list/mcp.service", () => ({
   getEnabledConfigs: vi
