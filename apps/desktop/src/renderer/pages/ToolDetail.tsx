@@ -1,36 +1,46 @@
 import type { JSX } from "react";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAtomValue } from "jotai";
-import { ArrowLeft, ExternalLink, Shield, ChevronDown } from "lucide-react";
+import {
+  ArrowLeft,
+  ExternalLink,
+  Shield,
+  ChevronDown,
+  Server,
+} from "lucide-react";
 import { themeAtom } from "../store/atoms";
-import { TOOLS, HISTORY, MCP_BASE_URL, MCP_CLI_COMMAND } from "../data/mock";
-import type { ToolStatus } from "../data/mock";
-import { statusBadge, cardStyle } from "../utils/theme-styles";
+import { MCP_BASE_URL, MCP_CLI_COMMAND } from "../data/mock";
+import type { McpServerDetailItem, AuditLogItem } from "../../main/types";
+import { statusBadge, cardStyle, selectStyle } from "../utils/theme-styles";
 
-/** ツールステータスバッジの表示定義 */
-const toolStatusBadge: Record<
-  ToolStatus,
-  { bg: string; text: string; label: string }
+/** MCPサーバーステータスバッジの表示定義 */
+const serverStatusBadge: Record<
+  McpServerDetailItem["serverStatus"],
+  { className: string; label: string }
 > = {
-  active: {
-    bg: "var(--badge-success-bg)",
-    text: "var(--badge-success-text)",
+  RUNNING: {
+    className: "bg-[var(--badge-success-bg)] text-[var(--badge-success-text)]",
     label: "稼働中",
   },
-  degraded: {
-    bg: "var(--badge-warn-bg)",
-    text: "var(--badge-warn-text)",
-    label: "応答遅延",
-  },
-  down: {
-    bg: "var(--badge-error-bg)",
-    text: "var(--badge-error-text)",
+  STOPPED: {
+    className: "bg-[var(--bg-active)] text-[var(--text-muted)]",
     label: "停止中",
+  },
+  ERROR: {
+    className: "bg-[var(--badge-error-bg)] text-[var(--badge-error-text)]",
+    label: "エラー",
+  },
+  PENDING: {
+    className: "bg-[var(--badge-warn-bg)] text-[var(--badge-warn-text)]",
+    label: "接続中",
   },
 };
 
-/** AIクライアント接続先一覧 */
+/** 監査ログ1ページあたりの件数 */
+const AUDIT_LOG_LIMIT = 20;
+
+/** AIクライアント接続先一覧（ダミー） TODO: DB化して実データに置換 */
 const AI_CLIENT_CONNECTIONS = [
   {
     name: "Cursor",
@@ -103,14 +113,92 @@ const AI_CLIENT_CONNECTIONS = [
   },
 ];
 
+/** ダミー: 権限操作一覧 TODO: DB化して実データに置換 */
+const DUMMY_OPERATIONS = [
+  { name: "tools/call", description: "ツールの実行", allowed: true },
+  { name: "tools/list", description: "ツール一覧の取得", allowed: true },
+  { name: "resources/read", description: "リソースの読み取り", allowed: true },
+  {
+    name: "resources/write",
+    description: "リソースの書き込み",
+    allowed: false,
+  },
+  { name: "prompts/get", description: "プロンプトの取得", allowed: true },
+];
+
 export const ToolDetail = (): JSX.Element => {
   const theme = useAtomValue(themeAtom);
   const { toolId } = useParams<{ toolId: string }>();
-  const tool = TOOLS.find((t) => t.id === toolId);
+  const serverId = Number(toolId);
+
+  // サーバー詳細（実データ）
+  const [server, setServer] = useState<McpServerDetailItem | null>(null);
+  const [serverLoading, setServerLoading] = useState(true);
   const [showAiClients, setShowAiClients] = useState(false);
 
-  // ツールが見つからない場合
-  if (!tool) {
+  // 監査ログ（実データ）
+  const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
+  const [auditTotal, setAuditTotal] = useState(0);
+  const [auditTotalPages, setAuditTotalPages] = useState(0);
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [successRate, setSuccessRate] = useState(0);
+  const [avgDurationMs, setAvgDurationMs] = useState(0);
+  const [statusFilter, setStatusFilter] = useState<"all" | "success" | "error">(
+    "all",
+  );
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  // サーバー詳細取得
+  useEffect(() => {
+    if (Number.isNaN(serverId)) {
+      setServerLoading(false);
+      return;
+    }
+    window.electronAPI.mcp
+      .getDetail(serverId)
+      .then(setServer)
+      .catch(() => setServer(null))
+      .finally(() => setServerLoading(false));
+  }, [serverId]);
+
+  // 監査ログ取得
+  const loadAuditLogs = useCallback(
+    async (page: number) => {
+      if (Number.isNaN(serverId)) return;
+      setAuditLoading(true);
+      try {
+        const result = await window.electronAPI.audit.listByServer({
+          serverId,
+          page,
+          perPage: AUDIT_LOG_LIMIT,
+          statusFilter: statusFilter === "all" ? undefined : statusFilter,
+          dateFrom: dateFrom || undefined,
+          dateTo: dateTo || undefined,
+        });
+        setAuditLogs(result.items);
+        setAuditTotal(result.totalCount);
+        setAuditTotalPages(result.totalPages);
+        setAuditPage(result.currentPage);
+        setSuccessRate(result.successRate);
+        setAvgDurationMs(result.avgDurationMs);
+      } catch {
+        setAuditLogs([]);
+      } finally {
+        setAuditLoading(false);
+      }
+    },
+    [serverId, statusFilter, dateFrom, dateTo],
+  );
+
+  // フィルター変更時にページ1にリセット
+  useEffect(() => {
+    loadAuditLogs(1);
+  }, [loadAuditLogs]);
+
+  // ローディング中
+  if (serverLoading) {
     return (
       <div className="p-6">
         <Link
@@ -121,19 +209,38 @@ export const ToolDetail = (): JSX.Element => {
           コネクト
         </Link>
         <div className="mt-12 text-center text-sm text-[var(--text-subtle)]">
-          ツールが見つかりません
+          読み込み中...
         </div>
       </div>
     );
   }
 
-  const badge = toolStatusBadge[tool.status];
+  // サーバーが見つからない場合
+  if (!server) {
+    return (
+      <div className="p-6">
+        <Link
+          to="/tools"
+          className="flex items-center gap-1 text-sm text-[var(--text-muted)] hover:opacity-80"
+        >
+          <ArrowLeft size={14} />
+          コネクト
+        </Link>
+        <div className="mt-12 text-center text-sm text-[var(--text-subtle)]">
+          サーバーが見つかりません
+        </div>
+      </div>
+    );
+  }
 
-  // 該当ツールの操作履歴
-  const toolHistory = HISTORY.filter((h) => h.tool === tool.name);
+  const badge = serverStatusBadge[server.serverStatus];
+  const primaryConnection = server.connections[0];
+  // 接続のカタログからアイコンを取得（最初に見つかったものを使用）
+  const serverIcon = server.connections.find((c) => c.catalog?.iconPath)
+    ?.catalog?.iconPath;
 
-  // 権限が不足している操作があるか
-  const hasLockedOperations = tool.operations.some((op) => !op.allowed);
+  // ダミー権限データ
+  const hasLockedOperations = DUMMY_OPERATIONS.some((op) => !op.allowed);
 
   return (
     <div className="space-y-6 p-6">
@@ -148,28 +255,35 @@ export const ToolDetail = (): JSX.Element => {
 
       {/* ツール名 + ステータス */}
       <div className="flex items-center gap-3">
-        <img
-          src={theme === "dark" ? tool.logoDark : tool.logoLight}
-          alt={tool.name}
-          className="h-12 w-12 rounded-lg"
-        />
+        {serverIcon ? (
+          <img
+            src={serverIcon}
+            alt={server.name}
+            className="h-12 w-12 rounded-lg"
+          />
+        ) : (
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[var(--bg-card-hover)]">
+            <Server size={24} className="text-[var(--text-muted)]" />
+          </div>
+        )}
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold text-[var(--text-primary)]">
-              {tool.name}
+              {server.name}
             </h1>
             <span
-              className="rounded-full px-2 py-0.5 text-xs"
-              style={{ backgroundColor: badge.bg, color: badge.text }}
+              className={`rounded-full px-2 py-0.5 text-xs ${badge.className}`}
             >
               {badge.label}
             </span>
           </div>
-          <p className="text-sm text-[var(--text-muted)]">{tool.description}</p>
+          <p className="text-sm text-[var(--text-muted)]">
+            {server.description || server.slug}
+          </p>
         </div>
       </div>
 
-      {/* 基本情報 */}
+      {/* 基本情報（実データ） */}
       <div className="rounded-xl p-6" style={cardStyle}>
         <h2 className="mb-4 text-sm font-medium text-[var(--text-primary)]">
           基本情報
@@ -179,28 +293,34 @@ export const ToolDetail = (): JSX.Element => {
             <span className="text-xs text-[var(--text-subtle)]">接続先</span>
             <p className="mt-1 flex items-center gap-1 text-[var(--text-secondary)]">
               <ExternalLink size={12} />
-              {tool.endpoint}
+              {primaryConnection
+                ? primaryConnection.transportType === "STDIO"
+                  ? (primaryConnection.command ?? "—")
+                  : (primaryConnection.url ?? "—")
+                : "—"}
             </p>
           </div>
           <div>
             <span className="text-xs text-[var(--text-subtle)]">
               プロトコル
             </span>
-            <p className="mt-1 text-[var(--text-secondary)]">{tool.protocol}</p>
+            <p className="mt-1 text-[var(--text-secondary)]">
+              {primaryConnection?.transportType ?? "—"}
+            </p>
           </div>
           <div>
             <span className="text-xs text-[var(--text-subtle)]">追加日</span>
             <p className="mt-1 text-[var(--text-secondary)]">
-              {tool.addedDate}
+              {new Date(server.createdAt).toLocaleDateString("ja-JP")}
             </p>
           </div>
           <div>
             <span className="text-xs text-[var(--text-subtle)]">管理者</span>
-            <p className="mt-1 text-[var(--text-secondary)]">{tool.admin}</p>
+            <p className="mt-1 text-[var(--text-secondary)]">システム管理者</p>
           </div>
         </div>
 
-        {/* AIクライアント接続方法（アコーディオン + スクロール） */}
+        {/* AIクライアント接続方法（アコーディオン + スクロール）— ダミーデータ */}
         <div className="mt-5 border-t border-t-[var(--border)] pt-4">
           <button
             onClick={() => setShowAiClients(!showAiClients)}
@@ -247,7 +367,7 @@ export const ToolDetail = (): JSX.Element => {
                     {ai.type}
                   </span>
                   <code className="flex-1 truncate rounded bg-[var(--bg-input)] px-2 py-1 font-mono text-[10px] text-[var(--text-secondary)]">
-                    {ai.path(tool.id)}
+                    {ai.path(server.slug)}
                   </code>
                 </div>
               ))}
@@ -256,7 +376,7 @@ export const ToolDetail = (): JSX.Element => {
         </div>
       </div>
 
-      {/* あなたの権限（LP風トグル表示） */}
+      {/* あなたの権限（LP風トグル表示）— ダミーデータ */}
       <div className="rounded-xl p-6" style={cardStyle}>
         <div className="mb-4 flex items-center gap-2">
           <Shield size={14} className="text-[var(--text-muted)]" />
@@ -267,8 +387,8 @@ export const ToolDetail = (): JSX.Element => {
 
         {/* LP風のグリッド表示 */}
         <div className="overflow-hidden rounded-lg border border-[var(--border)]">
-          {tool.operations.map((op, idx) => {
-            const isLast = idx === tool.operations.length - 1;
+          {DUMMY_OPERATIONS.map((op, idx) => {
+            const isLast = idx === DUMMY_OPERATIONS.length - 1;
             return (
               <div
                 key={op.name}
@@ -331,26 +451,26 @@ export const ToolDetail = (): JSX.Element => {
         )}
       </div>
 
-      {/* 利用統計（目立つデザイン） */}
+      {/* 利用統計（実データ: 監査ログから算出） */}
       <div className="rounded-xl p-6" style={cardStyle}>
         <h2 className="mb-4 text-sm font-medium text-[var(--text-primary)]">
-          利用統計（今月）
+          利用統計
         </h2>
         <div className="grid grid-cols-3 gap-3">
           {[
             {
               label: "総リクエスト",
-              value: tool.stats.requests.toLocaleString(),
+              value: auditTotal.toLocaleString(),
               suffix: "",
             },
             {
               label: "成功率",
-              value: tool.stats.successRate.toString(),
+              value: successRate.toString(),
               suffix: "%",
             },
             {
               label: "平均応答",
-              value: tool.stats.avgLatency.toString(),
+              value: avgDurationMs.toString(),
               suffix: "ms",
             },
           ].map((stat) => (
@@ -372,34 +492,70 @@ export const ToolDetail = (): JSX.Element => {
         </div>
       </div>
 
-      {/* 最近の操作（pillバッジ） */}
+      {/* 最近の操作（実データ: 監査ログ + フィルター + ページネーション） */}
       <div className="rounded-xl p-6" style={cardStyle}>
-        <h2 className="mb-4 text-sm font-medium text-[var(--text-primary)]">
-          最近の操作
-        </h2>
-        {toolHistory.length > 0 ? (
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-medium text-[var(--text-primary)]">
+            最近の操作
+          </h2>
+          <div className="flex items-center gap-2">
+            <select
+              value={statusFilter}
+              onChange={(e) =>
+                setStatusFilter(e.target.value as "all" | "success" | "error")
+              }
+              className="rounded-lg px-2 py-1 text-xs outline-none"
+              style={selectStyle}
+            >
+              <option value="all">すべてのステータス</option>
+              <option value="success">成功</option>
+              <option value="error">エラー</option>
+            </select>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="rounded-lg px-2 py-1 text-xs outline-none"
+              style={selectStyle}
+            />
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="rounded-lg px-2 py-1 text-xs outline-none"
+              style={selectStyle}
+            />
+          </div>
+        </div>
+        {auditLogs.length > 0 ? (
           <div className="space-y-2">
-            {toolHistory.map((item) => {
-              const pill = statusBadge(item.status);
+            {auditLogs.map((log) => {
+              const pill = statusBadge(log.isSuccess ? "success" : "error");
               return (
                 <div
-                  key={item.id}
+                  key={log.id}
                   className="flex items-center justify-between rounded-lg bg-[var(--bg-card-hover)] px-3 py-2"
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-[var(--text-subtle)]">
-                      {item.datetime}
+                      {new Date(log.createdAt).toLocaleString("ja-JP", {
+                        month: "2-digit",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                      })}
                     </span>
                     <span className="font-mono text-xs text-[var(--text-secondary)]">
-                      {item.operation}
+                      {log.toolName}
                     </span>
                     <span className="text-xs text-[var(--text-subtle)]">
-                      {item.detail}
+                      {log.detail ?? log.method}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-xs text-[var(--text-subtle)]">
-                      {item.latency}
+                      {log.durationMs}ms
                     </span>
                     <span
                       className="rounded-full px-2 py-0.5 text-[10px] font-medium"
@@ -411,10 +567,69 @@ export const ToolDetail = (): JSX.Element => {
                 </div>
               );
             })}
+
+            {/* ページネーション */}
+            {auditTotalPages > 1 && (
+              <div className="flex items-center justify-center gap-1 pt-3">
+                <button
+                  type="button"
+                  onClick={() => loadAuditLogs(auditPage - 1)}
+                  disabled={auditPage <= 1 || auditLoading}
+                  className="rounded-lg px-2 py-1 text-xs text-[var(--text-muted)] transition hover:opacity-80 disabled:opacity-30"
+                >
+                  &lt;
+                </button>
+                {Array.from({ length: auditTotalPages }, (_, i) => i + 1)
+                  .filter(
+                    (p) =>
+                      p === 1 ||
+                      p === auditTotalPages ||
+                      Math.abs(p - auditPage) <= 2,
+                  )
+                  .reduce<(number | "ellipsis")[]>((acc, p, i, arr) => {
+                    if (i > 0 && p - (arr[i - 1] as number) > 1)
+                      acc.push("ellipsis");
+                    acc.push(p);
+                    return acc;
+                  }, [])
+                  .map((p, i) =>
+                    p === "ellipsis" ? (
+                      <span
+                        key={`e-${i}`}
+                        className="px-1 text-xs text-[var(--text-subtle)]"
+                      >
+                        …
+                      </span>
+                    ) : (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => loadAuditLogs(p)}
+                        disabled={auditLoading}
+                        className={`h-7 w-7 rounded-lg text-xs font-medium transition hover:opacity-80 disabled:opacity-50 ${
+                          p === auditPage
+                            ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]"
+                            : "text-[var(--text-muted)]"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    ),
+                  )}
+                <button
+                  type="button"
+                  onClick={() => loadAuditLogs(auditPage + 1)}
+                  disabled={auditPage >= auditTotalPages || auditLoading}
+                  className="rounded-lg px-2 py-1 text-xs text-[var(--text-muted)] transition hover:opacity-80 disabled:opacity-30"
+                >
+                  &gt;
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <p className="text-sm text-[var(--text-subtle)]">
-            操作履歴がありません
+            {auditLoading ? "読み込み中..." : "操作履歴がありません"}
           </p>
         )}
       </div>
