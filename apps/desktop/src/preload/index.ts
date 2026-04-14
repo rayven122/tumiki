@@ -94,6 +94,20 @@ const api = {
       ipcRenderer.invoke("mcp:status"),
     getDetail: (serverId: number): Promise<McpServerDetailItem | null> =>
       ipcRenderer.invoke("mcp-server:getDetail", serverId),
+    onStatusChanged: (
+      callback: (state: {
+        name: string;
+        status: string;
+        error?: string;
+      }) => void,
+    ): (() => void) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        state: { name: string; status: string; error?: string },
+      ): void => callback(state);
+      ipcRenderer.on("mcp:status-changed", listener);
+      return () => ipcRenderer.removeListener("mcp:status-changed", listener);
+    },
   },
 
   // 監査ログ API

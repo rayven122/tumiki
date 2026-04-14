@@ -132,3 +132,28 @@ export const toggleServerEnabled = async (
 ) => {
   return db.mcpServer.update({ where: { id }, data: { isEnabled } });
 };
+
+/**
+ * サーバーのステータスを更新
+ */
+export const updateServerStatus = async (
+  db: PrismaClient,
+  id: number,
+  serverStatus: "RUNNING" | "STOPPED" | "ERROR" | "PENDING",
+) => {
+  return db.mcpServer.update({ where: { id }, data: { serverStatus } });
+};
+
+/**
+ * slugからサーバーIDを検索（ステータス同期用）
+ */
+export const findServerIdByConnectionSlug = async (
+  db: PrismaClient,
+  serverSlug: string,
+) => {
+  const server = await db.mcpServer.findUnique({
+    where: { slug: serverSlug },
+    select: { id: true },
+  });
+  return server?.id ?? null;
+};

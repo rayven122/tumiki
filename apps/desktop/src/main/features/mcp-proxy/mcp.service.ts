@@ -17,6 +17,11 @@ import type {
   McpServerConfig,
 } from "@tumiki/mcp-proxy-core";
 import { getEnabledConfigs } from "../mcp-server-list/mcp.service";
+import { getDb } from "../../shared/db";
+import {
+  findServerIdByConnectionSlug,
+  updateServerStatus,
+} from "../mcp-server-list/mcp.repository";
 
 // IPC戻り値のzodスキーマ
 const mcpToolInfoSchema = z.object({
@@ -48,6 +53,68 @@ const REQUEST_TIMEOUT_MS = 30_000;
 
 // シャットダウン時のタイムアウト（3秒）
 const SHUTDOWN_TIMEOUT_MS = 3_000;
+
+// ステータス変更イベントのリスナー（index.tsからrendererへ転送するため）
+let statusChangeListener:
+  | ((payload: { name: string; status: string; error?: string }) => void)
+  | null = null;
+
+/**
+ * ステータス変更イベントのリスナーを設定
+ * index.tsから呼び出し、mainWindow.webContents.sendへ転送する
+ */
+export const setStatusChangeListener = (
+  listener: (payload: { name: string; status: string; error?: string }) => void,
+): void => {
+  statusChangeListener = listener;
+};
+
+/** proxyのステータス文字列をDBのServerStatusにマッピング */
+const toDbStatus = (
+  status: string,
+): "RUNNING" | "STOPPED" | "ERROR" | "PENDING" => {
+  switch (status) {
+    case "running":
+      return "RUNNING";
+    case "error":
+      return "ERROR";
+    case "pending":
+      return "PENDING";
+    default:
+      return "STOPPED";
+  }
+};
+
+/**
+ * proxyのステータス変更をDBに同期
+ * config名は `{serverSlug}-{connectionSlug}` 形式のため、サーバーslugを抽出してDB更新する
+ */
+const syncServerStatusToDb = async (
+  configName: string,
+  status: string,
+): Promise<void> => {
+  try {
+    const db = await getDb();
+    // config名からサーバーslugを抽出（最初のハイフンまで）
+    // ただしslug自体にハイフンが含まれる場合があるため、DB検索で解決する
+    // まずconfig名全体でサーバーを検索し、見つからなければハイフンで分割して再試行
+    const serverId =
+      (await findServerIdByConnectionSlug(db, configName)) ??
+      (await findServerIdByConnectionSlug(
+        db,
+        configName.split("-").slice(0, -1).join("-"),
+      ));
+    if (serverId) {
+      await updateServerStatus(db, serverId, toDbStatus(status));
+    }
+  } catch (error) {
+    logger.warn("DBステータス同期に失敗しました", {
+      configName,
+      status,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+};
 
 // TODO: 本番化時にファクトリ関数パターンに変更し、テスタビリティを改善する（DEV-1450）
 let proxyProcess: ChildProcess | null = null;
@@ -161,7 +228,9 @@ const handleMessage = (msg: unknown): void => {
       status: event.payload.status,
       error: event.payload.error,
     });
-    // TODO: Renderer UIが実装されたら mainWindow?.webContents.send("mcp:status-changed", event.payload) で通知する
+    statusChangeListener?.(event.payload);
+    // DBのサーバーステータスも同期（非同期・失敗してもイベント通知は継続）
+    void syncServerStatusToDb(event.payload.name, event.payload.status);
     return;
   }
 

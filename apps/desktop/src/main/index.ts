@@ -7,7 +7,11 @@ import { setupMcpIpc } from "./features/mcp-server-list/mcp.ipc";
 import { setupMcpProxyIpc } from "./features/mcp-proxy/mcp-proxy.ipc";
 import { setupMcpServerDetailIpc } from "./features/mcp-server-detail/mcp-server-detail.ipc";
 import { setupAuditLogIpc } from "./features/audit-log/audit-log.ipc";
-import { startMcpServers, stopProxy } from "./features/mcp-proxy/mcp.service";
+import {
+  startMcpServers,
+  stopProxy,
+  setStatusChangeListener,
+} from "./features/mcp-proxy/mcp.service";
 import { seedCatalogs } from "./features/catalog/catalog.seed";
 import { createOAuthManager } from "./auth/oauth-manager";
 import { getOAuthManager, setOAuthManager } from "./auth/manager-registry";
@@ -329,6 +333,11 @@ if (isMcpProxyMode) {
       setupAuditLogIpc();
 
       createWindow();
+
+      // MCPステータス変更イベントをrendererへ転送
+      setStatusChangeListener((payload) => {
+        sendToWindow("mcp:status-changed", payload);
+      });
 
       // 有効なMCPサーバーを自動起動（失敗してもアプリ起動は継続）
       startMcpServers().catch((error) => {

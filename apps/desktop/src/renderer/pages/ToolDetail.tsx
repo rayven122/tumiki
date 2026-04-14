@@ -1,6 +1,6 @@
 import type { JSX } from "react";
 import { useState, useEffect, useCallback } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAtomValue } from "jotai";
 import {
   ArrowLeft,
@@ -8,11 +8,17 @@ import {
   Shield,
   ChevronDown,
   Server,
+  Play,
+  Square,
+  Trash2,
 } from "lucide-react";
 import { themeAtom } from "../store/atoms";
 import { MCP_BASE_URL, MCP_CLI_COMMAND } from "../data/mock";
 import type { McpServerDetailItem, AuditLogItem } from "../../main/types";
 import { statusBadge, cardStyle, selectStyle } from "../utils/theme-styles";
+import { ToggleSwitch } from "../_components/ToggleSwitch";
+import { ConfirmDialog } from "../_components/ConfirmDialog";
+import { toast } from "../_components/Toast";
 
 /** MCPサーバーステータスバッジの表示定義 */
 const serverStatusBadge: Record<
@@ -40,7 +46,7 @@ const serverStatusBadge: Record<
 /** 監査ログ1ページあたりの件数 */
 const AUDIT_LOG_LIMIT = 20;
 
-/** AIクライアント接続先一覧（ダミー） TODO: DB化して実データに置換 */
+/** AIクライアント接続先一覧 */
 const AI_CLIENT_CONNECTIONS = [
   {
     name: "Cursor",
@@ -126,8 +132,23 @@ const DUMMY_OPERATIONS = [
   { name: "prompts/get", description: "プロンプトの取得", allowed: true },
 ];
 
+/** proxyステータスをDB形式にマッピング */
+const toDbStatus = (status: string): McpServerDetailItem["serverStatus"] => {
+  switch (status) {
+    case "running":
+      return "RUNNING";
+    case "error":
+      return "ERROR";
+    case "pending":
+      return "PENDING";
+    default:
+      return "STOPPED";
+  }
+};
+
 export const ToolDetail = (): JSX.Element => {
   const theme = useAtomValue(themeAtom);
+  const navigate = useNavigate();
   const { toolId } = useParams<{ toolId: string }>();
   const serverId = Number(toolId);
 
@@ -135,6 +156,8 @@ export const ToolDetail = (): JSX.Element => {
   const [server, setServer] = useState<McpServerDetailItem | null>(null);
   const [serverLoading, setServerLoading] = useState(true);
   const [showAiClients, setShowAiClients] = useState(false);
+  const [operating, setOperating] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // 監査ログ（実データ）
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
@@ -162,6 +185,24 @@ export const ToolDetail = (): JSX.Element => {
       .catch(() => setServer(null))
       .finally(() => setServerLoading(false));
   }, [serverId]);
+
+  // リアルタイムステータス更新
+  useEffect(() => {
+    if (!server) return;
+    const unsubscribe = window.electronAPI.mcp.onStatusChanged((state) => {
+      // このサーバーに関連するステータス変更のみ処理
+      if (
+        !state.name.startsWith(`${server.slug}-`) &&
+        state.name !== server.slug
+      ) {
+        return;
+      }
+      setServer((prev) =>
+        prev ? { ...prev, serverStatus: toDbStatus(state.status) } : prev,
+      );
+    });
+    return unsubscribe;
+  }, [server?.slug]);
 
   // 監査ログ取得
   const loadAuditLogs = useCallback(
@@ -196,6 +237,66 @@ export const ToolDetail = (): JSX.Element => {
   useEffect(() => {
     loadAuditLogs(1);
   }, [loadAuditLogs]);
+
+  // アクション: 起動/停止
+  const handleStartStop = async () => {
+    if (!server) return;
+    setOperating(true);
+    try {
+      const isRunning =
+        server.serverStatus === "RUNNING" || server.serverStatus === "PENDING";
+      if (isRunning) {
+        await window.electronAPI.mcp.stop();
+        toast.success("MCPサーバーを停止しました");
+      } else {
+        await window.electronAPI.mcp.start();
+        toast.success("MCPサーバーを起動しました");
+      }
+      // 詳細を再取得
+      const updated = await window.electronAPI.mcp.getDetail(serverId);
+      if (updated) setServer(updated);
+    } catch (error) {
+      toast.error(
+        `操作に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      setOperating(false);
+    }
+  };
+
+  // アクション: トグル
+  const handleToggle = async (isEnabled: boolean) => {
+    if (!server) return;
+    try {
+      await window.electronAPI.mcp.toggleServer({
+        id: server.id,
+        isEnabled,
+      });
+      setServer((prev) => (prev ? { ...prev, isEnabled } : prev));
+      toast.success(
+        isEnabled ? "サーバーを有効化しました" : "サーバーを無効化しました",
+      );
+    } catch (error) {
+      toast.error(
+        `切り替えに失敗しました: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  };
+
+  // アクション: 削除
+  const handleDelete = async () => {
+    if (!server) return;
+    try {
+      await window.electronAPI.mcp.deleteServer({ id: server.id });
+      toast.success("サーバーを削除しました");
+      navigate("/tools");
+    } catch (error) {
+      toast.error(
+        `削除に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+    setShowDeleteConfirm(false);
+  };
 
   // ローディング中
   if (serverLoading) {
@@ -235,12 +336,11 @@ export const ToolDetail = (): JSX.Element => {
 
   const badge = serverStatusBadge[server.serverStatus];
   const primaryConnection = server.connections[0];
-  // 接続のカタログからアイコンを取得（最初に見つかったものを使用）
   const serverIcon = server.connections.find((c) => c.catalog?.iconPath)
     ?.catalog?.iconPath;
-
-  // ダミー権限データ
   const hasLockedOperations = DUMMY_OPERATIONS.some((op) => !op.allowed);
+  const isRunning =
+    server.serverStatus === "RUNNING" || server.serverStatus === "PENDING";
 
   return (
     <div className="space-y-6 p-6">
@@ -253,33 +353,81 @@ export const ToolDetail = (): JSX.Element => {
         コネクト
       </Link>
 
-      {/* ツール名 + ステータス */}
-      <div className="flex items-center gap-3">
-        {serverIcon ? (
-          <img
-            src={serverIcon}
-            alt={server.name}
-            className="h-12 w-12 rounded-lg"
-          />
-        ) : (
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[var(--bg-card-hover)]">
-            <Server size={24} className="text-[var(--text-muted)]" />
+      {/* ツール名 + ステータス + アクションボタン */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          {serverIcon ? (
+            <img
+              src={serverIcon}
+              alt={server.name}
+              className="h-12 w-12 rounded-lg"
+            />
+          ) : (
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[var(--bg-card-hover)]">
+              <Server size={24} className="text-[var(--text-muted)]" />
+            </div>
+          )}
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-[var(--text-primary)]">
+                {server.name}
+              </h1>
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs ${badge.className}`}
+              >
+                {badge.label}
+              </span>
+            </div>
+            <p className="text-sm text-[var(--text-muted)]">
+              {server.description || server.slug}
+            </p>
           </div>
-        )}
-        <div>
+        </div>
+
+        {/* アクションボタン群 */}
+        <div className="flex items-center gap-3">
+          {/* 起動/停止 */}
+          <button
+            type="button"
+            disabled={operating}
+            onClick={() => void handleStartStop()}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-90 disabled:opacity-50 ${
+              isRunning ? "bg-red-600 text-white" : "bg-emerald-600 text-white"
+            }`}
+          >
+            {isRunning ? (
+              <>
+                <Square size={10} />
+                停止
+              </>
+            ) : (
+              <>
+                <Play size={10} />
+                起動
+              </>
+            )}
+          </button>
+
+          {/* トグル */}
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-[var(--text-primary)]">
-              {server.name}
-            </h1>
-            <span
-              className={`rounded-full px-2 py-0.5 text-xs ${badge.className}`}
-            >
-              {badge.label}
+            <span className="text-xs text-[var(--text-muted)]">
+              {server.isEnabled ? "有効" : "無効"}
             </span>
+            <ToggleSwitch
+              checked={server.isEnabled}
+              onChange={(checked) => void handleToggle(checked)}
+            />
           </div>
-          <p className="text-sm text-[var(--text-muted)]">
-            {server.description || server.slug}
-          </p>
+
+          {/* 削除 */}
+          <button
+            type="button"
+            onClick={() => setShowDeleteConfirm(true)}
+            className="flex items-center gap-1 rounded-lg border border-red-600/30 px-3 py-1.5 text-xs font-medium text-red-500 transition-opacity hover:opacity-80"
+          >
+            <Trash2 size={12} />
+            削除
+          </button>
         </div>
       </div>
 
@@ -320,7 +468,7 @@ export const ToolDetail = (): JSX.Element => {
           </div>
         </div>
 
-        {/* AIクライアント接続方法（アコーディオン + スクロール）— ダミーデータ */}
+        {/* AIクライアント接続方法（アコーディオン + スクロール） */}
         <div className="mt-5 border-t border-t-[var(--border)] pt-4">
           <button
             onClick={() => setShowAiClients(!showAiClients)}
@@ -385,7 +533,6 @@ export const ToolDetail = (): JSX.Element => {
           </h2>
         </div>
 
-        {/* LP風のグリッド表示 */}
         <div className="overflow-hidden rounded-lg border border-[var(--border)]">
           {DUMMY_OPERATIONS.map((op, idx) => {
             const isLast = idx === DUMMY_OPERATIONS.length - 1;
@@ -396,7 +543,6 @@ export const ToolDetail = (): JSX.Element => {
                   isLast ? "" : "border-b border-b-[var(--border-subtle)]"
                 }`}
               >
-                {/* ON/OFF ドット */}
                 <span
                   className={`h-2 w-2 shrink-0 rounded-full ${
                     op.allowed
@@ -404,7 +550,6 @@ export const ToolDetail = (): JSX.Element => {
                       : "bg-[var(--text-subtle)]"
                   }`}
                 />
-                {/* 操作名 */}
                 <span
                   className={`w-36 shrink-0 font-mono text-xs ${
                     op.allowed
@@ -414,7 +559,6 @@ export const ToolDetail = (): JSX.Element => {
                 >
                   {op.name}
                 </span>
-                {/* 説明 */}
                 <span
                   className={`flex-1 text-xs ${
                     op.allowed
@@ -424,7 +568,6 @@ export const ToolDetail = (): JSX.Element => {
                 >
                   {op.description}
                 </span>
-                {/* ステータスラベル */}
                 <span
                   className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
                     op.allowed
@@ -633,6 +776,15 @@ export const ToolDetail = (): JSX.Element => {
           </p>
         )}
       </div>
+
+      {/* 削除確認ダイアログ */}
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title="サーバーを削除"
+        message={`「${server.name}」を削除します。この操作は元に戻せません。`}
+        onConfirm={() => void handleDelete()}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 };
