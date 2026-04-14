@@ -80,11 +80,17 @@ export const findServerByName = async (db: PrismaClient, name: string) => {
 /**
  * 有効なサーバーの有効な接続を全件取得（Proxy起動時のconfig生成用）
  */
-export const findEnabledConnections = async (db: PrismaClient) => {
+export const findEnabledConnections = async (
+  db: PrismaClient,
+  serverSlug?: string,
+) => {
   return db.mcpConnection.findMany({
     where: {
       isEnabled: true,
-      server: { isEnabled: true },
+      server: {
+        isEnabled: true,
+        ...(serverSlug ? { slug: serverSlug } : {}),
+      },
     },
     include: { server: true },
     orderBy: { displayOrder: "asc" },

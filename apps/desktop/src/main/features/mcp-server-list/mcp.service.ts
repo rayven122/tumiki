@@ -152,9 +152,14 @@ export const getAllServers = async () => {
  * - 各接続のバリデーションは独立しており、1件の不正データで他の接続が
  *   起動できなくなることはない（エラーは logger.error でスキップ）
  */
-export const getEnabledConfigs = async (): Promise<McpServerConfig[]> => {
+export const getEnabledConfigs = async (
+  serverSlug?: string,
+): Promise<McpServerConfig[]> => {
   const db = await getDb();
-  const connections = await mcpRepository.findEnabledConnections(db);
+  const connections = await mcpRepository.findEnabledConnections(
+    db,
+    serverSlug,
+  );
 
   const configs: McpServerConfig[] = [];
   for (const conn of connections) {

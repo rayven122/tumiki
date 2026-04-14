@@ -29,11 +29,26 @@ if (isMcpProxyMode) {
     app.dock?.hide();
 
     try {
-      // DB初期化 → 有効なMCPサーバー設定を取得
+      // --server <slug> の解析（指定があれば該当サーバーのみ起動）
+      const serverIdx = process.argv.indexOf("--server");
+      const serverSlug =
+        serverIdx !== -1 && serverIdx + 1 < process.argv.length
+          ? process.argv[serverIdx + 1]
+          : undefined;
+
+      // DB初期化 → 有効なMCPサーバー設定を取得（serverSlug指定時はフィルタ）
       await initializeDb();
       const { getEnabledConfigs } =
         await import("./features/mcp-server-list/mcp.service");
-      const configs = await getEnabledConfigs();
+      const configs = await getEnabledConfigs(serverSlug);
+
+      if (configs.length === 0) {
+        const msg = serverSlug
+          ? `サーバー "${serverSlug}" が見つからないか無効です`
+          : "有効なMCPサーバーが登録されていません";
+        process.stderr.write(`[tumiki-mcp-proxy] ${msg}\n`);
+        process.exit(1);
+      }
 
       const { join } = await import("path");
       const mod = (await import(join(__dirname, "mcp-cli.cjs"))) as {
