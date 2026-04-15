@@ -358,8 +358,7 @@ if (isMcpProxyMode) {
     event.preventDefault();
     const oauthManager = getOAuthManager();
     oauthManager?.stopAutoRefresh();
-    Promise.resolve()
-      .then(() => oauthManager?.waitForPendingRefresh() ?? Promise.resolve())
+    (oauthManager?.waitForPendingRefresh() ?? Promise.resolve())
       .then(() => closeDb())
       .then(() => {
         logger.info("Database connection closed successfully");
