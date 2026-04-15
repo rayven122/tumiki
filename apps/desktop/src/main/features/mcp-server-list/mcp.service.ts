@@ -1,4 +1,4 @@
-import type { McpServerConfig } from "@tumiki/mcp-proxy-core";
+import type { AuthType, McpServerConfig } from "@tumiki/mcp-proxy-core";
 import { z } from "zod";
 import { getDb } from "../../shared/db";
 import * as mcpRepository from "./mcp.repository";
@@ -143,10 +143,38 @@ export const getAllServers = async () => {
 };
 
 /**
+ * 認証ヘッダーを組み立て
+ */
+const buildHeaders = (
+  authType: string,
+  credentials: Record<string, string>,
+): Record<string, string> => {
+  switch (authType) {
+    case "BEARER": {
+      const token = credentials["token"] ?? credentials["accessToken"] ?? "";
+      return token ? { Authorization: `Bearer ${token}` } : {};
+    }
+    case "API_KEY":
+      return { ...credentials };
+    case "NONE":
+    default:
+      return {};
+  }
+};
+
+/**
+ * Prisma AuthType → proxy AuthType マッピング
+ */
+const toProxyAuthType = (prismaAuthType: string): AuthType => {
+  if (prismaAuthType === "BEARER") return "BEARER";
+  if (prismaAuthType === "API_KEY") return "API_KEY";
+  return "NONE";
+};
+
+/**
  * 有効な接続からMcpServerConfig[]を生成（Proxy起動時に使用）
  *
- * - credentials はDB上で暗号化済みのため、復号してから env に展開する
- * - STDIO 以外のトランスポートは現時点では未対応のため warn ログを出してスキップする
+ * - credentials はDB上で暗号化済みのため、復号してから展開する
  * - Anthropic API の tool name 制約 (^[a-zA-Z0-9_-]{1,64}$) に合わせ、
  *   サーバー名セパレータは `-` を使用する（`/` は tool name として拒否される）
  * - 各接続のバリデーションは独立しており、1件の不正データで他の接続が
@@ -163,34 +191,77 @@ export const getEnabledConfigs = async (
   const configs: McpServerConfig[] = [];
   for (const conn of connections) {
     const connLabel = `${conn.server.slug}/${conn.slug}`;
-
-    if (conn.transportType !== "STDIO" || !conn.command) {
-      logger.warn(
-        `MCP接続 "${connLabel}" はSTDIO以外のため現時点では未対応です（skip）`,
-        { transportType: conn.transportType },
-      );
-      continue;
-    }
+    const name = `${conn.server.slug}-${conn.slug}`;
 
     try {
-      const args = parseAndValidate(
-        conn.args,
-        connectionArgsSchema,
-        `connection(${connLabel}).args`,
-      );
       const plainCredentials = await decryptCredentials(conn.credentials);
-      const env = parseAndValidate(
+      const credentials = parseAndValidate(
         plainCredentials,
         connectionEnvSchema,
         `connection(${connLabel}).credentials`,
       );
 
-      configs.push({
-        name: `${conn.server.slug}-${conn.slug}`,
-        command: conn.command,
-        args,
-        env,
-      });
+      switch (conn.transportType) {
+        case "STDIO": {
+          if (!conn.command) {
+            logger.warn(
+              `MCP接続 "${connLabel}" はSTDIOですがcommandが未設定です（skip）`,
+            );
+            continue;
+          }
+          const args = parseAndValidate(
+            conn.args,
+            connectionArgsSchema,
+            `connection(${connLabel}).args`,
+          );
+          configs.push({
+            name,
+            transportType: "STDIO",
+            command: conn.command,
+            args,
+            env: credentials,
+          });
+          break;
+        }
+        case "SSE": {
+          if (!conn.url) {
+            logger.warn(
+              `MCP接続 "${connLabel}" はSSEですがurlが未設定です（skip）`,
+            );
+            continue;
+          }
+          configs.push({
+            name,
+            transportType: "SSE",
+            url: conn.url,
+            authType: toProxyAuthType(conn.authType),
+            headers: buildHeaders(conn.authType, credentials),
+          });
+          break;
+        }
+        case "STREAMABLE_HTTP": {
+          if (!conn.url) {
+            logger.warn(
+              `MCP接続 "${connLabel}" はSTREAMABLE_HTTPですがurlが未設定です（skip）`,
+            );
+            continue;
+          }
+          configs.push({
+            name,
+            transportType: "STREAMABLE_HTTP",
+            url: conn.url,
+            authType: toProxyAuthType(conn.authType),
+            headers: buildHeaders(conn.authType, credentials),
+          });
+          break;
+        }
+        default:
+          logger.warn(
+            `MCP接続 "${connLabel}" は未対応のトランスポートタイプです（skip）`,
+            { transportType: conn.transportType },
+          );
+          continue;
+      }
     } catch (error) {
       // 1件の破損データで他サーバーが起動できなくなることを防ぐ：
       // エラーを個別にログしてスキップ、他の接続は正常に起動する

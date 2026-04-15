@@ -93,7 +93,13 @@ describe("runMcpProxy", () => {
 
   test("configs が1件でも createProxyCore を使う（prefix付きツール名を保証）", async () => {
     const configs: McpServerConfig[] = [
-      { name: "serena", command: "uvx", args: ["serena"], env: {} },
+      {
+        name: "serena",
+        transportType: "STDIO",
+        command: "uvx",
+        args: ["serena"],
+        env: {},
+      },
     ];
     await runMcpProxy(configs);
 
@@ -108,8 +114,8 @@ describe("runMcpProxy", () => {
 
   test("configs が2件以上でも createProxyCore を使う", async () => {
     const configs: McpServerConfig[] = [
-      { name: "a", command: "echo", args: [], env: {} },
-      { name: "b", command: "echo", args: [], env: {} },
+      { name: "a", transportType: "STDIO", command: "echo", args: [], env: {} },
+      { name: "b", transportType: "STDIO", command: "echo", args: [], env: {} },
     ];
     await runMcpProxy(configs);
 
