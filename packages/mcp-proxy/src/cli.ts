@@ -3,8 +3,8 @@
  * MCP Proxy CLIエントリーポイント
  *
  * 呼び出し元から configs を受け取り、MCPプロキシを起動する。
- * 単体サーバーの場合はprefixなしで直接委譲し、
- * 複数サーバーの場合はToolAggregator経由でprefix付き集約する。
+ * サーバー数に関わらず常に createProxyCore を使用し、
+ * ツール名は `<server>__<tool>` の prefix 付きで統一する。
  */
 import type { McpServerConfig } from "./types.js";
 import { createProxyCore } from "./core.js";
