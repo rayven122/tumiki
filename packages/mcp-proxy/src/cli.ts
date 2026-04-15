@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 /**
- * MCP Proxy CLIエントリーポイント
+ * --mcp-proxy CLIエントリーポイント
+ * claude code → tumiki --mcp-proxy → MCPサーバーへの接続フロー
  *
- * 呼び出し元から configs を受け取り、MCPプロキシを起動する。
- * サーバー数に関わらず常に createProxyCore を使用し、
- * ツール名は `<server>__<tool>` の prefix 付きで統一する。
+ * configs は呼び出し元（desktop 側など）から動的に受け取る。
  */
 import type { McpServerConfig } from "./types.js";
 import { createProxyCore } from "./core.js";
