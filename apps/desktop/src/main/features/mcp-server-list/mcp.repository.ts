@@ -92,6 +92,23 @@ export const findEnabledConnections = async (db: PrismaClient) => {
 };
 
 /**
+ * 指定サーバーslugの有効な接続を取得（--server指定時のconfig生成用）
+ */
+export const findEnabledConnectionsBySlug = async (
+  db: PrismaClient,
+  serverSlug: string,
+) => {
+  return db.mcpConnection.findMany({
+    where: {
+      isEnabled: true,
+      server: { isEnabled: true, slug: serverSlug },
+    },
+    include: { server: true },
+    orderBy: { displayOrder: "asc" },
+  });
+};
+
+/**
  * IDでサーバーを取得
  */
 export const findServerById = async (db: PrismaClient, id: number) => {
