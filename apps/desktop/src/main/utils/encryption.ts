@@ -1,4 +1,3 @@
-import { safeStorage, app } from "electron";
 import { randomBytes, createCipheriv, createDecipheriv, scrypt } from "crypto";
 import { join } from "path";
 import {
@@ -12,8 +11,9 @@ import {
   constants as fsPromiseConstants,
 } from "fs/promises";
 import * as logger from "../shared/utils/logger";
+import { resolveUserDataPath } from "../../shared/user-data-path";
 
-// フォールバック暗号化用の定数
+// 暗号化用の定数
 const ALGORITHM = "aes-256-gcm";
 const KEY_LENGTH = 32;
 const IV_LENGTH = 16;
@@ -21,10 +21,7 @@ const SALT_LENGTH = 32;
 const AUTH_TAG_LENGTH = 16;
 
 // 暗号化戦略のプレフィックス定数
-const ENCRYPTION_PREFIX = {
-  SAFE_STORAGE: "safe",
-  FALLBACK: "fallback",
-} as const;
+const ENCRYPTION_PREFIX = "fallback";
 
 // scryptの非同期版（コストパラメータを明示指定してNode.jsバージョン間の互換性を保証）
 const SCRYPT_OPTIONS = { N: 16384, r: 8, p: 1 } as const;
@@ -39,16 +36,6 @@ const scryptAsync = (
       else resolve(derivedKey);
     });
   });
-
-/**
- * 暗号化戦略の型
- */
-type EncryptionStrategy = {
-  encrypt: (plainText: string) => Promise<string>;
-  decrypt: (encryptedText: string) => Promise<string>;
-  isAvailable: () => boolean;
-  getPrefix: () => string;
-};
 
 /**
  * キーファイルの整合性を検証
@@ -93,7 +80,7 @@ const validateFilePermissions = async (
     }
 
     // ファイルがユーザーデータディレクトリ内にあることを確認
-    const userDataPath = app.getPath("userData");
+    const userDataPath = resolveUserDataPath();
     if (!filePath.toLowerCase().startsWith(userDataPath.toLowerCase())) {
       throw new Error(
         `Encryption key file must be in user data directory for security. Path: ${filePath}`,
@@ -126,15 +113,10 @@ const validateFilePermissions = async (
 
 /**
  * 暗号化キーを取得または生成
- * safeStorageが利用できない環境用のフォールバック機能
  *
  * セキュリティ上の制限: マスターキーはファイルシステムに保存されるため、
  * 同一デバイス上でファイルアクセス権を持つ攻撃者には暗号化の保護が効かない。
- * 可能な限りsafeStorage（OS提供のキーストア）を優先して使用すること。
- *
- * 注意: headless Linux環境（ディスプレイサーバーなし）ではsafeStorageが
- * 常に利用不可となり、このフォールバックが常時使用される。
- * そのような環境でOAuthトークンを扱う場合は、追加のアクセス制御が必要。
+ * ファイルパーミッション(0600)とOS標準のディスク暗号化に委ねる。
  */
 // メモリキャッシュ：初回読み込み後はディスクI/Oを回避
 let cachedEncryptionKey: Buffer | null = null;
@@ -144,7 +126,7 @@ const getOrCreateEncryptionKey = async (): Promise<Buffer> => {
     return cachedEncryptionKey;
   }
 
-  const userDataPath = app.getPath("userData");
+  const userDataPath = resolveUserDataPath();
   const keyPath = join(userDataPath, "tumiki-encryption.key");
 
   // 既存のキーファイルが存在する場合は読み込む
@@ -249,117 +231,26 @@ const getOrCreateEncryptionKey = async (): Promise<Buffer> => {
 };
 
 /**
- * Electron SafeStorage暗号化戦略
- * OS提供のキーストアを使用した安全な暗号化
- */
-const createSafeStorageStrategy = (): EncryptionStrategy => ({
-  isAvailable: () => safeStorage.isEncryptionAvailable(),
-  getPrefix: () => ENCRYPTION_PREFIX.SAFE_STORAGE,
-  encrypt: async (plainText: string): Promise<string> => {
-    const encryptedBuffer = safeStorage.encryptString(plainText);
-    return encryptedBuffer.toString("base64");
-  },
-  decrypt: async (encryptedText: string): Promise<string> => {
-    const encryptedBuffer = Buffer.from(encryptedText, "base64");
-    return safeStorage.decryptString(encryptedBuffer);
-  },
-});
-
-/**
- * Node.js crypto フォールバック暗号化戦略
- * safeStorageが使えない環境用の代替実装
- */
-const createFallbackEncryptionStrategy = (): EncryptionStrategy => ({
-  isAvailable: () => true,
-  getPrefix: () => ENCRYPTION_PREFIX.FALLBACK,
-  encrypt: async (plainText: string): Promise<string> => {
-    const salt = randomBytes(SALT_LENGTH);
-    const iv = randomBytes(IV_LENGTH);
-
-    const masterKey = await getOrCreateEncryptionKey();
-    const key = await scryptAsync(masterKey, salt, KEY_LENGTH);
-
-    const cipher = createCipheriv(ALGORITHM, key, iv);
-    const encrypted = Buffer.concat([
-      cipher.update(plainText, "utf8"),
-      cipher.final(),
-    ]);
-    const authTag = cipher.getAuthTag();
-
-    const result = Buffer.concat([salt, iv, authTag, encrypted]);
-    return result.toString("base64");
-  },
-  decrypt: async (encryptedText: string): Promise<string> => {
-    const data = Buffer.from(encryptedText, "base64");
-
-    const salt = data.subarray(0, SALT_LENGTH);
-    const iv = data.subarray(SALT_LENGTH, SALT_LENGTH + IV_LENGTH);
-    const authTag = data.subarray(
-      SALT_LENGTH + IV_LENGTH,
-      SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH,
-    );
-    const encrypted = data.subarray(SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH);
-
-    const masterKey = await getOrCreateEncryptionKey();
-    const key = await scryptAsync(masterKey, salt, KEY_LENGTH);
-
-    const decipher = createDecipheriv(ALGORITHM, key, iv);
-    decipher.setAuthTag(authTag);
-
-    const decrypted = Buffer.concat([
-      decipher.update(encrypted),
-      decipher.final(),
-    ]);
-
-    return decrypted.toString("utf8");
-  },
-});
-
-/**
- * 利用可能な暗号化戦略を取得（初回判定後はキャッシュ）
- */
-let cachedEncryptionStrategy: EncryptionStrategy | null = null;
-
-const getEncryptionStrategy = (): EncryptionStrategy => {
-  if (cachedEncryptionStrategy) {
-    return cachedEncryptionStrategy;
-  }
-
-  const safeStorageStrategy = createSafeStorageStrategy();
-  if (safeStorageStrategy.isAvailable()) {
-    cachedEncryptionStrategy = safeStorageStrategy;
-    return cachedEncryptionStrategy;
-  }
-  logger.warn(
-    "safeStorage not available, using fallback file-based encryption",
-  );
-  cachedEncryptionStrategy = createFallbackEncryptionStrategy();
-  return cachedEncryptionStrategy;
-};
-
-/**
- * プレフィックスから適切な復号化戦略を取得
- */
-const getDecryptionStrategy = (prefix: string): EncryptionStrategy => {
-  switch (prefix) {
-    case ENCRYPTION_PREFIX.SAFE_STORAGE:
-      return createSafeStorageStrategy();
-    case ENCRYPTION_PREFIX.FALLBACK:
-      return createFallbackEncryptionStrategy();
-    default:
-      throw new Error(`Unknown encryption prefix: ${prefix}`);
-  }
-};
-
-/**
- * トークンを暗号化
+ * トークンを暗号化（AES-256-GCM + ファイルベース鍵）
  * @param plainText 暗号化する平文
  * @returns Base64エンコードされた暗号化テキスト（プレフィックス付き）
  */
 export const encryptToken = async (plainText: string): Promise<string> => {
-  const strategy = getEncryptionStrategy();
-  const encrypted = await strategy.encrypt(plainText);
-  return `${strategy.getPrefix()}:${encrypted}`;
+  const salt = randomBytes(SALT_LENGTH);
+  const iv = randomBytes(IV_LENGTH);
+
+  const masterKey = await getOrCreateEncryptionKey();
+  const key = await scryptAsync(masterKey, salt, KEY_LENGTH);
+
+  const cipher = createCipheriv(ALGORITHM, key, iv);
+  const encrypted = Buffer.concat([
+    cipher.update(plainText, "utf8"),
+    cipher.final(),
+  ]);
+  const authTag = cipher.getAuthTag();
+
+  const result = Buffer.concat([salt, iv, authTag, encrypted]);
+  return `${ENCRYPTION_PREFIX}:${result.toString("base64")}`;
 };
 
 /**
@@ -370,29 +261,43 @@ export const encryptToken = async (plainText: string): Promise<string> => {
 export const decryptToken = async (encryptedText: string): Promise<string> => {
   const separatorIndex = encryptedText.indexOf(":");
 
-  if (separatorIndex > 0) {
-    const prefix = encryptedText.substring(0, separatorIndex);
-    const data = encryptedText.substring(separatorIndex + 1);
-
-    try {
-      const strategy = getDecryptionStrategy(prefix);
-      return await strategy.decrypt(data);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown decryption error";
-      logger.error(`Decryption failed with strategy "${prefix}"`, {
-        message: errorMessage,
-      });
-      throw new Error(
-        `Failed to decrypt token with strategy "${prefix}": ${errorMessage}`,
-      );
-    }
+  if (separatorIndex <= 0) {
+    throw new Error(
+      "暗号化トークンのフォーマットが不正です（プレフィックスがありません）",
+    );
   }
 
-  // プレフィックスなしのトークンは不正なフォーマット
-  throw new Error(
-    "暗号化トークンのフォーマットが不正です（プレフィックスがありません）",
+  const prefix = encryptedText.substring(0, separatorIndex);
+  const base64Data = encryptedText.substring(separatorIndex + 1);
+
+  if (prefix !== ENCRYPTION_PREFIX) {
+    throw new Error(
+      `不明な暗号化プレフィックス: "${prefix}"（"${ENCRYPTION_PREFIX}" のみ対応）`,
+    );
+  }
+
+  const data = Buffer.from(base64Data, "base64");
+
+  const salt = data.subarray(0, SALT_LENGTH);
+  const iv = data.subarray(SALT_LENGTH, SALT_LENGTH + IV_LENGTH);
+  const authTag = data.subarray(
+    SALT_LENGTH + IV_LENGTH,
+    SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH,
   );
+  const encrypted = data.subarray(SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH);
+
+  const masterKey = await getOrCreateEncryptionKey();
+  const key = await scryptAsync(masterKey, salt, KEY_LENGTH);
+
+  const decipher = createDecipheriv(ALGORITHM, key, iv);
+  decipher.setAuthTag(authTag);
+
+  const decrypted = Buffer.concat([
+    decipher.update(encrypted),
+    decipher.final(),
+  ]);
+
+  return decrypted.toString("utf8");
 };
 
 /**
@@ -405,5 +310,4 @@ export const _resetEncryptionKeyCache = (): void => {
     throw new Error("_resetEncryptionKeyCache はテスト環境でのみ使用できます");
   }
   cachedEncryptionKey = null;
-  cachedEncryptionStrategy = null;
 };

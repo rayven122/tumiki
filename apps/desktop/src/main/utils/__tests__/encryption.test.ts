@@ -4,20 +4,8 @@ import { join } from "path";
 import { tmpdir } from "os";
 
 // モジュールのモック
-vi.mock("electron", () => ({
-  app: {
-    getPath: vi.fn((name: string) => {
-      if (name === "userData") {
-        return join(tmpdir(), "tumiki-test-encryption");
-      }
-      return tmpdir();
-    }),
-  },
-  safeStorage: {
-    isEncryptionAvailable: vi.fn(() => false), // フォールバック戦略を優先的にテスト
-    encryptString: vi.fn(),
-    decryptString: vi.fn(),
-  },
+vi.mock("../../../shared/user-data-path", () => ({
+  resolveUserDataPath: vi.fn(() => join(tmpdir(), "tumiki-test-encryption")),
 }));
 
 // テスト対象のインポート（モックの後に行う）
