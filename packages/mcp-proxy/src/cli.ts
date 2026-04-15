@@ -4,6 +4,9 @@
  * claude code → tumiki --mcp-proxy → MCPサーバーへの接続フロー
  *
  * configs は呼び出し元（desktop 側など）から動的に受け取る。
+ * サーバー数に関わらず createProxyCore（ToolAggregator経由・prefix付き）を使用する。
+ * desktop の --server <slug> オプションで渡す configs を絞り込むことで
+ * 単体サーバーとして動作させる。
  */
 import type { McpServerConfig } from "./types.js";
 import { createProxyCore } from "./core.js";
