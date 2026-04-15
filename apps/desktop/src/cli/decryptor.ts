@@ -27,13 +27,39 @@ const scryptAsync = (
     });
   });
 
+// TODO: encryption.ts の cachedEncryptionKey と同一ファイルを参照しており二重管理になっている。
+// 将来的に shared/ へキー読み込み処理を共通化し、キーローテーション時の不整合を防ぐ。
 let cachedKey: Buffer | null = null;
 
 const getEncryptionKey = async (): Promise<Buffer> => {
   if (cachedKey) return cachedKey;
   const keyPath = join(resolveUserDataPath(), "tumiki-encryption.key");
-  cachedKey = await readFile(keyPath);
-  return cachedKey;
+
+  let key: Buffer;
+  try {
+    key = await readFile(keyPath);
+  } catch (error) {
+    const code =
+      error && typeof error === "object" && "code" in error
+        ? (error as { code: string }).code
+        : undefined;
+    if (code === "ENOENT") {
+      throw new Error(
+        `暗号化キーファイルが見つかりません: ${keyPath}\n` +
+          "Desktopアプリを一度起動してキーを生成してください。",
+      );
+    }
+    throw error;
+  }
+
+  if (key.length !== KEY_LENGTH) {
+    throw new Error(
+      `暗号化キーファイルのサイズが不正です: ${key.length}バイト（期待値: ${KEY_LENGTH}バイト）`,
+    );
+  }
+
+  cachedKey = key;
+  return key;
 };
 
 const decryptFallback = async (encryptedBase64: string): Promise<string> => {
@@ -76,7 +102,25 @@ export const decryptCredentials = async (
     return decryptFallback(data);
   }
 
+  if (prefix === "safe") {
+    throw new Error(
+      "safe: prefix で暗号化されたデータはCLIから復号できません。\n" +
+        "Desktopアプリで認証情報を再登録してください。",
+    );
+  }
+
   throw new Error(
     `不明な暗号化プレフィックス: "${prefix}"（"fallback" のみ対応）`,
   );
+};
+
+/**
+ * 暗号化キーのメモリキャッシュをクリア
+ * @internal テスト専用。プロダクションコードからの呼び出し禁止。
+ */
+export const _resetDecryptorKeyCache = (): void => {
+  if (process.env.NODE_ENV !== "test") {
+    throw new Error("_resetDecryptorKeyCache はテスト環境でのみ使用できます");
+  }
+  cachedKey = null;
 };

@@ -13,9 +13,11 @@ const mockDb = {
 // fs/promises のモック
 const mockReaddir = vi.fn();
 const mockReadFile = vi.fn();
+const mockAccess = vi.fn().mockResolvedValue(undefined);
 vi.mock("fs/promises", () => ({
   readdir: (...args: unknown[]) => mockReaddir(...args),
   readFile: (...args: unknown[]) => mockReadFile(...args),
+  access: (...args: unknown[]) => mockAccess(...args),
 }));
 
 import { runMigrations } from "../migration-runner";

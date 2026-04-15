@@ -58,8 +58,8 @@ describe("encryptToken", () => {
     const plainText = "test-token";
     const encrypted = await encryptToken(plainText);
 
-    // フォールバック戦略の場合は "fallback:" プレフィックス
-    expect(encrypted).toMatch(/^(safe|fallback):/);
+    // 常に "fallback:" プレフィックス（safeStorage廃止済み）
+    expect(encrypted).toMatch(/^fallback:/);
   });
 
   test("同じテキストでも異なる暗号化結果になる（ソルトとIVがランダム）", async () => {

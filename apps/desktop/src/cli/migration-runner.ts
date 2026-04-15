@@ -2,7 +2,7 @@
  * Electron非依存のマイグレーションランナー
  * Desktop側の migrationRunner.ts と同等の処理をElectronなしで行う
  */
-import { readdir, readFile } from "fs/promises";
+import { readdir, readFile, access } from "fs/promises";
 import { join, dirname } from "path";
 import { randomUUID } from "crypto";
 import type { PrismaClient } from "@prisma/desktop-client";
@@ -60,6 +60,21 @@ export const runMigrations = async (db: PrismaClient): Promise<void> => {
   const appliedSet = new Set(applied.map((r) => r.migration_name));
 
   const migrationsDir = getMigrationsDir();
+
+  // マイグレーションディレクトリの存在確認
+  try {
+    await access(migrationsDir);
+  } catch {
+    throw new Error(
+      `マイグレーションディレクトリが見つかりません: ${migrationsDir}\n` +
+        "ビルド出力構造が変更された可能性があります。",
+    );
+  }
+
+  process.stderr.write(
+    `[tumiki] マイグレーションディレクトリ: ${migrationsDir}\n`,
+  );
+
   const entries = await readdir(migrationsDir, { withFileTypes: true });
   const migrationNames = entries
     .filter((d) => d.isDirectory())
@@ -70,7 +85,16 @@ export const runMigrations = async (db: PrismaClient): Promise<void> => {
     if (appliedSet.has(name)) continue;
 
     const sqlPath = join(migrationsDir, name, "migration.sql");
-    const sql = await readFile(sqlPath, "utf-8");
+
+    let sql: string;
+    try {
+      sql = await readFile(sqlPath, "utf-8");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `マイグレーションファイルの読み込みに失敗しました: ${name} (${message})`,
+      );
+    }
 
     process.stderr.write(`[tumiki] マイグレーション適用中: ${name}\n`);
 
