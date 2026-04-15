@@ -7,7 +7,7 @@
  * 複数サーバーの場合はToolAggregator経由でprefix付き集約する。
  */
 import type { McpServerConfig } from "./types.js";
-import { createProxyCore, createSingleServerCore } from "./core.js";
+import { createProxyCore } from "./core.js";
 import { startStdioInbound } from "./inbound/stdio-inbound.js";
 import { stderrLogger as logger } from "./stderr-logger.js";
 
@@ -16,12 +16,7 @@ export const runMcpProxy = async (
 ): Promise<void> => {
   logger.info("tumiki-mcp-proxy を起動しています...");
 
-  // 単体: prefixなしで直接委譲（ツール名がそのまま公開される）
-  // 複数: ToolAggregator経由で `<server>__<tool>` のprefix付き集約
-  const core =
-    configs.length === 1
-      ? createSingleServerCore(configs[0]!, logger)
-      : createProxyCore(configs, logger);
+  const core = createProxyCore(configs, logger);
 
   // 全MCPサーバーに接続
   await core.startAll();

@@ -35,21 +35,18 @@ const mocks = vi.hoisted(() => {
     onStatusChange: vi.fn(),
   };
   const mockCreateProxyCore = vi.fn(() => mockCore);
-  const mockCreateSingleServerCore = vi.fn(() => mockCore);
   const mockStartStdioInbound = vi.fn().mockResolvedValue(undefined);
   return {
     mockStartAll,
     mockStopAll,
     mockCore,
     mockCreateProxyCore,
-    mockCreateSingleServerCore,
     mockStartStdioInbound,
   };
 });
 
 vi.mock("../core.js", () => ({
   createProxyCore: mocks.mockCreateProxyCore,
-  createSingleServerCore: mocks.mockCreateSingleServerCore,
 }));
 
 vi.mock("../inbound/stdio-inbound.js", () => ({
@@ -94,19 +91,17 @@ describe("runMcpProxy", () => {
     );
   });
 
-  test("configs が1件の場合は createSingleServerCore を使う（prefixなし）", async () => {
+  test("configs が1件でも createProxyCore を使う（prefix付きツール名を保証）", async () => {
     const configs: McpServerConfig[] = [
       { name: "serena", command: "uvx", args: ["serena"], env: {} },
     ];
     await runMcpProxy(configs);
 
-    // 単体サーバーはprefixなしで直接委譲（ツール名がそのまま公開される）
-    expect(mocks.mockCreateSingleServerCore).toHaveBeenCalledOnce();
-    expect(mocks.mockCreateSingleServerCore).toHaveBeenCalledWith(
-      configs[0],
+    expect(mocks.mockCreateProxyCore).toHaveBeenCalledOnce();
+    expect(mocks.mockCreateProxyCore).toHaveBeenCalledWith(
+      configs,
       expect.any(Object),
     );
-    expect(mocks.mockCreateProxyCore).not.toHaveBeenCalled();
   });
 
   test("configs が2件以上でも createProxyCore を使う", async () => {
