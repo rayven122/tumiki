@@ -29,11 +29,18 @@ if (isMcpProxyMode) {
     app.dock?.hide();
 
     try {
+      // --server <slug> で起動する仮想MCPサーバーを指定（省略時は全有効サーバー）
+      const serverIdx = process.argv.indexOf("--server");
+      const serverSlug =
+        serverIdx !== -1 && serverIdx + 1 < process.argv.length
+          ? process.argv[serverIdx + 1]
+          : undefined;
+
       // DB初期化 → 有効なMCPサーバー設定を取得
       await initializeDb();
       const { getEnabledConfigs } =
         await import("./features/mcp-server-list/mcp.service");
-      const configs = await getEnabledConfigs();
+      const configs = await getEnabledConfigs(serverSlug);
 
       const { join } = await import("path");
       const mod = (await import(join(__dirname, "mcp-cli.cjs"))) as {
