@@ -70,7 +70,12 @@ export type ProxyResponse =
   | { id: string; ok: false; error: string };
 
 // Proxy → Main（Push通知）
-export type ProxyEvent = {
-  type: "status-changed";
-  payload: { name: string; status: ServerStatus; error?: string };
-};
+export type ProxyEvent =
+  | {
+      type: "status-changed";
+      payload: { name: string; status: ServerStatus; error?: string };
+    }
+  | {
+      type: "local-bridge-ready";
+      payload: { host: string; port: number };
+    };

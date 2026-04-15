@@ -10,7 +10,8 @@
     }
   },
   "bin": {
-    "tumiki-mcp-proxy": "./dist/cli.js"
+    "tumiki-mcp-proxy": "./dist/cli.js",
+    "tumiki-mcp-bridge": "./dist/bridge-cli.js"
   },
   "scripts": {
     "dev": "tsc --project tsconfig.build.json --watch",

@@ -5,7 +5,22 @@
 import type { ProxyCore } from "./core.js";
 import type { ProxyEvent, ProxyRequest, ProxyResponse } from "./types.js";
 import { createProxyCore } from "./core.js";
+import { startLocalInboundServer } from "./inbound/tcp-inbound.js";
 import { stderrLogger as logger } from "./stderr-logger.js";
+
+let bridgeClose: (() => Promise<void>) | null = null;
+
+const closeLocalBridge = async (): Promise<void> => {
+  if (!bridgeClose) return;
+  try {
+    await bridgeClose();
+  } catch (error) {
+    logger.warn("ローカル MCP ブリッジの停止に失敗しました", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+  bridgeClose = null;
+};
 
 /**
  * IPCでメッセージを送信（チャネル切断時はログ出力）
@@ -32,6 +47,7 @@ const handleRequest = async (
   try {
     switch (request.type) {
       case "start": {
+        await closeLocalBridge();
         // 既存のcoreがあれば停止してから再生成
         const existingCore = getCore();
         if (existingCore) {
@@ -48,10 +64,18 @@ const handleRequest = async (
         });
         setCore(newCore);
         await newCore.startAll();
+        const inbound = await startLocalInboundServer(newCore, logger);
+        bridgeClose = inbound.close;
+        const bridgeEvent: ProxyEvent = {
+          type: "local-bridge-ready",
+          payload: { host: inbound.host, port: inbound.port },
+        };
+        sendToParent(bridgeEvent);
         const status = newCore.getStatus();
         return { id: request.id, ok: true, result: status };
       }
       case "stop": {
+        await closeLocalBridge();
         const core = getCore();
         if (!core) return { id: request.id, ok: true };
         await core.stopAll();

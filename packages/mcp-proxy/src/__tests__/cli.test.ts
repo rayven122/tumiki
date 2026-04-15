@@ -47,6 +47,7 @@ const mocks = vi.hoisted(() => {
 
 vi.mock("../core.js", () => ({
   createProxyCore: mocks.mockCreateProxyCore,
+  createSingleServerCore: mocks.mockCreateProxyCore,
 }));
 
 vi.mock("../inbound/stdio-inbound.js", () => ({
@@ -91,17 +92,15 @@ describe("runMcpProxy", () => {
     );
   });
 
-  test("configs が1件でも createProxyCore を使う（prefix付きツール名を保証）", async () => {
+  test("configs が1件のとき createSingleServerCore を使う", async () => {
     const configs: McpServerConfig[] = [
       { name: "serena", command: "uvx", args: ["serena"], env: {} },
     ];
     await runMcpProxy(configs);
 
-    // Desktop モードと同じく createProxyCore で ToolAggregator 経由の prefix 付き
-    // ツール名にするため、単体サーバーでも createProxyCore を使う必要がある
     expect(mocks.mockCreateProxyCore).toHaveBeenCalledOnce();
     expect(mocks.mockCreateProxyCore).toHaveBeenCalledWith(
-      configs,
+      configs[0],
       expect.any(Object),
     );
   });

@@ -23,10 +23,14 @@ vi.mock("electron", () => ({
 
 vi.mock("../../../shared/utils/logger");
 vi.mock("../mcp.service");
+vi.mock("../../mcp-proxy/mcp.service", () => ({
+  startMcpServers: vi.fn().mockResolvedValue([]),
+}));
 
 // テスト対象のインポート（モックの後に行う）
 import { setupMcpIpc } from "../mcp.ipc";
 import * as mcpService from "../mcp.service";
+import { startMcpServers } from "../../mcp-proxy/mcp.service";
 
 describe("setupMcpIpc", () => {
   beforeEach(() => {
@@ -145,7 +149,7 @@ describe("setupMcpIpc", () => {
   });
 
   describe("mcp:toggleServer", () => {
-    test("サーバーを無効化する", async () => {
+    test("サーバーを無効化し、MCPプロキシを再起動する", async () => {
       const mockResult = { id: 1, isEnabled: false };
       vi.mocked(mcpService.toggleServer).mockResolvedValue(
         mockResult as Awaited<ReturnType<typeof mcpService.toggleServer>>,
@@ -159,9 +163,10 @@ describe("setupMcpIpc", () => {
 
       expect(result).toStrictEqual(mockResult);
       expect(mcpService.toggleServer).toHaveBeenCalledWith(1, false);
+      expect(startMcpServers).toHaveBeenCalled();
     });
 
-    test("サーバーを有効化する", async () => {
+    test("サーバーを有効化し、MCPプロキシを再起動する", async () => {
       vi.mocked(mcpService.toggleServer).mockResolvedValue({
         id: 1,
         isEnabled: true,
@@ -171,6 +176,7 @@ describe("setupMcpIpc", () => {
       await handler!({} as IpcMainInvokeEvent, { id: 1, isEnabled: true });
 
       expect(mcpService.toggleServer).toHaveBeenCalledWith(1, true);
+      expect(startMcpServers).toHaveBeenCalled();
     });
 
     test("isEnabledが欠落している場合はエラーになる", async () => {

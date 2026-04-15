@@ -1,6 +1,7 @@
 import { ipcMain } from "electron";
 import { z } from "zod";
 import * as mcpService from "./mcp.service";
+import { startMcpServers } from "../mcp-proxy/mcp.service";
 import type {
   CreateFromCatalogInput,
   UpdateServerInput,
@@ -104,11 +105,17 @@ export const setupMcpIpc = (): void => {
     }
   });
 
-  // MCPサーバーのenabled状態を切り替え
+  // MCPサーバーのenabled状態を切り替え（DB更新後にプロキシを再起動して反映）
   ipcMain.handle("mcp:toggleServer", async (_, input: unknown) => {
     try {
       const validated = toggleServerSchema.parse(input);
-      return await mcpService.toggleServer(validated.id, validated.isEnabled);
+      const result = await mcpService.toggleServer(
+        validated.id,
+        validated.isEnabled,
+      );
+      // MCPプロキシを再起動して有効/無効の変更を反映
+      await startMcpServers();
+      return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : "不明なエラー";
       logger.error(

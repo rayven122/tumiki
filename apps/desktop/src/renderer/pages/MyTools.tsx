@@ -16,8 +16,6 @@ import { ToggleSwitch } from "../_components/ToggleSwitch";
 import { useMcpServers } from "../hooks/useMcpServers";
 import type { McpServerWithRuntime } from "../hooks/useMcpServers";
 import { cardStyle } from "../utils/theme-styles";
-import { MCP_CLI_COMMAND, MCP_BASE_URL } from "../data/mock";
-
 /** MCPサーバーステータス表示 */
 const STATUS_CONFIG: Record<
   McpServerWithRuntime["serverStatus"],
@@ -29,24 +27,31 @@ const STATUS_CONFIG: Record<
   PENDING: { dotClass: "bg-amber-400", label: "接続中" },
 };
 
+/**
+ * Desktop 起動後、MCP が正常起動すると userData に書き出される（ファイルが無いときは MCP 未起動の可能性）。
+ * 本番 macOS の例: ~/Library/Application Support/Tumiki/
+ * 開発 (pnpm dev) の例: ~/Library/Application Support/@tumiki/desktop/ （環境で異なる）
+ * 正確なパスはメインプロセスログ「Dev: mcp-bridge.json は…」または「Wrote mcp-bridge.json」を参照。
+ */
+/** tumiki-mcp-bridge は引数なしで既定 userData を自動検索 */
+const tumikiBridgeArgs = (): string => `["tumiki-mcp-bridge"]`;
+
 /** AIクライアント接続情報（カード下部に表示） */
 const AI_CLIENTS = [
   {
-    name: "Desktop",
+    name: "Claude Code",
     path: (slug: string) =>
-      `Tumiki.app/Contents/MacOS/Tumiki --mcp-proxy --server ${slug}`,
+      `claude mcp add ${slug} -- npx tumiki-mcp-bridge`,
   },
   {
     name: "Cursor",
-    path: (slug: string) => `${MCP_CLI_COMMAND} --connector=${slug}`,
+    path: (slug: string) =>
+      `{ "mcpServers": { "${slug}": { "command": "npx", "args": ${tumikiBridgeArgs()} } } }`,
   },
   {
-    name: "Claude",
-    path: (slug: string) => `${MCP_BASE_URL}/${slug}/sse`,
-  },
-  {
-    name: "ChatGPT",
-    path: (slug: string) => `${MCP_BASE_URL}/${slug}/http`,
+    name: "Claude Desktop",
+    path: (slug: string) =>
+      `{ "mcpServers": { "${slug}": { "command": "npx", "args": ${tumikiBridgeArgs()} } } }`,
   },
 ];
 

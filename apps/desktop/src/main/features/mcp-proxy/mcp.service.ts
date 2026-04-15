@@ -69,6 +69,17 @@ export const setStatusChangeListener = (
   statusChangeListener = listener;
 };
 
+let bridgeReadyListener:
+  | ((payload: { host: string; port: number }) => void)
+  | null = null;
+
+/** Claude 用 stdio ブリッジ先（127.0.0.1:port）が決まったとき */
+export const setBridgeReadyListener = (
+  listener: (payload: { host: string; port: number }) => void,
+): void => {
+  bridgeReadyListener = listener;
+};
+
 /** proxyのステータス文字列をDBのServerStatusにマッピング */
 const toDbStatus = (
   status: string,
@@ -222,7 +233,7 @@ const handleMessage = (msg: unknown): void => {
 
   // ProxyEventの判別: typeフィールドを持つメッセージはイベント
   if ("type" in record && record.type === "status-changed") {
-    const event = msg as ProxyEvent;
+    const event = msg as Extract<ProxyEvent, { type: "status-changed" }>;
     logger.info("MCPサーバー状態変更", {
       name: event.payload.name,
       status: event.payload.status,
@@ -231,6 +242,13 @@ const handleMessage = (msg: unknown): void => {
     statusChangeListener?.(event.payload);
     // DBのサーバーステータスも同期（非同期・失敗してもイベント通知は継続）
     void syncServerStatusToDb(event.payload.name, event.payload.status);
+    return;
+  }
+
+  if ("type" in record && record.type === "local-bridge-ready") {
+    const event = msg as Extract<ProxyEvent, { type: "local-bridge-ready" }>;
+    logger.info("ローカル MCP ブリッジの待受を開始しました", event.payload);
+    bridgeReadyListener?.(event.payload);
     return;
   }
 
@@ -373,12 +391,14 @@ const spawnProxy = async (): Promise<void> => {
  * MCPサーバーを起動（IPC経由）
  * DBから有効な接続設定を読み込み、Proxy Processに渡す
  */
-export const startMcpServers = async (): Promise<McpServerState[]> => {
+export const startMcpServers = async (
+  serverSlug?: string,
+): Promise<McpServerState[]> => {
   if (!proxyProcess) {
     await spawnProxy();
   }
 
-  const configs = await getEnabledConfigs();
+  const configs = await getEnabledConfigs(serverSlug);
   const response = await sendRequest("start", { configs });
   if (!response.ok) {
     throw new Error(response.error);
