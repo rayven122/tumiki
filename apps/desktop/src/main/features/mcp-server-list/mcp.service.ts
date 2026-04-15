@@ -157,14 +157,7 @@ export const getEnabledConfigs = async (
 ): Promise<McpServerConfig[]> => {
   const db = await getDb();
   const connections = serverSlug
-    ? await db.mcpConnection.findMany({
-        where: {
-          isEnabled: true,
-          server: { isEnabled: true, slug: serverSlug },
-        },
-        include: { server: true },
-        orderBy: { displayOrder: "asc" },
-      })
+    ? await mcpRepository.findEnabledConnectionsBySlug(db, serverSlug)
     : await mcpRepository.findEnabledConnections(db);
 
   const configs: McpServerConfig[] = [];
