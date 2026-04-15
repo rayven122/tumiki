@@ -4,6 +4,11 @@ import { join } from "path";
 import { tmpdir } from "os";
 
 // モジュールのモック
+// encryption.ts → logger.ts → electron の間接依存があるため、CI環境用にelectronをモック
+vi.mock("electron", () => ({
+  app: { getPath: vi.fn(() => tmpdir()) },
+}));
+
 vi.mock("../../../shared/user-data-path", () => ({
   resolveUserDataPath: vi.fn(() => join(tmpdir(), "tumiki-test-encryption")),
 }));
