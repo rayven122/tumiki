@@ -4,6 +4,9 @@
  * claude code → tumiki --mcp-proxy → MCPサーバーへの接続フロー
  *
  * configs は呼び出し元（desktop 側など）から動的に受け取る。
+ * サーバー数に関わらず createProxyCore（ToolAggregator経由・prefix付き）を使用する。
+ * desktop の --server <slug> オプションで渡す configs を絞り込むことで
+ * 単体サーバーとして動作させる。
  */
 import type { McpServerConfig } from "./types.js";
 import { createProxyCore } from "./core.js";
@@ -15,10 +18,6 @@ export const runMcpProxy = async (
 ): Promise<void> => {
   logger.info("tumiki-mcp-proxy を起動しています...");
 
-  // Desktop (process.ts) と同じく常に createProxyCore を使用し、
-  // サーバー数に関わらずツール名は `<server>__<tool>` の prefix 付きで統一する。
-  // これにより toggleServer で enabled 数が変動しても Claude Code 側から見た
-  // ツール名が変わらない（サーバー増減で名前が書き換わらない）。
   const core = createProxyCore(configs, logger);
 
   // 全MCPサーバーに接続
