@@ -13,11 +13,6 @@ import type {
   AuditLogListInput,
   AuditLogListResult,
 } from "../main/types";
-import type {
-  McpServerState,
-  McpToolInfo,
-  CallToolResult,
-} from "@tumiki/mcp-proxy-core";
 
 // Electron APIを安全に公開
 const api = {
@@ -80,18 +75,6 @@ const api = {
       ipcRenderer.invoke("mcp:deleteServer", input),
     toggleServer: (input: ToggleServerInput): Promise<McpServerItem> =>
       ipcRenderer.invoke("mcp:toggleServer", input),
-    // MCP Proxy API
-    start: (): Promise<McpServerState[]> => ipcRenderer.invoke("mcp:start"),
-    stop: (): Promise<void> => ipcRenderer.invoke("mcp:stop"),
-    listTools: (): Promise<McpToolInfo[]> =>
-      ipcRenderer.invoke("mcp:list-tools"),
-    callTool: (
-      name: string,
-      args: Record<string, unknown>,
-    ): Promise<CallToolResult> =>
-      ipcRenderer.invoke("mcp:call-tool", { name, arguments: args }),
-    getStatus: (): Promise<McpServerState[]> =>
-      ipcRenderer.invoke("mcp:status"),
     getDetail: (serverId: number): Promise<McpServerDetailItem | null> =>
       ipcRenderer.invoke("mcp-server:getDetail", serverId),
   },

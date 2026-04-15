@@ -4,10 +4,8 @@ import { initializeDb, closeDb } from "./shared/db";
 import { setupAuthIpc } from "./ipc/auth";
 import { setupCatalogIpc } from "./features/catalog/catalog.ipc";
 import { setupMcpIpc } from "./features/mcp-server-list/mcp.ipc";
-import { setupMcpProxyIpc } from "./features/mcp-proxy/mcp-proxy.ipc";
 import { setupMcpServerDetailIpc } from "./features/mcp-server-detail/mcp-server-detail.ipc";
 import { setupAuditLogIpc } from "./features/audit-log/audit-log.ipc";
-import { startMcpServers, stopProxy } from "./features/mcp-proxy/mcp.service";
 import { seedCatalogs } from "./features/catalog/catalog.seed";
 import { createOAuthManager } from "./auth/oauth-manager";
 import { getOAuthManager, setOAuthManager } from "./auth/manager-registry";
@@ -316,21 +314,10 @@ if (isMcpProxyMode) {
       setupAuthIpc();
       setupCatalogIpc();
       setupMcpIpc();
-      setupMcpProxyIpc();
       setupMcpServerDetailIpc();
       setupAuditLogIpc();
 
       createWindow();
-
-      // 有効なMCPサーバーを自動起動（失敗してもアプリ起動は継続）
-      startMcpServers().catch((error) => {
-        logger.error(
-          "Failed to auto-start MCP servers (non-critical, continuing startup)",
-          {
-            error: error instanceof Error ? error.message : error,
-          },
-        );
-      });
 
       // スリープ復帰時にトークンの有効期限を再チェック
       powerMonitor.on("resume", () => {
@@ -378,8 +365,7 @@ if (isMcpProxyMode) {
     event.preventDefault();
     const oauthManager = getOAuthManager();
     oauthManager?.stopAutoRefresh();
-    stopProxy()
-      .then(() => oauthManager?.waitForPendingRefresh() ?? Promise.resolve())
+    (oauthManager?.waitForPendingRefresh() ?? Promise.resolve())
       .then(() => closeDb())
       .then(() => {
         logger.info("Database connection closed successfully");
