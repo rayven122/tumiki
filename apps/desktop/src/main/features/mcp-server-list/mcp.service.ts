@@ -146,7 +146,7 @@ export const getAllServers = async () => {
  * 認証ヘッダーを組み立て
  */
 const buildHeaders = (
-  authType: string,
+  authType: AuthType,
   credentials: Record<string, string>,
 ): Record<string, string> => {
   switch (authType) {
@@ -230,12 +230,13 @@ export const getEnabledConfigs = async (
             );
             continue;
           }
+          const sseAuthType = toProxyAuthType(conn.authType);
           configs.push({
             name,
             transportType: "SSE",
             url: conn.url,
-            authType: toProxyAuthType(conn.authType),
-            headers: buildHeaders(conn.authType, credentials),
+            authType: sseAuthType,
+            headers: buildHeaders(sseAuthType, credentials),
           });
           break;
         }
@@ -246,12 +247,13 @@ export const getEnabledConfigs = async (
             );
             continue;
           }
+          const httpAuthType = toProxyAuthType(conn.authType);
           configs.push({
             name,
             transportType: "STREAMABLE_HTTP",
             url: conn.url,
-            authType: toProxyAuthType(conn.authType),
-            headers: buildHeaders(conn.authType, credentials),
+            authType: httpAuthType,
+            headers: buildHeaders(httpAuthType, credentials),
           });
           break;
         }

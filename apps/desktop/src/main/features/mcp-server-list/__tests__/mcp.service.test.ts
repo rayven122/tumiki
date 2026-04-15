@@ -350,6 +350,33 @@ describe("mcp.service", () => {
       ]);
     });
 
+    test("SSE接続（BEARER認証）をMcpServerConfigに変換する", async () => {
+      vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([
+        buildConnection({
+          name: "SSE Auth Server",
+          slug: "sse-auth-server",
+          transportType: "SSE",
+          command: null,
+          url: "http://localhost:3000/sse",
+          credentials: '{"token":"sse-secret"}',
+          authType: "BEARER",
+          server: { slug: "test" },
+        }),
+      ]);
+
+      const result = await mcpService.getEnabledConfigs();
+
+      expect(result).toStrictEqual([
+        {
+          name: "test-sse-auth-server",
+          transportType: "SSE",
+          url: "http://localhost:3000/sse",
+          authType: "BEARER",
+          headers: { Authorization: "Bearer sse-secret" },
+        },
+      ]);
+    });
+
     test("STREAMABLE_HTTP接続をMcpServerConfigに変換する", async () => {
       vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([
         buildConnection({

@@ -99,11 +99,25 @@ export const createUpstreamClient = (
           requestInit: { headers: config.headers },
           // EventSourceはネイティブでカスタムヘッダー非対応のため、fetchを差し替えて注入
           eventSourceInit: {
-            fetch: (url: string | URL, init?: RequestInit) =>
-              fetch(url, {
+            fetch: (url: string | URL, init?: RequestInit) => {
+              // HeadersInit は Headers | string[][] | Record<string, string> のため、安全に変換
+              const existingHeaders: Record<string, string> =
+                init?.headers instanceof Headers
+                  ? (Object.fromEntries(init.headers.entries()) as Record<
+                      string,
+                      string
+                    >)
+                  : Array.isArray(init?.headers)
+                    ? (Object.fromEntries(init.headers) as Record<
+                        string,
+                        string
+                      >)
+                    : ((init?.headers ?? {}) as Record<string, string>);
+              return fetch(url, {
                 ...init,
-                headers: { ...init?.headers, ...config.headers },
-              }),
+                headers: { ...existingHeaders, ...config.headers },
+              });
+            },
           },
         });
       case "STREAMABLE_HTTP":
