@@ -97,6 +97,8 @@ describe("runMcpProxy", () => {
     ];
     await runMcpProxy(configs);
 
+    // Desktop モードと同じく createProxyCore で ToolAggregator 経由の prefix 付き
+    // ツール名にするため、単体サーバーでも createProxyCore を使う必要がある
     expect(mocks.mockCreateProxyCore).toHaveBeenCalledOnce();
     expect(mocks.mockCreateProxyCore).toHaveBeenCalledWith(
       configs,
