@@ -65,6 +65,24 @@ export type CallToolResult = {
   isError?: boolean;
 };
 
+// ツール実行イベント（監査ログ等の外部処理を注入するためのコールバック型）
+export type ToolCallEvent = {
+  /** プレフィックス付きツール名（例: "server-name__tool-name"） */
+  prefixedToolName: string;
+  /** ツール引数 */
+  args: Record<string, unknown>;
+  /** 実行時間（ミリ秒） */
+  durationMs: number;
+  /** 成功/失敗 */
+  isSuccess: boolean;
+  /** エラーメッセージ（失敗時のみ） */
+  errorMessage?: string;
+  /** レスポンスコンテンツ */
+  resultContent: unknown[];
+};
+
+export type ToolCallHook = (event: ToolCallEvent) => void | Promise<void>;
+
 // Logger型（注入用）
 export type Logger = {
   info: (msg: string, meta?: unknown) => void;

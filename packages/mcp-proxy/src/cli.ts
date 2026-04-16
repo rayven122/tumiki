@@ -8,13 +8,19 @@
  * desktop の --server <slug> オプションで渡す configs を絞り込むことで
  * 単体サーバーとして動作させる。
  */
-import type { McpServerConfig } from "./types.js";
+import type { McpServerConfig, ToolCallHook } from "./types.js";
 import { createProxyCore } from "./core.js";
 import { startStdioInbound } from "./inbound/stdio-inbound.js";
 import { stderrLogger as logger } from "./stderr-logger.js";
 
+// プロキシ起動時に注入可能なフック
+export type ProxyHooks = {
+  onToolCall?: ToolCallHook;
+};
+
 export const runMcpProxy = async (
   configs: McpServerConfig[] = [],
+  hooks?: ProxyHooks,
 ): Promise<void> => {
   logger.info("tumiki-mcp-proxy を起動しています...");
 
@@ -24,7 +30,7 @@ export const runMcpProxy = async (
   await core.startAll();
 
   // stdio inboundサーバーを起動（AIツールからのリクエストを受け付け）
-  await startStdioInbound(core, logger);
+  await startStdioInbound(core, logger, hooks);
 
   logger.info("tumiki-mcp-proxy の起動が完了しました");
 

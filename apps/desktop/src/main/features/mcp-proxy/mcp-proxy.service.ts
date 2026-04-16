@@ -1,9 +1,18 @@
 import type { AuthType, McpServerConfig } from "@tumiki/mcp-proxy-core";
+import type { TransportType } from "@prisma/desktop-client";
 import { z } from "zod";
 import { getDb } from "../../shared/db";
 import * as mcpRepository from "../mcp-server-list/mcp.repository";
 import * as logger from "../../shared/utils/logger";
 import { decryptCredentials } from "../../utils/credentials";
+
+/** CLI監査ログ用: configName → DB情報のマッピング */
+export type McpConnectionMeta = {
+  configName: string;
+  serverId: number;
+  connectionName: string;
+  transportType: TransportType;
+};
 
 // McpConnection.args のバリデーション（string[] としてJSON.parse可能）
 const connectionArgsSchema = z.array(z.string());
@@ -75,15 +84,16 @@ const toProxyAuthType = (prismaAuthType: string): AuthType => {
  * - 各接続のバリデーションは独立しており、1件の不正データで他の接続が
  *   起動できなくなることはない（エラーは logger.error でスキップ）
  */
-export const getEnabledConfigs = async (
+const buildConfigsFromConnections = async (
   serverSlug?: string,
-): Promise<McpServerConfig[]> => {
+): Promise<{ configs: McpServerConfig[]; meta: McpConnectionMeta[] }> => {
   const db = await getDb();
   const connections = serverSlug
     ? await mcpRepository.findEnabledConnectionsBySlug(db, serverSlug)
     : await mcpRepository.findEnabledConnections(db);
 
   const configs: McpServerConfig[] = [];
+  const meta: McpConnectionMeta[] = [];
   for (const conn of connections) {
     const connLabel = `${conn.server.slug}/${conn.slug}`;
     const name = `${conn.server.slug}-${conn.slug}`;
@@ -159,6 +169,14 @@ export const getEnabledConfigs = async (
           );
           continue;
       }
+
+      // configが正常に追加された場合のみメタデータも追加
+      meta.push({
+        configName: name,
+        serverId: conn.server.id,
+        connectionName: conn.name,
+        transportType: conn.transportType,
+      });
     } catch (error) {
       // 1件の破損データで他サーバーが起動できなくなることを防ぐ：
       // エラーを個別にログしてスキップ、他の接続は正常に起動する
@@ -169,5 +187,24 @@ export const getEnabledConfigs = async (
       );
     }
   }
+  return { configs, meta };
+};
+
+/**
+ * 有効な接続からMcpServerConfig[]を生成（Proxy起動時に使用）
+ */
+export const getEnabledConfigs = async (
+  serverSlug?: string,
+): Promise<McpServerConfig[]> => {
+  const { configs } = await buildConfigsFromConnections(serverSlug);
   return configs;
+};
+
+/**
+ * 有効な接続からMcpServerConfig[]とメタデータを生成（CLI監査ログ用）
+ */
+export const getEnabledConfigsWithMeta = async (
+  serverSlug?: string,
+): Promise<{ configs: McpServerConfig[]; meta: McpConnectionMeta[] }> => {
+  return buildConfigsFromConnections(serverSlug);
 };

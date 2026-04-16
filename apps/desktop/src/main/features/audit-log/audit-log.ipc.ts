@@ -1,6 +1,7 @@
 import { ipcMain } from "electron";
 import { z } from "zod";
 import * as service from "./audit-log.service";
+import { deleteOldAuditLogs } from "./audit-log.writer";
 import * as logger from "../../shared/utils/logger";
 
 // IPC入力のバリデーションスキーマ
@@ -29,6 +30,20 @@ export const setupAuditLogIpc = (): void => {
         error instanceof Error ? error : { error },
       );
       throw new Error(`監査ログの取得に失敗しました: ${message}`);
+    }
+  });
+
+  // 古い監査ログを削除（7日以上）
+  ipcMain.handle("audit:clear", async () => {
+    try {
+      return await deleteOldAuditLogs(7);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "不明なエラー";
+      logger.error(
+        "Failed to clear old audit logs",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error(`監査ログの削除に失敗しました: ${message}`);
     }
   });
 };
