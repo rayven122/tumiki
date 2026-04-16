@@ -69,7 +69,12 @@ if (isMcpProxyMode) {
             ? event.prefixedToolName.slice(sepIdx + 2)
             : event.prefixedToolName;
         const connMeta = metaMap.get(configName);
-        if (!connMeta) return;
+        if (!connMeta) {
+          process.stderr.write(
+            `[tumiki-mcp-proxy] 監査ログスキップ: configName="${configName}" がメタマップに存在しません\n`,
+          );
+          return;
+        }
 
         const inputBytes = new TextEncoder().encode(
           JSON.stringify(event.args),
@@ -91,6 +96,11 @@ if (isMcpProxyMode) {
           connectionName: connMeta.connectionName,
         });
       };
+
+      // CLIモード終了時にDB接続を閉じる（SQLite WALファイルの残留を防止）
+      process.on("exit", () => {
+        void closeDb();
+      });
 
       const { join } = await import("path");
       const mod = (await import(join(__dirname, "mcp-cli.cjs"))) as {

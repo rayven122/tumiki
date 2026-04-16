@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
+import { afterEach, describe, test, expect, beforeEach, vi } from "vitest";
 
 // モックの設定
 vi.mock("electron", () => ({
@@ -71,10 +71,16 @@ describe("audit-log.writer", () => {
   });
 
   describe("deleteOldAuditLogs", () => {
-    test("デフォルト7日より古いログを削除する", async () => {
+    beforeEach(() => {
       vi.useFakeTimers({ shouldAdvanceTime: false });
       vi.setSystemTime(new Date("2026-04-15T00:00:00.000Z"));
+    });
 
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    test("デフォルト7日より古いログを削除する", async () => {
       const result = await deleteOldAuditLogs();
 
       expect(result).toBe(3);
@@ -84,14 +90,9 @@ describe("audit-log.writer", () => {
           createdAt: { lt: new Date("2026-04-08T00:00:00.000Z") },
         },
       });
-
-      vi.useRealTimers();
     });
 
     test("カスタム保持日数で古いログを削除する", async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: false });
-      vi.setSystemTime(new Date("2026-04-15T00:00:00.000Z"));
-
       await deleteOldAuditLogs(3);
 
       expect(mockDeleteMany).toHaveBeenCalledWith({
@@ -99,8 +100,6 @@ describe("audit-log.writer", () => {
           createdAt: { lt: new Date("2026-04-12T00:00:00.000Z") },
         },
       });
-
-      vi.useRealTimers();
     });
   });
 });
