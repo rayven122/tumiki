@@ -16,7 +16,9 @@ describe("oauth.protocol", () => {
     });
 
     test("異なるホストを拒否する", () => {
-      expect(isMcpOAuthCallback("tumiki://wrong-host/callback?code=abc")).toBe(false);
+      expect(isMcpOAuthCallback("tumiki://wrong-host/callback?code=abc")).toBe(
+        false,
+      );
     });
 
     test("異なるパスを拒否する", () => {
