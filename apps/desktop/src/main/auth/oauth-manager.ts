@@ -272,7 +272,7 @@ export const createOAuthManager = (
 
   /**
    * 認証コールバックを処理
-   * カスタムURLスキーム（tumiki-desktop://）から呼ばれる
+   * カスタムURLスキーム（tumiki://）から呼ばれる
    */
   const handleAuthCallback = async (url: string): Promise<void> => {
     try {

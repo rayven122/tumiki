@@ -142,7 +142,7 @@ resource "keycloak_openid_client_optional_scopes" "proxy_optional_scopes" {
 }
 
 # =============================================================================
-# tumiki-desktop クライアント
+# tumiki デスクトップクライアント
 # =============================================================================
 
 # Desktop Electron Application用のOIDCクライアント
@@ -166,7 +166,7 @@ resource "keycloak_openid_client" "desktop" {
 
   # リダイレクトURI設定（カスタムURLスキーム）
   valid_redirect_uris = var.desktop_redirect_uris
-  # カスタムURLスキーム（tumiki-desktop://）のみ使用するため、CORS設定は不要
+  # カスタムURLスキーム（tumiki://）のみ使用するため、CORS設定は不要
   web_origins = []
 }
 
