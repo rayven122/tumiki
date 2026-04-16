@@ -36,7 +36,7 @@ export const setupAuditLogIpc = (): void => {
   // 古い監査ログを削除（7日以上）
   ipcMain.handle("audit:clear", async () => {
     try {
-      return await deleteOldAuditLogs(7);
+      return await deleteOldAuditLogs();
     } catch (error) {
       const message = error instanceof Error ? error.message : "不明なエラー";
       logger.error(

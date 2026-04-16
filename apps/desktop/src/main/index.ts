@@ -40,7 +40,7 @@ if (isMcpProxyMode) {
       // 古い監査ログを自動削除（7日以上）
       const { deleteOldAuditLogs, writeAuditLog } =
         await import("./features/audit-log/audit-log.writer");
-      const deletedCount = await deleteOldAuditLogs(7);
+      const deletedCount = await deleteOldAuditLogs();
       if (deletedCount > 0) {
         process.stderr.write(
           `[tumiki-mcp-proxy] ${deletedCount}件の古い監査ログを削除しました\n`,
@@ -83,7 +83,7 @@ if (isMcpProxyMode) {
           JSON.stringify(event.resultContent),
         ).length;
 
-        void writeAuditLog({
+        return writeAuditLog({
           toolName,
           method: "tools/call",
           transportType: connMeta.transportType,
