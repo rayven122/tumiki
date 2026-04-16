@@ -14,7 +14,7 @@ const createConfig = (
 ): KeycloakConfig => ({
   issuer: "https://keycloak.example.com/realms/test",
   clientId: "test-client",
-  redirectUri: "tumiki-desktop://auth/callback",
+  redirectUri: "tumiki://auth/callback",
   ...overrides,
 });
 
@@ -60,7 +60,7 @@ describe("KeycloakClient", () => {
       );
       expect(parsed.searchParams.get("client_id")).toBe("test-client");
       expect(parsed.searchParams.get("redirect_uri")).toBe(
-        "tumiki-desktop://auth/callback",
+        "tumiki://auth/callback",
       );
       expect(parsed.searchParams.get("response_type")).toBe("code");
       expect(parsed.searchParams.get("scope")).toBe("openid profile email");

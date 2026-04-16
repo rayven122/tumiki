@@ -2,7 +2,7 @@
  * MCP OAuthカスタムプロトコルハンドラー
  *
  * tumiki://oauth/callback?code=xxx&state=yyy のURLを解析する。
- * 既存の tumiki-desktop://auth/callback (Keycloak用) とは別系統。
+ * tumiki://auth/callback (Keycloak用) とはホスト名で区別される。
  */
 
 const MCP_OAUTH_PROTOCOL = "tumiki:";

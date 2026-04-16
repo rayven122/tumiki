@@ -101,7 +101,7 @@ variable "desktop_redirect_uris" {
   description = "Desktop App リダイレクトURI一覧"
   type        = list(string)
   default = [
-    "tumiki-desktop://auth/callback"
+    "tumiki://auth/callback"
   ]
 }
 # セキュリティ設定

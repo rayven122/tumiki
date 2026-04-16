@@ -46,7 +46,7 @@ const createTestOAuthManager = (): OAuthManager =>
   createOAuthManager({
     issuer: "https://keycloak.example.com/realms/test",
     clientId: "test-client",
-    redirectUri: "tumiki-desktop://auth/callback",
+    redirectUri: "tumiki://auth/callback",
   });
 
 describe("OAuthManager", () => {
@@ -150,7 +150,7 @@ describe("OAuthManager", () => {
         | undefined;
       const state = authUrlCallArgs?.state ?? "";
 
-      const callbackUrl = `tumiki-desktop://auth/callback?code=auth-code&state=${state}`;
+      const callbackUrl = `tumiki://auth/callback?code=auth-code&state=${state}`;
       await manager.handleAuthCallback(callbackUrl);
 
       expect(mockExchangeCodeForToken).toHaveBeenCalledWith(
@@ -173,7 +173,7 @@ describe("OAuthManager", () => {
 
       await expect(
         manager.handleAuthCallback(
-          `tumiki-desktop://auth/callback?error=access_denied&error_description=User+cancelled&state=${state}`,
+          `tumiki://auth/callback?error=access_denied&error_description=User+cancelled&state=${state}`,
         ),
       ).rejects.toThrow("認証エラー: User cancelled");
     });
@@ -189,7 +189,7 @@ describe("OAuthManager", () => {
 
       await expect(
         manager.handleAuthCallback(
-          `tumiki-desktop://auth/callback?error=server_error&state=${state}`,
+          `tumiki://auth/callback?error=server_error&state=${state}`,
         ),
       ).rejects.toThrow("認証エラー: server_error");
     });
@@ -204,9 +204,7 @@ describe("OAuthManager", () => {
       const state = authUrlCallArgs?.state ?? "";
 
       await expect(
-        manager.handleAuthCallback(
-          `tumiki-desktop://auth/callback?state=${state}`,
-        ),
+        manager.handleAuthCallback(`tumiki://auth/callback?state=${state}`),
       ).rejects.toThrow("認可コードが見つかりません");
     });
 
@@ -215,9 +213,7 @@ describe("OAuthManager", () => {
       await manager.startAuthFlow();
 
       await expect(
-        manager.handleAuthCallback(
-          "tumiki-desktop://auth/callback?code=auth-code",
-        ),
+        manager.handleAuthCallback("tumiki://auth/callback?code=auth-code"),
       ).rejects.toThrow("stateパラメータが見つかりません");
     });
 
@@ -227,7 +223,7 @@ describe("OAuthManager", () => {
 
       await expect(
         manager.handleAuthCallback(
-          "tumiki-desktop://auth/callback?code=auth-code&state=wrong-state",
+          "tumiki://auth/callback?code=auth-code&state=wrong-state",
         ),
       ).rejects.toThrow("stateパラメータが一致しません");
     });
@@ -238,7 +234,7 @@ describe("OAuthManager", () => {
 
       await expect(
         manager.handleAuthCallback(
-          "tumiki-desktop://auth/callback?code=auth-code&state=some-state",
+          "tumiki://auth/callback?code=auth-code&state=some-state",
         ),
       ).rejects.toThrow("認証セッションが存在しません");
     });
@@ -257,7 +253,7 @@ describe("OAuthManager", () => {
 
       await expect(
         manager.handleAuthCallback(
-          `tumiki-desktop://auth/callback?code=auth-code&state=${state}`,
+          `tumiki://auth/callback?code=auth-code&state=${state}`,
         ),
       ).rejects.toThrow("認証セッションの有効期限が切れています");
     });
@@ -405,7 +401,7 @@ describe("OAuthManager", () => {
       // キャンセル後のコールバックはセッション不在エラーになる
       await expect(
         manager.handleAuthCallback(
-          "tumiki-desktop://auth/callback?code=auth-code&state=some-state",
+          "tumiki://auth/callback?code=auth-code&state=some-state",
         ),
       ).rejects.toThrow("認証セッションが存在しません");
     });
@@ -492,7 +488,7 @@ describe("OAuthManager", () => {
         {
           issuer: "https://keycloak.example.com/realms/test",
           clientId: "test-client",
-          redirectUri: "tumiki-desktop://auth/callback",
+          redirectUri: "tumiki://auth/callback",
         },
         { onAuthExpired },
       );
