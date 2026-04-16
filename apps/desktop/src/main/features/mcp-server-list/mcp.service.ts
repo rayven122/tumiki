@@ -125,3 +125,22 @@ export const toggleServer = async (id: number, isEnabled: boolean) => {
   const db = await getDb();
   return mcpRepository.toggleServerEnabled(db, id, isEnabled);
 };
+
+/**
+ * サーバーの稼働状態を更新（CLIモードからのステータス同期用）
+ */
+export const updateServerStatus = async (
+  id: number,
+  serverStatus: "RUNNING" | "STOPPED" | "ERROR" | "PENDING",
+) => {
+  const db = await getDb();
+  return mcpRepository.updateServerStatus(db, id, serverStatus);
+};
+
+/**
+ * 全サーバーのステータスを一括STOPPED化（シャットダウン時）
+ */
+export const resetAllServerStatus = async () => {
+  const db = await getDb();
+  return mcpRepository.updateAllServerStatus(db, "STOPPED");
+};

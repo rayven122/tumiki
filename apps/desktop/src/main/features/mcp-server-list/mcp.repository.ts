@@ -143,3 +143,24 @@ export const toggleServerEnabled = async (
 ) => {
   return db.mcpServer.update({ where: { id }, data: { isEnabled } });
 };
+
+/**
+ * サーバーの稼働状態を更新（CLIモードからのステータス同期用）
+ */
+export const updateServerStatus = async (
+  db: PrismaClient,
+  id: number,
+  serverStatus: "RUNNING" | "STOPPED" | "ERROR" | "PENDING",
+) => {
+  return db.mcpServer.update({ where: { id }, data: { serverStatus } });
+};
+
+/**
+ * 全サーバーのステータスを一括更新（シャットダウン時の一括STOPPED化等）
+ */
+export const updateAllServerStatus = async (
+  db: PrismaClient,
+  serverStatus: "RUNNING" | "STOPPED" | "ERROR" | "PENDING",
+) => {
+  return db.mcpServer.updateMany({ data: { serverStatus } });
+};
