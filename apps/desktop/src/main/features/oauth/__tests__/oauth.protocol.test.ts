@@ -11,12 +11,14 @@ describe("oauth.protocol", () => {
 
     test("Keycloakコールバックを拒否する", () => {
       expect(
-        isMcpOAuthCallback("tumiki-desktop://auth/callback?code=abc&state=xyz"),
+        isMcpOAuthCallback("tumiki://auth/callback?code=abc&state=xyz"),
       ).toBe(false);
     });
 
     test("異なるホストを拒否する", () => {
-      expect(isMcpOAuthCallback("tumiki://auth/callback?code=abc")).toBe(false);
+      expect(isMcpOAuthCallback("tumiki://wrong-host/callback?code=abc")).toBe(
+        false,
+      );
     });
 
     test("異なるパスを拒否する", () => {

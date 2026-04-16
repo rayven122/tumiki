@@ -62,12 +62,9 @@ if (isMcpProxyMode) {
     }
   });
 } else {
-  const PROTOCOL = "tumiki-desktop";
+  const PROTOCOL = "tumiki";
   const CALLBACK_HOST = "auth";
   const CALLBACK_PATHNAME = "/callback";
-
-  /** MCP OAuth用カスタムプロトコル */
-  const MCP_OAUTH_PROTOCOL = "tumiki";
 
   // シングルインスタンスロック（Windows/Linuxでsecond-instanceイベントに必要）
   const gotTheLock = app.requestSingleInstanceLock();
@@ -117,7 +114,7 @@ if (isMcpProxyMode) {
   };
 
   /**
-   * Keycloak認証コールバックを処理（tumiki-desktop://auth/callback）
+   * Keycloak認証コールバックを処理（tumiki://auth/callback）
    */
   const handleKeycloakCallback = async (url: string): Promise<void> => {
     ensureWindowAndFocus();
@@ -185,7 +182,7 @@ if (isMcpProxyMode) {
       return;
     }
 
-    // Keycloak認証コールバック（tumiki-desktop://auth/callback）
+    // Keycloak認証コールバック（tumiki://auth/callback）
     let isKeycloakCallback = false;
     try {
       const parsed = new URL(url);
@@ -220,10 +217,7 @@ if (isMcpProxyMode) {
     // argv末尾にURLが含まれる（Keycloak or MCP OAuthいずれか）
     const deepLinkUrl = argv.find((arg) => {
       try {
-        const protocol = new URL(arg).protocol;
-        return (
-          protocol === `${PROTOCOL}:` || protocol === `${MCP_OAUTH_PROTOCOL}:`
-        );
+        return new URL(arg).protocol === `${PROTOCOL}:`;
       } catch {
         return false;
       }
@@ -304,11 +298,6 @@ if (isMcpProxyMode) {
       // MCP OAuthマネージャー初期化
       mcpOAuthManager = createMcpOAuthManager();
       setupOAuthIpc(mcpOAuthManager);
-
-      // MCP OAuthカスタムプロトコルを登録
-      if (!app.isDefaultProtocolClient(MCP_OAUTH_PROTOCOL)) {
-        app.setAsDefaultProtocolClient(MCP_OAUTH_PROTOCOL);
-      }
 
       // IPC ハンドラー登録
       setupAuthIpc();
