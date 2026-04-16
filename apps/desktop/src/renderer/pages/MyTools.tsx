@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   Search,
@@ -153,12 +153,21 @@ export const MyTools = (): JSX.Element => {
 /** コピーボタン */
 const CopyButton = ({ text }: { text: string }): JSX.Element => {
   const [copied, setCopied] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    },
+    [],
+  );
+
   const handleCopy = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     void navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      timerRef.current = setTimeout(() => setCopied(false), 1500);
     });
   };
   return (

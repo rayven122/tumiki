@@ -26,7 +26,13 @@ export const useMcpServers = () => {
           toolCount: server.connections.length,
         })),
       );
-    } catch {
+    } catch (error) {
+      // ポーリング中のエラーは初回のみ通知（以降は無音で空配列にフォールバック）
+      if (isFirstLoad.current) {
+        toast.error(
+          `サーバー一覧の取得に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
       setServers([]);
     } finally {
       if (isFirstLoad.current) {

@@ -21,9 +21,17 @@ export const ConfirmDialog = ({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-dialog-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+    >
       <div className="w-full max-w-sm rounded-xl p-6" style={cardStyle}>
-        <h3 className="text-base font-semibold text-[var(--text-primary)]">
+        <h3
+          id="confirm-dialog-title"
+          className="text-base font-semibold text-[var(--text-primary)]"
+        >
           {title}
         </h3>
         <p className="mt-2 text-sm text-[var(--text-muted)]">{message}</p>
