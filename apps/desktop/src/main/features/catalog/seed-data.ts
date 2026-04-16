@@ -195,6 +195,17 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     authType: "API_KEY",
     isOfficial: true,
   },
+  {
+    name: "Firecrawl MCP",
+    description: "Firecrawl ウェブスクレイピング・クローリングサービス",
+    iconPath: "/logos/services/firecrawl.svg",
+    transportType: "STDIO",
+    command: "npx",
+    args: ["-y", "firecrawl-mcp"],
+    credentialKeys: ["FIRECRAWL_API_KEY"],
+    authType: "API_KEY",
+    isOfficial: true,
+  },
 
   // ========================================
   // Streamable HTTP / SSE（リモート）— 表の順
@@ -420,8 +431,8 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     iconPath: "/logos/services/outline.svg",
     transportType: "STREAMABLE_HTTP",
     url: "http://127.0.0.1:3000/mcp",
-    credentialKeys: [],
-    authType: "OAUTH",
+    credentialKeys: ["OUTLINE_API_KEY"],
+    authType: "BEARER",
     isOfficial: true,
   },
 ];
