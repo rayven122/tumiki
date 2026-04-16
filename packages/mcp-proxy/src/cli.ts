@@ -66,8 +66,33 @@ const isDirectExecution =
       new URL(import.meta.url).pathname ===
         new URL(process.argv[1], "file://").pathname;
 
+/**
+ * --config <path> からMcpServerConfig[]を読み込む
+ * JSON形式: McpServerConfig[] (配列) を期待する
+ */
+const loadConfigsFromFile = async (
+  configPath: string,
+): Promise<McpServerConfig[]> => {
+  const { readFile } = await import("fs/promises");
+  const { resolve } = await import("path");
+  const absolutePath = resolve(configPath);
+  const content = await readFile(absolutePath, "utf-8");
+  return JSON.parse(content) as McpServerConfig[];
+};
+
 if (isDirectExecution) {
-  void runMcpProxy().catch((error: unknown) => {
+  const configIdx = process.argv.indexOf("--config");
+  const configPath =
+    configIdx !== -1 && configIdx + 1 < process.argv.length
+      ? process.argv[configIdx + 1]
+      : undefined;
+
+  const start = async (): Promise<void> => {
+    const configs = configPath ? await loadConfigsFromFile(configPath) : [];
+    await runMcpProxy(configs);
+  };
+
+  void start().catch((error: unknown) => {
     logger.error("起動に失敗しました", error);
     process.exit(1);
   });
