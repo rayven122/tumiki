@@ -9,8 +9,10 @@ import {
   ChevronDown,
   Copy,
   Check,
+  Trash2,
 } from "lucide-react";
 import { ToggleSwitch } from "../_components/ToggleSwitch";
+import { ConfirmDialog } from "../_components/ConfirmDialog";
 import { useMcpServers } from "../hooks/useMcpServers";
 import type { McpServerWithRuntime } from "../hooks/useMcpServers";
 import { cardStyle } from "../utils/theme-styles";
@@ -46,7 +48,7 @@ const AI_CLIENTS = [
 
 export const MyTools = (): JSX.Element => {
   const [query, setQuery] = useState("");
-  const { servers, loading, toggleServer } = useMcpServers();
+  const { servers, loading, toggleServer, deleteServer } = useMcpServers();
 
   const lowerQuery = query.toLowerCase();
   const filteredServers = servers.filter(
@@ -126,6 +128,7 @@ export const MyTools = (): JSX.Element => {
                 onToggle={(isEnabled) =>
                   void toggleServer(server.id, isEnabled)
                 }
+                onDelete={() => void deleteServer(server.id)}
               />
             ))}
           </div>
@@ -174,12 +177,15 @@ const CopyButton = ({ text }: { text: string }): JSX.Element => {
 const ServerCard = ({
   server,
   onToggle,
+  onDelete,
 }: {
   server: McpServerWithRuntime;
   onToggle: (isEnabled: boolean) => void;
+  onDelete: () => void;
 }): JSX.Element => {
   const status = STATUS_CONFIG[server.serverStatus];
   const [showConnections, setShowConnections] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   return (
     <div
@@ -252,6 +258,18 @@ const ServerCard = ({
             />
           </button>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowDeleteConfirm(true);
+              }}
+              className="rounded p-1 text-[var(--text-subtle)] transition hover:text-red-400"
+              title="削除"
+            >
+              <Trash2 size={12} />
+            </button>
             <span className="text-[10px] text-[var(--text-subtle)]">
               {server.isEnabled ? "有効" : "無効"}
             </span>
@@ -278,6 +296,18 @@ const ServerCard = ({
           </div>
         )}
       </div>
+
+      {/* 削除確認モーダル */}
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title="サーバーを削除"
+        message={`「${server.name}」を削除しますか？この操作は取り消せません。`}
+        onConfirm={() => {
+          setShowDeleteConfirm(false);
+          onDelete();
+        }}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 };
