@@ -74,6 +74,51 @@ export const countByServer = async (
 };
 
 /**
+ * 全サーバー横断で監査ログを取得（オフセットベースページネーション）
+ */
+export const findAll = async (
+  db: PrismaClient,
+  params: AuditLogQueryParams,
+) => {
+  return db.auditLog.findMany({
+    where: buildWhereClause(params),
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    skip: params.skip,
+    take: params.take,
+  });
+};
+
+/**
+ * 全サーバー横断で監査ログの総件数を取得（フィルター条件適用）
+ */
+export const countAll = async (
+  db: PrismaClient,
+  params: Omit<AuditLogQueryParams, "skip" | "take">,
+) => {
+  return db.auditLog.count({ where: buildWhereClause(params) });
+};
+
+/**
+ * 全サーバー横断で利用統計を集計（フィルター条件適用、全件対象）
+ */
+export const aggregateAll = async (
+  db: PrismaClient,
+  params: Omit<AuditLogQueryParams, "skip" | "take">,
+) => {
+  const where = buildWhereClause(params);
+
+  const [successCount, avgResult] = await Promise.all([
+    db.auditLog.count({ where: { ...where, isSuccess: true } }),
+    db.auditLog.aggregate({ where, _avg: { durationMs: true } }),
+  ]);
+
+  return {
+    successCount,
+    avgDurationMs: Math.round(avgResult._avg.durationMs ?? 0),
+  };
+};
+
+/**
  * サーバー指定で利用統計を集計（フィルター条件適用、全件対象）
  */
 export const aggregateByServer = async (

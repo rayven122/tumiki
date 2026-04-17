@@ -32,6 +32,17 @@ export type AuditLogListInput = {
 };
 
 /**
+ * 全サーバー横断の監査ログ一覧取得の入力型（renderer → main）
+ */
+export type AuditLogListAllInput = {
+  page?: number;
+  perPage?: number;
+  statusFilter?: "all" | "success" | "error";
+  dateFrom?: string;
+  dateTo?: string;
+};
+
+/**
  * 監査ログ一覧取得の結果型（main → renderer）
  */
 export type AuditLogListResult = {

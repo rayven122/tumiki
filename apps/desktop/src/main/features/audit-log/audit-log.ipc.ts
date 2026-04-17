@@ -5,6 +5,14 @@ import { deleteOldAuditLogs } from "./audit-log.writer";
 import * as logger from "../../shared/utils/logger";
 
 // IPC入力のバリデーションスキーマ
+const listAllSchema = z.object({
+  page: z.number().int().min(1).optional(),
+  perPage: z.number().int().min(1).max(100).optional(),
+  statusFilter: z.enum(["all", "success", "error"]).optional(),
+  dateFrom: z.iso.date().optional(),
+  dateTo: z.iso.date().optional(),
+});
+
 const listByServerSchema = z.object({
   serverId: z.number().int().positive(),
   page: z.number().int().min(1).optional(),
@@ -18,6 +26,21 @@ const listByServerSchema = z.object({
  * 監査ログ関連の IPC ハンドラーを設定
  */
 export const setupAuditLogIpc = (): void => {
+  // 全サーバー横断で監査ログ一覧取得
+  ipcMain.handle("audit:list", async (_, input: unknown) => {
+    try {
+      const validated = listAllSchema.parse(input);
+      return await service.listAll(validated);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "不明なエラー";
+      logger.error(
+        "Failed to list all audit logs",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error(`監査ログの取得に失敗しました: ${message}`);
+    }
+  });
+
   // サーバー指定で監査ログ一覧取得
   ipcMain.handle("audit:list-by-server", async (_, input: unknown) => {
     try {
