@@ -97,18 +97,23 @@ export const startStdioInbound = async (
       if (hooks?.onToolCall) {
         const durationMs = Date.now() - startTime;
         // フックは非同期でもfire-and-forget（ツール応答を遅延させない）
-        Promise.resolve(
-          hooks.onToolCall({
-            prefixedToolName: name,
-            args: safeArgs,
-            durationMs,
-            isSuccess,
-            errorMessage,
-            resultContent,
-          }),
-        ).catch((e: unknown) => {
+        // try-catchで同期throwも捕捉する
+        try {
+          Promise.resolve(
+            hooks.onToolCall({
+              prefixedToolName: name,
+              args: safeArgs,
+              durationMs,
+              isSuccess,
+              errorMessage,
+              resultContent,
+            }),
+          ).catch((e: unknown) => {
+            logger.error("ツール実行フックでエラーが発生しました", { error: e });
+          });
+        } catch (e: unknown) {
           logger.error("ツール実行フックでエラーが発生しました", { error: e });
-        });
+        }
       }
     }
   });

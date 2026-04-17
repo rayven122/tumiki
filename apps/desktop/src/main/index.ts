@@ -83,12 +83,15 @@ if (isMcpProxyMode) {
           return;
         }
 
-        const inputBytes = new TextEncoder().encode(
-          JSON.stringify(event.args),
-        ).length;
-        const outputBytes = new TextEncoder().encode(
-          JSON.stringify(event.resultContent),
-        ).length;
+        const safeByteLength = (value: unknown): number => {
+          try {
+            return new TextEncoder().encode(JSON.stringify(value)).length;
+          } catch {
+            return 0;
+          }
+        };
+        const inputBytes = safeByteLength(event.args);
+        const outputBytes = safeByteLength(event.resultContent);
 
         return writeAuditLog({
           toolName,
