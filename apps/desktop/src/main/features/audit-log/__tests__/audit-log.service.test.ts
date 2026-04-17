@@ -169,4 +169,102 @@ describe("audit-log.service", () => {
       });
     });
   });
+
+  describe("listAll", () => {
+    const setupAggregateMock = (successCount = 2, avgDurationMs = 150) => {
+      vi.mocked(repository.aggregateAll).mockResolvedValue({
+        successCount,
+        avgDurationMs,
+      });
+    };
+
+    test("全サーバー横断で監査ログ一覧を取得しDate→string変換する", async () => {
+      const records = [
+        createMockAuditLog({ id: 2 }),
+        createMockAuditLog({ id: 1 }),
+      ];
+      vi.mocked(repository.findAll).mockResolvedValue(records);
+      vi.mocked(repository.countAll).mockResolvedValue(2);
+      setupAggregateMock(2, 150);
+
+      const result = await service.listAll({});
+
+      expect(result).toStrictEqual({
+        items: [
+          expect.objectContaining({
+            id: 2,
+            createdAt: "2026-04-01T10:00:00.000Z",
+          }),
+          expect.objectContaining({
+            id: 1,
+            createdAt: "2026-04-01T10:00:00.000Z",
+          }),
+        ],
+        totalCount: 2,
+        totalPages: 1,
+        currentPage: 1,
+        successRate: 100,
+        avgDurationMs: 150,
+      });
+    });
+
+    test("serverIdなしでrepositoryを呼び出す", async () => {
+      vi.mocked(repository.findAll).mockResolvedValue([]);
+      vi.mocked(repository.countAll).mockResolvedValue(0);
+      setupAggregateMock(0, 0);
+
+      await service.listAll({});
+
+      expect(repository.findAll).toHaveBeenCalledWith(mockDb, {
+        skip: 0,
+        take: 20,
+        statusFilter: undefined,
+        dateFrom: undefined,
+        dateTo: undefined,
+      });
+    });
+
+    test("フィルター条件をrepositoryに渡す", async () => {
+      vi.mocked(repository.findAll).mockResolvedValue([]);
+      vi.mocked(repository.countAll).mockResolvedValue(0);
+      setupAggregateMock(0, 0);
+
+      await service.listAll({
+        statusFilter: "error",
+        dateFrom: "2026-04-01",
+        dateTo: "2026-04-07",
+        perPage: 10,
+      });
+
+      expect(repository.findAll).toHaveBeenCalledWith(mockDb, {
+        skip: 0,
+        take: 10,
+        statusFilter: "error",
+        dateFrom: "2026-04-01",
+        dateTo: "2026-04-07",
+      });
+      expect(repository.countAll).toHaveBeenCalledWith(mockDb, {
+        statusFilter: "error",
+        dateFrom: "2026-04-01",
+        dateTo: "2026-04-07",
+      });
+    });
+
+    test("空結果の場合", async () => {
+      vi.mocked(repository.findAll).mockResolvedValue([]);
+      vi.mocked(repository.countAll).mockResolvedValue(0);
+      setupAggregateMock(0, 0);
+
+      const result = await service.listAll({});
+
+      expect(result).toStrictEqual({
+        items: [],
+        totalCount: 0,
+        totalPages: 0,
+        currentPage: 1,
+        successRate: 0,
+        avgDurationMs: 0,
+      });
+    });
+  });
 });

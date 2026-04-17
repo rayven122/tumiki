@@ -2,6 +2,7 @@ import { getDb } from "../../shared/db";
 import * as repository from "./audit-log.repository";
 import type {
   AuditLogItem,
+  AuditLogListAllInput,
   AuditLogListInput,
   AuditLogListResult,
 } from "./audit-log.types";
@@ -49,6 +50,40 @@ export const listByServer = async (
     }),
     repository.countByServer(db, filterParams),
     repository.aggregateByServer(db, filterParams),
+  ]);
+
+  return {
+    items: records.map(toAuditLogItem),
+    totalCount,
+    totalPages: Math.ceil(totalCount / perPage),
+    currentPage: page,
+    successRate:
+      totalCount > 0 ? Math.round((stats.successCount / totalCount) * 100) : 0,
+    avgDurationMs: stats.avgDurationMs,
+  };
+};
+
+/**
+ * 全サーバー横断で監査ログ一覧を取得（ページネーション・フィルター対応）
+ */
+export const listAll = async (
+  input: AuditLogListAllInput,
+): Promise<AuditLogListResult> => {
+  const db = await getDb();
+  const page = input.page ?? 1;
+  const perPage = input.perPage ?? FALLBACK_PER_PAGE;
+  const skip = (page - 1) * perPage;
+
+  const filterParams = {
+    statusFilter: input.statusFilter === "all" ? undefined : input.statusFilter,
+    dateFrom: input.dateFrom,
+    dateTo: input.dateTo,
+  };
+
+  const [records, totalCount, stats] = await Promise.all([
+    repository.findAll(db, { ...filterParams, skip, take: perPage }),
+    repository.countAll(db, filterParams),
+    repository.aggregateAll(db, filterParams),
   ]);
 
   return {

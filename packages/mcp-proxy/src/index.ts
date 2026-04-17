@@ -16,11 +16,16 @@ export type {
   ProxyRequest,
   ProxyResponse,
   ProxyEvent,
+  ToolCallEvent,
+  ToolCallHook,
 } from "./types.js";
 
 // コア
 export { createProxyCore, createSingleServerCore } from "./core.js";
 export type { ProxyCore } from "./core.js";
+
+// CLI
+export type { ProxyHooks } from "./cli.js";
 
 // Inbound
 export { startStdioInbound } from "./inbound/stdio-inbound.js";

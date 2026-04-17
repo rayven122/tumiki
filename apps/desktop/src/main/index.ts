@@ -34,19 +34,90 @@ if (isMcpProxyMode) {
           ? process.argv[serverIdx + 1]
           : undefined;
 
-      // DB初期化 → 有効なMCPサーバー設定を取得
+      // DB初期化
       await initializeDb();
-      const { getEnabledConfigs } =
+
+      // 古い監査ログを自動削除（7日以上）— 失敗してもプロキシ起動は継続
+      const { deleteOldAuditLogs, writeAuditLog } =
+        await import("./features/audit-log/audit-log.writer");
+      try {
+        const deletedCount = await deleteOldAuditLogs();
+        if (deletedCount > 0) {
+          process.stderr.write(
+            `[tumiki-mcp-proxy] ${deletedCount}件の古い監査ログを削除しました\n`,
+          );
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        process.stderr.write(
+          `[tumiki-mcp-proxy] 古い監査ログの削除に失敗しました（起動は継続します）: ${message}\n`,
+        );
+      }
+
+      // 有効なMCPサーバー設定 + 監査ログ用メタデータを取得
+      const { getEnabledConfigsWithMeta } =
         await import("./features/mcp-proxy/mcp-proxy.service");
-      const configs = await getEnabledConfigs(serverSlug);
+      const { configs, meta } = await getEnabledConfigsWithMeta(serverSlug);
+
+      // configName → メタデータのルックアップマップを構築
+      const metaMap = new Map(meta.map((m) => [m.configName, m]));
+
+      // 監査ログフックを構築
+      const onToolCall: import("@tumiki/mcp-proxy-core").ToolCallHook = (
+        event,
+      ) => {
+        const sepIdx = event.prefixedToolName.indexOf("__");
+        const configName =
+          sepIdx !== -1
+            ? event.prefixedToolName.slice(0, sepIdx)
+            : event.prefixedToolName;
+        const toolName =
+          sepIdx !== -1
+            ? event.prefixedToolName.slice(sepIdx + 2)
+            : event.prefixedToolName;
+        const connMeta = metaMap.get(configName);
+        if (!connMeta) {
+          process.stderr.write(
+            `[tumiki-mcp-proxy] 監査ログスキップ: configName="${configName}" がメタマップに存在しません\n`,
+          );
+          return;
+        }
+
+        const safeByteLength = (value: unknown): number => {
+          try {
+            return new TextEncoder().encode(JSON.stringify(value)).length;
+          } catch {
+            return 0;
+          }
+        };
+        const inputBytes = safeByteLength(event.args);
+        const outputBytes = safeByteLength(event.resultContent);
+
+        return writeAuditLog({
+          toolName,
+          method: "tools/call",
+          transportType: connMeta.transportType,
+          durationMs: event.durationMs,
+          inputBytes,
+          outputBytes,
+          isSuccess: event.isSuccess,
+          errorSummary: event.errorMessage?.slice(0, 500),
+          serverId: connMeta.serverId,
+          connectionName: connMeta.connectionName,
+        });
+      };
 
       const { join } = await import("path");
       const mod = (await import(join(__dirname, "mcp-cli.cjs"))) as {
         runMcpProxy: (
           configs: import("@tumiki/mcp-proxy-core").McpServerConfig[],
+          hooks?: import("@tumiki/mcp-proxy-core").ProxyHooks,
         ) => Promise<void>;
       };
-      await mod.runMcpProxy(configs);
+      await mod.runMcpProxy(configs, {
+        onToolCall,
+        onShutdown: () => closeDb(),
+      });
     } catch (error) {
       // CLIモードではstdoutはMCPプロトコル専用のため、stderrに出す
       // Claude Code側のログから原因にたどり着けるようエラー詳細を明記

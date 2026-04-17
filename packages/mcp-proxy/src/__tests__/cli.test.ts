@@ -88,6 +88,7 @@ describe("runMcpProxy", () => {
     expect(mocks.mockStartStdioInbound).toHaveBeenCalledWith(
       mocks.mockCore,
       expect.any(Object),
+      undefined,
     );
   });
 
@@ -122,6 +123,19 @@ describe("runMcpProxy", () => {
     expect(mocks.mockCreateProxyCore).toHaveBeenCalledWith(
       configs,
       expect.any(Object),
+    );
+  });
+
+  test("hooks を startStdioInbound に渡す", async () => {
+    const onToolCall = vi.fn();
+    const hooks = { onToolCall };
+
+    await runMcpProxy([], hooks);
+
+    expect(mocks.mockStartStdioInbound).toHaveBeenCalledWith(
+      mocks.mockCore,
+      expect.any(Object),
+      hooks,
     );
   });
 });
