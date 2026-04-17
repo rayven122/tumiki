@@ -45,9 +45,13 @@ export const runMcpProxy = async (
     let exitCode = 0;
     void core
       .stopAll()
+      .catch((error) => {
+        logger.error("MCPサーバーの停止中にエラーが発生しました", error);
+        exitCode = 1;
+      })
       .then(() => hooks?.onShutdown?.())
       .catch((error) => {
-        logger.error("シャットダウン中にエラーが発生しました", error);
+        logger.error("シャットダウンフックの実行中にエラーが発生しました", error);
         exitCode = 1;
       })
       .finally(() => {

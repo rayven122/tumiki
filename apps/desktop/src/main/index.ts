@@ -37,13 +37,20 @@ if (isMcpProxyMode) {
       // DB初期化
       await initializeDb();
 
-      // 古い監査ログを自動削除（7日以上）
+      // 古い監査ログを自動削除（7日以上）— 失敗してもプロキシ起動は継続
       const { deleteOldAuditLogs, writeAuditLog } =
         await import("./features/audit-log/audit-log.writer");
-      const deletedCount = await deleteOldAuditLogs();
-      if (deletedCount > 0) {
+      try {
+        const deletedCount = await deleteOldAuditLogs();
+        if (deletedCount > 0) {
+          process.stderr.write(
+            `[tumiki-mcp-proxy] ${deletedCount}件の古い監査ログを削除しました\n`,
+          );
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
         process.stderr.write(
-          `[tumiki-mcp-proxy] ${deletedCount}件の古い監査ログを削除しました\n`,
+          `[tumiki-mcp-proxy] 古い監査ログの削除に失敗しました（起動は継続します）: ${message}\n`,
         );
       }
 
