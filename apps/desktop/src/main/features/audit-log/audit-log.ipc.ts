@@ -57,13 +57,13 @@ export const setupAuditLogIpc = (): void => {
   });
 
   // 古い監査ログを削除（7日以上）
-  ipcMain.handle("audit:clear", async () => {
+  ipcMain.handle("audit:prune", async () => {
     try {
       return await deleteOldAuditLogs();
     } catch (error) {
       const message = error instanceof Error ? error.message : "不明なエラー";
       logger.error(
-        "Failed to clear old audit logs",
+        "Failed to prune old audit logs",
         error instanceof Error ? error : { error },
       );
       throw new Error(`監査ログの削除に失敗しました: ${message}`);

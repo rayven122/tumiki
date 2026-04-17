@@ -61,11 +61,11 @@ if (isMcpProxyMode) {
       ) => {
         const sepIdx = event.prefixedToolName.indexOf("__");
         const configName =
-          sepIdx > 0
+          sepIdx !== -1
             ? event.prefixedToolName.slice(0, sepIdx)
             : event.prefixedToolName;
         const toolName =
-          sepIdx > 0
+          sepIdx !== -1
             ? event.prefixedToolName.slice(sepIdx + 2)
             : event.prefixedToolName;
         const connMeta = metaMap.get(configName);
