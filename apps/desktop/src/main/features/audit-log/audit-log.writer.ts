@@ -1,24 +1,9 @@
-import type { TransportType } from "@prisma/desktop-client";
+import type { Prisma } from "@prisma/desktop-client";
 import { getDb } from "../../shared/db";
-
-/** 監査ログ書き込み用の入力型 */
-export type AuditLogWriteInput = {
-  toolName: string;
-  method: string;
-  transportType: TransportType;
-  durationMs: number;
-  inputBytes: number;
-  outputBytes: number;
-  isSuccess: boolean;
-  errorSummary?: string;
-  detail?: string;
-  serverId: number;
-  connectionName?: string;
-};
 
 /** 監査ログを1件書き込む */
 export const writeAuditLog = async (
-  input: AuditLogWriteInput,
+  input: Prisma.AuditLogUncheckedCreateInput,
 ): Promise<void> => {
   const db = await getDb();
   await db.auditLog.create({ data: input });
