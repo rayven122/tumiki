@@ -6,7 +6,6 @@ import {
   ArrowRight,
   Server,
   Plus,
-  ChevronDown,
   Copy,
   Check,
   Trash2,
@@ -31,18 +30,19 @@ const STATUS_CONFIG: Record<
 /** AIクライアント接続情報（カード下部に表示） */
 const AI_CLIENTS = [
   {
-    name: "Claude Code",
-    path: (slug: string) => `claude mcp add ${slug} -- npx tumiki-mcp-bridge`,
+    name: "Claude Code / .mcp.json",
+    path: (slug: string) =>
+      `{ "${slug}": { "command": "env", "args": ["-u", "ELECTRON_RUN_AS_NODE", "path/to/Electron", "path/to/apps/desktop", "--mcp-proxy", "--server", "${slug}"], "env": { "DESKTOP_DATABASE_URL": "file:path/to/apps/desktop/prisma/desktop.db" } } }`,
   },
   {
     name: "Cursor",
     path: (slug: string) =>
-      `{ "mcpServers": { "${slug}": { "command": "npx", "args": ["tumiki-mcp-bridge"] } } }`,
+      `{ "mcpServers": { "${slug}": { "command": "env", "args": ["-u", "ELECTRON_RUN_AS_NODE", "path/to/Electron", "path/to/apps/desktop", "--mcp-proxy", "--server", "${slug}"], "env": { "DESKTOP_DATABASE_URL": "file:path/to/apps/desktop/prisma/desktop.db" } } } }`,
   },
   {
     name: "Claude Desktop",
     path: (slug: string) =>
-      `{ "mcpServers": { "${slug}": { "command": "npx", "args": ["tumiki-mcp-bridge"] } } }`,
+      `{ "mcpServers": { "${slug}": { "command": "env", "args": ["-u", "ELECTRON_RUN_AS_NODE", "path/to/Electron", "path/to/apps/desktop", "--mcp-proxy", "--server", "${slug}"], "env": { "DESKTOP_DATABASE_URL": "file:path/to/apps/desktop/prisma/desktop.db" } } } }`,
   },
 ];
 
@@ -193,7 +193,6 @@ const ServerCard = ({
   onDelete: () => void;
 }): JSX.Element => {
   const status = STATUS_CONFIG[server.serverStatus];
-  const [showConnections, setShowConnections] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   return (
@@ -249,23 +248,11 @@ const ServerCard = ({
 
       {/* フッター: トグル + 接続コマンド */}
       <div className="border-t border-t-[var(--border-subtle)] px-4 py-3">
-        {/* トグルスイッチ + 接続コマンド開閉 */}
+        {/* トグルスイッチ + 削除 */}
         <div className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setShowConnections(!showConnections);
-            }}
-            className="flex items-center gap-1 text-[10px] text-[var(--text-muted)] transition hover:text-[var(--text-primary)]"
-          >
+          <span className="text-[10px] text-[var(--text-muted)]">
             接続コマンド
-            <ChevronDown
-              size={10}
-              className={`transition-transform ${showConnections ? "rotate-180" : ""}`}
-            />
-          </button>
+          </span>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -286,24 +273,22 @@ const ServerCard = ({
           </div>
         </div>
 
-        {/* 接続コマンド一覧（トグルで表示） */}
-        {showConnections && (
-          <div className="mt-2 space-y-1.5">
-            {AI_CLIENTS.map((ai) => (
-              <div key={ai.name} className="text-[9px]">
-                <span className="mb-0.5 block text-[var(--text-subtle)]">
-                  {ai.name}
-                </span>
-                <div className="flex items-center gap-1">
-                  <code className="flex-1 rounded bg-[var(--bg-input)] px-1.5 py-1 font-mono break-all text-[var(--text-secondary)]">
-                    {ai.path(server.slug)}
-                  </code>
-                  <CopyButton text={ai.path(server.slug)} />
-                </div>
+        {/* 接続コマンド一覧（常に表示） */}
+        <div className="mt-2 space-y-1.5">
+          {AI_CLIENTS.map((ai) => (
+            <div key={ai.name} className="text-[9px]">
+              <span className="mb-0.5 block text-[var(--text-subtle)]">
+                {ai.name}
+              </span>
+              <div className="flex items-center gap-1">
+                <code className="flex-1 rounded bg-[var(--bg-input)] px-1.5 py-1 font-mono break-all text-[var(--text-secondary)]">
+                  {ai.path(server.slug)}
+                </code>
+                <CopyButton text={ai.path(server.slug)} />
               </div>
-            ))}
-          </div>
-        )}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* 削除確認モーダル */}
