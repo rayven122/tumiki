@@ -32,17 +32,17 @@ const AI_CLIENTS = [
   {
     name: "Claude Code / .mcp.json",
     path: (slug: string) =>
-      `{ "${slug}": { "command": "env", "args": ["-u", "ELECTRON_RUN_AS_NODE", "path/to/Electron", "path/to/apps/desktop", "--mcp-proxy", "--server", "${slug}"], "env": { "DESKTOP_DATABASE_URL": "file:path/to/apps/desktop/prisma/desktop.db" } } }`,
+      `{ "${slug}": { "command": "env", "args": ["-u", "ELECTRON_RUN_AS_NODE", "path/to/Electron", "path/to/apps/desktop", "--mcp-proxy", "--server", "${slug}"] } }`,
   },
   {
     name: "Cursor",
     path: (slug: string) =>
-      `{ "mcpServers": { "${slug}": { "command": "env", "args": ["-u", "ELECTRON_RUN_AS_NODE", "path/to/Electron", "path/to/apps/desktop", "--mcp-proxy", "--server", "${slug}"], "env": { "DESKTOP_DATABASE_URL": "file:path/to/apps/desktop/prisma/desktop.db" } } } }`,
+      `{ "mcpServers": { "${slug}": { "command": "env", "args": ["-u", "ELECTRON_RUN_AS_NODE", "path/to/Electron", "path/to/apps/desktop", "--mcp-proxy", "--server", "${slug}"] } } }`,
   },
   {
     name: "Claude Desktop",
     path: (slug: string) =>
-      `{ "mcpServers": { "${slug}": { "command": "env", "args": ["-u", "ELECTRON_RUN_AS_NODE", "path/to/Electron", "path/to/apps/desktop", "--mcp-proxy", "--server", "${slug}"], "env": { "DESKTOP_DATABASE_URL": "file:path/to/apps/desktop/prisma/desktop.db" } } } }`,
+      `{ "mcpServers": { "${slug}": { "command": "env", "args": ["-u", "ELECTRON_RUN_AS_NODE", "path/to/Electron", "path/to/apps/desktop", "--mcp-proxy", "--server", "${slug}"] } } }`,
   },
 ];
 
