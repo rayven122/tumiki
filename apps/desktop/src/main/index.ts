@@ -37,7 +37,7 @@ if (isMcpProxyMode) {
       // DB初期化 → 有効なMCPサーバー設定を取得
       await initializeDb();
       const { getEnabledConfigs } =
-        await import("./features/mcp-server-list/mcp.service");
+        await import("./features/mcp-proxy/mcp-proxy.service");
       const configs = await getEnabledConfigs(serverSlug);
 
       const { join } = await import("path");

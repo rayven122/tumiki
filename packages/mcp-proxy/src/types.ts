@@ -1,13 +1,41 @@
 // サーバー状態
 export type ServerStatus = "running" | "stopped" | "error" | "pending";
 
-// MCPサーバー設定（PoCではハードコード）
-export type McpServerConfig = {
+// 認証タイプ（HTTP系トランスポート用）
+export type AuthType = "NONE" | "BEARER" | "API_KEY";
+
+// STDIO トランスポート設定
+export type StdioServerConfig = {
   name: string;
+  transportType: "STDIO";
   command: string;
   args: string[];
   env: Record<string, string>;
 };
+
+// SSE トランスポート設定
+export type SseServerConfig = {
+  name: string;
+  transportType: "SSE";
+  url: string;
+  authType: AuthType;
+  headers: Record<string, string>;
+};
+
+// Streamable HTTP トランスポート設定
+export type StreamableHttpServerConfig = {
+  name: string;
+  transportType: "STREAMABLE_HTTP";
+  url: string;
+  authType: AuthType;
+  headers: Record<string, string>;
+};
+
+// MCPサーバー設定（discriminated union）
+export type McpServerConfig =
+  | StdioServerConfig
+  | SseServerConfig
+  | StreamableHttpServerConfig;
 
 // 複数MCPサーバーを束ねたグループ設定
 export type McpServerGroupConfig = {

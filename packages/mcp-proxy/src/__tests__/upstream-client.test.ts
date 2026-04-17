@@ -1,3 +1,6 @@
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { UpstreamClient } from "../outbound/upstream-client.js";
@@ -23,31 +26,46 @@ vi.mock("@modelcontextprotocol/sdk/client/index.js", () => ({
   })),
 }));
 
+/**
+ * onclose/onerrorをキャプチャするモックトランスポートを生成
+ */
+const createMockTransport = () => {
+  const transport = {
+    onclose: undefined as (() => void) | undefined,
+    onerror: undefined as ((error: Error) => void) | undefined,
+  };
+  Object.defineProperty(transport, "onclose", {
+    set: (fn: () => void) => {
+      transportOnClose = fn;
+    },
+    get: () => transportOnClose,
+  });
+  Object.defineProperty(transport, "onerror", {
+    set: (fn: (error: Error) => void) => {
+      transportOnError = fn;
+    },
+    get: () => transportOnError,
+  });
+  return transport;
+};
+
 vi.mock("@modelcontextprotocol/sdk/client/stdio.js", () => ({
-  StdioClientTransport: vi.fn().mockImplementation(() => {
-    const transport = {
-      onclose: undefined as (() => void) | undefined,
-      onerror: undefined as ((error: Error) => void) | undefined,
-    };
-    // onclose/onerrorのセッターをキャプチャ
-    Object.defineProperty(transport, "onclose", {
-      set: (fn: () => void) => {
-        transportOnClose = fn;
-      },
-      get: () => transportOnClose,
-    });
-    Object.defineProperty(transport, "onerror", {
-      set: (fn: (error: Error) => void) => {
-        transportOnError = fn;
-      },
-      get: () => transportOnError,
-    });
-    return transport;
-  }),
+  StdioClientTransport: vi.fn().mockImplementation(() => createMockTransport()),
+}));
+
+vi.mock("@modelcontextprotocol/sdk/client/sse.js", () => ({
+  SSEClientTransport: vi.fn().mockImplementation(() => createMockTransport()),
+}));
+
+vi.mock("@modelcontextprotocol/sdk/client/streamableHttp.js", () => ({
+  StreamableHTTPClientTransport: vi
+    .fn()
+    .mockImplementation(() => createMockTransport()),
 }));
 
 const createTestConfig = (): McpServerConfig => ({
   name: "test-server",
+  transportType: "STDIO",
   command: "echo",
   args: ["hello"],
   env: {},
@@ -268,6 +286,112 @@ describe("UpstreamClient", () => {
         "test-server",
         "running",
         undefined,
+      );
+    });
+  });
+
+  describe("createTransport（トランスポート生成）", () => {
+    test("STDIO設定でStdioClientTransportが生成される", async () => {
+      mockConnect.mockResolvedValue(undefined);
+      await client.connect();
+
+      expect(StdioClientTransport).toHaveBeenCalledWith({
+        command: "echo",
+        args: ["hello"],
+        env: expect.objectContaining({}) as unknown,
+      });
+    });
+
+    test("SSE設定でSSEClientTransportが生成される", async () => {
+      const sseConfig: McpServerConfig = {
+        name: "sse-server",
+        transportType: "SSE",
+        url: "http://localhost:3000/sse",
+        authType: "BEARER",
+        headers: { Authorization: "Bearer test-token" },
+      };
+      const sseClient = createUpstreamClient(sseConfig, mockLogger);
+      mockConnect.mockResolvedValue(undefined);
+
+      await sseClient.connect();
+
+      expect(SSEClientTransport).toHaveBeenCalledWith(
+        new URL("http://localhost:3000/sse"),
+        expect.objectContaining({
+          requestInit: { headers: { Authorization: "Bearer test-token" } },
+          eventSourceInit: expect.objectContaining({
+            fetch: expect.any(Function) as unknown,
+          }) as unknown,
+        }),
+      );
+    });
+
+    test("SSEのeventSourceInit.fetchがカスタムヘッダーを注入する", async () => {
+      const sseConfig: McpServerConfig = {
+        name: "sse-server",
+        transportType: "SSE",
+        url: "http://localhost:3000/sse",
+        authType: "BEARER",
+        headers: { Authorization: "Bearer injected" },
+      };
+      const sseClient = createUpstreamClient(sseConfig, mockLogger);
+      mockConnect.mockResolvedValue(undefined);
+
+      // connect()を呼んでcreateTransport()を実行させる
+      await sseClient.connect();
+
+      // SSEClientTransportに渡されたeventSourceInit.fetchを取得
+      const constructorCall = vi.mocked(SSEClientTransport).mock.calls[0] as
+        | [
+            URL,
+            {
+              eventSourceInit: {
+                fetch: (
+                  url: string | URL,
+                  init?: RequestInit,
+                ) => Promise<Response>;
+              };
+            },
+          ]
+        | undefined;
+      const options = constructorCall?.[1];
+      if (!options) throw new Error("SSEClientTransportが呼び出されていません");
+      const customFetch = options.eventSourceInit.fetch;
+
+      // カスタムfetchがヘッダーをマージすることを検証
+      const mockFetchFn = vi.fn().mockResolvedValue(new Response());
+      vi.stubGlobal("fetch", mockFetchFn);
+
+      await customFetch("http://localhost:3000/sse", {
+        headers: { "Content-Type": "text/event-stream" },
+      });
+
+      expect(mockFetchFn).toHaveBeenCalledWith("http://localhost:3000/sse", {
+        headers: {
+          "Content-Type": "text/event-stream",
+          Authorization: "Bearer injected",
+        },
+      });
+
+      vi.unstubAllGlobals();
+    });
+
+    test("STREAMABLE_HTTP設定でStreamableHTTPClientTransportが生成される", async () => {
+      const httpConfig: McpServerConfig = {
+        name: "http-server",
+        transportType: "STREAMABLE_HTTP",
+        url: "http://localhost:3000/mcp",
+        authType: "NONE",
+        headers: {},
+      };
+      const httpClient = createUpstreamClient(httpConfig, mockLogger);
+      mockConnect.mockResolvedValue(undefined);
+
+      await httpClient.connect();
+
+      expect(StreamableHTTPClientTransport).toHaveBeenCalledWith(
+        new URL("http://localhost:3000/mcp"),
+        { requestInit: { headers: {} } },
       );
     });
   });

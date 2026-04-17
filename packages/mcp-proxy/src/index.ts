@@ -1,6 +1,10 @@
 // 型
 export type {
   ServerStatus,
+  AuthType,
+  StdioServerConfig,
+  SseServerConfig,
+  StreamableHttpServerConfig,
   McpServerConfig,
   McpServerGroupConfig,
   McpServerState,
