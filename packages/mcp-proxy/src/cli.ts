@@ -16,6 +16,8 @@ import { stderrLogger as logger } from "./stderr-logger.js";
 // プロキシ起動時に注入可能なフック
 export type ProxyHooks = {
   onToolCall?: ToolCallHook;
+  /** シャットダウン時にprocess.exit()前に呼ばれるコールバック（DB切断等） */
+  onShutdown?: () => Promise<void>;
 };
 
 export const runMcpProxy = async (
@@ -43,6 +45,7 @@ export const runMcpProxy = async (
     let exitCode = 0;
     void core
       .stopAll()
+      .then(() => hooks?.onShutdown?.())
       .catch((error) => {
         logger.error("シャットダウン中にエラーが発生しました", error);
         exitCode = 1;

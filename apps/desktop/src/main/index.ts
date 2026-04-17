@@ -97,11 +97,6 @@ if (isMcpProxyMode) {
         });
       };
 
-      // CLIモード終了時にDB接続を閉じる（SQLite WALファイルの残留を防止）
-      process.on("exit", () => {
-        void closeDb();
-      });
-
       const { join } = await import("path");
       const mod = (await import(join(__dirname, "mcp-cli.cjs"))) as {
         runMcpProxy: (
@@ -109,7 +104,10 @@ if (isMcpProxyMode) {
           hooks?: import("@tumiki/mcp-proxy-core").ProxyHooks,
         ) => Promise<void>;
       };
-      await mod.runMcpProxy(configs, { onToolCall });
+      await mod.runMcpProxy(configs, {
+        onToolCall,
+        onShutdown: () => closeDb(),
+      });
     } catch (error) {
       // CLIモードではstdoutはMCPプロトコル専用のため、stderrに出す
       // Claude Code側のログから原因にたどり着けるようエラー詳細を明記
