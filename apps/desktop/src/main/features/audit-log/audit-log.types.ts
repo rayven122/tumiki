@@ -50,6 +50,8 @@ export type AuditLogListResult = {
   totalCount: number;
   totalPages: number;
   currentPage: number;
+  /** フィルタ無関係の全体件数 */
+  overallCount: number;
   /** 全件ベースの成功率（0〜100） */
   successRate: number;
   /** 全件ベースの平均応答時間（ミリ秒） */

@@ -54,9 +54,12 @@ export const HistoryList = (): JSX.Element => {
   const tools = [...new Set(items.map((i) => i.toolName))];
 
   const totalCount = result?.totalCount ?? 0;
+  const overallCount = result?.overallCount ?? 0;
   const successRate = result?.successRate ?? 0;
   const errorCount =
-    totalCount > 0 ? totalCount - Math.round((totalCount * successRate) / 100) : 0;
+    overallCount > 0
+      ? overallCount - Math.round((overallCount * successRate) / 100)
+      : 0;
   const avgDuration = result?.avgDurationMs ?? 0;
 
   return (
@@ -74,7 +77,7 @@ export const HistoryList = (): JSX.Element => {
       {/* サマリーカード4つ */}
       <div className="grid grid-cols-4 gap-3">
         {[
-          { label: "総件数", value: totalCount, color: "var(--text-primary)" },
+          { label: "総件数", value: overallCount, color: "var(--text-primary)" },
           {
             label: "成功率",
             value: `${successRate}%`,

@@ -42,14 +42,22 @@ export const listByServer = async (
     dateTo: input.dateTo,
   };
 
-  const [records, totalCount, stats] = await Promise.all([
+  // 統計はフィルタに依存しない全体値を返す
+  const statsParams = {
+    serverId: input.serverId,
+    dateFrom: input.dateFrom,
+    dateTo: input.dateTo,
+  };
+
+  const [records, totalCount, overallCount, stats] = await Promise.all([
     repository.findByServer(db, {
       ...filterParams,
       skip,
       take: perPage,
     }),
     repository.countByServer(db, filterParams),
-    repository.aggregateByServer(db, filterParams),
+    repository.countByServer(db, statsParams),
+    repository.aggregateByServer(db, statsParams),
   ]);
 
   return {
@@ -57,8 +65,11 @@ export const listByServer = async (
     totalCount,
     totalPages: Math.ceil(totalCount / perPage),
     currentPage: page,
+    overallCount,
     successRate:
-      totalCount > 0 ? Math.round((stats.successCount / totalCount) * 100) : 0,
+      overallCount > 0
+        ? Math.round((stats.successCount / overallCount) * 100)
+        : 0,
     avgDurationMs: stats.avgDurationMs,
   };
 };
@@ -80,10 +91,14 @@ export const listAll = async (
     dateTo: input.dateTo,
   };
 
-  const [records, totalCount, stats] = await Promise.all([
+  // 統計はフィルタに依存しない全体値を返す
+  const statsParams = { dateFrom: input.dateFrom, dateTo: input.dateTo };
+
+  const [records, totalCount, overallCount, stats] = await Promise.all([
     repository.findAll(db, { ...filterParams, skip, take: perPage }),
     repository.countAll(db, filterParams),
-    repository.aggregateAll(db, filterParams),
+    repository.countAll(db, statsParams),
+    repository.aggregateAll(db, statsParams),
   ]);
 
   return {
@@ -91,8 +106,11 @@ export const listAll = async (
     totalCount,
     totalPages: Math.ceil(totalCount / perPage),
     currentPage: page,
+    overallCount,
     successRate:
-      totalCount > 0 ? Math.round((stats.successCount / totalCount) * 100) : 0,
+      overallCount > 0
+        ? Math.round((stats.successCount / overallCount) * 100)
+        : 0,
     avgDurationMs: stats.avgDurationMs,
   };
 };
