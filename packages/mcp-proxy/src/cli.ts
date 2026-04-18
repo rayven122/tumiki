@@ -19,11 +19,7 @@ export type ProxyHooks = {
   /** シャットダウン時にprocess.exit()前に呼ばれるコールバック（DB切断等） */
   onShutdown?: () => Promise<void>;
   /** サーバーの接続状態が変化したときに呼ばれるコールバック */
-  onStatusChange?: (
-    name: string,
-    status: ServerStatus,
-    error?: string,
-  ) => void;
+  onStatusChange?: (name: string, status: ServerStatus, error?: string) => void;
 };
 
 export const runMcpProxy = async (
@@ -62,7 +58,10 @@ export const runMcpProxy = async (
       })
       .then(() => hooks?.onShutdown?.())
       .catch((error) => {
-        logger.error("シャットダウンフックの実行中にエラーが発生しました", error);
+        logger.error(
+          "シャットダウンフックの実行中にエラーが発生しました",
+          error,
+        );
         exitCode = 1;
       })
       .finally(() => {

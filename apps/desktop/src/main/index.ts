@@ -71,7 +71,10 @@ if (isMcpProxyMode) {
       }
 
       // mcp-proxyのステータス（小文字）→ DBのServerStatus（大文字）マッピング
-      const statusMap: Record<string, "RUNNING" | "STOPPED" | "ERROR" | "PENDING"> = {
+      const statusMap: Record<
+        string,
+        "RUNNING" | "STOPPED" | "ERROR" | "PENDING"
+      > = {
         running: "RUNNING",
         stopped: "STOPPED",
         error: "ERROR",
@@ -80,11 +83,11 @@ if (isMcpProxyMode) {
 
       // ステータス変更フック: configNameからサーバーIDを引いてDB更新
       const onStatusChange = (name: string, status: string): void => {
-          const connMeta = metaMap.get(name);
-          if (!connMeta) return;
-          const dbStatus = statusMap[status] ?? "STOPPED";
-          void updateServerStatus(connMeta.serverId, dbStatus);
-        };
+        const connMeta = metaMap.get(name);
+        if (!connMeta) return;
+        const dbStatus = statusMap[status] ?? "STOPPED";
+        void updateServerStatus(connMeta.serverId, dbStatus);
+      };
 
       // 監査ログフックを構築
       const onToolCall: import("@tumiki/mcp-proxy-core").ToolCallHook = (
