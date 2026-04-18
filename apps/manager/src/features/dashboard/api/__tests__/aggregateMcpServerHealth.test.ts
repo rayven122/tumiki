@@ -1,4 +1,3 @@
-import type { ServerStatus } from "@tumiki/db";
 import { describe, test, expect } from "vitest";
 import { aggregateMcpServerHealth } from "../aggregateMcpServerHealth";
 
@@ -6,7 +5,7 @@ const createServer = (
   id: string,
   name: string,
   slug: string,
-  serverStatus: ServerStatus = "RUNNING",
+  serverStatus: "RUNNING" | "STOPPED" | "ERROR" | "PENDING" = "RUNNING",
   iconPath: string | null = null,
   templateInstances: {
     mcpServerTemplate: { iconPath: string | null } | null;
