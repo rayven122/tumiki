@@ -32,17 +32,17 @@ const AI_CLIENTS = [
   {
     name: "Claude Code / .mcp.json",
     path: (slug: string) =>
-      `{ "${slug}": { "command": "env", "args": ["-u", "ELECTRON_RUN_AS_NODE", "path/to/Electron", "path/to/apps/desktop", "--mcp-proxy", "--server", "${slug}"] } }`,
+      `{ "${slug}": { "command": "path/to/Electron", "args": ["path/to/apps/desktop", "--mcp-proxy", "--server", "${slug}"] } }`,
   },
   {
     name: "Cursor",
     path: (slug: string) =>
-      `{ "mcpServers": { "${slug}": { "command": "env", "args": ["-u", "ELECTRON_RUN_AS_NODE", "path/to/Electron", "path/to/apps/desktop", "--mcp-proxy", "--server", "${slug}"] } } }`,
+      `{ "mcpServers": { "${slug}": { "command": "path/to/Electron", "args": ["path/to/apps/desktop", "--mcp-proxy", "--server", "${slug}"] } } }`,
   },
   {
     name: "Claude Desktop",
     path: (slug: string) =>
-      `{ "mcpServers": { "${slug}": { "command": "env", "args": ["-u", "ELECTRON_RUN_AS_NODE", "path/to/Electron", "path/to/apps/desktop", "--mcp-proxy", "--server", "${slug}"] } } }`,
+      `{ "mcpServers": { "${slug}": { "command": "path/to/Electron", "args": ["path/to/apps/desktop", "--mcp-proxy", "--server", "${slug}"] } } }`,
   },
 ];
 
