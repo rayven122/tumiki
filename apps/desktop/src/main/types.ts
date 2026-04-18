@@ -29,5 +29,6 @@ export type {
 export type {
   AuditLogItem,
   AuditLogListInput,
+  AuditLogListAllInput,
   AuditLogListResult,
 } from "./features/audit-log/audit-log.types";

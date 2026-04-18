@@ -1,6 +1,6 @@
 import type { JSX } from "react";
-import { useParams, Link } from "react-router-dom";
-import { HISTORY } from "../data/mock";
+import { useLocation, Link } from "react-router-dom";
+import type { AuditLogItem } from "../../main/types";
 import { statusBadge } from "../utils/theme-styles";
 
 /** 情報フィールドの表示 */
@@ -23,9 +23,19 @@ const InfoField = ({
   </div>
 );
 
+/** ISO文字列 → MM/DD HH:mm:ss */
+const formatDateTime = (iso: string): string => {
+  const d = new Date(iso);
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const time = d.toLocaleTimeString("ja-JP", { hour12: false });
+  return `${month}/${day} ${time}`;
+};
+
 export const HistoryDetail = (): JSX.Element => {
-  const { historyId } = useParams<{ historyId: string }>();
-  const item = HISTORY.find((h) => h.id === historyId);
+  const location = useLocation();
+  const item = (location.state as { auditLog?: AuditLogItem } | null)
+    ?.auditLog;
 
   if (!item) {
     return (
@@ -37,14 +47,14 @@ export const HistoryDetail = (): JSX.Element => {
           ← 操作履歴
         </Link>
         <p className="mt-8 text-center text-[var(--text-muted)]">
-          該当する履歴が見つかりません
+          該当する履歴が見つかりません。操作履歴から選択してください。
         </p>
       </div>
     );
   }
 
-  const badge = statusBadge(item.status);
-  const isErrorState = item.status === "blocked" || item.status === "error";
+  const status = item.isSuccess ? "success" : "error";
+  const badge = statusBadge(status);
 
   return (
     <div className="space-y-4 p-6">
@@ -71,51 +81,43 @@ export const HistoryDetail = (): JSX.Element => {
 
       {/* 操作情報カード */}
       <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">
-        {/* 2カラムグリッドで情報を配置 */}
         <div className="grid grid-cols-2 gap-6">
-          <InfoField label="日時" value={item.datetime} />
-          <InfoField label="ツール" value={item.tool} />
-          <InfoField label="操作" value={item.operation} mono />
-          <InfoField label="ステータス" value={item.detail} />
-          <InfoField label="レイテンシ" value={item.latency} />
-          <InfoField label="リクエストID" value={item.requestId} mono />
+          <InfoField label="日時" value={formatDateTime(item.createdAt)} />
+          <InfoField
+            label="接続先"
+            value={item.connectionName ?? "不明"}
+          />
+          <InfoField label="ツール" value={item.toolName} />
+          <InfoField label="メソッド" value={item.method} mono />
+          <InfoField label="レイテンシ" value={`${item.durationMs}ms`} />
+          <InfoField label="接続方式" value={item.transportType} mono />
         </div>
       </div>
 
-      {/* エラー詳細カード（blocked/errorの場合のみ） */}
-      {isErrorState && item.errorReason && (
+      {/* エラー詳細カード（エラー時のみ） */}
+      {!item.isSuccess && item.errorSummary && (
         <div className="rounded-xl border border-[var(--badge-error-bg)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">
           <h2 className="mb-3 text-sm font-semibold text-[var(--badge-error-text)]">
             エラー詳細
           </h2>
           <div className="grid grid-cols-2 gap-6">
             <div>
-              <p className="text-xs text-[var(--text-muted)]">理由</p>
+              <p className="text-xs text-[var(--text-muted)]">概要</p>
               <p className="mt-1 text-sm text-[var(--badge-error-text)]">
-                {item.errorReason}
+                {item.errorSummary}
               </p>
             </div>
-            {item.requiredRole && (
+            {item.errorCode !== null && (
               <div>
-                <p className="text-xs text-[var(--text-muted)]">必要なロール</p>
-                <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                  {item.requiredRole}
+                <p className="text-xs text-[var(--text-muted)]">
+                  エラーコード
+                </p>
+                <p className="mt-1 font-mono text-sm text-[var(--text-secondary)]">
+                  {item.errorCode}
                 </p>
               </div>
             )}
           </div>
-
-          {/* 権限申請ボタン（blocked時のみ） */}
-          {item.status === "blocked" && (
-            <div className="mt-4">
-              <Link
-                to="/requests/new"
-                className="inline-block rounded-lg bg-[var(--btn-primary-bg)] px-4 py-2 text-sm font-medium text-[var(--btn-primary-text)] transition-colors hover:opacity-90"
-              >
-                この操作の権限を申請する
-              </Link>
-            </div>
-          )}
         </div>
       )}
 
