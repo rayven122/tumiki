@@ -77,7 +77,11 @@ export const HistoryList = (): JSX.Element => {
       {/* サマリーカード4つ */}
       <div className="grid grid-cols-4 gap-3">
         {[
-          { label: "総件数", value: overallCount, color: "var(--text-primary)" },
+          {
+            label: "総件数",
+            value: overallCount,
+            color: "var(--text-primary)",
+          },
           {
             label: "成功率",
             value: `${successRate}%`,
@@ -141,9 +145,7 @@ export const HistoryList = (): JSX.Element => {
             <select
               value={statusFilter}
               onChange={(e) => {
-                setStatusFilter(
-                  e.target.value as "all" | "success" | "error",
-                );
+                setStatusFilter(e.target.value as "all" | "success" | "error");
                 setPage(1);
               }}
               className="rounded-lg px-2 py-1 text-xs outline-none"

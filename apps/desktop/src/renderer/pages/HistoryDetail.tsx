@@ -34,8 +34,7 @@ const formatDateTime = (iso: string): string => {
 
 export const HistoryDetail = (): JSX.Element => {
   const location = useLocation();
-  const item = (location.state as { auditLog?: AuditLogItem } | null)
-    ?.auditLog;
+  const item = (location.state as { auditLog?: AuditLogItem } | null)?.auditLog;
 
   if (!item) {
     return (
@@ -83,10 +82,7 @@ export const HistoryDetail = (): JSX.Element => {
       <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">
         <div className="grid grid-cols-2 gap-6">
           <InfoField label="日時" value={formatDateTime(item.createdAt)} />
-          <InfoField
-            label="接続先"
-            value={item.connectionName ?? "不明"}
-          />
+          <InfoField label="接続先" value={item.connectionName ?? "不明"} />
           <InfoField label="ツール" value={item.toolName} />
           <InfoField label="メソッド" value={item.method} mono />
           <InfoField label="レイテンシ" value={`${item.durationMs}ms`} />
@@ -109,9 +105,7 @@ export const HistoryDetail = (): JSX.Element => {
             </div>
             {item.errorCode !== null && (
               <div>
-                <p className="text-xs text-[var(--text-muted)]">
-                  エラーコード
-                </p>
+                <p className="text-xs text-[var(--text-muted)]">エラーコード</p>
                 <p className="mt-1 font-mono text-sm text-[var(--text-secondary)]">
                   {item.errorCode}
                 </p>
