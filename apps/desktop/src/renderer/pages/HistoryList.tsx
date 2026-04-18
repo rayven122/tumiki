@@ -19,16 +19,33 @@ const formatTime = (iso: string): string => {
 const toStatus = (item: AuditLogItem): string =>
   item.isSuccess ? "success" : "error";
 
+/** CSVフィールドのエスケープ（RFC 4180準拠） */
+const escapeCsv = (value: string): string => {
+  if (/[",\n\r]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+};
+
 /** CSV生成・ダウンロード */
 const downloadCsv = (items: AuditLogItem[]): void => {
   const header = "日時,接続先,ツール,メソッド,ステータス,応答時間(ms)\n";
   const rows = items
-    .map(
-      (i) =>
-        `${i.createdAt},${i.connectionName ?? "不明"},${i.toolName},${i.method},${i.isSuccess ? "成功" : "エラー"},${i.durationMs}`,
+    .map((i) =>
+      [
+        escapeCsv(i.createdAt),
+        escapeCsv(i.connectionName ?? "不明"),
+        escapeCsv(i.toolName),
+        escapeCsv(i.method),
+        i.isSuccess ? "成功" : "エラー",
+        String(i.durationMs),
+      ].join(","),
     )
     .join("\n");
-  const blob = new Blob([header + rows], { type: "text/csv;charset=utf-8;" });
+  const bom = "\uFEFF";
+  const blob = new Blob([bom + header + rows], {
+    type: "text/csv;charset=utf-8;",
+  });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -131,7 +148,10 @@ export const HistoryList = (): JSX.Element => {
           <div className="flex items-center gap-2">
             <select
               value={toolFilter}
-              onChange={(e) => setToolFilter(e.target.value)}
+              onChange={(e) => {
+                setToolFilter(e.target.value);
+                setPage(1);
+              }}
               className="rounded-lg px-2 py-1 text-xs outline-none"
               style={selectStyle}
             >
