@@ -14,6 +14,7 @@ import { createMcpOAuthManager } from "./features/oauth/oauth.service";
 import { setupOAuthIpc } from "./features/oauth/oauth.ipc";
 import { isMcpOAuthCallback } from "./features/oauth/oauth.protocol";
 import type { McpOAuthManager } from "./features/oauth/oauth.service";
+import type { ServerStatus } from "@prisma/desktop-client";
 import * as logger from "./shared/utils/logger";
 
 // --mcp-proxy モード: GUI不要、stdioでMCPプロキシとして動作
@@ -71,10 +72,7 @@ if (isMcpProxyMode) {
       }
 
       // mcp-proxyのステータス（小文字）→ DBのServerStatus（大文字）マッピング
-      const statusMap: Record<
-        string,
-        "RUNNING" | "STOPPED" | "ERROR" | "PENDING"
-      > = {
+      const statusMap: Record<string, ServerStatus> = {
         running: "RUNNING",
         stopped: "STOPPED",
         error: "ERROR",

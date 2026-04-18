@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/desktop-client";
+import type { PrismaClient, ServerStatus } from "@prisma/desktop-client";
 
 /**
  * MCPサーバー作成時の入力データ型
@@ -150,7 +150,7 @@ export const toggleServerEnabled = async (
 export const updateServerStatus = async (
   db: PrismaClient,
   id: number,
-  serverStatus: "RUNNING" | "STOPPED" | "ERROR" | "PENDING",
+  serverStatus: ServerStatus,
 ) => {
   return db.mcpServer.update({ where: { id }, data: { serverStatus } });
 };
@@ -160,7 +160,7 @@ export const updateServerStatus = async (
  */
 export const updateAllServerStatus = async (
   db: PrismaClient,
-  serverStatus: "RUNNING" | "STOPPED" | "ERROR" | "PENDING",
+  serverStatus: ServerStatus,
 ) => {
   return db.mcpServer.updateMany({ data: { serverStatus } });
 };

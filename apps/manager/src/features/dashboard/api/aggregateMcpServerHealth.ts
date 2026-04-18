@@ -1,3 +1,4 @@
+import type { ServerStatus } from "@tumiki/db";
 import type { z } from "zod";
 import type { McpServerHealthItemSchema } from "./schemas";
 
@@ -7,7 +8,7 @@ type McpServerInput = {
   name: string;
   slug: string;
   iconPath: string | null;
-  serverStatus: "RUNNING" | "STOPPED" | "ERROR" | "PENDING";
+  serverStatus: ServerStatus;
   templateInstances: {
     mcpServerTemplate: {
       iconPath: string | null;
