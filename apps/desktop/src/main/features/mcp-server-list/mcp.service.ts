@@ -1,4 +1,4 @@
-import type { ServerStatus } from "@prisma/desktop-client";
+import { ServerStatus } from "@prisma/desktop-client";
 import { getDb } from "../../shared/db";
 import * as mcpRepository from "./mcp.repository";
 import * as logger from "../../shared/utils/logger";
@@ -143,5 +143,5 @@ export const updateServerStatus = async (
  */
 export const resetAllServerStatus = async () => {
   const db = await getDb();
-  return mcpRepository.updateAllServerStatus(db, "STOPPED");
+  return mcpRepository.updateAllServerStatus(db, ServerStatus.STOPPED);
 };

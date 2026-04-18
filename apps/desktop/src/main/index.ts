@@ -14,7 +14,7 @@ import { createMcpOAuthManager } from "./features/oauth/oauth.service";
 import { setupOAuthIpc } from "./features/oauth/oauth.ipc";
 import { isMcpOAuthCallback } from "./features/oauth/oauth.protocol";
 import type { McpOAuthManager } from "./features/oauth/oauth.service";
-import type { ServerStatus } from "@prisma/desktop-client";
+import { ServerStatus } from "@prisma/desktop-client";
 import * as logger from "./shared/utils/logger";
 
 // --mcp-proxy モード: GUI不要、stdioでMCPプロキシとして動作
@@ -68,22 +68,22 @@ if (isMcpProxyMode) {
       // 対象サーバーをPENDINGに更新（起動前の状態表示）
       const serverIds = new Set(meta.map((m) => m.serverId));
       for (const id of serverIds) {
-        await updateServerStatus(id, "PENDING");
+        await updateServerStatus(id, ServerStatus.PENDING);
       }
 
       // mcp-proxyのステータス（小文字）→ DBのServerStatus（大文字）マッピング
       const statusMap: Record<string, ServerStatus> = {
-        running: "RUNNING",
-        stopped: "STOPPED",
-        error: "ERROR",
-        pending: "PENDING",
+        running: ServerStatus.RUNNING,
+        stopped: ServerStatus.STOPPED,
+        error: ServerStatus.ERROR,
+        pending: ServerStatus.PENDING,
       };
 
       // ステータス変更フック: configNameからサーバーIDを引いてDB更新
       const onStatusChange = (name: string, status: string): void => {
         const connMeta = metaMap.get(name);
         if (!connMeta) return;
-        const dbStatus = statusMap[status] ?? "STOPPED";
+        const dbStatus = statusMap[status] ?? ServerStatus.STOPPED;
         void updateServerStatus(connMeta.serverId, dbStatus);
       };
 
