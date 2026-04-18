@@ -40,6 +40,7 @@ const AI_CLIENTS = [
       `{ "mcpServers": { "${slug}": { "command": "path/to/Electron", "args": ["path/to/apps/desktop", "--mcp-proxy", "--server", "${slug}"] } } }`,
   },
   {
+    // CursorとClaude Desktopは同一のSTDIO形式（mcpServers構造が共通）
     name: "Claude Desktop",
     path: (slug: string) =>
       `{ "mcpServers": { "${slug}": { "command": "path/to/Electron", "args": ["path/to/apps/desktop", "--mcp-proxy", "--server", "${slug}"] } } }`,

@@ -1,4 +1,5 @@
 import type { JSX } from "react";
+import { useEffect, useId } from "react";
 import { cardStyle } from "../utils/theme-styles";
 
 type ConfirmDialogProps = {
@@ -18,18 +19,30 @@ export const ConfirmDialog = ({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps): JSX.Element | null => {
+  const titleId = useId();
+
+  // Escapeキーでダイアログを閉じる（WAI-ARIA dialog仕様）
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (e.key === "Escape") onCancel();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open, onCancel]);
+
   if (!open) return null;
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-labelledby="confirm-dialog-title"
+      aria-labelledby={titleId}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
     >
       <div className="w-full max-w-sm rounded-xl p-6" style={cardStyle}>
         <h3
-          id="confirm-dialog-title"
+          id={titleId}
           className="text-base font-semibold text-[var(--text-primary)]"
         >
           {title}
