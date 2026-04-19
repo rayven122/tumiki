@@ -221,12 +221,7 @@ export const HistoryList = (): JSX.Element => {
                 key={item.id}
                 to={`/history/${item.id}`}
                 state={{ auditLog: item }}
-                className="grid grid-cols-[80px_90px_120px_1fr_85px_56px] items-center gap-2 border-b border-b-[var(--border-subtle)] px-5 py-2.5 text-xs transition-colors hover:opacity-90"
-                style={{
-                  backgroundColor: isErrorRow(status)
-                    ? "rgba(239,68,68,0.03)"
-                    : "transparent",
-                }}
+                className={`grid grid-cols-[80px_90px_120px_1fr_85px_56px] items-center gap-2 border-b border-b-[var(--border-subtle)] px-5 py-2.5 text-xs transition-colors hover:opacity-90 ${isErrorRow(status) ? "bg-red-500/[0.03]" : ""}`}
               >
                 {/* 日時 */}
                 <span className="font-mono text-[11px] text-[var(--text-subtle)]">
