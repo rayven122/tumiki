@@ -8,7 +8,7 @@
  * desktop の --server <slug> オプションで渡す configs を絞り込むことで
  * 単体サーバーとして動作させる。
  */
-import type { McpServerConfig, ToolCallHook } from "./types.js";
+import type { McpServerConfig, ServerStatus, ToolCallHook } from "./types.js";
 import { createProxyCore } from "./core.js";
 import { startStdioInbound } from "./inbound/stdio-inbound.js";
 import { stderrLogger as logger } from "./stderr-logger.js";
@@ -18,6 +18,8 @@ export type ProxyHooks = {
   onToolCall?: ToolCallHook;
   /** シャットダウン時にprocess.exit()前に呼ばれるコールバック（DB切断等） */
   onShutdown?: () => Promise<void>;
+  /** サーバーの接続状態が変化したときに呼ばれるコールバック */
+  onStatusChange?: (name: string, status: ServerStatus, error?: string) => void;
 };
 
 export const runMcpProxy = async (
@@ -27,6 +29,11 @@ export const runMcpProxy = async (
   logger.info("tumiki-mcp-proxy を起動しています...");
 
   const core = createProxyCore(configs, logger);
+
+  // ステータス変更フックを登録
+  if (hooks?.onStatusChange) {
+    core.onStatusChange(hooks.onStatusChange);
+  }
 
   // 全MCPサーバーに接続
   await core.startAll();
@@ -51,7 +58,10 @@ export const runMcpProxy = async (
       })
       .then(() => hooks?.onShutdown?.())
       .catch((error) => {
-        logger.error("シャットダウンフックの実行中にエラーが発生しました", error);
+        logger.error(
+          "シャットダウンフックの実行中にエラーが発生しました",
+          error,
+        );
         exitCode = 1;
       })
       .finally(() => {

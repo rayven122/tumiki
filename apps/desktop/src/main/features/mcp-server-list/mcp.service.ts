@@ -1,3 +1,4 @@
+import { ServerStatus } from "@prisma/desktop-client";
 import { getDb } from "../../shared/db";
 import * as mcpRepository from "./mcp.repository";
 import * as logger from "../../shared/utils/logger";
@@ -124,4 +125,23 @@ export const deleteServer = async (id: number) => {
 export const toggleServer = async (id: number, isEnabled: boolean) => {
   const db = await getDb();
   return mcpRepository.toggleServerEnabled(db, id, isEnabled);
+};
+
+/**
+ * サーバーの稼働状態を更新（CLIモードからのステータス同期用）
+ */
+export const updateServerStatus = async (
+  id: number,
+  serverStatus: ServerStatus,
+) => {
+  const db = await getDb();
+  return mcpRepository.updateServerStatus(db, id, serverStatus);
+};
+
+/**
+ * 全サーバーのステータスを一括STOPPED化（シャットダウン時）
+ */
+export const resetAllServerStatus = async () => {
+  const db = await getDb();
+  return mcpRepository.updateAllServerStatus(db, ServerStatus.STOPPED);
 };

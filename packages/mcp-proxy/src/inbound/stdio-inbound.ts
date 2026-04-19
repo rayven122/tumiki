@@ -109,7 +109,9 @@ export const startStdioInbound = async (
               resultContent,
             }),
           ).catch((e: unknown) => {
-            logger.error("ツール実行フックでエラーが発生しました", { error: e });
+            logger.error("ツール実行フックでエラーが発生しました", {
+              error: e,
+            });
           });
         } catch (e: unknown) {
           logger.error("ツール実行フックでエラーが発生しました", { error: e });

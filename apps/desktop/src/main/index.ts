@@ -14,6 +14,7 @@ import { createMcpOAuthManager } from "./features/oauth/oauth.service";
 import { setupOAuthIpc } from "./features/oauth/oauth.ipc";
 import { isMcpOAuthCallback } from "./features/oauth/oauth.protocol";
 import type { McpOAuthManager } from "./features/oauth/oauth.service";
+import { ServerStatus } from "@prisma/desktop-client";
 import * as logger from "./shared/utils/logger";
 
 // --mcp-proxy モード: GUI不要、stdioでMCPプロキシとして動作
@@ -57,10 +58,34 @@ if (isMcpProxyMode) {
       // 有効なMCPサーバー設定 + 監査ログ用メタデータを取得
       const { getEnabledConfigsWithMeta } =
         await import("./features/mcp-proxy/mcp-proxy.service");
+      const { updateServerStatus, resetAllServerStatus } =
+        await import("./features/mcp-server-list/mcp.service");
       const { configs, meta } = await getEnabledConfigsWithMeta(serverSlug);
 
       // configName → メタデータのルックアップマップを構築
       const metaMap = new Map(meta.map((m) => [m.configName, m]));
+
+      // 対象サーバーをPENDINGに更新（起動前の状態表示）
+      const serverIds = new Set(meta.map((m) => m.serverId));
+      for (const id of serverIds) {
+        await updateServerStatus(id, ServerStatus.PENDING);
+      }
+
+      // mcp-proxyのステータス（小文字）→ DBのServerStatus（大文字）マッピング
+      const statusMap: Record<string, ServerStatus> = {
+        running: ServerStatus.RUNNING,
+        stopped: ServerStatus.STOPPED,
+        error: ServerStatus.ERROR,
+        pending: ServerStatus.PENDING,
+      };
+
+      // ステータス変更フック: configNameからサーバーIDを引いてDB更新
+      const onStatusChange = (name: string, status: string): void => {
+        const connMeta = metaMap.get(name);
+        if (!connMeta) return;
+        const dbStatus = statusMap[status] ?? ServerStatus.STOPPED;
+        void updateServerStatus(connMeta.serverId, dbStatus);
+      };
 
       // 監査ログフックを構築
       const onToolCall: import("@tumiki/mcp-proxy-core").ToolCallHook = (
@@ -116,7 +141,11 @@ if (isMcpProxyMode) {
       };
       await mod.runMcpProxy(configs, {
         onToolCall,
-        onShutdown: () => closeDb(),
+        onStatusChange,
+        onShutdown: async () => {
+          await resetAllServerStatus().catch(() => {});
+          await closeDb();
+        },
       });
     } catch (error) {
       // CLIモードではstdoutはMCPプロトコル専用のため、stderrに出す
