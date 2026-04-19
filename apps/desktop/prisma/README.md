@@ -105,6 +105,8 @@ erDiagram
   DateTime createdAt
   Int serverId FK
   String connectionName "nullable"
+  String clientName "nullable"
+  String clientVersion "nullable"
 }
 "McpConnection" }o--|| "McpServer" : server
 "McpConnection" }o--o| "McpCatalog" : catalog
@@ -199,6 +201,8 @@ MCPサーバー（仮想・統合サーバー = Proxyエンドポイント）
   - `createdAt`: 
   - `serverId`: 対象MCPサーバー
   - `connectionName`: 対象MCP接続名（接続削除後もログで識別可能にするため名前で保持）
+  - `clientName`: AIクライアント名（例: "claude-code", "cursor"）
+  - `clientVersion`: AIクライアントバージョン
 
 
 ## OAuth

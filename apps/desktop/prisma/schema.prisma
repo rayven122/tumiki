@@ -247,6 +247,10 @@ model AuditLog {
   server         McpServer     @relation(fields: [serverId], references: [id], onDelete: Cascade)
   /// 対象MCP接続名（接続削除後もログで識別可能にするため名前で保持）
   connectionName String?
+  /// AIクライアント名（例: "claude-code", "cursor"）
+  clientName     String?
+  /// AIクライアントバージョン
+  clientVersion  String?
 
   @@index([serverId, createdAt])
   @@index([createdAt])

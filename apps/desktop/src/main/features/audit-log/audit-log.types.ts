@@ -17,6 +17,8 @@ export type AuditLogItem = {
   createdAt: string;
   serverId: number;
   connectionName: string | null;
+  clientName: string | null;
+  clientVersion: string | null;
 };
 
 /**

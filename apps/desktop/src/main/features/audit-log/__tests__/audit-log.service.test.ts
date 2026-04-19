@@ -39,6 +39,8 @@ const createMockAuditLog = (
   createdAt: overrides.createdAt ?? new Date("2026-04-01T10:00:00.000Z"),
   serverId: 1,
   connectionName: "conn-1",
+  clientName: null,
+  clientVersion: null,
 });
 
 describe("audit-log.service", () => {
