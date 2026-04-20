@@ -10,6 +10,7 @@ import type {
   ToggleServerInput,
   StartOAuthInput,
   OAuthResult,
+  AuditLogListAllInput,
   AuditLogListInput,
   AuditLogListResult,
 } from "../main/types";
@@ -81,8 +82,11 @@ const api = {
 
   // 監査ログ API
   audit: {
+    list: (input: AuditLogListAllInput): Promise<AuditLogListResult> =>
+      ipcRenderer.invoke("audit:list", input),
     listByServer: (input: AuditLogListInput): Promise<AuditLogListResult> =>
       ipcRenderer.invoke("audit:list-by-server", input),
+    prune: (): Promise<number> => ipcRenderer.invoke("audit:prune"),
   },
 
   // MCP OAuth認証 API

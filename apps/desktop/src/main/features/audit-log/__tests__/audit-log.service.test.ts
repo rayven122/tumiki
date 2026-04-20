@@ -83,6 +83,7 @@ describe("audit-log.service", () => {
         totalCount: 2,
         totalPages: 1,
         currentPage: 1,
+        overallCount: 2,
         successRate: 100,
         avgDurationMs: 150,
       });
@@ -102,6 +103,7 @@ describe("audit-log.service", () => {
       expect(result.totalPages).toBe(3);
       expect(result.currentPage).toBe(1);
       expect(result.totalCount).toBe(50);
+      expect(result.overallCount).toBe(50);
       expect(result.successRate).toBe(80);
       expect(result.avgDurationMs).toBe(200);
     });
@@ -135,6 +137,7 @@ describe("audit-log.service", () => {
         totalCount: 0,
         totalPages: 0,
         currentPage: 1,
+        overallCount: 0,
         successRate: 0,
         avgDurationMs: 0,
       });
@@ -203,6 +206,7 @@ describe("audit-log.service", () => {
         totalCount: 2,
         totalPages: 1,
         currentPage: 1,
+        overallCount: 2,
         successRate: 100,
         avgDurationMs: 150,
       });
@@ -262,6 +266,7 @@ describe("audit-log.service", () => {
         totalCount: 0,
         totalPages: 0,
         currentPage: 1,
+        overallCount: 0,
         successRate: 0,
         avgDurationMs: 0,
       });
