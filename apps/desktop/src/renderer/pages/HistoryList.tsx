@@ -2,7 +2,13 @@ import type { JSX } from "react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAtomValue } from "jotai";
-import { Activity, Download, ChevronLeft, ChevronRight, Bot } from "lucide-react";
+import {
+  Activity,
+  Download,
+  ChevronLeft,
+  ChevronRight,
+  Bot,
+} from "lucide-react";
 import type { AuditLogItem } from "../../main/types";
 import { useAuditLogs } from "../hooks/useAuditLogs";
 import { statusBadge, isErrorRow, selectStyle } from "../utils/theme-styles";
