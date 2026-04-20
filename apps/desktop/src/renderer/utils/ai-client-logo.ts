@@ -35,7 +35,7 @@ export const getClientLogo = (
   clientName: string | null,
 ): { dark: string; light: string } | null => {
   if (!clientName) return null;
-  const key = clientName.toLowerCase();
+  const key = clientName.toLowerCase().replace(/-/g, " ");
   return (
     Object.entries(AI_CLIENT_LOGOS).find(([k]) => key.includes(k))?.[1] ?? null
   );

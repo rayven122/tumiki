@@ -1,19 +1,11 @@
 import type { JSX } from "react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useAtomValue } from "jotai";
-import {
-  Activity,
-  Download,
-  ChevronLeft,
-  ChevronRight,
-  Bot,
-} from "lucide-react";
+import { Activity, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import type { AuditLogItem } from "../../main/types";
 import { useAuditLogs } from "../hooks/useAuditLogs";
 import { statusBadge, isErrorRow, selectStyle } from "../utils/theme-styles";
-import { themeAtom } from "../store/atoms";
-import { getClientLogo } from "../utils/ai-client-logo";
+import { ClientLogo } from "../_components/ClientLogo";
 
 /** ISO文字列 → HH:mm:ss */
 const formatTime = (iso: string): string => {
@@ -63,7 +55,6 @@ const downloadCsv = (items: AuditLogItem[]): void => {
 };
 
 export const HistoryList = (): JSX.Element => {
-  const theme = useAtomValue(themeAtom);
   const [page, setPage] = useState(1);
   const [toolFilter, setToolFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "success" | "error">(
@@ -239,18 +230,7 @@ export const HistoryList = (): JSX.Element => {
 
                 {/* AIクライアント */}
                 <div className="flex items-center gap-1.5 overflow-hidden">
-                  {(() => {
-                    const logo = getClientLogo(item.clientName);
-                    return logo ? (
-                      <img
-                        src={theme === "dark" ? logo.dark : logo.light}
-                        alt=""
-                        className="h-4 w-4 shrink-0 rounded-sm"
-                      />
-                    ) : (
-                      <Bot className="h-4 w-4 shrink-0 text-[var(--text-muted)]" />
-                    );
-                  })()}
+                  <ClientLogo clientName={item.clientName} />
                   <span className="truncate text-[11px] text-[var(--text-muted)]">
                     {item.clientName ?? "-"}
                   </span>

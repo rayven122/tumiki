@@ -1,11 +1,8 @@
 import type { JSX } from "react";
 import { useLocation, Link } from "react-router-dom";
-import { useAtomValue } from "jotai";
-import { Bot } from "lucide-react";
 import type { AuditLogItem } from "../../main/types";
 import { statusBadge } from "../utils/theme-styles";
-import { themeAtom } from "../store/atoms";
-import { getClientLogo } from "../utils/ai-client-logo";
+import { ClientLogo } from "../_components/ClientLogo";
 
 /** 情報フィールドの表示 */
 const InfoField = ({
@@ -37,7 +34,6 @@ const formatDateTime = (iso: string): string => {
 };
 
 export const HistoryDetail = (): JSX.Element => {
-  const theme = useAtomValue(themeAtom);
   const location = useLocation();
   const item = (location.state as { auditLog?: AuditLogItem } | null)?.auditLog;
 
@@ -90,18 +86,7 @@ export const HistoryDetail = (): JSX.Element => {
           <div>
             <p className="text-xs text-[var(--text-muted)]">AIクライアント</p>
             <div className="mt-1 flex items-center gap-2">
-              {(() => {
-                const logo = getClientLogo(item.clientName);
-                return logo ? (
-                  <img
-                    src={theme === "dark" ? logo.dark : logo.light}
-                    alt=""
-                    className="h-5 w-5 rounded-sm"
-                  />
-                ) : (
-                  <Bot className="h-5 w-5 text-[var(--text-muted)]" />
-                );
-              })()}
+              <ClientLogo clientName={item.clientName} size="md" />
               <span className="text-sm text-[var(--text-secondary)]">
                 {item.clientName
                   ? item.clientVersion
