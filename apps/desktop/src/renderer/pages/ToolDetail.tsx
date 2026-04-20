@@ -8,11 +8,13 @@ import {
   Shield,
   ChevronDown,
   Server,
+  Bot,
 } from "lucide-react";
 import { themeAtom } from "../store/atoms";
 import { MCP_BASE_URL, MCP_CLI_COMMAND } from "../data/mock";
 import type { McpServerDetailItem, AuditLogItem } from "../../main/types";
 import { statusBadge, cardStyle, selectStyle } from "../utils/theme-styles";
+import { getClientLogo } from "../utils/ai-client-logo";
 
 /** MCPサーバーステータスバッジの表示定義 */
 const serverStatusBadge: Record<
@@ -546,6 +548,26 @@ export const ToolDetail = (): JSX.Element => {
                         second: "2-digit",
                       })}
                     </span>
+                    {/* AIクライアント */}
+                    {log.clientName && (
+                      <div className="flex items-center gap-1.5">
+                        {(() => {
+                          const logo = getClientLogo(log.clientName);
+                          return logo ? (
+                            <img
+                              src={theme === "dark" ? logo.dark : logo.light}
+                              alt=""
+                              className="h-4 w-4 shrink-0 rounded-sm"
+                            />
+                          ) : (
+                            <Bot className="h-4 w-4 shrink-0 text-[var(--text-muted)]" />
+                          );
+                        })()}
+                        <span className="text-[11px] text-[var(--text-muted)]">
+                          {log.clientName}
+                        </span>
+                      </div>
+                    )}
                     <span className="font-mono text-xs text-[var(--text-secondary)]">
                       {log.toolName}
                     </span>
