@@ -3,6 +3,7 @@ import type { TransportType } from "@prisma/desktop-client";
 import { z } from "zod";
 import { getDb } from "../../shared/db";
 import * as mcpRepository from "../mcp-server-list/mcp.repository";
+import * as mcpProxyRepository from "./mcp-proxy.repository";
 import * as logger from "../../shared/utils/logger";
 import { decryptCredentials } from "../../utils/credentials";
 import { refreshOAuthTokenIfNeeded } from "../oauth/oauth.refresh";
@@ -299,7 +300,10 @@ export const refreshAndRebuildOAuthConnection = async (
   serverUrl: string,
 ): Promise<{ configName: string; config: McpServerConfig } | null> => {
   const db = await getDb();
-  const conn = await mcpRepository.findEnabledConnectionById(db, connectionId);
+  const conn = await mcpProxyRepository.findEnabledConnectionById(
+    db,
+    connectionId,
+  );
   if (!conn) return null;
 
   const connLabel = `${conn.server.slug}/${conn.slug}`;

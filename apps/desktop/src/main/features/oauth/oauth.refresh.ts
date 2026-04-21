@@ -12,7 +12,6 @@ import * as logger from "../../shared/utils/logger";
 import { encryptToken } from "../../utils/encryption";
 import { refreshAccessToken } from "./oauth.token";
 import * as oauthRepository from "./oauth.repository";
-import * as mcpRepository from "../mcp-server-list/mcp.repository";
 import {
   oauthClientFromParts,
   credentialsPayloadFromTokenData,
@@ -115,7 +114,7 @@ export const refreshOAuthTokenIfNeeded = async (
     // 暗号化してDBに保存
     const db = await getDb();
     const encrypted = await encryptToken(JSON.stringify(newCredentials));
-    await mcpRepository.updateConnectionCredentials(
+    await oauthRepository.updateConnectionCredentials(
       db,
       connectionId,
       encrypted,

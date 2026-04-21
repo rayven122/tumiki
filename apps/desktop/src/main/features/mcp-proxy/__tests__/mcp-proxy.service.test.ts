@@ -13,6 +13,7 @@ vi.mock("../../mcp-server-list/mcp.repository");
 vi.mock("../../../utils/encryption");
 vi.mock("../../../utils/credentials");
 vi.mock("../../oauth/oauth.refresh");
+vi.mock("../mcp-proxy.repository");
 
 // テスト対象のインポート（モックの後に行う）
 import * as mcpProxyService from "../mcp-proxy.service";

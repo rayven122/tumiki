@@ -103,6 +103,20 @@ export const upsertOAuthClient = async (
 };
 
 /**
+ * 接続のcredentialsを更新（OAuthトークンリフレッシュ後のDB保存用）
+ */
+export const updateConnectionCredentials = async (
+  db: PrismaClient,
+  connectionId: number,
+  credentials: string,
+) => {
+  return db.mcpConnection.update({
+    where: { id: connectionId },
+    data: { credentials },
+  });
+};
+
+/**
  * MCPサーバーURLでOAuthClientを削除（DCR再登録用）
  */
 export const deleteByServerUrl = async (

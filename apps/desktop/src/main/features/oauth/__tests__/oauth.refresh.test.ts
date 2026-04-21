@@ -11,7 +11,7 @@ vi.mock("../../../shared/utils/logger");
 vi.mock("../../../utils/encryption");
 vi.mock("../oauth.token");
 vi.mock("../oauth.repository");
-vi.mock("../../mcp-server-list/mcp.repository");
+vi.mock("../oauth.repository");
 vi.mock("../oauth.service", async (importOriginal) => {
   const original = await importOriginal<typeof import("../oauth.service")>();
   return {
@@ -24,7 +24,6 @@ import { getDb } from "../../../shared/db";
 import { encryptToken } from "../../../utils/encryption";
 import { refreshAccessToken } from "../oauth.token";
 import * as oauthRepository from "../oauth.repository";
-import * as mcpRepository from "../../mcp-server-list/mcp.repository";
 import {
   refreshOAuthTokenIfNeeded,
   isTokenExpiringSoon,
@@ -143,9 +142,9 @@ describe("oauth.refresh", () => {
         expires_at: newExpiresAt,
       });
 
-      vi.mocked(mcpRepository.updateConnectionCredentials).mockResolvedValue(
+      vi.mocked(oauthRepository.updateConnectionCredentials).mockResolvedValue(
         {} as Awaited<
-          ReturnType<typeof mcpRepository.updateConnectionCredentials>
+          ReturnType<typeof oauthRepository.updateConnectionCredentials>
         >,
       );
 
@@ -158,7 +157,7 @@ describe("oauth.refresh", () => {
       });
 
       expect(encryptToken).toHaveBeenCalled();
-      expect(mcpRepository.updateConnectionCredentials).toHaveBeenCalledWith(
+      expect(oauthRepository.updateConnectionCredentials).toHaveBeenCalledWith(
         mockDb,
         1,
         expect.stringContaining("encrypted:"),
