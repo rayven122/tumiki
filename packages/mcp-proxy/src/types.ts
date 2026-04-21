@@ -79,6 +79,10 @@ export type ToolCallEvent = {
   errorMessage?: string;
   /** レスポンスコンテンツ */
   resultContent: unknown[];
+  /** AIクライアント名（例: "claude-code", "cursor"） */
+  clientName?: string;
+  /** AIクライアントバージョン */
+  clientVersion?: string;
 };
 
 export type ToolCallHook = (event: ToolCallEvent) => void | Promise<void>;

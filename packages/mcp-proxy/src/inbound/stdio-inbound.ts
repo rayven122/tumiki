@@ -96,6 +96,7 @@ export const startStdioInbound = async (
     } finally {
       if (hooks?.onToolCall) {
         const durationMs = Date.now() - startTime;
+        const clientInfo = server.getClientVersion();
         // フックは非同期でもfire-and-forget（ツール応答を遅延させない）
         // try-catchで同期throwも捕捉する
         try {
@@ -107,6 +108,8 @@ export const startStdioInbound = async (
               isSuccess,
               errorMessage,
               resultContent,
+              clientName: clientInfo?.name,
+              clientVersion: clientInfo?.version,
             }),
           ).catch((e: unknown) => {
             logger.error("ツール実行フックでエラーが発生しました", {

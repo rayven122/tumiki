@@ -5,9 +5,7 @@ import { Activity, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import type { AuditLogItem } from "../../main/types";
 import { useAuditLogs } from "../hooks/useAuditLogs";
 import { statusBadge, isErrorRow, selectStyle } from "../utils/theme-styles";
-
-/** デフォルトのAIクライアント表示（DEV-1531で実データ対応予定） */
-const DEFAULT_AI_CLIENT = { name: "-", logo: "" } as const;
+import { ClientLogo } from "../_components/ClientLogo";
 
 /** ISO文字列 → HH:mm:ss */
 const formatTime = (iso: string): string => {
@@ -29,11 +27,13 @@ const escapeCsv = (value: string): string => {
 
 /** CSV生成・ダウンロード */
 const downloadCsv = (items: AuditLogItem[]): void => {
-  const header = "日時,接続先,ツール,メソッド,ステータス,応答時間(ms)\n";
+  const header =
+    "日時,AIクライアント,接続先,ツール,メソッド,ステータス,応答時間(ms)\n";
   const rows = items
     .map((i) =>
       [
         escapeCsv(i.createdAt),
+        escapeCsv(i.clientName ?? ""),
         escapeCsv(i.connectionName ?? "不明"),
         escapeCsv(i.toolName),
         escapeCsv(i.method),
@@ -228,10 +228,13 @@ export const HistoryList = (): JSX.Element => {
                   {formatTime(item.createdAt)}
                 </span>
 
-                {/* AIクライアント（DEV-1531で実データ対応予定） */}
-                <span className="text-[11px] text-[var(--text-muted)]">
-                  {DEFAULT_AI_CLIENT.name}
-                </span>
+                {/* AIクライアント */}
+                <div className="flex items-center gap-1.5 overflow-hidden">
+                  <ClientLogo clientName={item.clientName} />
+                  <span className="truncate text-[11px] text-[var(--text-muted)]">
+                    {item.clientName ?? "-"}
+                  </span>
+                </div>
 
                 {/* 接続先 */}
                 <span className="truncate text-[var(--text-secondary)]">

@@ -129,6 +129,8 @@ if (isMcpProxyMode) {
           errorSummary: event.errorMessage?.slice(0, 500),
           serverId: connMeta.serverId,
           connectionName: connMeta.connectionName,
+          clientName: event.clientName?.slice(0, 100),
+          clientVersion: event.clientVersion?.slice(0, 50),
         });
       };
 

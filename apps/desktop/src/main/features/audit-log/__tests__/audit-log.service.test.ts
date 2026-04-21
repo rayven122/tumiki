@@ -23,6 +23,8 @@ const createMockAuditLog = (
     toolName: string;
     isSuccess: boolean;
     createdAt: Date;
+    clientName: string | null;
+    clientVersion: string | null;
   }> = {},
 ) => ({
   id: overrides.id ?? 1,
@@ -39,6 +41,8 @@ const createMockAuditLog = (
   createdAt: overrides.createdAt ?? new Date("2026-04-01T10:00:00.000Z"),
   serverId: 1,
   connectionName: "conn-1",
+  clientName: overrides.clientName ?? null,
+  clientVersion: overrides.clientVersion ?? null,
 });
 
 describe("audit-log.service", () => {
@@ -87,6 +91,28 @@ describe("audit-log.service", () => {
         successRate: 100,
         avgDurationMs: 150,
       });
+    });
+
+    test("AIクライアント情報を含むレコードを正しく変換する", async () => {
+      const records = [
+        createMockAuditLog({
+          id: 1,
+          clientName: "claude-code",
+          clientVersion: "1.0.0",
+        }),
+      ];
+      vi.mocked(repository.findByServer).mockResolvedValue(records);
+      vi.mocked(repository.countByServer).mockResolvedValue(1);
+      setupAggregateMock(1, 150);
+
+      const result = await service.listByServer({ serverId: 1 });
+
+      expect(result.items[0]).toStrictEqual(
+        expect.objectContaining({
+          clientName: "claude-code",
+          clientVersion: "1.0.0",
+        }),
+      );
     });
 
     test("複数ページある場合にtotalPagesを正しく返す", async () => {

@@ -104,6 +104,8 @@ CREATE TABLE "AuditLog" (
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "serverId" INTEGER NOT NULL,
     "connectionName" TEXT,
+    "clientName" TEXT,
+    "clientVersion" TEXT,
     CONSTRAINT "AuditLog_serverId_fkey" FOREIGN KEY ("serverId") REFERENCES "McpServer" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 

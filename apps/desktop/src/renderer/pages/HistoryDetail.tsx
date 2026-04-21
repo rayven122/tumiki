@@ -2,6 +2,7 @@ import type { JSX } from "react";
 import { useLocation, Link } from "react-router-dom";
 import type { AuditLogItem } from "../../main/types";
 import { statusBadge } from "../utils/theme-styles";
+import { ClientLogo } from "../_components/ClientLogo";
 
 /** 情報フィールドの表示 */
 const InfoField = ({
@@ -82,6 +83,19 @@ export const HistoryDetail = (): JSX.Element => {
       <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">
         <div className="grid grid-cols-2 gap-6">
           <InfoField label="日時" value={formatDateTime(item.createdAt)} />
+          <div>
+            <p className="text-xs text-[var(--text-muted)]">AIクライアント</p>
+            <div className="mt-1 flex items-center gap-2">
+              <ClientLogo clientName={item.clientName} size="md" />
+              <span className="text-sm text-[var(--text-secondary)]">
+                {item.clientName
+                  ? item.clientVersion
+                    ? `${item.clientName} v${item.clientVersion}`
+                    : item.clientName
+                  : "-"}
+              </span>
+            </div>
+          </div>
           <InfoField label="接続先" value={item.connectionName ?? "不明"} />
           <InfoField label="ツール" value={item.toolName} />
           <InfoField label="メソッド" value={item.method} mono />

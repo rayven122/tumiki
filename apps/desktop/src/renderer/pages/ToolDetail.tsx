@@ -13,6 +13,7 @@ import { themeAtom } from "../store/atoms";
 import { MCP_BASE_URL, MCP_CLI_COMMAND } from "../data/mock";
 import type { McpServerDetailItem, AuditLogItem } from "../../main/types";
 import { statusBadge, cardStyle, selectStyle } from "../utils/theme-styles";
+import { ClientLogo } from "../_components/ClientLogo";
 
 /** MCPサーバーステータスバッジの表示定義 */
 const serverStatusBadge: Record<
@@ -546,6 +547,15 @@ export const ToolDetail = (): JSX.Element => {
                         second: "2-digit",
                       })}
                     </span>
+                    {/* AIクライアント */}
+                    {log.clientName && (
+                      <div className="flex items-center gap-1.5">
+                        <ClientLogo clientName={log.clientName} />
+                        <span className="text-[11px] text-[var(--text-muted)]">
+                          {log.clientName}
+                        </span>
+                      </div>
+                    )}
                     <span className="font-mono text-xs text-[var(--text-secondary)]">
                       {log.toolName}
                     </span>
