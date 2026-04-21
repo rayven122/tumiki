@@ -13,6 +13,10 @@ import { createUpstreamClient } from "./upstream-client.js";
  */
 export type UpstreamPool = {
   addServer: (config: McpServerConfig) => void;
+  updateServer: (
+    name: string,
+    newConfig: McpServerConfig,
+  ) => Promise<McpServerState>;
   startAll: () => Promise<void>;
   stopAll: () => Promise<void>;
   start: (name: string) => Promise<McpServerState>;
@@ -167,8 +171,26 @@ export const createUpstreamPool = (logger: Logger): UpstreamPool => {
     }));
   };
 
+  /**
+   * サーバーのconfigを更新して再接続（OAuthトークンリフレッシュ時等）
+   * 既存クライアントを停止→削除→新configで再作成→起動
+   */
+  const updateServer = async (
+    name: string,
+    newConfig: McpServerConfig,
+  ): Promise<McpServerState> => {
+    const existing = clients.get(name);
+    if (existing) {
+      await existing.disconnect();
+      clients.delete(name);
+    }
+    addServer(newConfig);
+    return start(name);
+  };
+
   return {
     addServer,
+    updateServer,
     startAll,
     stopAll,
     start,

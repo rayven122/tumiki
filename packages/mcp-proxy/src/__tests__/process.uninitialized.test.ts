@@ -22,6 +22,7 @@ vi.mock("../core", () => ({
     stopAll: mockStopAll,
     start: vi.fn(),
     stop: vi.fn(),
+    updateAndRestart: vi.fn(),
     listTools: mockListTools,
     callTool: mockCallTool,
     getStatus: mockGetStatus,

@@ -29,6 +29,7 @@ vi.mock("../outbound/upstream-client", () => ({
 
 // UpstreamPoolのモック
 const mockAddServer = vi.fn();
+const mockUpdateServer = vi.fn();
 const mockStartAll = vi.fn();
 const mockStopAll = vi.fn();
 const mockStart = vi.fn();
@@ -40,6 +41,7 @@ const mockGetClients = vi.fn().mockReturnValue(new Map());
 vi.mock("../outbound/upstream-pool", () => ({
   createUpstreamPool: vi.fn().mockImplementation(() => ({
     addServer: mockAddServer,
+    updateServer: mockUpdateServer,
     startAll: mockStartAll,
     stopAll: mockStopAll,
     start: mockStart,

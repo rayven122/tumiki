@@ -46,7 +46,7 @@ type OAuthClientBundle = {
   client: oauth.Client;
 };
 
-const isCacheableAuthorizationServerMetadata = (
+export const isCacheableAuthorizationServerMetadata = (
   parsed: unknown,
 ): parsed is oauth.AuthorizationServer => {
   if (typeof parsed !== "object" || parsed === null) return false;
@@ -58,7 +58,7 @@ const isCacheableAuthorizationServerMetadata = (
   );
 };
 
-const oauthClientFromParts = (
+export const oauthClientFromParts = (
   clientId: string,
   clientSecret: string | null,
   tokenEndpointAuthMethod: string,
@@ -196,7 +196,7 @@ const validateCallbackSession = (
   return session;
 };
 
-const credentialsPayloadFromTokenData = (
+export const credentialsPayloadFromTokenData = (
   tokenData: McpOAuthTokenData,
 ): Record<string, string> => ({
   access_token: tokenData.access_token,

@@ -35,6 +35,9 @@ const createMockCore = (overrides: Partial<ProxyCore> = {}): ProxyCore => ({
   stopAll: vi.fn().mockResolvedValue(undefined),
   start: vi.fn(),
   stop: vi.fn(),
+  updateAndRestart: vi
+    .fn()
+    .mockResolvedValue({ name: "", status: "running", tools: [] }),
   listTools: vi.fn().mockResolvedValue([]),
   callTool: vi.fn().mockResolvedValue({ content: [], isError: false }),
   getStatus: vi.fn().mockReturnValue([]),

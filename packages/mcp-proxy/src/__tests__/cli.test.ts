@@ -29,6 +29,7 @@ const mocks = vi.hoisted(() => {
     stopAll: mockStopAll,
     start: vi.fn(),
     stop: vi.fn(),
+    updateAndRestart: vi.fn(),
     listTools: vi.fn(),
     callTool: vi.fn(),
     getStatus: vi.fn(),

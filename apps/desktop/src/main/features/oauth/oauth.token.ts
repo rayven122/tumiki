@@ -152,7 +152,7 @@ export const exchangeCodeForToken = async (
 
 /**
  * リフレッシュトークンでアクセストークンを更新
- * TODO: トークン自動リフレッシュ機能の実装時に呼び出し元を追加する
+ * 呼び出し元: oauth.refresh.ts (refreshOAuthTokenIfNeeded)
  */
 export const refreshAccessToken = async (
   authServer: oauth.AuthorizationServer,

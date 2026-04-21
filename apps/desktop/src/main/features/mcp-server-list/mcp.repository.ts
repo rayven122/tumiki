@@ -156,6 +156,20 @@ export const updateServerStatus = async (
 };
 
 /**
+ * 接続のcredentialsを更新（OAuthトークンリフレッシュ時のDB保存用）
+ */
+export const updateConnectionCredentials = async (
+  db: PrismaClient,
+  connectionId: number,
+  credentials: string,
+) => {
+  return db.mcpConnection.update({
+    where: { id: connectionId },
+    data: { credentials },
+  });
+};
+
+/**
  * 全サーバーのステータスを一括更新（シャットダウン時の一括STOPPED化等）
  */
 export const updateAllServerStatus = async (

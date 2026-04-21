@@ -5,6 +5,7 @@ import { getDb } from "../../shared/db";
 import * as mcpRepository from "../mcp-server-list/mcp.repository";
 import * as logger from "../../shared/utils/logger";
 import { decryptCredentials } from "../../utils/credentials";
+import { refreshOAuthTokenIfNeeded } from "../oauth/oauth.refresh";
 
 /** CLI監査ログ用: configName → DB情報のマッピング */
 export type McpConnectionMeta = {
@@ -55,7 +56,11 @@ const buildHeaders = (
 ): Record<string, string> => {
   switch (authType) {
     case "BEARER": {
-      const token = credentials["token"] ?? credentials["accessToken"] ?? "";
+      const token =
+        credentials["token"] ??
+        credentials["accessToken"] ??
+        credentials["access_token"] ??
+        "";
       return token ? { Authorization: `Bearer ${token}` } : {};
     }
     case "API_KEY":
@@ -72,6 +77,7 @@ const buildHeaders = (
 const toProxyAuthType = (prismaAuthType: string): AuthType => {
   if (prismaAuthType === "BEARER") return "BEARER";
   if (prismaAuthType === "API_KEY") return "API_KEY";
+  if (prismaAuthType === "OAUTH") return "BEARER";
   return "NONE";
 };
 
@@ -100,11 +106,23 @@ const buildConfigsFromConnections = async (
 
     try {
       const plainCredentials = await decryptCredentials(conn.credentials);
-      const credentials = parseAndValidate(
+      let credentials = parseAndValidate(
         plainCredentials,
         connectionEnvSchema,
         `connection(${connLabel}).credentials`,
       );
+
+      // OAuth接続: トークンの期限チェック & 必要ならリフレッシュ
+      if (conn.authType === "OAUTH" && conn.url) {
+        const refreshed = await refreshOAuthTokenIfNeeded(
+          conn.id,
+          conn.url,
+          credentials,
+        );
+        if (refreshed) {
+          credentials = refreshed;
+        }
+      }
 
       switch (conn.transportType) {
         case "STDIO": {
@@ -188,6 +206,67 @@ const buildConfigsFromConnections = async (
     }
   }
   return { configs, meta };
+};
+
+/** OAuth接続のトークン有効期限情報 */
+export type OAuthConnectionExpiry = {
+  configName: string;
+  connectionId: number;
+  serverUrl: string;
+  expiresAt: number;
+};
+
+/**
+ * 有効なOAuth接続の期限情報を取得（プロアクティブリフレッシュタイマー用）
+ */
+export const getOAuthConnectionExpiries = async (
+  serverSlug?: string,
+): Promise<OAuthConnectionExpiry[]> => {
+  const db = await getDb();
+  const connections = serverSlug
+    ? await mcpRepository.findEnabledConnectionsBySlug(db, serverSlug)
+    : await mcpRepository.findEnabledConnections(db);
+
+  const expiries: OAuthConnectionExpiry[] = [];
+  for (const conn of connections) {
+    if (conn.authType !== "OAUTH" || !conn.url) continue;
+
+    try {
+      const plainCredentials = await decryptCredentials(conn.credentials);
+      const credentials = parseAndValidate(
+        plainCredentials,
+        connectionEnvSchema,
+        `connection(${conn.server.slug}/${conn.slug}).credentials`,
+      );
+
+      const expiresAt = credentials["expires_at"];
+      if (expiresAt) {
+        const expiresAtSec = Number(expiresAt);
+        if (!Number.isNaN(expiresAtSec)) {
+          expiries.push({
+            configName: `${conn.server.slug}-${conn.slug}`,
+            connectionId: conn.id,
+            serverUrl: conn.url,
+            expiresAt: expiresAtSec,
+          });
+        }
+      }
+    } catch {
+      // credentials復号失敗は無視（buildConfigsFromConnectionsでログ済み）
+    }
+  }
+  return expiries;
+};
+
+/**
+ * 単一接続のMcpServerConfigを再生成（トークンリフレッシュ後の再接続用）
+ */
+export const rebuildConfigForConnection = async (
+  configName: string,
+  serverSlug?: string,
+): Promise<McpServerConfig | null> => {
+  const { configs } = await buildConfigsFromConnections(serverSlug);
+  return configs.find((c) => c.name === configName) ?? null;
 };
 
 /**

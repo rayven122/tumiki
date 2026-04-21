@@ -158,6 +158,51 @@ describe("UpstreamPool", () => {
     });
   });
 
+  describe("updateServer", () => {
+    test("既存サーバーを停止して新しいconfigで再接続する", async () => {
+      mockConnect.mockResolvedValue(undefined);
+      mockDisconnect.mockResolvedValue(undefined);
+      mockGetStatus.mockReturnValue("running");
+      mockGetLastError.mockReturnValue(undefined);
+      mockListTools.mockResolvedValue([]);
+
+      pool.addServer(createTestConfig("server-1"));
+
+      const newConfig: McpServerConfig = {
+        name: "server-1",
+        transportType: "STDIO",
+        command: "node",
+        args: ["new-script.js"],
+        env: { TOKEN: "new-token" },
+      };
+
+      const state = await pool.updateServer("server-1", newConfig);
+
+      // 既存クライアントがdisconnectされる
+      expect(mockDisconnect).toHaveBeenCalledOnce();
+      // 新しいconfigでconnectされる
+      expect(mockConnect).toHaveBeenCalledOnce();
+      expect(state.name).toBe("server-1");
+      expect(state.status).toBe("running");
+    });
+
+    test("未登録サーバーでも新規追加して起動する", async () => {
+      mockConnect.mockResolvedValue(undefined);
+      mockGetStatus.mockReturnValue("running");
+      mockGetLastError.mockReturnValue(undefined);
+      mockListTools.mockResolvedValue([]);
+
+      const state = await pool.updateServer(
+        "new-server",
+        createTestConfig("new-server"),
+      );
+
+      expect(mockDisconnect).not.toHaveBeenCalled();
+      expect(mockConnect).toHaveBeenCalledOnce();
+      expect(state.name).toBe("new-server");
+    });
+  });
+
   describe("onStatusChange", () => {
     test("状態変更コールバックが伝播する", () => {
       const callback = vi.fn();

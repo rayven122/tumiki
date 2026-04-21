@@ -139,15 +139,115 @@ if (isMcpProxyMode) {
         runMcpProxy: (
           configs: import("@tumiki/mcp-proxy-core").McpServerConfig[],
           hooks?: import("@tumiki/mcp-proxy-core").ProxyHooks,
-        ) => Promise<void>;
+        ) => Promise<import("@tumiki/mcp-proxy-core").ProxyCore>;
       };
-      await mod.runMcpProxy(configs, {
+      const core = await mod.runMcpProxy(configs, {
         onToolCall,
         onStatusChange,
         onShutdown: async () => {
           await resetAllServerStatus().catch(() => {});
           await closeDb();
         },
+      });
+
+      // OAuthトークンのプロアクティブリフレッシュ: 期限5分前にタイマーを設定し、
+      // リフレッシュ → 該当サーバーのみ再接続を自動で行う
+      const { getOAuthConnectionExpiries, rebuildConfigForConnection } =
+        await import("./features/mcp-proxy/mcp-proxy.service");
+      const { refreshOAuthTokenIfNeeded } =
+        await import("./features/oauth/oauth.refresh");
+
+      const REFRESH_MARGIN_SEC = 5 * 60;
+      let oauthRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+      const scheduleOAuthRefresh = async (): Promise<void> => {
+        if (oauthRefreshTimer) {
+          clearTimeout(oauthRefreshTimer);
+          oauthRefreshTimer = null;
+        }
+
+        const expiries = await getOAuthConnectionExpiries(serverSlug);
+        if (expiries.length === 0) return;
+
+        const nowSec = Math.floor(Date.now() / 1000);
+        // 最も早い期限のOAuth接続を取得
+        const earliest = expiries.reduce((min, e) =>
+          e.expiresAt < min.expiresAt ? e : min,
+        );
+        // リフレッシュ実行時刻 = 期限の5分前（既に過ぎていれば即時実行）
+        const delaySec = Math.max(
+          earliest.expiresAt - nowSec - REFRESH_MARGIN_SEC,
+          0,
+        );
+        const delayMs = delaySec * 1000;
+
+        process.stderr.write(
+          `[tumiki-mcp-proxy] OAuthリフレッシュを${Math.round(delaySec / 60)}分後に予約 (${earliest.configName})\n`,
+        );
+
+        oauthRefreshTimer = setTimeout(() => {
+          void (async () => {
+            try {
+              // 期限が迫っている全OAuth接続をリフレッシュ
+              const currentExpiries =
+                await getOAuthConnectionExpiries(serverSlug);
+              const currentNow = Math.floor(Date.now() / 1000);
+
+              for (const expiry of currentExpiries) {
+                if (expiry.expiresAt - currentNow > REFRESH_MARGIN_SEC)
+                  continue;
+
+                // decryptして最新のcredentialsを取得 → リフレッシュ
+                const { decryptCredentials } =
+                  await import("./utils/credentials");
+                const db = await (await import("./shared/db")).getDb();
+                const conn = await db.mcpConnection.findUnique({
+                  where: { id: expiry.connectionId },
+                });
+                if (!conn) continue;
+
+                const plain = await decryptCredentials(conn.credentials);
+                const creds: Record<string, string> = JSON.parse(plain);
+
+                const refreshed = await refreshOAuthTokenIfNeeded(
+                  expiry.connectionId,
+                  expiry.serverUrl,
+                  creds,
+                );
+                if (!refreshed) continue;
+
+                // 該当サーバーのconfigを再生成して再接続
+                const newConfig = await rebuildConfigForConnection(
+                  expiry.configName,
+                  serverSlug,
+                );
+                if (newConfig) {
+                  await core.updateAndRestart(expiry.configName, newConfig);
+                  process.stderr.write(
+                    `[tumiki-mcp-proxy] OAuthリフレッシュ完了: ${expiry.configName}\n`,
+                  );
+                }
+              }
+            } catch (error) {
+              const msg =
+                error instanceof Error ? error.message : String(error);
+              process.stderr.write(
+                `[tumiki-mcp-proxy] OAuthリフレッシュ失敗: ${msg}\n`,
+              );
+            }
+
+            // 次のリフレッシュをスケジュール
+            await scheduleOAuthRefresh();
+          })();
+        }, delayMs);
+      };
+
+      // 初回スケジュール（失敗してもプロキシ起動は継続）
+      await scheduleOAuthRefresh().catch((error) => {
+        const msg = error instanceof Error ? error.message : String(error);
+        process.stderr.write(
+          `[tumiki-mcp-proxy] OAuthリフレッシュスケジュール失敗（起動は継続します）: ${msg}\n`,
+        );
       });
     } catch (error) {
       // CLIモードではstdoutはMCPプロトコル専用のため、stderrに出す
