@@ -81,6 +81,123 @@ const toProxyAuthType = (prismaAuthType: string): AuthType => {
   return "NONE";
 };
 
+/** findEnabledConnections の戻り値1要素の型 */
+type EnabledConnection = Awaited<
+  ReturnType<typeof mcpRepository.findEnabledConnections>
+>[number];
+
+type BuildConfigOptions = {
+  /** OAuthトークンリフレッシュをスキップする（リフレッシュ済みの場合） */
+  skipOAuthRefresh?: boolean;
+};
+
+/**
+ * 単一接続からMcpServerConfigを生成する共通ヘルパー。
+ * credentials復号 → Zodバリデーション → OAuthリフレッシュ（任意）→ config組み立て。
+ * 生成不可（urlなし等）の場合は null を返す。
+ */
+const buildConfigFromConnection = async (
+  conn: EnabledConnection,
+  options: BuildConfigOptions = {},
+): Promise<{ config: McpServerConfig; meta: McpConnectionMeta } | null> => {
+  const connLabel = `${conn.server.slug}/${conn.slug}`;
+  const name = `${conn.server.slug}-${conn.slug}`;
+
+  const plainCredentials = await decryptCredentials(conn.credentials);
+  let credentials = parseAndValidate(
+    plainCredentials,
+    connectionEnvSchema,
+    `connection(${connLabel}).credentials`,
+  );
+
+  // OAuth接続: トークンの期限チェック & 必要ならリフレッシュ
+  if (!options.skipOAuthRefresh && conn.authType === "OAUTH" && conn.url) {
+    const refreshed = await refreshOAuthTokenIfNeeded(
+      conn.id,
+      conn.url,
+      credentials,
+    );
+    if (refreshed) {
+      credentials = refreshed;
+    }
+  }
+
+  let config: McpServerConfig;
+  switch (conn.transportType) {
+    case "STDIO": {
+      if (!conn.command) {
+        logger.warn(
+          `MCP接続 "${connLabel}" はSTDIOですがcommandが未設定です（skip）`,
+        );
+        return null;
+      }
+      const args = parseAndValidate(
+        conn.args,
+        connectionArgsSchema,
+        `connection(${connLabel}).args`,
+      );
+      config = {
+        name,
+        transportType: "STDIO",
+        command: conn.command,
+        args,
+        env: credentials,
+      };
+      break;
+    }
+    case "SSE": {
+      if (!conn.url) {
+        logger.warn(
+          `MCP接続 "${connLabel}" はSSEですがurlが未設定です（skip）`,
+        );
+        return null;
+      }
+      const sseAuthType = toProxyAuthType(conn.authType);
+      config = {
+        name,
+        transportType: "SSE",
+        url: conn.url,
+        authType: sseAuthType,
+        headers: buildHeaders(sseAuthType, credentials),
+      };
+      break;
+    }
+    case "STREAMABLE_HTTP": {
+      if (!conn.url) {
+        logger.warn(
+          `MCP接続 "${connLabel}" はSTREAMABLE_HTTPですがurlが未設定です（skip）`,
+        );
+        return null;
+      }
+      const httpAuthType = toProxyAuthType(conn.authType);
+      config = {
+        name,
+        transportType: "STREAMABLE_HTTP",
+        url: conn.url,
+        authType: httpAuthType,
+        headers: buildHeaders(httpAuthType, credentials),
+      };
+      break;
+    }
+    default:
+      logger.warn(
+        `MCP接続 "${connLabel}" は未対応のトランスポートタイプです（skip）`,
+        { transportType: conn.transportType },
+      );
+      return null;
+  }
+
+  return {
+    config,
+    meta: {
+      configName: name,
+      serverId: conn.server.id,
+      connectionName: conn.name,
+      transportType: conn.transportType,
+    },
+  };
+};
+
 /**
  * 有効な接続からMcpServerConfig[]を生成（Proxy起動時に使用）
  *
@@ -101,103 +218,14 @@ const buildConfigsFromConnections = async (
   const configs: McpServerConfig[] = [];
   const meta: McpConnectionMeta[] = [];
   for (const conn of connections) {
-    const connLabel = `${conn.server.slug}/${conn.slug}`;
-    const name = `${conn.server.slug}-${conn.slug}`;
-
     try {
-      const plainCredentials = await decryptCredentials(conn.credentials);
-      let credentials = parseAndValidate(
-        plainCredentials,
-        connectionEnvSchema,
-        `connection(${connLabel}).credentials`,
-      );
-
-      // OAuth接続: トークンの期限チェック & 必要ならリフレッシュ
-      if (conn.authType === "OAUTH" && conn.url) {
-        const refreshed = await refreshOAuthTokenIfNeeded(
-          conn.id,
-          conn.url,
-          credentials,
-        );
-        if (refreshed) {
-          credentials = refreshed;
-        }
+      const result = await buildConfigFromConnection(conn);
+      if (result) {
+        configs.push(result.config);
+        meta.push(result.meta);
       }
-
-      switch (conn.transportType) {
-        case "STDIO": {
-          if (!conn.command) {
-            logger.warn(
-              `MCP接続 "${connLabel}" はSTDIOですがcommandが未設定です（skip）`,
-            );
-            continue;
-          }
-          const args = parseAndValidate(
-            conn.args,
-            connectionArgsSchema,
-            `connection(${connLabel}).args`,
-          );
-          configs.push({
-            name,
-            transportType: "STDIO",
-            command: conn.command,
-            args,
-            env: credentials,
-          });
-          break;
-        }
-        case "SSE": {
-          if (!conn.url) {
-            logger.warn(
-              `MCP接続 "${connLabel}" はSSEですがurlが未設定です（skip）`,
-            );
-            continue;
-          }
-          const sseAuthType = toProxyAuthType(conn.authType);
-          configs.push({
-            name,
-            transportType: "SSE",
-            url: conn.url,
-            authType: sseAuthType,
-            headers: buildHeaders(sseAuthType, credentials),
-          });
-          break;
-        }
-        case "STREAMABLE_HTTP": {
-          if (!conn.url) {
-            logger.warn(
-              `MCP接続 "${connLabel}" はSTREAMABLE_HTTPですがurlが未設定です（skip）`,
-            );
-            continue;
-          }
-          const httpAuthType = toProxyAuthType(conn.authType);
-          configs.push({
-            name,
-            transportType: "STREAMABLE_HTTP",
-            url: conn.url,
-            authType: httpAuthType,
-            headers: buildHeaders(httpAuthType, credentials),
-          });
-          break;
-        }
-        default:
-          logger.warn(
-            `MCP接続 "${connLabel}" は未対応のトランスポートタイプです（skip）`,
-            { transportType: conn.transportType },
-          );
-          continue;
-      }
-
-      // configが正常に追加された場合のみメタデータも追加
-      meta.push({
-        configName: name,
-        serverId: conn.server.id,
-        connectionName: conn.name,
-        transportType: conn.transportType,
-      });
     } catch (error) {
-      // 1件の破損データで他サーバーが起動できなくなることを防ぐ：
-      // エラーを個別にログしてスキップ、他の接続は正常に起動する
+      const connLabel = `${conn.server.slug}/${conn.slug}`;
       const message = error instanceof Error ? error.message : String(error);
       logger.error(
         `MCP接続 "${connLabel}" の設定読み込みに失敗したためスキップします`,
@@ -259,14 +287,43 @@ export const getOAuthConnectionExpiries = async (
 };
 
 /**
- * 単一接続のMcpServerConfigを再生成（トークンリフレッシュ後の再接続用）
+ * OAuth接続のリフレッシュ → config再生成を一括で行う（プロアクティブリフレッシュタイマー用）
+ *
+ * 1. リポジトリ経由で単一接続を取得
+ * 2. credentials を復号 + Zodバリデーション
+ * 3. refreshOAuthTokenIfNeeded でトークンリフレッシュ
+ * 4. リフレッシュ後の credentials で config を再生成（二重リフレッシュ防止: skipOAuthRefresh）
  */
-export const rebuildConfigForConnection = async (
-  configName: string,
-  serverSlug?: string,
-): Promise<McpServerConfig | null> => {
-  const { configs } = await buildConfigsFromConnections(serverSlug);
-  return configs.find((c) => c.name === configName) ?? null;
+export const refreshAndRebuildOAuthConnection = async (
+  connectionId: number,
+  serverUrl: string,
+): Promise<{ configName: string; config: McpServerConfig } | null> => {
+  const db = await getDb();
+  const conn = await mcpRepository.findEnabledConnectionById(db, connectionId);
+  if (!conn) return null;
+
+  const connLabel = `${conn.server.slug}/${conn.slug}`;
+  const plainCredentials = await decryptCredentials(conn.credentials);
+  const credentials = parseAndValidate(
+    plainCredentials,
+    connectionEnvSchema,
+    `connection(${connLabel}).credentials`,
+  );
+
+  const refreshed = await refreshOAuthTokenIfNeeded(
+    connectionId,
+    serverUrl,
+    credentials,
+  );
+  if (!refreshed) return null;
+
+  // リフレッシュ済みなので skipOAuthRefresh で二重リフレッシュを防止
+  const result = await buildConfigFromConnection(conn, {
+    skipOAuthRefresh: true,
+  });
+  if (!result) return null;
+
+  return { configName: result.meta.configName, config: result.config };
 };
 
 /**

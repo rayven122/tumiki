@@ -152,10 +152,8 @@ if (isMcpProxyMode) {
 
       // OAuthトークンのプロアクティブリフレッシュ: 期限5分前にタイマーを設定し、
       // リフレッシュ → 該当サーバーのみ再接続を自動で行う
-      const { getOAuthConnectionExpiries, rebuildConfigForConnection } =
+      const { getOAuthConnectionExpiries, refreshAndRebuildOAuthConnection } =
         await import("./features/mcp-proxy/mcp-proxy.service");
-      const { refreshOAuthTokenIfNeeded } =
-        await import("./features/oauth/oauth.refresh");
 
       const REFRESH_MARGIN_SEC = 5 * 60;
       let oauthRefreshTimer: ReturnType<typeof setTimeout> | null = null;
@@ -170,11 +168,9 @@ if (isMcpProxyMode) {
         if (expiries.length === 0) return;
 
         const nowSec = Math.floor(Date.now() / 1000);
-        // 最も早い期限のOAuth接続を取得
         const earliest = expiries.reduce((min, e) =>
           e.expiresAt < min.expiresAt ? e : min,
         );
-        // リフレッシュ実行時刻 = 期限の5分前（既に過ぎていれば即時実行）
         const delaySec = Math.max(
           earliest.expiresAt - nowSec - REFRESH_MARGIN_SEC,
           0,
@@ -188,7 +184,6 @@ if (isMcpProxyMode) {
         oauthRefreshTimer = setTimeout(() => {
           void (async () => {
             try {
-              // 期限が迫っている全OAuth接続をリフレッシュ
               const currentExpiries =
                 await getOAuthConnectionExpiries(serverSlug);
               const currentNow = Math.floor(Date.now() / 1000);
@@ -197,36 +192,16 @@ if (isMcpProxyMode) {
                 if (expiry.expiresAt - currentNow > REFRESH_MARGIN_SEC)
                   continue;
 
-                // decryptして最新のcredentialsを取得 → リフレッシュ
-                const { decryptCredentials } =
-                  await import("./utils/credentials");
-                const db = await (await import("./shared/db")).getDb();
-                const conn = await db.mcpConnection.findUnique({
-                  where: { id: expiry.connectionId },
-                });
-                if (!conn) continue;
-
-                const plain = await decryptCredentials(conn.credentials);
-                const creds: Record<string, string> = JSON.parse(plain);
-
-                const refreshed = await refreshOAuthTokenIfNeeded(
+                const result = await refreshAndRebuildOAuthConnection(
                   expiry.connectionId,
                   expiry.serverUrl,
-                  creds,
                 );
-                if (!refreshed) continue;
+                if (!result) continue;
 
-                // 該当サーバーのconfigを再生成して再接続
-                const newConfig = await rebuildConfigForConnection(
-                  expiry.configName,
-                  serverSlug,
+                await core.updateAndRestart(result.configName, result.config);
+                process.stderr.write(
+                  `[tumiki-mcp-proxy] OAuthリフレッシュ完了: ${result.configName}\n`,
                 );
-                if (newConfig) {
-                  await core.updateAndRestart(expiry.configName, newConfig);
-                  process.stderr.write(
-                    `[tumiki-mcp-proxy] OAuthリフレッシュ完了: ${expiry.configName}\n`,
-                  );
-                }
               }
             } catch (error) {
               const msg =
@@ -236,7 +211,6 @@ if (isMcpProxyMode) {
               );
             }
 
-            // 次のリフレッシュをスケジュール
             await scheduleOAuthRefresh();
           })();
         }, delayMs);

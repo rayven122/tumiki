@@ -78,6 +78,23 @@ export const findServerByName = async (db: PrismaClient, name: string) => {
 };
 
 /**
+ * IDで有効な接続を1件取得（OAuthトークンリフレッシュ時の単一接続config再生成用）
+ */
+export const findEnabledConnectionById = async (
+  db: PrismaClient,
+  connectionId: number,
+) => {
+  return db.mcpConnection.findFirst({
+    where: {
+      id: connectionId,
+      isEnabled: true,
+      server: { isEnabled: true },
+    },
+    include: { server: true },
+  });
+};
+
+/**
  * 有効なサーバーの有効な接続を全件取得（Proxy起動時のconfig生成用）
  */
 export const findEnabledConnections = async (db: PrismaClient) => {
