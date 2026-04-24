@@ -2,28 +2,11 @@
 
 import { useState } from "react";
 import { Download } from "lucide-react";
-import { AUDIT_LOGS, type LogStatus } from "../_components/mock-data";
-
-const statusBadge = (status: LogStatus) => {
-  const map: Record<LogStatus, { bg: string; text: string; label: string }> = {
-    success: {
-      bg: "var(--badge-success-bg)",
-      text: "var(--badge-success-text)",
-      label: "成功",
-    },
-    blocked: {
-      bg: "var(--badge-error-bg)",
-      text: "var(--badge-error-text)",
-      label: "ブロック",
-    },
-    error: {
-      bg: "var(--badge-error-bg)",
-      text: "var(--badge-error-text)",
-      label: "エラー",
-    },
-  };
-  return map[status];
-};
+import {
+  AUDIT_LOGS,
+  getStatusBadge,
+  type LogStatus,
+} from "../_components/mock-data";
 
 const SUMMARY = [
   { label: "総件数", value: AUDIT_LOGS.length.toString() },
@@ -41,7 +24,7 @@ const SUMMARY = [
   },
 ];
 
-export default function AdminHistoryPage() {
+const AdminHistoryPage = () => {
   const [statusFilter, setStatusFilter] = useState<LogStatus | "all">("all");
   const [serviceFilter, setServiceFilter] = useState("all");
 
@@ -60,26 +43,14 @@ export default function AdminHistoryPage() {
       {/* ヘッダー */}
       <div className="flex items-center justify-between">
         <div>
-          <h1
-            className="text-lg font-semibold"
-            style={{ color: "var(--text-primary)" }}
-          >
-            操作履歴
-          </h1>
-          <p
-            className="mt-1 text-xs"
-            style={{ color: "var(--text-secondary)" }}
-          >
+          <h1 className="text-text-primary text-lg font-semibold">操作履歴</h1>
+          <p className="text-text-secondary mt-1 text-xs">
             MCPツール呼び出しの監査ログ
           </p>
         </div>
         <button
           type="button"
-          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
-          style={{
-            backgroundColor: "var(--bg-active)",
-            color: "var(--text-secondary)",
-          }}
+          className="bg-bg-active text-text-secondary flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
         >
           <Download size={13} />
           CSVエクスポート
@@ -91,19 +62,10 @@ export default function AdminHistoryPage() {
         {SUMMARY.map((s) => (
           <div
             key={s.label}
-            className="rounded-xl p-4"
-            style={{
-              backgroundColor: "var(--bg-card)",
-              border: "1px solid var(--border)",
-            }}
+            className="bg-bg-card border-border-default rounded-xl border p-4"
           >
-            <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-              {s.label}
-            </span>
-            <div
-              className="mt-2 text-2xl font-semibold"
-              style={{ color: "var(--text-primary)" }}
-            >
+            <span className="text-text-muted text-xs">{s.label}</span>
+            <div className="text-text-primary mt-2 text-2xl font-semibold">
               {s.value}
             </div>
           </div>
@@ -115,12 +77,7 @@ export default function AdminHistoryPage() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as LogStatus | "all")}
-          className="rounded-lg px-3 py-1.5 text-xs outline-none"
-          style={{
-            backgroundColor: "var(--bg-card)",
-            border: "1px solid var(--border)",
-            color: "var(--text-secondary)",
-          }}
+          className="bg-bg-card border-border-default text-text-secondary rounded-lg border px-3 py-1.5 text-xs outline-none"
         >
           <option value="all">すべてのステータス</option>
           <option value="success">成功</option>
@@ -130,12 +87,7 @@ export default function AdminHistoryPage() {
         <select
           value={serviceFilter}
           onChange={(e) => setServiceFilter(e.target.value)}
-          className="rounded-lg px-3 py-1.5 text-xs outline-none"
-          style={{
-            backgroundColor: "var(--bg-card)",
-            border: "1px solid var(--border)",
-            color: "var(--text-secondary)",
-          }}
+          className="bg-bg-card border-border-default text-text-secondary rounded-lg border px-3 py-1.5 text-xs outline-none"
         >
           {services.map((s) => (
             <option key={s} value={s}>
@@ -143,29 +95,14 @@ export default function AdminHistoryPage() {
             </option>
           ))}
         </select>
-        <span
-          className="ml-auto text-xs"
-          style={{ color: "var(--text-subtle)" }}
-        >
+        <span className="text-text-subtle ml-auto text-xs">
           {filtered.length} 件表示
         </span>
       </div>
 
       {/* テーブル */}
-      <div
-        className="overflow-hidden rounded-xl"
-        style={{
-          backgroundColor: "var(--bg-card)",
-          border: "1px solid var(--border)",
-        }}
-      >
-        <div
-          className="grid grid-cols-[110px_90px_110px_130px_1fr_85px_60px] items-center gap-2 px-5 py-2.5 text-[10px]"
-          style={{
-            borderBottom: "1px solid var(--border)",
-            color: "var(--text-subtle)",
-          }}
-        >
+      <div className="bg-bg-card border-border-default overflow-hidden rounded-xl border">
+        <div className="border-b-border-default text-text-subtle grid grid-cols-[110px_90px_110px_130px_1fr_85px_60px] items-center gap-2 border-b px-5 py-2.5 text-[10px]">
           <span>日時</span>
           <span>ユーザー</span>
           <span>AIクライアント</span>
@@ -176,53 +113,33 @@ export default function AdminHistoryPage() {
         </div>
 
         {filtered.length === 0 ? (
-          <div
-            className="py-12 text-center text-sm"
-            style={{ color: "var(--text-muted)" }}
-          >
+          <div className="text-text-muted py-12 text-center text-sm">
             該当するログはありません
           </div>
         ) : (
           filtered.map((log) => {
-            const badge = statusBadge(log.status);
+            const badge = getStatusBadge(log.status);
             return (
               <div
                 key={log.id}
-                className="grid grid-cols-[110px_90px_110px_130px_1fr_85px_60px] items-center gap-2 px-5 py-3 text-xs transition-colors"
+                className="border-b-border-subtle grid grid-cols-[110px_90px_110px_130px_1fr_85px_60px] items-center gap-2 border-b px-5 py-3 text-xs transition-colors"
                 style={{
-                  borderBottom: "1px solid var(--border-subtle)",
                   backgroundColor:
                     log.status !== "success"
                       ? "rgba(239,68,68,0.03)"
                       : "transparent",
                 }}
               >
-                <span
-                  className="font-mono text-[11px]"
-                  style={{ color: "var(--text-subtle)" }}
-                >
+                <span className="text-text-subtle font-mono text-[11px]">
                   {log.datetime}
                 </span>
                 <div className="flex items-center gap-1.5">
                   <div
-                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-medium"
-                    style={{
-                      backgroundColor:
-                        log.user === "不明"
-                          ? "var(--badge-error-bg)"
-                          : "var(--bg-active)",
-                      color:
-                        log.user === "不明"
-                          ? "var(--badge-error-text)"
-                          : "var(--text-secondary)",
-                    }}
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-medium ${log.user === "不明" ? "bg-badge-error-bg text-badge-error-text" : "bg-bg-active text-text-secondary"}`}
                   >
                     {log.user.charAt(0)}
                   </div>
-                  <span
-                    className="truncate"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
+                  <span className="text-text-secondary truncate">
                     {log.user}
                   </span>
                 </div>
@@ -231,10 +148,7 @@ export default function AdminHistoryPage() {
                     className="h-2 w-2 rounded-full"
                     style={{ backgroundColor: log.aiClientColor }}
                   />
-                  <span
-                    className="text-[11px]"
-                    style={{ color: "var(--text-muted)" }}
-                  >
+                  <span className="text-text-muted text-[11px]">
                     {log.aiClient}
                   </span>
                 </div>
@@ -245,26 +159,17 @@ export default function AdminHistoryPage() {
                   >
                     {log.tool.slice(0, 2).toUpperCase()}
                   </span>
-                  <span style={{ color: "var(--text-secondary)" }}>
-                    {log.tool}
-                  </span>
+                  <span className="text-text-secondary">{log.tool}</span>
                 </div>
-                <span
-                  className="truncate font-mono text-[11px]"
-                  style={{ color: "var(--text-muted)" }}
-                >
+                <span className="text-text-muted truncate font-mono text-[11px]">
                   {log.operation}
                 </span>
                 <span
-                  className="rounded-full px-1.5 py-0.5 text-center text-[9px] font-medium"
-                  style={{ backgroundColor: badge.bg, color: badge.text }}
+                  className={`rounded-full px-1.5 py-0.5 text-center text-[9px] font-medium ${badge.bg} ${badge.text}`}
                 >
                   {badge.label}
                 </span>
-                <span
-                  className="text-right font-mono text-[11px]"
-                  style={{ color: "var(--text-subtle)" }}
-                >
+                <span className="text-text-subtle text-right font-mono text-[11px]">
                   {log.latency}
                 </span>
               </div>
@@ -274,4 +179,6 @@ export default function AdminHistoryPage() {
       </div>
     </div>
   );
-}
+};
+
+export default AdminHistoryPage;

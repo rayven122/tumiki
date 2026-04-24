@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 import { ROLE_DEFINITIONS } from "../_components/mock-data";
 
-export default function AdminRolesPage() {
+const AdminRolesPage = () => {
   const [expanded, setExpanded] = useState<string | null>("r1");
   const [permissions, setPermissions] = useState(() => {
     const map: Record<string, boolean> = {};
@@ -26,26 +26,16 @@ export default function AdminRolesPage() {
       {/* ヘッダー */}
       <div className="flex items-center justify-between">
         <div>
-          <h1
-            className="text-lg font-semibold"
-            style={{ color: "var(--text-primary)" }}
-          >
+          <h1 className="text-text-primary text-lg font-semibold">
             ロール管理
           </h1>
-          <p
-            className="mt-1 text-xs"
-            style={{ color: "var(--text-secondary)" }}
-          >
+          <p className="text-text-secondary mt-1 text-xs">
             ロール別のツールアクセス権限を設定
           </p>
         </div>
         <button
           type="button"
-          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
-          style={{
-            backgroundColor: "var(--btn-primary-bg)",
-            color: "var(--btn-primary-text)",
-          }}
+          className="bg-btn-primary-bg text-btn-primary-text flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
         >
           <Plus size={13} />
           ロール追加
@@ -59,11 +49,7 @@ export default function AdminRolesPage() {
           return (
             <div
               key={role.id}
-              className="overflow-hidden rounded-xl"
-              style={{
-                backgroundColor: "var(--bg-card)",
-                border: "1px solid var(--border)",
-              }}
+              className="bg-bg-card border-border-default overflow-hidden rounded-xl border"
             >
               {/* ロールヘッダー */}
               <button
@@ -75,31 +61,16 @@ export default function AdminRolesPage() {
                   className="h-2.5 w-2.5 rounded-full"
                   style={{ backgroundColor: role.color }}
                 />
-                <span
-                  className="font-medium"
-                  style={{ color: "var(--text-primary)" }}
-                >
+                <span className="text-text-primary font-medium">
                   {role.name}
                 </span>
-                <span
-                  className="text-xs"
-                  style={{ color: "var(--text-muted)" }}
-                >
+                <span className="text-text-muted text-xs">
                   {role.description}
                 </span>
-                <span
-                  className="ml-2 rounded-full px-2 py-0.5 text-[10px]"
-                  style={{
-                    backgroundColor: "var(--bg-active)",
-                    color: "var(--text-muted)",
-                  }}
-                >
+                <span className="bg-bg-active text-text-muted ml-2 rounded-full px-2 py-0.5 text-[10px]">
                   {role.userCount}名
                 </span>
-                <span
-                  className="ml-auto"
-                  style={{ color: "var(--text-muted)" }}
-                >
+                <span className="text-text-muted ml-auto">
                   {isOpen ? (
                     <ChevronDown size={14} />
                   ) : (
@@ -110,7 +81,7 @@ export default function AdminRolesPage() {
 
               {/* 権限マトリクス */}
               {isOpen && (
-                <div style={{ borderTop: "1px solid var(--border)" }}>
+                <div className="border-t-border-default border-t">
                   <div className="grid grid-cols-1 gap-3 p-5 sm:grid-cols-2 lg:grid-cols-4">
                     {role.services.map((svc) => {
                       const allEnabled = svc.tools.every(
@@ -124,11 +95,7 @@ export default function AdminRolesPage() {
                       return (
                         <div
                           key={svc.service}
-                          className="rounded-lg p-3"
-                          style={{
-                            backgroundColor: "var(--bg-app)",
-                            border: "1px solid var(--border-subtle)",
-                          }}
+                          className="bg-bg-app border-border-subtle rounded-lg border p-3"
                         >
                           {/* サービスヘッダー */}
                           <div className="mb-2.5 flex items-center gap-2">
@@ -138,15 +105,15 @@ export default function AdminRolesPage() {
                             >
                               {svc.service.slice(0, 2).toUpperCase()}
                             </span>
-                            <span
-                              className="text-xs font-medium"
-                              style={{ color: "var(--text-secondary)" }}
-                            >
+                            <span className="text-text-secondary text-xs font-medium">
                               {svc.service}
                             </span>
                             {/* サービス全体トグル */}
                             <button
                               type="button"
+                              role="switch"
+                              aria-checked={allEnabled}
+                              aria-label={`${svc.service} の全ツールを${allEnabled ? "無効化" : "有効化"}`}
                               onClick={() => {
                                 const newVal = !allEnabled;
                                 setPermissions((prev) => {
@@ -158,23 +125,11 @@ export default function AdminRolesPage() {
                                   return next;
                                 });
                               }}
-                              className="ml-auto h-4 w-7 rounded-full transition-colors"
-                              style={{
-                                backgroundColor: allEnabled
-                                  ? "var(--badge-success-bg)"
-                                  : someEnabled
-                                    ? "var(--badge-warn-bg)"
-                                    : "var(--bg-active)",
-                              }}
+                              className={`ml-auto h-4 w-7 rounded-full transition-colors ${allEnabled ? "bg-badge-success-bg" : someEnabled ? "bg-badge-warn-bg" : "bg-bg-active"}`}
                             >
                               <span
-                                className="block h-3 w-3 translate-x-0.5 rounded-full transition-transform"
+                                className={`block h-3 w-3 translate-x-0.5 rounded-full transition-transform ${allEnabled ? "bg-badge-success-text" : someEnabled ? "bg-badge-warn-text" : "bg-text-subtle"}`}
                                 style={{
-                                  backgroundColor: allEnabled
-                                    ? "var(--badge-success-text)"
-                                    : someEnabled
-                                      ? "var(--badge-warn-text)"
-                                      : "var(--text-subtle)",
                                   transform: allEnabled
                                     ? "translateX(14px)"
                                     : "translateX(2px)",
@@ -194,31 +149,21 @@ export default function AdminRolesPage() {
                                   className="flex items-center justify-between"
                                 >
                                   <span
-                                    className="font-mono text-[10px]"
-                                    style={{
-                                      color: enabled
-                                        ? "var(--text-secondary)"
-                                        : "var(--text-subtle)",
-                                    }}
+                                    className={`font-mono text-[10px] ${enabled ? "text-text-secondary" : "text-text-subtle"}`}
                                   >
                                     {tool.name}
                                   </span>
                                   <button
                                     type="button"
+                                    role="switch"
+                                    aria-checked={enabled}
+                                    aria-label={`${tool.name} を${enabled ? "無効化" : "有効化"}`}
                                     onClick={() => toggle(key)}
-                                    className="h-3.5 w-6 rounded-full transition-colors"
-                                    style={{
-                                      backgroundColor: enabled
-                                        ? "var(--badge-success-bg)"
-                                        : "var(--bg-active)",
-                                    }}
+                                    className={`h-3.5 w-6 rounded-full transition-colors ${enabled ? "bg-badge-success-bg" : "bg-bg-active"}`}
                                   >
                                     <span
-                                      className="block h-2.5 w-2.5 rounded-full transition-transform"
+                                      className={`block h-2.5 w-2.5 rounded-full transition-transform ${enabled ? "bg-badge-success-text" : "bg-text-subtle"}`}
                                       style={{
-                                        backgroundColor: enabled
-                                          ? "var(--badge-success-text)"
-                                          : "var(--text-subtle)",
                                         transform: enabled
                                           ? "translateX(12px)"
                                           : "translateX(1px)",
@@ -241,4 +186,6 @@ export default function AdminRolesPage() {
       </div>
     </div>
   );
-}
+};
+
+export default AdminRolesPage;

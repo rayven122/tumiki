@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, X } from "lucide-react";
 import {
   PENDING_APPROVALS,
@@ -12,58 +12,50 @@ const URGENCY_STYLES: Record<
   { bg: string; text: string; label: string }
 > = {
   high: {
-    bg: "var(--badge-error-bg)",
-    text: "var(--badge-error-text)",
+    bg: "bg-badge-error-bg",
+    text: "text-badge-error-text",
     label: "緊急",
   },
   normal: {
-    bg: "var(--badge-info-bg)",
-    text: "var(--badge-info-text)",
+    bg: "bg-badge-info-bg",
+    text: "text-badge-info-text",
     label: "通常",
   },
-  low: { bg: "var(--bg-active)", text: "var(--text-muted)", label: "低" },
+  low: { bg: "bg-bg-active", text: "text-text-muted", label: "低" },
 };
 
-export default function AdminApprovalsPage() {
+const AdminApprovalsPage = () => {
   const [approvals, setApprovals] = useState(PENDING_APPROVALS);
   const [resolved, setResolved] = useState<
     Record<string, "approved" | "rejected">
   >({});
+  // タイマーIDを保持し、アンマウント時にクリーンアップする
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
   const handleAction = (id: string, action: "approved" | "rejected") => {
     setResolved((prev) => ({ ...prev, [id]: action }));
-    setTimeout(
+    const t = setTimeout(
       () => setApprovals((prev) => prev.filter((a) => a.id !== id)),
       400,
     );
+    timers.current.push(t);
   };
 
   return (
     <div className="space-y-4 p-6">
       {/* ヘッダー */}
       <div>
-        <h1
-          className="text-lg font-semibold"
-          style={{ color: "var(--text-primary)" }}
-        >
-          承認管理
-        </h1>
-        <p className="mt-1 text-xs" style={{ color: "var(--text-secondary)" }}>
+        <h1 className="text-text-primary text-lg font-semibold">承認管理</h1>
+        <p className="text-text-secondary mt-1 text-xs">
           承認待ち {approvals.length} 件
         </p>
       </div>
 
       {approvals.length === 0 ? (
-        <div
-          className="rounded-xl py-20 text-center"
-          style={{
-            backgroundColor: "var(--bg-card)",
-            border: "1px solid var(--border)",
-          }}
-        >
-          <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-            承認待ちの申請はありません
-          </p>
+        <div className="bg-bg-card border-border-default rounded-xl border py-20 text-center">
+          <p className="text-text-muted text-sm">承認待ちの申請はありません</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -73,53 +65,30 @@ export default function AdminApprovalsPage() {
             return (
               <div
                 key={approval.id}
-                className="rounded-xl p-5 transition-all"
-                style={{
-                  backgroundColor: "var(--bg-card)",
-                  border: "1px solid var(--border)",
-                  opacity: isResolving ? 0.5 : 1,
-                }}
+                className="bg-bg-card border-border-default rounded-xl border p-5 transition-all"
+                style={{ opacity: isResolving ? 0.5 : 1 }}
               >
                 <div className="flex items-start gap-4">
                   {/* ユーザーアバター */}
-                  <div
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-medium"
-                    style={{
-                      backgroundColor: "var(--bg-active)",
-                      color: "var(--text-secondary)",
-                    }}
-                  >
+                  <div className="bg-bg-active text-text-secondary flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-medium">
                     {approval.user.charAt(0)}
                   </div>
 
                   {/* 申請内容 */}
                   <div className="flex-1 space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span
-                        className="font-medium"
-                        style={{ color: "var(--text-primary)" }}
-                      >
+                      <span className="text-text-primary font-medium">
                         {approval.user}
                       </span>
-                      <span
-                        className="text-xs"
-                        style={{ color: "var(--text-muted)" }}
-                      >
+                      <span className="text-text-muted text-xs">
                         {approval.department}
                       </span>
                       <span
-                        className="rounded-full px-2 py-0.5 text-[10px] font-medium"
-                        style={{
-                          backgroundColor: urgency.bg,
-                          color: urgency.text,
-                        }}
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${urgency.bg} ${urgency.text}`}
                       >
                         {urgency.label}
                       </span>
-                      <span
-                        className="ml-auto text-xs"
-                        style={{ color: "var(--text-subtle)" }}
-                      >
+                      <span className="text-text-subtle ml-auto text-xs">
                         {approval.date}
                       </span>
                     </div>
@@ -132,28 +101,18 @@ export default function AdminApprovalsPage() {
                         >
                           {approval.tool.slice(0, 2).toUpperCase()}
                         </span>
-                        <span style={{ color: "var(--text-secondary)" }}>
+                        <span className="text-text-secondary">
                           {approval.tool}
                         </span>
                       </div>
-                      <span
-                        className="rounded-full px-2 py-0.5 text-[10px]"
-                        style={{
-                          backgroundColor: "var(--bg-active)",
-                          color: "var(--text-muted)",
-                        }}
-                      >
+                      <span className="bg-bg-active text-text-muted rounded-full px-2 py-0.5 text-[10px]">
                         {approval.type}
                       </span>
                       <div className="flex gap-1">
                         {approval.permissions.map((p) => (
                           <span
                             key={p}
-                            className="rounded px-1.5 py-0.5 font-mono text-[9px]"
-                            style={{
-                              backgroundColor: "var(--badge-info-bg)",
-                              color: "var(--badge-info-text)",
-                            }}
+                            className="bg-badge-info-bg text-badge-info-text rounded px-1.5 py-0.5 font-mono text-[9px]"
                           >
                             {p}
                           </span>
@@ -161,11 +120,8 @@ export default function AdminApprovalsPage() {
                       </div>
                     </div>
 
-                    <p
-                      className="text-xs"
-                      style={{ color: "var(--text-secondary)" }}
-                    >
-                      <span style={{ color: "var(--text-muted)" }}>目的: </span>
+                    <p className="text-text-secondary text-xs">
+                      <span className="text-text-muted">目的: </span>
                       {approval.purpose}
                     </p>
                   </div>
@@ -176,11 +132,7 @@ export default function AdminApprovalsPage() {
                       type="button"
                       onClick={() => handleAction(approval.id, "rejected")}
                       disabled={isResolving}
-                      className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:cursor-not-allowed"
-                      style={{
-                        backgroundColor: "var(--badge-error-bg)",
-                        color: "var(--badge-error-text)",
-                      }}
+                      className="bg-badge-error-bg text-badge-error-text flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:cursor-not-allowed"
                     >
                       <X size={12} />
                       却下
@@ -189,11 +141,7 @@ export default function AdminApprovalsPage() {
                       type="button"
                       onClick={() => handleAction(approval.id, "approved")}
                       disabled={isResolving}
-                      className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:cursor-not-allowed"
-                      style={{
-                        backgroundColor: "var(--badge-success-bg)",
-                        color: "var(--badge-success-text)",
-                      }}
+                      className="bg-badge-success-bg text-badge-success-text flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:cursor-not-allowed"
                     >
                       <Check size={12} />
                       承認
@@ -207,4 +155,6 @@ export default function AdminApprovalsPage() {
       )}
     </div>
   );
-}
+};
+
+export default AdminApprovalsPage;

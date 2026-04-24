@@ -905,6 +905,37 @@ export const AUDIT_LOGS: AuditLog[] = [
   },
 ];
 
+/* ===== ステータスバッジ ===== */
+
+type BadgeConfig = { bg: string; text: string; label: string };
+
+const STATUS_BADGE_MAP: Record<string, BadgeConfig> = {
+  success: {
+    bg: "bg-badge-success-bg",
+    text: "text-badge-success-text",
+    label: "成功",
+  },
+  blocked: {
+    bg: "bg-badge-error-bg",
+    text: "text-badge-error-text",
+    label: "ブロック",
+  },
+  error: {
+    bg: "bg-badge-error-bg",
+    text: "text-badge-error-text",
+    label: "エラー",
+  },
+};
+
+const DEFAULT_BADGE: BadgeConfig = {
+  bg: "bg-badge-error-bg",
+  text: "text-badge-error-text",
+  label: "エラー",
+};
+
+export const getStatusBadge = (status: string): BadgeConfig =>
+  STATUS_BADGE_MAP[status] ?? DEFAULT_BADGE;
+
 /* ===== 承認管理 ===== */
 
 export type ApprovalUrgency = "high" | "normal" | "low";

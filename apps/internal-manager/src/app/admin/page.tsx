@@ -24,36 +24,9 @@ import {
   PERIOD_STATS,
   PERIODS,
   TRAFFIC_MAP,
+  getStatusBadge,
   type Period,
 } from "./_components/mock-data";
-
-const STATUS_BADGE_MAP: Record<
-  string,
-  { bg: string; text: string; label: string }
-> = {
-  success: {
-    bg: "var(--badge-success-bg)",
-    text: "var(--badge-success-text)",
-    label: "成功",
-  },
-  blocked: {
-    bg: "var(--badge-error-bg)",
-    text: "var(--badge-error-text)",
-    label: "ブロック",
-  },
-  error: {
-    bg: "var(--badge-error-bg)",
-    text: "var(--badge-error-text)",
-    label: "エラー",
-  },
-};
-const DEFAULT_BADGE = {
-  bg: "var(--badge-error-bg)",
-  text: "var(--badge-error-text)",
-  label: "エラー",
-};
-const statusBadge = (status: string) =>
-  STATUS_BADGE_MAP[status] ?? DEFAULT_BADGE;
 
 const ChartTooltip = ({
   active,
@@ -66,24 +39,16 @@ const ChartTooltip = ({
 }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div
-      className="rounded-lg px-3 py-2 text-xs shadow-xl"
-      style={{
-        backgroundColor: "var(--bg-card)",
-        border: "1px solid var(--border)",
-      }}
-    >
-      <p className="mb-1" style={{ color: "var(--text-muted)" }}>
-        {label}
-      </p>
+    <div className="bg-bg-card border-border-default rounded-lg border px-3 py-2 text-xs shadow-xl">
+      <p className="text-text-muted mb-1">{label}</p>
       {payload.map((entry) => (
         <p key={entry.name} className="flex items-center gap-1.5">
           <span
             className="inline-block h-1.5 w-1.5 rounded-full"
             style={{ backgroundColor: entry.color }}
           />
-          <span style={{ color: "var(--text-secondary)" }}>{entry.name}:</span>
-          <span style={{ color: "var(--text-primary)" }}>
+          <span className="text-text-secondary">{entry.name}:</span>
+          <span className="text-text-primary">
             {entry.value.toLocaleString()}
           </span>
         </p>
@@ -92,7 +57,7 @@ const ChartTooltip = ({
   );
 };
 
-export default function AdminDashboardPage() {
+const AdminDashboardPage = () => {
   const [period, setPeriod] = useState<Period>("24h");
   const [activeAi, setActiveAi] = useState<string | null>(null);
   const stats = PERIOD_STATS[period];
@@ -101,27 +66,15 @@ export default function AdminDashboardPage() {
     <div className="space-y-4 p-6">
       {/* ヘッダー */}
       <div className="flex items-center justify-between">
-        <h1
-          className="text-lg font-semibold"
-          style={{ color: "var(--text-primary)" }}
-        >
+        <h1 className="text-text-primary text-lg font-semibold">
           ダッシュボード
         </h1>
-        <div
-          className="flex items-center gap-1 rounded-lg p-0.5"
-          style={{ backgroundColor: "var(--bg-card-hover)" }}
-        >
+        <div className="bg-bg-card-hover flex items-center gap-1 rounded-lg p-0.5">
           {PERIODS.map((p) => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
-              className="rounded px-2.5 py-1 text-[11px] transition-colors"
-              style={{
-                backgroundColor:
-                  period === p ? "var(--bg-active)" : "transparent",
-                color:
-                  period === p ? "var(--text-primary)" : "var(--text-subtle)",
-              }}
+              className={`rounded px-2.5 py-1 text-[11px] transition-colors ${period === p ? "bg-bg-active text-text-primary" : "text-text-subtle"}`}
             >
               {p}
             </button>
@@ -136,48 +89,36 @@ export default function AdminDashboardPage() {
             label: `リクエスト / ${period}`,
             value: stats.requests,
             sub: stats.requestsSub,
-            subColor: "var(--text-muted)",
+            subClass: "text-text-muted",
           },
           {
             label: "ブロック",
             value: stats.blocks,
             sub: stats.blocksSub,
-            subColor: "#f87171",
+            subClass: "text-[#f87171]",
           },
           {
             label: "コネクタ",
             value: "8",
             sub: "5 稼働中",
-            subColor: "var(--text-muted)",
+            subClass: "text-text-muted",
           },
           {
             label: "ユーザー",
             value: stats.users,
             sub: stats.usersSub,
-            subColor: "var(--text-muted)",
+            subClass: "text-text-muted",
           },
         ].map((card) => (
           <div
             key={card.label}
-            className="rounded-xl p-4"
-            style={{
-              backgroundColor: "var(--bg-card)",
-              border: "1px solid var(--border)",
-            }}
+            className="bg-bg-card border-border-default rounded-xl border p-4"
           >
-            <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-              {card.label}
-            </span>
-            <div
-              className="mt-2 text-2xl font-semibold"
-              style={{ color: "var(--text-primary)" }}
-            >
+            <span className="text-text-muted text-xs">{card.label}</span>
+            <div className="text-text-primary mt-2 text-2xl font-semibold">
               {card.value}
             </div>
-            <div
-              className="mt-0.5 text-[10px]"
-              style={{ color: card.subColor }}
-            >
+            <div className={`mt-0.5 text-[10px] ${card.subClass}`}>
               {card.sub}
             </div>
           </div>
@@ -185,24 +126,12 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* AIクライアント別リクエスト推移 */}
-      <div
-        className="rounded-xl p-5"
-        style={{
-          backgroundColor: "var(--bg-card)",
-          border: "1px solid var(--border)",
-        }}
-      >
+      <div className="bg-bg-card border-border-default rounded-xl border p-5">
         <div className="mb-4 flex items-center justify-between">
-          <span
-            className="text-sm font-medium"
-            style={{ color: "var(--text-secondary)" }}
-          >
+          <span className="text-text-secondary text-sm font-medium">
             AIクライアント別リクエスト推移
           </span>
-          <div
-            className="flex flex-wrap gap-3 text-[10px]"
-            style={{ color: "var(--text-subtle)" }}
-          >
+          <div className="text-text-subtle flex flex-wrap gap-3 text-[10px]">
             {CHART_LEGENDS.map((l) => (
               <span key={l.label} className="flex items-center gap-1">
                 <span
@@ -234,12 +163,12 @@ export default function AdminDashboardPage() {
               </defs>
               <CartesianGrid
                 strokeDasharray="3 3"
-                stroke="var(--border)"
+                stroke="var(--color-border-default)"
                 vertical={false}
               />
               <XAxis
                 dataKey="time"
-                tick={{ fill: "var(--text-subtle)", fontSize: 10 }}
+                tick={{ fill: "var(--color-text-subtle)", fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
               />
@@ -270,17 +199,8 @@ export default function AdminDashboardPage() {
       {/* 下段2カラム */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* AIクライアント別ドーナツ */}
-        <div
-          className="rounded-xl p-5"
-          style={{
-            backgroundColor: "var(--bg-card)",
-            border: "1px solid var(--border)",
-          }}
-        >
-          <span
-            className="mb-3 block text-sm font-medium"
-            style={{ color: "var(--text-secondary)" }}
-          >
+        <div className="bg-bg-card border-border-default rounded-xl border p-5">
+          <span className="text-text-secondary mb-3 block text-sm font-medium">
             AIクライアント別
           </span>
           <div className="flex items-center gap-4">
@@ -327,13 +247,8 @@ export default function AdminDashboardPage() {
                     className="h-1.5 w-1.5 shrink-0 rounded-full"
                     style={{ backgroundColor: item.color }}
                   />
-                  <span style={{ color: "var(--text-secondary)" }}>
-                    {item.name}
-                  </span>
-                  <span
-                    className="ml-auto font-mono"
-                    style={{ color: "var(--text-subtle)" }}
-                  >
+                  <span className="text-text-secondary">{item.name}</span>
+                  <span className="text-text-subtle ml-auto font-mono">
                     {item.value}%
                   </span>
                 </button>
@@ -343,17 +258,8 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* 接続先サービス */}
-        <div
-          className="rounded-xl p-5"
-          style={{
-            backgroundColor: "var(--bg-card)",
-            border: "1px solid var(--border)",
-          }}
-        >
-          <span
-            className="mb-4 block text-sm font-medium"
-            style={{ color: "var(--text-secondary)" }}
-          >
+        <div className="bg-bg-card border-border-default rounded-xl border p-5">
+          <span className="text-text-secondary mb-4 block text-sm font-medium">
             接続先サービス
           </span>
           <div className="space-y-2.5">
@@ -365,31 +271,21 @@ export default function AdminDashboardPage() {
                 >
                   {s.name.slice(0, 2).toUpperCase()}
                 </span>
-                <span
-                  className="w-28 truncate"
-                  style={{ color: "var(--text-secondary)" }}
-                >
+                <span className="text-text-secondary w-28 truncate">
                   {s.name}
                 </span>
                 <span
                   className={`h-1.5 w-1.5 rounded-full ${s.status === "active" ? "bg-emerald-400" : "bg-zinc-700"}`}
                 />
-                <div
-                  className="h-1.5 flex-1 rounded-full"
-                  style={{ backgroundColor: "var(--bg-card-hover)" }}
-                >
+                <div className="bg-bg-card-hover h-1.5 flex-1 rounded-full">
                   <div
-                    className="h-1.5 rounded-full"
+                    className="bg-text-muted h-1.5 rounded-full"
                     style={{
                       width: `${(s.requests / MAX_SERVICE_REQUESTS) * 100}%`,
-                      backgroundColor: "var(--text-muted)",
                     }}
                   />
                 </div>
-                <span
-                  className="w-12 text-right font-mono"
-                  style={{ color: "var(--text-subtle)" }}
-                >
+                <span className="text-text-subtle w-12 text-right font-mono">
                   {s.requests.toLocaleString()}
                 </span>
               </div>
@@ -399,46 +295,24 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* 最近のログ */}
-      <div
-        className="overflow-hidden rounded-xl"
-        style={{
-          backgroundColor: "var(--bg-card)",
-          border: "1px solid var(--border)",
-        }}
-      >
-        <div
-          className="flex items-center justify-between px-5 py-3"
-          style={{ borderBottom: "1px solid var(--border)" }}
-        >
+      <div className="bg-bg-card border-border-default overflow-hidden rounded-xl border">
+        <div className="border-b-border-default flex items-center justify-between border-b px-5 py-3">
           <div className="flex items-center gap-2">
-            <Activity
-              className="h-4 w-4"
-              style={{ color: "var(--text-muted)" }}
-            />
-            <span
-              className="text-sm font-medium"
-              style={{ color: "var(--text-primary)" }}
-            >
+            <Activity className="text-text-muted h-4 w-4" />
+            <span className="text-text-primary text-sm font-medium">
               最近のログ
             </span>
           </div>
           <Link
             href="/admin/history"
-            className="flex items-center gap-1 text-[10px] transition-opacity hover:opacity-70"
-            style={{ color: "var(--text-muted)" }}
+            className="text-text-muted flex items-center gap-1 text-[10px] transition-opacity hover:opacity-70"
           >
             すべて見る <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
 
         {/* テーブルヘッダー */}
-        <div
-          className="grid grid-cols-[90px_90px_100px_120px_1fr_80px_55px] items-center gap-2 px-5 py-2 text-[10px]"
-          style={{
-            borderBottom: "1px solid var(--border)",
-            color: "var(--text-subtle)",
-          }}
-        >
+        <div className="border-b-border-default text-text-subtle grid grid-cols-[90px_90px_100px_120px_1fr_80px_55px] items-center gap-2 border-b px-5 py-2 text-[10px]">
           <span>日時</span>
           <span>ユーザー</span>
           <span>AIクライアント</span>
@@ -449,57 +323,35 @@ export default function AdminDashboardPage() {
         </div>
 
         {AUDIT_LOGS.slice(0, 6).map((log) => {
-          const badge = statusBadge(log.status);
+          const badge = getStatusBadge(log.status);
           return (
             <div
               key={log.id}
-              className="grid grid-cols-[90px_90px_100px_120px_1fr_80px_55px] items-center gap-2 px-5 py-2.5 text-xs transition-colors"
+              className="border-b-border-subtle grid grid-cols-[90px_90px_100px_120px_1fr_80px_55px] items-center gap-2 border-b px-5 py-2.5 text-xs transition-colors"
               style={{
-                borderBottom: "1px solid var(--border-subtle)",
                 backgroundColor:
                   log.status !== "success"
                     ? "rgba(239,68,68,0.03)"
                     : "transparent",
               }}
             >
-              <span
-                className="font-mono text-[11px]"
-                style={{ color: "var(--text-subtle)" }}
-              >
+              <span className="text-text-subtle font-mono text-[11px]">
                 {log.datetime.split(" ")[1]}
               </span>
               <div className="flex items-center gap-1.5">
                 <div
-                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-medium"
-                  style={{
-                    backgroundColor:
-                      log.user === "不明"
-                        ? "var(--badge-error-bg)"
-                        : "var(--bg-active)",
-                    color:
-                      log.user === "不明"
-                        ? "var(--badge-error-text)"
-                        : "var(--text-secondary)",
-                  }}
+                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-medium ${log.user === "不明" ? "bg-badge-error-bg text-badge-error-text" : "bg-bg-active text-text-secondary"}`}
                 >
                   {log.user.charAt(0)}
                 </div>
-                <span
-                  className="truncate"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  {log.user}
-                </span>
+                <span className="text-text-secondary truncate">{log.user}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span
                   className="h-2 w-2 rounded-full"
                   style={{ backgroundColor: log.aiClientColor }}
                 />
-                <span
-                  className="text-[11px]"
-                  style={{ color: "var(--text-muted)" }}
-                >
+                <span className="text-text-muted text-[11px]">
                   {log.aiClient}
                 </span>
               </div>
@@ -510,26 +362,17 @@ export default function AdminDashboardPage() {
                 >
                   {log.tool.slice(0, 2).toUpperCase()}
                 </span>
-                <span style={{ color: "var(--text-secondary)" }}>
-                  {log.tool}
-                </span>
+                <span className="text-text-secondary">{log.tool}</span>
               </div>
-              <span
-                className="truncate font-mono text-[11px]"
-                style={{ color: "var(--text-muted)" }}
-              >
+              <span className="text-text-muted truncate font-mono text-[11px]">
                 {log.operation}
               </span>
               <span
-                className="rounded-full px-1.5 py-0.5 text-center text-[9px] font-medium"
-                style={{ backgroundColor: badge.bg, color: badge.text }}
+                className={`rounded-full px-1.5 py-0.5 text-center text-[9px] font-medium ${badge.bg} ${badge.text}`}
               >
                 {badge.label}
               </span>
-              <span
-                className="text-right font-mono text-[11px]"
-                style={{ color: "var(--text-subtle)" }}
-              >
+              <span className="text-text-subtle text-right font-mono text-[11px]">
                 {log.latency}
               </span>
             </div>
@@ -538,4 +381,6 @@ export default function AdminDashboardPage() {
       </div>
     </div>
   );
-}
+};
+
+export default AdminDashboardPage;

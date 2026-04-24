@@ -30,31 +30,22 @@ export const AdminSidebar = () => {
 
   return (
     <aside
-      className="flex shrink-0 flex-col py-3 transition-all duration-200"
-      style={{
-        width: collapsed ? 56 : 220,
-        backgroundColor: "var(--bg-app)",
-        borderRight: "1px solid var(--border)",
-        minHeight: "100vh",
-      }}
+      className="bg-bg-app border-r-border-default flex min-h-screen shrink-0 flex-col border-r py-3 transition-all duration-200"
+      style={{ width: collapsed ? 56 : 220 }}
     >
       {/* ロゴ + 折りたたみボタン */}
-      <div
-        className="flex items-center justify-between px-3 pb-3"
-        style={{ borderBottom: "1px solid var(--border)" }}
-      >
+      <div className="border-b-border-default flex items-center justify-between border-b px-3 pb-3">
         {!collapsed && (
-          <span
-            className="text-sm font-semibold"
-            style={{ color: "var(--text-primary)" }}
-          >
+          <span className="text-text-primary text-sm font-semibold">
             Tumiki
           </span>
         )}
         <button
+          type="button"
+          aria-label={collapsed ? "サイドバーを展開" : "サイドバーを折りたたむ"}
+          aria-expanded={!collapsed}
           onClick={() => setCollapsed(!collapsed)}
-          className={`rounded p-1 transition-opacity hover:opacity-80 ${collapsed ? "mx-auto" : "ml-auto"}`}
-          style={{ color: "var(--text-muted)" }}
+          className={`text-text-muted rounded p-1 transition-opacity hover:opacity-80 ${collapsed ? "mx-auto" : "ml-auto"}`}
         >
           {collapsed ? <PanelLeft size={16} /> : <PanelLeftClose size={16} />}
         </button>
@@ -69,13 +60,7 @@ export const AdminSidebar = () => {
               key={path}
               href={path}
               title={collapsed ? label : undefined}
-              className="flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm transition-colors hover:opacity-90"
-              style={{
-                backgroundColor: isActive ? "var(--bg-active)" : "transparent",
-                color: isActive
-                  ? "var(--text-primary)"
-                  : "var(--text-secondary)",
-              }}
+              className={`flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm transition-colors hover:opacity-90 ${isActive ? "bg-bg-active text-text-primary" : "text-text-secondary"}`}
             >
               <Icon size={15} className="shrink-0" />
               {!collapsed && <span>{label}</span>}
@@ -85,24 +70,19 @@ export const AdminSidebar = () => {
       </nav>
 
       {/* フッター */}
-      <div
-        className="px-3 pt-2"
-        style={{ borderTop: "1px solid var(--border)" }}
-      >
+      <div className="border-t-border-default border-t px-3 pt-2">
         {collapsed ? (
           <Link
             href="/"
             title="ホームへ戻る"
-            className="flex justify-center"
-            style={{ color: "var(--text-subtle)" }}
+            className="text-text-subtle flex justify-center"
           >
             <ExternalLink size={13} />
           </Link>
         ) : (
           <Link
             href="/"
-            className="flex items-center gap-1.5 text-xs hover:opacity-80"
-            style={{ color: "var(--text-subtle)" }}
+            className="text-text-subtle flex items-center gap-1.5 text-xs hover:opacity-80"
           >
             <ExternalLink size={11} />
             ホームへ戻る
