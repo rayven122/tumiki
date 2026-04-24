@@ -4,86 +4,97 @@ import type { Role } from "@tumiki/db/server";
 import type { AdapterUser } from "@auth/core/adapters";
 import { db } from "@tumiki/db/server";
 import { getTumikiClaims } from "./get-tumiki-claims";
-import { getKeycloakEnv } from "~/lib/env";
+import { getOidcEnv } from "~/lib/env";
 import { decodeJwt } from "jose";
 import { z } from "zod";
 
-// Keycloak JWTペイロードのZodスキーマ（unsafe キャストを排除するためのバリデーション用）
-const keycloakTumikiClaimsSchema = z.object({
+// OIDCアクセストークンのペイロードスキーマ
+const tumikiIdpClaimsSchema = z.object({
   group_roles: z.array(z.string()),
   roles: z.array(z.string()),
 });
 
-const keycloakJWTPayloadSchema = z.object({
+const oidcJWTPayloadSchema = z.object({
   sub: z.string().optional(),
   email: z.string().optional(),
   name: z.string().optional(),
-  tumiki: keycloakTumikiClaimsSchema.optional(),
+  tumiki: tumikiIdpClaimsSchema.optional(),
 });
 
-// トークンリフレッシュレスポンスのZodスキーマ
+// トークンリフレッシュレスポンスのスキーマ
 const refreshedTokensSchema = z.object({
   access_token: z.string(),
   expires_in: z.number(),
   refresh_token: z.string().optional(),
 });
 
+// OIDCディスカバリーからトークンエンドポイントを取得（シンプルにインメモリキャッシュ）
+let cachedTokenEndpoint: string | null = null;
+
+const getTokenEndpoint = async (issuer: string): Promise<string> => {
+  if (cachedTokenEndpoint) return cachedTokenEndpoint;
+
+  const discoveryUrl = `${issuer.replace(/\/$/, "")}/.well-known/openid-configuration`;
+  const res = await fetch(discoveryUrl);
+  if (!res.ok) throw new Error(`OIDC discovery failed: ${res.status}`);
+
+  const config = z
+    .object({ token_endpoint: z.string().url() })
+    .parse(await res.json());
+
+  cachedTokenEndpoint = config.token_endpoint;
+  return cachedTokenEndpoint;
+};
+
 /**
- * Keycloak からアクセストークンをリフレッシュ
- * リフレッシュ失敗時は null を返し、セッションを無効化する
+ * OIDCアクセストークンをリフレッシュ
+ * トークンエンドポイントはOIDCディスカバリーで自動取得（Entra/GWS/Okta/Keycloak共通）
  */
 const refreshAccessToken = async (token: JWT): Promise<JWT | null> => {
   try {
-    const keycloakEnv = getKeycloakEnv();
-    const tokenEndpoint = `${keycloakEnv.KEYCLOAK_ISSUER}/protocol/openid-connect/token`;
+    const { OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_ISSUER } = getOidcEnv();
+    const tokenEndpoint = await getTokenEndpoint(OIDC_ISSUER);
 
     const response = await fetch(tokenEndpoint, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         grant_type: "refresh_token",
-        client_id: keycloakEnv.KEYCLOAK_CLIENT_ID,
-        client_secret: keycloakEnv.KEYCLOAK_CLIENT_SECRET,
+        client_id: OIDC_CLIENT_ID,
+        client_secret: OIDC_CLIENT_SECRET,
         refresh_token: token.refreshToken ?? "",
       }),
     });
 
     if (!response.ok) {
       console.error(
-        `[refreshAccessToken] Failed to refresh token: ${response.status} ${response.statusText}`,
+        `[refreshAccessToken] Failed: ${response.status} ${response.statusText}`,
       );
       return null;
     }
 
-    const refreshedTokens = refreshedTokensSchema.parse(await response.json());
+    const refreshed = refreshedTokensSchema.parse(await response.json());
 
-    // 新しいアクセストークンからKeycloakのgroup_rolesを抽出
-    let keycloakGroupRoles: string[] | undefined;
+    // 新しいアクセストークンからTumikiカスタムクレームを抽出（プロバイダーが対応している場合）
+    let idpGroupRoles: string[] | undefined;
     try {
-      const decodedToken = keycloakJWTPayloadSchema.parse(
-        decodeJwt(refreshedTokens.access_token),
+      const decoded = oidcJWTPayloadSchema.parse(
+        decodeJwt(refreshed.access_token),
       );
-      keycloakGroupRoles = decodedToken.tumiki?.group_roles;
-    } catch (decodeError) {
-      console.warn(
-        "[refreshAccessToken] Failed to decode access token for group_roles:",
-        decodeError,
-      );
+      idpGroupRoles = decoded.tumiki?.group_roles;
+    } catch {
+      // カスタムクレームがない場合は無視（DBから取得）
     }
-
-    console.log("[refreshAccessToken] Token refreshed successfully");
 
     return {
       ...token,
-      accessToken: refreshedTokens.access_token,
-      expiresAt: Math.floor(Date.now() / 1000) + refreshedTokens.expires_in,
-      refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
-      keycloakGroupRoles,
+      accessToken: refreshed.access_token,
+      expiresAt: Math.floor(Date.now() / 1000) + refreshed.expires_in,
+      refreshToken: refreshed.refresh_token ?? token.refreshToken,
+      idpGroupRoles,
     };
   } catch (error) {
-    console.error("[refreshAccessToken] Error refreshing token:", error);
+    console.error("[refreshAccessToken] Error:", error);
     return null;
   }
 };
@@ -92,8 +103,8 @@ const refreshAccessToken = async (token: JWT): Promise<JWT | null> => {
  * JWTコールバック
  *
  * 発火タイミング：
- * 1. 初回サインイン時（account存在、Keycloakからプロファイル取得）
- * 2. session.update({})実行時（accountなし、既存tokenを更新）
+ * 1. 初回サインイン時（account存在、OIDCプロバイダーからプロファイル取得）
+ * 2. session.update({})実行時
  * 3. JWTリフレッシュ時（定期的な更新）
  */
 export const jwtCallback = async ({
@@ -117,22 +128,19 @@ export const jwtCallback = async ({
     token.expiresAt = account.expires_at;
     token.refreshToken = account.refresh_token;
 
-    const keycloakProfile = keycloakJWTPayloadSchema.parse(profile);
-    token.sub = keycloakProfile.sub ?? "";
-    token.email = keycloakProfile.email ?? null;
-    token.name = keycloakProfile.name ?? null;
+    const oidcProfile = oidcJWTPayloadSchema.parse(profile);
+    token.sub = oidcProfile.sub ?? "";
+    token.email = oidcProfile.email ?? null;
+    token.name = oidcProfile.name ?? null;
 
-    // DBから最新のtumikiクレームを取得（group_rolesから組織別ロールを解析）
-    const updatedTumiki = await getTumikiClaims(
-      db,
-      token.sub,
-      keycloakProfile.tumiki?.group_roles,
-    );
+    // group_rolesはOIDCプロバイダーのカスタムクレームから取得（未設定の場合は空配列）
+    const groupRoles = oidcProfile.tumiki?.group_roles;
+
+    const updatedTumiki = await getTumikiClaims(db, token.sub, groupRoles);
 
     if (!updatedTumiki) {
-      // ユーザーが見つからない場合はセッションを無効化
       console.error(
-        `[jwtCallback] Failed to get tumiki claims for user ${token.sub}. Session will be invalidated.`,
+        `[jwtCallback] User not found: ${token.sub}. Session will be invalidated.`,
       );
       return null;
     }
@@ -141,53 +149,44 @@ export const jwtCallback = async ({
     return token;
   }
 
-  // アクセストークンの有効期限をチェック（60秒のバッファを持たせる）
+  // アクセストークンの有効期限チェック（60秒バッファ）
   const shouldRefresh = token.expiresAt
     ? Date.now() >= (token.expiresAt - 60) * 1000
     : false;
 
   if (shouldRefresh && token.refreshToken) {
     const refreshedToken = await refreshAccessToken(token);
-
     if (!refreshedToken) {
-      // リフレッシュ失敗 → セッション無効化（サインインページへリダイレクト）
       console.error("[jwtCallback] Token refresh failed, invalidating session");
       return null;
     }
-
     token = refreshedToken;
   }
 
   if (!account && token.sub && token.tumiki) {
-    // セッション更新（update({})）またはトークンリフレッシュ時
-    // Keycloakからアクセストークンをリフレッシュして最新のgroup_rolesを取得
-    const userId = token.sub; // subは上の条件でチェック済み
-    let groupRoles = token.keycloakGroupRoles ?? token.tumiki.group_roles;
+    const userId = token.sub;
+    let groupRoles = token.idpGroupRoles ?? token.tumiki.group_roles;
 
-    // session.update({})時のみリフレッシュを実行（forceRefreshフラグで制御）
-    // shouldRefreshが既にtrueで上でリフレッシュ済みの場合はスキップ（ダブルリフレッシュ防止）
+    // session.update({})時のみ強制リフレッシュ
     if (token.refreshToken && !shouldRefresh && token.forceRefresh) {
       const refreshedToken = await refreshAccessToken(token);
       if (refreshedToken) {
         token = { ...refreshedToken, forceRefresh: false };
-        // リフレッシュで取得した最新のgroup_rolesを使用
-        groupRoles = token.keycloakGroupRoles ?? groupRoles;
+        groupRoles = token.idpGroupRoles ?? groupRoles;
       }
     }
 
     const updatedTumiki = await getTumikiClaims(db, userId, groupRoles);
 
     if (!updatedTumiki) {
-      // ユーザーが見つからない場合はセッションを無効化
       console.error(
-        `[jwtCallback] Failed to get tumiki claims for user ${token.sub}. Session will be invalidated.`,
+        `[jwtCallback] User not found: ${token.sub}. Session will be invalidated.`,
       );
       return null;
     }
 
     token.tumiki = updatedTumiki;
-    // 使用済みのkeycloakGroupRolesをクリア
-    token.keycloakGroupRoles = undefined;
+    token.idpGroupRoles = undefined;
     return token;
   }
 
@@ -196,7 +195,6 @@ export const jwtCallback = async ({
 
 /**
  * セッションコールバック
- * JWTトークンからクライアントに返すセッション情報を構築
  */
 export const sessionCallback = async ({
   session,
@@ -206,7 +204,6 @@ export const sessionCallback = async ({
   token: JWT;
 }): Promise<Session> => {
   if (session.user && token?.sub) {
-    // session.userを新しいオブジェクトとして再構築
     Object.assign(session.user, {
       id: token.sub,
       sub: token.sub,
@@ -214,10 +211,9 @@ export const sessionCallback = async ({
       name: token.name ?? null,
       image: token.picture ?? null,
       role: token.role ?? "USER",
-      tumiki: token.tumiki ?? null, // Keycloakカスタムクレーム（組織情報を含む）
+      tumiki: token.tumiki ?? null,
     });
   }
-  // MCP Proxy認証用にaccessTokenを公開
   session.accessToken = token.accessToken;
   return session;
 };
