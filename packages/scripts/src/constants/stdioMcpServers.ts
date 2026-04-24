@@ -3,7 +3,7 @@ import type { AuthType, McpServerVisibility, TransportType } from "@tumiki/db";
 /**
  * STDIO MCP サーバーテンプレート一覧
  *
- * mcp-wrapper で動的に起動される環境変数ベースの MCP サーバー
+ * 動的に起動される環境変数ベースの MCP サーバー
  * OAuth/ファイルベースの MCP サーバーは対象外（Cloud Run で対応）
  *
  * npm パッケージ参照:

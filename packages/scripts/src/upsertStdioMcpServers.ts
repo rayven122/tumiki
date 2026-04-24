@@ -6,7 +6,7 @@ import { STDIO_MCP_SERVERS } from "./constants/stdioMcpServers";
 /**
  * STDIO MCP サーバーテンプレートを登録する
  *
- * mcp-wrapper で動的に起動される環境変数ベースの MCP サーバーを登録
+ * 動的に起動される環境変数ベースの MCP サーバーを登録
  */
 export const upsertStdioMcpServers = async () => {
   // 既存の STDIO テンプレートを取得
