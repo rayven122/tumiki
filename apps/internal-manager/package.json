@@ -24,7 +24,7 @@
     "@tumiki/keycloak": "workspace:*",
     "@tumiki/ui": "workspace:*",
     "framer-motion": "^12.35.1",
-    "lucide-react": "^0.486.0",
+    "lucide-react": "^1.9.0",
     "next": "^16.1.5",
     "next-auth": "5.0.0-beta.30",
     "react": "^19.2.4",

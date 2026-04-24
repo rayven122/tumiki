@@ -68,7 +68,7 @@
     "framer-motion": "^12.35.1",
     "google-auth-library": "^10.5.0",
     "jotai": "^2.18.0",
-    "lucide-react": "^0.486.0",
+    "lucide-react": "^1.9.0",
     "microcms-js-sdk": "^3.2.0",
     "nanoid": "^5.1.6",
     "next": "^16.1.5",
