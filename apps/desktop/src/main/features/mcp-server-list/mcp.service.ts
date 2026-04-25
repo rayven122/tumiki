@@ -1,20 +1,30 @@
 import { ServerStatus } from "@prisma/desktop-client";
 import { getDb } from "../../shared/db";
 import * as mcpRepository from "./mcp.repository";
+import type { DbClient } from "./mcp.repository";
+import * as catalogRepository from "../catalog/catalog.repository";
 import * as logger from "../../shared/utils/logger";
 import { toSlug } from "../../../shared/mcp.slug";
 import { encryptToken } from "../../utils/encryption";
 import { decryptCredentials } from "../../utils/credentials";
-import type { CreateFromCatalogInput } from "./mcp.types";
+import type {
+  CreateFromCatalogInput,
+  CreateVirtualServerInput,
+} from "./mcp.types";
 
 // IPC / テストから参照できるよう re-export
-export type { CreateFromCatalogInput } from "./mcp.types";
+export type {
+  CreateFromCatalogInput,
+  CreateVirtualServerInput,
+} from "./mcp.types";
 
 /**
  * 一意なslugを生成（重複時はサフィックス付与）
  */
-const generateUniqueSlug = async (name: string): Promise<string> => {
-  const db = await getDb();
+const generateUniqueSlug = async (
+  db: DbClient,
+  name: string,
+): Promise<string> => {
   const baseSlug = toSlug(name);
   let slug = baseSlug;
   let counter = 1;
@@ -30,8 +40,10 @@ const generateUniqueSlug = async (name: string): Promise<string> => {
 /**
  * 一意なサーバー名を生成（重複時はサフィックス付与）
  */
-const generateUniqueName = async (name: string): Promise<string> => {
-  const db = await getDb();
+const generateUniqueName = async (
+  db: DbClient,
+  name: string,
+): Promise<string> => {
   let candidateName = name;
   let counter = 2;
 
@@ -50,8 +62,8 @@ export const createFromCatalog = async (
   input: CreateFromCatalogInput,
 ): Promise<{ serverId: number; serverName: string }> => {
   const db = await getDb();
-  const uniqueName = await generateUniqueName(input.catalogName);
-  const slug = await generateUniqueSlug(uniqueName);
+  const uniqueName = await generateUniqueName(db, input.catalogName);
+  const slug = await generateUniqueSlug(db, uniqueName);
 
   // MCPサーバー作成
   const server = await mcpRepository.createServer(db, {
@@ -77,6 +89,109 @@ export const createFromCatalog = async (
   logger.info(`MCP server created from catalog: ${uniqueName}`);
 
   return { serverId: server.id, serverName: uniqueName };
+};
+
+/**
+ * 仮想MCPサーバーを作成
+ * 1つのMcpServerに対して複数のMcpConnection（カタログ参照）を1トランザクションで登録する。
+ *
+ * - 接続0件は不正入力として拒否（最低1接続必須）
+ * - OAuth認証のカタログは現状サポート外（OAuthはAddMcpModalの専用フローを利用）
+ * - 各接続のslugはサーバー内で一意（カタログ名 + 必要に応じてサフィックス）
+ *
+ * SQLiteの$transactionタイムアウト回避のため、書き込み以外（カタログ取得・OAuth拒否チェック・
+ * slug計算・暗号化）は全てtx外で先に実行し、tx内には書き込みI/Oだけを残す
+ */
+export const createVirtualServer = async (
+  input: CreateVirtualServerInput,
+): Promise<{ serverId: number; serverName: string }> => {
+  if (input.connections.length === 0) {
+    throw new Error("仮想MCPには1つ以上の接続が必要です");
+  }
+
+  const db = await getDb();
+
+  // 暗号化（CPU/IO重）をtx外で並列実行
+  const encryptedCredentialsList = await Promise.all(
+    input.connections.map((conn) =>
+      encryptToken(JSON.stringify(conn.credentials)),
+    ),
+  );
+
+  // カタログ取得・バリデーション・接続slug計算もtx外で完了させる
+  const usedConnectionSlugs = new Set<string>();
+  const enrichedConnections = await Promise.all(
+    input.connections.map(async (connection, index) => {
+      const catalog = await catalogRepository.findById(
+        db,
+        connection.catalogId,
+      );
+      if (!catalog) {
+        throw new Error(
+          `カタログ(id=${String(connection.catalogId)})が見つかりません`,
+        );
+      }
+      if (catalog.authType === "OAUTH") {
+        throw new Error(
+          `OAuth認証のカタログ「${catalog.name}」は仮想MCP作成では未対応です`,
+        );
+      }
+      return { catalog, index };
+    }),
+  );
+
+  // 接続slugを入力順で確定（Promise.allの結果はindex順を保証しているため決定論的）
+  const connectionsWithSlug = enrichedConnections.map(({ catalog, index }) => {
+    const baseSlug = toSlug(catalog.name);
+    let connectionSlug = baseSlug;
+    let counter = 1;
+    while (usedConnectionSlugs.has(connectionSlug)) {
+      connectionSlug = `${baseSlug}-${String(counter)}`;
+      counter++;
+    }
+    usedConnectionSlugs.add(connectionSlug);
+    return { catalog, index, connectionSlug };
+  });
+
+  // tx内は書き込みI/Oのみ（generateUniqueNameは重複時のサフィックス付与にDB参照が必要なため内側に残す）
+  // 注意: SQLiteのinteractive transactionは他writerをロックしないため、
+  // 同名サーバーが同時作成された場合は@uniqueでP2002が発生し得る。
+  // Desktopアプリは単一ユーザー前提のため許容する（IPC層で汎用エラーにラップされる）
+  const result = await db.$transaction(async (tx) => {
+    const uniqueName = await generateUniqueName(tx, input.name);
+    const serverSlug = await generateUniqueSlug(tx, uniqueName);
+
+    const server = await mcpRepository.createServer(tx, {
+      name: uniqueName,
+      slug: serverSlug,
+      description: input.description,
+    });
+
+    for (const { catalog, index, connectionSlug } of connectionsWithSlug) {
+      await mcpRepository.createConnection(tx, {
+        name: catalog.name,
+        slug: connectionSlug,
+        transportType: catalog.transportType,
+        command: catalog.command,
+        args: catalog.args,
+        url: catalog.url,
+        // Promise.allのindex対応により実質undefinedにならないが、型ガードのためfallbackはスキーマdefaultと揃える
+        credentials: encryptedCredentialsList[index] ?? "{}",
+        authType: catalog.authType,
+        serverId: server.id,
+        catalogId: catalog.id,
+        displayOrder: index,
+      });
+    }
+
+    return { serverId: server.id, serverName: uniqueName };
+  });
+
+  logger.info(
+    `Virtual MCP server created: ${result.serverName} (${String(input.connections.length)} connections)`,
+  );
+
+  return result;
 };
 
 /**
