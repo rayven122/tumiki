@@ -1,4 +1,9 @@
-import type { PrismaClient } from "@prisma/desktop-client";
+import type { Prisma, PrismaClient } from "@prisma/desktop-client";
+
+/**
+ * トランザクション内外で共通利用できるDBクライアント型
+ */
+type DbClient = PrismaClient | Prisma.TransactionClient;
 
 /**
  * カタログシードデータの型
@@ -19,10 +24,17 @@ export type CatalogSeedData = {
 /**
  * すべてのカタログを名前の昇順で取得
  */
-export const findAll = async (db: PrismaClient) => {
+export const findAll = async (db: DbClient) => {
   return db.mcpCatalog.findMany({
     orderBy: { name: "asc" },
   });
+};
+
+/**
+ * IDでカタログを取得（仮想MCP作成時の各接続に紐付くカタログ参照用）
+ */
+export const findById = async (db: DbClient, id: number) => {
+  return db.mcpCatalog.findUnique({ where: { id } });
 };
 
 /**
