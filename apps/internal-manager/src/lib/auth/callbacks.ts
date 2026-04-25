@@ -78,15 +78,17 @@ const refreshAccessToken = async (token: JWT): Promise<JWT | null> => {
 
     const refreshed = refreshedTokensSchema.parse(await response.json());
 
-    // 新しいアクセストークンからTumikiカスタムクレームを抽出（プロバイダーが対応している場合）
+    // 新しいアクセストークンからTumikiカスタムクレームを抽出（不透明トークンの場合はスキップ）
     let idpGroupRoles: string[] | undefined;
     try {
-      const decoded = oidcJWTPayloadSchema.parse(
+      const decoded = oidcJWTPayloadSchema.safeParse(
         decodeJwt(refreshed.access_token),
       );
-      idpGroupRoles = decoded.tumiki?.group_roles;
+      if (decoded.success) {
+        idpGroupRoles = decoded.data.tumiki?.group_roles;
+      }
     } catch {
-      // カスタムクレームがない場合は無視（DBから取得）
+      // 不透明アクセストークン（JWT形式でない）の場合は無視し、DBから取得
     }
 
     return {

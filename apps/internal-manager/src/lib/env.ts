@@ -15,7 +15,7 @@ const oidcEnvSchema = z.object({
  * CI環境ではダミー値を使用
  */
 export const getOidcEnv = () => {
-  const isCI = process.env.CI === "true" || process.env.VERCEL === "1";
+  const isCI = process.env.CI === "true";
 
   const result = oidcEnvSchema.safeParse({
     OIDC_CLIENT_ID:
