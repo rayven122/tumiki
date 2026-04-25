@@ -1,55 +1,43 @@
 import { z } from "zod";
 
 /**
- * Keycloak認証用の環境変数スキーマ
+ * OIDC認証用の環境変数スキーマ
+ * Entra ID / Google Workspace / Okta / Keycloak など任意のOIDCプロバイダーに対応
  */
-const keycloakEnvSchema = z.object({
-  KEYCLOAK_CLIENT_ID: z.string().min(1, "KEYCLOAK_CLIENT_ID is required"),
-  KEYCLOAK_CLIENT_SECRET: z
-    .string()
-    .min(1, "KEYCLOAK_CLIENT_SECRET is required"),
-  KEYCLOAK_ISSUER: z.string().url("KEYCLOAK_ISSUER must be a valid URL"),
+const oidcEnvSchema = z.object({
+  OIDC_CLIENT_ID: z.string().min(1, "OIDC_CLIENT_ID is required"),
+  OIDC_CLIENT_SECRET: z.string().min(1, "OIDC_CLIENT_SECRET is required"),
+  OIDC_ISSUER: z.string().url("OIDC_ISSUER must be a valid URL"),
 });
 
 /**
- * Keycloak環境変数を検証して取得
- * 環境変数が未設定または不正な場合はエラーをスロー
- * CI環境ではダミー値を使用（ビルド時のみ必要、実際の認証は行われない）
+ * OIDC環境変数を検証して取得
+ * CI環境ではダミー値を使用
  */
-export const getKeycloakEnv = () => {
-  // CI環境ではダミー値を使用
-  const isCI = process.env.CI === "true" || process.env.VERCEL === "1";
+export const getOidcEnv = () => {
+  const isCI = process.env.CI === "true";
 
-  // REGISTRY_KEYCLOAK_ が未設定の場合はManager用変数にフォールバック（警告）
-  if (!process.env.REGISTRY_KEYCLOAK_CLIENT_ID) {
-    console.warn(
-      "[env] REGISTRY_KEYCLOAK_CLIENT_ID が未設定です。KEYCLOAK_CLIENT_ID にフォールバックします",
-    );
-  }
-  if (!process.env.REGISTRY_KEYCLOAK_CLIENT_SECRET) {
-    console.warn(
-      "[env] REGISTRY_KEYCLOAK_CLIENT_SECRET が未設定です。KEYCLOAK_CLIENT_SECRET にフォールバックします",
-    );
-  }
+  // 空文字列もフォールスルーさせるため、明示的に空文字チェックを行う
+  const clientId = process.env.OIDC_CLIENT_ID;
+  const clientSecret = process.env.OIDC_CLIENT_SECRET;
+  const issuer = process.env.OIDC_ISSUER;
 
-  const result = keycloakEnvSchema.safeParse({
-    // Registry専用の環境変数を優先、なければManager用の環境変数にフォールバック
-    KEYCLOAK_CLIENT_ID:
-      process.env.REGISTRY_KEYCLOAK_CLIENT_ID ??
-      process.env.KEYCLOAK_CLIENT_ID ??
-      (isCI ? "dummy-client-id" : undefined),
-    KEYCLOAK_CLIENT_SECRET:
-      process.env.REGISTRY_KEYCLOAK_CLIENT_SECRET ??
-      process.env.KEYCLOAK_CLIENT_SECRET ??
-      (isCI ? "dummy-client-secret" : undefined),
-    KEYCLOAK_ISSUER:
-      process.env.KEYCLOAK_ISSUER ??
-      (isCI ? "https://dummy.keycloak.local/realms/tumiki" : undefined),
+  const result = oidcEnvSchema.safeParse({
+    OIDC_CLIENT_ID:
+      clientId !== "" ? clientId : isCI ? "dummy-client-id" : undefined,
+    OIDC_CLIENT_SECRET:
+      clientSecret !== ""
+        ? clientSecret
+        : isCI
+          ? "dummy-client-secret"
+          : undefined,
+    OIDC_ISSUER:
+      issuer !== "" ? issuer : isCI ? "https://dummy.oidc.local" : undefined,
   });
 
   if (!result.success) {
     throw new Error(
-      `Keycloak environment variables validation failed: ${result.error.message}`,
+      `OIDC environment variables validation failed: ${result.error.message}`,
     );
   }
 
