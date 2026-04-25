@@ -4,7 +4,7 @@ import { db } from "@tumiki/internal-db/server";
 import { createUser } from "./create-user";
 
 export const createCustomAdapter = () => {
-  const baseAdapter = PrismaAdapter(db);
+  const baseAdapter = PrismaAdapter(db as Parameters<typeof PrismaAdapter>[0]);
 
   return {
     ...baseAdapter,
