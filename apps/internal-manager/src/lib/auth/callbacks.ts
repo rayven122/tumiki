@@ -37,12 +37,14 @@ const getTokenEndpoint = async (issuer: string): Promise<string> => {
   const res = await fetch(discoveryUrl);
   if (!res.ok) throw new Error(`OIDC discovery failed: ${res.status}`);
 
-  const config = z
+  const result = z
     .object({ token_endpoint: z.string().url() })
-    .parse(await res.json());
+    .safeParse(await res.json());
+  if (!result.success)
+    throw new Error(`OIDC discovery invalid response: ${result.error.message}`);
 
-  tokenEndpointCache.set(issuer, config.token_endpoint);
-  return config.token_endpoint;
+  tokenEndpointCache.set(issuer, result.data.token_endpoint);
+  return result.data.token_endpoint;
 };
 
 /**
@@ -114,6 +116,7 @@ export const jwtCallback = async ({
 
   if (account) {
     token.accessToken = account.access_token;
+    // undefinedの場合はリフレッシュが行われない（プロバイダーがexpires_inを返すことが前提）
     token.expiresAt = account.expires_at;
     token.refreshToken = account.refresh_token;
 
