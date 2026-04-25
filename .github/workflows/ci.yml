@@ -122,9 +122,9 @@ jobs:
             -e PRISMA_FIELD_ENCRYPTION_KEY=k1.aesgcm256.FkhfY-sKgaYBJYteXBGudV6g_oBOW1TjU74hbowUl8s= \
             tumiki-mcp-proxy
           docker run -d --name internal-manager -p 3100:3100 \
-            -e KEYCLOAK_CLIENT_ID=test \
-            -e KEYCLOAK_CLIENT_SECRET=test \
-            -e KEYCLOAK_ISSUER=https://dummy.keycloak.local/realms/tumiki \
+            -e OIDC_CLIENT_ID=test \
+            -e OIDC_CLIENT_SECRET=test \
+            -e OIDC_ISSUER=https://dummy.oidc.local \
             -e AUTH_SECRET=dummy-auth-secret-for-smoke-test \
             -e DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder \
             -e PRISMA_FIELD_ENCRYPTION_KEY=k1.aesgcm256.FkhfY-sKgaYBJYteXBGudV6g_oBOW1TjU74hbowUl8s= \

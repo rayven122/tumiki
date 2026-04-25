@@ -35,9 +35,12 @@ COPY apps/internal-manager ./apps/internal-manager
 RUN printf '%s\n' \
   "DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder" \
   "PRISMA_FIELD_ENCRYPTION_KEY=k1.aesgcm256.FkhfY-sKgaYBJYteXBGudV6g_oBOW1TjU74hbowUl8s=" \
+  "OIDC_CLIENT_ID=dummy-oidc-client-id" \
+  "OIDC_CLIENT_SECRET=dummy-oidc-client-secret" \
+  "OIDC_ISSUER=https://dummy.oidc.local" \
+  "AUTH_SECRET=dummy-auth-secret-do-not-use-in-production" \
   > .env
 
-# CI=true により env.ts のダミー値フォールバックが有効化される
 ENV CI=true
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
