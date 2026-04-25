@@ -1,4 +1,4 @@
-import { PrismaClient } from "./generated/client/index.js";
+import { PrismaClient } from "../generated/client/index.js";
 
 const createPrismaClient = () => new PrismaClient();
 

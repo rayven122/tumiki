@@ -243,9 +243,9 @@ importers:
       '@trpc/server':
         specifier: 11.12.0
         version: 11.12.0(typescript@5.9.3)
-      '@tumiki/db':
+      '@tumiki/internal-db':
         specifier: workspace:*
-        version: link:../../packages/db
+        version: link:../../packages/internal-db
       '@tumiki/keycloak':
         specifier: workspace:*
         version: link:../../packages/keycloak
