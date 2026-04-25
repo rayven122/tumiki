@@ -97,13 +97,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: 🔨 Build manager image
         run: docker build -f apps/manager/Dockerfile -t tumiki-manager .
 
       - name: 🔨 Build mcp-proxy image
         run: docker build -f apps/mcp-proxy/Dockerfile -t tumiki-mcp-proxy .
+
+      - name: 🔨 Build internal-manager image
+        run: docker build -f apps/internal-manager/Dockerfile -t tumiki-internal-manager .
 
       - name: 🚀 Start containers
         run: |
@@ -118,16 +121,27 @@ jobs:
             -e DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder \
             -e PRISMA_FIELD_ENCRYPTION_KEY=k1.aesgcm256.FkhfY-sKgaYBJYteXBGudV6g_oBOW1TjU74hbowUl8s= \
             tumiki-mcp-proxy
+          docker run -d --name internal-manager -p 3100:3100 \
+            -e KEYCLOAK_CLIENT_ID=test \
+            -e KEYCLOAK_CLIENT_SECRET=test \
+            -e KEYCLOAK_ISSUER=https://dummy.keycloak.local/realms/tumiki \
+            -e AUTH_SECRET=dummy-auth-secret-for-smoke-test \
+            -e DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder \
+            -e PRISMA_FIELD_ENCRYPTION_KEY=k1.aesgcm256.FkhfY-sKgaYBJYteXBGudV6g_oBOW1TjU74hbowUl8s= \
+            tumiki-internal-manager
 
       - name: ✅ Wait and verify health endpoints
         run: |
           for i in $(seq 1 30); do
             if curl -sf http://localhost:8080/api/health > /dev/null 2>&1 && \
-               curl -sf http://localhost:8081/health > /dev/null 2>&1; then
+               curl -sf http://localhost:8081/health > /dev/null 2>&1 && \
+               curl -sf http://localhost:3100/api/health > /dev/null 2>&1; then
               echo "=== Manager ==="
               curl -sf http://localhost:8080/api/health | jq .
               echo "=== MCP Proxy ==="
               curl -sf http://localhost:8081/health | jq .
+              echo "=== Internal Manager ==="
+              curl -sf http://localhost:3100/api/health | jq .
               exit 0
             fi
             echo "Waiting... ($i/30)"
@@ -136,6 +150,7 @@ jobs:
           echo "Timeout waiting for containers"
           docker logs manager
           docker logs mcp-proxy
+          docker logs internal-manager
           exit 1
 
   desktop-migration-check:
