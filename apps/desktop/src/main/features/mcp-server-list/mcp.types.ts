@@ -67,3 +67,24 @@ export type ToggleServerInput = {
   id: number;
   isEnabled: boolean;
 };
+
+/**
+ * 仮想MCP作成における1接続分の入力型
+ * カタログIDとそのカタログに対する認証情報を持つ
+ */
+export type VirtualServerConnectionInput = {
+  catalogId: number;
+  // STDIO: 環境変数 / SSE・Streamable HTTP: HTTPヘッダー
+  // カタログのcredentialKeysに対応するキーを持つことを期待する
+  credentials: Record<string, string>;
+};
+
+/**
+ * 仮想MCP作成の入力型（renderer → main）
+ * 1つのMcpServerに対して複数のMcpConnectionを束ねて公開する
+ */
+export type CreateVirtualServerInput = {
+  name: string;
+  description: string;
+  connections: VirtualServerConnectionInput[];
+};
