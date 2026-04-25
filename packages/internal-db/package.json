@@ -1,0 +1,48 @@
+{
+  "name": "@tumiki/internal-db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
+    },
+    "./server": {
+      "types": "./dist/src/server.d.ts",
+      "default": "./dist/src/server.js"
+    }
+  },
+  "scripts": {
+    "dev": "tsc --project tsconfig.build.json",
+    "build": "pnpm db:generate && tsc --project tsconfig.build.json",
+    "clean": "git clean -xdf .cache .turbo node_modules dist build",
+    "typecheck": "tsc --noEmit",
+    "with-env": "dotenv -e ../../.env --",
+    "lint": "eslint",
+    "format": "prettier --check . --ignore-path ../../.gitignore --ignore-path ../../.prettierignore --write",
+    "db:generate": "pnpm with-env prisma generate",
+    "db:migrate": "pnpm with-env prisma migrate dev",
+    "db:deploy": "pnpm with-env prisma migrate deploy",
+    "db:reset": "pnpm with-env prisma migrate reset",
+    "db:push": "pnpm with-env prisma db push",
+    "db:studio": "pnpm with-env prisma studio",
+    "postinstall": "pnpm db:generate"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.0",
+    "dotenv-cli": "^11.0.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@tumiki/eslint-config": "workspace:*",
+    "@tumiki/prettier-config": "workspace:*",
+    "@tumiki/tsconfig": "workspace:*",
+    "eslint": "catalog:",
+    "prettier": "catalog:",
+    "prisma": "^6.19.0",
+    "typescript": "catalog:",
+    "typescript-eslint": "^8.48.1"
+  },
+  "prettier": "@tumiki/prettier-config"
+}

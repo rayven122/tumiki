@@ -49,6 +49,7 @@ yarn-error.log*
 .idea
 
 **/prisma/generated
+packages/internal-db/src/generated
 
 **/dist
 

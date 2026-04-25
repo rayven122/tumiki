@@ -1,4 +1,4 @@
-import type { PrismaTransactionClient } from "@tumiki/db";
+import type { PrismaTransactionClient } from "@tumiki/internal-db";
 import type { TumikiClaims } from "./types";
 
 /**

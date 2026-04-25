@@ -1,6 +1,6 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import type { AdapterUser } from "@auth/core/adapters";
-import { db } from "@tumiki/db/server";
+import { db } from "@tumiki/internal-db/server";
 import { createUser } from "./create-user";
 
 export const createCustomAdapter = () => {

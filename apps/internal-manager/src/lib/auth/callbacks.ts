@@ -1,7 +1,7 @@
 import type { Session, User, Account, Profile } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import type { AdapterUser } from "@auth/core/adapters";
-import { db } from "@tumiki/db/server";
+import { db } from "@tumiki/internal-db/server";
 import { getTumikiClaims } from "./get-tumiki-claims";
 import { getOidcEnv } from "~/lib/env";
 import { z } from "zod";
