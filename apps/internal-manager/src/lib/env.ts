@@ -17,15 +17,22 @@ const oidcEnvSchema = z.object({
 export const getOidcEnv = () => {
   const isCI = process.env.CI === "true";
 
+  // 空文字列もフォールスルーさせるため、明示的に空文字チェックを行う
+  const clientId = process.env.OIDC_CLIENT_ID;
+  const clientSecret = process.env.OIDC_CLIENT_SECRET;
+  const issuer = process.env.OIDC_ISSUER;
+
   const result = oidcEnvSchema.safeParse({
     OIDC_CLIENT_ID:
-      process.env.OIDC_CLIENT_ID ?? (isCI ? "dummy-client-id" : undefined),
+      clientId !== "" ? clientId : isCI ? "dummy-client-id" : undefined,
     OIDC_CLIENT_SECRET:
-      process.env.OIDC_CLIENT_SECRET ??
-      (isCI ? "dummy-client-secret" : undefined),
+      clientSecret !== ""
+        ? clientSecret
+        : isCI
+          ? "dummy-client-secret"
+          : undefined,
     OIDC_ISSUER:
-      process.env.OIDC_ISSUER ??
-      (isCI ? "https://dummy.oidc.local" : undefined),
+      issuer !== "" ? issuer : isCI ? "https://dummy.oidc.local" : undefined,
   });
 
   if (!result.success) {
