@@ -936,6 +936,135 @@ const DEFAULT_BADGE: BadgeConfig = {
 export const getStatusBadge = (status: string): BadgeConfig =>
   STATUS_BADGE_MAP[status] ?? DEFAULT_BADGE;
 
+/* ===== グループ管理 ===== */
+
+export type GroupSyncStatus = "synced" | "pending" | "error";
+export type SyncTrigger = "jit" | "scim" | "manual";
+export type SyncHistoryStatus = "success" | "failed" | "partial";
+
+export type Group = {
+  id: string;
+  name: string;
+  description: string;
+  color: string;
+  memberCount: number;
+  idpGroup: string | null;
+  syncStatus: GroupSyncStatus;
+  lastSync: string | null;
+  allowedTools: string[]; // ツールID一覧
+};
+
+export type SyncHistory = {
+  id: string;
+  trigger: SyncTrigger;
+  status: SyncHistoryStatus;
+  datetime: string;
+  added: number;
+  removed: number;
+  errors: number;
+  detail: string | null;
+};
+
+export const GROUPS: Group[] = [
+  {
+    id: "g1",
+    name: "開発チーム",
+    description: "エンジニア・開発者グループ",
+    color: "#a78bfa",
+    memberCount: 12,
+    idpGroup: "dev-team@example.com",
+    syncStatus: "synced",
+    lastSync: "2026/04/25 09:00",
+    allowedTools: ["t1", "t2", "t3", "t7", "t8"],
+  },
+  {
+    id: "g2",
+    name: "営業チーム",
+    description: "営業・セールスグループ",
+    color: "#34d399",
+    memberCount: 8,
+    idpGroup: "sales-team@example.com",
+    syncStatus: "synced",
+    lastSync: "2026/04/25 09:00",
+    allowedTools: ["t1", "t3", "t4", "t6"],
+  },
+  {
+    id: "g3",
+    name: "経理・管理部",
+    description: "経理・バックオフィスグループ",
+    color: "#fbbf24",
+    memberCount: 5,
+    idpGroup: null,
+    syncStatus: "pending",
+    lastSync: null,
+    allowedTools: ["t1", "t6"],
+  },
+  {
+    id: "g4",
+    name: "IT管理者",
+    description: "情報システム部・管理者",
+    color: "#f87171",
+    memberCount: 2,
+    idpGroup: "it-admin@example.com",
+    syncStatus: "error",
+    lastSync: "2026/04/24 15:30",
+    allowedTools: ["t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9", "t10"],
+  },
+];
+
+export const SYNC_HISTORY: SyncHistory[] = [
+  {
+    id: "sh1",
+    trigger: "scim",
+    status: "success",
+    datetime: "2026/04/25 09:00",
+    added: 2,
+    removed: 0,
+    errors: 0,
+    detail: null,
+  },
+  {
+    id: "sh2",
+    trigger: "jit",
+    status: "success",
+    datetime: "2026/04/24 16:42",
+    added: 1,
+    removed: 0,
+    errors: 0,
+    detail: null,
+  },
+  {
+    id: "sh3",
+    trigger: "manual",
+    status: "failed",
+    datetime: "2026/04/24 15:30",
+    added: 0,
+    removed: 0,
+    errors: 3,
+    detail: "IdP接続タイムアウト: グループ 'IT管理者' の同期に失敗しました",
+  },
+  {
+    id: "sh4",
+    trigger: "scim",
+    status: "partial",
+    datetime: "2026/04/23 09:00",
+    added: 5,
+    removed: 1,
+    errors: 1,
+    detail: "1件のユーザーマッピングが失敗しました",
+  },
+  {
+    id: "sh5",
+    trigger: "jit",
+    status: "success",
+    datetime: "2026/04/22 11:15",
+    added: 1,
+    removed: 0,
+    errors: 0,
+    detail: null,
+  },
+];
+
 /* ===== 承認管理 ===== */
 
 export type ApprovalUrgency = "high" | "normal" | "low";
