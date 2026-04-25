@@ -74,6 +74,15 @@ services:
     depends_on:
       - keycloak
 
+  dex:
+    image: dexidp/dex:v2.41.1
+    container_name: tumiki-dex
+    ports:
+      - "5556:5556"
+    volumes:
+      - ../dex/config.yaml:/etc/dex/config.yaml:ro
+    command: ["dex", "serve", "/etc/dex/config.yaml"]
+
 volumes:
   db_vol:
   db_test_vol:

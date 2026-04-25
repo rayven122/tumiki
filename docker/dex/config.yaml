@@ -1,0 +1,33 @@
+issuer: http://localhost:5556/dex
+
+storage:
+  type: memory
+
+web:
+  http: 0.0.0.0:5556
+
+oauth2:
+  skipApprovalScreen: true
+  responseTypes:
+    - code
+
+staticClients:
+  - id: tumiki-internal
+    secret: tumiki-secret
+    name: Tumiki Internal Manager
+    redirectURIs:
+      - http://localhost:3100/api/auth/callback/oidc
+
+enablePasswordDB: true
+
+staticPasswords:
+  - email: admin@example.com
+    # bcrypt hash of "password"
+    hash: "$2y$10$4X.qjGsNCTHQYQ6ZaWggQ.0EsiWQBp2kVRBEkUnFJG0KZagEIAHsG"
+    username: admin
+    userID: "08a8684b-db88-4b73-90a9-3cd1661f5466"
+  - email: user@example.com
+    # bcrypt hash of "password"
+    hash: "$2y$10$4X.qjGsNCTHQYQ6ZaWggQ.0EsiWQBp2kVRBEkUnFJG0KZagEIAHsG"
+    username: user
+    userID: "08a8684b-db88-4b73-90a9-3cd1661f5555"

@@ -2,13 +2,14 @@ import type { PrismaTransactionClient } from "@tumiki/db";
 import type { TumikiClaims } from "./types";
 
 /**
- * 認証用にtumikiクレームを取得（Registry用簡素版）
+ * 認証用にtumikiクレームを取得（internal-manager用簡素版）
  *
- * Registryでは組織機能を使用しないため、ユーザー存在確認のみ行う
+ * 組織機能はPhase 2で実装予定のため、現時点ではユーザー存在確認のみ行う。
+ * group_rolesはOIDCプロバイダーのカスタムクレームまたはDB同期から取得し、将来の拡張のため保持。
  *
  * @param db Prismaクライアント
- * @param userId ユーザーID（Keycloak sub）
- * @param groupRoles Keycloakのgroup_roles（グループパス配列） - 未使用だが将来の拡張のため保持
+ * @param userId ユーザーID（OIDC sub）
+ * @param groupRoles OIDCプロバイダーのgroup_roles（将来のGBAC実装用）
  * @returns tumikiクレームまたはnull
  */
 export const getTumikiClaims = async (

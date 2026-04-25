@@ -1,94 +1,68 @@
 import type { Role } from "@tumiki/db/server";
 
 /**
- * Keycloakから実際に来るカスタムクレーム型定義
- * Protocol Mapperで設定されたクレームの構造
+ * IDPから受け取るTumikiカスタムクレーム
+ * OIDC プロバイダー側で `tumiki` クレームとして設定する
+ * （Keycloak: Protocol Mapper / Entra ID: optional claims / Okta: claim policy）
  */
-export type KeycloakTumikiClaims = {
+export type TumikiIdpClaims = {
   group_roles: string[]; // ユーザーが所属する組織グループのリスト
-  roles: string[]; // Keycloakロールのリスト
+  roles: string[]; // アプリケーションロールのリスト
 };
 
 /**
  * Auth.js内部で使用するカスタムクレーム型定義
- * JWTコールバックで変換後の構造
  */
 export type TumikiClaims = {
-  org_slugs: string[]; // group_rolesから名称変更
-  org_id: string | null; // ユーザーの操作に応じて変更
-  org_slug: string | null; // ユーザーの操作に応じて変更
-  roles: string[]; // 変更なし
-  group_roles?: string[]; // Keycloakのgroup_rolesを保存（組織切り替え時のロール再計算用）
+  org_slugs: string[];
+  org_id: string | null;
+  org_slug: string | null;
+  roles: string[];
+  group_roles?: string[];
 };
 
 /**
- * Keycloak JWTペイロード型定義
+ * 汎用OIDCプロファイル型定義
+ * OIDC標準クレーム + Tumikiカスタムクレーム
  */
-export type KeycloakJWTPayload = {
+export type OidcProfile = {
   sub: string;
   email?: string;
   name?: string;
-  tumiki?: KeycloakTumikiClaims; // Keycloakからのクレーム型を使用
-};
-
-/**
- * Keycloak Profileコールバック用の型定義
- */
-export type KeycloakProfile = KeycloakJWTPayload & {
   picture?: string;
+  tumiki?: TumikiIdpClaims;
 };
 
 /**
  * Auth.js型定義の拡張
- * Keycloak JWTの構造を可能な限り保持
+ * declaration mergingにはinterfaceが必須
  */
 declare module "next-auth" {
-  // Session型を完全に上書き（email, name, imageをnull許容型に）
-  // NextAuth型拡張のため interface を使用（declaration mergingには interface が必須）
   interface Session {
     user: {
       id: string;
-      sub: string; // Keycloak sub（userIdと同じ）
+      sub: string;
       email: string | null;
       name: string | null;
       image: string | null;
-      role: Role; // アプリケーション内のロール
-      tumiki: TumikiClaims | null; // Keycloakカスタムクレーム（組織情報はここに含まれる）
+      role: Role;
+      tumiki: TumikiClaims | null;
     };
     expires: string;
-    /// MCP Proxy認証用のKeycloakアクセストークン
     accessToken?: string;
-  }
-
-  // NextAuth型拡張のため interface を使用（declaration mergingには interface が必須）
-  interface User {
-    role?: Role;
-    profileSub?: string; // Keycloak subをカスタムフィールドとして保持
   }
 }
 
 declare module "next-auth/jwt" {
-  // NextAuth型拡張のため interface を使用（declaration mergingには interface が必須）
   interface JWT {
-    // Keycloak JWTペイロード（可能な限り元の構造を保持）
-    sub?: string; // Keycloak user ID
+    sub?: string;
     email?: string | null;
     name?: string | null;
     picture?: string | null;
-    tumiki?: TumikiClaims | null; // Keycloakカスタムクレーム
-
-    // Keycloak OAuth トークン
+    tumiki?: TumikiClaims | null;
     accessToken?: string;
     refreshToken?: string;
     expiresAt?: number;
-
-    // アプリケーション固有フィールド
-    role?: Role; // DB管理のユーザーロール
-
-    // トークンリフレッシュ時にKeycloakから取得した最新group_roles
-    keycloakGroupRoles?: string[];
-
-    // session.update({})時のみリフレッシュを強制するフラグ
-    forceRefresh?: boolean;
+    role?: Role;
   }
 }
