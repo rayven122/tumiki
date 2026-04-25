@@ -12,7 +12,7 @@ import type { DecryptedToken } from "./types.js";
  * デフォルトの有効期限バッファ（秒）
  * トークンの有効期限がこの時間以内になったら自動リフレッシュを実行
  */
-const DEFAULT_EXPIRY_BUFFER_SECONDS = 30 * 60; // 30分
+const DEFAULT_EXPIRY_BUFFER_SECONDS = 5 * 60; // 5分
 
 /**
  * トークンが期限切れかどうかをチェック

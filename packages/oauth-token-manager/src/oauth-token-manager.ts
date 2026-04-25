@@ -88,15 +88,25 @@ export const getValidToken = async (
         tokenId: token.id,
         error,
       });
-      // リフレッシュ失敗時は再認証が必要
-      throw new ReAuthRequiredError(
-        isExpired
-          ? "OAuth token has expired and refresh failed. User needs to re-authenticate."
-          : "Failed to refresh token. User needs to re-authenticate.",
-        token.id,
-        userId,
-        mcpServerTemplateInstanceId,
+
+      if (isExpired) {
+        // トークンが既に期限切れかつリフレッシュ失敗 → 再認証が必要
+        throw new ReAuthRequiredError(
+          "OAuth token has expired and refresh failed. User needs to re-authenticate.",
+          token.id,
+          userId,
+          mcpServerTemplateInstanceId,
+        );
+      }
+
+      // トークンはまだ有効だがリフレッシュ失敗 → 現在のトークンを使い続ける
+      logger.warn(
+        "Failed to refresh token, but token is still valid. Using current token.",
+        { tokenId: token.id },
       );
+      const currentToken = toDecryptedToken(token);
+      await cacheToken(cacheKey, currentToken);
+      return currentToken;
     }
   }
 

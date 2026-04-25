@@ -39,22 +39,13 @@ export const refreshBackendToken = async (
 
   const { oauthClient } = token;
 
-  // 2. Authorization Serverからエンドポイント情報を取得（OAuth 2.0 Discovery）
-  const discoveryResponse = await fetch(
-    `${oauthClient.authorizationServerUrl}/.well-known/oauth-authorization-server`,
+  // 2. Authorization Serverからエンドポイント情報を取得
+  // RFC 8414 (/.well-known/oauth-authorization-server) と
+  // OpenID Connect (/.well-known/openid-configuration) の両方を試みる
+  const discovery = await discoverTokenEndpoint(
+    oauthClient.authorizationServerUrl,
+    tokenId,
   );
-
-  if (!discoveryResponse.ok) {
-    throw new TokenRefreshError(
-      `Failed to fetch discovery endpoint: ${discoveryResponse.status}`,
-      tokenId,
-    );
-  }
-
-  const discovery = (await discoveryResponse.json()) as {
-    token_endpoint: string;
-    token_endpoint_auth_methods_supported?: string[];
-  };
 
   const tokenEndpointAuthMethod =
     discovery.token_endpoint_auth_methods_supported?.[0] ||
@@ -98,6 +89,48 @@ export const refreshBackendToken = async (
       error instanceof Error ? error : undefined,
     );
   }
+};
+
+/**
+ * OAuth discovery endpoint を複数試みてトークンエンドポイントを取得
+ *
+ * 試行順：
+ * 1. RFC 8414: /.well-known/oauth-authorization-server
+ * 2. OpenID Connect: /.well-known/openid-configuration
+ */
+const discoverTokenEndpoint = async (
+  authorizationServerUrl: string,
+  tokenId: string,
+): Promise<{
+  token_endpoint: string;
+  token_endpoint_auth_methods_supported?: string[];
+}> => {
+  const endpoints = [
+    `${authorizationServerUrl}/.well-known/oauth-authorization-server`,
+    `${authorizationServerUrl}/.well-known/openid-configuration`,
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      const response = await fetch(endpoint);
+      if (response.ok) {
+        const data = (await response.json()) as {
+          token_endpoint: string;
+          token_endpoint_auth_methods_supported?: string[];
+        };
+        if (data.token_endpoint) {
+          return data;
+        }
+      }
+    } catch {
+      // 次のエンドポイントを試みる
+    }
+  }
+
+  throw new TokenRefreshError(
+    `Failed to discover token endpoint from ${authorizationServerUrl}`,
+    tokenId,
+  );
 };
 
 /**
