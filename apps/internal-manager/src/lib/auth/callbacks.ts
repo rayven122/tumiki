@@ -1,6 +1,5 @@
 import type { Session, User, Account, Profile } from "next-auth";
 import type { JWT } from "next-auth/jwt";
-import type { Role } from "@tumiki/db/server";
 import type { AdapterUser } from "@auth/core/adapters";
 import { db } from "@tumiki/db/server";
 import { getTumikiClaims } from "./get-tumiki-claims";
@@ -96,7 +95,6 @@ const refreshAccessToken = async (token: JWT): Promise<JWT | null> => {
       accessToken: refreshed.access_token,
       expiresAt: Math.floor(Date.now() / 1000) + refreshed.expires_in,
       refreshToken: refreshed.refresh_token ?? token.refreshToken,
-      idpGroupRoles,
     };
   } catch (error) {
     console.error("[refreshAccessToken] Error:", error);
@@ -125,7 +123,7 @@ export const jwtCallback = async ({
 }): Promise<JWT | null> => {
   if (user) {
     token.sub = user.id ?? user.email ?? "";
-    token.role = (user as { role?: Role }).role ?? "USER";
+    token.role = "USER";
   }
 
   if (account) {
@@ -174,19 +172,11 @@ export const jwtCallback = async ({
   }
 
   if (!account && token.sub && token.tumiki) {
-    const userId = token.sub;
-    let groupRoles = token.idpGroupRoles ?? token.tumiki.group_roles;
-
-    // session.update({})時のみ強制リフレッシュ
-    if (token.refreshToken && !shouldRefresh && token.forceRefresh) {
-      const refreshedToken = await refreshAccessToken(token);
-      if (refreshedToken) {
-        token = { ...refreshedToken, forceRefresh: false };
-        groupRoles = token.idpGroupRoles ?? groupRoles;
-      }
-    }
-
-    const updatedTumiki = await getTumikiClaims(db, userId, groupRoles);
+    const updatedTumiki = await getTumikiClaims(
+      db,
+      token.sub,
+      token.tumiki.group_roles,
+    );
 
     if (!updatedTumiki) {
       console.error(
@@ -196,7 +186,6 @@ export const jwtCallback = async ({
     }
 
     token.tumiki = updatedTumiki;
-    token.idpGroupRoles = undefined;
     return token;
   }
 

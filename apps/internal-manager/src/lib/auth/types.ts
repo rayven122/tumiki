@@ -51,11 +51,6 @@ declare module "next-auth" {
     expires: string;
     accessToken?: string;
   }
-
-  interface User {
-    role?: Role;
-    profileSub?: string;
-  }
 }
 
 declare module "next-auth/jwt" {
@@ -69,7 +64,5 @@ declare module "next-auth/jwt" {
     refreshToken?: string;
     expiresAt?: number;
     role?: Role;
-    idpGroupRoles?: string[];
-    forceRefresh?: boolean;
   }
 }

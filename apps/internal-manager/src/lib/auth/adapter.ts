@@ -3,39 +3,20 @@ import type { AdapterUser } from "@auth/core/adapters";
 import { db } from "@tumiki/db/server";
 import { createUser } from "./create-user";
 
-/**
- * Keycloak profileSubフィールドを含む拡張AdapterUser型
- */
-type AdapterUserWithProfileSub = AdapterUser & {
-  profileSub?: string;
-};
-
-/**
- * カスタマイズされたPrisma Adapter
- */
 export const createCustomAdapter = () => {
   const baseAdapter = PrismaAdapter(db);
 
   return {
     ...baseAdapter,
 
-    /**
-     * ユーザー作成
-     * profileSubカスタムフィールドを使用してKeycloak subを直接User.idとして使用
-     */
-    createUser: async (
-      data: AdapterUserWithProfileSub,
-    ): Promise<AdapterUser> => {
-      // profileSubカスタムフィールドからKeycloak subを取得
-      const profileSub = data.profileSub;
-
-      if (!profileSub) {
-        throw new Error("Keycloak sub is required");
+    createUser: async (data: AdapterUser): Promise<AdapterUser> => {
+      if (!data.id) {
+        throw new Error("OIDC sub is required");
       }
 
       const user = await db.$transaction(async (tx) => {
         return await createUser(tx, {
-          id: profileSub, // Keycloak subを直接User.idとして使用
+          id: data.id,
           email: data.email,
           name: data.name ?? null,
           image: data.image ?? null,

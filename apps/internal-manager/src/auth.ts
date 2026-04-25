@@ -14,8 +14,7 @@ const { OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_ISSUER } = getOidcEnv();
 
 /**
  * 汎用OIDCプロバイダー設定
- * Entra ID / Google Workspace / Okta / Keycloak など任意のOIDC準拠プロバイダーに対応。
- * トークンエンドポイントは <OIDC_ISSUER>/.well-known/openid-configuration から自動取得。
+ * Entra ID / Google Workspace / Okta / Keycloak など任意のOIDC準拠プロバイダーに対応
  */
 const oidcProvider: OAuthConfig<OidcProfile> = {
   id: "oidc",
@@ -24,21 +23,6 @@ const oidcProvider: OAuthConfig<OidcProfile> = {
   clientId: OIDC_CLIENT_ID,
   clientSecret: OIDC_CLIENT_SECRET,
   issuer: OIDC_ISSUER,
-  checks: ["pkce", "state"],
-  authorization: {
-    params: {
-      scope: "openid email profile",
-    },
-  },
-  profile: (profile: OidcProfile) => ({
-    id: profile.sub,
-    email: profile.email ?? null,
-    name: profile.name ?? null,
-    image: profile.picture ?? null,
-    role: "USER" as const,
-    tumiki: profile.tumiki ?? null,
-    profileSub: profile.sub,
-  }),
 };
 
 export const {
@@ -50,10 +34,7 @@ export const {
   trustHost: true,
   providers: [oidcProvider],
   adapter: createCustomAdapter(),
-  session: {
-    strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60,
-  },
+  session: { strategy: "jwt" },
   callbacks: {
     jwt: jwtCallback,
     session: sessionCallback,
