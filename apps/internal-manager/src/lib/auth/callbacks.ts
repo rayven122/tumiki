@@ -4,7 +4,6 @@ import type { AdapterUser } from "@auth/core/adapters";
 import { db } from "@tumiki/db/server";
 import { getTumikiClaims } from "./get-tumiki-claims";
 import { getOidcEnv } from "~/lib/env";
-import { decodeJwt } from "jose";
 import { z } from "zod";
 
 // OIDCアクセストークンのペイロードスキーマ
@@ -76,19 +75,6 @@ const refreshAccessToken = async (token: JWT): Promise<JWT | null> => {
     }
 
     const refreshed = refreshedTokensSchema.parse(await response.json());
-
-    // 新しいアクセストークンからTumikiカスタムクレームを抽出（不透明トークンの場合はスキップ）
-    let idpGroupRoles: string[] | undefined;
-    try {
-      const decoded = oidcJWTPayloadSchema.safeParse(
-        decodeJwt(refreshed.access_token),
-      );
-      if (decoded.success) {
-        idpGroupRoles = decoded.data.tumiki?.group_roles;
-      }
-    } catch {
-      // 不透明アクセストークン（JWT形式でない）の場合は無視し、DBから取得
-    }
 
     return {
       ...token,
