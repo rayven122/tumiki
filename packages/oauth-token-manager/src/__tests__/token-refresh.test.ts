@@ -7,6 +7,8 @@
 
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+import { db } from "@tumiki/db/server";
+
 import { TokenRefreshError } from "../types.js";
 
 // DBモック
@@ -18,8 +20,6 @@ vi.mock("@tumiki/db/server", () => ({
     },
   },
 }));
-
-import { db } from "@tumiki/db/server";
 
 // eslint-disable-next-line @typescript-eslint/unbound-method
 const mockFindUnique = vi.mocked(db.mcpOAuthToken.findUnique);
@@ -376,8 +376,10 @@ describe("refreshBackendToken", () => {
       const result = await refreshBackendToken("token-id-1");
 
       expect(result.accessToken).toStrictEqual("new-access-token");
-      const headers = vi.mocked(fetch).mock.calls[1]?.[1]
-        ?.headers as Record<string, string>;
+      const headers = vi.mocked(fetch).mock.calls[1]?.[1]?.headers as Record<
+        string,
+        string
+      >;
       expect(headers.Authorization).toMatch(/^Basic /);
     });
   });
