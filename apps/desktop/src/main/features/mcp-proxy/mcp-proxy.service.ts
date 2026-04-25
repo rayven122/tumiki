@@ -3,7 +3,6 @@ import type { TransportType } from "@prisma/desktop-client";
 import { z } from "zod";
 import { getDb } from "../../shared/db";
 import * as mcpRepository from "../mcp-server-list/mcp.repository";
-import * as mcpProxyRepository from "./mcp-proxy.repository";
 import * as logger from "../../shared/utils/logger";
 import { decryptCredentials } from "../../utils/credentials";
 import { refreshOAuthTokenIfNeeded } from "../oauth/oauth.refresh";
@@ -87,19 +86,13 @@ type EnabledConnection = Awaited<
   ReturnType<typeof mcpRepository.findEnabledConnections>
 >[number];
 
-type BuildConfigOptions = {
-  /** OAuthトークンリフレッシュをスキップする（リフレッシュ済みの場合） */
-  skipOAuthRefresh?: boolean;
-};
-
 /**
  * 単一接続からMcpServerConfigを生成する共通ヘルパー。
- * credentials復号 → Zodバリデーション → OAuthリフレッシュ（任意）→ config組み立て。
+ * credentials復号 → Zodバリデーション → OAuthリフレッシュ → config組み立て。
  * 生成不可（urlなし等）の場合は null を返す。
  */
 const buildConfigFromConnection = async (
   conn: EnabledConnection,
-  options: BuildConfigOptions = {},
 ): Promise<{ config: McpServerConfig; meta: McpConnectionMeta } | null> => {
   const connLabel = `${conn.server.slug}/${conn.slug}`;
   const name = `${conn.server.slug}-${conn.slug}`;
@@ -112,7 +105,7 @@ const buildConfigFromConnection = async (
   );
 
   // OAuth接続: トークンの期限チェック & 必要ならリフレッシュ
-  if (!options.skipOAuthRefresh && conn.authType === "OAUTH" && conn.url) {
+  if (conn.authType === "OAUTH" && conn.url) {
     const refreshed = await refreshOAuthTokenIfNeeded(
       conn.id,
       conn.url,
@@ -235,99 +228,6 @@ const buildConfigsFromConnections = async (
     }
   }
   return { configs, meta };
-};
-
-/** OAuth接続のトークン有効期限情報 */
-export type OAuthConnectionExpiry = {
-  configName: string;
-  connectionId: number;
-  serverUrl: string;
-  expiresAt: number;
-};
-
-/**
- * 有効なOAuth接続の期限情報を取得（プロアクティブリフレッシュタイマー用）
- */
-export const getOAuthConnectionExpiries = async (
-  serverSlug?: string,
-): Promise<OAuthConnectionExpiry[]> => {
-  const db = await getDb();
-  const connections = serverSlug
-    ? await mcpRepository.findEnabledConnectionsBySlug(db, serverSlug)
-    : await mcpRepository.findEnabledConnections(db);
-
-  const expiries: OAuthConnectionExpiry[] = [];
-  for (const conn of connections) {
-    if (conn.authType !== "OAUTH" || !conn.url) continue;
-
-    try {
-      const plainCredentials = await decryptCredentials(conn.credentials);
-      const credentials = parseAndValidate(
-        plainCredentials,
-        connectionEnvSchema,
-        `connection(${conn.server.slug}/${conn.slug}).credentials`,
-      );
-
-      const expiresAt = credentials["expires_at"];
-      if (expiresAt) {
-        const expiresAtSec = Number(expiresAt);
-        if (!Number.isNaN(expiresAtSec)) {
-          expiries.push({
-            configName: `${conn.server.slug}-${conn.slug}`,
-            connectionId: conn.id,
-            serverUrl: conn.url,
-            expiresAt: expiresAtSec,
-          });
-        }
-      }
-    } catch {
-      // credentials復号失敗は無視（buildConfigsFromConnectionsでログ済み）
-    }
-  }
-  return expiries;
-};
-
-/**
- * OAuth接続のリフレッシュ → config再生成を一括で行う（プロアクティブリフレッシュタイマー用）
- *
- * 1. リポジトリ経由で単一接続を取得
- * 2. credentials を復号 + Zodバリデーション
- * 3. refreshOAuthTokenIfNeeded でトークンリフレッシュ
- * 4. リフレッシュ後の credentials で config を再生成（二重リフレッシュ防止: skipOAuthRefresh）
- */
-export const refreshAndRebuildOAuthConnection = async (
-  connectionId: number,
-  serverUrl: string,
-): Promise<{ configName: string; config: McpServerConfig } | null> => {
-  const db = await getDb();
-  const conn = await mcpProxyRepository.findEnabledConnectionById(
-    db,
-    connectionId,
-  );
-  if (!conn) return null;
-
-  const connLabel = `${conn.server.slug}/${conn.slug}`;
-  const plainCredentials = await decryptCredentials(conn.credentials);
-  const credentials = parseAndValidate(
-    plainCredentials,
-    connectionEnvSchema,
-    `connection(${connLabel}).credentials`,
-  );
-
-  const refreshed = await refreshOAuthTokenIfNeeded(
-    connectionId,
-    serverUrl,
-    credentials,
-  );
-  if (!refreshed) return null;
-
-  // リフレッシュ済みなので skipOAuthRefresh で二重リフレッシュを防止
-  const result = await buildConfigFromConnection(conn, {
-    skipOAuthRefresh: true,
-  });
-  if (!result) return null;
-
-  return { configName: result.meta.configName, config: result.config };
 };
 
 /**

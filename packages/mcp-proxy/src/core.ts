@@ -15,10 +15,6 @@ export type ProxyCore = {
   stopAll: () => Promise<void>;
   start: (name: string) => Promise<McpServerState>;
   stop: (name: string) => Promise<void>;
-  updateAndRestart: (
-    name: string,
-    newConfig: McpServerConfig,
-  ) => Promise<McpServerState>;
   listTools: () => Promise<McpToolInfo[]>;
   callTool: (
     name: string,
@@ -43,11 +39,6 @@ export const createSingleServerCore = (
   return {
     startAll: () => client.connect(),
     stopAll: () => client.disconnect(),
-    updateAndRestart: async () => {
-      throw new Error(
-        "updateAndRestart is not supported in single server mode",
-      );
-    },
     start: async (name: string) => {
       if (name !== config.name) {
         throw new Error(`サーバー "${name}" は登録されていません`);
@@ -105,8 +96,6 @@ export const createProxyCore = (
     stopAll: () => pool.stopAll(),
     start: (name: string) => pool.start(name),
     stop: (name: string) => pool.stop(name),
-    updateAndRestart: (name: string, newConfig: McpServerConfig) =>
-      pool.updateServer(name, newConfig),
     listTools: () => aggregator.listTools(),
     callTool: (name: string, args: Record<string, unknown>) =>
       aggregator.callTool(name, args),
