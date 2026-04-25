@@ -7,9 +7,13 @@
 import type { McpOAuthToken } from "@tumiki/db";
 import { db } from "@tumiki/db/server";
 
-import type { DecryptedToken, TokenRefreshResponse } from "./types.js";
+import type {
+  DecryptedToken,
+  DiscoveryResponse,
+  TokenRefreshResponse,
+} from "./types.js";
 import { logger } from "./logger.js";
-import { TokenRefreshError } from "./types.js";
+import { discoveryResponseSchema, TokenRefreshError } from "./types.js";
 
 /**
  * Backend MCPトークンをリフレッシュ
@@ -101,10 +105,7 @@ export const refreshBackendToken = async (
 const discoverTokenEndpoint = async (
   authorizationServerUrl: string,
   tokenId: string,
-): Promise<{
-  token_endpoint: string;
-  token_endpoint_auth_methods_supported?: string[];
-}> => {
+): Promise<DiscoveryResponse> => {
   const endpoints = [
     `${authorizationServerUrl}/.well-known/oauth-authorization-server`,
     `${authorizationServerUrl}/.well-known/openid-configuration`,
@@ -114,16 +115,16 @@ const discoverTokenEndpoint = async (
     try {
       const response = await fetch(endpoint);
       if (response.ok) {
-        const data = (await response.json()) as {
-          token_endpoint: string;
-          token_endpoint_auth_methods_supported?: string[];
-        };
-        if (data.token_endpoint) {
-          return data;
+        const parsed = discoveryResponseSchema.safeParse(await response.json());
+        if (parsed.success && parsed.data.token_endpoint) {
+          return parsed.data;
         }
       }
-    } catch {
-      // 次のエンドポイントを試みる
+    } catch (error) {
+      logger.debug("Discovery endpoint failed, trying next", {
+        endpoint,
+        error,
+      });
     }
   }
 

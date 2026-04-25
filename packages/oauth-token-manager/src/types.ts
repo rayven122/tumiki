@@ -28,6 +28,19 @@ export const isDecryptedToken = (value: unknown): value is DecryptedToken => {
 };
 
 /**
+ * Discovery エンドポイントレスポンスのZodスキーマ
+ */
+export const discoveryResponseSchema = z.object({
+  token_endpoint: z.string(),
+  token_endpoint_auth_methods_supported: z.array(z.string()).optional(),
+});
+
+/**
+ * Discovery エンドポイントレスポンス
+ */
+export type DiscoveryResponse = z.infer<typeof discoveryResponseSchema>;
+
+/**
  * トークンリフレッシュレスポンス
  */
 export type TokenRefreshResponse = {

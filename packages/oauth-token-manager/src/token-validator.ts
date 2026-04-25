@@ -31,7 +31,7 @@ export const isTokenExpired = (token: McpOAuthToken): boolean => {
  * トークンが期限切れ間近かどうかをチェック
  *
  * @param token トークン
- * @param bufferSeconds バッファ時間（秒）デフォルト30分
+ * @param bufferSeconds バッファ時間（秒）デフォルト5分
  * @returns 期限切れ間近の場合true
  */
 export const isExpiringSoon = (
