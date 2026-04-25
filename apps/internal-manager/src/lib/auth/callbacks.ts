@@ -28,11 +28,12 @@ const refreshedTokensSchema = z.object({
   refresh_token: z.string().optional(),
 });
 
-// OIDCディスカバリーからトークンエンドポイントを取得（シンプルにインメモリキャッシュ）
-let cachedTokenEndpoint: string | null = null;
+// OIDCディスカバリーからトークンエンドポイントを取得（issuerをキーにキャッシュ）
+const tokenEndpointCache = new Map<string, string>();
 
 const getTokenEndpoint = async (issuer: string): Promise<string> => {
-  if (cachedTokenEndpoint) return cachedTokenEndpoint;
+  const cached = tokenEndpointCache.get(issuer);
+  if (cached) return cached;
 
   const discoveryUrl = `${issuer.replace(/\/$/, "")}/.well-known/openid-configuration`;
   const res = await fetch(discoveryUrl);
@@ -42,8 +43,8 @@ const getTokenEndpoint = async (issuer: string): Promise<string> => {
     .object({ token_endpoint: z.string().url() })
     .parse(await res.json());
 
-  cachedTokenEndpoint = config.token_endpoint;
-  return cachedTokenEndpoint;
+  tokenEndpointCache.set(issuer, config.token_endpoint);
+  return config.token_endpoint;
 };
 
 /**
@@ -51,6 +52,8 @@ const getTokenEndpoint = async (issuer: string): Promise<string> => {
  * トークンエンドポイントはOIDCディスカバリーで自動取得（Entra/GWS/Okta/Keycloak共通）
  */
 const refreshAccessToken = async (token: JWT): Promise<JWT | null> => {
+  if (!token.refreshToken) return null;
+
   try {
     const { OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_ISSUER } = getOidcEnv();
     const tokenEndpoint = await getTokenEndpoint(OIDC_ISSUER);
@@ -62,7 +65,7 @@ const refreshAccessToken = async (token: JWT): Promise<JWT | null> => {
         grant_type: "refresh_token",
         client_id: OIDC_CLIENT_ID,
         client_secret: OIDC_CLIENT_SECRET,
-        refresh_token: token.refreshToken ?? "",
+        refresh_token: token.refreshToken,
       }),
     });
 
@@ -128,7 +131,12 @@ export const jwtCallback = async ({
     token.expiresAt = account.expires_at;
     token.refreshToken = account.refresh_token;
 
-    const oidcProfile = oidcJWTPayloadSchema.parse(profile);
+    const profileResult = oidcJWTPayloadSchema.safeParse(profile);
+    if (!profileResult.success) {
+      console.error("[jwtCallback] Invalid OIDC profile:", profileResult.error);
+      return null;
+    }
+    const oidcProfile = profileResult.data;
     token.sub = oidcProfile.sub ?? "";
     token.email = oidcProfile.email ?? null;
     token.name = oidcProfile.name ?? null;

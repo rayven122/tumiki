@@ -27,21 +27,20 @@ const oidcProvider: OAuthConfig<OidcProfile> = {
   checks: ["pkce", "state"],
   authorization: {
     params: {
+      // select_account は Entra ID / GWS でサポート。Keycloak / Okta では無視される場合あり
       prompt: "select_account",
       scope: "openid email profile",
     },
   },
-  profile(profile: OidcProfile) {
-    return {
-      id: profile.sub,
-      email: profile.email ?? null,
-      name: profile.name ?? null,
-      image: profile.picture ?? null,
-      role: "USER" as const,
-      tumiki: profile.tumiki ?? null,
-      profileSub: profile.sub,
-    };
-  },
+  profile: (profile: OidcProfile) => ({
+    id: profile.sub,
+    email: profile.email ?? null,
+    name: profile.name ?? null,
+    image: profile.picture ?? null,
+    role: "USER" as const,
+    tumiki: profile.tumiki ?? null,
+    profileSub: profile.sub,
+  }),
 };
 
 export const {
