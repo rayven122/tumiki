@@ -47,7 +47,7 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
 RUN pnpm turbo run build --filter=@tumiki/internal-manager^...
 
 # Next.js standalone モードでビルド
-RUN pnpm --filter @tumiki/internal-manager with-env next build --turbopack
+RUN pnpm --filter @tumiki/internal-manager with-env next build --webpack
 
 # ========================================
 # Stage 3: Production
