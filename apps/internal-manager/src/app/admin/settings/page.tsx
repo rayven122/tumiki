@@ -1,9 +1,75 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Copy } from "lucide-react";
 
 /* ===== システム設定画面 ===== */
+
+/* 共通テキストinputクラス */
+const inputCls =
+  "bg-bg-app border-border-default text-text-secondary w-full rounded-lg border px-3 py-2 text-xs outline-none";
+
+/* トグルスイッチ */
+const Toggle = ({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+}) => (
+  <button
+    type="button"
+    role="switch"
+    aria-checked={checked}
+    aria-label={label}
+    onClick={() => onChange(!checked)}
+    className={`h-4 w-7 rounded-full transition-colors ${checked ? "bg-badge-success-bg" : "bg-bg-active"}`}
+  >
+    <span
+      className={`block h-3 w-3 rounded-full transition-transform ${checked ? "bg-badge-success-text translate-x-3.5" : "bg-text-subtle translate-x-0.5"}`}
+    />
+  </button>
+);
+
+/* セクションカード */
+const SectionCard = ({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) => (
+  <div className="bg-bg-card border-border-default rounded-xl border p-5">
+    <h2 className="text-text-primary mb-4 text-sm font-semibold">{title}</h2>
+    <div className="space-y-4">{children}</div>
+    <div className="mt-5 flex justify-end">
+      <button
+        type="button"
+        className="bg-btn-primary-bg text-btn-primary-text rounded-lg px-4 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
+      >
+        保存
+      </button>
+    </div>
+  </div>
+);
+
+/* 入力フィールド */
+const Field = ({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) => (
+  <div>
+    <label className="text-text-secondary mb-1 block text-[11px]">
+      {label}
+    </label>
+    {children}
+  </div>
+);
 
 const AdminSettingsPage = () => {
   /* 組織情報 */
@@ -48,78 +114,20 @@ const AdminSettingsPage = () => {
 
   /* SCIMエンドポイントのコピー */
   const [copied, setCopied] = useState(false);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    };
+  }, []);
+
   const handleCopy = () => {
     void navigator.clipboard.writeText(scimEndpoint);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
   };
-
-  /* トグルスイッチのレンダリングヘルパー */
-  const Toggle = ({
-    checked,
-    onChange,
-    label,
-  }: {
-    checked: boolean;
-    onChange: (v: boolean) => void;
-    label: string;
-  }) => (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      onClick={() => onChange(!checked)}
-      className={`h-4 w-7 rounded-full transition-colors ${checked ? "bg-badge-success-bg" : "bg-bg-active"}`}
-    >
-      <span
-        className={`block h-3 w-3 rounded-full transition-transform ${checked ? "bg-badge-success-text" : "bg-text-subtle"}`}
-        style={{ transform: checked ? "translateX(14px)" : "translateX(2px)" }}
-      />
-    </button>
-  );
-
-  /* セクションカードのレンダリングヘルパー */
-  const SectionCard = ({
-    title,
-    children,
-  }: {
-    title: string;
-    children: React.ReactNode;
-  }) => (
-    <div className="bg-bg-card border-border-default rounded-xl border p-5">
-      <h2 className="text-text-primary mb-4 text-sm font-semibold">{title}</h2>
-      <div className="space-y-4">{children}</div>
-      <div className="mt-5 flex justify-end">
-        <button
-          type="button"
-          className="bg-btn-primary-bg text-btn-primary-text rounded-lg px-4 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
-        >
-          保存
-        </button>
-      </div>
-    </div>
-  );
-
-  /* 入力フィールドのレンダリングヘルパー */
-  const Field = ({
-    label,
-    children,
-  }: {
-    label: string;
-    children: React.ReactNode;
-  }) => (
-    <div>
-      <label className="text-text-secondary mb-1 block text-[11px]">
-        {label}
-      </label>
-      {children}
-    </div>
-  );
-
-  /* 共通テキストinputクラス */
-  const inputCls =
-    "bg-bg-app border-border-default text-text-secondary w-full rounded-lg border px-3 py-2 text-xs outline-none";
 
   return (
     <div className="space-y-5 p-6">

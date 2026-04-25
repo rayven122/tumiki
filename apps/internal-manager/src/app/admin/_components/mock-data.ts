@@ -951,7 +951,7 @@ export type Group = {
   idpGroup: string | null;
   syncStatus: GroupSyncStatus;
   lastSync: string | null;
-  allowedTools: string[]; // tool ids
+  allowedTools: string[]; // ツールID一覧
 };
 
 export type SyncHistory = {

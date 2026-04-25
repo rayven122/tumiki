@@ -122,10 +122,7 @@ const AdminGroupsPage = () => {
   return (
     <div className="flex h-full min-h-screen">
       {/* 左カラム: グループ一覧 */}
-      <div
-        className="border-r-border-default flex shrink-0 flex-col border-r"
-        style={{ width: 280 }}
-      >
+      <div className="border-r-border-default flex w-[280px] shrink-0 flex-col border-r">
         {/* 左ヘッダー */}
         <div className="border-b-border-default flex items-center justify-between border-b px-4 py-3">
           <span className="text-text-primary text-sm font-semibold">
@@ -355,12 +352,7 @@ const AdminGroupsPage = () => {
                             className={`h-4 w-7 rounded-full transition-colors ${allowed ? "bg-badge-success-bg" : "bg-bg-active"}`}
                           >
                             <span
-                              className={`block h-3 w-3 rounded-full transition-transform ${allowed ? "bg-badge-success-text" : "bg-text-subtle"}`}
-                              style={{
-                                transform: allowed
-                                  ? "translateX(14px)"
-                                  : "translateX(2px)",
-                              }}
+                              className={`block h-3 w-3 rounded-full transition-transform ${allowed ? "bg-badge-success-text translate-x-3.5" : "bg-text-subtle translate-x-0.5"}`}
                             />
                           </button>
                         </div>
