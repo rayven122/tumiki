@@ -27,8 +27,6 @@ const oidcProvider: OAuthConfig<OidcProfile> = {
   checks: ["pkce", "state"],
   authorization: {
     params: {
-      // select_account は Entra ID / GWS でサポート。Keycloak / Okta では無視される場合あり
-      prompt: "select_account",
       scope: "openid email profile",
     },
   },
