@@ -11,8 +11,10 @@ import {
   PanelLeft,
   PanelLeftClose,
   Server,
+  Settings,
   Shield,
   Users,
+  Users2,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -21,7 +23,9 @@ const NAV_ITEMS = [
   { path: "/admin/users", label: "ユーザー管理", icon: Users },
   { path: "/admin/roles", label: "ロール管理", icon: Shield },
   { path: "/admin/tools", label: "ツール管理", icon: Server },
+  { path: "/admin/groups", label: "グループ管理", icon: Users2 },
   { path: "/admin/approvals", label: "承認管理", icon: ClipboardCheck },
+  { path: "/admin/settings", label: "システム設定", icon: Settings },
 ] as const;
 
 export const AdminSidebar = () => {
