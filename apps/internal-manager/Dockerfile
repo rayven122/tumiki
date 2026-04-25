@@ -27,6 +27,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY .npmrc ./
 COPY tooling ./tooling
 COPY packages/db ./packages/db
+COPY packages/internal-db ./packages/internal-db
 COPY packages/keycloak ./packages/keycloak
 COPY packages/ui ./packages/ui
 COPY apps/internal-manager ./apps/internal-manager
@@ -34,6 +35,7 @@ COPY apps/internal-manager ./apps/internal-manager
 # Prisma postinstall と next build 用のダミー環境変数（実際の接続には使用されない）
 RUN printf '%s\n' \
   "DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder" \
+  "INTERNAL_DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder" \
   "PRISMA_FIELD_ENCRYPTION_KEY=k1.aesgcm256.FkhfY-sKgaYBJYteXBGudV6g_oBOW1TjU74hbowUl8s=" \
   "OIDC_CLIENT_ID=dummy-oidc-client-id" \
   "OIDC_CLIENT_SECRET=dummy-oidc-client-secret" \
