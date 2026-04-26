@@ -1,4 +1,4 @@
-import { Role, type PrismaTransactionClient } from "@tumiki/db";
+import { Role, type PrismaTransactionClient } from "@tumiki/internal-db";
 import { z } from "zod";
 
 /**

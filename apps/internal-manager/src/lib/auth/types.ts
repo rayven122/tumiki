@@ -1,4 +1,4 @@
-import type { Role } from "@tumiki/db/server";
+import type { Role } from "@tumiki/internal-db/server";
 
 /**
  * IDPから受け取るTumikiカスタムクレーム

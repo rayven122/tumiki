@@ -3,6 +3,7 @@
   "ui": "tui",
   "globalEnv": [
     "DATABASE_URL",
+    "INTERNAL_DATABASE_URL",
     "PRISMA_FIELD_ENCRYPTION_KEY",
     "PRISMA_FIELD_ENCRYPTION_HASH_SALT"
   ],
@@ -42,6 +43,13 @@
     },
     "@tumiki/desktop#db:generate": {
       "outputs": ["prisma/generated/**"]
+    },
+    "@tumiki/internal-db#db:generate": {
+      "outputs": ["generated/**"]
+    },
+    "@tumiki/internal-db#typecheck": {
+      "dependsOn": ["^build", "db:generate"],
+      "outputs": []
     },
     "test": {
       "dependsOn": ["^build"],

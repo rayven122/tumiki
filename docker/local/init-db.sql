@@ -1,7 +1,9 @@
--- Keycloak用データベースとユーザーを作成
 -- このスクリプトはPostgreSQLコンテナの初回起動時に自動実行されます
 
--- Keycloak用データベースを作成
+-- internal-manager専用データベースを作成
+CREATE DATABASE tumiki_internal;
+
+-- Keycloak用データベースとユーザーを作成
 CREATE DATABASE keycloak;
 
 -- Keycloak用ユーザーを作成
