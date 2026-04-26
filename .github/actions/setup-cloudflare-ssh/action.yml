@@ -1,0 +1,40 @@
+name: Setup Cloudflare SSH
+description: Cloudflare Tunnel + Access Service Token 経由で SSH できるようにセットアップする（SSH証明書認証）
+
+inputs:
+  tunnel-hostname:
+    description: 'Cloudflare Tunnel のホスト名（例: staging.tumiki.cloud）'
+    required: true
+  cf-access-client-id:
+    description: 'Cloudflare Access Service Token の Client ID'
+    required: true
+  cf-access-client-secret:
+    description: 'Cloudflare Access Service Token の Client Secret'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Install cloudflared
+      shell: bash
+      run: |
+        curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o /tmp/cloudflared.deb
+        sudo dpkg -i /tmp/cloudflared.deb
+
+    - name: Configure SSH
+      shell: bash
+      env:
+        TUNNEL_HOSTNAME: ${{ inputs.tunnel-hostname }}
+      run: |
+        mkdir -p ~/.ssh
+
+        # cloudflared が自動参照する Service Token
+        echo "CLOUDFLARE_ACCESS_CLIENT_ID=${{ inputs.cf-access-client-id }}" >> "$GITHUB_ENV"
+        echo "CLOUDFLARE_ACCESS_CLIENT_SECRET=${{ inputs.cf-access-client-secret }}" >> "$GITHUB_ENV"
+
+        # cloudflared が SSH 証明書を自動取得・接続する ProxyCommand を設定
+        cat >> ~/.ssh/config << EOF
+Host ${TUNNEL_HOSTNAME}
+  ProxyCommand cloudflared access ssh --hostname %h
+  StrictHostKeyChecking accept-new
+EOF

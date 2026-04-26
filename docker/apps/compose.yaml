@@ -1,0 +1,86 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: tumiki-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tumiki
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: tumiki
+    volumes:
+      - db_vol:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tumiki"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: tumiki-redis
+    restart: unless-stopped
+    volumes:
+      - redis_vol:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  manager:
+    image: ghcr.io/rayven122/tumiki-manager:${IMAGE_TAG:-latest}
+    container_name: tumiki-manager
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+
+  mcp-proxy:
+    image: ghcr.io/rayven122/tumiki-mcp-proxy:${IMAGE_TAG:-latest}
+    container_name: tumiki-mcp-proxy
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+
+  internal-manager:
+    image: ghcr.io/rayven122/tumiki-internal-manager:${IMAGE_TAG:-latest}
+    container_name: tumiki-internal-manager
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3100/api/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+
+volumes:
+  db_vol:
+  redis_vol:

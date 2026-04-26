@@ -1,0 +1,183 @@
+name: Deploy Apps
+
+on:
+  workflow_run:
+    workflows: ["Docker Publish"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'デプロイ先環境'
+        type: choice
+        options: [staging, production]
+        default: staging
+      image_tag:
+        description: 'イメージタグ（staging: main / production: latest）'
+        type: string
+
+concurrency:
+  group: deploy-apps-${{ github.event.workflow_run.head_branch || inputs.environment }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-staging:
+    name: 🚀 Deploy to staging
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main') ||
+      (github.event_name == 'workflow_dispatch' && inputs.environment == 'staging')
+    environment: staging
+
+    env:
+      IMAGE_TAG: ${{ inputs.image_tag || 'main' }}
+      INFISICAL_ENV: staging
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🔑 Configure SSH (Cloudflare Tunnel)
+        uses: ./.github/actions/setup-cloudflare-ssh
+        with:
+          tunnel-hostname: ${{ vars.DEPLOY_TUNNEL_HOSTNAME }}
+          cf-access-client-id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          cf-access-client-secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+
+      - name: 📤 Transfer compose.yaml
+        env:
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_TUNNEL_HOSTNAME: ${{ vars.DEPLOY_TUNNEL_HOSTNAME }}
+        run: |
+          SSH_TARGET="${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}"
+          ssh "$SSH_TARGET" "mkdir -p ~/tumiki"
+          scp docker/apps/compose.yaml "$SSH_TARGET:~/tumiki/compose.yaml"
+
+      - name: 🐳 Deploy containers
+        env:
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_TUNNEL_HOSTNAME: ${{ vars.DEPLOY_TUNNEL_HOSTNAME }}
+        run: |
+          SSH_TARGET="${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}"
+          INFISICAL_ENV_VAL="${INFISICAL_ENV}"
+          IMAGE_TAG_VAL="${IMAGE_TAG}"
+          ssh "$SSH_TARGET" bash -l << REMOTE_SCRIPT
+            set -euo pipefail
+            cd ~/tumiki
+            export IMAGE_TAG="${IMAGE_TAG_VAL}"
+            infisical export --env="${INFISICAL_ENV_VAL}" --format=dotenv > .env
+            docker compose pull
+            docker compose up -d --remove-orphans
+            rm -f .env
+          REMOTE_SCRIPT
+
+      - name: ✅ Verify health endpoints
+        env:
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_TUNNEL_HOSTNAME: ${{ vars.DEPLOY_TUNNEL_HOSTNAME }}
+        run: |
+          SSH_TARGET="${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}"
+          ssh "$SSH_TARGET" bash << 'HEALTHCHECK'
+            for i in $(seq 1 20); do
+              if curl -sf http://localhost:8080/api/health > /dev/null 2>&1 && \
+                 curl -sf http://localhost:8081/health > /dev/null 2>&1 && \
+                 curl -sf http://localhost:3100/api/health > /dev/null 2>&1; then
+                echo "=== Manager ===" && curl -sf http://localhost:8080/api/health | jq .
+                echo "=== MCP Proxy ===" && curl -sf http://localhost:8081/health | jq .
+                echo "=== Internal Manager ===" && curl -sf http://localhost:3100/api/health | jq .
+                exit 0
+              fi
+              echo "Waiting... ($i/20)" && sleep 5
+            done
+            echo "Timeout: コンテナが起動しませんでした"
+            docker compose logs --tail=50
+            exit 1
+          HEALTHCHECK
+
+      - name: 🧹 Cleanup
+        if: always()
+        run: rm -f ~/.ssh/config /tmp/cloudflared.deb
+
+  deploy-production:
+    name: 🚀 Deploy to production
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       startsWith(github.event.workflow_run.head_branch, 'v') &&
+       contains(github.event.workflow_run.head_branch, '.')) ||
+      (github.event_name == 'workflow_dispatch' && inputs.environment == 'production')
+    environment: production
+
+    env:
+      IMAGE_TAG: ${{ inputs.image_tag || 'latest' }}
+      INFISICAL_ENV: prod
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🔑 Configure SSH (Cloudflare Tunnel)
+        uses: ./.github/actions/setup-cloudflare-ssh
+        with:
+          tunnel-hostname: ${{ vars.DEPLOY_TUNNEL_HOSTNAME }}
+          cf-access-client-id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          cf-access-client-secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+
+      - name: 📤 Transfer compose.yaml
+        env:
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_TUNNEL_HOSTNAME: ${{ vars.DEPLOY_TUNNEL_HOSTNAME }}
+        run: |
+          SSH_TARGET="${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}"
+          ssh "$SSH_TARGET" "mkdir -p ~/tumiki"
+          scp docker/apps/compose.yaml "$SSH_TARGET:~/tumiki/compose.yaml"
+
+      - name: 🐳 Deploy containers
+        env:
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_TUNNEL_HOSTNAME: ${{ vars.DEPLOY_TUNNEL_HOSTNAME }}
+        run: |
+          SSH_TARGET="${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}"
+          INFISICAL_ENV_VAL="${INFISICAL_ENV}"
+          IMAGE_TAG_VAL="${IMAGE_TAG}"
+          ssh "$SSH_TARGET" bash -l << REMOTE_SCRIPT
+            set -euo pipefail
+            cd ~/tumiki
+            export IMAGE_TAG="${IMAGE_TAG_VAL}"
+            infisical export --env="${INFISICAL_ENV_VAL}" --format=dotenv > .env
+            docker compose pull
+            docker compose up -d --remove-orphans
+            rm -f .env
+          REMOTE_SCRIPT
+
+      - name: ✅ Verify health endpoints
+        env:
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_TUNNEL_HOSTNAME: ${{ vars.DEPLOY_TUNNEL_HOSTNAME }}
+        run: |
+          SSH_TARGET="${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}"
+          ssh "$SSH_TARGET" bash << 'HEALTHCHECK'
+            for i in $(seq 1 20); do
+              if curl -sf http://localhost:8080/api/health > /dev/null 2>&1 && \
+                 curl -sf http://localhost:8081/health > /dev/null 2>&1 && \
+                 curl -sf http://localhost:3100/api/health > /dev/null 2>&1; then
+                echo "=== Manager ===" && curl -sf http://localhost:8080/api/health | jq .
+                echo "=== MCP Proxy ===" && curl -sf http://localhost:8081/health | jq .
+                echo "=== Internal Manager ===" && curl -sf http://localhost:3100/api/health | jq .
+                exit 0
+              fi
+              echo "Waiting... ($i/20)" && sleep 5
+            done
+            echo "Timeout: コンテナが起動しませんでした"
+            docker compose logs --tail=50
+            exit 1
+          HEALTHCHECK
+
+      - name: 🧹 Cleanup
+        if: always()
+        run: rm -f ~/.ssh/config /tmp/cloudflared.deb

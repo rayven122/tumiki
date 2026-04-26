@@ -253,8 +253,17 @@ EOF
 # メイン
 # ===================================
 
-# .envファイルを読み込み（存在する場合）
-if [[ -f "$SCRIPT_DIR/.env" ]]; then
+# Infisical CLI が利用可能であれば本番シークレットを注入
+# なければ .env ファイルにフォールバック
+if command -v infisical > /dev/null 2>&1; then
+    log_info "Infisical CLI detected. Injecting secrets from Infisical (env=prod)..."
+    eval "$(infisical export --env=prod --format=dotenv-export 2>/dev/null)" || {
+        log_warn "Infisical export failed. Falling back to .env file."
+        if [[ -f "$SCRIPT_DIR/.env" ]]; then
+            set -a; source "$SCRIPT_DIR/.env"; set +a
+        fi
+    }
+elif [[ -f "$SCRIPT_DIR/.env" ]]; then
     set -a
     source "$SCRIPT_DIR/.env"
     set +a
