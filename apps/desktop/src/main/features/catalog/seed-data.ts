@@ -1,3 +1,4 @@
+import { FILESYSTEM_STDIO_NAME } from "../../../shared/catalog.constants";
 import type { CatalogSeedData } from "./catalog.repository";
 
 /**
@@ -12,13 +13,13 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
   // stdio MCP（ローカルプロセス）— 表の順
   // ========================================
   {
-    name: "Filesystem STDIO",
+    name: FILESYSTEM_STDIO_NAME,
     description:
       "ファイルシステム操作 - ローカルファイルの読み書き（開発・テスト用）",
     iconPath: "/logos/services/filesystem.svg",
     transportType: "STDIO",
     command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+    args: ["-y", "@modelcontextprotocol/server-filesystem"],
     credentialKeys: [],
     authType: "NONE",
     isOfficial: true,

@@ -5,6 +5,7 @@ import { getDb } from "../../shared/db";
 import * as mcpRepository from "../mcp-server-list/mcp.repository";
 import * as logger from "../../shared/utils/logger";
 import { decryptCredentials } from "../../utils/credentials";
+import { refreshOAuthTokenIfNeeded } from "../oauth/oauth.refresh";
 
 /** CLI監査ログ用: configName → DB情報のマッピング */
 export type McpConnectionMeta = {
@@ -55,7 +56,11 @@ const buildHeaders = (
 ): Record<string, string> => {
   switch (authType) {
     case "BEARER": {
-      const token = credentials["token"] ?? credentials["accessToken"] ?? "";
+      const token =
+        credentials["token"] ??
+        credentials["accessToken"] ??
+        credentials["access_token"] ??
+        "";
       return token ? { Authorization: `Bearer ${token}` } : {};
     }
     case "API_KEY":
@@ -72,7 +77,119 @@ const buildHeaders = (
 const toProxyAuthType = (prismaAuthType: string): AuthType => {
   if (prismaAuthType === "BEARER") return "BEARER";
   if (prismaAuthType === "API_KEY") return "API_KEY";
+  if (prismaAuthType === "OAUTH") return "BEARER";
   return "NONE";
+};
+
+/** findEnabledConnections の戻り値1要素の型 */
+type EnabledConnection = Awaited<
+  ReturnType<typeof mcpRepository.findEnabledConnections>
+>[number];
+
+/**
+ * 単一接続からMcpServerConfigを生成する共通ヘルパー。
+ * credentials復号 → Zodバリデーション → OAuthリフレッシュ → config組み立て。
+ * 生成不可（urlなし等）の場合は null を返す。
+ */
+const buildConfigFromConnection = async (
+  conn: EnabledConnection,
+): Promise<{ config: McpServerConfig; meta: McpConnectionMeta } | null> => {
+  const connLabel = `${conn.server.slug}/${conn.slug}`;
+  const name = `${conn.server.slug}-${conn.slug}`;
+
+  const plainCredentials = await decryptCredentials(conn.credentials);
+  let credentials = parseAndValidate(
+    plainCredentials,
+    connectionEnvSchema,
+    `connection(${connLabel}).credentials`,
+  );
+
+  // OAuth接続: トークンの期限チェック & 必要ならリフレッシュ
+  if (conn.authType === "OAUTH" && conn.url) {
+    const refreshed = await refreshOAuthTokenIfNeeded(
+      conn.id,
+      conn.url,
+      credentials,
+    );
+    if (refreshed) {
+      credentials = refreshed;
+    }
+  }
+
+  let config: McpServerConfig;
+  switch (conn.transportType) {
+    case "STDIO": {
+      if (!conn.command) {
+        logger.warn(
+          `MCP接続 "${connLabel}" はSTDIOですがcommandが未設定です（skip）`,
+        );
+        return null;
+      }
+      const args = parseAndValidate(
+        conn.args,
+        connectionArgsSchema,
+        `connection(${connLabel}).args`,
+      );
+      config = {
+        name,
+        transportType: "STDIO",
+        command: conn.command,
+        args,
+        env: credentials,
+      };
+      break;
+    }
+    case "SSE": {
+      if (!conn.url) {
+        logger.warn(
+          `MCP接続 "${connLabel}" はSSEですがurlが未設定です（skip）`,
+        );
+        return null;
+      }
+      const sseAuthType = toProxyAuthType(conn.authType);
+      config = {
+        name,
+        transportType: "SSE",
+        url: conn.url,
+        authType: sseAuthType,
+        headers: buildHeaders(sseAuthType, credentials),
+      };
+      break;
+    }
+    case "STREAMABLE_HTTP": {
+      if (!conn.url) {
+        logger.warn(
+          `MCP接続 "${connLabel}" はSTREAMABLE_HTTPですがurlが未設定です（skip）`,
+        );
+        return null;
+      }
+      const httpAuthType = toProxyAuthType(conn.authType);
+      config = {
+        name,
+        transportType: "STREAMABLE_HTTP",
+        url: conn.url,
+        authType: httpAuthType,
+        headers: buildHeaders(httpAuthType, credentials),
+      };
+      break;
+    }
+    default:
+      logger.warn(
+        `MCP接続 "${connLabel}" は未対応のトランスポートタイプです（skip）`,
+        { transportType: conn.transportType },
+      );
+      return null;
+  }
+
+  return {
+    config,
+    meta: {
+      configName: name,
+      serverId: conn.server.id,
+      connectionName: conn.name,
+      transportType: conn.transportType,
+    },
+  };
 };
 
 /**
@@ -95,91 +212,14 @@ const buildConfigsFromConnections = async (
   const configs: McpServerConfig[] = [];
   const meta: McpConnectionMeta[] = [];
   for (const conn of connections) {
-    const connLabel = `${conn.server.slug}/${conn.slug}`;
-    const name = `${conn.server.slug}-${conn.slug}`;
-
     try {
-      const plainCredentials = await decryptCredentials(conn.credentials);
-      const credentials = parseAndValidate(
-        plainCredentials,
-        connectionEnvSchema,
-        `connection(${connLabel}).credentials`,
-      );
-
-      switch (conn.transportType) {
-        case "STDIO": {
-          if (!conn.command) {
-            logger.warn(
-              `MCP接続 "${connLabel}" はSTDIOですがcommandが未設定です（skip）`,
-            );
-            continue;
-          }
-          const args = parseAndValidate(
-            conn.args,
-            connectionArgsSchema,
-            `connection(${connLabel}).args`,
-          );
-          configs.push({
-            name,
-            transportType: "STDIO",
-            command: conn.command,
-            args,
-            env: credentials,
-          });
-          break;
-        }
-        case "SSE": {
-          if (!conn.url) {
-            logger.warn(
-              `MCP接続 "${connLabel}" はSSEですがurlが未設定です（skip）`,
-            );
-            continue;
-          }
-          const sseAuthType = toProxyAuthType(conn.authType);
-          configs.push({
-            name,
-            transportType: "SSE",
-            url: conn.url,
-            authType: sseAuthType,
-            headers: buildHeaders(sseAuthType, credentials),
-          });
-          break;
-        }
-        case "STREAMABLE_HTTP": {
-          if (!conn.url) {
-            logger.warn(
-              `MCP接続 "${connLabel}" はSTREAMABLE_HTTPですがurlが未設定です（skip）`,
-            );
-            continue;
-          }
-          const httpAuthType = toProxyAuthType(conn.authType);
-          configs.push({
-            name,
-            transportType: "STREAMABLE_HTTP",
-            url: conn.url,
-            authType: httpAuthType,
-            headers: buildHeaders(httpAuthType, credentials),
-          });
-          break;
-        }
-        default:
-          logger.warn(
-            `MCP接続 "${connLabel}" は未対応のトランスポートタイプです（skip）`,
-            { transportType: conn.transportType },
-          );
-          continue;
+      const result = await buildConfigFromConnection(conn);
+      if (result) {
+        configs.push(result.config);
+        meta.push(result.meta);
       }
-
-      // configが正常に追加された場合のみメタデータも追加
-      meta.push({
-        configName: name,
-        serverId: conn.server.id,
-        connectionName: conn.name,
-        transportType: conn.transportType,
-      });
     } catch (error) {
-      // 1件の破損データで他サーバーが起動できなくなることを防ぐ：
-      // エラーを個別にログしてスキップ、他の接続は正常に起動する
+      const connLabel = `${conn.server.slug}/${conn.slug}`;
       const message = error instanceof Error ? error.message : String(error);
       logger.error(
         `MCP接続 "${connLabel}" の設定読み込みに失敗したためスキップします`,

@@ -2,6 +2,7 @@ import type { JSX } from "react";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { X, Info } from "lucide-react";
 import type { CatalogItem } from "../../types/catalog";
+import { FILESYSTEM_STDIO_NAME } from "../../shared/catalog.constants";
 
 type AddMcpModalProps = {
   catalog: CatalogItem;
@@ -44,6 +45,9 @@ export const AddMcpModal = ({
   const [needsManualOAuthClient, setNeedsManualOAuthClient] = useState(false);
   const [oauthClientId, setOauthClientId] = useState("");
   const [oauthClientSecret, setOauthClientSecret] = useState("");
+
+  const isFilesystemStdio = catalog.name === FILESYSTEM_STDIO_NAME;
+  const [directoryPath, setDirectoryPath] = useState("");
 
   const slug = useMemo(() => toSlug(serverName), [serverName]);
 
@@ -96,8 +100,26 @@ export const AddMcpModal = ({
       return;
     }
 
+    if (isFilesystemStdio && !directoryPath.trim()) {
+      setError("アクセスディレクトリを入力してください");
+      return;
+    }
+
     setLoading(true);
     setError(null);
+
+    let resolvedArgs = catalog.args;
+    if (isFilesystemStdio) {
+      try {
+        const parsed: unknown = JSON.parse(catalog.args);
+        const baseArgs = Array.isArray(parsed) ? (parsed as string[]) : [];
+        resolvedArgs = JSON.stringify([...baseArgs, directoryPath.trim()]);
+      } catch {
+        setError("引数の解析に失敗しました");
+        setLoading(false);
+        return;
+      }
+    }
 
     // OAuth認証フロー
     if (isOAuth) {
@@ -121,7 +143,7 @@ export const AddMcpModal = ({
           description: catalog.description,
           transportType: catalog.transportType,
           command: catalog.command,
-          args: catalog.args,
+          args: resolvedArgs,
           url: catalog.url,
           ...(needsManualOAuthClient && {
             oauthClientId: oauthClientId.trim(),
@@ -160,7 +182,7 @@ export const AddMcpModal = ({
         description: catalog.description,
         transportType: catalog.transportType,
         command: catalog.command,
-        args: catalog.args,
+        args: resolvedArgs,
         url: catalog.url,
         credentialKeys,
         credentials,
@@ -341,6 +363,36 @@ export const AddMcpModal = ({
             />
           </div>
         </div>
+
+        {/* ディレクトリ入力（Filesystem STDIO の場合のみ） */}
+        {isFilesystemStdio && (
+          <div className="mb-6">
+            <label
+              className="mb-2 block text-sm font-medium"
+              style={{ color: "var(--text-primary)" }}
+            >
+              アクセスディレクトリ
+            </label>
+            <input
+              type="text"
+              value={directoryPath}
+              onChange={(e) => setDirectoryPath(e.target.value)}
+              placeholder="/home/user/documents"
+              className="w-full rounded-lg px-4 py-3 text-sm outline-none"
+              style={{
+                border: "1px solid var(--border)",
+                backgroundColor: "var(--bg-input)",
+                color: "var(--text-primary)",
+              }}
+            />
+            <p
+              className="mt-1.5 text-xs"
+              style={{ color: "var(--text-muted)" }}
+            >
+              MCPサーバーがアクセスできるディレクトリのパスを指定してください
+            </p>
+          </div>
+        )}
 
         {/* APIキー入力（API_KEY認証の場合のみ） */}
         {needsApiKey && (

@@ -12,6 +12,7 @@ export default defineWorkspace([
   // ローカル開発時: docker compose -f ./docker/compose.yaml up -d db-test
   // "packages/db/vitest.config.ts",
   "packages/mailer/vitest.config.ts",
+  "packages/oauth-token-manager/vitest.config.ts",
   "packages/scripts/vitest.config.ts",
 
   // Tooling

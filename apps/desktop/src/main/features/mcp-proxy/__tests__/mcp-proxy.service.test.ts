@@ -12,6 +12,7 @@ vi.mock("../../../shared/utils/logger");
 vi.mock("../../mcp-server-list/mcp.repository");
 vi.mock("../../../utils/encryption");
 vi.mock("../../../utils/credentials");
+vi.mock("../../oauth/oauth.refresh");
 
 // テスト対象のインポート（モックの後に行う）
 import * as mcpProxyService from "../mcp-proxy.service";
@@ -19,6 +20,7 @@ import { getDb } from "../../../shared/db";
 import * as mcpRepository from "../../mcp-server-list/mcp.repository";
 import { decryptToken } from "../../../utils/encryption";
 import { decryptCredentials } from "../../../utils/credentials";
+import { refreshOAuthTokenIfNeeded } from "../../oauth/oauth.refresh";
 
 describe("mcp-proxy.service", () => {
   const mockDb = {} as Awaited<ReturnType<typeof getDb>>;
@@ -324,6 +326,75 @@ describe("mcp-proxy.service", () => {
       const result = await mcpProxyService.getEnabledConfigs();
 
       expect(result).toStrictEqual([]);
+    });
+
+    test("OAuth接続はBEARER認証としてaccess_tokenをヘッダーに付与する", async () => {
+      vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([
+        buildConnection({
+          name: "OAuth Server",
+          slug: "oauth-server",
+          transportType: "STREAMABLE_HTTP",
+          command: null,
+          url: "https://api.figma.com/mcp",
+          credentials:
+            '{"access_token":"oauth-token","refresh_token":"rt","expires_at":"9999999999"}',
+          authType: "OAUTH",
+          server: { slug: "figma" },
+        }),
+      ]);
+      // リフレッシュ不要（期限に余裕あり）
+      vi.mocked(refreshOAuthTokenIfNeeded).mockResolvedValue(null);
+
+      const result = await mcpProxyService.getEnabledConfigs();
+
+      expect(result).toStrictEqual([
+        {
+          name: "figma-oauth-server",
+          transportType: "STREAMABLE_HTTP",
+          url: "https://api.figma.com/mcp",
+          authType: "BEARER",
+          headers: { Authorization: "Bearer oauth-token" },
+        },
+      ]);
+    });
+
+    test("OAuth接続でトークンリフレッシュが実行された場合、新しいトークンが使われる", async () => {
+      vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([
+        buildConnection({
+          name: "OAuth Expired",
+          slug: "oauth-expired",
+          transportType: "SSE",
+          command: null,
+          url: "https://api.figma.com/sse",
+          credentials:
+            '{"access_token":"expired","refresh_token":"rt","expires_at":"1000"}',
+          authType: "OAUTH",
+          server: { slug: "figma" },
+        }),
+      ]);
+      // リフレッシュ成功 → 新しいcredentialsを返す
+      vi.mocked(refreshOAuthTokenIfNeeded).mockResolvedValue({
+        access_token: "refreshed-token",
+        refresh_token: "new-rt",
+        expires_at: "9999999999",
+      });
+
+      const result = await mcpProxyService.getEnabledConfigs();
+
+      expect(result).toStrictEqual([
+        {
+          name: "figma-oauth-expired",
+          transportType: "SSE",
+          url: "https://api.figma.com/sse",
+          authType: "BEARER",
+          headers: { Authorization: "Bearer refreshed-token" },
+        },
+      ]);
+      expect(refreshOAuthTokenIfNeeded).toHaveBeenCalledWith(
+        expect.any(Number),
+        "https://api.figma.com/sse",
+        expect.objectContaining({ access_token: "expired" }),
+      );
     });
   });
 });

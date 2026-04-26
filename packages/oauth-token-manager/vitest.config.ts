@@ -7,6 +7,10 @@ export default defineProject({
   test: {
     ...nodeTestConfig,
     name: "oauth-token-manager",
+    coverage: {
+      include: ["src/**/*.ts"],
+      exclude: ["src/**/*.test.ts", "src/__tests__/**"],
+    },
   },
   resolve: {
     alias: {
