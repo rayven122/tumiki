@@ -53,6 +53,7 @@ describe("getTumikiClaims", () => {
         buildDb(),
         "unknown-user",
         "oidc",
+        "unknown-sub",
         [],
       );
 
@@ -62,7 +63,13 @@ describe("getTumikiClaims", () => {
 
   describe("グループクレームが空の場合", () => {
     test("TumikiClaimsを返しSUCCESSログを記録する", async () => {
-      const result = await getTumikiClaims(buildDb(), mockUser.id, "oidc", []);
+      const result = await getTumikiClaims(
+        buildDb(),
+        mockUser.id,
+        "oidc",
+        mockUser.id,
+        [],
+      );
 
       expect(result).toStrictEqual({
         org_slugs: [],
@@ -83,7 +90,7 @@ describe("getTumikiClaims", () => {
     });
 
     test("IDPメンバーシップを追加しない", async () => {
-      await getTumikiClaims(buildDb(), mockUser.id, "oidc", []);
+      await getTumikiClaims(buildDb(), mockUser.id, "oidc", mockUser.id, []);
 
       expect(mockDb.userGroupMembership.createMany).not.toHaveBeenCalled();
       expect(mockDb.userGroupMembership.deleteMany).not.toHaveBeenCalled();
@@ -92,7 +99,7 @@ describe("getTumikiClaims", () => {
 
   describe("lastLoginAt・isActive更新", () => {
     test("User.updateにlastLoginAtとisActive:trueが渡される", async () => {
-      await getTumikiClaims(buildDb(), mockUser.id, "oidc", []);
+      await getTumikiClaims(buildDb(), mockUser.id, "oidc", mockUser.id, []);
 
       expect(mockDb.user.update).toHaveBeenCalledWith({
         where: { id: mockUser.id },
@@ -107,7 +114,7 @@ describe("getTumikiClaims", () => {
 
   describe("ExternalIdentity upsert", () => {
     test("(provider, sub)でupsertが呼ばれる", async () => {
-      await getTumikiClaims(buildDb(), mockUser.id, "oidc", []);
+      await getTumikiClaims(buildDb(), mockUser.id, "oidc", mockUser.id, []);
 
       expect(mockDb.externalIdentity.upsert).toHaveBeenCalledWith({
         where: { provider_sub: { provider: "oidc", sub: mockUser.id } },
@@ -125,10 +132,13 @@ describe("getTumikiClaims", () => {
       ]);
       mockDb.userGroupMembership.findMany.mockResolvedValue([]);
 
-      const result = await getTumikiClaims(buildDb(), mockUser.id, "oidc", [
-        "/GroupA",
-        "/GroupB",
-      ]);
+      const result = await getTumikiClaims(
+        buildDb(),
+        mockUser.id,
+        "oidc",
+        mockUser.id,
+        ["/GroupA", "/GroupB"],
+      );
 
       expect(mockDb.userGroupMembership.createMany).toHaveBeenCalledWith({
         data: expect.arrayContaining([
@@ -154,7 +164,7 @@ describe("getTumikiClaims", () => {
       mockDb.group.findMany.mockResolvedValue([{ id: "group-a" }]);
       mockDb.userGroupMembership.findMany.mockResolvedValue([]);
 
-      await getTumikiClaims(buildDb(), mockUser.id, "oidc", [
+      await getTumikiClaims(buildDb(), mockUser.id, "oidc", mockUser.id, [
         "/GroupA",
         "/GroupUnregistered",
         "/GroupAlsoUnregistered",
@@ -178,7 +188,9 @@ describe("getTumikiClaims", () => {
         { id: "mem-2", groupId: "group-b" },
       ]);
 
-      await getTumikiClaims(buildDb(), mockUser.id, "oidc", ["/GroupA"]);
+      await getTumikiClaims(buildDb(), mockUser.id, "oidc", mockUser.id, [
+        "/GroupA",
+      ]);
 
       expect(mockDb.userGroupMembership.deleteMany).toHaveBeenCalledWith({
         where: { id: { in: ["mem-2"] } },
@@ -200,7 +212,7 @@ describe("getTumikiClaims", () => {
         { id: "mem-2", groupId: "group-b" },
       ]);
 
-      await getTumikiClaims(buildDb(), mockUser.id, "oidc", []);
+      await getTumikiClaims(buildDb(), mockUser.id, "oidc", mockUser.id, []);
 
       expect(mockDb.userGroupMembership.deleteMany).toHaveBeenCalledWith({
         where: { id: { in: ["mem-1", "mem-2"] } },
@@ -220,7 +232,7 @@ describe("getTumikiClaims", () => {
         { id: "mem-2", groupId: "group-b" },
       ]);
 
-      await getTumikiClaims(buildDb(), mockUser.id, "oidc", [
+      await getTumikiClaims(buildDb(), mockUser.id, "oidc", mockUser.id, [
         "/GroupA",
         "/GroupC",
       ]);
@@ -250,9 +262,13 @@ describe("getTumikiClaims", () => {
     test("グループ同期失敗時もnullを返さずFAILEDログを記録する", async () => {
       mockDb.group.findMany.mockRejectedValue(new Error("DB connection error"));
 
-      const result = await getTumikiClaims(buildDb(), mockUser.id, "oidc", [
-        "/GroupA",
-      ]);
+      const result = await getTumikiClaims(
+        buildDb(),
+        mockUser.id,
+        "oidc",
+        mockUser.id,
+        ["/GroupA"],
+      );
 
       // ログインは続行（nullではない）
       expect(result).not.toBeNull();
@@ -276,7 +292,9 @@ describe("getTumikiClaims", () => {
         { id: "mem-1", groupId: "group-a" },
       ]);
 
-      await getTumikiClaims(buildDb(), mockUser.id, "oidc", ["/GroupA"]);
+      await getTumikiClaims(buildDb(), mockUser.id, "oidc", mockUser.id, [
+        "/GroupA",
+      ]);
 
       expect(mockDb.userGroupMembership.createMany).not.toHaveBeenCalled();
       expect(mockDb.userGroupMembership.deleteMany).not.toHaveBeenCalled();

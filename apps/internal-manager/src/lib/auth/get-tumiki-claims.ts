@@ -5,20 +5,22 @@ import type { TumikiClaims } from "./types";
 /**
  * ログイン時のJITグループ同期とTumikiクレーム取得
  *
- * - ExternalIdentityのupsert（provider + sub → userId マッピング）
+ * - ExternalIdentityのupsert（provider + oidcSub → userId マッピング）
  * - IDPグループクレームに基づくUserGroupMembershipの差分更新
  * - IdpSyncLogへの記録
  * - User.lastLoginAt更新・isActive復元
  *
  * @param db Prismaクライアント（トランザクション内でも可）
- * @param userId ユーザーID（OIDC sub = User.id）
+ * @param userId Auth.js が生成する内部ユーザーID（User.id）
  * @param provider OIDCプロバイダーID（例: "oidc", "keycloak"）
+ * @param oidcSub OIDCトークンのsub claim（ExternalIdentity管理用）
  * @param groupRoles OIDCトークンのグループクレーム（Group.externalIdと対応）
  */
 export const getTumikiClaims = async (
   db: PrismaTransactionClient,
   userId: string,
   provider: string,
+  oidcSub: string,
   groupRoles: string[] | undefined = [],
 ): Promise<TumikiClaims | null> => {
   const user = await db.user
@@ -32,11 +34,13 @@ export const getTumikiClaims = async (
   if (!user) return null;
 
   // ExternalIdentity の upsert（lastSyncedAt は @updatedAt で自動更新）
-  await db.externalIdentity.upsert({
-    where: { provider_sub: { provider, sub: userId } },
-    create: { userId, provider, sub: userId },
-    update: {},
-  });
+  if (oidcSub) {
+    await db.externalIdentity.upsert({
+      where: { provider_sub: { provider, sub: oidcSub } },
+      create: { userId, provider, sub: oidcSub },
+      update: {},
+    });
+  }
 
   // JIT グループ同期
   let added = 0;

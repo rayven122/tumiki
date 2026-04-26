@@ -126,7 +126,9 @@ export const jwtCallback = async ({
       return null;
     }
     const oidcProfile = profileResult.data;
-    token.sub = oidcProfile.sub ?? "";
+    // token.sub は user.id（Auth.js v5 が生成する内部UUID）のまま維持する
+    // OIDC sub は ExternalIdentity 管理用に oidcSub として別保持
+    token.oidcSub = oidcProfile.sub ?? "";
     token.email = oidcProfile.email ?? null;
     token.name = oidcProfile.name ?? null;
 
@@ -136,8 +138,9 @@ export const jwtCallback = async ({
 
     const updatedTumiki = await getTumikiClaims(
       db,
-      token.sub,
+      token.sub ?? "",
       account.provider,
+      token.oidcSub,
       groupRoles,
     );
 
@@ -171,6 +174,7 @@ export const jwtCallback = async ({
       db,
       token.sub,
       token.provider ?? "oidc",
+      token.oidcSub ?? "",
       token.tumiki.group_roles,
     );
 

@@ -65,5 +65,6 @@ declare module "next-auth/jwt" {
     expiresAt?: number;
     role?: Role;
     provider?: string;
+    oidcSub?: string;
   }
 }
