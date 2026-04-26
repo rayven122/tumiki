@@ -17,13 +17,12 @@
     "lint": "eslint",
     "format": "prettier --check . --ignore-path ../../.gitignore",
     "test": "vitest",
-    "migrate:role-subgroups": "dotenv -e ../../.env -- tsx src/scripts/migrateOrganizationRoleSubgroups.ts",
-    "migrate:role-subgroups:dry-run": "DRY_RUN=true dotenv -e ../../.env -- tsx src/scripts/migrateOrganizationRoleSubgroups.ts"
+    "migrate:role-subgroups": "infisical run --env=prod -- tsx src/scripts/migrateOrganizationRoleSubgroups.ts",
+    "migrate:role-subgroups:dry-run": "DRY_RUN=true infisical run --env=prod -- tsx src/scripts/migrateOrganizationRoleSubgroups.ts"
   },
   "dependencies": {
     "@keycloak/keycloak-admin-client": "^26.0.7",
     "@tumiki/db": "workspace:*",
-    "dotenv-cli": "^11.0.0",
     "zod": "catalog:"
   },
   "devDependencies": {

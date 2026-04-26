@@ -18,10 +18,11 @@
     "build": "pnpm db:generate && tsc --project tsconfig.build.json",
     "clean": "git clean -xdf .cache .turbo node_modules dist build",
     "typecheck": "tsc --noEmit",
-    "with-env": "dotenv -e ../../.env --",
+    "with-env": "infisical run --env=dev --",
+    "with-env:prod": "infisical run --env=prod --",
     "lint": "eslint",
     "format": "prettier --check . --ignore-path ../../.gitignore --ignore-path ../../.prettierignore --write",
-    "db:generate": "pnpm with-env prisma generate",
+    "db:generate": "prisma generate",
     "db:migrate": "pnpm with-env prisma migrate dev",
     "db:deploy": "pnpm with-env prisma migrate deploy",
     "db:reset": "pnpm with-env prisma migrate reset",
@@ -30,8 +31,7 @@
     "postinstall": "pnpm db:generate"
   },
   "dependencies": {
-    "@prisma/client": "^6.19.0",
-    "dotenv-cli": "^11.0.0"
+    "@prisma/client": "^6.19.0"
   },
   "devDependencies": {
     "@tumiki/eslint-config": "workspace:*",
