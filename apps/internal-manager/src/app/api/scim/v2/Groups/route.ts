@@ -26,7 +26,7 @@ const GROUP_SELECT = {
 
 /** グループ一覧 */
 export const GET = async (req: NextRequest) => {
-  if (!validateScimAuth(req)) return scimError(401, "Unauthorized");
+  if (!(await validateScimAuth(req))) return scimError(401, "Unauthorized");
 
   const { searchParams } = req.nextUrl;
   const startIndex = Math.max(1, Number(searchParams.get("startIndex") ?? 1));
@@ -56,7 +56,7 @@ export const GET = async (req: NextRequest) => {
 
 /** グループ作成 */
 export const POST = async (req: NextRequest) => {
-  if (!validateScimAuth(req)) return scimError(401, "Unauthorized");
+  if (!(await validateScimAuth(req))) return scimError(401, "Unauthorized");
 
   const rawBody: unknown = await req.json().catch(() => null);
   const parsed = scimGroupSchema.safeParse(rawBody);

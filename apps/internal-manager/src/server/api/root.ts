@@ -3,6 +3,7 @@ import {
   createTRPCRouter,
   publicProcedure,
 } from "@/server/api/trpc";
+import { scimTokenRouter } from "./routers/scim-token";
 
 /**
  * サーバーのメインルーター。
@@ -14,6 +15,7 @@ export const appRouter = createTRPCRouter({
   health: publicProcedure.query(() => {
     return { status: "ok" };
   }),
+  scimToken: scimTokenRouter,
 });
 
 // APIの型定義をエクスポート

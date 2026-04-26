@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Copy } from "lucide-react";
+import ScimTokenSection from "./_components/ScimTokenSection";
 
 /* ===== システム設定画面 ===== */
 
@@ -223,22 +224,7 @@ const AdminSettingsPage = () => {
           </div>
         </Field>
         {/* SCIMトークン */}
-        <Field label="SCIMトークン">
-          <div className="flex gap-2">
-            <input
-              type="password"
-              value="scim-token-xxxxxxxxxxxxxxxxxxxx"
-              readOnly
-              className={`${inputCls} text-text-muted flex-1`}
-            />
-            <button
-              type="button"
-              className="bg-bg-active text-text-secondary rounded-lg px-3 py-2 text-xs transition-opacity hover:opacity-80"
-            >
-              再発行
-            </button>
-          </div>
-        </Field>
+        <ScimTokenSection />
         {/* セッション有効期限 */}
         <Field label="セッション有効期限">
           <select

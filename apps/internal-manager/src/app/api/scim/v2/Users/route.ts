@@ -30,7 +30,7 @@ const parseEqFilter = (
 
 /** ユーザー一覧 */
 export const GET = async (req: NextRequest) => {
-  if (!validateScimAuth(req)) return scimError(401, "Unauthorized");
+  if (!(await validateScimAuth(req))) return scimError(401, "Unauthorized");
 
   const { searchParams } = req.nextUrl;
   const filter = searchParams.get("filter");
@@ -67,7 +67,7 @@ export const GET = async (req: NextRequest) => {
 
 /** ユーザー作成 */
 export const POST = async (req: NextRequest) => {
-  if (!validateScimAuth(req)) return scimError(401, "Unauthorized");
+  if (!(await validateScimAuth(req))) return scimError(401, "Unauthorized");
 
   const rawBody: unknown = await req.json().catch(() => null);
   const parsed = scimUserSchema.safeParse(rawBody);
