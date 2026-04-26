@@ -51,35 +51,48 @@ jobs:
           printenv | grep -E '^(DATABASE_URL|PRISMA_FIELD_ENCRYPTION_KEY|KEYCLOAK_CLIENT_ID|KEYCLOAK_CLIENT_SECRET|KEYCLOAK_ISSUER|OIDC_CLIENT_ID|OIDC_CLIENT_SECRET|OIDC_ISSUER|AUTH_SECRET|AUTH_URL)=' > /tmp/resolved.env
           echo "IMAGE_TAG=${IMAGE_TAG}" >> /tmp/resolved.env
 
-      - name: 🔑 Configure SSH
+      - name: 🔑 Configure SSH (Cloudflare Tunnel)
         run: |
+          # cloudflared インストール
+          curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg | sudo tee /usr/share/keyrings/cloudflare-main.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared any main" | sudo tee /etc/apt/sources.list.d/cloudflared.list
+          sudo apt-get update -qq && sudo apt-get install -y -qq cloudflared
+
           mkdir -p ~/.ssh
           echo "$DEPLOY_SSH_KEY_CONTENT" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "$DEPLOY_HOST_VALUE" >> ~/.ssh/known_hosts
+
+          # Cloudflare Tunnel 経由で SSH するための ProxyCommand を設定
+          cat >> ~/.ssh/config << EOF
+          Host ${DEPLOY_TUNNEL_HOSTNAME}
+            ProxyCommand cloudflared access ssh --hostname %h
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            IdentityFile ~/.ssh/deploy_key
+          EOF
         env:
           DEPLOY_SSH_KEY_CONTENT: ${{ secrets.DEPLOY_SSH_KEY }}
-          DEPLOY_HOST_VALUE: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_TUNNEL_HOSTNAME: ${{ secrets.DEPLOY_TUNNEL_HOSTNAME }}
 
       - name: 📤 Transfer files
         env:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_HOST_VAL: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_TUNNEL_HOSTNAME: ${{ secrets.DEPLOY_TUNNEL_HOSTNAME }}
         run: |
-          SSH_TARGET="${DEPLOY_USER}@${DEPLOY_HOST_VAL}"
+          SSH_TARGET="${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}"
           REMOTE_DIR="~/tumiki"
 
-          ssh -i ~/.ssh/deploy_key "$SSH_TARGET" "mkdir -p $REMOTE_DIR"
-          scp -i ~/.ssh/deploy_key docker/apps/compose.yaml "$SSH_TARGET:$REMOTE_DIR/compose.yaml"
-          scp -i ~/.ssh/deploy_key /tmp/resolved.env "$SSH_TARGET:$REMOTE_DIR/.env"
+          ssh "$SSH_TARGET" "mkdir -p $REMOTE_DIR"
+          scp docker/apps/compose.yaml "$SSH_TARGET:$REMOTE_DIR/compose.yaml"
+          scp /tmp/resolved.env "$SSH_TARGET:$REMOTE_DIR/.env"
 
       - name: 🐳 Deploy containers
         env:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_HOST_VAL: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_TUNNEL_HOSTNAME: ${{ secrets.DEPLOY_TUNNEL_HOSTNAME }}
         run: |
-          SSH_TARGET="${DEPLOY_USER}@${DEPLOY_HOST_VAL}"
-          ssh -i ~/.ssh/deploy_key "$SSH_TARGET" 'bash -s' << 'REMOTE_SCRIPT'
+          SSH_TARGET="${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}"
+          ssh "$SSH_TARGET" 'bash -s' << 'REMOTE_SCRIPT'
             set -euo pipefail
             cd ~/tumiki
             docker compose pull
@@ -89,10 +102,10 @@ jobs:
       - name: ✅ Verify health endpoints
         env:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_HOST_VAL: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_TUNNEL_HOSTNAME: ${{ secrets.DEPLOY_TUNNEL_HOSTNAME }}
         run: |
-          SSH_TARGET="${DEPLOY_USER}@${DEPLOY_HOST_VAL}"
-          ssh -i ~/.ssh/deploy_key "$SSH_TARGET" 'bash -s' << 'HEALTHCHECK'
+          SSH_TARGET="${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}"
+          ssh "$SSH_TARGET" 'bash -s' << 'HEALTHCHECK'
             for i in $(seq 1 20); do
               if curl -sf http://localhost:8080/api/health > /dev/null 2>&1 && \
                  curl -sf http://localhost:8081/health > /dev/null 2>&1 && \
@@ -111,4 +124,4 @@ jobs:
 
       - name: 🧹 Cleanup
         if: always()
-        run: rm -f ~/.ssh/deploy_key /tmp/resolved.env
+        run: rm -f ~/.ssh/deploy_key ~/.ssh/config /tmp/resolved.env
