@@ -43,19 +43,19 @@ jobs:
       - name: 🔑 Configure SSH (Cloudflare Tunnel)
         uses: ./.github/actions/setup-cloudflare-ssh
         with:
-          tunnel-hostname: stg.tumiki.cloud
+          tunnel-hostname: ssh-stg.tumiki.cloud
           cf-access-client-id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           cf-access-client-secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
 
       - name: 📤 Transfer compose.yaml
         run: |
-          ssh "hisuzuya@stg.tumiki.cloud" "mkdir -p ~/tumiki"
-          scp docker/apps/compose.yaml "hisuzuya@stg.tumiki.cloud:~/tumiki/compose.yaml"
+          ssh "hisuzuya@ssh-stg.tumiki.cloud" "mkdir -p ~/tumiki"
+          scp docker/apps/compose.yaml "hisuzuya@ssh-stg.tumiki.cloud:~/tumiki/compose.yaml"
 
       - name: 🐳 Deploy containers
         run: |
           IMAGE_TAG_VAL="${IMAGE_TAG}"
-          ssh "hisuzuya@stg.tumiki.cloud" bash -l << REMOTE_SCRIPT
+          ssh "hisuzuya@ssh-stg.tumiki.cloud" bash -l << REMOTE_SCRIPT
             set -euo pipefail
             cd ~/tumiki
             export IMAGE_TAG="${IMAGE_TAG_VAL}"
@@ -67,7 +67,7 @@ jobs:
 
       - name: ✅ Verify health endpoints
         run: |
-          ssh "hisuzuya@stg.tumiki.cloud" bash << 'HEALTHCHECK'
+          ssh "hisuzuya@ssh-stg.tumiki.cloud" bash << 'HEALTHCHECK'
             for i in $(seq 1 20); do
               if curl -sf http://localhost:8080/api/health > /dev/null 2>&1 && \
                  curl -sf http://localhost:8081/health > /dev/null 2>&1 && \
