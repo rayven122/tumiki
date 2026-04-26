@@ -4,16 +4,26 @@ import { contactFormSchema } from "@/lib/contact-validation";
 
 const SLACK_WEBHOOK_URL = process.env.SLACK_CONTACT_WEBHOOK_URL;
 
-/** IPごとの送信履歴（メモリ内レート制限） */
+/**
+ * IPごとの送信履歴（メモリ内レート制限）
+ * 注: 複数インスタンス構成では各インスタンスが独立したMapを持つため
+ * スパム対策として部分的な効果のみ。本格対応はRedisなどの外部ストアを推奨。
+ */
 const rateLimitMap = new Map<string, number[]>();
 const RATE_LIMIT_MAX = 3;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 
 const isRateLimited = (ip: string): boolean => {
   const now = Date.now();
-  const timestamps = (rateLimitMap.get(ip) ?? []).filter(
-    (t) => now - t < RATE_LIMIT_WINDOW_MS,
-  );
+
+  // リクエスト毎に期限切れエントリを全削除してメモリリークを防ぐ
+  for (const [key, timestamps] of rateLimitMap) {
+    const valid = timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
+    if (valid.length === 0) rateLimitMap.delete(key);
+    else rateLimitMap.set(key, valid);
+  }
+
+  const timestamps = rateLimitMap.get(ip) ?? [];
   if (timestamps.length >= RATE_LIMIT_MAX) return true;
   rateLimitMap.set(ip, [...timestamps, now]);
   return false;
@@ -27,8 +37,10 @@ const escapeMrkdwn = (s: string): string =>
   );
 
 export const POST = async (request: Request) => {
+  // cf-connecting-ip (Cloudflare) → x-real-ip (nginx等) の順で信頼できるIPを取得
+  // x-forwarded-for はクライアントが偽造可能なため最後の手段として使用しない
   const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    request.headers.get("cf-connecting-ip") ??
     request.headers.get("x-real-ip") ??
     "unknown";
 
