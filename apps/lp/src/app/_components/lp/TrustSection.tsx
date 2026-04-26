@@ -165,8 +165,8 @@ const ProtocolSvg = ({ mx, my }: { mx: number; my: number }) => {
       >
         {satellites.map((sat) => {
           const rad = (sat.angle * Math.PI) / 180;
-          const sx = 100 + orbitR * Math.cos(rad);
-          const sy = 100 + orbitR * Math.sin(rad);
+          const sx = Math.round((100 + orbitR * Math.cos(rad)) * 1000) / 1000;
+          const sy = Math.round((100 + orbitR * Math.sin(rad)) * 1000) / 1000;
           return (
             <g key={sat.label}>
               {/* ハブへの接続線 */}
