@@ -54,7 +54,10 @@ RUN pnpm turbo run build --filter=@tumiki/manager^...
 
 # Next.js standalone モードでビルド
 # NEXT_PUBLIC_TUMIKI_EDITION はnext.config.jsより前に解決されるためプロセス環境変数として渡す
-RUN NEXT_PUBLIC_TUMIKI_EDITION=ee pnpm --filter @tumiki/manager run build:bare
+# NEXT_PUBLIC_MCP_PROXY_URL を空に設定してビルド時バンドルへの localhost 値焼き込みを防止
+# （Next.js は NEXT_PUBLIC_* をビルド時静的展開するため、.env の値が上書きされるよう明示的に空にする）
+RUN NEXT_PUBLIC_TUMIKI_EDITION=ee NEXT_PUBLIC_MCP_PROXY_URL= \
+  pnpm --filter @tumiki/manager run build:bare
 
 # ========================================
 # Stage 3: Production
