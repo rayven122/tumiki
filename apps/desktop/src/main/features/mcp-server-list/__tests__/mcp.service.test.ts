@@ -17,6 +17,18 @@ vi.mock("../mcp.repository");
 vi.mock("../../catalog/catalog.repository");
 vi.mock("../../../utils/encryption");
 vi.mock("../../../utils/credentials");
+// generateRandomSuffix のみモック（toSlug の本体は維持）
+// パスは mcp.service.ts の import "../../../shared/mcp.slug" と同じターゲットを指す必要がある
+// （test file は __tests__/ 配下のため4階層上がる）
+vi.mock("../../../../shared/mcp.slug", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../../../shared/mcp.slug")
+  >("../../../../shared/mcp.slug");
+  return {
+    ...actual,
+    generateRandomSuffix: vi.fn(() => "x7k2"),
+  };
+});
 
 // テスト対象のインポート（モックの後に行う）
 import * as mcpService from "../mcp.service";
@@ -136,6 +148,66 @@ describe("mcp.service", () => {
       expect(mcpRepository.createServer).toHaveBeenCalledWith(
         mockDb,
         expect.objectContaining({ slug: "test-mcp-1" }),
+      );
+    });
+
+    test("名前が日本語のみの場合はslugに乱数フォールバックを採用する", async () => {
+      // 日本語のみの catalogName → toSlug() が空文字を返すため connector-{乱数} が使われる
+      // generateRandomSuffix モックは "x7k2" を返すため最終slugは "connector-x7k2"
+      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
+      vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
+      vi.mocked(mcpRepository.createServer).mockResolvedValue({
+        id: 4,
+      } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue(
+        {} as Awaited<ReturnType<typeof mcpRepository.createConnection>>,
+      );
+
+      const result = await mcpService.createFromCatalog({
+        ...input,
+        catalogName: "テスト用コネクタ",
+      });
+
+      expect(result).toStrictEqual({
+        serverId: 4,
+        serverName: "テスト用コネクタ",
+      });
+      expect(mcpRepository.createServer).toHaveBeenCalledWith(
+        mockDb,
+        expect.objectContaining({
+          name: "テスト用コネクタ",
+          slug: "connector-x7k2",
+        }),
+      );
+      expect(mcpRepository.createConnection).toHaveBeenCalledWith(
+        mockDb,
+        expect.objectContaining({ slug: "connector-x7k2" }),
+      );
+    });
+
+    test("乱数フォールバックslugが万が一既存と衝突した場合はサフィックスで回避する", async () => {
+      // 衝突保険ロジックの検証（実用上は乱数で回避されるが念のため担保）
+      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
+      vi.mocked(mcpRepository.findServerBySlug)
+        .mockResolvedValueOnce({
+          id: 77,
+        } as Awaited<ReturnType<typeof mcpRepository.findServerBySlug>>)
+        .mockResolvedValueOnce(null);
+      vi.mocked(mcpRepository.createServer).mockResolvedValue({
+        id: 5,
+      } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue(
+        {} as Awaited<ReturnType<typeof mcpRepository.createConnection>>,
+      );
+
+      await mcpService.createFromCatalog({
+        ...input,
+        catalogName: "テスト用コネクタ",
+      });
+
+      expect(mcpRepository.createServer).toHaveBeenCalledWith(
+        mockDb,
+        expect.objectContaining({ slug: "connector-x7k2-1" }),
       );
     });
 
@@ -407,6 +479,67 @@ describe("mcp.service", () => {
       expect(mcpRepository.createServer).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({ name: "週次レポート 2" }),
+      );
+    });
+
+    test("サーバー名が日本語のみの場合はサーバーslugに乱数フォールバックを採用する", async () => {
+      // 仮想MCPはサーバー名がフリー入力のため、日本語のみで作成されるケースを担保する
+      // generateRandomSuffix モックは "x7k2" を返すため最終slugは "connector-x7k2"
+      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
+      vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
+      vi.mocked(mcpRepository.createServer).mockResolvedValue({
+        id: 12,
+      } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(catalogRepository.findById).mockResolvedValue(
+        buildCatalog({ id: 1 }),
+      );
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue(
+        {} as Awaited<ReturnType<typeof mcpRepository.createConnection>>,
+      );
+
+      await mcpService.createVirtualServer({
+        ...baseInput,
+        name: "週次レポート",
+        connections: [{ catalogId: 1, credentials: { GITHUB_TOKEN: "x" } }],
+      });
+
+      expect(mcpRepository.createServer).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ slug: "connector-x7k2" }),
+      );
+    });
+
+    test("接続カタログ名が日本語のみの場合は接続slugに乱数フォールバックを採用する", async () => {
+      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
+      vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
+      vi.mocked(mcpRepository.createServer).mockResolvedValue({
+        id: 13,
+      } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(catalogRepository.findById).mockResolvedValue(
+        buildCatalog({ id: 1, name: "テスト用コネクタ" }),
+      );
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue(
+        {} as Awaited<ReturnType<typeof mcpRepository.createConnection>>,
+      );
+
+      await mcpService.createVirtualServer({
+        ...baseInput,
+        connections: [
+          { catalogId: 1, credentials: { GITHUB_TOKEN: "a" } },
+          { catalogId: 1, credentials: { GITHUB_TOKEN: "b" } },
+        ],
+      });
+
+      // 1件目: 乱数フォールバック / 2件目: 同一カタログで baseSlug 衝突 → サフィックス付与
+      expect(mcpRepository.createConnection).toHaveBeenNthCalledWith(
+        1,
+        expect.anything(),
+        expect.objectContaining({ slug: "connector-x7k2" }),
+      );
+      expect(mcpRepository.createConnection).toHaveBeenNthCalledWith(
+        2,
+        expect.anything(),
+        expect.objectContaining({ slug: "connector-x7k2-1" }),
       );
     });
   });

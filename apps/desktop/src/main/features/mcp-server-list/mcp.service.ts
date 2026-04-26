@@ -4,8 +4,11 @@ import type { DbClient } from "../../shared/db";
 import * as mcpRepository from "./mcp.repository";
 import * as catalogRepository from "../catalog/catalog.repository";
 import * as logger from "../../shared/utils/logger";
-import { toSlug } from "../../../shared/mcp.slug";
-import { VIRTUAL_SERVER_MAX_CONNECTIONS } from "../../../shared/mcp.constants";
+import { toSlug, generateRandomSuffix } from "../../../shared/mcp.slug";
+import {
+  SLUG_FALLBACK_PREFIX,
+  VIRTUAL_SERVER_MAX_CONNECTIONS,
+} from "../../../shared/mcp.constants";
 import { encryptToken } from "../../utils/encryption";
 import { decryptCredentials } from "../../utils/credentials";
 import type {
@@ -20,13 +23,22 @@ export type {
 } from "./mcp.types";
 
 /**
+ * フォールバック用slugを生成（`${SLUG_FALLBACK_PREFIX}-{乱数4文字}` 形式）
+ * base36 4文字なら衝突確率は実用上ゼロのため、UI 表示と DB 実態が一致する
+ */
+const generateFallbackSlug = (): string =>
+  `${SLUG_FALLBACK_PREFIX}-${generateRandomSuffix()}`;
+
+/**
  * 一意なslugを生成（重複時はサフィックス付与）
+ * 日本語のみの名前など toSlug() が空文字を返すケースでは乱数フォールバックを使用する
+ * 連番サフィックスは衝突保険として残す（乱数衝突の極稀ケース対策）
  */
 const generateUniqueSlug = async (
   db: DbClient,
   name: string,
 ): Promise<string> => {
-  const baseSlug = toSlug(name);
+  const baseSlug = toSlug(name) || generateFallbackSlug();
   let slug = baseSlug;
   let counter = 1;
 
@@ -149,7 +161,7 @@ export const createVirtualServer = async (
 
   // 接続slugを入力順で確定（Promise.allの結果はindex順を保証しているため決定論的）
   const connectionsWithSlug = enrichedConnections.map(({ catalog, index }) => {
-    const baseSlug = toSlug(catalog.name);
+    const baseSlug = toSlug(catalog.name) || generateFallbackSlug();
     let connectionSlug = baseSlug;
     let counter = 1;
     while (usedConnectionSlugs.has(connectionSlug)) {
