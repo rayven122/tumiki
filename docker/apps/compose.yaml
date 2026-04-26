@@ -1,4 +1,21 @@
 services:
+  db:
+    image: postgres:16-alpine
+    container_name: tumiki-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tumiki
+      POSTGRES_PASSWORD: tumiki_staging
+      POSTGRES_DB: tumiki
+    volumes:
+      - db_vol:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tumiki"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   manager:
     image: ghcr.io/rayven122/tumiki-manager:${IMAGE_TAG:-latest}
     container_name: tumiki-manager
@@ -6,6 +23,9 @@ services:
     ports:
       - "8080:8080"
     env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/health"]
       interval: 30s
@@ -20,6 +40,9 @@ services:
     ports:
       - "8081:8080"
     env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 30s
@@ -34,9 +57,15 @@ services:
     ports:
       - "3100:3100"
     env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3100/api/health"]
       interval: 30s
       timeout: 10s
       start_period: 30s
       retries: 3
+
+volumes:
+  db_vol:

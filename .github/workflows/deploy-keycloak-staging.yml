@@ -1,0 +1,78 @@
+name: Deploy Keycloak Staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Keycloakイメージタグ（省略時は 26.4）'
+        type: string
+        default: "26.4"
+
+concurrency:
+  group: deploy-keycloak-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: 🔑 Deploy Keycloak to Staging
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🔑 Configure SSH (Cloudflare Tunnel)
+        uses: ./.github/actions/setup-cloudflare-ssh
+        with:
+          tunnel-hostname: ${{ vars.KEYCLOAK_TUNNEL_HOSTNAME }}
+          cf-access-client-id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          cf-access-client-secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+
+      - name: 📤 Transfer compose.yaml
+        env:
+          DEPLOY_USER: ${{ vars.KEYCLOAK_DEPLOY_USER }}
+          DEPLOY_TUNNEL_HOSTNAME: ${{ vars.KEYCLOAK_TUNNEL_HOSTNAME }}
+        run: |
+          SSH_TARGET="${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}"
+          ssh "$SSH_TARGET" "mkdir -p ~/keycloak"
+          scp docker/keycloak-staging/compose.yaml "$SSH_TARGET:~/keycloak/compose.yaml"
+
+      - name: 🐳 Deploy Keycloak container
+        env:
+          DEPLOY_USER: ${{ vars.KEYCLOAK_DEPLOY_USER }}
+          DEPLOY_TUNNEL_HOSTNAME: ${{ vars.KEYCLOAK_TUNNEL_HOSTNAME }}
+        run: |
+          SSH_TARGET="${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}"
+          ssh "$SSH_TARGET" bash << 'REMOTE_SCRIPT'
+            set -euo pipefail
+            cd ~/keycloak
+            infisical run --env=staging -- docker compose pull
+            infisical run --env=staging -- docker compose up -d --remove-orphans
+          REMOTE_SCRIPT
+
+      - name: ✅ Verify Keycloak health
+        env:
+          DEPLOY_USER: ${{ vars.KEYCLOAK_DEPLOY_USER }}
+          DEPLOY_TUNNEL_HOSTNAME: ${{ vars.KEYCLOAK_TUNNEL_HOSTNAME }}
+        run: |
+          SSH_TARGET="${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}"
+          ssh "$SSH_TARGET" bash << 'HEALTHCHECK'
+            for i in $(seq 1 30); do
+              if curl -sf http://localhost:8080/health/ready > /dev/null 2>&1; then
+                echo "=== Keycloak ===" && curl -sf http://localhost:8080/health/ready | jq .
+                exit 0
+              fi
+              echo "Waiting... ($i/30)" && sleep 10
+            done
+            echo "Timeout: Keycloakが起動しませんでした"
+            docker compose logs --tail=50
+            exit 1
+          HEALTHCHECK
+
+      - name: 🧹 Cleanup
+        if: always()
+        run: rm -f ~/.ssh/config /tmp/cloudflared.deb

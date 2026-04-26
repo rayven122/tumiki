@@ -1,0 +1,1 @@
+-- tumikiアプリ用データベースのみ（Keycloakは別VMのPostgreSQLを使用）
