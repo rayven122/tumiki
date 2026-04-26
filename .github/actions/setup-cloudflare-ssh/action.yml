@@ -34,7 +34,7 @@ runs:
 
         # cloudflared が SSH 証明書を自動取得・接続する ProxyCommand を設定
         cat >> ~/.ssh/config << EOF
-Host ${TUNNEL_HOSTNAME}
-  ProxyCommand cloudflared access ssh --hostname %h
-  StrictHostKeyChecking accept-new
-EOF
+        Host ${TUNNEL_HOSTNAME}
+          ProxyCommand cloudflared access ssh --hostname %h
+          StrictHostKeyChecking accept-new
+        EOF
