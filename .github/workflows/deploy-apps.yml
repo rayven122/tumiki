@@ -1,20 +1,24 @@
 name: Deploy Apps
 
 on:
+  workflow_run:
+    workflows: ["Docker Publish"]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       environment:
         description: 'デプロイ先環境'
         type: choice
         options: [production, staging]
-        default: production
+        default: staging
       image_tag:
-        description: 'イメージタグ（省略時は latest）'
+        description: 'イメージタグ（省略時は main）'
         type: string
-        default: latest
+        default: main
 
 concurrency:
-  group: deploy-apps-${{ inputs.environment || 'production' }}
+  group: deploy-apps-${{ inputs.environment || 'staging' }}
   cancel-in-progress: false
 
 permissions:
@@ -22,13 +26,14 @@ permissions:
 
 jobs:
   deploy:
-    name: 🚀 Deploy to ${{ inputs.environment || 'production' }}
+    name: 🚀 Deploy to ${{ inputs.environment || 'staging' }}
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment || 'production' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    environment: ${{ inputs.environment || 'staging' }}
 
     env:
-      IMAGE_TAG: ${{ inputs.image_tag || 'latest' }}
-      INFISICAL_ENV: ${{ inputs.environment == 'staging' && 'staging' || 'prod' }}
+      IMAGE_TAG: ${{ inputs.image_tag || 'main' }}
+      INFISICAL_ENV: ${{ inputs.environment == 'production' && 'prod' || 'staging' }}
 
     steps:
       - name: 📥 Checkout
