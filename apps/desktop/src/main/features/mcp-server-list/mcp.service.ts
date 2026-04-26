@@ -1,10 +1,11 @@
 import { ServerStatus } from "@prisma/desktop-client";
 import { getDb } from "../../shared/db";
+import type { DbClient } from "../../shared/db";
 import * as mcpRepository from "./mcp.repository";
-import type { DbClient } from "./mcp.repository";
 import * as catalogRepository from "../catalog/catalog.repository";
 import * as logger from "../../shared/utils/logger";
 import { toSlug } from "../../../shared/mcp.slug";
+import { VIRTUAL_SERVER_MAX_CONNECTIONS } from "../../../shared/mcp.constants";
 import { encryptToken } from "../../utils/encryption";
 import { decryptCredentials } from "../../utils/credentials";
 import type {
@@ -107,6 +108,12 @@ export const createVirtualServer = async (
 ): Promise<{ serverId: number; serverName: string }> => {
   if (input.connections.length === 0) {
     throw new Error("仮想MCPには1つ以上の接続が必要です");
+  }
+  // ドメインルールはIPC層のZodだけに依存させず、サービス層でも保証する
+  if (input.connections.length > VIRTUAL_SERVER_MAX_CONNECTIONS) {
+    throw new Error(
+      `接続は最大${String(VIRTUAL_SERVER_MAX_CONNECTIONS)}件までです`,
+    );
   }
 
   const db = await getDb();

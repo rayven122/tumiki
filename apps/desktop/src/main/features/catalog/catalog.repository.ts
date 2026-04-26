@@ -1,9 +1,5 @@
-import type { Prisma, PrismaClient } from "@prisma/desktop-client";
-
-/**
- * トランザクション内外で共通利用できるDBクライアント型
- */
-type DbClient = PrismaClient | Prisma.TransactionClient;
+import type { PrismaClient } from "@prisma/desktop-client";
+import type { DbClient } from "../../shared/db";
 
 /**
  * カタログシードデータの型
