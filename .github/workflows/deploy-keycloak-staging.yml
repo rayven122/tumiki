@@ -32,14 +32,16 @@ jobs:
           cf-access-client-id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           cf-access-client-secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
 
-      - name: 📤 Transfer compose.yaml
+      - name: 📤 Transfer files
         env:
           DEPLOY_USER: ${{ vars.KEYCLOAK_DEPLOY_USER }}
           DEPLOY_TUNNEL_HOSTNAME: ${{ vars.KEYCLOAK_TUNNEL_HOSTNAME }}
         run: |
           SSH_TARGET="${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}"
-          ssh "$SSH_TARGET" "mkdir -p ~/keycloak"
+          ssh "$SSH_TARGET" "mkdir -p ~/keycloak/themes"
           scp docker/keycloak-staging/compose.yaml "$SSH_TARGET:~/keycloak/compose.yaml"
+          scp -r docker/keycloak/themes/tumiki "$SSH_TARGET:~/keycloak/themes/tumiki"
+          scp -r docker/keycloak/themes/keywind "$SSH_TARGET:~/keycloak/themes/keywind"
 
       - name: 🐳 Deploy Keycloak container
         env:
