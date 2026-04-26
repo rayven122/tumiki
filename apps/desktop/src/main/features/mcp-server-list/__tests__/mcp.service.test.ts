@@ -17,6 +17,8 @@ vi.mock("../mcp.repository");
 vi.mock("../../catalog/catalog.repository");
 vi.mock("../../../utils/encryption");
 vi.mock("../../../utils/credentials");
+// fetchToolsForCatalogs は別モジュール（一時接続を伴うため）。サービス層からの委譲のみテスト対象
+vi.mock("../mcp-tool-fetcher.service");
 // generateRandomSuffix のみモック（toSlug の本体は維持）
 // パスは mcp.service.ts の import "../../../shared/mcp.slug" と同じターゲットを指す必要がある
 // （test file は __tests__/ 配下のため4階層上がる）
@@ -37,6 +39,7 @@ import * as mcpRepository from "../mcp.repository";
 import * as catalogRepository from "../../catalog/catalog.repository";
 import { encryptToken, decryptToken } from "../../../utils/encryption";
 import { decryptCredentials } from "../../../utils/credentials";
+import { fetchToolsForCatalogs as fetchToolsForCatalogsImpl } from "../mcp-tool-fetcher.service";
 
 describe("mcp.service", () => {
   // $transactionモック: コールバックにmockDb自身をtxとして渡してそのまま実行
@@ -541,6 +544,298 @@ describe("mcp.service", () => {
         expect.anything(),
         expect.objectContaining({ slug: "connector-x7k2-1" }),
       );
+    });
+  });
+
+  describe("createVirtualServer（tools拡張）", () => {
+    type CatalogRow = Awaited<ReturnType<typeof catalogRepository.findById>>;
+
+    const buildCatalog = (overrides: Partial<NonNullable<CatalogRow>>) =>
+      ({
+        id: 1,
+        name: "GitHub",
+        description: "",
+        iconPath: null,
+        transportType: "STDIO",
+        command: "npx",
+        args: '["@modelcontextprotocol/server-github"]',
+        url: null,
+        credentialKeys: '["GITHUB_TOKEN"]',
+        authType: "API_KEY",
+        isOfficial: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        ...overrides,
+      }) as NonNullable<CatalogRow>;
+
+    test("connection.tools[]が指定された場合はMcpToolも保存される", async () => {
+      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
+      vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
+      vi.mocked(mcpRepository.createServer).mockResolvedValue({
+        id: 10,
+      } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(catalogRepository.findById).mockResolvedValue(
+        buildCatalog({ id: 1 }),
+      );
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 100,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
+      vi.mocked(mcpRepository.createTools).mockResolvedValue();
+
+      await mcpService.createVirtualServer({
+        name: "Bundle",
+        description: "test",
+        connections: [
+          {
+            catalogId: 1,
+            credentials: { GITHUB_TOKEN: "t" },
+            tools: [
+              {
+                name: "read_file",
+                description: "Read file",
+                inputSchema: "{}",
+                isAllowed: true,
+                customDescription: "AI向け説明",
+              },
+              {
+                name: "delete_file",
+                description: "Delete file",
+                inputSchema: "{}",
+                isAllowed: false,
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(mcpRepository.createTools).toHaveBeenCalledTimes(1);
+      expect(mcpRepository.createTools).toHaveBeenCalledWith(
+        expect.anything(),
+        [
+          expect.objectContaining({
+            name: "read_file",
+            isAllowed: true,
+            customDescription: "AI向け説明",
+            connectionId: 100,
+          }),
+          expect.objectContaining({
+            name: "delete_file",
+            isAllowed: false,
+            customDescription: null,
+            connectionId: 100,
+          }),
+        ],
+      );
+    });
+
+    test("tools[]が空配列の場合はMcpTool保存をスキップする", async () => {
+      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
+      vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
+      vi.mocked(mcpRepository.createServer).mockResolvedValue({
+        id: 10,
+      } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(catalogRepository.findById).mockResolvedValue(
+        buildCatalog({ id: 1 }),
+      );
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 100,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
+
+      await mcpService.createVirtualServer({
+        name: "Bundle",
+        description: "",
+        connections: [
+          {
+            catalogId: 1,
+            credentials: { GITHUB_TOKEN: "t" },
+            tools: [],
+          },
+        ],
+      });
+
+      expect(mcpRepository.createTools).not.toHaveBeenCalled();
+    });
+
+    test("tools未指定（後方互換）の場合もエラーにならずMcpTool保存もスキップする", async () => {
+      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
+      vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
+      vi.mocked(mcpRepository.createServer).mockResolvedValue({
+        id: 10,
+      } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(catalogRepository.findById).mockResolvedValue(
+        buildCatalog({ id: 1 }),
+      );
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 100,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
+
+      await mcpService.createVirtualServer({
+        name: "Bundle",
+        description: "",
+        connections: [{ catalogId: 1, credentials: { GITHUB_TOKEN: "t" } }],
+      });
+
+      expect(mcpRepository.createTools).not.toHaveBeenCalled();
+    });
+
+    test("customDescriptionが空文字または空白のみの場合はnullで保存する", async () => {
+      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
+      vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
+      vi.mocked(mcpRepository.createServer).mockResolvedValue({
+        id: 10,
+      } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(catalogRepository.findById).mockResolvedValue(
+        buildCatalog({ id: 1 }),
+      );
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 100,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
+      vi.mocked(mcpRepository.createTools).mockResolvedValue();
+
+      await mcpService.createVirtualServer({
+        name: "Bundle",
+        description: "",
+        connections: [
+          {
+            catalogId: 1,
+            credentials: { GITHUB_TOKEN: "t" },
+            tools: [
+              {
+                name: "tool1",
+                description: "d",
+                inputSchema: "{}",
+                isAllowed: true,
+                customDescription: "",
+              },
+              {
+                name: "tool2",
+                description: "d",
+                inputSchema: "{}",
+                isAllowed: true,
+                customDescription: "  ",
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(mcpRepository.createTools).toHaveBeenCalledWith(
+        expect.anything(),
+        [
+          expect.objectContaining({ name: "tool1", customDescription: null }),
+          expect.objectContaining({ name: "tool2", customDescription: null }),
+        ],
+      );
+    });
+  });
+
+  describe("buildToolPolicyMap", () => {
+    test("McpToolレコードからconfigName::toolNameをキーとするMapを構築する", async () => {
+      vi.mocked(mcpRepository.findToolsByServerSlug).mockResolvedValue([
+        {
+          id: 1,
+          name: "read_file",
+          description: "",
+          inputSchema: "{}",
+          customName: null,
+          customDescription: "カスタム説明",
+          isAllowed: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          connectionId: 1,
+          connection: {
+            slug: "filesystem",
+            server: { slug: "test-bundle" },
+          },
+        },
+        {
+          id: 2,
+          name: "delete_file",
+          description: "",
+          inputSchema: "{}",
+          customName: null,
+          customDescription: null,
+          isAllowed: false,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          connectionId: 1,
+          connection: {
+            slug: "filesystem",
+            server: { slug: "test-bundle" },
+          },
+        },
+      ] as unknown as Awaited<
+        ReturnType<typeof mcpRepository.findToolsByServerSlug>
+      >);
+
+      const map = await mcpService.buildToolPolicyMap("test-bundle");
+
+      expect(map.get("test-bundle-filesystem::read_file")).toStrictEqual({
+        isAllowed: true,
+        customDescription: "カスタム説明",
+      });
+      expect(map.get("test-bundle-filesystem::delete_file")).toStrictEqual({
+        isAllowed: false,
+        customDescription: undefined,
+      });
+    });
+
+    test("McpToolレコードが空の場合は空Mapを返す", async () => {
+      vi.mocked(mcpRepository.findToolsByServerSlug).mockResolvedValue([]);
+
+      const map = await mcpService.buildToolPolicyMap("empty-server");
+
+      expect(map.size).toBe(0);
+    });
+  });
+
+  describe("fetchToolsForCatalogs", () => {
+    test("実装層に委譲し、tools[]をシリアライズして返す", async () => {
+      vi.mocked(fetchToolsForCatalogsImpl).mockResolvedValue([
+        {
+          catalogId: 1,
+          tools: [
+            {
+              name: "read_file",
+              description: "Read",
+              inputSchema: { type: "object" },
+            },
+          ],
+        },
+        {
+          catalogId: 2,
+          tools: [],
+          error: "接続失敗",
+        },
+      ]);
+
+      const result = await mcpService.fetchToolsForCatalogs({
+        items: [
+          { catalogId: 1, credentials: {} },
+          { catalogId: 2, credentials: {} },
+        ],
+      });
+
+      expect(result).toStrictEqual({
+        items: [
+          {
+            catalogId: 1,
+            tools: [
+              {
+                name: "read_file",
+                description: "Read",
+                inputSchema: '{"type":"object"}',
+              },
+            ],
+            error: undefined,
+          },
+          {
+            catalogId: 2,
+            tools: [],
+            error: "接続失敗",
+          },
+        ],
+      });
     });
   });
 

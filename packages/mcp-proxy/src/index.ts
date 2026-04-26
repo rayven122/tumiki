@@ -18,6 +18,8 @@ export type {
   ProxyEvent,
   ToolCallEvent,
   ToolCallHook,
+  ToolPolicy,
+  ToolPolicyResolver,
 } from "./types.js";
 
 // コア
@@ -29,6 +31,10 @@ export type { ProxyHooks } from "./cli.js";
 
 // Inbound
 export { startStdioInbound } from "./inbound/stdio-inbound.js";
+
+// Outbound
+export { createUpstreamClient } from "./outbound/upstream-client.js";
+export type { UpstreamClient } from "./outbound/upstream-client.js";
 
 // Logger
 export { stderrLogger } from "./stderr-logger.js";

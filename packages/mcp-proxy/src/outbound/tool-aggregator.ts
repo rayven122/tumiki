@@ -1,4 +1,9 @@
-import type { CallToolResult, Logger, McpToolInfo } from "../types.js";
+import type {
+  CallToolResult,
+  Logger,
+  McpToolInfo,
+  ToolPolicyResolver,
+} from "../types.js";
 import type { UpstreamClient } from "./upstream-client.js";
 
 // プレフィックス区切り文字（設計書 §3.8: {serverName}__{toolName}）
@@ -39,13 +44,18 @@ const parsePrefixedName = (prefixedName: string): [string, string] | null => {
  * ToolAggregatorを作成
  * getter関数経由でUpstreamClientのMapを取得し、ツールの集約・ルーティングを行う
  * 毎回getterを呼ぶことで、動的にサーバーが追加・削除された場合も最新状態を参照する
+ *
+ * @param getToolPolicy ツールごとの公開可否・説明上書きを解決する関数（任意）
+ *   未指定時は全ツールを公開・上書きなし（既存挙動）
  */
 export const createToolAggregator = (
   getClients: () => ReadonlyMap<string, UpstreamClient>,
   logger: Logger,
+  getToolPolicy?: ToolPolicyResolver,
 ): ToolAggregator => {
   /**
    * 全サーバーのツール一覧を集約（プレフィックス付き）
+   * getToolPolicyが指定されていれば isAllowed=false のツールを除外し、customDescriptionで上書きする
    */
   const listTools = async (): Promise<McpToolInfo[]> => {
     const clientList = [...getClients().values()];
@@ -61,9 +71,11 @@ export const createToolAggregator = (
       if (result.status === "fulfilled") {
         const serverName = result.value.client.getName();
         for (const tool of result.value.tools) {
+          const policy = getToolPolicy?.(serverName, tool.name);
+          if (policy?.isAllowed === false) continue;
           allTools.push({
             name: toPrefixedName(serverName, tool.name),
-            description: tool.description,
+            description: policy?.customDescription ?? tool.description,
             inputSchema: tool.inputSchema,
             serverName,
           });
@@ -82,6 +94,7 @@ export const createToolAggregator = (
 
   /**
    * プレフィックス付きツール名から対象サーバーを特定して実行
+   * getToolPolicy が isAllowed=false を返すツールは呼び出し拒否
    */
   const callTool = async (
     prefixedToolName: string,
@@ -95,6 +108,14 @@ export const createToolAggregator = (
     }
 
     const [serverName, toolName] = parsed;
+
+    const policy = getToolPolicy?.(serverName, toolName);
+    if (policy?.isAllowed === false) {
+      throw new Error(
+        `ツール "${prefixedToolName}" は無効化されているため実行できません`,
+      );
+    }
+
     const client = getClients().get(serverName);
     if (!client) {
       throw new Error(

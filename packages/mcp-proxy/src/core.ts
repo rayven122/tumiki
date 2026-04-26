@@ -5,6 +5,7 @@ import type {
   McpServerState,
   McpToolInfo,
   ServerStatus,
+  ToolPolicyResolver,
 } from "./types.js";
 import { createToolAggregator } from "./outbound/tool-aggregator.js";
 import { createUpstreamClient } from "./outbound/upstream-client.js";
@@ -78,10 +79,13 @@ export const createSingleServerCore = (
 /**
  * ProxyCoreを生成（cli.ts / process.ts で共通利用）
  * UpstreamPool（ライフサイクル管理）+ ToolAggregator（ツール集約・ルーティング）を組み合わせる
+ *
+ * @param getToolPolicy 仮想MCP等で各ツールの公開可否・説明上書きを制御する解決関数（任意）
  */
 export const createProxyCore = (
   configs: McpServerConfig[],
   logger: Logger,
+  getToolPolicy?: ToolPolicyResolver,
 ): ProxyCore => {
   const pool = createUpstreamPool(logger);
   for (const config of configs) {
@@ -89,7 +93,11 @@ export const createProxyCore = (
   }
 
   // pool.getClients を getter として渡し、listTools/callTool 時に最新のMapを参照する
-  const aggregator = createToolAggregator(() => pool.getClients(), logger);
+  const aggregator = createToolAggregator(
+    () => pool.getClients(),
+    logger,
+    getToolPolicy,
+  );
 
   return {
     startAll: () => pool.startAll(),

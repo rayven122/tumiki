@@ -1,7 +1,7 @@
 import type { JSX } from "react";
 import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Check, Plus, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Plus, X } from "lucide-react";
 import type { CatalogItem } from "../../types/catalog";
 import { toast } from "../_components/Toast";
 import { toSlug } from "../../shared/mcp.slug";
@@ -25,7 +25,6 @@ const authTypeLabel: Record<CatalogItem["authType"], string> = {
 const parseCredentialKeys = (raw: string): string[] => {
   try {
     const parsed: unknown = JSON.parse(raw);
-    // DBから来る値でも要素がstringでない可能性に備え、型ガードで実行時に絞り込む
     return Array.isArray(parsed)
       ? parsed.filter((k): k is string => typeof k === "string")
       : [];
@@ -39,19 +38,52 @@ const needsCredentials = (catalog: CatalogItem): boolean =>
   (catalog.authType === "API_KEY" || catalog.authType === "BEARER") &&
   parseCredentialKeys(catalog.credentialKeys).length > 0;
 
+/** 取得済みツールの型（fetchToolsForCatalogs結果から派生） */
+type FetchedTool = {
+  name: string;
+  description: string;
+  inputSchema: string;
+};
+
+/** ユーザーが編集する各ツール設定（公開可否 + カスタム説明） */
+type ToolSetting = {
+  isAllowed: boolean;
+  customDescription: string;
+};
+
+/** 作成フェーズ */
+type Phase = "configure" | "tools";
+
 export const ConnectorManual = (): JSX.Element => {
   const navigate = useNavigate();
 
-  // カタログ一覧（OAuthはサポート外のため除外）
   const [catalogs, setCatalogs] = useState<CatalogItem[]>([]);
   const [loadingCatalogs, setLoadingCatalogs] = useState(true);
 
+  // フェーズ管理: configure → tools → save
+  const [phase, setPhase] = useState<Phase>("configure");
+
+  // 共通入力（フォーム1段目）
   const [serverName, setServerName] = useState("");
   const [description, setDescription] = useState("");
   const [selectedCatalogIds, setSelectedCatalogIds] = useState<number[]>([]);
   const [credentialsByCatalog, setCredentialsByCatalog] = useState<
     Record<number, Record<string, string>>
   >({});
+
+  // tools フェーズ用
+  const [fetchingTools, setFetchingTools] = useState(false);
+  const [toolsByCatalog, setToolsByCatalog] = useState<
+    Record<number, FetchedTool[]>
+  >({});
+  const [fetchErrorByCatalog, setFetchErrorByCatalog] = useState<
+    Record<number, string>
+  >({});
+  // catalogId → toolName → 編集状態
+  const [toolSettings, setToolSettings] = useState<
+    Record<number, Record<string, ToolSetting>>
+  >({});
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,11 +91,9 @@ export const ConnectorManual = (): JSX.Element => {
     window.electronAPI.catalog
       .getAll()
       .then((items) => {
-        // 仮想MCPはOAuth未対応のため除外（OAuthは個別の登録フローを利用）
         setCatalogs(items.filter((c) => c.authType !== "OAUTH"));
       })
       .catch((e: unknown) => {
-        // ロード失敗時もユーザーに通知（無言で空表示しない）
         console.error("カタログの読み込みに失敗しました:", e);
         setCatalogs([]);
         toast.error("カタログの読み込みに失敗しました");
@@ -90,13 +120,11 @@ export const ConnectorManual = (): JSX.Element => {
     [selectedCatalogIds, catalogById],
   );
 
-  /** カタログの選択トグル */
   const toggleCatalog = (id: number) => {
     const isCurrentlySelected = selectedCatalogIds.includes(id);
 
     if (isCurrentlySelected) {
       setSelectedCatalogIds((prev) => prev.filter((x) => x !== id));
-      // 解除時はcredentialsもクリーンアップ（updaterはネストせず外側から並列に呼ぶ）
       setCredentialsByCatalog((c) => {
         if (!(id in c)) return c;
         const next = { ...c };
@@ -115,7 +143,6 @@ export const ConnectorManual = (): JSX.Element => {
     setSelectedCatalogIds((prev) => [...prev, id]);
   };
 
-  /** credential 値の更新 */
   const updateCredential = (catalogId: number, key: string, value: string) => {
     setCredentialsByCatalog((prev) => ({
       ...prev,
@@ -123,7 +150,6 @@ export const ConnectorManual = (): JSX.Element => {
     }));
   };
 
-  /** バリデーション: 全選択カタログで必要credentialsが入力済みか */
   const hasAllRequiredCredentials = selectedCatalogs.every((catalog) => {
     if (!needsCredentials(catalog)) return true;
     const keys = parseCredentialKeys(catalog.credentialKeys);
@@ -131,14 +157,95 @@ export const ConnectorManual = (): JSX.Element => {
     return keys.every((key) => (values[key] ?? "").trim() !== "");
   });
 
-  const canSubmit =
+  const canProceed =
     serverName.trim() !== "" &&
     selectedCatalogIds.length > 0 &&
     hasAllRequiredCredentials &&
-    !submitting;
+    !fetchingTools;
 
+  /** Step1 → Step2: 各カタログに一時接続してツール一覧を取得 */
+  const handleProceedToTools = async (): Promise<void> => {
+    if (!canProceed) return;
+    setFetchingTools(true);
+    setError(null);
+    try {
+      const result = await window.electronAPI.mcp.fetchToolsForCatalogs({
+        items: selectedCatalogs.map((catalog) => ({
+          catalogId: catalog.id,
+          credentials: credentialsByCatalog[catalog.id] ?? {},
+        })),
+      });
+
+      const nextTools: Record<number, FetchedTool[]> = {};
+      const nextErrors: Record<number, string> = {};
+      const nextSettings: Record<number, Record<string, ToolSetting>> = {};
+
+      for (const item of result.items) {
+        nextTools[item.catalogId] = item.tools;
+        if (item.error) nextErrors[item.catalogId] = item.error;
+        // 初期値は全て公開・customDescription空
+        const perTool: Record<string, ToolSetting> = {};
+        for (const tool of item.tools) {
+          perTool[tool.name] = { isAllowed: true, customDescription: "" };
+        }
+        nextSettings[item.catalogId] = perTool;
+      }
+
+      setToolsByCatalog(nextTools);
+      setFetchErrorByCatalog(nextErrors);
+      setToolSettings(nextSettings);
+      setPhase("tools");
+    } catch (e) {
+      const message =
+        e instanceof Error ? e.message : "ツール一覧の取得に失敗しました";
+      setError(message);
+    } finally {
+      setFetchingTools(false);
+    }
+  };
+
+  /** ツール設定の更新（isAllowed） */
+  const toggleToolAllowed = (catalogId: number, toolName: string) => {
+    setToolSettings((prev) => {
+      const perCatalog = prev[catalogId] ?? {};
+      const current = perCatalog[toolName] ?? {
+        isAllowed: true,
+        customDescription: "",
+      };
+      return {
+        ...prev,
+        [catalogId]: {
+          ...perCatalog,
+          [toolName]: { ...current, isAllowed: !current.isAllowed },
+        },
+      };
+    });
+  };
+
+  /** ツール設定の更新（customDescription） */
+  const updateToolDescription = (
+    catalogId: number,
+    toolName: string,
+    value: string,
+  ) => {
+    setToolSettings((prev) => {
+      const perCatalog = prev[catalogId] ?? {};
+      const current = perCatalog[toolName] ?? {
+        isAllowed: true,
+        customDescription: "",
+      };
+      return {
+        ...prev,
+        [catalogId]: {
+          ...perCatalog,
+          [toolName]: { ...current, customDescription: value },
+        },
+      };
+    });
+  };
+
+  /** Step2 → 保存 */
   const handleSubmit = async (): Promise<void> => {
-    if (!canSubmit) return;
     setSubmitting(true);
     setError(null);
 
@@ -146,10 +253,27 @@ export const ConnectorManual = (): JSX.Element => {
       const result = await window.electronAPI.mcp.createVirtualServer({
         name: serverName.trim(),
         description: description.trim(),
-        connections: selectedCatalogs.map((catalog) => ({
-          catalogId: catalog.id,
-          credentials: credentialsByCatalog[catalog.id] ?? {},
-        })),
+        connections: selectedCatalogs.map((catalog) => {
+          const tools = toolsByCatalog[catalog.id] ?? [];
+          const settings = toolSettings[catalog.id] ?? {};
+          return {
+            catalogId: catalog.id,
+            credentials: credentialsByCatalog[catalog.id] ?? {},
+            tools: tools.map((t) => {
+              const setting = settings[t.name] ?? {
+                isAllowed: true,
+                customDescription: "",
+              };
+              return {
+                name: t.name,
+                description: t.description,
+                inputSchema: t.inputSchema,
+                isAllowed: setting.isAllowed,
+                customDescription: setting.customDescription || undefined,
+              };
+            }),
+          };
+        }),
       });
       toast.success(`${result.serverName}を作成しました`);
       navigate("/tools");
@@ -180,118 +304,261 @@ export const ConnectorManual = (): JSX.Element => {
         </p>
       </div>
 
+      {/* ステップインジケーター */}
+      <div className="flex items-center gap-2 text-xs">
+        <span
+          className={`flex h-6 w-6 items-center justify-center rounded-full font-medium ${
+            phase === "configure"
+              ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]"
+              : "bg-[var(--bg-card-hover)] text-[var(--text-subtle)]"
+          }`}
+        >
+          1
+        </span>
+        <span className="text-[var(--text-secondary)]">接続設定</span>
+        <ArrowRight size={12} className="text-[var(--text-subtle)]" />
+        <span
+          className={`flex h-6 w-6 items-center justify-center rounded-full font-medium ${
+            phase === "tools"
+              ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]"
+              : "bg-[var(--bg-card-hover)] text-[var(--text-subtle)]"
+          }`}
+        >
+          2
+        </span>
+        <span className="text-[var(--text-secondary)]">ツール選択</span>
+      </div>
+
       <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-5 shadow-[var(--shadow-card)]">
-        {/* サーバー名 */}
-        <div className="mb-5">
-          <label className="mb-1 block text-xs text-[var(--text-muted)]">
-            サーバー名
-          </label>
-          <input
-            type="text"
-            value={serverName}
-            onChange={(e) => setServerName(e.target.value)}
-            placeholder="例: 週次レポート用コネクタ"
-            className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-input)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none"
-          />
-          <p className="mt-1.5 text-[10px] text-[var(--text-muted)]">
-            MCP識別子:{" "}
-            <span className="font-mono text-[var(--text-secondary)]">
-              {isAutoGeneratedSlug
-                ? `${FALLBACK_SLUG_PLACEHOLDER}（自動生成）`
-                : slug}
-            </span>
-            <span className="ml-1 text-[var(--text-subtle)]">
-              {isAutoGeneratedSlug
-                ? `※サーバー名に英数字が含まれない場合は「${SLUG_FALLBACK_PREFIX}-xxxx」形式の識別子が自動生成されます`
-                : "※同名サーバーが既に存在する場合は自動で番号が付与されます"}
-            </span>
-          </p>
-        </div>
-
-        {/* 説明 */}
-        <div className="mb-5">
-          <label className="mb-1 block text-xs text-[var(--text-muted)]">
-            説明（任意）
-          </label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={2}
-            placeholder="この仮想MCPサーバーの用途を記述..."
-            className="w-full resize-none rounded-lg border border-[var(--border)] bg-[var(--bg-input)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none"
-          />
-        </div>
-
-        {/* カタログ選択 */}
-        <div className="mb-5 border-t border-t-[var(--border)] pt-4">
-          <label className="mb-2 block text-xs text-[var(--text-muted)]">
-            束ねるカタログを選択（{selectedCatalogIds.length} /{" "}
-            {String(VIRTUAL_SERVER_MAX_CONNECTIONS)}）
-          </label>
-          {loadingCatalogs ? (
-            <div className="py-6 text-center text-xs text-[var(--text-subtle)]">
-              読み込み中...
+        {phase === "configure" && (
+          <>
+            {/* サーバー名 */}
+            <div className="mb-5">
+              <label className="mb-1 block text-xs text-[var(--text-muted)]">
+                サーバー名
+              </label>
+              <input
+                type="text"
+                value={serverName}
+                onChange={(e) => setServerName(e.target.value)}
+                placeholder="例: 週次レポート用コネクタ"
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-input)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none"
+              />
+              <p className="mt-1.5 text-[10px] text-[var(--text-muted)]">
+                MCP識別子:{" "}
+                <span className="font-mono text-[var(--text-secondary)]">
+                  {isAutoGeneratedSlug
+                    ? `${FALLBACK_SLUG_PLACEHOLDER}（自動生成）`
+                    : slug}
+                </span>
+                <span className="ml-1 text-[var(--text-subtle)]">
+                  {isAutoGeneratedSlug
+                    ? `※サーバー名に英数字が含まれない場合は「${SLUG_FALLBACK_PREFIX}-xxxx」形式の識別子が自動生成されます`
+                    : "※同名サーバーが既に存在する場合は自動で番号が付与されます"}
+                </span>
+              </p>
             </div>
-          ) : catalogs.length === 0 ? (
-            <div className="py-6 text-center text-xs text-[var(--text-subtle)]">
-              選択可能なカタログがありません
+
+            {/* 説明 */}
+            <div className="mb-5">
+              <label className="mb-1 block text-xs text-[var(--text-muted)]">
+                説明（任意）
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={2}
+                placeholder="この仮想MCPサーバーの用途を記述..."
+                className="w-full resize-none rounded-lg border border-[var(--border)] bg-[var(--bg-input)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none"
+              />
             </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
-              {catalogs.map((catalog) => {
-                const isSelected = selectedCatalogIds.includes(catalog.id);
-                return (
-                  <button
-                    key={catalog.id}
-                    type="button"
-                    onClick={() => toggleCatalog(catalog.id)}
-                    className={`flex min-h-[44px] items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs transition-colors ${
-                      isSelected
-                        ? "border-emerald-400/30 bg-[var(--bg-active)] text-[var(--text-primary)]"
-                        : "border-transparent bg-[var(--bg-card-hover)] text-[var(--text-secondary)]"
-                    }`}
-                  >
-                    {catalog.iconPath ? (
-                      <img
-                        src={catalog.iconPath}
-                        alt={catalog.name}
-                        className="h-4 w-4 shrink-0 rounded"
-                      />
-                    ) : (
-                      <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-[var(--bg-input)] text-[7px] text-[var(--text-subtle)]">
-                        MCP
+
+            {/* カタログ選択 */}
+            <div className="mb-5 border-t border-t-[var(--border)] pt-4">
+              <label className="mb-2 block text-xs text-[var(--text-muted)]">
+                束ねるカタログを選択（{selectedCatalogIds.length} /{" "}
+                {String(VIRTUAL_SERVER_MAX_CONNECTIONS)}）
+              </label>
+              {loadingCatalogs ? (
+                <div className="py-6 text-center text-xs text-[var(--text-subtle)]">
+                  読み込み中...
+                </div>
+              ) : catalogs.length === 0 ? (
+                <div className="py-6 text-center text-xs text-[var(--text-subtle)]">
+                  選択可能なカタログがありません
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
+                  {catalogs.map((catalog) => {
+                    const isSelected = selectedCatalogIds.includes(catalog.id);
+                    return (
+                      <button
+                        key={catalog.id}
+                        type="button"
+                        onClick={() => toggleCatalog(catalog.id)}
+                        className={`flex min-h-[44px] items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs transition-colors ${
+                          isSelected
+                            ? "border-emerald-400/30 bg-[var(--bg-active)] text-[var(--text-primary)]"
+                            : "border-transparent bg-[var(--bg-card-hover)] text-[var(--text-secondary)]"
+                        }`}
+                      >
+                        {catalog.iconPath ? (
+                          <img
+                            src={catalog.iconPath}
+                            alt={catalog.name}
+                            className="h-4 w-4 shrink-0 rounded"
+                          />
+                        ) : (
+                          <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-[var(--bg-input)] text-[7px] text-[var(--text-subtle)]">
+                            MCP
+                          </div>
+                        )}
+                        <span className="flex-1 truncate">{catalog.name}</span>
+                        {isSelected && (
+                          <Check
+                            size={12}
+                            className="shrink-0 text-[var(--badge-success-text)]"
+                          />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* 選択カタログの設定（認証情報入力） */}
+            {selectedCatalogs.length > 0 && (
+              <div className="mb-5 border-t border-t-[var(--border)] pt-4">
+                <label className="mb-3 block text-xs text-[var(--text-muted)]">
+                  接続設定
+                </label>
+                <div className="space-y-3">
+                  {selectedCatalogs.map((catalog) => {
+                    const credKeys = parseCredentialKeys(
+                      catalog.credentialKeys,
+                    );
+                    const credValues = credentialsByCatalog[catalog.id] ?? {};
+                    return (
+                      <div
+                        key={catalog.id}
+                        className="rounded-lg bg-[var(--bg-card-hover)] p-3"
+                      >
+                        <div className="mb-2 flex items-center gap-2">
+                          {catalog.iconPath ? (
+                            <img
+                              src={catalog.iconPath}
+                              alt={catalog.name}
+                              className="h-4 w-4 rounded"
+                            />
+                          ) : (
+                            <div className="flex h-4 w-4 items-center justify-center rounded bg-[var(--bg-input)] text-[7px] text-[var(--text-subtle)]">
+                              MCP
+                            </div>
+                          )}
+                          <span className="text-xs font-medium text-[var(--text-primary)]">
+                            {catalog.name}
+                          </span>
+                          <span className="rounded-full border border-[var(--border)] px-1.5 py-0.5 text-[9px] text-[var(--text-secondary)]">
+                            {authTypeLabel[catalog.authType]}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => toggleCatalog(catalog.id)}
+                            className="ml-auto flex h-11 w-11 items-center justify-center rounded text-[var(--text-subtle)] transition hover:text-red-400"
+                            aria-label="この接続を外す"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+
+                        {needsCredentials(catalog) ? (
+                          <div className="space-y-2">
+                            {credKeys.map((key) => (
+                              <div key={key}>
+                                <label className="mb-1 block text-[10px] text-[var(--text-subtle)]">
+                                  {key}
+                                </label>
+                                <input
+                                  type="password"
+                                  value={credValues[key] ?? ""}
+                                  onChange={(e) =>
+                                    updateCredential(
+                                      catalog.id,
+                                      key,
+                                      e.target.value,
+                                    )
+                                  }
+                                  placeholder={`${key}を入力...`}
+                                  className="w-full rounded-md border border-[var(--border)] bg-[var(--bg-input)] px-2.5 py-1.5 text-xs text-[var(--text-primary)] outline-none"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-[10px] text-[var(--text-subtle)]">
+                            このカタログは追加の設定不要で利用できます
+                          </p>
+                        )}
                       </div>
-                    )}
-                    <span className="flex-1 truncate">{catalog.name}</span>
-                    {isSelected && (
-                      <Check
-                        size={12}
-                        className="shrink-0 text-[var(--badge-success-text)]"
-                      />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
-        {/* 選択カタログの設定（認証情報入力） */}
-        {selectedCatalogs.length > 0 && (
-          <div className="mb-5 border-t border-t-[var(--border)] pt-4">
-            <label className="mb-3 block text-xs text-[var(--text-muted)]">
-              接続設定
-            </label>
-            <div className="space-y-3">
+            {error && (
+              <div className="mb-4 rounded-lg bg-[var(--badge-error-bg)] px-4 py-2.5 text-xs text-[var(--badge-error-text)]">
+                {error}
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-3 border-t border-t-[var(--border)] pt-4">
+              <Link
+                to="/tools"
+                className="rounded-lg border border-[var(--border)] px-4 py-2 text-xs text-[var(--text-muted)] transition-colors hover:opacity-80"
+              >
+                キャンセル
+              </Link>
+              <button
+                type="button"
+                onClick={() => void handleProceedToTools()}
+                disabled={!canProceed}
+                className="flex items-center gap-1.5 rounded-lg bg-[var(--btn-primary-bg)] px-4 py-2 text-xs font-medium text-[var(--btn-primary-text)] transition-colors hover:opacity-90 disabled:opacity-50"
+              >
+                {fetchingTools ? "ツール取得中..." : "次へ: ツールを取得"}
+                <ArrowRight size={14} />
+              </button>
+            </div>
+          </>
+        )}
+
+        {phase === "tools" && (
+          <>
+            <div className="mb-4">
+              <h2 className="text-sm font-medium text-[var(--text-primary)]">
+                ツール選択
+              </h2>
+              <p className="mt-1 text-[10px] text-[var(--text-muted)]">
+                各MCPから取得したツールを確認し、公開する/しないの選択と、必要に応じてAI向けの説明上書きができます。
+              </p>
+            </div>
+
+            <div className="space-y-4">
               {selectedCatalogs.map((catalog) => {
-                const credKeys = parseCredentialKeys(catalog.credentialKeys);
-                const credValues = credentialsByCatalog[catalog.id] ?? {};
+                const tools = toolsByCatalog[catalog.id] ?? [];
+                const fetchError = fetchErrorByCatalog[catalog.id];
+                const settings = toolSettings[catalog.id] ?? {};
+                const allowedCount = Object.values(settings).filter(
+                  (s) => s.isAllowed,
+                ).length;
+
                 return (
                   <div
                     key={catalog.id}
                     className="rounded-lg bg-[var(--bg-card-hover)] p-3"
                   >
-                    <div className="mb-2 flex items-center gap-2">
+                    <div className="mb-3 flex items-center gap-2">
                       {catalog.iconPath ? (
                         <img
                           src={catalog.iconPath}
@@ -306,79 +573,106 @@ export const ConnectorManual = (): JSX.Element => {
                       <span className="text-xs font-medium text-[var(--text-primary)]">
                         {catalog.name}
                       </span>
-                      <span className="rounded-full border border-[var(--border)] px-1.5 py-0.5 text-[9px] text-[var(--text-secondary)]">
-                        {authTypeLabel[catalog.authType]}
+                      <span className="text-[9px] text-[var(--text-subtle)]">
+                        {allowedCount} / {tools.length} ツール公開
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => toggleCatalog(catalog.id)}
-                        className="ml-auto flex h-11 w-11 items-center justify-center rounded text-[var(--text-subtle)] transition hover:text-red-400"
-                        aria-label="この接続を外す"
-                      >
-                        <X size={14} />
-                      </button>
                     </div>
 
-                    {needsCredentials(catalog) ? (
-                      <div className="space-y-2">
-                        {credKeys.map((key) => (
-                          <div key={key}>
-                            <label className="mb-1 block text-[10px] text-[var(--text-subtle)]">
-                              {key}
-                            </label>
-                            <input
-                              type="password"
-                              value={credValues[key] ?? ""}
+                    {fetchError && (
+                      <div className="mb-2 rounded-md bg-[var(--badge-error-bg)] px-2.5 py-1.5 text-[10px] text-[var(--badge-error-text)]">
+                        ツール取得失敗: {fetchError}
+                      </div>
+                    )}
+
+                    {!fetchError && tools.length === 0 && (
+                      <p className="text-[10px] text-[var(--text-subtle)]">
+                        このMCPは公開ツールを返しませんでした
+                      </p>
+                    )}
+
+                    <div className="space-y-2">
+                      {tools.map((tool) => {
+                        const setting = settings[tool.name] ?? {
+                          isAllowed: true,
+                          customDescription: "",
+                        };
+                        return (
+                          <div
+                            key={tool.name}
+                            className="rounded-md border border-[var(--border-subtle)] bg-[var(--bg-input)] p-2.5"
+                          >
+                            <div className="mb-1.5 flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={setting.isAllowed}
+                                onChange={() =>
+                                  toggleToolAllowed(catalog.id, tool.name)
+                                }
+                                className="h-3.5 w-3.5 cursor-pointer accent-emerald-400"
+                              />
+                              <code className="font-mono text-[11px] text-[var(--text-primary)]">
+                                {tool.name}
+                              </code>
+                            </div>
+                            <p
+                              className={`mb-1.5 pl-5 text-[10px] leading-relaxed ${
+                                setting.customDescription.trim() !== ""
+                                  ? "text-[var(--text-subtle)] line-through"
+                                  : "text-[var(--text-muted)]"
+                              }`}
+                            >
+                              {tool.description || "(説明なし)"}
+                            </p>
+                            <textarea
+                              value={setting.customDescription}
                               onChange={(e) =>
-                                updateCredential(
+                                updateToolDescription(
                                   catalog.id,
-                                  key,
+                                  tool.name,
                                   e.target.value,
                                 )
                               }
-                              placeholder={`${key}を入力...`}
-                              className="w-full rounded-md border border-[var(--border)] bg-[var(--bg-input)] px-2.5 py-1.5 text-xs text-[var(--text-primary)] outline-none"
+                              rows={1}
+                              placeholder="✎ AIに対するカスタム説明（任意）"
+                              disabled={!setting.isAllowed}
+                              className="w-full resize-none rounded border border-[var(--border-subtle)] bg-[var(--bg-card)] px-2 py-1 text-[10px] text-[var(--text-secondary)] outline-none disabled:opacity-40"
                             />
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-[10px] text-[var(--text-subtle)]">
-                        このカタログは追加の設定不要で利用できます
-                      </p>
-                    )}
+                        );
+                      })}
+                    </div>
                   </div>
                 );
               })}
             </div>
-          </div>
-        )}
 
-        {/* エラー表示 */}
-        {error && (
-          <div className="mb-4 rounded-lg bg-[var(--badge-error-bg)] px-4 py-2.5 text-xs text-[var(--badge-error-text)]">
-            {error}
-          </div>
-        )}
+            {error && (
+              <div className="mt-4 rounded-lg bg-[var(--badge-error-bg)] px-4 py-2.5 text-xs text-[var(--badge-error-text)]">
+                {error}
+              </div>
+            )}
 
-        {/* ボタン群 */}
-        <div className="flex items-center justify-end gap-3 border-t border-t-[var(--border)] pt-4">
-          <Link
-            to="/tools"
-            className="rounded-lg border border-[var(--border)] px-4 py-2 text-xs text-[var(--text-muted)] transition-colors hover:opacity-80"
-          >
-            キャンセル
-          </Link>
-          <button
-            type="button"
-            onClick={() => void handleSubmit()}
-            disabled={!canSubmit}
-            className="flex items-center gap-1.5 rounded-lg bg-[var(--btn-primary-bg)] px-4 py-2 text-xs font-medium text-[var(--btn-primary-text)] transition-colors hover:opacity-90 disabled:opacity-50"
-          >
-            <Plus size={14} />
-            {submitting ? "作成中..." : "仮想MCPを作成"}
-          </button>
-        </div>
+            <div className="mt-5 flex items-center justify-end gap-3 border-t border-t-[var(--border)] pt-4">
+              <button
+                type="button"
+                onClick={() => setPhase("configure")}
+                className="rounded-lg border border-[var(--border)] px-4 py-2 text-xs text-[var(--text-muted)] transition-colors hover:opacity-80"
+              >
+                <ArrowLeft size={14} className="mr-1 inline-block" />
+                戻る
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleSubmit()}
+                disabled={submitting}
+                className="flex items-center gap-1.5 rounded-lg bg-[var(--btn-primary-bg)] px-4 py-2 text-xs font-medium text-[var(--btn-primary-text)] transition-colors hover:opacity-90 disabled:opacity-50"
+              >
+                <Plus size={14} />
+                {submitting ? "作成中..." : "仮想MCPを作成"}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

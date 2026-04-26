@@ -14,12 +14,17 @@ import { decryptCredentials } from "../../utils/credentials";
 import type {
   CreateFromCatalogInput,
   CreateVirtualServerInput,
+  FetchToolsInput,
+  FetchToolsResult,
 } from "./mcp.types";
+import { fetchToolsForCatalogs as fetchToolsForCatalogsImpl } from "./mcp-tool-fetcher.service";
 
 // IPC / テストから参照できるよう re-export
 export type {
   CreateFromCatalogInput,
   CreateVirtualServerInput,
+  FetchToolsInput,
+  FetchToolsResult,
 } from "./mcp.types";
 
 /**
@@ -187,7 +192,7 @@ export const createVirtualServer = async (
     });
 
     for (const { catalog, index, connectionSlug } of connectionsWithSlug) {
-      await mcpRepository.createConnection(tx, {
+      const connection = await mcpRepository.createConnection(tx, {
         name: catalog.name,
         slug: connectionSlug,
         transportType: catalog.transportType,
@@ -201,6 +206,27 @@ export const createVirtualServer = async (
         catalogId: catalog.id,
         displayOrder: index,
       });
+
+      // 接続単位のツール一覧が渡されている場合のみ McpTool を保存
+      // 旧呼び出し（tools未指定）も後方互換で動作させるため optional 扱い
+      const inputTools = input.connections[index]?.tools;
+      if (inputTools && inputTools.length > 0) {
+        await mcpRepository.createTools(
+          tx,
+          inputTools.map((t) => ({
+            name: t.name,
+            description: t.description,
+            inputSchema: t.inputSchema,
+            isAllowed: t.isAllowed,
+            // 空文字は「上書きなし」として扱う
+            customDescription:
+              t.customDescription && t.customDescription.trim() !== ""
+                ? t.customDescription
+                : null,
+            connectionId: connection.id,
+          })),
+        );
+      }
     }
 
     return { serverId: server.id, serverName: uniqueName };
@@ -278,4 +304,60 @@ export const updateServerStatus = async (
 export const resetAllServerStatus = async () => {
   const db = await getDb();
   return mcpRepository.updateAllServerStatus(db, ServerStatus.STOPPED);
+};
+
+/**
+ * proxy 起動時に使うツール公開ポリシーマップを構築する
+ * key 形式: `${configName}::${toolName}` （configName は `${serverSlug}-${connectionSlug}`）
+ * value は McpTool レコードから派生した (isAllowed, customDescription)
+ *
+ * McpTool レコードが存在しないツールは map に含まれず、proxy 側ではデフォルト動作（公開）になる。
+ * これにより 1:1 (createFromCatalog) で作成された既存サーバーは挙動が変わらない。
+ */
+export const buildToolPolicyMap = async (
+  serverSlug: string,
+): Promise<Map<string, { isAllowed: boolean; customDescription?: string }>> => {
+  const db = await getDb();
+  const tools = await mcpRepository.findToolsByServerSlug(db, serverSlug);
+  const policyMap = new Map<
+    string,
+    { isAllowed: boolean; customDescription?: string }
+  >();
+  for (const tool of tools) {
+    const configName = `${tool.connection.server.slug}-${tool.connection.slug}`;
+    const key = `${configName}::${tool.name}`;
+    policyMap.set(key, {
+      isAllowed: tool.isAllowed,
+      customDescription:
+        tool.customDescription && tool.customDescription.trim() !== ""
+          ? tool.customDescription
+          : undefined,
+    });
+  }
+  return policyMap;
+};
+
+/**
+ * 仮想MCP作成前に各カタログのツール一覧を取得する
+ * UIで「次へ」ボタンを押した時に呼ばれる前段処理
+ *
+ * - inputs: カタログIDと認証情報のペア
+ * - 各カタログに一時接続して tools/list を取得 → 切断
+ * - 1件失敗しても他は続行する（Promise.allSettled）
+ */
+export const fetchToolsForCatalogs = async (
+  input: FetchToolsInput,
+): Promise<FetchToolsResult> => {
+  const results = await fetchToolsForCatalogsImpl(input.items);
+  return {
+    items: results.map((r) => ({
+      catalogId: r.catalogId,
+      tools: r.tools.map((t) => ({
+        name: t.name,
+        description: t.description ?? "",
+        inputSchema: JSON.stringify(t.inputSchema ?? {}),
+      })),
+      error: r.error,
+    })),
+  };
 };

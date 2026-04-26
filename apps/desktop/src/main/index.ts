@@ -58,9 +58,15 @@ if (isMcpProxyMode) {
       // 有効なMCPサーバー設定 + 監査ログ用メタデータを取得
       const { getEnabledConfigsWithMeta } =
         await import("./features/mcp-proxy/mcp-proxy.service");
-      const { updateServerStatus, resetAllServerStatus } =
+      const { updateServerStatus, resetAllServerStatus, buildToolPolicyMap } =
         await import("./features/mcp-server-list/mcp.service");
       const { configs, meta } = await getEnabledConfigsWithMeta(serverSlug);
+
+      // 仮想MCP用のツール公開ポリシーマップを構築（serverSlug指定時のみ）
+      // McpTool レコードが無い既存サーバーは空マップになりデフォルト動作（全公開）
+      const toolPolicyMap = serverSlug
+        ? await buildToolPolicyMap(serverSlug)
+        : new Map<string, { isAllowed: boolean; customDescription?: string }>();
 
       // configName → メタデータのルックアップマップを構築
       const metaMap = new Map(meta.map((m) => [m.configName, m]));
@@ -141,9 +147,15 @@ if (isMcpProxyMode) {
           hooks?: import("@tumiki/mcp-proxy-core").ProxyHooks,
         ) => Promise<void>;
       };
+      // ツール公開ポリシー解決関数: McpToolレコードがあれば適用、なければデフォルト動作
+      const getToolPolicy: import("@tumiki/mcp-proxy-core").ToolPolicyResolver =
+        (configName, toolName) =>
+          toolPolicyMap.get(`${configName}::${toolName}`);
+
       await mod.runMcpProxy(configs, {
         onToolCall,
         onStatusChange,
+        getToolPolicy,
         onShutdown: async () => {
           await resetAllServerStatus().catch(() => {});
           await closeDb();

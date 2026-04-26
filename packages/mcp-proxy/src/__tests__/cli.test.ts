@@ -83,6 +83,7 @@ describe("runMcpProxy", () => {
     expect(mocks.mockCreateProxyCore).toHaveBeenCalledWith(
       [],
       expect.any(Object),
+      undefined,
     );
     expect(mocks.mockStartAll).toHaveBeenCalledOnce();
     expect(mocks.mockStartStdioInbound).toHaveBeenCalledWith(
@@ -110,6 +111,7 @@ describe("runMcpProxy", () => {
     expect(mocks.mockCreateProxyCore).toHaveBeenCalledWith(
       configs,
       expect.any(Object),
+      undefined,
     );
   });
 
@@ -123,6 +125,7 @@ describe("runMcpProxy", () => {
     expect(mocks.mockCreateProxyCore).toHaveBeenCalledWith(
       configs,
       expect.any(Object),
+      undefined,
     );
   });
 

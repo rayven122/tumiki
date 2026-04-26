@@ -224,4 +224,123 @@ describe("ToolAggregator", () => {
       expect(mockCallTool).toHaveBeenCalledWith("some__tool", {});
     });
   });
+
+  describe("getToolPolicy（仮想MCP用ツールフィルタ）", () => {
+    test("isAllowed=falseのツールはlistToolsから除外される", async () => {
+      const client = createMockClient("serena", {
+        listTools: vi.fn().mockResolvedValue([
+          { name: "read_file", description: "読み取り", inputSchema: {} },
+          { name: "delete_file", description: "削除", inputSchema: {} },
+        ]),
+      });
+      const clients = new Map([["serena", client]]);
+      const getToolPolicy = (
+        serverName: string,
+        toolName: string,
+      ): { isAllowed: boolean; customDescription?: string } | undefined => {
+        if (serverName === "serena" && toolName === "delete_file") {
+          return { isAllowed: false };
+        }
+        return undefined;
+      };
+      const aggregator = createToolAggregator(
+        () => clients,
+        mockLogger,
+        getToolPolicy,
+      );
+
+      const tools = await aggregator.listTools();
+
+      expect(tools).toHaveLength(1);
+      expect(tools[0]?.name).toBe("serena__read_file");
+    });
+
+    test("customDescriptionが指定されたツールは説明が上書きされる", async () => {
+      const client = createMockClient("serena", {
+        listTools: vi.fn().mockResolvedValue([
+          {
+            name: "read_file",
+            description: "デフォルト説明",
+            inputSchema: {},
+          },
+        ]),
+      });
+      const clients = new Map([["serena", client]]);
+      const getToolPolicy = () => ({
+        isAllowed: true,
+        customDescription: "カスタム説明: AIに伝える文脈",
+      });
+      const aggregator = createToolAggregator(
+        () => clients,
+        mockLogger,
+        getToolPolicy,
+      );
+
+      const tools = await aggregator.listTools();
+
+      expect(tools[0]?.description).toBe("カスタム説明: AIに伝える文脈");
+    });
+
+    test("policy未指定（getToolPolicy省略）の場合は既存挙動と同じ", async () => {
+      const client = createMockClient("serena", {
+        listTools: vi
+          .fn()
+          .mockResolvedValue([
+            { name: "read_file", description: "デフォルト", inputSchema: {} },
+          ]),
+      });
+      const clients = new Map([["serena", client]]);
+      const aggregator = createToolAggregator(() => clients, mockLogger);
+
+      const tools = await aggregator.listTools();
+
+      expect(tools).toStrictEqual([
+        {
+          name: "serena__read_file",
+          description: "デフォルト",
+          inputSchema: {},
+          serverName: "serena",
+        },
+      ]);
+    });
+
+    test("isAllowed=falseのツールはcallToolで実行拒否される", async () => {
+      const mockCallTool = vi.fn();
+      const client = createMockClient("serena", { callTool: mockCallTool });
+      const clients = new Map([["serena", client]]);
+      const getToolPolicy = () => ({ isAllowed: false });
+      const aggregator = createToolAggregator(
+        () => clients,
+        mockLogger,
+        getToolPolicy,
+      );
+
+      await expect(
+        aggregator.callTool("serena__read_file", {}),
+      ).rejects.toThrow("無効化されているため実行できません");
+      expect(mockCallTool).not.toHaveBeenCalled();
+    });
+
+    test("getToolPolicyがundefinedを返したツールはデフォルト動作（公開）", async () => {
+      const client = createMockClient("serena", {
+        listTools: vi
+          .fn()
+          .mockResolvedValue([
+            { name: "read_file", description: "説明", inputSchema: {} },
+          ]),
+      });
+      const clients = new Map([["serena", client]]);
+      const getToolPolicy = () => undefined;
+      const aggregator = createToolAggregator(
+        () => clients,
+        mockLogger,
+        getToolPolicy,
+      );
+
+      const tools = await aggregator.listTools();
+
+      expect(tools).toHaveLength(1);
+      expect(tools[0]?.description).toBe("説明");
+    });
+  });
 });

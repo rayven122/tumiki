@@ -4,6 +4,7 @@ import * as mcpService from "./mcp.service";
 import type {
   CreateFromCatalogInput,
   CreateVirtualServerInput,
+  FetchToolsInput,
   UpdateServerInput,
   DeleteServerInput,
   ToggleServerInput,
@@ -40,6 +41,14 @@ const createFromCatalogSchema = z.object({
   authType: z.enum(["NONE", "BEARER", "API_KEY", "OAUTH"]),
 }) satisfies z.ZodType<CreateFromCatalogInput>;
 
+const virtualServerToolSchema = z.object({
+  name: z.string().min(1),
+  description: z.string(),
+  inputSchema: z.string(),
+  isAllowed: z.boolean(),
+  customDescription: z.string().optional(),
+});
+
 const createVirtualServerSchema = z.object({
   name: z.string().min(1),
   description: z.string(),
@@ -48,11 +57,24 @@ const createVirtualServerSchema = z.object({
       z.object({
         catalogId: z.number().int().positive(),
         credentials: z.record(z.string(), z.string()),
+        tools: z.array(virtualServerToolSchema).optional(),
       }),
     )
     .min(1)
     .max(VIRTUAL_SERVER_MAX_CONNECTIONS),
 }) satisfies z.ZodType<CreateVirtualServerInput>;
+
+const fetchToolsSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        catalogId: z.number().int().positive(),
+        credentials: z.record(z.string(), z.string()),
+      }),
+    )
+    .min(1)
+    .max(VIRTUAL_SERVER_MAX_CONNECTIONS),
+}) satisfies z.ZodType<FetchToolsInput>;
 
 /**
  * MCP関連の IPC ハンドラーを設定
@@ -70,6 +92,21 @@ export const setupMcpIpc = (): void => {
         error instanceof Error ? error : { error },
       );
       throw new Error(`MCPサーバーの登録に失敗しました: ${message}`);
+    }
+  });
+
+  // 仮想MCP作成前のツール一覧取得（各カタログに一時接続してtools/listを取得）
+  ipcMain.handle("mcp:fetchToolsForCatalogs", async (_, input: unknown) => {
+    try {
+      const validated = fetchToolsSchema.parse(input);
+      return await mcpService.fetchToolsForCatalogs(validated);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "不明なエラー";
+      logger.error(
+        "Failed to fetch tools for catalogs",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error(`ツール一覧の取得に失敗しました: ${message}`);
     }
   });
 
