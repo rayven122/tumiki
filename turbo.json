@@ -43,6 +43,9 @@
     "@tumiki/desktop#db:generate": {
       "outputs": ["prisma/generated/**"]
     },
+    "@tumiki/internal-db#db:generate": {
+      "outputs": ["generated/**"]
+    },
     "test": {
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"]

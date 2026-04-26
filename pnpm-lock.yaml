@@ -874,9 +874,6 @@ importers:
       dotenv-cli:
         specifier: ^11.0.0
         version: 11.0.0
-      zod:
-        specifier: 'catalog:'
-        version: 4.1.13
     devDependencies:
       '@tumiki/eslint-config':
         specifier: workspace:*
