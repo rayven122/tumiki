@@ -49,11 +49,13 @@ jobs:
           DEPLOY_TUNNEL_HOSTNAME: ${{ vars.KEYCLOAK_TUNNEL_HOSTNAME }}
         run: |
           SSH_TARGET="${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}"
-          ssh "$SSH_TARGET" bash << 'REMOTE_SCRIPT'
+          ssh "$SSH_TARGET" bash -l << 'REMOTE_SCRIPT'
             set -euo pipefail
             cd ~/keycloak
-            infisical run --env=staging -- docker compose pull
-            infisical run --env=staging -- docker compose up -d --remove-orphans
+            infisical export --env=staging --format=dotenv > .env
+            docker compose pull
+            docker compose up -d --remove-orphans
+            rm -f .env
           REMOTE_SCRIPT
 
       - name: ✅ Verify Keycloak health
@@ -64,8 +66,8 @@ jobs:
           SSH_TARGET="${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}"
           ssh "$SSH_TARGET" bash << 'HEALTHCHECK'
             for i in $(seq 1 30); do
-              if curl -sf http://localhost:8080/health/ready > /dev/null 2>&1; then
-                echo "=== Keycloak ===" && curl -sf http://localhost:8080/health/ready | jq .
+              if curl -sf http://localhost:9000/health/ready > /dev/null 2>&1; then
+                echo "=== Keycloak ===" && curl -sf http://localhost:9000/health/ready | jq .
                 exit 0
               fi
               echo "Waiting... ($i/30)" && sleep 10

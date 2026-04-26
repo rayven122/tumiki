@@ -65,12 +65,14 @@ jobs:
           SSH_TARGET="${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}"
           INFISICAL_ENV_VAL="${INFISICAL_ENV}"
           IMAGE_TAG_VAL="${IMAGE_TAG}"
-          ssh "$SSH_TARGET" "bash -s" << REMOTE_SCRIPT
+          ssh "$SSH_TARGET" bash -l << REMOTE_SCRIPT
             set -euo pipefail
             cd ~/tumiki
             export IMAGE_TAG="${IMAGE_TAG_VAL}"
-            infisical run --env="${INFISICAL_ENV_VAL}" -- docker compose pull
-            infisical run --env="${INFISICAL_ENV_VAL}" -- docker compose up -d --remove-orphans
+            infisical export --env="${INFISICAL_ENV_VAL}" --format=dotenv > .env
+            docker compose pull
+            docker compose up -d --remove-orphans
+            rm -f .env
           REMOTE_SCRIPT
 
       - name: ✅ Verify health endpoints
@@ -143,12 +145,14 @@ jobs:
           SSH_TARGET="${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}"
           INFISICAL_ENV_VAL="${INFISICAL_ENV}"
           IMAGE_TAG_VAL="${IMAGE_TAG}"
-          ssh "$SSH_TARGET" "bash -s" << REMOTE_SCRIPT
+          ssh "$SSH_TARGET" bash -l << REMOTE_SCRIPT
             set -euo pipefail
             cd ~/tumiki
             export IMAGE_TAG="${IMAGE_TAG_VAL}"
-            infisical run --env="${INFISICAL_ENV_VAL}" -- docker compose pull
-            infisical run --env="${INFISICAL_ENV_VAL}" -- docker compose up -d --remove-orphans
+            infisical export --env="${INFISICAL_ENV_VAL}" --format=dotenv > .env
+            docker compose pull
+            docker compose up -d --remove-orphans
+            rm -f .env
           REMOTE_SCRIPT
 
       - name: ✅ Verify health endpoints

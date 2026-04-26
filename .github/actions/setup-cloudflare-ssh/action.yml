@@ -36,6 +36,5 @@ runs:
         cat >> ~/.ssh/config << EOF
 Host ${TUNNEL_HOSTNAME}
   ProxyCommand cloudflared access ssh --hostname %h
-  StrictHostKeyChecking no
-  UserKnownHostsFile /dev/null
+  StrictHostKeyChecking accept-new
 EOF
