@@ -343,9 +343,9 @@ if (isMcpProxyMode) {
     .whenReady()
     .then(async () => {
       // カスタムURLスキームを登録（Linuxではready後に呼ぶ必要がある）
-      if (!app.isDefaultProtocolClient(PROTOCOL)) {
-        app.setAsDefaultProtocolClient(PROTOCOL);
-      }
+      // dev モードでは Electron 実行パスが起動ごとに変わる可能性があるため、
+      // 起動時に毎回上書き登録する（setAsDefaultProtocolClient は冪等）
+      app.setAsDefaultProtocolClient(PROTOCOL);
 
       // データベース初期化
       await initializeDb();
