@@ -23,6 +23,15 @@ const oidcProvider: OAuthConfig<OidcProfile> = {
   clientId: OIDC_CLIENT_ID,
   clientSecret: OIDC_CLIENT_SECRET,
   issuer: OIDC_ISSUER,
+  // sub を User.id に使うことで ExternalIdentity の (provider, sub) → userId マッピングが成立する
+  profile(profile) {
+    return {
+      id: profile.sub,
+      email: profile.email ?? null,
+      name: profile.name ?? null,
+      image: profile.picture ?? null,
+    };
+  },
 };
 
 export const {
