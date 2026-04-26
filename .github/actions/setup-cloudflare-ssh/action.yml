@@ -1,9 +1,9 @@
 name: Setup Cloudflare SSH
-description: Cloudflare Tunnel + Access Service Token 経由で SSH できるようにセットアップする（SSH証明書認証）
+description: Cloudflare Tunnel + Access Service Token 経由で SSH できるようにセットアップする
 
 inputs:
   tunnel-hostname:
-    description: 'Cloudflare Tunnel のホスト名（例: staging.tumiki.cloud）'
+    description: 'Cloudflare Tunnel のホスト名（例: stg-ssh.tumiki.cloud）'
     required: true
   cf-access-client-id:
     description: 'Cloudflare Access Service Token の Client ID'
@@ -25,16 +25,21 @@ runs:
       shell: bash
       env:
         TUNNEL_HOSTNAME: ${{ inputs.tunnel-hostname }}
+        CF_ID: ${{ inputs.cf-access-client-id }}
+        CF_SECRET: ${{ inputs.cf-access-client-secret }}
       run: |
         mkdir -p ~/.ssh
 
-        # cloudflared が自動参照する Service Token
-        echo "CF_ACCESS_CLIENT_ID=${{ inputs.cf-access-client-id }}" >> "$GITHUB_ENV"
-        echo "CF_ACCESS_CLIENT_SECRET=${{ inputs.cf-access-client-secret }}" >> "$GITHUB_ENV"
-
-        # cloudflared が SSH 証明書を自動取得・接続する ProxyCommand を設定
-        cat >> ~/.ssh/config << EOF
-        Host ${TUNNEL_HOSTNAME}
-          ProxyCommand cloudflared access ssh --hostname %h
-          StrictHostKeyChecking accept-new
+        # Service Token を埋め込んだラッパースクリプトを生成
+        # ProxyCommand 経由では env 変数が継承されないため直接埋め込む
+        cat > /tmp/cf-proxy.sh << EOF
+        #!/bin/bash
+        exec env CF_ACCESS_CLIENT_ID="${CF_ID}" CF_ACCESS_CLIENT_SECRET="${CF_SECRET}" cloudflared access ssh --hostname "\$@"
         EOF
+        chmod +x /tmp/cf-proxy.sh
+
+        cat >> ~/.ssh/config << CONFIG
+        Host ${TUNNEL_HOSTNAME}
+          ProxyCommand /tmp/cf-proxy.sh %h
+          StrictHostKeyChecking accept-new
+        CONFIG
