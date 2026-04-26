@@ -27,6 +27,7 @@ model User {
   externalIdentities    ExternalIdentity[]
   groupMemberships      UserGroupMembership[]
   individualPermissions IndividualPermission[]
+  scimTokens            ScimToken[]
 }
 
 /// @namespace Auth

@@ -18,7 +18,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 /** ユーザー取得 */
 export const GET = async (req: NextRequest, { params }: RouteContext) => {
-  if (!validateScimAuth(req)) return scimError(401, "Unauthorized");
+  if (!(await validateScimAuth(req))) return scimError(401, "Unauthorized");
 
   const { id } = await params;
   const user = await db.user.findUnique({ where: { id }, select: USER_SELECT });
@@ -29,7 +29,7 @@ export const GET = async (req: NextRequest, { params }: RouteContext) => {
 
 /** ユーザー更新（active状態変更・属性更新） */
 export const PATCH = async (req: NextRequest, { params }: RouteContext) => {
-  if (!validateScimAuth(req)) return scimError(401, "Unauthorized");
+  if (!(await validateScimAuth(req))) return scimError(401, "Unauthorized");
 
   const { id } = await params;
   const existing = await db.user.findUnique({ where: { id } });
@@ -101,7 +101,7 @@ export const PATCH = async (req: NextRequest, { params }: RouteContext) => {
 
 /** ユーザー削除（ソフト削除: isActive=false） */
 export const DELETE = async (req: NextRequest, { params }: RouteContext) => {
-  if (!validateScimAuth(req)) return scimError(401, "Unauthorized");
+  if (!(await validateScimAuth(req))) return scimError(401, "Unauthorized");
 
   const { id } = await params;
   const existing = await db.user.findUnique({ where: { id } });

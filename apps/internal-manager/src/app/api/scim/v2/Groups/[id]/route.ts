@@ -29,7 +29,7 @@ const parseMemberFilter = (path: string): string | null => {
 
 /** グループ取得 */
 export const GET = async (req: NextRequest, { params }: RouteContext) => {
-  if (!validateScimAuth(req)) return scimError(401, "Unauthorized");
+  if (!(await validateScimAuth(req))) return scimError(401, "Unauthorized");
 
   const { id } = await params;
   const group = await db.group.findUnique({
@@ -43,7 +43,7 @@ export const GET = async (req: NextRequest, { params }: RouteContext) => {
 
 /** グループ更新（メンバー追加・削除・置換、displayName変更） */
 export const PATCH = async (req: NextRequest, { params }: RouteContext) => {
-  if (!validateScimAuth(req)) return scimError(401, "Unauthorized");
+  if (!(await validateScimAuth(req))) return scimError(401, "Unauthorized");
 
   const { id } = await params;
   const existing = await db.group.findUnique({ where: { id } });
@@ -177,7 +177,7 @@ export const PATCH = async (req: NextRequest, { params }: RouteContext) => {
 
 /** グループ削除 */
 export const DELETE = async (req: NextRequest, { params }: RouteContext) => {
-  if (!validateScimAuth(req)) return scimError(401, "Unauthorized");
+  if (!(await validateScimAuth(req))) return scimError(401, "Unauthorized");
 
   const { id } = await params;
   const existing = await db.group.findUnique({
