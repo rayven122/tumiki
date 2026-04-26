@@ -38,7 +38,6 @@ jobs:
         uses: ./.github/actions/setup-cloudflare-ssh
         with:
           tunnel-hostname: ${{ secrets.DEPLOY_TUNNEL_HOSTNAME }}
-          ssh-key: ${{ secrets.DEPLOY_SSH_KEY }}
           cf-access-client-id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           cf-access-client-secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
 
@@ -92,4 +91,4 @@ jobs:
 
       - name: 🧹 Cleanup
         if: always()
-        run: rm -f ~/.ssh/deploy_key ~/.ssh/config /tmp/cloudflared.deb
+        run: rm -f ~/.ssh/config /tmp/cloudflared.deb
