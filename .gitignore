@@ -177,3 +177,9 @@ apps/manager/public/coharu/vrma/*.vrma
 !apps/manager/public/coharu/vrma/.gitkeep
 
 .playwright-cli
+
+# Node.js compilation cache
+node-compile-cache/
+
+# prek download artifacts
+NEyR0T/
