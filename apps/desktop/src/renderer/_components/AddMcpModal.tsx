@@ -2,6 +2,7 @@ import type { JSX } from "react";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { X, Info } from "lucide-react";
 import type { CatalogItem } from "../../types/catalog";
+import { FILESYSTEM_STDIO_NAME } from "../../shared/catalog.constants";
 
 type AddMcpModalProps = {
   catalog: CatalogItem;
@@ -45,7 +46,7 @@ export const AddMcpModal = ({
   const [oauthClientId, setOauthClientId] = useState("");
   const [oauthClientSecret, setOauthClientSecret] = useState("");
 
-  const isFilesystemStdio = catalog.name === "Filesystem STDIO";
+  const isFilesystemStdio = catalog.name === FILESYSTEM_STDIO_NAME;
   const [directoryPath, setDirectoryPath] = useState("");
 
   const slug = useMemo(() => toSlug(serverName), [serverName]);
