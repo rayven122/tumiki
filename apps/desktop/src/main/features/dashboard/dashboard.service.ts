@@ -229,6 +229,8 @@ export const getDashboard = async (
   const timeline = buildTimeline(logs, series, currentRange, input.period);
   const aiClients = buildAiClients(logs);
   const connectorCards = buildConnectorCards(connectors);
+  // KPIの「コネクタ」は接続(McpConnection)単位で集計する。
+  // UIのコネクタカードが接続単位で並ぶため、カード件数とKPIを一致させる目的
   const connectorsDegraded = connectors.filter(
     (c) => c.serverStatus !== "RUNNING",
   ).length;
