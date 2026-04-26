@@ -29,8 +29,8 @@ runs:
         mkdir -p ~/.ssh
 
         # cloudflared が自動参照する Service Token
-        echo "CLOUDFLARE_ACCESS_CLIENT_ID=${{ inputs.cf-access-client-id }}" >> "$GITHUB_ENV"
-        echo "CLOUDFLARE_ACCESS_CLIENT_SECRET=${{ inputs.cf-access-client-secret }}" >> "$GITHUB_ENV"
+        echo "CF_ACCESS_CLIENT_ID=${{ inputs.cf-access-client-id }}" >> "$GITHUB_ENV"
+        echo "CF_ACCESS_CLIENT_SECRET=${{ inputs.cf-access-client-secret }}" >> "$GITHUB_ENV"
 
         # cloudflared が SSH 証明書を自動取得・接続する ProxyCommand を設定
         cat >> ~/.ssh/config << EOF
