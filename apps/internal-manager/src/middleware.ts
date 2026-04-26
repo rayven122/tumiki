@@ -1,10 +1,15 @@
-import { getToken } from "next-auth/jwt";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-export const middleware = async (req: NextRequest) => {
-  const token = await getToken({ req });
-  if (!token) {
+// Auth.js v5 のセッションCookieキー（開発: authjs.session-token, 本番: __Secure-authjs.session-token）
+const SESSION_COOKIE = [
+  "__Secure-authjs.session-token",
+  "authjs.session-token",
+];
+
+export const middleware = (req: NextRequest) => {
+  const hasSession = SESSION_COOKIE.some((name) => req.cookies.has(name));
+  if (!hasSession) {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
 };
