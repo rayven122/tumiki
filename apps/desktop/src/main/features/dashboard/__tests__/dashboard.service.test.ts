@@ -209,6 +209,29 @@ describe("dashboard.service", () => {
       expect(r30.timeline).toHaveLength(30);
     });
 
+    test("now直前のログが最終バケットに集計される（境界落ち回帰防止）", async () => {
+      // NOW (2026-04-26T12:00:00.000Z) = JST 2026-04-26T21:00:00 → 21:00丁度
+      // システム時刻を21:30に進めて「現在進行中の時間帯」にレコードがある状態を作る
+      vi.setSystemTime(new Date("2026-04-26T12:30:00.000Z"));
+      const log = createLog({
+        id: 1,
+        connectionName: "Serena",
+        createdAt: new Date("2026-04-26T12:25:00.000Z"),
+      });
+      vi.mocked(repository.findAuditLogsInRange).mockResolvedValue([log]);
+
+      const result = await service.getDashboard({ period: "24h" });
+      // 全バケットの合計が1件 = レコードはどこかのバケットに必ず入る
+      const total = result.timeline.reduce((acc, p) => {
+        const v = p.values[result.series[0]?.key ?? ""] ?? 0;
+        return acc + v;
+      }, 0);
+      expect(total).toBe(1);
+      // 最終バケットに入る（now時点を含む時間帯）
+      const last = result.timeline[result.timeline.length - 1];
+      expect(last?.values[result.series[0]?.key ?? ""]).toBe(1);
+    });
+
     test("直近ログがDate→string変換されて先頭から順に返される", async () => {
       const recent = [
         createLog({

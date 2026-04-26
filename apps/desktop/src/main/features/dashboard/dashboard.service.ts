@@ -71,6 +71,19 @@ const floorToBucket = (date: Date, unit: "hour" | "day"): Date => {
   return d;
 };
 
+/** バケット境界用に時刻を切り上げ（既に境界上ならそのまま） */
+const ceilToBucket = (date: Date, unit: "hour" | "day"): Date => {
+  const floored = floorToBucket(date, unit);
+  if (floored.getTime() === date.getTime()) return floored;
+  const d = new Date(floored);
+  if (unit === "hour") {
+    d.setHours(d.getHours() + 1);
+  } else {
+    d.setDate(d.getDate() + 1);
+  }
+  return d;
+};
+
 /** バケット境界 → X軸ラベル */
 const formatBucketLabel = (date: Date, period: DashboardPeriod): string => {
   const pad2 = (n: number): string => String(n).padStart(2, "0");
@@ -122,7 +135,10 @@ const buildTimeline = (
 ): DashboardTimePoint[] => {
   const def = PERIOD_DEFINITIONS[period];
   const bucketSpanMs = def.spanMs / def.bucketCount;
-  const start = floorToBucket(range.from, def.bucketUnit);
+  // 終端を bucketUnit 境界に切り上げて、そこから過去方向に bucketCount 個並べる
+  // （floor(range.from) を起点にすると現在進行中の最終バケットが範囲外に落ちるため）
+  const end = ceilToBucket(range.to, def.bucketUnit);
+  const start = new Date(end.getTime() - def.spanMs);
   const labelToKey = new Map(series.map((s) => [s.label, s.key]));
 
   const timeline: DashboardTimePoint[] = [];
