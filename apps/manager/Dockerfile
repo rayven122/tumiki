@@ -37,13 +37,11 @@ COPY packages/shared ./packages/shared
 COPY packages/ui ./packages/ui
 COPY apps/manager ./apps/manager
 
-# Prisma postinstall と next build 用のダミー環境変数（実際の接続には使用されない）
-# NEXT_PUBLIC_TUMIKI_EDITION=ee: EE版としてビルド（CE版のwebpackプラグインを無効化）
-RUN printf '%s\n' \
-  "DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder" \
-  "PRISMA_FIELD_ENCRYPTION_KEY=k1.aesgcm256.FkhfY-sKgaYBJYteXBGudV6g_oBOW1TjU74hbowUl8s=" \
-  "NEXT_PUBLIC_TUMIKI_EDITION=ee" \
-  > .env
+# .env.example をダミー値として利用
+# - /app/.env: packages/db の dotenv 読み込み用
+# - apps/manager/.env: Next.js が PRISMA_FIELD_ENCRYPTION_KEY 等を process.env に読み込む用
+COPY .env.example .env
+COPY .env.example apps/manager/.env
 
 # Python MCP インストールをスキップ
 ENV CI=true
@@ -55,7 +53,11 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
 RUN pnpm turbo run build --filter=@tumiki/manager^...
 
 # Next.js standalone モードでビルド
-RUN pnpm --filter @tumiki/manager with-env next build --webpack
+# NEXT_PUBLIC_TUMIKI_EDITION はnext.config.jsより前に解決されるためプロセス環境変数として渡す
+# NEXT_PUBLIC_MCP_PROXY_URL を空に設定してビルド時バンドルへの localhost 値焼き込みを防止
+# （Next.js は NEXT_PUBLIC_* をビルド時静的展開するため、.env の値が上書きされるよう明示的に空にする）
+RUN NEXT_PUBLIC_TUMIKI_EDITION=ee NEXT_PUBLIC_MCP_PROXY_URL= \
+  pnpm --filter @tumiki/manager run build:bare
 
 # ========================================
 # Stage 3: Production

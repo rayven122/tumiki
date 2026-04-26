@@ -27,6 +27,7 @@ __tests__
 # Environment files
 .env
 .env.*
+!.env.example
 
 # Git
 .git
