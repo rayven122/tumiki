@@ -19,7 +19,7 @@ export const useDashboard = (period: DashboardPeriod) => {
     setLoading(true);
     isFirstLoad.current = true;
 
-    const fetch = async (): Promise<void> => {
+    const fetchDashboard = async (): Promise<void> => {
       try {
         const data = await window.electronAPI.dashboard.get({ period });
         if (!cancelled) {
@@ -44,8 +44,8 @@ export const useDashboard = (period: DashboardPeriod) => {
       }
     };
 
-    void fetch();
-    const timer = setInterval(() => void fetch(), POLLING_INTERVAL_MS);
+    void fetchDashboard();
+    const timer = setInterval(() => void fetchDashboard(), POLLING_INTERVAL_MS);
     return () => {
       cancelled = true;
       clearInterval(timer);

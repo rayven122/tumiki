@@ -250,14 +250,24 @@ describe("dashboard.service", () => {
       const result = await service.getDashboard({ period: "24h" });
 
       expect(result.recentLogs).toStrictEqual([
-        expect.objectContaining({
+        {
           id: 99,
           createdAt: "2026-04-26T11:30:00.000Z",
-        }),
-        expect.objectContaining({
+          connectionName: "Slack",
+          toolName: "send_message",
+          clientName: "cursor",
+          isSuccess: true,
+          durationMs: 100,
+        },
+        {
           id: 98,
           createdAt: "2026-04-26T11:00:00.000Z",
-        }),
+          connectionName: "Slack",
+          toolName: "send_message",
+          clientName: "cursor",
+          isSuccess: false,
+          durationMs: 100,
+        },
       ]);
     });
 

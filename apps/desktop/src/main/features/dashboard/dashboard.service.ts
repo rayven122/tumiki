@@ -135,10 +135,8 @@ const buildTimeline = (
 ): DashboardTimePoint[] => {
   const def = PERIOD_DEFINITIONS[period];
   const bucketSpanMs = def.spanMs / def.bucketCount;
-  // 終端を bucketUnit 境界に切り上げて、そこから過去方向に bucketCount 個並べる
-  // （floor(range.from) を起点にすると現在進行中の最終バケットが範囲外に落ちるため）
-  const end = ceilToBucket(range.to, def.bucketUnit);
-  const start = new Date(end.getTime() - def.spanMs);
+  // range は呼び出し側でバケット境界に揃えて渡す前提
+  const start = range.from;
   const labelToKey = new Map(series.map((s) => [s.label, s.key]));
 
   const timeline: DashboardTimePoint[] = [];
@@ -203,10 +201,14 @@ export const getDashboard = async (
   const db = await getDb();
   const def = PERIOD_DEFINITIONS[input.period];
   const now = new Date();
-  const currentRange = { from: new Date(now.getTime() - def.spanMs), to: now };
+  // バケット境界に揃えた範囲を集計・取得の両方で使うことで、
+  // 「現在進行中バケットの開始 〜 now」のログがタイムラインから欠落するのを防ぐ
+  const end = ceilToBucket(now, def.bucketUnit);
+  const start = new Date(end.getTime() - def.spanMs);
+  const currentRange = { from: start, to: end };
   const previousRange = {
-    from: new Date(currentRange.from.getTime() - def.spanMs),
-    to: currentRange.from,
+    from: new Date(start.getTime() - def.spanMs),
+    to: start,
   };
 
   const [logs, prevCounts, recentLogs, connectors] = await Promise.all([
