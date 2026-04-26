@@ -16,6 +16,13 @@ repos:
         stages: [pre-commit]
         pass_filenames: false
 
+      - id: secret-scan
+        name: Infisical Secret Scan
+        entry: infisical scan git-changes --staged --exit-code 1
+        language: system
+        stages: [pre-commit]
+        pass_filenames: false
+
       # pre-push: 包括的チェック
       - id: typecheck
         name: TypeScript typecheck

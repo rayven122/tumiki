@@ -1,4 +1,5 @@
-import type { PrismaClient, ServerStatus } from "@prisma/desktop-client";
+import type { ServerStatus } from "@prisma/desktop-client";
+import type { DbClient } from "../../shared/db";
 
 /**
  * MCPサーバー作成時の入力データ型
@@ -23,12 +24,14 @@ export type CreateMcpConnectionInput = {
   authType: "NONE" | "BEARER" | "API_KEY" | "OAUTH";
   serverId: number;
   catalogId: number | null;
+  // 仮想MCPで複数接続を束ねた際の並び順（省略時はDB既定の0）
+  displayOrder?: number;
 };
 
 /**
  * MCPサーバーを接続情報付きで全件取得
  */
-export const findAllWithConnections = async (db: PrismaClient) => {
+export const findAllWithConnections = async (db: DbClient) => {
   return db.mcpServer.findMany({
     include: {
       connections: {
@@ -47,7 +50,7 @@ export const findAllWithConnections = async (db: PrismaClient) => {
  * MCPサーバーを作成
  */
 export const createServer = async (
-  db: PrismaClient,
+  db: DbClient,
   data: CreateMcpServerInput,
 ) => {
   return db.mcpServer.create({ data });
@@ -57,7 +60,7 @@ export const createServer = async (
  * MCP接続を作成
  */
 export const createConnection = async (
-  db: PrismaClient,
+  db: DbClient,
   data: CreateMcpConnectionInput,
 ) => {
   return db.mcpConnection.create({ data });
@@ -66,21 +69,21 @@ export const createConnection = async (
 /**
  * slugでサーバーを検索
  */
-export const findServerBySlug = async (db: PrismaClient, slug: string) => {
+export const findServerBySlug = async (db: DbClient, slug: string) => {
   return db.mcpServer.findUnique({ where: { slug } });
 };
 
 /**
  * 名前でサーバーを検索（重複チェック用）
  */
-export const findServerByName = async (db: PrismaClient, name: string) => {
+export const findServerByName = async (db: DbClient, name: string) => {
   return db.mcpServer.findFirst({ where: { name } });
 };
 
 /**
  * 有効なサーバーの有効な接続を全件取得（Proxy起動時のconfig生成用）
  */
-export const findEnabledConnections = async (db: PrismaClient) => {
+export const findEnabledConnections = async (db: DbClient) => {
   return db.mcpConnection.findMany({
     where: {
       isEnabled: true,
@@ -95,7 +98,7 @@ export const findEnabledConnections = async (db: PrismaClient) => {
  * 指定サーバーslugの有効な接続を取得（--server指定時のconfig生成用）
  */
 export const findEnabledConnectionsBySlug = async (
-  db: PrismaClient,
+  db: DbClient,
   serverSlug: string,
 ) => {
   return db.mcpConnection.findMany({
@@ -111,7 +114,7 @@ export const findEnabledConnectionsBySlug = async (
 /**
  * IDでサーバーを取得
  */
-export const findServerById = async (db: PrismaClient, id: number) => {
+export const findServerById = async (db: DbClient, id: number) => {
   return db.mcpServer.findUnique({ where: { id } });
 };
 
@@ -119,7 +122,7 @@ export const findServerById = async (db: PrismaClient, id: number) => {
  * サーバー情報を更新
  */
 export const updateServer = async (
-  db: PrismaClient,
+  db: DbClient,
   id: number,
   data: { name?: string; description?: string },
 ) => {
@@ -129,7 +132,7 @@ export const updateServer = async (
 /**
  * サーバーを削除（カスケードで接続も削除）
  */
-export const deleteServer = async (db: PrismaClient, id: number) => {
+export const deleteServer = async (db: DbClient, id: number) => {
   return db.mcpServer.delete({ where: { id } });
 };
 
@@ -137,7 +140,7 @@ export const deleteServer = async (db: PrismaClient, id: number) => {
  * サーバーのenabled状態を切り替え
  */
 export const toggleServerEnabled = async (
-  db: PrismaClient,
+  db: DbClient,
   id: number,
   isEnabled: boolean,
 ) => {
@@ -148,7 +151,7 @@ export const toggleServerEnabled = async (
  * サーバーの稼働状態を更新（CLIモードからのステータス同期用）
  */
 export const updateServerStatus = async (
-  db: PrismaClient,
+  db: DbClient,
   id: number,
   serverStatus: ServerStatus,
 ) => {
@@ -159,7 +162,7 @@ export const updateServerStatus = async (
  * 全サーバーのステータスを一括更新（シャットダウン時の一括STOPPED化等）
  */
 export const updateAllServerStatus = async (
-  db: PrismaClient,
+  db: DbClient,
   serverStatus: ServerStatus,
 ) => {
   return db.mcpServer.updateMany({ data: { serverStatus } });
