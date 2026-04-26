@@ -62,7 +62,7 @@ jobs:
           echo "$DEPLOY_SSH_KEY_CONTENT" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
 
-          # Cloudflare Tunnel 経由で SSH するための ProxyCommand を設定
+          # Cloudflare Tunnel + Access Service Token 経由で SSH するための ProxyCommand を設定
           cat >> ~/.ssh/config << EOF
           Host ${DEPLOY_TUNNEL_HOSTNAME}
             ProxyCommand cloudflared access ssh --hostname %h
@@ -73,6 +73,9 @@ jobs:
         env:
           DEPLOY_SSH_KEY_CONTENT: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_TUNNEL_HOSTNAME: ${{ secrets.DEPLOY_TUNNEL_HOSTNAME }}
+          # cloudflared が自動で参照する Cloudflare Access Service Token
+          CLOUDFLARE_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CLOUDFLARE_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
 
       - name: 📤 Transfer files
         env:
