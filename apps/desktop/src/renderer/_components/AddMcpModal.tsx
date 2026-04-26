@@ -412,6 +412,7 @@ export const AddMcpModal = ({
                 </label>
                 <input
                   type="password"
+                  autoComplete="new-password"
                   value={credentials[key] ?? ""}
                   onChange={(e) =>
                     setCredentials((prev) => ({
@@ -468,6 +469,7 @@ export const AddMcpModal = ({
               </label>
               <input
                 type="password"
+                autoComplete="new-password"
                 value={oauthClientSecret}
                 onChange={(e) => setOauthClientSecret(e.target.value)}
                 placeholder="Client Secretを入力（任意）..."

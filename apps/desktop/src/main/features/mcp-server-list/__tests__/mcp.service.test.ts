@@ -420,6 +420,18 @@ describe("mcp.service", () => {
       expect(mcpRepository.createConnection).not.toHaveBeenCalled();
     });
 
+    test("バリデーション失敗時は暗号化処理が呼ばれない（fail fast）", async () => {
+      vi.mocked(catalogRepository.findById).mockResolvedValue(null);
+
+      await expect(
+        mcpService.createVirtualServer({
+          ...baseInput,
+          connections: [{ catalogId: 1, credentials: { GITHUB_TOKEN: "a" } }],
+        }),
+      ).rejects.toThrow("カタログ(id=1)が見つかりません");
+      expect(encryptToken).not.toHaveBeenCalled();
+    });
+
     test("同一カタログを複数追加した場合は接続slugにサフィックスを付与する", async () => {
       vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
       vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);

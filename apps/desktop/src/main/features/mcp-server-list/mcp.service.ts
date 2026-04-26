@@ -130,14 +130,7 @@ export const createVirtualServer = async (
 
   const db = await getDb();
 
-  // 暗号化（CPU/IO重）をtx外で並列実行
-  const encryptedCredentialsList = await Promise.all(
-    input.connections.map((conn) =>
-      encryptToken(JSON.stringify(conn.credentials)),
-    ),
-  );
-
-  // カタログ取得・バリデーション・接続slug計算もtx外で完了させる
+  // カタログ取得・バリデーションを先行（fail fast: 検証失敗時に暗号化コストを払わない）
   const usedConnectionSlugs = new Set<string>();
   const enrichedConnections = await Promise.all(
     input.connections.map(async (connection, index) => {
@@ -157,6 +150,13 @@ export const createVirtualServer = async (
       }
       return { catalog, index };
     }),
+  );
+
+  // バリデーション通過後に暗号化（CPU/IO重）をtx外で実行（SQLiteタイムアウト回避）
+  const encryptedCredentialsList = await Promise.all(
+    input.connections.map((conn) =>
+      encryptToken(JSON.stringify(conn.credentials)),
+    ),
   );
 
   // 接続slugを入力順で確定（Promise.allの結果はindex順を保証しているため決定論的）
