@@ -420,6 +420,29 @@ describe("mcp.service", () => {
       expect(mcpRepository.createConnection).not.toHaveBeenCalled();
     });
 
+    test("Filesystem STDIOカタログが含まれる場合はエラーを投げる（書き込みI/Oは起きない）", async () => {
+      // Filesystem STDIO はアクセス許可ディレクトリのargs指定UIが仮想MCP作成画面に未実装
+      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
+      vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
+      vi.mocked(mcpRepository.createServer).mockResolvedValue({
+        id: 10,
+      } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(catalogRepository.findById).mockResolvedValue(
+        buildCatalog({ id: 1, name: "Filesystem STDIO", authType: "NONE" }),
+      );
+
+      await expect(
+        mcpService.createVirtualServer({
+          ...baseInput,
+          connections: [{ catalogId: 1, credentials: {} }],
+        }),
+      ).rejects.toThrow(
+        "「Filesystem STDIO」は仮想MCP作成では未対応です（単体作成をご利用ください）",
+      );
+      expect(mcpRepository.createServer).not.toHaveBeenCalled();
+      expect(mcpRepository.createConnection).not.toHaveBeenCalled();
+    });
+
     test("バリデーション失敗時は暗号化処理が呼ばれない（fail fast）", async () => {
       vi.mocked(catalogRepository.findById).mockResolvedValue(null);
 

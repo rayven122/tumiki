@@ -9,6 +9,7 @@ import {
   FALLBACK_SLUG_PLACEHOLDER,
   VIRTUAL_SERVER_MAX_CONNECTIONS,
 } from "../../shared/mcp.constants";
+import { FILESYSTEM_STDIO_NAME } from "../../shared/catalog.constants";
 import {
   authTypeLabel,
   parseCredentialKeys,
@@ -40,7 +41,13 @@ export const ConnectorManual = (): JSX.Element => {
       .getAll()
       .then((items) => {
         // 仮想MCPはOAuth未対応のため除外（OAuthは個別の登録フローを利用）
-        setCatalogs(items.filter((c) => c.authType !== "OAUTH"));
+        // Filesystem STDIOはアクセス許可ディレクトリのargs指定UIが未実装のため除外
+        // （単体作成のAddMcpModalにはdirectoryPath入力UIがある。仮想MCPは将来DEV-1581で対応予定）
+        setCatalogs(
+          items.filter(
+            (c) => c.authType !== "OAUTH" && c.name !== FILESYSTEM_STDIO_NAME,
+          ),
+        );
       })
       .catch((e: unknown) => {
         // ロード失敗時もユーザーに通知（無言で空表示しない）

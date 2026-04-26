@@ -9,6 +9,7 @@ import {
   SLUG_FALLBACK_PREFIX,
   VIRTUAL_SERVER_MAX_CONNECTIONS,
 } from "../../../shared/mcp.constants";
+import { FILESYSTEM_STDIO_NAME } from "../../../shared/catalog.constants";
 import { encryptToken } from "../../utils/encryption";
 import { decryptCredentials } from "../../utils/credentials";
 import type {
@@ -130,7 +131,9 @@ export const createVirtualServer = async (
 
   const db = await getDb();
 
-  // カタログ取得・バリデーションを先行（fail fast: 検証失敗時に暗号化コストを払わない）
+  // カタログ取得・バリデーションを並列実行
+  // 並列なので1件目失敗でも他の取得自体はキャンセルされないが、Promise.allが即rejectされるため
+  // 後段の暗号化（CPU/IO重）は実行されない＝バリデーション失敗時のコストを最小化できる
   const usedConnectionSlugs = new Set<string>();
   const enrichedConnections = await Promise.all(
     input.connections.map(async (connection, index) => {
@@ -146,6 +149,13 @@ export const createVirtualServer = async (
       if (catalog.authType === "OAUTH") {
         throw new Error(
           `OAuth認証のカタログ「${catalog.name}」は仮想MCP作成では未対応です`,
+        );
+      }
+      // Filesystem STDIOはアクセス許可ディレクトリのargs指定UIが仮想MCP作成画面に未実装のため未対応
+      // （単体作成フローのAddMcpModalにはdirectoryPath入力UIがある）
+      if (catalog.name === FILESYSTEM_STDIO_NAME) {
+        throw new Error(
+          `「${catalog.name}」は仮想MCP作成では未対応です（単体作成をご利用ください）`,
         );
       }
       return { catalog, index };
