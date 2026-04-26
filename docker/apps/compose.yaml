@@ -16,6 +16,18 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    container_name: tumiki-redis
+    restart: unless-stopped
+    volumes:
+      - redis_vol:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   manager:
     image: ghcr.io/rayven122/tumiki-manager:${IMAGE_TAG:-latest}
     container_name: tumiki-manager
@@ -43,6 +55,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 30s
@@ -69,3 +83,4 @@ services:
 
 volumes:
   db_vol:
+  redis_vol:
