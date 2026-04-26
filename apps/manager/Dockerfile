@@ -37,8 +37,11 @@ COPY packages/shared ./packages/shared
 COPY packages/ui ./packages/ui
 COPY apps/manager ./apps/manager
 
-# .env.example をダミー値として利用（packages/db の dotenv 読み込み用）
+# .env.example をダミー値として利用
+# - /app/.env: packages/db の dotenv 読み込み用
+# - apps/manager/.env: Next.js が PRISMA_FIELD_ENCRYPTION_KEY 等を process.env に読み込む用
 COPY .env.example .env
+COPY .env.example apps/manager/.env
 
 # Python MCP インストールをスキップ
 ENV CI=true

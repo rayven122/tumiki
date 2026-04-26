@@ -86,8 +86,8 @@ jobs:
       - name: 📝 Create .env file for CI
         run: cp .env.example .env
 
-      - name: 🔧 Build packages (manager以外・manager本体はinfisical不使用のbuild:bareでビルド)
-        run: pnpm turbo build --filter=!@tumiki/manager
+      - name: 🔧 Build packages (apps は除外・テストに必要なパッケージのみ)
+        run: pnpm turbo build --filter="./packages/*"
 
       - name: 🧪 Run tests
         run: pnpm test
