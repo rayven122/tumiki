@@ -11,7 +11,6 @@ vi.mock("../../../shared/utils/logger");
 vi.mock("../../../utils/encryption");
 vi.mock("../oauth.token");
 vi.mock("../oauth.repository");
-vi.mock("../oauth.repository");
 vi.mock("../oauth.service", async (importOriginal) => {
   const original = await importOriginal<typeof import("../oauth.service")>();
   return {
