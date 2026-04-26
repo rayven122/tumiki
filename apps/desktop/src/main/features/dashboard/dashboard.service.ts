@@ -204,6 +204,8 @@ export const getDashboard = async (
     to: start,
   };
 
+  // TODO(perf): 30日 × 高頻度利用で件数が万単位になると IPC 応答が遅延する。
+  // 将来的には KPI 集計を DB 側の GROUP BY に寄せ、タイムライン用ログだけ取得する2フェーズ構成に分割する。
   const [logs, prevCounts, recentLogs, connectors] = await Promise.all([
     repository.findAuditLogsInRange(db, currentRange),
     repository.countAuditLogsInRange(db, previousRange),
