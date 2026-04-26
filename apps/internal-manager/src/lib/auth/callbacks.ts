@@ -132,8 +132,14 @@ export const jwtCallback = async ({
 
     // group_rolesはOIDCプロバイダーのカスタムクレームから取得（未設定の場合は空配列）
     const groupRoles = oidcProfile.tumiki?.group_roles;
+    token.provider = account.provider;
 
-    const updatedTumiki = await getTumikiClaims(db, token.sub, groupRoles);
+    const updatedTumiki = await getTumikiClaims(
+      db,
+      token.sub,
+      account.provider,
+      groupRoles,
+    );
 
     if (!updatedTumiki) {
       console.error(
@@ -164,6 +170,7 @@ export const jwtCallback = async ({
     const updatedTumiki = await getTumikiClaims(
       db,
       token.sub,
+      token.provider ?? "oidc",
       token.tumiki.group_roles,
     );
 
