@@ -18,7 +18,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     iconPath: "/logos/services/filesystem.svg",
     transportType: "STDIO",
     command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+    args: ["-y", "@modelcontextprotocol/server-filesystem"],
     credentialKeys: [],
     authType: "NONE",
     isOfficial: true,
