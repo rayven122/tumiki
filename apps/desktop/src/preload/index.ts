@@ -14,6 +14,8 @@ import type {
   AuditLogListAllInput,
   AuditLogListInput,
   AuditLogListResult,
+  DashboardInput,
+  DashboardResult,
 } from "../main/types";
 
 // Electron APIを安全に公開
@@ -92,6 +94,12 @@ const api = {
     listByServer: (input: AuditLogListInput): Promise<AuditLogListResult> =>
       ipcRenderer.invoke("audit:list-by-server", input),
     prune: (): Promise<number> => ipcRenderer.invoke("audit:prune"),
+  },
+
+  // ダッシュボード API
+  dashboard: {
+    get: (input: DashboardInput): Promise<DashboardResult> =>
+      ipcRenderer.invoke("dashboard:get", input),
   },
 
   // MCP OAuth認証 API

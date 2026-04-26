@@ -34,3 +34,17 @@ export type {
   AuditLogListAllInput,
   AuditLogListResult,
 } from "./features/audit-log/audit-log.types";
+
+// Dashboard feature
+export type {
+  DashboardPeriod,
+  DashboardKpi,
+  DashboardTimePoint,
+  DashboardConnectorSeries,
+  DashboardAiClient,
+  DashboardConnectorStatus,
+  DashboardConnectorCard,
+  DashboardLogItem,
+  DashboardInput,
+  DashboardResult,
+} from "./features/dashboard/dashboard.types";

@@ -6,6 +6,7 @@ import { setupCatalogIpc } from "./features/catalog/catalog.ipc";
 import { setupMcpIpc } from "./features/mcp-server-list/mcp.ipc";
 import { setupMcpServerDetailIpc } from "./features/mcp-server-detail/mcp-server-detail.ipc";
 import { setupAuditLogIpc } from "./features/audit-log/audit-log.ipc";
+import { setupDashboardIpc } from "./features/dashboard/dashboard.ipc";
 import { seedCatalogs } from "./features/catalog/catalog.seed";
 import { createOAuthManager } from "./auth/oauth-manager";
 import { getOAuthManager, setOAuthManager } from "./auth/manager-registry";
@@ -407,6 +408,7 @@ if (isMcpProxyMode) {
       setupMcpIpc();
       setupMcpServerDetailIpc();
       setupAuditLogIpc();
+      setupDashboardIpc();
 
       createWindow();
 
