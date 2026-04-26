@@ -15,7 +15,7 @@ const mockSecret = "test-secret-key-for-jwt-signing-must-be-secure-enough";
 beforeEach(() => {
   vi.resetAllMocks();
   // テスト用の環境変数を設定（vi.stubEnvを使用）
-  vi.stubEnv("NEXTAUTH_SECRET", mockSecret);
+  vi.stubEnv("AUTH_SECRET", mockSecret);
 });
 
 afterEach(() => {
@@ -99,11 +99,11 @@ describe("createStateToken", () => {
 
     const payload = createMockPayload();
     await expect(createStateToken(payload)).rejects.toThrow(
-      "NEXTAUTH_SECRET environment variable is required",
+      "AUTH_SECRET environment variable is required",
     );
 
     // 元に戻す
-    vi.stubEnv("NEXTAUTH_SECRET", mockSecret);
+    vi.stubEnv("AUTH_SECRET", mockSecret);
   });
 
   test("無効なペイロードでエラーを投げる", async () => {
@@ -216,14 +216,14 @@ describe("verifyStateToken", () => {
     const token = await createStateToken(payload);
 
     // 異なるシークレットキーを設定
-    vi.stubEnv("NEXTAUTH_SECRET", "different-secret-key");
+    vi.stubEnv("AUTH_SECRET", "different-secret-key");
 
     // joseライブラリは署名検証失敗時にエラーを投げる
     await expect(verifyStateToken(token)).rejects.toThrow();
 
     // 元に戻す
     vi.unstubAllEnvs();
-    vi.stubEnv("NEXTAUTH_SECRET", mockSecret);
+    vi.stubEnv("AUTH_SECRET", mockSecret);
   });
 
   test("環境変数が設定されていない場合はエラーを投げる", async () => {
@@ -234,11 +234,11 @@ describe("verifyStateToken", () => {
     vi.unstubAllEnvs();
 
     await expect(verifyStateToken(token)).rejects.toThrow(
-      "NEXTAUTH_SECRET environment variable is required",
+      "AUTH_SECRET environment variable is required",
     );
 
     // 元に戻す
-    vi.stubEnv("NEXTAUTH_SECRET", mockSecret);
+    vi.stubEnv("AUTH_SECRET", mockSecret);
   });
 
   test("古いトークンフォーマットを適切に処理する", async () => {

@@ -20,11 +20,14 @@ jobs:
       - name: ⚙️ Setup
         uses: ./.github/actions/setup
 
-      - name: 📝 Create .env file for CI
-        run: cp .env.example .env
+      - name: 🔧 Build dependency packages
+        run: pnpm turbo build --filter=@tumiki/manager^...
 
-      - name: 🔧 Build packages
-        run: pnpm turbo build
+      - name: 🔧 Build manager (Infisical不使用・.env.exampleのダミー値を使用)
+        working-directory: apps/manager
+        env:
+          NEXT_PUBLIC_TUMIKI_EDITION: ee
+        run: cp ../../.env.example .env && pnpm build:bare
 
   lint:
     name: 🔍 Lint
@@ -35,9 +38,6 @@ jobs:
 
       - name: ⚙️ Setup
         uses: ./.github/actions/setup
-
-      - name: 📝 Create .env file for CI
-        run: cp .env.example .env
 
       - name: 🔍 Run lint
         run: pnpm turbo lint
@@ -86,8 +86,8 @@ jobs:
       - name: 📝 Create .env file for CI
         run: cp .env.example .env
 
-      - name: 🔧 Build packages
-        run: pnpm turbo build
+      - name: 🔧 Build packages (apps は除外・テストに必要なパッケージのみ)
+        run: pnpm turbo build --filter="./packages/*"
 
       - name: 🧪 Run tests
         run: pnpm test
@@ -115,11 +115,11 @@ jobs:
             -e KEYCLOAK_CLIENT_SECRET=test \
             -e KEYCLOAK_ISSUER=https://dummy.keycloak.local/realms/tumiki \
             -e DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder \
-            -e PRISMA_FIELD_ENCRYPTION_KEY=k1.aesgcm256.FkhfY-sKgaYBJYteXBGudV6g_oBOW1TjU74hbowUl8s= \
+            -e PRISMA_FIELD_ENCRYPTION_KEY=k1.aesgcm256.kG588VHXtTCncg2y9KmbXqyssLulxqUjrSn9_TXFu2U= \
             tumiki-manager
           docker run -d --name mcp-proxy -p 8081:8080 \
             -e DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder \
-            -e PRISMA_FIELD_ENCRYPTION_KEY=k1.aesgcm256.FkhfY-sKgaYBJYteXBGudV6g_oBOW1TjU74hbowUl8s= \
+            -e PRISMA_FIELD_ENCRYPTION_KEY=k1.aesgcm256.kG588VHXtTCncg2y9KmbXqyssLulxqUjrSn9_TXFu2U= \
             tumiki-mcp-proxy
           docker run -d --name internal-manager -p 3100:3100 \
             -e OIDC_CLIENT_ID=test \
@@ -127,7 +127,7 @@ jobs:
             -e OIDC_ISSUER=https://dummy.oidc.local \
             -e AUTH_SECRET=dummy-auth-secret-for-smoke-test \
             -e DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder \
-            -e PRISMA_FIELD_ENCRYPTION_KEY=k1.aesgcm256.FkhfY-sKgaYBJYteXBGudV6g_oBOW1TjU74hbowUl8s= \
+            -e PRISMA_FIELD_ENCRYPTION_KEY=k1.aesgcm256.kG588VHXtTCncg2y9KmbXqyssLulxqUjrSn9_TXFu2U= \
             tumiki-internal-manager
 
       - name: ✅ Wait and verify health endpoints

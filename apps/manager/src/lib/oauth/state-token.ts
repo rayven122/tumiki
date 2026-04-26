@@ -34,9 +34,9 @@ export type OAuthStatePayload = z.infer<typeof OAuthStatePayloadSchema>;
  * JWTシークレットキーを取得
  */
 const getSecretKey = (): Uint8Array => {
-  const secret = process.env.NEXTAUTH_SECRET;
+  const secret = process.env.AUTH_SECRET;
   if (!secret) {
-    throw new Error("NEXTAUTH_SECRET environment variable is required");
+    throw new Error("AUTH_SECRET environment variable is required");
   }
   // Buffer.from() を使用して Uint8Array を作成
   // これにより、Vitest環境でも正しいグローバル Uint8Array インスタンスが生成される

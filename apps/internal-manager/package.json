@@ -6,10 +6,13 @@
   "scripts": {
     "dev": "PORT=3100 pnpm with-env next dev --turbopack",
     "build": "pnpm with-env next build --turbopack",
+    "build:bare": "next build --webpack",
     "start": "PORT=3100 pnpm with-env next start",
+    "start:prod": "PORT=3100 pnpm with-env:prod next start",
     "clean": "git clean -xdf .cache .next .turbo node_modules",
     "typecheck": "tsc --noEmit",
-    "with-env": "dotenv -e ../../.env --",
+    "with-env": "infisical run --env=dev --",
+    "with-env:prod": "infisical run --env=prod --",
     "lint": "eslint",
     "format": "prettier --check . --ignore-path ../../.gitignore",
     "check": "concurrently --kill-others-on-fail --names \"lint,format,typecheck\" \"pnpm run lint\" \"pnpm run format\" \"pnpm run typecheck\""
@@ -41,7 +44,6 @@
     "@types/react": "catalog:react19",
     "@types/react-dom": "catalog:react19",
     "concurrently": "^9.2.1",
-    "dotenv-cli": "^11.0.0",
     "eslint": "catalog:",
     "postcss": "^8.5.6",
     "prettier": "catalog:",
