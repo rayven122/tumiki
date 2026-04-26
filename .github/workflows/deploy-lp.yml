@@ -1,0 +1,54 @@
+name: Deploy LP to Vercel
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/lp/**"
+      - ".github/workflows/deploy-lp.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-lp-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: 🚀 Deploy LP to Vercel
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://lp.tumiki.cloud
+
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_LP_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Install Vercel CLI
+        run: pnpm add -g vercel@latest
+
+      - name: Pull Vercel project settings
+        run: vercel pull --yes --environment=production
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: vercel build --prod
+
+      - name: Deploy
+        run: vercel deploy --prebuilt --prod
