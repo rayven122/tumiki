@@ -131,7 +131,7 @@ const buildKpiCards = (kpi: DashboardKpi, period: Period) => {
       value: kpi.connectors.toLocaleString(),
       sub:
         kpi.connectorsDegraded > 0
-          ? `${kpi.connectorsDegraded} 遅延中`
+          ? `${kpi.connectorsDegraded} 要確認`
           : "全稼働",
       color: "var(--text-primary)",
     },
