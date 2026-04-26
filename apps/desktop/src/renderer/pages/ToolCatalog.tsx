@@ -6,14 +6,7 @@ import type { CatalogItem } from "../../types/catalog";
 import { AddMcpModal } from "../_components/AddMcpModal";
 import { toast } from "../_components/Toast";
 import { cardStyle } from "../utils/theme-styles";
-
-/** 認証種別ラベル */
-const authTypeLabel: Record<CatalogItem["authType"], string> = {
-  NONE: "設定不要",
-  BEARER: "Bearer",
-  API_KEY: "API Key",
-  OAUTH: "OAuth",
-};
+import { authTypeLabel } from "../../shared/catalog.helpers";
 
 /** 認証種別バッジスタイル */
 const authBadgeColor: Record<

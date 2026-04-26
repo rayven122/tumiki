@@ -3,11 +3,13 @@ import { z } from "zod";
 import * as mcpService from "./mcp.service";
 import type {
   CreateFromCatalogInput,
+  CreateVirtualServerInput,
   UpdateServerInput,
   DeleteServerInput,
   ToggleServerInput,
 } from "./mcp.types";
 import * as logger from "../../shared/utils/logger";
+import { VIRTUAL_SERVER_MAX_CONNECTIONS } from "../../../shared/mcp.constants";
 
 // IPC入力のバリデーションスキーマ
 const updateServerSchema = z.object({
@@ -38,6 +40,20 @@ const createFromCatalogSchema = z.object({
   authType: z.enum(["NONE", "BEARER", "API_KEY", "OAUTH"]),
 }) satisfies z.ZodType<CreateFromCatalogInput>;
 
+const createVirtualServerSchema = z.object({
+  name: z.string().min(1),
+  description: z.string(),
+  connections: z
+    .array(
+      z.object({
+        catalogId: z.number().int().positive(),
+        credentials: z.record(z.string(), z.string()),
+      }),
+    )
+    .min(1)
+    .max(VIRTUAL_SERVER_MAX_CONNECTIONS),
+}) satisfies z.ZodType<CreateVirtualServerInput>;
+
 /**
  * MCP関連の IPC ハンドラーを設定
  */
@@ -54,6 +70,21 @@ export const setupMcpIpc = (): void => {
         error instanceof Error ? error : { error },
       );
       throw new Error(`MCPサーバーの登録に失敗しました: ${message}`);
+    }
+  });
+
+  // 仮想MCPサーバーを登録（複数接続を1サーバーに束ねる）
+  ipcMain.handle("mcp:createVirtualServer", async (_, input: unknown) => {
+    try {
+      const validated = createVirtualServerSchema.parse(input);
+      return await mcpService.createVirtualServer(validated);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "不明なエラー";
+      logger.error(
+        "Failed to create virtual MCP server",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error(`仮想MCPサーバーの登録に失敗しました: ${message}`);
     }
   });
 

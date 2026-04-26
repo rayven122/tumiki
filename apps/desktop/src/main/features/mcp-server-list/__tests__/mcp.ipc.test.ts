@@ -201,9 +201,179 @@ describe("setupMcpIpc", () => {
     });
   });
 
+  describe("mcp:createFromCatalog", () => {
+    const validInput = {
+      catalogId: 1,
+      catalogName: "Test MCP",
+      description: "テスト用MCP",
+      transportType: "STDIO" as const,
+      command: "npx",
+      args: '["test-server"]',
+      url: null,
+      credentialKeys: ["API_KEY"],
+      credentials: { API_KEY: "test-key" },
+      authType: "API_KEY" as const,
+    };
+
+    test("有効な入力でカタログからサーバーを作成する", async () => {
+      const mockResult = { serverId: 1, serverName: "Test MCP" };
+      vi.mocked(mcpService.createFromCatalog).mockResolvedValue(mockResult);
+      const handler = mockIpcHandlers.get("mcp:createFromCatalog");
+
+      const result = await handler!({} as IpcMainInvokeEvent, validInput);
+
+      expect(result).toStrictEqual(mockResult);
+      expect(mcpService.createFromCatalog).toHaveBeenCalledWith(validInput);
+    });
+
+    test("catalogNameが空文字の場合はエラーになる", async () => {
+      const handler = mockIpcHandlers.get("mcp:createFromCatalog");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, { ...validInput, catalogName: "" }),
+      ).rejects.toThrow("MCPサーバーの登録に失敗しました");
+    });
+
+    test("transportTypeが不正な値の場合はエラーになる", async () => {
+      const handler = mockIpcHandlers.get("mcp:createFromCatalog");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, {
+          ...validInput,
+          transportType: "INVALID",
+        }),
+      ).rejects.toThrow("MCPサーバーの登録に失敗しました");
+    });
+
+    test("authTypeが不正な値の場合はエラーになる", async () => {
+      const handler = mockIpcHandlers.get("mcp:createFromCatalog");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, {
+          ...validInput,
+          authType: "INVALID",
+        }),
+      ).rejects.toThrow("MCPサーバーの登録に失敗しました");
+    });
+
+    test("catalogIdが文字列の場合はエラーになる", async () => {
+      const handler = mockIpcHandlers.get("mcp:createFromCatalog");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, {
+          ...validInput,
+          catalogId: "invalid",
+        }),
+      ).rejects.toThrow("MCPサーバーの登録に失敗しました");
+    });
+
+    test("サービスがエラーを投げた場合はラップして再スローする", async () => {
+      vi.mocked(mcpService.createFromCatalog).mockRejectedValue(
+        new Error("DB接続エラー"),
+      );
+      const handler = mockIpcHandlers.get("mcp:createFromCatalog");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, validInput),
+      ).rejects.toThrow("MCPサーバーの登録に失敗しました: DB接続エラー");
+    });
+  });
+
+  describe("mcp:createVirtualServer", () => {
+    const validInput = {
+      name: "週次レポート",
+      description: "GitHubとSlackを束ねた仮想MCP",
+      connections: [
+        { catalogId: 1, credentials: { GITHUB_TOKEN: "a" } },
+        { catalogId: 2, credentials: { SLACK_TOKEN: "b" } },
+      ],
+    };
+
+    test("有効な入力で仮想MCPを作成する", async () => {
+      const mockResult = { serverId: 10, serverName: "週次レポート" };
+      vi.mocked(mcpService.createVirtualServer).mockResolvedValue(mockResult);
+      const handler = mockIpcHandlers.get("mcp:createVirtualServer");
+
+      const result = await handler!({} as IpcMainInvokeEvent, validInput);
+
+      expect(result).toStrictEqual(mockResult);
+      expect(mcpService.createVirtualServer).toHaveBeenCalledWith(validInput);
+    });
+
+    test("接続が空配列の場合はエラーになる", async () => {
+      const handler = mockIpcHandlers.get("mcp:createVirtualServer");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, {
+          ...validInput,
+          connections: [],
+        }),
+      ).rejects.toThrow("仮想MCPサーバーの登録に失敗しました");
+    });
+
+    test("nameが空文字の場合はエラーになる", async () => {
+      const handler = mockIpcHandlers.get("mcp:createVirtualServer");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, { ...validInput, name: "" }),
+      ).rejects.toThrow("仮想MCPサーバーの登録に失敗しました");
+    });
+
+    test("catalogIdが文字列の場合はエラーになる", async () => {
+      const handler = mockIpcHandlers.get("mcp:createVirtualServer");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, {
+          ...validInput,
+          connections: [{ catalogId: "invalid", credentials: {} }],
+        }),
+      ).rejects.toThrow("仮想MCPサーバーの登録に失敗しました");
+    });
+
+    test("catalogIdが0以下の場合はエラーになる", async () => {
+      const handler = mockIpcHandlers.get("mcp:createVirtualServer");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, {
+          ...validInput,
+          connections: [{ catalogId: 0, credentials: {} }],
+        }),
+      ).rejects.toThrow("仮想MCPサーバーの登録に失敗しました");
+    });
+
+    test("接続が11件以上の場合はエラーになる（上限10件）", async () => {
+      const handler = mockIpcHandlers.get("mcp:createVirtualServer");
+      const tooManyConnections = Array.from({ length: 11 }, (_, i) => ({
+        catalogId: i + 1,
+        credentials: {},
+      }));
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, {
+          ...validInput,
+          connections: tooManyConnections,
+        }),
+      ).rejects.toThrow("仮想MCPサーバーの登録に失敗しました");
+    });
+
+    test("サービスがエラーを投げた場合はラップして再スローする", async () => {
+      vi.mocked(mcpService.createVirtualServer).mockRejectedValue(
+        new Error("カタログ(id=99)が見つかりません"),
+      );
+      const handler = mockIpcHandlers.get("mcp:createVirtualServer");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, validInput),
+      ).rejects.toThrow(
+        "仮想MCPサーバーの登録に失敗しました: カタログ(id=99)が見つかりません",
+      );
+    });
+  });
+
   describe("ハンドラー登録", () => {
     test("全てのIPCハンドラーが登録される", () => {
       expect(mockIpcHandlers.has("mcp:createFromCatalog")).toBe(true);
+      expect(mockIpcHandlers.has("mcp:createVirtualServer")).toBe(true);
       expect(mockIpcHandlers.has("mcp:getAll")).toBe(true);
       expect(mockIpcHandlers.has("mcp:updateServer")).toBe(true);
       expect(mockIpcHandlers.has("mcp:deleteServer")).toBe(true);

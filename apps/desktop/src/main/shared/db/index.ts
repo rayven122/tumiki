@@ -1,10 +1,18 @@
 import { PrismaClient } from "@prisma/desktop-client";
+import type { Prisma } from "@prisma/desktop-client";
 import { join } from "path";
 import { app } from "electron";
 import { existsSync, mkdirSync } from "fs";
 import { env } from "../env";
 import * as logger from "../utils/logger";
 import { runMigrations } from "./migrationRunner";
+
+/**
+ * トランザクション内外で共通利用できるDBクライアント型
+ * リポジトリ関数が PrismaClient と $transaction の TransactionClient を
+ * 両方受け付けられるよう、共通の型として公開する
+ */
+export type DbClient = PrismaClient | Prisma.TransactionClient;
 
 // 接続タイムアウト設定（ミリ秒）
 const CONNECTION_TIMEOUT_MS = env.DESKTOP_DB_TIMEOUT_MS;
