@@ -49,15 +49,14 @@ const ContactPage = () => {
     setIsSubmitting(true);
     setSubmitError("");
 
-    // メール送信（実装時にAPI routeに差し替え）
     const body = {
-      name: data.get("name"),
-      email: data.get("email"),
-      company: data.get("company"),
-      companySize: data.get("companySize"),
-      role: data.get("role"),
-      interest: data.get("interest"),
-      message: data.get("message"),
+      name: data.get("name") as string,
+      email: data.get("email") as string,
+      company: data.get("company") as string,
+      companySize: data.get("companySize") as string,
+      role: data.get("role") as string,
+      interest: data.get("interest") as string,
+      message: data.get("message") as string,
     };
 
     try {

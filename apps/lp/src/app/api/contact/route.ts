@@ -5,7 +5,6 @@ import { contactFormSchema } from "@/lib/contact-validation";
 const SLACK_WEBHOOK_URL = process.env.SLACK_CONTACT_WEBHOOK_URL;
 
 export const POST = async (request: Request) => {
-  // リクエストボディのバリデーション
   const rawBody: unknown = await request.json();
   const parsed = contactFormSchema.safeParse(rawBody);
 
@@ -14,6 +13,11 @@ export const POST = async (request: Request) => {
       { error: "入力内容に不備があります", details: parsed.error.flatten() },
       { status: 400 },
     );
+  }
+
+  if (!SLACK_WEBHOOK_URL) {
+    console.error("[Contact] SLACK_CONTACT_WEBHOOK_URL未設定");
+    return NextResponse.json({ error: "サーバー設定エラー" }, { status: 500 });
   }
 
   const body = parsed.data;
@@ -62,20 +66,16 @@ export const POST = async (request: Request) => {
     ],
   };
 
-  if (SLACK_WEBHOOK_URL) {
-    try {
-      await fetch(SLACK_WEBHOOK_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(slackMessage),
-      });
-    } catch (err) {
-      console.error("[Contact] Slack送信エラー:", err);
-    }
-  } else {
-    // Webhook未設定時はコンソールにログ
-    console.log("[Contact] SLACK_CONTACT_WEBHOOK_URL未設定。ログ出力:");
-    console.log(JSON.stringify(body, null, 2));
+  try {
+    const res = await fetch(SLACK_WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(slackMessage),
+    });
+    if (!res.ok) throw new Error(`Slack API error: ${res.status}`);
+  } catch (err) {
+    console.error("[Contact] Slack送信エラー:", err);
+    return NextResponse.json({ error: "送信に失敗しました" }, { status: 502 });
   }
 
   return NextResponse.json({ success: true });

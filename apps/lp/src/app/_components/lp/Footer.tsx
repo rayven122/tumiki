@@ -12,9 +12,9 @@ const FOOTER_LINKS = [
   {
     title: "リソース",
     links: [
-      { label: "ドキュメント", href: "/docs" },
-      { label: "ブログ", href: "/blog" },
-      { label: "お知らせ", href: "/news" },
+      { label: "ドキュメント", href: "#" },
+      { label: "ブログ", href: "#" },
+      { label: "お知らせ", href: "#" },
     ],
   },
   {
@@ -22,7 +22,7 @@ const FOOTER_LINKS = [
     links: [
       { label: "RAYVEN Inc.", href: "https://rayven.co.jp" },
       { label: "お問い合わせ", href: "/contact" },
-      { label: "プライバシーポリシー", href: "/privacy" },
+      { label: "プライバシーポリシー", href: "#" },
     ],
   },
 ] as const;
