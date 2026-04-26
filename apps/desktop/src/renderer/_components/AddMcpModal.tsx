@@ -107,12 +107,18 @@ export const AddMcpModal = ({
     setLoading(true);
     setError(null);
 
-    const resolvedArgs = isFilesystemStdio
-      ? JSON.stringify([
-          ...(JSON.parse(catalog.args) as string[]),
-          directoryPath.trim(),
-        ])
-      : catalog.args;
+    let resolvedArgs = catalog.args;
+    if (isFilesystemStdio) {
+      try {
+        const parsed: unknown = JSON.parse(catalog.args);
+        const baseArgs = Array.isArray(parsed) ? (parsed as string[]) : [];
+        resolvedArgs = JSON.stringify([...baseArgs, directoryPath.trim()]);
+      } catch {
+        setError("引数の解析に失敗しました");
+        setLoading(false);
+        return;
+      }
+    }
 
     // OAuth認証フロー
     if (isOAuth) {
