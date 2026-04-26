@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: keycloak
-      POSTGRES_PASSWORD: keycloak_staging
+      POSTGRES_PASSWORD: ${KC_DB_PASSWORD}
       POSTGRES_DB: keycloak
     volumes:
       - db_vol:/var/lib/postgresql/data
@@ -19,17 +19,17 @@ services:
     image: quay.io/keycloak/keycloak:26.4
     container_name: tumiki-keycloak
     restart: unless-stopped
-    command: ["start-dev"]
+    command: ["start", "--http-enabled=true"]
     environment:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USERNAME}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://db:5432/keycloak
       KC_DB_USERNAME: keycloak
-      KC_DB_PASSWORD: keycloak_staging
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
       KC_HEALTH_ENABLED: "true"
       KC_HTTP_ENABLED: "true"
-      KC_HOSTNAME: https://stg-auth.tumiki.cloud
+      KC_HOSTNAME: ${KC_HOSTNAME}
       KC_PROXY_HEADERS: xforwarded
     ports:
       - "8080:8080"

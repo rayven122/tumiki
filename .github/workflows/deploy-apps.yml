@@ -106,7 +106,8 @@ jobs:
     if: |
       (github.event_name == 'workflow_run' &&
        github.event.workflow_run.conclusion == 'success' &&
-       startsWith(github.event.workflow_run.head_branch, 'v')) ||
+       startsWith(github.event.workflow_run.head_branch, 'v') &&
+       contains(github.event.workflow_run.head_branch, '.')) ||
       (github.event_name == 'workflow_dispatch' && inputs.environment == 'production')
     environment: production
 
