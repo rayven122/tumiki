@@ -28,18 +28,11 @@ const PERIOD_DEFINITIONS: Record<
   },
 };
 
-/** 系列色の固定パレット（凡例の上位順に割り当て） */
-const SERIES_PALETTE = [
-  "#E01E5A",
-  "#A259FF",
-  "#10a37f",
-  "#8b949e",
-  "#DA704E",
-  "#362D59",
-];
-
 /** チャート系列の最大数 */
 const TOP_N_CONNECTIONS = 5;
+
+/** 系列色の固定パレット（凡例の上位順に TOP_N_CONNECTIONS 件まで割り当て） */
+const SERIES_PALETTE = ["#E01E5A", "#A259FF", "#10a37f", "#8b949e", "#DA704E"];
 
 /** AIクライアント円グラフの最大件数 */
 const TOP_N_AI_CLIENTS = 5;

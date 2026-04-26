@@ -278,10 +278,12 @@ describe("dashboard.service", () => {
       expect(calls).toHaveLength(1);
       const range = calls[0]?.[1];
       if (!range) throw new Error("findAuditLogsInRange が呼ばれていません");
-      expect(range.to.getTime()).toBe(NOW.getTime());
+      // ceilToBucket はローカルタイムで丸めるためタイムゾーン非依存に検証する
       expect(range.to.getTime() - range.from.getTime()).toBe(
         24 * 60 * 60 * 1000,
       );
+      expect(range.from.getTime()).toBeLessThanOrEqual(NOW.getTime());
+      expect(range.to.getTime()).toBeGreaterThanOrEqual(NOW.getTime());
 
       const prevCalls = vi.mocked(repository.countAuditLogsInRange).mock.calls;
       expect(prevCalls).toHaveLength(1);
