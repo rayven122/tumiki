@@ -162,15 +162,17 @@ const buildAiClients = (logs: AuditLogSlim[]): DashboardAiClient[] => {
     if (!log.clientName) continue;
     counts.set(log.clientName, (counts.get(log.clientName) ?? 0) + 1);
   }
-  const total = [...counts.values()].reduce((a, b) => a + b, 0);
-  return [...counts.entries()]
+  // Recharts の円グラフは表示要素を正規化するため、母数も上位N件に揃えないと
+  // 凡例のパーセンテージとセクター比が一致しなくなる
+  const top = [...counts.entries()]
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .slice(0, TOP_N_AI_CLIENTS)
-    .map(([name, count]) => ({
-      name,
-      count,
-      percentage: total > 0 ? round1((count / total) * 100) : 0,
-    }));
+    .slice(0, TOP_N_AI_CLIENTS);
+  const total = top.reduce((acc, [, count]) => acc + count, 0);
+  return top.map(([name, count]) => ({
+    name,
+    count,
+    percentage: total > 0 ? round1((count / total) * 100) : 0,
+  }));
 };
 
 /** コネクタカードの組み立て */

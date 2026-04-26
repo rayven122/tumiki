@@ -164,6 +164,46 @@ describe("dashboard.service", () => {
       ]);
     });
 
+    test("AIクライアントが6件以上ある場合は上位5件のみを母数に再計算する", async () => {
+      // 件数: a=10, b=8, c=6, d=4, e=2, f=1（fは6件目で除外される）
+      // 上位5件のみで合計30件 → a=33.3%, b=26.7%, c=20%, d=13.3%, e=6.7%（合計100%）
+      const logs: AuditLogSlim[] = [];
+      let id = 1;
+      const distribution: [string, number][] = [
+        ["a", 10],
+        ["b", 8],
+        ["c", 6],
+        ["d", 4],
+        ["e", 2],
+        ["f", 1],
+      ];
+      for (const [name, count] of distribution) {
+        for (let i = 0; i < count; i++) {
+          logs.push(createLog({ id: id++, clientName: name }));
+        }
+      }
+      vi.mocked(repository.findAuditLogsInRange).mockResolvedValue(logs);
+
+      const result = await service.getDashboard({ period: "24h" });
+
+      // Recharts の円グラフ正規化と一致させるため、母数は上位5件のみ
+      const sumOfPercentages = result.aiClients.reduce(
+        (acc, c) => acc + c.percentage,
+        0,
+      );
+      expect(result.aiClients).toHaveLength(5);
+      expect(result.aiClients.map((c) => c.name)).toStrictEqual([
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+      ]);
+      // 丸め誤差を許容して合計100%付近
+      expect(sumOfPercentages).toBeGreaterThanOrEqual(99.9);
+      expect(sumOfPercentages).toBeLessThanOrEqual(100.1);
+    });
+
     test("コネクタカードはServerStatusに応じてactive/degraded/inactiveに変換される", async () => {
       vi.mocked(repository.findAllConnectors).mockResolvedValue([
         createConnector({
