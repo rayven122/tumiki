@@ -8,7 +8,12 @@
  * desktop の --server <slug> オプションで渡す configs を絞り込むことで
  * 単体サーバーとして動作させる。
  */
-import type { McpServerConfig, ServerStatus, ToolCallHook } from "./types.js";
+import type {
+  McpServerConfig,
+  ServerStatus,
+  ToolCallHook,
+  ToolPolicyResolver,
+} from "./types.js";
 import { createProxyCore } from "./core.js";
 import { startStdioInbound } from "./inbound/stdio-inbound.js";
 import { stderrLogger as logger } from "./stderr-logger.js";
@@ -20,6 +25,11 @@ export type ProxyHooks = {
   onShutdown?: () => Promise<void>;
   /** サーバーの接続状態が変化したときに呼ばれるコールバック */
   onStatusChange?: (name: string, status: ServerStatus, error?: string) => void;
+  /**
+   * ツール公開ポリシー解決関数（仮想MCP等で各ツールの公開可否・説明上書きを制御）
+   * 未指定時は全ツール公開・上書きなし（既存挙動）
+   */
+  getToolPolicy?: ToolPolicyResolver;
 };
 
 export const runMcpProxy = async (
@@ -28,7 +38,7 @@ export const runMcpProxy = async (
 ): Promise<void> => {
   logger.info("tumiki-mcp-proxy を起動しています...");
 
-  const core = createProxyCore(configs, logger);
+  const core = createProxyCore(configs, logger, hooks?.getToolPolicy);
 
   // ステータス変更フックを登録
   if (hooks?.onStatusChange) {

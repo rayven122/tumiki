@@ -29,6 +29,25 @@ export type CreateMcpConnectionInput = {
 };
 
 /**
+ * McpTool 作成時の入力データ型
+ * 仮想MCP作成時に各接続のツール一覧から保存する用途
+ */
+export type CreateMcpToolInput = {
+  /// 元MCPから取得したツール名（ルーティング識別子）
+  name: string;
+  /// 元の説明
+  description: string;
+  /// 入力スキーマ（JSON Schema文字列）
+  inputSchema: string;
+  /// カスタム説明（nullなら元のdescriptionを使用）
+  customDescription?: string | null;
+  /// ツールの公開可否
+  isAllowed: boolean;
+  /// 親接続のID
+  connectionId: number;
+};
+
+/**
  * MCPサーバーを接続情報付きで全件取得
  */
 export const findAllWithConnections = async (db: DbClient) => {
@@ -64,6 +83,46 @@ export const createConnection = async (
   data: CreateMcpConnectionInput,
 ) => {
   return db.mcpConnection.create({ data });
+};
+
+/**
+ * McpTool を一括作成（仮想MCP作成時）
+ * createManyだとSQLite制約により返却値が件数のみのため、
+ * パフォーマンスは多少劣るが個別createで一貫性を取る
+ */
+export const createTools = async (
+  db: DbClient,
+  tools: CreateMcpToolInput[],
+) => {
+  for (const tool of tools) {
+    await db.mcpTool.create({ data: tool });
+  }
+};
+
+/**
+ * 指定サーバーslug配下のMcpToolを全件取得（proxy起動時のpolicy解決用）
+ * proxy 側からは configName (`${serverSlug}-${connectionSlug}`) で参照されるため、
+ * server.slug と connection.slug 両方を含めて返す
+ */
+export const findToolsByServerSlug = async (
+  db: DbClient,
+  serverSlug: string,
+) => {
+  return db.mcpTool.findMany({
+    where: {
+      connection: {
+        server: { slug: serverSlug },
+      },
+    },
+    include: {
+      connection: {
+        select: {
+          slug: true,
+          server: { select: { slug: true } },
+        },
+      },
+    },
+  });
 };
 
 /**
