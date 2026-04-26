@@ -4,7 +4,41 @@ import { contactFormSchema } from "@/lib/contact-validation";
 
 const SLACK_WEBHOOK_URL = process.env.SLACK_CONTACT_WEBHOOK_URL;
 
+/** IPごとの送信履歴（メモリ内レート制限） */
+const rateLimitMap = new Map<string, number[]>();
+const RATE_LIMIT_MAX = 3;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+
+const isRateLimited = (ip: string): boolean => {
+  const now = Date.now();
+  const timestamps = (rateLimitMap.get(ip) ?? []).filter(
+    (t) => now - t < RATE_LIMIT_WINDOW_MS,
+  );
+  if (timestamps.length >= RATE_LIMIT_MAX) return true;
+  rateLimitMap.set(ip, [...timestamps, now]);
+  return false;
+};
+
+/** Slack mrkdwn の <>&文字をエスケープしてインジェクションを防ぐ */
+const escapeMrkdwn = (s: string): string =>
+  s.replace(
+    /[<>&]/g,
+    (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[c] ?? c,
+  );
+
 export const POST = async (request: Request) => {
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    request.headers.get("x-real-ip") ??
+    "unknown";
+
+  if (isRateLimited(ip)) {
+    return NextResponse.json(
+      { error: "送信回数の上限に達しました。時間をおいて再度お試しください。" },
+      { status: 429 },
+    );
+  }
+
   const rawBody: unknown = await request.json();
   const parsed = contactFormSchema.safeParse(rawBody);
 
@@ -35,22 +69,31 @@ export const POST = async (request: Request) => {
       {
         type: "section",
         fields: [
-          { type: "mrkdwn", text: `*氏名*\n${body.name}` },
-          { type: "mrkdwn", text: `*メール*\n${body.email}` },
-          { type: "mrkdwn", text: `*会社名*\n${body.company}` },
+          { type: "mrkdwn", text: `*氏名*\n${escapeMrkdwn(body.name)}` },
+          { type: "mrkdwn", text: `*メール*\n${escapeMrkdwn(body.email)}` },
+          { type: "mrkdwn", text: `*会社名*\n${escapeMrkdwn(body.company)}` },
           {
             type: "mrkdwn",
-            text: `*従業員数*\n${body.companySize ?? "未入力"}`,
+            text: `*従業員数*\n${body.companySize ? escapeMrkdwn(body.companySize) : "未入力"}`,
           },
-          { type: "mrkdwn", text: `*役職*\n${body.role ?? "未入力"}` },
-          { type: "mrkdwn", text: `*相談内容*\n${body.interest ?? "未入力"}` },
+          {
+            type: "mrkdwn",
+            text: `*役職*\n${body.role ? escapeMrkdwn(body.role) : "未入力"}`,
+          },
+          {
+            type: "mrkdwn",
+            text: `*相談内容*\n${escapeMrkdwn(body.interest)}`,
+          },
         ],
       },
       ...(body.message
         ? [
             {
               type: "section",
-              text: { type: "mrkdwn", text: `*詳細・ご質問*\n${body.message}` },
+              text: {
+                type: "mrkdwn",
+                text: `*詳細・ご質問*\n${escapeMrkdwn(body.message)}`,
+              },
             },
           ]
         : []),

@@ -57,9 +57,8 @@ export const contactFormSchema = z.object({
     .or(z.literal("")),
   interest: z
     .string()
-    .max(100, "ご相談内容は100文字以内で入力してください")
-    .optional()
-    .or(z.literal("")),
+    .min(1, "ご相談内容は必須です")
+    .max(100, "ご相談内容は100文字以内で入力してください"),
   message: z
     .string()
     .max(2000, "詳細・ご質問は2000文字以内で入力してください")

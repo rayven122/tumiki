@@ -42,21 +42,22 @@ const ContactPage = () => {
 
     const form = e.currentTarget;
     const data = new FormData(form);
-    const email = data.get("email") as string;
+    const getString = (fd: FormData, key: string): string =>
+      (fd.get(key) as string | null) ?? "";
 
-    if (!validateEmail(email)) return;
+    if (!validateEmail(getString(data, "email"))) return;
 
     setIsSubmitting(true);
     setSubmitError("");
 
     const body = {
-      name: data.get("name") as string,
-      email: data.get("email") as string,
-      company: data.get("company") as string,
-      companySize: data.get("companySize") as string,
-      role: data.get("role") as string,
-      interest: data.get("interest") as string,
-      message: data.get("message") as string,
+      name: getString(data, "name"),
+      email: getString(data, "email"),
+      company: getString(data, "company"),
+      companySize: getString(data, "companySize"),
+      role: getString(data, "role"),
+      interest: getString(data, "interest"),
+      message: getString(data, "message"),
     };
 
     try {
