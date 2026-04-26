@@ -1,2 +1,2 @@
 export * from "../generated/client/index.js";
-export { db, type PrismaTransactionClient } from "./prisma.js";
+export type { PrismaClient, PrismaTransactionClient } from "./prisma.js";
