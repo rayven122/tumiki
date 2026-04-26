@@ -19,7 +19,6 @@ concurrency:
 
 permissions:
   contents: read
-  packages: read
 
 jobs:
   deploy:
@@ -29,31 +28,14 @@ jobs:
 
     env:
       IMAGE_TAG: ${{ inputs.image_tag || 'latest' }}
-      DEPLOY_ENV: ${{ inputs.environment == 'staging' && 'staging' || 'prod' }}
+      INFISICAL_ENV: ${{ inputs.environment == 'staging' && 'staging' || 'prod' }}
 
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v4
 
-      - name: 🔐 Inject Infisical secrets
-        uses: Infisical/secrets-action@v1.0.7
-        with:
-          method: "universal-auth"
-          client-id: ${{ secrets.INFISICAL_CLIENT_ID }}
-          client-secret: ${{ secrets.INFISICAL_CLIENT_SECRET }}
-          env-slug: ${{ env.DEPLOY_ENV }}
-          project-id: ${{ vars.INFISICAL_PROJECT_ID }}
-          export-type: "env"
-
-      - name: 📝 Generate .env file
-        run: |
-          # Infisical が注入した環境変数から .env を生成
-          printenv | grep -E '^(DATABASE_URL|PRISMA_FIELD_ENCRYPTION_KEY|KEYCLOAK_CLIENT_ID|KEYCLOAK_CLIENT_SECRET|KEYCLOAK_ISSUER|OIDC_CLIENT_ID|OIDC_CLIENT_SECRET|OIDC_ISSUER|AUTH_SECRET|AUTH_URL)=' > /tmp/resolved.env
-          echo "IMAGE_TAG=${IMAGE_TAG}" >> /tmp/resolved.env
-
       - name: 🔑 Configure SSH (Cloudflare Tunnel)
         run: |
-          # cloudflared インストール（GitHub Releases から直接取得）
           curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o /tmp/cloudflared.deb
           sudo dpkg -i /tmp/cloudflared.deb
 
@@ -61,7 +43,6 @@ jobs:
           echo "$DEPLOY_SSH_KEY_CONTENT" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
 
-          # Cloudflare Tunnel + Access Service Token 経由で SSH するための ProxyCommand を設定
           cat >> ~/.ssh/config << EOF
           Host ${DEPLOY_TUNNEL_HOSTNAME}
             ProxyCommand cloudflared access ssh --hostname %h
@@ -72,21 +53,17 @@ jobs:
         env:
           DEPLOY_SSH_KEY_CONTENT: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_TUNNEL_HOSTNAME: ${{ secrets.DEPLOY_TUNNEL_HOSTNAME }}
-          # cloudflared が自動で参照する Cloudflare Access Service Token
           CLOUDFLARE_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CLOUDFLARE_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
 
-      - name: 📤 Transfer files
+      - name: 📤 Transfer compose.yaml
         env:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_TUNNEL_HOSTNAME: ${{ secrets.DEPLOY_TUNNEL_HOSTNAME }}
         run: |
           SSH_TARGET="${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}"
-          REMOTE_DIR="~/tumiki"
-
-          ssh "$SSH_TARGET" "mkdir -p $REMOTE_DIR"
-          scp docker/apps/compose.yaml "$SSH_TARGET:$REMOTE_DIR/compose.yaml"
-          scp /tmp/resolved.env "$SSH_TARGET:$REMOTE_DIR/.env"
+          ssh "$SSH_TARGET" "mkdir -p ~/tumiki"
+          scp docker/apps/compose.yaml "$SSH_TARGET:~/tumiki/compose.yaml"
 
       - name: 🐳 Deploy containers
         env:
@@ -94,11 +71,14 @@ jobs:
           DEPLOY_TUNNEL_HOSTNAME: ${{ secrets.DEPLOY_TUNNEL_HOSTNAME }}
         run: |
           SSH_TARGET="${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}"
-          ssh "$SSH_TARGET" 'bash -s' << 'REMOTE_SCRIPT'
+          INFISICAL_ENV_VAL="${INFISICAL_ENV}"
+          IMAGE_TAG_VAL="${IMAGE_TAG}"
+          ssh "$SSH_TARGET" "bash -s" << REMOTE_SCRIPT
             set -euo pipefail
             cd ~/tumiki
-            docker compose pull
-            docker compose up -d --remove-orphans
+            export IMAGE_TAG="${IMAGE_TAG_VAL}"
+            infisical run --env="${INFISICAL_ENV_VAL}" -- docker compose pull
+            infisical run --env="${INFISICAL_ENV_VAL}" -- docker compose up -d --remove-orphans
           REMOTE_SCRIPT
 
       - name: ✅ Verify health endpoints
@@ -126,4 +106,4 @@ jobs:
 
       - name: 🧹 Cleanup
         if: always()
-        run: rm -f ~/.ssh/deploy_key ~/.ssh/config /tmp/resolved.env
+        run: rm -f ~/.ssh/deploy_key ~/.ssh/config
