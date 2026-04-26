@@ -1,0 +1,151 @@
+/**
+ * @namespace Idp
+ * OIDC IDP連携・グループ管理・アクセス制御
+ */
+
+/// @namespace Idp
+/// IdP識別子（provider + sub）と内部UserのN:1マッピング
+/// IdP切替・複数IdP対応のための分離層
+model ExternalIdentity {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// "entra" | "okta" | "google" | "keycloak"
+  provider     String
+  /// IdP の sub claim
+  sub          String
+  lastSyncedAt DateTime @updatedAt
+
+  @@unique([provider, sub])
+}
+
+/// @namespace Idp
+/// IDPグループ / Tumiki独自グループ 統合管理
+model Group {
+  id           String      @id @default(cuid())
+  /// Tumiki上の論理名（表示名）
+  name         String
+  description  String?
+  color        String?
+  /// IDP: IdPから自動同期 / TUMIKI: 管理画面で手動作成
+  source       GroupSource
+  /// source=IDPの場合: "entra" | "okta" | "google" | "keycloak"
+  provider     String?
+  /// source=IDPの場合: IdP側のグループID/メール等
+  externalId   String?
+  lastSyncedAt DateTime?
+
+  memberships  UserGroupMembership[]
+  permissions  GroupToolPermission[]
+  syncLogs     IdpSyncLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([provider, externalId])
+}
+
+/// @namespace Idp
+enum GroupSource {
+  /// IdPから同期されたグループ（退職・異動で自動更新）
+  IDP
+  /// 管理画面で手動作成（AI推進チーム等の横断組織）
+  TUMIKI
+}
+
+/// @namespace Idp
+model UserGroupMembership {
+  id      String      @id @default(cuid())
+  userId  String
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  groupId String
+  group   Group       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  /// メンバーシップの由来（IDPから同期 or 手動追加）
+  source  GroupSource
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, groupId])
+}
+
+/// @namespace Idp
+/// グループ単位のMCPサーバーアクセス権限
+/// mcpServerIdはpages/dbのMcpServer.idと対応（FK制約なし）
+model GroupToolPermission {
+  id          String  @id @default(cuid())
+  groupId     String
+  group       Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  /// 対象MCPサーバーID（packages/dbのMcpServer.idと対応）
+  mcpServerId String
+  read        Boolean @default(false)
+  write       Boolean @default(false)
+  execute     Boolean @default(false)
+
+  @@unique([groupId, mcpServerId])
+}
+
+/// @namespace Idp
+/// 個別申請による例外アクセス許可（GBAC 2層目）
+model IndividualPermission {
+  id          String         @id @default(cuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// 対象MCPサーバーID（packages/dbのMcpServer.idと対応）
+  mcpServerId String
+  /// 申請理由
+  reason      String
+  status      ApprovalStatus @default(PENDING)
+  /// 承認者のユーザーID
+  approvedBy  String?
+  approvedAt  DateTime?
+  /// 有効期限（nullは無期限）
+  expiresAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, mcpServerId])
+}
+
+/// @namespace Idp
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+/// @namespace Idp
+/// JIT / SCIM / 手動同期のログ
+model IdpSyncLog {
+  id      String      @id @default(cuid())
+  /// nullは全体同期
+  groupId String?
+  group   Group?      @relation(fields: [groupId], references: [id])
+  trigger SyncTrigger
+  status  SyncStatus
+  added   Int         @default(0)
+  removed Int         @default(0)
+  errors  Int         @default(0)
+  detail  String?
+
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+}
+
+/// @namespace Idp
+enum SyncTrigger {
+  /// ログイン時の自動同期
+  JIT
+  /// SCIM 2.0 エンドポイント経由（Enterprise）
+  SCIM
+  /// 管理画面からの手動同期
+  MANUAL
+}
+
+/// @namespace Idp
+enum SyncStatus {
+  SUCCESS
+  FAILED
+  PARTIAL
+}
