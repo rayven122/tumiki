@@ -13,3 +13,9 @@ export const VIRTUAL_SERVER_MAX_CONNECTIONS = 10;
  * (^[a-zA-Z0-9_-]{1,64}$) を満たす一意な slug を生成する
  */
 export const SLUG_FALLBACK_PREFIX = "connector";
+
+/**
+ * 自動生成slugのUI表示用プレースホルダー
+ * 実際の乱数値はmain側で確定するため、UIでは固定文字列で代用する
+ */
+export const FALLBACK_SLUG_PLACEHOLDER = `${SLUG_FALLBACK_PREFIX}-xxxx`;

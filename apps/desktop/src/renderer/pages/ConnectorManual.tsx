@@ -6,33 +6,14 @@ import type { CatalogItem } from "../../types/catalog";
 import { toast } from "../_components/Toast";
 import { toSlug } from "../../shared/mcp.slug";
 import {
+  FALLBACK_SLUG_PLACEHOLDER,
   SLUG_FALLBACK_PREFIX,
   VIRTUAL_SERVER_MAX_CONNECTIONS,
 } from "../../shared/mcp.constants";
-
-/** 自動生成slugの表示用プレースホルダー（実際の乱数値はmain側で確定する） */
-const FALLBACK_SLUG_PLACEHOLDER = `${SLUG_FALLBACK_PREFIX}-xxxx`;
-
-/** 認証種別ラベル */
-const authTypeLabel: Record<CatalogItem["authType"], string> = {
-  NONE: "設定不要",
-  BEARER: "Bearer",
-  API_KEY: "API Key",
-  OAUTH: "OAuth",
-};
-
-/** カタログのcredentialKeys（JSON文字列）をパース */
-const parseCredentialKeys = (raw: string): string[] => {
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    // DBから来る値でも要素がstringでない可能性に備え、型ガードで実行時に絞り込む
-    return Array.isArray(parsed)
-      ? parsed.filter((k): k is string => typeof k === "string")
-      : [];
-  } catch {
-    return [];
-  }
-};
+import {
+  authTypeLabel,
+  parseCredentialKeys,
+} from "../../shared/catalog.helpers";
 
 /** 認証情報の入力が必要かどうか */
 const needsCredentials = (catalog: CatalogItem): boolean =>

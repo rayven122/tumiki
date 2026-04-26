@@ -3,6 +3,16 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { X, Info } from "lucide-react";
 import type { CatalogItem } from "../../types/catalog";
 import { FILESYSTEM_STDIO_NAME } from "../../shared/catalog.constants";
+import {
+  authTypeLabel,
+  parseCredentialKeys,
+} from "../../shared/catalog.helpers";
+import { toSlug } from "../../shared/mcp.slug";
+import {
+  FALLBACK_SLUG_PLACEHOLDER,
+  SLUG_FALLBACK_PREFIX,
+} from "../../shared/mcp.constants";
+import { DISCOVERY_ERROR_CODE } from "../../shared/oauth/discovery-error-codes";
 
 type AddMcpModalProps = {
   catalog: CatalogItem;
@@ -10,34 +20,12 @@ type AddMcpModalProps = {
   onSuccess: (serverName: string) => void;
 };
 
-/** 認証種別ラベル */
-const authTypeLabel: Record<CatalogItem["authType"], string> = {
-  NONE: "設定不要",
-  BEARER: "Bearer",
-  API_KEY: "API Key",
-  OAUTH: "OAuth",
-};
-
-import { toSlug } from "../../shared/mcp.slug";
-import { SLUG_FALLBACK_PREFIX } from "../../shared/mcp.constants";
-import { DISCOVERY_ERROR_CODE } from "../../shared/oauth/discovery-error-codes";
-
-/** 自動生成slugの表示用プレースホルダー（実際の乱数値はmain側で確定する） */
-const FALLBACK_SLUG_PLACEHOLDER = `${SLUG_FALLBACK_PREFIX}-xxxx`;
-
 export const AddMcpModal = ({
   catalog,
   onClose,
   onSuccess,
 }: AddMcpModalProps): JSX.Element => {
-  const credentialKeys: string[] = (() => {
-    try {
-      const parsed: unknown = JSON.parse(catalog.credentialKeys);
-      return Array.isArray(parsed) ? (parsed as string[]) : [];
-    } catch {
-      return [];
-    }
-  })();
+  const credentialKeys: string[] = parseCredentialKeys(catalog.credentialKeys);
   const [serverName, setServerName] = useState(catalog.name);
   const [credentials, setCredentials] = useState<Record<string, string>>(
     Object.fromEntries(credentialKeys.map((key) => [key, ""])),
@@ -537,7 +525,7 @@ export const AddMcpModal = ({
           </button>
           <button
             type="button"
-            onClick={handleSubmit}
+            onClick={() => void handleSubmit()}
             disabled={loading}
             className="rounded-lg px-6 py-2.5 text-sm font-medium transition hover:opacity-90 disabled:opacity-50"
             style={{
