@@ -1,7 +1,6 @@
 "use client";
 
 import AnimateIn from "./AnimateIn";
-import { Plate } from "./Plate";
 import { floatStyle, mouseStyle, useMouse } from "./use-mouse";
 
 /* ===== SVG 1: 特許（ロック+同心円シールド） ===== */
