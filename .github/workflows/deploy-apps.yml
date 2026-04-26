@@ -37,14 +37,14 @@ jobs:
       - name: 🔑 Configure SSH (Cloudflare Tunnel)
         uses: ./.github/actions/setup-cloudflare-ssh
         with:
-          tunnel-hostname: ${{ secrets.DEPLOY_TUNNEL_HOSTNAME }}
+          tunnel-hostname: ${{ vars.DEPLOY_TUNNEL_HOSTNAME }}
           cf-access-client-id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           cf-access-client-secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
 
       - name: 📤 Transfer compose.yaml
         env:
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_TUNNEL_HOSTNAME: ${{ secrets.DEPLOY_TUNNEL_HOSTNAME }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_TUNNEL_HOSTNAME: ${{ vars.DEPLOY_TUNNEL_HOSTNAME }}
         run: |
           SSH_TARGET="${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}"
           ssh "$SSH_TARGET" "mkdir -p ~/tumiki"
@@ -52,8 +52,8 @@ jobs:
 
       - name: 🐳 Deploy containers
         env:
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_TUNNEL_HOSTNAME: ${{ secrets.DEPLOY_TUNNEL_HOSTNAME }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_TUNNEL_HOSTNAME: ${{ vars.DEPLOY_TUNNEL_HOSTNAME }}
         run: |
           SSH_TARGET="${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}"
           INFISICAL_ENV_VAL="${INFISICAL_ENV}"
@@ -68,8 +68,8 @@ jobs:
 
       - name: ✅ Verify health endpoints
         env:
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_TUNNEL_HOSTNAME: ${{ secrets.DEPLOY_TUNNEL_HOSTNAME }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_TUNNEL_HOSTNAME: ${{ vars.DEPLOY_TUNNEL_HOSTNAME }}
         run: |
           SSH_TARGET="${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}"
           ssh "$SSH_TARGET" 'bash -s' << 'HEALTHCHECK'
