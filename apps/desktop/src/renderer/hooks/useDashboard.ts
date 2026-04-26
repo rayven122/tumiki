@@ -15,6 +15,9 @@ export const useDashboard = (period: DashboardPeriod) => {
 
   useEffect(() => {
     let cancelled = false;
+    // 期間切替時は読み込み中状態に戻し、エラートーストも再度表示できるようにする
+    setLoading(true);
+    isFirstLoad.current = true;
 
     const fetch = async (): Promise<void> => {
       try {
@@ -24,12 +27,14 @@ export const useDashboard = (period: DashboardPeriod) => {
         }
       } catch (error) {
         if (cancelled) return;
+        const message = error instanceof Error ? error.message : String(error);
         // ポーリング失敗時はトーストを初回のみ表示し、以降は前回データを保持
         if (isFirstLoad.current) {
-          toast.error(
-            `ダッシュボードの取得に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
-          );
+          toast.error(`ダッシュボードの取得に失敗しました: ${message}`);
           setResult(null);
+        } else {
+          // 静かに古いデータが表示され続けるのを避けるため警告ログを残す
+          console.warn("[useDashboard] ポーリング更新に失敗しました:", message);
         }
       } finally {
         if (!cancelled && isFirstLoad.current) {

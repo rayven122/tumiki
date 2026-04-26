@@ -5,7 +5,7 @@ import { useAtomValue } from "jotai";
 import { Activity, ArrowRight, Bot, Megaphone } from "lucide-react";
 import { themeAtom } from "../store/atoms";
 import { ANNOUNCEMENTS } from "../data/mock";
-import { PERIODS, type Period } from "../data/dashboard-data";
+import { DEFAULT_KPI, PERIODS, type Period } from "../data/dashboard-data";
 import { useDashboard } from "../hooks/useDashboard";
 import { getClientLogo } from "../utils/ai-client-logo";
 import { statusBadge, isErrorRow } from "../utils/theme-styles";
@@ -259,12 +259,9 @@ const RecentLogRow = ({ item }: { item: DashboardLogItem }): JSX.Element => {
 
   return (
     <div
-      className="grid grid-cols-[70px_80px_120px_1fr_85px_50px] items-center gap-2 border-b border-b-[var(--border-subtle)] px-5 py-2.5 text-xs transition-colors"
-      style={{
-        backgroundColor: isErrorRow(status)
-          ? "rgba(239,68,68,0.03)"
-          : "transparent",
-      }}
+      className={`grid grid-cols-[70px_80px_120px_1fr_85px_50px] items-center gap-2 border-b border-b-[var(--border-subtle)] px-5 py-2.5 text-xs transition-colors ${
+        isErrorRow(status) ? "bg-red-500/[0.03]" : ""
+      }`}
     >
       <span className="font-mono text-[11px] text-[var(--text-subtle)]">
         {time}
@@ -331,22 +328,7 @@ export const Dashboard = (): JSX.Element => {
   );
 
   const kpiCards = useMemo(
-    () =>
-      result
-        ? buildKpiCards(result.kpi, period)
-        : buildKpiCards(
-            {
-              requests: 0,
-              requestsDelta: 0,
-              blocks: 0,
-              blockRate: 0,
-              successRate: 0,
-              successRateDelta: 0,
-              connectors: 0,
-              connectorsDegraded: 0,
-            },
-            period,
-          ),
+    () => buildKpiCards(result?.kpi ?? DEFAULT_KPI, period),
     [result, period],
   );
 

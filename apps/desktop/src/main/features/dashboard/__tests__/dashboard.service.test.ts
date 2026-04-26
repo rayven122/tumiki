@@ -46,7 +46,7 @@ describe("dashboard.service", () => {
   const mockDb = {} as Awaited<ReturnType<typeof getDb>>;
 
   beforeEach(() => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ shouldAdvanceTime: false });
     vi.setSystemTime(NOW);
     vi.clearAllMocks();
     vi.mocked(getDb).mockResolvedValue(mockDb);
