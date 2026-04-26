@@ -2,7 +2,18 @@
 
 import { useState } from "react";
 import { Plus, RefreshCw, Search, UserPlus } from "lucide-react";
-import { GroupSource, SyncStatus, SyncTrigger } from "@tumiki/internal-db";
+// @tumiki/internal-db を client でインポートすると Prisma の node: モジュールが混入するため、
+// 文字列定数として再定義する
+const GroupSource = { IDP: "IDP", TUMIKI: "TUMIKI" } as const;
+const SyncStatus = {
+  SUCCESS: "SUCCESS",
+  FAILED: "FAILED",
+  PARTIAL: "PARTIAL",
+} as const;
+const SyncTrigger = { JIT: "JIT", SCIM: "SCIM", MANUAL: "MANUAL" } as const;
+
+type SyncStatusValue = (typeof SyncStatus)[keyof typeof SyncStatus];
+type SyncTriggerValue = (typeof SyncTrigger)[keyof typeof SyncTrigger];
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/react";
 
@@ -52,7 +63,7 @@ const SYNC_STATUS_CONFIG: Record<
 /* ===== 同期履歴ステータスのスタイル ===== */
 
 const HISTORY_STATUS_CONFIG: Record<
-  SyncStatus,
+  SyncStatusValue,
   { bg: string; text: string; label: string }
 > = {
   [SyncStatus.SUCCESS]: {
@@ -74,7 +85,7 @@ const HISTORY_STATUS_CONFIG: Record<
 
 /* ===== 同期トリガーのラベル ===== */
 
-const TRIGGER_LABEL: Record<SyncTrigger, string> = {
+const TRIGGER_LABEL: Record<SyncTriggerValue, string> = {
   [SyncTrigger.JIT]: "JIT",
   [SyncTrigger.SCIM]: "SCIM",
   [SyncTrigger.MANUAL]: "手動",
@@ -206,7 +217,9 @@ const IdpTab = ({ group, idpGroupMap, onIdpGroupChange }: IdpTabProps) => {
           </div>
         )}
         {syncLogs.map((log) => {
-          const hCfg = HISTORY_STATUS_CONFIG[log.status];
+          const hCfg =
+            HISTORY_STATUS_CONFIG[log.status as SyncStatusValue] ??
+            HISTORY_STATUS_CONFIG[SyncStatus.FAILED];
           return (
             <div
               key={log.id}
