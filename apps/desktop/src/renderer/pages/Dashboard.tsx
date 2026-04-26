@@ -40,9 +40,12 @@ const PERIOD_DELTA_LABEL: Record<Period, string> = {
   "30d": "前月比",
 };
 
-/** 符号付きの差分整数表示 */
-const formatSignedInt = (value: number): string =>
-  value > 0 ? `+${value}` : String(value);
+/** 符号付きの差分整数表示（パーセント表示と揃えて0は ±0 を返す） */
+const formatSignedInt = (value: number): string => {
+  if (value > 0) return `+${value}`;
+  if (value < 0) return String(value);
+  return `±${value}`;
+};
 
 /** 符号付きの差分パーセント表示（小数1位） */
 const formatSignedPercent = (value: number): string => {

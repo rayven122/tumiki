@@ -115,7 +115,8 @@ const buildSeries = (logs: AuditLogSlim[]): DashboardConnectorSeries[] => {
     .map(([label], i) => ({
       key: buildSeriesKey(label, i),
       label,
-      color: SERIES_PALETTE[i % SERIES_PALETTE.length] ?? "#8b949e",
+      // i は 0..TOP_N_CONNECTIONS-1 で SERIES_PALETTE.length と同数のため必ず色が引ける
+      color: SERIES_PALETTE[i % SERIES_PALETTE.length]!,
     }));
 };
 
