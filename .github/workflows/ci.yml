@@ -20,11 +20,14 @@ jobs:
       - name: ⚙️ Setup
         uses: ./.github/actions/setup
 
-      - name: 📝 Create .env file for CI
-        run: cp .env.example .env
+      - name: 🔧 Build dependency packages
+        run: pnpm turbo build --filter=@tumiki/manager^...
 
-      - name: 🔧 Build packages
-        run: pnpm turbo build
+      - name: 🔧 Build manager (Infisical不使用・.env.exampleのダミー値を使用)
+        working-directory: apps/manager
+        env:
+          NEXT_PUBLIC_TUMIKI_EDITION: ee
+        run: cp ../../.env.example .env && pnpm build:bare
 
   lint:
     name: 🔍 Lint
@@ -35,9 +38,6 @@ jobs:
 
       - name: ⚙️ Setup
         uses: ./.github/actions/setup
-
-      - name: 📝 Create .env file for CI
-        run: cp .env.example .env
 
       - name: 🔍 Run lint
         run: pnpm turbo lint
@@ -86,8 +86,8 @@ jobs:
       - name: 📝 Create .env file for CI
         run: cp .env.example .env
 
-      - name: 🔧 Build packages
-        run: pnpm turbo build
+      - name: 🔧 Build packages (manager以外・manager本体はinfisical不使用のbuild:bareでビルド)
+        run: pnpm turbo build --filter=!@tumiki/manager
 
       - name: 🧪 Run tests
         run: pnpm test

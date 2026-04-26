@@ -32,16 +32,8 @@ COPY packages/keycloak ./packages/keycloak
 COPY packages/ui ./packages/ui
 COPY apps/internal-manager ./apps/internal-manager
 
-# Prisma postinstall と next build 用のダミー環境変数（実際の接続には使用されない）
-RUN printf '%s\n' \
-  "DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder" \
-  "INTERNAL_DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder" \
-  "PRISMA_FIELD_ENCRYPTION_KEY=k1.aesgcm256.FkhfY-sKgaYBJYteXBGudV6g_oBOW1TjU74hbowUl8s=" \
-  "OIDC_CLIENT_ID=dummy-oidc-client-id" \
-  "OIDC_CLIENT_SECRET=dummy-oidc-client-secret" \
-  "OIDC_ISSUER=https://dummy.oidc.local" \
-  "AUTH_SECRET=dummy-auth-secret-do-not-use-in-production" \
-  > .env
+# .env.example をダミー値として利用（packages/db の dotenv 読み込み用）
+COPY .env.example .env
 
 ENV CI=true
 
@@ -51,8 +43,8 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
 # internal-manager 依存パッケージのみを順序解決してビルド
 RUN pnpm turbo run build --filter=@tumiki/internal-manager^...
 
-# Next.js standalone モードでビルド
-RUN pnpm --filter @tumiki/internal-manager with-env next build --webpack
+# Next.js standalone モードでビルド（build:bare はinfisical不使用）
+RUN pnpm --filter @tumiki/internal-manager run build:bare
 
 # ========================================
 # Stage 3: Production
