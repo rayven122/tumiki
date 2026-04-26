@@ -1,6 +1,11 @@
 import { app, BrowserWindow, powerMonitor } from "electron";
 import { createMainWindow } from "./window";
 import { initializeDb, closeDb } from "./shared/db";
+import {
+  registerAppProtocolSchemes,
+  handleAppProtocol,
+  getRendererRoot,
+} from "./shared/app-protocol";
 import { setupAuthIpc } from "./ipc/auth";
 import { setupCatalogIpc } from "./features/catalog/catalog.ipc";
 import { setupMcpIpc } from "./features/mcp-server-list/mcp.ipc";
@@ -165,6 +170,10 @@ if (isMcpProxyMode) {
     }
   });
 } else {
+  // GUI モード: `app.ready` 前にカスタム tumiki-bundle:// スキームを privileged 登録する
+  // （Electronの仕様上、registerSchemesAsPrivileged は ready 前に呼ぶ必要がある）
+  registerAppProtocolSchemes();
+
   const PROTOCOL = "tumiki";
   const CALLBACK_HOST = "auth";
   const CALLBACK_PATHNAME = "/callback";
@@ -347,6 +356,12 @@ if (isMcpProxyMode) {
       // dev モードでは Electron 実行パスが起動ごとに変わる可能性があるため、
       // 起動時に毎回上書き登録する（setAsDefaultProtocolClient は冪等）
       app.setAsDefaultProtocolClient(PROTOCOL);
+
+      // production 用の tumiki-bundle:// プロトコルハンドラを登録（dev では vite dev server を使うため不要）
+      // レンダラー dist の絶対パス基点で配信し、`<img src="/logos/foo.svg">` を解決可能にする
+      if (!process.env["ELECTRON_RENDERER_URL"]) {
+        handleAppProtocol(getRendererRoot(__dirname));
+      }
 
       // データベース初期化
       await initializeDb();
