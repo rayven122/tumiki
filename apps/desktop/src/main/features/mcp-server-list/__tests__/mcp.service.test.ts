@@ -343,6 +343,37 @@ describe("mcp.service", () => {
       ).rejects.toThrow("仮想MCPには1つ以上の接続が必要です");
     });
 
+    test("接続がちょうど最大件数（10件）の場合は成功する", async () => {
+      // 境界値テスト: VIRTUAL_SERVER_MAX_CONNECTIONS と一致する件数では通過すること
+      // （`>` と `>=` の取り違えを検知）
+      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
+      vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
+      vi.mocked(mcpRepository.createServer).mockResolvedValue({
+        id: 10,
+      } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(catalogRepository.findById).mockResolvedValue(
+        buildCatalog({ id: 1, name: "GitHub" }),
+      );
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue(
+        {} as Awaited<ReturnType<typeof mcpRepository.createConnection>>,
+      );
+
+      const maxConnections = Array.from({ length: 10 }, () => ({
+        catalogId: 1,
+        credentials: { GITHUB_TOKEN: "x" },
+      }));
+      const result = await mcpService.createVirtualServer({
+        ...baseInput,
+        connections: maxConnections,
+      });
+
+      expect(result).toStrictEqual({
+        serverId: 10,
+        serverName: "週次レポート",
+      });
+      expect(mcpRepository.createConnection).toHaveBeenCalledTimes(10);
+    });
+
     test("接続が最大件数（10件）を超える場合はエラーを投げる", async () => {
       // ドメインルールはサービス層でも保証する（IPC層のZodだけに依存しない）
       const tooManyConnections = Array.from({ length: 11 }, () => ({

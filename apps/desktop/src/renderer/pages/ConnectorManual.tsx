@@ -77,7 +77,13 @@ export const ConnectorManual = (): JSX.Element => {
     [selectedCatalogIds, catalogById],
   );
 
-  /** カタログの選択トグル */
+  /**
+   * カタログの選択トグル
+   *
+   * 注意: UIはカタログIDをユニークキーとして扱うため、同一カタログを複数追加することはできない。
+   * サービス層（createVirtualServer）は同一カタログ複数接続を正式サポートし slug サフィックスを付与するが、
+   * その UI は DEV-1581 で対応予定（ツール単位の選択・description 上書き UI と同時に提供）。
+   */
   const toggleCatalog = (id: number) => {
     const isCurrentlySelected = selectedCatalogIds.includes(id);
 
