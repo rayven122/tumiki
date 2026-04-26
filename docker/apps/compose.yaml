@@ -1,0 +1,42 @@
+services:
+  manager:
+    image: ghcr.io/rayven122/tumiki-manager:${IMAGE_TAG:-latest}
+    container_name: tumiki-manager
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file: .env
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+
+  mcp-proxy:
+    image: ghcr.io/rayven122/tumiki-mcp-proxy:${IMAGE_TAG:-latest}
+    container_name: tumiki-mcp-proxy
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    env_file: .env
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+
+  internal-manager:
+    image: ghcr.io/rayven122/tumiki-internal-manager:${IMAGE_TAG:-latest}
+    container_name: tumiki-internal-manager
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    env_file: .env
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3100/api/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3

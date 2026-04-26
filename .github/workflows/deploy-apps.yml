@@ -1,0 +1,114 @@
+name: Deploy Apps
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'デプロイ先環境'
+        type: choice
+        options: [production, staging]
+        default: production
+      image_tag:
+        description: 'イメージタグ（省略時は latest）'
+        type: string
+        default: latest
+
+concurrency:
+  group: deploy-apps-${{ inputs.environment || 'production' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  deploy:
+    name: 🚀 Deploy to ${{ inputs.environment || 'production' }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'production' }}
+
+    env:
+      IMAGE_TAG: ${{ inputs.image_tag || 'latest' }}
+      DEPLOY_ENV: ${{ inputs.environment == 'staging' && 'staging' || 'prod' }}
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🔐 Inject Infisical secrets
+        uses: Infisical/secrets-action@v1.0.7
+        with:
+          method: "universal-auth"
+          client-id: ${{ secrets.INFISICAL_CLIENT_ID }}
+          client-secret: ${{ secrets.INFISICAL_CLIENT_SECRET }}
+          env-slug: ${{ env.DEPLOY_ENV }}
+          project-id: ${{ vars.INFISICAL_PROJECT_ID }}
+          export-type: "env"
+
+      - name: 📝 Generate .env file
+        run: |
+          # Infisical が注入した環境変数から .env を生成
+          printenv | grep -E '^(DATABASE_URL|PRISMA_FIELD_ENCRYPTION_KEY|KEYCLOAK_CLIENT_ID|KEYCLOAK_CLIENT_SECRET|KEYCLOAK_ISSUER|OIDC_CLIENT_ID|OIDC_CLIENT_SECRET|OIDC_ISSUER|AUTH_SECRET|AUTH_URL)=' > /tmp/resolved.env
+          echo "IMAGE_TAG=${IMAGE_TAG}" >> /tmp/resolved.env
+
+      - name: 🔑 Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_SSH_KEY_CONTENT" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$DEPLOY_HOST_VALUE" >> ~/.ssh/known_hosts
+        env:
+          DEPLOY_SSH_KEY_CONTENT: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST_VALUE: ${{ secrets.DEPLOY_HOST }}
+
+      - name: 📤 Transfer files
+        env:
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_HOST_VAL: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          SSH_TARGET="${DEPLOY_USER}@${DEPLOY_HOST_VAL}"
+          REMOTE_DIR="~/tumiki"
+
+          ssh -i ~/.ssh/deploy_key "$SSH_TARGET" "mkdir -p $REMOTE_DIR"
+          scp -i ~/.ssh/deploy_key docker/apps/compose.yaml "$SSH_TARGET:$REMOTE_DIR/compose.yaml"
+          scp -i ~/.ssh/deploy_key /tmp/resolved.env "$SSH_TARGET:$REMOTE_DIR/.env"
+
+      - name: 🐳 Deploy containers
+        env:
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_HOST_VAL: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          SSH_TARGET="${DEPLOY_USER}@${DEPLOY_HOST_VAL}"
+          ssh -i ~/.ssh/deploy_key "$SSH_TARGET" 'bash -s' << 'REMOTE_SCRIPT'
+            set -euo pipefail
+            cd ~/tumiki
+            docker compose pull
+            docker compose up -d --remove-orphans
+          REMOTE_SCRIPT
+
+      - name: ✅ Verify health endpoints
+        env:
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_HOST_VAL: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          SSH_TARGET="${DEPLOY_USER}@${DEPLOY_HOST_VAL}"
+          ssh -i ~/.ssh/deploy_key "$SSH_TARGET" 'bash -s' << 'HEALTHCHECK'
+            for i in $(seq 1 20); do
+              if curl -sf http://localhost:8080/api/health > /dev/null 2>&1 && \
+                 curl -sf http://localhost:8081/health > /dev/null 2>&1 && \
+                 curl -sf http://localhost:3100/api/health > /dev/null 2>&1; then
+                echo "=== Manager ===" && curl -sf http://localhost:8080/api/health | jq .
+                echo "=== MCP Proxy ===" && curl -sf http://localhost:8081/health | jq .
+                echo "=== Internal Manager ===" && curl -sf http://localhost:3100/api/health | jq .
+                exit 0
+              fi
+              echo "Waiting... ($i/20)" && sleep 5
+            done
+            echo "Timeout: コンテナが起動しませんでした"
+            docker compose logs --tail=50
+            exit 1
+          HEALTHCHECK
+
+      - name: 🧹 Cleanup
+        if: always()
+        run: rm -f ~/.ssh/deploy_key /tmp/resolved.env
