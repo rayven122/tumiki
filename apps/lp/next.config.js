@@ -1,6 +1,5 @@
 /** @type {import("next").NextConfig} */
 const config = {
-  output: "standalone",
   // framer-motion の useEffect 二重実行を防ぐため false（manager/internal-manager と統一）
   reactStrictMode: false,
   typescript: {
