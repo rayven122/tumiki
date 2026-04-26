@@ -271,6 +271,23 @@ describe("mcp.service", () => {
       ).rejects.toThrow("仮想MCPには1つ以上の接続が必要です");
     });
 
+    test("接続が最大件数（10件）を超える場合はエラーを投げる", async () => {
+      // ドメインルールはサービス層でも保証する（IPC層のZodだけに依存しない）
+      const tooManyConnections = Array.from({ length: 11 }, () => ({
+        catalogId: 1,
+        credentials: { GITHUB_TOKEN: "x" },
+      }));
+      await expect(
+        mcpService.createVirtualServer({
+          ...baseInput,
+          connections: tooManyConnections,
+        }),
+      ).rejects.toThrow("接続は最大10件までです");
+      // バリデーション失敗のため書き込みI/Oは一切起きない
+      expect(mcpRepository.createServer).not.toHaveBeenCalled();
+      expect(mcpRepository.createConnection).not.toHaveBeenCalled();
+    });
+
     test("カタログが見つからない場合はエラーを投げる（tx外で検証されサーバーは作成されない）", async () => {
       vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
       vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);

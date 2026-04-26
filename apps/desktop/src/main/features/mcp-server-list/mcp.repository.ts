@@ -1,15 +1,5 @@
-import type {
-  Prisma,
-  PrismaClient,
-  ServerStatus,
-} from "@prisma/desktop-client";
-
-/**
- * トランザクション内外で共通利用できるDBクライアント型
- * createVirtualServer のように $transaction の TransactionClient を渡したい場面のため、
- * 既存のリポジトリ関数も両対応可能なように受け口を広げる
- */
-export type DbClient = PrismaClient | Prisma.TransactionClient;
+import type { ServerStatus } from "@prisma/desktop-client";
+import type { DbClient } from "../../shared/db";
 
 /**
  * MCPサーバー作成時の入力データ型

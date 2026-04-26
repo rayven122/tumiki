@@ -19,7 +19,10 @@ const authTypeLabel: Record<CatalogItem["authType"], string> = {
 const parseCredentialKeys = (raw: string): string[] => {
   try {
     const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as string[]) : [];
+    // DBから来る値でも要素がstringでない可能性に備え、型ガードで実行時に絞り込む
+    return Array.isArray(parsed)
+      ? parsed.filter((k): k is string => typeof k === "string")
+      : [];
   } catch {
     return [];
   }
@@ -55,7 +58,7 @@ export const ConnectorManual = (): JSX.Element => {
       })
       .catch((e: unknown) => {
         // ロード失敗時もユーザーに通知（無言で空表示しない）
-        console.error("Failed to load catalogs:", e);
+        console.error("カタログの読み込みに失敗しました:", e);
         setCatalogs([]);
         toast.error("カタログの読み込みに失敗しました");
       })
