@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { Plus, RefreshCw, Search, UserPlus } from "lucide-react";
+import { api } from "~/trpc/react";
+import type { RouterOutputs } from "~/trpc/react";
+
 // @tumiki/internal-db を client でインポートすると Prisma の node: モジュールが混入するため、
 // 文字列定数として再定義する
 const GroupSource = { IDP: "IDP", TUMIKI: "TUMIKI" } as const;
@@ -14,8 +17,6 @@ const SyncTrigger = { JIT: "JIT", SCIM: "SCIM", MANUAL: "MANUAL" } as const;
 
 type SyncStatusValue = (typeof SyncStatus)[keyof typeof SyncStatus];
 type SyncTriggerValue = (typeof SyncTrigger)[keyof typeof SyncTrigger];
-import { api } from "~/trpc/react";
-import type { RouterOutputs } from "~/trpc/react";
 
 /* ===== 型定義 ===== */
 
@@ -217,9 +218,11 @@ const IdpTab = ({ group, idpGroupMap, onIdpGroupChange }: IdpTabProps) => {
           </div>
         )}
         {syncLogs.map((log) => {
-          const hCfg =
-            HISTORY_STATUS_CONFIG[log.status as SyncStatusValue] ??
-            HISTORY_STATUS_CONFIG[SyncStatus.FAILED];
+          const statusKey =
+            log.status in HISTORY_STATUS_CONFIG
+              ? (log.status as SyncStatusValue)
+              : SyncStatus.FAILED;
+          const hCfg = HISTORY_STATUS_CONFIG[statusKey];
           return (
             <div
               key={log.id}

@@ -38,6 +38,7 @@ export const usersRouter = createTRPCRouter({
           _count: { select: { groupMemberships: true } },
         },
         orderBy: { createdAt: "asc" },
+        take: 200,
       });
     }),
 });

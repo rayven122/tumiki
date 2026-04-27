@@ -31,6 +31,7 @@ export const groupsRouter = createTRPCRouter({
         },
       },
       orderBy: { createdAt: "asc" },
+      take: 200,
     });
   }),
 

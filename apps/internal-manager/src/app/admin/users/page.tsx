@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Search, UserPlus } from "lucide-react";
 import { api } from "~/trpc/react";
 
@@ -27,11 +27,17 @@ const DEFAULT_ROLE_STYLE = {
 
 const AdminUsersPage = () => {
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const { data: users = [], isLoading } = api.users.list.useQuery({
-    search: search || undefined,
+    search: debouncedSearch || undefined,
     role: roleFilter,
     isActive: statusFilter,
   });
@@ -69,8 +75,7 @@ const AdminUsersPage = () => {
             placeholder="名前・メールで検索"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="bg-bg-card border-border-default text-text-secondary rounded-lg border py-1.5 pr-3 pl-7 text-xs outline-none"
-            style={{ width: 220 }}
+            className="bg-bg-card border-border-default text-text-secondary w-[220px] rounded-lg border py-1.5 pr-3 pl-7 text-xs outline-none"
           />
         </div>
         <select
