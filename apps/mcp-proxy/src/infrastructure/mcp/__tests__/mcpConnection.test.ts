@@ -121,7 +121,6 @@ describe("connectToMcpServer", () => {
   let mockConnect: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    vi.clearAllMocks();
     mockConnect = vi.fn().mockResolvedValue(undefined);
     MockClient.mockImplementation(
       () =>
@@ -385,34 +384,25 @@ describe("connectToMcpServer core helper delegation", () => {
       "X-Custom-Header": "custom-value",
     });
 
-    try {
-      const client = await connectToMcpServer(
-        template,
-        userId,
-        instanceId,
-        null,
-      );
+    const client = await connectToMcpServer(template, userId, instanceId, null);
 
-      expect(client).toBeDefined();
-      expect(connectSpy).toHaveBeenCalledOnce();
-      expect(connectSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: template.name,
-          transportType: "STREAMABLE_HTTP",
-          url: template.url,
-          authType: "BEARER",
-          headers: {
-            Authorization: "Bearer test-token",
-            "X-Custom-Header": "custom-value",
-          },
-        }),
-        {
-          clientName: `tumiki-mcp-proxy-${template.name}`,
+    expect(client).toBeDefined();
+    expect(connectSpy).toHaveBeenCalledOnce();
+    expect(connectSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: template.name,
+        transportType: "STREAMABLE_HTTP",
+        url: template.url,
+        authType: "BEARER",
+        headers: {
+          Authorization: "Bearer test-token",
+          "X-Custom-Header": "custom-value",
         },
-      );
-    } finally {
-      connectSpy.mockRestore();
-    }
+      }),
+      {
+        clientName: `tumiki-mcp-proxy-${template.name}`,
+      },
+    );
   });
 
   test("SSE が core helper を経由して接続される", async () => {
@@ -426,24 +416,20 @@ describe("connectToMcpServer core helper delegation", () => {
       Authorization: "Bearer test-token",
     });
 
-    try {
-      await connectToMcpServer(template, userId, instanceId, null);
+    await connectToMcpServer(template, userId, instanceId, null);
 
-      expect(connectSpy).toHaveBeenCalledOnce();
-      expect(connectSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          transportType: "SSE",
-          url: template.url,
-          headers: {
-            Authorization: "Bearer test-token",
-          },
-        }),
-        {
-          clientName: `tumiki-mcp-proxy-${template.name}`,
+    expect(connectSpy).toHaveBeenCalledOnce();
+    expect(connectSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        transportType: "SSE",
+        url: template.url,
+        headers: {
+          Authorization: "Bearer test-token",
         },
-      );
-    } finally {
-      connectSpy.mockRestore();
-    }
+      }),
+      {
+        clientName: `tumiki-mcp-proxy-${template.name}`,
+      },
+    );
   });
 });
