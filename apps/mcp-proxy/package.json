@@ -31,6 +31,7 @@
     "@toon-format/toon": "^2.1.0",
     "@tumiki/db": "workspace:*",
     "@tumiki/license": "workspace:*",
+    "@tumiki/mcp-core-proxy": "workspace:*",
     "@tumiki/oauth-token-manager": "workspace:*",
     "@tumiki/prompts": "workspace:*",
     "@tumiki/shared": "workspace:*",

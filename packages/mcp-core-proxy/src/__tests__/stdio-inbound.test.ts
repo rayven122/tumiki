@@ -13,6 +13,10 @@ vi.mock("@modelcontextprotocol/sdk/server/index.js", () => ({
   Server: vi.fn().mockImplementation(() => ({
     setRequestHandler: mockServerSetRequestHandler,
     connect: mockServerConnect,
+    getClientVersion: vi.fn().mockReturnValue({
+      name: "test-client",
+      version: "1.0.0",
+    }),
   })),
 }));
 

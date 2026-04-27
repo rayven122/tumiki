@@ -1,8 +1,5 @@
+import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
 import type {
   CallToolResult,
@@ -11,36 +8,13 @@ import type {
   McpToolInfo,
   ServerStatus,
 } from "../types.js";
+import type { McpClientConnection } from "./mcp-client.js";
+import { createMcpClient } from "./mcp-client.js";
 
 // リトライ設定
 const MAX_RETRIES = 3;
 const RETRY_BASE_DELAY_MS = 1000;
 const RETRY_MULTIPLIER = 3;
-
-// 子プロセスに渡す環境変数を最小限に制限（Credential Leak防止）
-// process.env全体を渡すとDB接続文字列やOAuthトークン等が漏洩するリスクがある
-const SAFE_ENV_KEYS = [
-  "PATH",
-  "HOME",
-  "USERPROFILE",
-  "APPDATA",
-  "TEMP",
-  "TMP",
-  "TMPDIR",
-  "LANG",
-  "USER",
-  "USERNAME",
-  "SHELL",
-  "TERM",
-  "NODE_ENV",
-] as const;
-
-const safeBaseEnv = Object.fromEntries(
-  SAFE_ENV_KEYS.flatMap((key) => {
-    const val = process.env[key];
-    return val !== undefined ? [[key, val]] : [];
-  }),
-);
 
 /**
  * UpstreamClient型
@@ -82,56 +56,9 @@ export const createUpstreamClient = (
   let crashHandled = false;
 
   /**
-   * トランスポートタイプに応じたTransportインスタンスを生成
+   * MCPサーバー接続に必要なClient/Transportを生成
    */
-  const createTransport = (): Transport => {
-    switch (config.transportType) {
-      case "STDIO": {
-        const mergedEnv = { ...safeBaseEnv, ...config.env };
-        return new StdioClientTransport({
-          command: config.command,
-          args: config.args,
-          env: mergedEnv,
-        });
-      }
-      case "SSE":
-        return new SSEClientTransport(new URL(config.url), {
-          requestInit: { headers: config.headers },
-          // EventSourceはネイティブでカスタムヘッダー非対応のため、fetchを差し替えて注入
-          eventSourceInit: {
-            fetch: (url: string | URL, init?: RequestInit) => {
-              // HeadersInit は Headers | string[][] | Record<string, string> のため、安全に変換
-              const existingHeaders: Record<string, string> =
-                init?.headers instanceof Headers
-                  ? (Object.fromEntries(init.headers.entries()) as Record<
-                      string,
-                      string
-                    >)
-                  : Array.isArray(init?.headers)
-                    ? (Object.fromEntries(init.headers) as Record<
-                        string,
-                        string
-                      >)
-                    : ((init?.headers ?? {}) as Record<string, string>);
-              return fetch(url, {
-                ...init,
-                headers: { ...existingHeaders, ...config.headers },
-              });
-            },
-          },
-        });
-      case "STREAMABLE_HTTP":
-        return new StreamableHTTPClientTransport(new URL(config.url), {
-          requestInit: { headers: config.headers },
-        });
-      default: {
-        const _exhaustive: never = config;
-        throw new Error(
-          `未対応のトランスポートタイプ: ${JSON.stringify(_exhaustive)}`,
-        );
-      }
-    }
-  };
+  const createConnection = (): McpClientConnection => createMcpClient(config);
 
   /**
    * 状態を更新し、コールバックを呼び出す
@@ -160,12 +87,10 @@ export const createUpstreamClient = (
    */
   const attemptConnect = async (): Promise<void> => {
     try {
-      transport = createTransport();
-
-      client = new Client({
-        name: "tumiki-proxy",
-        version: "1.0.0",
-      });
+      const { client: nextClient, transport: nextTransport } =
+        createConnection();
+      client = nextClient;
+      transport = nextTransport;
 
       // 子プロセスのクラッシュを検知
       // onclose/onerrorが両方発火するケースがあるため、crashHandledで二重呼び出しを防止

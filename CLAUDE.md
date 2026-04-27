@@ -10,6 +10,7 @@
 |------------|------|
 | `apps/manager` | Next.js管理画面（RSC + tRPC） |
 | `apps/mcp-proxy` | MCPプロキシサーバー |
+| `packages/mcp-core-proxy` | MCPプロキシの再利用可能コアパッケージ（CLI/API 共通実装） |
 | `packages/db` | Prismaスキーマ・クライアント |
 | `packages/ui` | 共通UIコンポーネント |
 

@@ -25,9 +25,12 @@ export default defineConfig({
           index: resolve(__dirname, "src/main/index.ts"),
           "mcp-process": resolve(
             __dirname,
-            "../../packages/mcp-proxy/src/process.ts",
+            "../../packages/mcp-core-proxy/src/process.ts",
           ),
-          "mcp-cli": resolve(__dirname, "../../packages/mcp-proxy/src/cli.ts"),
+          "mcp-cli": resolve(
+            __dirname,
+            "../../packages/mcp-core-proxy/src/cli.ts",
+          ),
         },
         output: {
           format: "cjs",

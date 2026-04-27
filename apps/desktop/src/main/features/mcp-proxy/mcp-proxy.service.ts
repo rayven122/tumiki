@@ -1,4 +1,4 @@
-import type { AuthType, McpServerConfig } from "@tumiki/mcp-proxy-core";
+import type { AuthType, McpServerConfig } from "@tumiki/mcp-core-proxy";
 import type { TransportType } from "@prisma/desktop-client";
 import { z } from "zod";
 import { getDb } from "../../shared/db";
