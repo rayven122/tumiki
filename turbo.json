@@ -33,7 +33,7 @@
       "dependsOn": ["^build"],
       "outputs": [".cache/tsbuildinfo.json"]
     },
-    "@tumiki/core-mcp-proxy#typecheck": {
+    "@tumiki/mcp-core-proxy#typecheck": {
       "dependsOn": ["^build"],
       "outputs": []
     },

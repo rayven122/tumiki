@@ -1,5 +1,5 @@
 {
-  "name": "@tumiki/core-mcp-proxy",
+  "name": "@tumiki/mcp-core-proxy",
   "version": "0.1.0",
   "private": true,
   "type": "module",

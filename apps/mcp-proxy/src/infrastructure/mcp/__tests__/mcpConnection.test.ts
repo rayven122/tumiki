@@ -1,9 +1,9 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
-import type * as CoreMcpProxy from "@tumiki/core-mcp-proxy";
+import type * as McpCoreProxy from "@tumiki/mcp-core-proxy";
 import type {
   McpClientConnectionOptions,
   McpServerConfig,
-} from "@tumiki/core-mcp-proxy";
+} from "@tumiki/mcp-core-proxy";
 import type { McpConfig, McpServerTemplate } from "@tumiki/db/prisma";
 
 // @modelcontextprotocol/sdk のモック
@@ -21,8 +21,8 @@ vi.mock("@modelcontextprotocol/sdk/client/streamableHttp.js", () => ({
   StreamableHTTPClientTransport: vi.fn(),
 }));
 
-vi.mock("@tumiki/core-mcp-proxy", async (importOriginal) => {
-  const actual = await importOriginal<typeof CoreMcpProxy>();
+vi.mock("@tumiki/mcp-core-proxy", async (importOriginal) => {
+  const actual = await importOriginal<typeof McpCoreProxy>();
   return {
     ...actual,
     connectMcpClient: vi.fn(
@@ -371,7 +371,7 @@ describe("connectToMcpServer", () => {
 
 describe("connectToMcpServer core helper delegation", () => {
   test("STREAMABLE_HTTPS が core helper を経由し STREAMABLE_HTTP で接続される", async () => {
-    const coreProxy = await import("@tumiki/core-mcp-proxy");
+    const coreProxy = await import("@tumiki/mcp-core-proxy");
     const connectSpy = vi.mocked(coreProxy.connectMcpClient);
 
     const template = createMockTemplate({
@@ -416,7 +416,7 @@ describe("connectToMcpServer core helper delegation", () => {
   });
 
   test("SSE が core helper を経由して接続される", async () => {
-    const coreProxy = await import("@tumiki/core-mcp-proxy");
+    const coreProxy = await import("@tumiki/mcp-core-proxy");
     const connectSpy = vi.mocked(coreProxy.connectMcpClient);
     const template = createMockTemplate({
       transportType: "SSE",

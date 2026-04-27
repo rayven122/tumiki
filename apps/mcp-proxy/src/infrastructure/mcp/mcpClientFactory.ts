@@ -1,6 +1,6 @@
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { connectMcpClient } from "@tumiki/core-mcp-proxy";
-import type { AuthType, McpServerConfig } from "@tumiki/core-mcp-proxy";
+import { connectMcpClient } from "@tumiki/mcp-core-proxy";
+import type { AuthType, McpServerConfig } from "@tumiki/mcp-core-proxy";
 import type {
   McpConfig as DbMcpConfig,
   McpServerTemplate,
