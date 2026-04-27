@@ -45,7 +45,7 @@ const createConfig = (
   }) as McpServerConfig;
 
 describe("mcp-client helper", () => {
-  test("createMcpClient returns MCP client and SSE transport", () => {
+  test("createMcpClient が SSE トランスポートと MCP クライアントを返す", () => {
     const config = createConfig({
       transportType: "SSE",
       url: "https://example.com/events",
@@ -78,7 +78,7 @@ describe("mcp-client helper", () => {
     expect(result.client).toBeDefined();
   });
 
-  test("createMcpClient handles STREAMABLE_HTTP transport", () => {
+  test("createMcpClient が STREAMABLE_HTTP トランスポートを処理する", () => {
     const config = createConfig({
       transportType: "STREAMABLE_HTTP",
       url: "https://example.com/stream",
@@ -99,7 +99,7 @@ describe("mcp-client helper", () => {
     );
   });
 
-  test("connectMcpClient connects the client", async () => {
+  test("connectMcpClient がクライアントを接続する", async () => {
     const config = createConfig({
       transportType: "SSE",
       url: "https://example.com/events",
