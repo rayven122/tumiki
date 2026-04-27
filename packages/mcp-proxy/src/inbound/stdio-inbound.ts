@@ -51,14 +51,77 @@ export const startStdioInbound = async (
     let errorMessage: string | undefined;
     let resultContent: unknown[] = [];
 
-    try {
-      const result = await core.callTool(name, safeArgs);
-      resultContent = result.content;
+    // pre-call フィルタ: args を変換、または block 判定
+    let processedArgs = safeArgs;
+    let filterContext: unknown = undefined;
+    if (hooks?.filter) {
+      try {
+        const filtered = await hooks.filter.beforeCall(name, safeArgs);
+        if (filtered.blocked) {
+          isSuccess = false;
+          errorMessage = filtered.blocked.reason;
+          resultContent = [
+            { type: "text", text: `エラー: ${filtered.blocked.reason}` },
+          ];
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `エラー: ${filtered.blocked.reason}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+        processedArgs = filtered.args;
+        filterContext = filtered.context;
+      } catch (e) {
+        // フィルタ自体が落ちたら fail-close（PII 流出を防ぐためブロック側に倒す）
+        isSuccess = false;
+        errorMessage = `フィルタの実行に失敗しました: ${e instanceof Error ? e.message : String(e)}`;
+        logger.error("ツール呼び出しフィルタの前処理でエラーが発生しました", {
+          tool: name,
+          error: errorMessage,
+        });
+        resultContent = [{ type: "text", text: `エラー: ${errorMessage}` }];
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `エラー: ${errorMessage}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
 
-      if (result.isError) {
+    try {
+      const result = await core.callTool(name, processedArgs);
+
+      // post-call フィルタ: result を変換（マスク済みトークンの復号等）
+      // 失敗時はマスク済みのまま返す（fail-open）— 情報漏洩は発生しないため
+      let finalResult = result;
+      if (hooks?.filter) {
+        try {
+          finalResult = await hooks.filter.afterCall(filterContext, result);
+        } catch (e) {
+          logger.error(
+            "ツール呼び出しフィルタの後処理でエラーが発生しました（マスク済みのまま返します）",
+            {
+              tool: name,
+              error: e instanceof Error ? e.message : String(e),
+            },
+          );
+        }
+      }
+
+      resultContent = finalResult.content;
+
+      if (finalResult.isError) {
         isSuccess = false;
         // isError=trueの場合、contentからエラーメッセージを抽出
-        const textContent = result.content.find(
+        const textContent = finalResult.content.find(
           (c): c is { type: string; text: string } =>
             typeof c === "object" && c !== null && "type" in c && "text" in c,
         );
@@ -66,7 +129,7 @@ export const startStdioInbound = async (
       }
 
       return {
-        content: result.content.map((c) => {
+        content: finalResult.content.map((c) => {
           // MCP SDKのコンテンツ型（text, image, audio, resource, resource_link）をそのまま返す
           if (typeof c === "object" && c !== null && "type" in c) {
             return c as Record<string, unknown>;
@@ -74,7 +137,7 @@ export const startStdioInbound = async (
           // 不明な形式はテキストに変換
           return { type: "text" as const, text: JSON.stringify(c) };
         }),
-        isError: result.isError,
+        isError: finalResult.isError,
       };
     } catch (error) {
       isSuccess = false;

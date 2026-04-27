@@ -87,6 +87,26 @@ export type ToolCallEvent = {
 
 export type ToolCallHook = (event: ToolCallEvent) => void | Promise<void>;
 
+// ツール呼び出しフィルタ（PII マスキング等）
+// beforeCall で args を変換または block、afterCall で result を変換する
+export type ToolCallFilter = {
+  // リクエスト送信前: args を変換し、afterCall に渡すコンテキストを返す
+  // blocked が返された場合は upstream を呼ばずにエラー応答を返す
+  beforeCall: (
+    toolName: string,
+    args: Record<string, unknown>,
+  ) => Promise<{
+    args: Record<string, unknown>;
+    context: unknown;
+    blocked?: { reason: string };
+  }>;
+  // レスポンス受信後: context を使って result を変換する
+  afterCall: (
+    context: unknown,
+    result: CallToolResult,
+  ) => Promise<CallToolResult>;
+};
+
 // Logger型（注入用）
 export type Logger = {
   info: (msg: string, meta?: unknown) => void;

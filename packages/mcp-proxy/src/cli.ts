@@ -8,10 +8,34 @@
  * desktop の --server <slug> オプションで渡す configs を絞り込むことで
  * 単体サーバーとして動作させる。
  */
-import type { McpServerConfig, ServerStatus, ToolCallHook } from "./types.js";
+import type {
+  McpServerConfig,
+  ServerStatus,
+  ToolCallFilter,
+  ToolCallHook,
+} from "./types.js";
 import { createProxyCore } from "./core.js";
 import { startStdioInbound } from "./inbound/stdio-inbound.js";
 import { stderrLogger as logger } from "./stderr-logger.js";
+
+// mcp-cli.cjs バンドル経由で desktop 側から PII マスキング API を使えるように再 export
+export { stderrLogger } from "./stderr-logger.js";
+export { createRedactionFilter } from "./security/redaction-filter.js";
+export type {
+  RedactionPolicy,
+  RedactionFilterOptions,
+} from "./security/redaction-filter.js";
+export {
+  DEFAULT_PII_MASKING_ENABLED,
+  DEFAULT_REDACTION_POLICY,
+  DEFAULT_REDACTOR_OPTIONS,
+  DEFAULT_ALLOWLIST_TOOLS,
+} from "./security/config.js";
+export {
+  allCustomPatterns,
+  japanPatterns,
+  secretPatterns,
+} from "./security/patterns/index.js";
 
 // プロキシ起動時に注入可能なフック
 export type ProxyHooks = {
@@ -20,6 +44,8 @@ export type ProxyHooks = {
   onShutdown?: () => Promise<void>;
   /** サーバーの接続状態が変化したときに呼ばれるコールバック */
   onStatusChange?: (name: string, status: ServerStatus, error?: string) => void;
+  /** ツール呼び出しフィルタ（PII マスキング等の前処理・後処理） */
+  filter?: ToolCallFilter;
 };
 
 export const runMcpProxy = async (

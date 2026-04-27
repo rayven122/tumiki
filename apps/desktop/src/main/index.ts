@@ -141,7 +141,26 @@ if (isMcpProxyMode) {
           configs: import("@tumiki/mcp-proxy-core").McpServerConfig[],
           hooks?: import("@tumiki/mcp-proxy-core").ProxyHooks,
         ) => Promise<void>;
+        createRedactionFilter: typeof import("@tumiki/mcp-proxy-core").createRedactionFilter;
+        stderrLogger: import("@tumiki/mcp-proxy-core").Logger;
+        DEFAULT_PII_MASKING_ENABLED: boolean;
+        DEFAULT_REDACTION_POLICY: import("@tumiki/mcp-proxy-core").RedactionPolicy;
+        DEFAULT_REDACTOR_OPTIONS: import("openredaction").OpenRedactionOptions;
+        DEFAULT_ALLOWLIST_TOOLS: readonly string[];
+        allCustomPatterns: import("openredaction").PIIPattern[];
       };
+
+      // PII マスキングフィルタを構築（packages/mcp-proxy/src/security/config.ts で有効化判定）
+      const filter = mod.DEFAULT_PII_MASKING_ENABLED
+        ? mod.createRedactionFilter({
+            policy: mod.DEFAULT_REDACTION_POLICY,
+            redactor: mod.DEFAULT_REDACTOR_OPTIONS,
+            customPatterns: mod.allCustomPatterns,
+            allowlistTools: mod.DEFAULT_ALLOWLIST_TOOLS,
+            logger: mod.stderrLogger,
+          })
+        : undefined;
+
       await mod.runMcpProxy(configs, {
         onToolCall,
         onStatusChange,
@@ -149,6 +168,7 @@ if (isMcpProxyMode) {
           await resetAllServerStatus().catch(() => {});
           await closeDb();
         },
+        filter,
       });
     } catch (error) {
       // CLIモードではstdoutはMCPプロトコル専用のため、stderrに出す
