@@ -1,4 +1,9 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
+import type * as CoreMcpProxy from "@tumiki/core-mcp-proxy";
+import type {
+  McpClientConnectionOptions,
+  McpServerConfig,
+} from "@tumiki/core-mcp-proxy";
 import type { McpConfig, McpServerTemplate } from "@tumiki/db/prisma";
 
 // @modelcontextprotocol/sdk のモック
@@ -17,17 +22,18 @@ vi.mock("@modelcontextprotocol/sdk/client/streamableHttp.js", () => ({
 }));
 
 vi.mock("@tumiki/core-mcp-proxy", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@tumiki/core-mcp-proxy")>();
+  const actual = await importOriginal<typeof CoreMcpProxy>();
   return {
     ...actual,
-    connectMcpClient: vi.fn(async (config, options) => {
-      const { client, transport } = actual.createMcpClient(config, options);
-      if (typeof client.connect === "function") {
-        await client.connect(transport);
-      }
-      return client;
-    }),
+    connectMcpClient: vi.fn(
+      async (config: McpServerConfig, options?: McpClientConnectionOptions) => {
+        const { client, transport } = actual.createMcpClient(config, options);
+        if (typeof client.connect === "function") {
+          await client.connect(transport);
+        }
+        return client;
+      },
+    ),
   };
 });
 
