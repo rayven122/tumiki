@@ -47,7 +47,22 @@ jobs:
           cf-access-client-id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           cf-access-client-secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
 
+      - name: 🔍 Debug cloudflared auth
+        env:
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+        run: |
+          echo "CF_ACCESS_CLIENT_ID length: ${#CF_ACCESS_CLIENT_ID}"
+          echo "CF_ACCESS_CLIENT_SECRET length: ${#CF_ACCESS_CLIENT_SECRET}"
+          cat /tmp/cf-proxy.sh || echo "cf-proxy.sh not found"
+          echo "---"
+          CF_ACCESS_CLIENT_ID="${CF_ACCESS_CLIENT_ID}" CF_ACCESS_CLIENT_SECRET="${CF_ACCESS_CLIENT_SECRET}" \
+            cloudflared access token --app-url https://stg-ssh.tumiki.cloud 2>&1 | head -5 || true
+
       - name: 📤 Transfer compose.yaml
+        env:
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: |
           ssh "hisuzuya@stg-ssh.tumiki.cloud" "mkdir -p ~/tumiki"
           scp docker/apps/compose.yaml "hisuzuya@stg-ssh.tumiki.cloud:~/tumiki/compose.yaml"
