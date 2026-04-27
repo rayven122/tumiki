@@ -35,27 +35,38 @@ jobs:
 
     env:
       IMAGE_TAG: ${{ inputs.image_tag || 'main' }}
+      CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+      CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+      SSH_HOST: stg-ssh.tumiki.cloud
+      SSH_USER: hisuzuya
+      SSH_PORT: 2222
 
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v4
 
-      - name: 🔑 Configure SSH (Cloudflare Tunnel)
-        uses: ./.github/actions/setup-cloudflare-ssh
-        with:
-          tunnel-hostname: stg-ssh.tumiki.cloud
-          cf-access-client-id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
-          cf-access-client-secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+      - name: 🔑 Install cloudflared
+        run: |
+          curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o /tmp/cloudflared.deb
+          sudo dpkg -i /tmp/cloudflared.deb
+
+      - name: 🌐 Start Cloudflare TCP proxy
+        run: |
+          cloudflared access tcp --hostname "${SSH_HOST}" --url "localhost:${SSH_PORT}" &
+          echo "CLOUDFLARED_PID=$!" >> "$GITHUB_ENV"
+          sleep 3
 
       - name: 📤 Transfer compose.yaml
         run: |
-          ssh "hisuzuya@stg-ssh.tumiki.cloud" "mkdir -p ~/tumiki"
-          scp docker/apps/compose.yaml "hisuzuya@stg-ssh.tumiki.cloud:~/tumiki/compose.yaml"
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "${SSH_PORT}" localhost 2>/dev/null >> ~/.ssh/known_hosts || true
+          ssh -p "${SSH_PORT}" "${SSH_USER}@localhost" "mkdir -p ~/tumiki"
+          scp -P "${SSH_PORT}" docker/apps/compose.yaml "${SSH_USER}@localhost:~/tumiki/compose.yaml"
 
       - name: 🐳 Deploy containers
         run: |
           IMAGE_TAG_VAL="${IMAGE_TAG}"
-          ssh "hisuzuya@stg-ssh.tumiki.cloud" bash -l << REMOTE_SCRIPT
+          ssh -p "${SSH_PORT}" "${SSH_USER}@localhost" bash -l << REMOTE_SCRIPT
             set -euo pipefail
             cd ~/tumiki
             export IMAGE_TAG="${IMAGE_TAG_VAL}"
@@ -67,7 +78,7 @@ jobs:
 
       - name: ✅ Verify health endpoints
         run: |
-          ssh "hisuzuya@stg-ssh.tumiki.cloud" bash << 'HEALTHCHECK'
+          ssh -p "${SSH_PORT}" "${SSH_USER}@localhost" bash << 'HEALTHCHECK'
             for i in $(seq 1 20); do
               if curl -sf http://localhost:8080/api/health > /dev/null 2>&1 && \
                  curl -sf http://localhost:8081/health > /dev/null 2>&1 && \
@@ -86,7 +97,9 @@ jobs:
 
       - name: 🧹 Cleanup
         if: always()
-        run: rm -f ~/.ssh/config /tmp/cloudflared.deb
+        run: |
+          kill "${CLOUDFLARED_PID}" 2>/dev/null || true
+          rm -f /tmp/cloudflared.deb
 
   deploy-production:
     name: 🚀 Deploy to production
@@ -101,33 +114,38 @@ jobs:
 
     env:
       IMAGE_TAG: ${{ inputs.image_tag || 'latest' }}
+      CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+      CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+      SSH_HOST: ${{ vars.DEPLOY_TUNNEL_HOSTNAME }}
+      SSH_USER: ${{ vars.DEPLOY_USER }}
+      SSH_PORT: 2222
 
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v4
 
-      - name: 🔑 Configure SSH (Cloudflare Tunnel)
-        uses: ./.github/actions/setup-cloudflare-ssh
-        with:
-          tunnel-hostname: ${{ vars.DEPLOY_TUNNEL_HOSTNAME }}
-          cf-access-client-id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
-          cf-access-client-secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+      - name: 🔑 Install cloudflared
+        run: |
+          curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o /tmp/cloudflared.deb
+          sudo dpkg -i /tmp/cloudflared.deb
+
+      - name: 🌐 Start Cloudflare TCP proxy
+        run: |
+          cloudflared access tcp --hostname "${SSH_HOST}" --url "localhost:${SSH_PORT}" &
+          echo "CLOUDFLARED_PID=$!" >> "$GITHUB_ENV"
+          sleep 3
 
       - name: 📤 Transfer compose.yaml
-        env:
-          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
-          DEPLOY_TUNNEL_HOSTNAME: ${{ vars.DEPLOY_TUNNEL_HOSTNAME }}
         run: |
-          ssh "${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}" "mkdir -p ~/tumiki"
-          scp docker/apps/compose.yaml "${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}:~/tumiki/compose.yaml"
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "${SSH_PORT}" localhost 2>/dev/null >> ~/.ssh/known_hosts || true
+          ssh -p "${SSH_PORT}" "${SSH_USER}@localhost" "mkdir -p ~/tumiki"
+          scp -P "${SSH_PORT}" docker/apps/compose.yaml "${SSH_USER}@localhost:~/tumiki/compose.yaml"
 
       - name: 🐳 Deploy containers
-        env:
-          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
-          DEPLOY_TUNNEL_HOSTNAME: ${{ vars.DEPLOY_TUNNEL_HOSTNAME }}
         run: |
           IMAGE_TAG_VAL="${IMAGE_TAG}"
-          ssh "${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}" bash -l << REMOTE_SCRIPT
+          ssh -p "${SSH_PORT}" "${SSH_USER}@localhost" bash -l << REMOTE_SCRIPT
             set -euo pipefail
             cd ~/tumiki
             export IMAGE_TAG="${IMAGE_TAG_VAL}"
@@ -138,11 +156,8 @@ jobs:
           REMOTE_SCRIPT
 
       - name: ✅ Verify health endpoints
-        env:
-          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
-          DEPLOY_TUNNEL_HOSTNAME: ${{ vars.DEPLOY_TUNNEL_HOSTNAME }}
         run: |
-          ssh "${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}" bash << 'HEALTHCHECK'
+          ssh -p "${SSH_PORT}" "${SSH_USER}@localhost" bash << 'HEALTHCHECK'
             for i in $(seq 1 20); do
               if curl -sf http://localhost:8080/api/health > /dev/null 2>&1 && \
                  curl -sf http://localhost:8081/health > /dev/null 2>&1 && \
@@ -161,4 +176,6 @@ jobs:
 
       - name: 🧹 Cleanup
         if: always()
-        run: rm -f ~/.ssh/config /tmp/cloudflared.deb
+        run: |
+          kill "${CLOUDFLARED_PID}" 2>/dev/null || true
+          rm -f /tmp/cloudflared.deb
