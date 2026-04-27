@@ -101,12 +101,12 @@ importers:
       '@trpc/react-query':
         specifier: 'catalog:'
         version: 11.12.0(@tanstack/react-query@5.84.1(react@19.0.0))(@trpc/client@11.12.0(@trpc/server@11.12.0(typescript@5.9.3))(typescript@5.9.3))(@trpc/server@11.12.0(typescript@5.9.3))(react@19.0.0)(typescript@5.9.3)
-      '@tumiki/db':
-        specifier: workspace:*
-        version: link:../../packages/db
       '@tumiki/core-mcp-proxy':
         specifier: workspace:*
         version: link:../../packages/core-mcp-proxy
+      '@tumiki/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -774,6 +774,9 @@ importers:
       '@toon-format/toon':
         specifier: ^2.1.0
         version: 2.1.0
+      '@tumiki/core-mcp-proxy':
+        specifier: workspace:*
+        version: link:../../packages/core-mcp-proxy
       '@tumiki/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -847,6 +850,40 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 3.2.4(@edge-runtime/vm@3.2.0)(@types/debug@4.1.12)(@types/node@22.19.10)(jiti@2.6.1)(jsdom@27.3.0(bufferutil@4.0.9))(lightningcss@1.30.2)(tsx@4.21.0)
+
+  packages/core-mcp-proxy:
+    dependencies:
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.26.0
+        version: 1.26.0(@cfworker/json-schema@4.1.1)(zod@4.1.13)
+    devDependencies:
+      '@tumiki/eslint-config':
+        specifier: workspace:*
+        version: link:../../tooling/eslint
+      '@tumiki/prettier-config':
+        specifier: workspace:*
+        version: link:../../tooling/prettier
+      '@tumiki/tsconfig':
+        specifier: workspace:*
+        version: link:../../tooling/typescript
+      '@tumiki/vitest-config':
+        specifier: workspace:*
+        version: link:../../tooling/vitest
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 3.2.4(vitest@3.2.4(@edge-runtime/vm@3.2.0)(@types/debug@4.1.12)(@types/node@25.3.5)(jiti@2.6.1)(jsdom@27.3.0(bufferutil@4.0.9))(lightningcss@1.30.2)(tsx@4.21.0))
+      eslint:
+        specifier: 'catalog:'
+        version: 9.32.0(jiti@2.6.1)
+      prettier:
+        specifier: 'catalog:'
+        version: 3.8.1
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 3.2.4(@edge-runtime/vm@3.2.0)(@types/debug@4.1.12)(@types/node@25.3.5)(jiti@2.6.1)(jsdom@27.3.0(bufferutil@4.0.9))(lightningcss@1.30.2)(tsx@4.21.0)
 
   packages/db:
     dependencies:
@@ -1109,40 +1146,6 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 3.2.4(@edge-runtime/vm@3.2.0)(@types/debug@4.1.12)(@types/node@22.19.10)(jiti@2.6.1)(jsdom@27.3.0(bufferutil@4.0.9))(lightningcss@1.30.2)(tsx@4.21.0)
-
-  packages/core-mcp-proxy:
-    dependencies:
-      '@modelcontextprotocol/sdk':
-        specifier: ^1.26.0
-        version: 1.26.0(@cfworker/json-schema@4.1.1)(zod@4.1.13)
-    devDependencies:
-      '@tumiki/eslint-config':
-        specifier: workspace:*
-        version: link:../../tooling/eslint
-      '@tumiki/prettier-config':
-        specifier: workspace:*
-        version: link:../../tooling/prettier
-      '@tumiki/tsconfig':
-        specifier: workspace:*
-        version: link:../../tooling/typescript
-      '@tumiki/vitest-config':
-        specifier: workspace:*
-        version: link:../../tooling/vitest
-      '@vitest/coverage-v8':
-        specifier: 'catalog:'
-        version: 3.2.4(vitest@3.2.4(@edge-runtime/vm@3.2.0)(@types/debug@4.1.12)(@types/node@25.3.5)(jiti@2.6.1)(jsdom@27.3.0(bufferutil@4.0.9))(lightningcss@1.30.2)(tsx@4.21.0))
-      eslint:
-        specifier: 'catalog:'
-        version: 9.32.0(jiti@2.6.1)
-      prettier:
-        specifier: 'catalog:'
-        version: 3.8.1
-      typescript:
-        specifier: 'catalog:'
-        version: 5.9.3
-      vitest:
-        specifier: 'catalog:'
-        version: 3.2.4(@edge-runtime/vm@3.2.0)(@types/debug@4.1.12)(@types/node@25.3.5)(jiti@2.6.1)(jsdom@27.3.0(bufferutil@4.0.9))(lightningcss@1.30.2)(tsx@4.21.0)
 
   packages/oauth-token-manager:
     dependencies:
