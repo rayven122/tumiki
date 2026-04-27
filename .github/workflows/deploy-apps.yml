@@ -56,8 +56,11 @@ jobs:
           echo "CF_ACCESS_CLIENT_SECRET length: ${#CF_ACCESS_CLIENT_SECRET}"
           cat /tmp/cf-proxy.sh || echo "cf-proxy.sh not found"
           echo "---"
-          CF_ACCESS_CLIENT_ID="${CF_ACCESS_CLIENT_ID}" CF_ACCESS_CLIENT_SECRET="${CF_ACCESS_CLIENT_SECRET}" \
-            cloudflared access token --app-url https://stg-ssh.tumiki.cloud 2>&1 | head -5 || true
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "CF-Access-Client-Id: ${CF_ACCESS_CLIENT_ID}" \
+            -H "CF-Access-Client-Secret: ${CF_ACCESS_CLIENT_SECRET}" \
+            "https://stg-ssh.tumiki.cloud/cdn-cgi/access/get-identity")
+          echo "Cloudflare Access response: HTTP $STATUS"
 
       - name: 📤 Transfer compose.yaml
         env:
