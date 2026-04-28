@@ -70,14 +70,7 @@ export const japanPatterns: PIIPattern[] = [
     severity: "high",
     description: "日本のパスポート番号（英字2桁 + 数字7桁）",
   },
-  {
-    type: "JP_HEALTH_INSURANCE",
-    // 健康保険証番号: 記号(+番号) のフォーマットは保険者により多様。一般的な「数字8桁」型を捕捉
-    regex: /(?<![\d-])\d{8}(?![\d-])/g,
-    priority: 10,
-    placeholder: "[JP_HEALTH_INSURANCE_{n}]",
-    severity: "medium",
-    description:
-      "健康保険証の番号部分（被保険者番号、一般的な8桁形式。記号は保険者ごとに多様なため別途対応が必要）",
-  },
+  // 健康保険証番号は「数字8桁」のみだと日付・金額・業務IDなど MCP 引数で頻出する形式と
+  // 衝突するため、デフォルトでは登録しない。必要な場合は context キーワード必須の正規表現で
+  // 組織独自に追加すること（例: `保険者番号[:：]\s*\d{8}`）
 ];

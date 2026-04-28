@@ -43,9 +43,20 @@ export const parseGitleaksToml = (tomlText: string): PIIPattern[] => {
   return rules.map((rule) => {
     const type = ruleIdToType(rule.id);
     const jsRegexSource = convertRe2ToJs(rule.regex);
+    let regex: RegExp;
+    try {
+      regex = new RegExp(jsRegexSource, "g");
+    } catch (e) {
+      // 無効な正規表現があると customPatterns 構築時にプロセス全停止するため、
+      // どのルールが原因か特定できる形で wrap して投げ直す
+      const reason = e instanceof Error ? e.message : String(e);
+      throw new Error(
+        `Invalid regex in TOML rule "${rule.id}": ${jsRegexSource} (${reason})`,
+      );
+    }
     return {
       type,
-      regex: new RegExp(jsRegexSource, "g"),
+      regex,
       priority: DEFAULT_PRIORITY,
       placeholder: typeToPlaceholder(type),
       severity: rule.severity ?? "high",

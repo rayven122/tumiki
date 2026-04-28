@@ -52,7 +52,11 @@ describe("japanPatterns", () => {
     expect(types).toContain("JP_MY_NUMBER");
     expect(types).toContain("JP_DRIVER_LICENSE");
     expect(types).toContain("JP_PASSPORT");
-    expect(types).toContain("JP_HEALTH_INSURANCE");
+  });
+
+  test("JP_HEALTH_INSURANCE は登録しない（8桁数字は誤検出が多すぎる）", () => {
+    const types = japanPatterns.map((p) => p.type);
+    expect(types).not.toContain("JP_HEALTH_INSURANCE");
   });
 
   test("JP_PHONE: 固定電話 / 携帯電話の代表的フォーマットにマッチ", () => {

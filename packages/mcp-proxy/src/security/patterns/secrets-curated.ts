@@ -102,8 +102,8 @@ severity = "critical"
 
 [[rules]]
 id = "azure-storage-account-key"
-description = "Azure Storage Account Key (Base64, 88 chars ending with ==)"
-regex = '''[A-Za-z0-9+/]{86}=='''
+description = "Azure Storage Account Key (AccountKey= プレフィックス必須、偽陽性回避)"
+regex = '''AccountKey=[A-Za-z0-9+/]{86}=='''
 severity = "high"
 
 [[rules]]

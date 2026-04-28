@@ -14,16 +14,17 @@ describe("parseGitleaksToml", () => {
 
     const patterns = parseGitleaksToml(toml);
 
-    expect(patterns).toHaveLength(1);
-    expect(patterns[0]).toMatchObject({
-      type: "TEST_RULE",
-      placeholder: "[TEST_RULE_{n}]",
-      severity: "high",
-      description: "test description",
-      priority: 20,
-    });
-    expect(patterns[0]?.regex.source).toBe("abc[0-9]{3}");
-    expect(patterns[0]?.regex.flags).toBe("g");
+    // RegExp を含むため deep equal で完全一致を期待
+    expect(patterns).toStrictEqual([
+      {
+        type: "TEST_RULE",
+        regex: /abc[0-9]{3}/g,
+        priority: 20,
+        placeholder: "[TEST_RULE_{n}]",
+        severity: "high",
+        description: "test description",
+      },
+    ]);
   });
 
   test("RE2 の (?P<name>...) 構文を JS の (?<name>...) に変換する", () => {
