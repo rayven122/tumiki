@@ -49,17 +49,26 @@ jobs:
         run: |
           curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o /tmp/cloudflared.deb
           sudo dpkg -i /tmp/cloudflared.deb
+          cloudflared --version
 
       - name: 🌐 Start Cloudflare TCP proxy
         run: |
-          cloudflared access tcp --hostname "${SSH_HOST}" --url "localhost:${SSH_PORT}" &
+          echo "CF_ACCESS_CLIENT_ID length: ${#CF_ACCESS_CLIENT_ID}"
+          cloudflared access tcp --hostname "${SSH_HOST}" --url "localhost:${SSH_PORT}" --log-level debug > /tmp/cf.log 2>&1 &
           echo "CLOUDFLARED_PID=$!" >> "$GITHUB_ENV"
-          sleep 3
+          sleep 5
+          echo "=== cloudflared log ==="
+          cat /tmp/cf.log
 
       - name: 📤 Transfer compose.yaml
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan -p "${SSH_PORT}" localhost 2>/dev/null >> ~/.ssh/known_hosts || true
+          ssh -o ConnectTimeout=15 -p "${SSH_PORT}" "${SSH_USER}@localhost" "echo connected" || {
+            echo "=== cloudflared log on failure ==="
+            cat /tmp/cf.log
+            exit 1
+          }
           ssh -p "${SSH_PORT}" "${SSH_USER}@localhost" "mkdir -p ~/tumiki"
           scp -P "${SSH_PORT}" docker/apps/compose.yaml "${SSH_USER}@localhost:~/tumiki/compose.yaml"
 
@@ -99,7 +108,7 @@ jobs:
         if: always()
         run: |
           kill "${CLOUDFLARED_PID}" 2>/dev/null || true
-          rm -f /tmp/cloudflared.deb
+          rm -f /tmp/cloudflared.deb /tmp/cf.log
 
   deploy-production:
     name: 🚀 Deploy to production
