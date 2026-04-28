@@ -8,11 +8,14 @@ import { createMockLogger } from "./test-helpers.js";
 // MCP SDK のモック
 const mockServerSetRequestHandler = vi.fn();
 const mockServerConnect = vi.fn().mockResolvedValue(undefined);
+// onToolCall フック内で server.getClientVersion() を呼ぶため mock 化（未指定時は undefined を返す）
+const mockServerGetClientVersion = vi.fn().mockReturnValue(undefined);
 
 vi.mock("@modelcontextprotocol/sdk/server/index.js", () => ({
   Server: vi.fn().mockImplementation(() => ({
     setRequestHandler: mockServerSetRequestHandler,
     connect: mockServerConnect,
+    getClientVersion: mockServerGetClientVersion,
   })),
 }));
 
