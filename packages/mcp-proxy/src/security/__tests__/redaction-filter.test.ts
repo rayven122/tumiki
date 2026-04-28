@@ -105,6 +105,19 @@ describe("createRedactionFilter - beforeCall", () => {
     expect(result.blocked?.reason).toContain("機密情報を検出");
   });
 
+  test("block ポリシー: block 時の context にも summary が含まれる（監査ログで参照可能）", async () => {
+    const filter = buildFilter({ policy: "block" });
+    const args = { description: `${SAMPLE_EMAIL} に通知` };
+
+    const result = await filter.beforeCall(TOOL_NAME, args);
+
+    // block 時も context.summary は埋まっており、getDetectionSummary 経由で取得できる
+    // → stdio-inbound の finally で onToolCall に渡され、AuditLog に記録される
+    const summary = filter.getDetectionSummary?.(result.context);
+    expect(summary).toBeDefined();
+    expect(summary?.EMAIL?.count).toBe(1);
+  });
+
   test("block ポリシー: PII 検出なしなら通過する", async () => {
     const filter = buildFilter({ policy: "block" });
     const args = { description: "通常の説明文" };

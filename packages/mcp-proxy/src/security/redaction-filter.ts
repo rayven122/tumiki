@@ -40,6 +40,14 @@ const emptyContext = (): FilterContext => ({
 const isPlainObject = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
+// FilterContext かどうかの実行時検証（unknown を安全に narrow するため）
+const isFilterContext = (v: unknown): v is FilterContext =>
+  isPlainObject(v) &&
+  "redactionMap" in v &&
+  isPlainObject(v.redactionMap) &&
+  "summary" in v &&
+  isPlainObject(v.summary);
+
 // content アイテムが text 型として扱えるかの判定
 const hasTextField = (
   c: unknown,
@@ -154,16 +162,17 @@ export const createRedactionFilter = (
     },
 
     afterCall: async (context, result) => {
-      const ctx = context as FilterContext;
+      // 想定外の context が渡されたら何もしない（fail-safe）
+      if (!isFilterContext(context)) return result;
       // mask 時のみ復号が必要（detect-only / block 時は redactionMap が空）
-      if (Object.keys(ctx.redactionMap).length === 0) return result;
+      if (Object.keys(context.redactionMap).length === 0) return result;
 
       const restoredContent: CallToolResult["content"] = result.content.map(
         (c) => {
           if (hasTextField(c)) {
             return {
               ...c,
-              text: detector.restore(c.text, ctx.redactionMap),
+              text: detector.restore(c.text, context.redactionMap),
             };
           }
           return c;
@@ -174,10 +183,9 @@ export const createRedactionFilter = (
     },
 
     getDetectionSummary: (context) => {
-      const ctx = context as Partial<FilterContext> | undefined;
-      if (!ctx?.summary || Object.keys(ctx.summary).length === 0)
-        return undefined;
-      return ctx.summary;
+      if (!isFilterContext(context)) return undefined;
+      if (Object.keys(context.summary).length === 0) return undefined;
+      return context.summary;
     },
   };
 };

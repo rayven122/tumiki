@@ -1,19 +1,11 @@
-/**
- * PII マスキングフィルタの検出サマリ（type 別の件数とマスク後トークン）
- * 例: { EMAIL: { count: 1, tokens: ["[EMAIL_1105]"] } }
- */
-export type PiiDetectionsSummary = Record<
-  string,
-  { count: number; tokens: string[] }
->;
+// PII マスキングフィルタの検出サマリ（mcp-proxy-core と同名で統一）
+import type { PiiDetectionSummary } from "@tumiki/mcp-proxy-core";
 
-/**
- * AuditLog.piiDetections に保存される構造
- * - summary: type 別の検出集計
- * - maskedArgs: 上流 MCP に実際に渡された args 全体（生 PII は含まない）
- */
+export type { PiiDetectionSummary };
+
+// AuditLog.piiDetections の保存構造（summary: type 別件数とトークン、maskedArgs: 上流に渡した args）
 export type PiiDetectionRecord = {
-  summary: PiiDetectionsSummary;
+  summary: PiiDetectionSummary;
   maskedArgs: Record<string, unknown> | null;
 };
 

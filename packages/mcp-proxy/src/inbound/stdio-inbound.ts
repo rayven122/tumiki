@@ -50,53 +50,55 @@ export const startStdioInbound = async (
     let isSuccess = true;
     let errorMessage: string | undefined;
     let resultContent: unknown[] = [];
-
-    // pre-call フィルタ: args を変換、または block 判定
     let processedArgs = safeArgs;
     let filterContext: unknown = undefined;
-    if (hooks?.filter) {
-      try {
-        const filtered = await hooks.filter.beforeCall(name, safeArgs);
-        if (filtered.blocked) {
+
+    // pre-call フィルタ処理は try ブロック内に置き、block / フィルタ失敗時の早期 return も
+    // finally に到達して onToolCall が確実に呼ばれるようにする（監査ログを必ず残すため）
+    try {
+      if (hooks?.filter) {
+        try {
+          const filtered = await hooks.filter.beforeCall(name, safeArgs);
+          // block 判定の有無に関わらず context は保存（getDetectionSummary でサマリ取得）
+          filterContext = filtered.context;
+          if (filtered.blocked) {
+            isSuccess = false;
+            errorMessage = filtered.blocked.reason;
+            resultContent = [
+              { type: "text", text: `エラー: ${filtered.blocked.reason}` },
+            ];
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: `エラー: ${filtered.blocked.reason}`,
+                },
+              ],
+              isError: true,
+            };
+          }
+          processedArgs = filtered.args;
+        } catch (e) {
+          // フィルタ自体が落ちたら fail-close（PII 流出を防ぐためブロック側に倒す）
           isSuccess = false;
-          errorMessage = filtered.blocked.reason;
-          resultContent = [
-            { type: "text", text: `エラー: ${filtered.blocked.reason}` },
-          ];
+          errorMessage = `フィルタの実行に失敗しました: ${e instanceof Error ? e.message : String(e)}`;
+          logger.error("ツール呼び出しフィルタの前処理でエラーが発生しました", {
+            tool: name,
+            error: errorMessage,
+          });
+          resultContent = [{ type: "text", text: `エラー: ${errorMessage}` }];
           return {
             content: [
               {
                 type: "text" as const,
-                text: `エラー: ${filtered.blocked.reason}`,
+                text: `エラー: ${errorMessage}`,
               },
             ],
             isError: true,
           };
         }
-        processedArgs = filtered.args;
-        filterContext = filtered.context;
-      } catch (e) {
-        // フィルタ自体が落ちたら fail-close（PII 流出を防ぐためブロック側に倒す）
-        isSuccess = false;
-        errorMessage = `フィルタの実行に失敗しました: ${e instanceof Error ? e.message : String(e)}`;
-        logger.error("ツール呼び出しフィルタの前処理でエラーが発生しました", {
-          tool: name,
-          error: errorMessage,
-        });
-        resultContent = [{ type: "text", text: `エラー: ${errorMessage}` }];
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `エラー: ${errorMessage}`,
-            },
-          ],
-          isError: true,
-        };
       }
-    }
 
-    try {
       const result = await core.callTool(name, processedArgs);
 
       // post-call フィルタ: result を変換（マスク済みトークンの復号等）

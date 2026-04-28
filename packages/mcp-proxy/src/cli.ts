@@ -48,6 +48,7 @@ export type {
   RedactionPolicy,
   RedactionFilterOptions,
 } from "./security/redaction-filter.js";
+export type { PiiDetectionSummary } from "./types.js";
 export {
   DEFAULT_PII_MASKING_ENABLED,
   DEFAULT_REDACTION_POLICY,

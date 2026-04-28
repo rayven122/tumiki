@@ -19,6 +19,7 @@ export type {
   ToolCallEvent,
   ToolCallHook,
   ToolCallFilter,
+  PiiDetectionSummary,
 } from "./types.js";
 
 // コア
