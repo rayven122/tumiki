@@ -39,7 +39,6 @@ jobs:
       CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
       SSH_HOST: stg-ssh.tumiki.cloud
       SSH_USER: hisuzuya
-      SSH_PORT: 2222
 
     steps:
       - name: 📥 Checkout
@@ -51,31 +50,37 @@ jobs:
           sudo dpkg -i /tmp/cloudflared.deb
           cloudflared --version
 
-      - name: 🌐 Start Cloudflare TCP proxy
+      - name: 🌐 Configure Cloudflare SSH
         run: |
-          echo "CF_ACCESS_CLIENT_ID length: ${#CF_ACCESS_CLIENT_ID}"
-          cloudflared access tcp --hostname "${SSH_HOST}" --url "localhost:${SSH_PORT}" --log-level debug > /tmp/cf.log 2>&1 &
-          echo "CLOUDFLARED_PID=$!" >> "$GITHUB_ENV"
-          sleep 5
-          echo "=== cloudflared log ==="
-          cat /tmp/cf.log
+          mkdir -p ~/.ssh
+
+          # ProxyCommandはサブプロセスで動くため、認証情報をスクリプトに直接埋め込む
+          cat > /tmp/cf-proxy.sh << WRAPPER
+          #!/bin/bash
+          exec env CF_ACCESS_CLIENT_ID="${CF_ACCESS_CLIENT_ID}" CF_ACCESS_CLIENT_SECRET="${CF_ACCESS_CLIENT_SECRET}" cloudflared access ssh --hostname "\$@"
+          WRAPPER
+          chmod +x /tmp/cf-proxy.sh
+
+          cat >> ~/.ssh/config << CONFIG
+          Host ${SSH_HOST}
+            ProxyCommand /tmp/cf-proxy.sh %h
+            StrictHostKeyChecking accept-new
+          CONFIG
+
+          echo "=== SSH config ==="
+          cat ~/.ssh/config
+          echo "=== cf-proxy.sh (credentials masked) ==="
+          sed 's/CF_ACCESS_CLIENT_ID="[^"]*"/CF_ACCESS_CLIENT_ID="***"/g; s/CF_ACCESS_CLIENT_SECRET="[^"]*"/CF_ACCESS_CLIENT_SECRET="***"/g' /tmp/cf-proxy.sh
 
       - name: 📤 Transfer compose.yaml
         run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -p "${SSH_PORT}" localhost 2>/dev/null >> ~/.ssh/known_hosts || true
-          ssh -o ConnectTimeout=15 -p "${SSH_PORT}" "${SSH_USER}@localhost" "echo connected" || {
-            echo "=== cloudflared log on failure ==="
-            cat /tmp/cf.log
-            exit 1
-          }
-          ssh -p "${SSH_PORT}" "${SSH_USER}@localhost" "mkdir -p ~/tumiki"
-          scp -P "${SSH_PORT}" docker/apps/compose.yaml "${SSH_USER}@localhost:~/tumiki/compose.yaml"
+          ssh -o ConnectTimeout=30 "${SSH_USER}@${SSH_HOST}" "echo connected && mkdir -p ~/tumiki"
+          scp docker/apps/compose.yaml "${SSH_USER}@${SSH_HOST}:~/tumiki/compose.yaml"
 
       - name: 🐳 Deploy containers
         run: |
           IMAGE_TAG_VAL="${IMAGE_TAG}"
-          ssh -p "${SSH_PORT}" "${SSH_USER}@localhost" bash -l << REMOTE_SCRIPT
+          ssh "${SSH_USER}@${SSH_HOST}" bash -l << REMOTE_SCRIPT
             set -euo pipefail
             cd ~/tumiki
             export IMAGE_TAG="${IMAGE_TAG_VAL}"
@@ -87,7 +92,7 @@ jobs:
 
       - name: ✅ Verify health endpoints
         run: |
-          ssh -p "${SSH_PORT}" "${SSH_USER}@localhost" bash << 'HEALTHCHECK'
+          ssh "${SSH_USER}@${SSH_HOST}" bash << 'HEALTHCHECK'
             for i in $(seq 1 20); do
               if curl -sf http://localhost:8080/api/health > /dev/null 2>&1 && \
                  curl -sf http://localhost:8081/health > /dev/null 2>&1 && \
@@ -107,8 +112,7 @@ jobs:
       - name: 🧹 Cleanup
         if: always()
         run: |
-          kill "${CLOUDFLARED_PID}" 2>/dev/null || true
-          rm -f /tmp/cloudflared.deb /tmp/cf.log
+          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh
 
   deploy-production:
     name: 🚀 Deploy to production
@@ -127,7 +131,6 @@ jobs:
       CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
       SSH_HOST: ${{ vars.DEPLOY_TUNNEL_HOSTNAME }}
       SSH_USER: ${{ vars.DEPLOY_USER }}
-      SSH_PORT: 2222
 
     steps:
       - name: 📥 Checkout
@@ -138,23 +141,31 @@ jobs:
           curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o /tmp/cloudflared.deb
           sudo dpkg -i /tmp/cloudflared.deb
 
-      - name: 🌐 Start Cloudflare TCP proxy
+      - name: 🌐 Configure Cloudflare SSH
         run: |
-          cloudflared access tcp --hostname "${SSH_HOST}" --url "localhost:${SSH_PORT}" &
-          echo "CLOUDFLARED_PID=$!" >> "$GITHUB_ENV"
-          sleep 3
+          mkdir -p ~/.ssh
+
+          cat > /tmp/cf-proxy.sh << WRAPPER
+          #!/bin/bash
+          exec env CF_ACCESS_CLIENT_ID="${CF_ACCESS_CLIENT_ID}" CF_ACCESS_CLIENT_SECRET="${CF_ACCESS_CLIENT_SECRET}" cloudflared access ssh --hostname "\$@"
+          WRAPPER
+          chmod +x /tmp/cf-proxy.sh
+
+          cat >> ~/.ssh/config << CONFIG
+          Host ${SSH_HOST}
+            ProxyCommand /tmp/cf-proxy.sh %h
+            StrictHostKeyChecking accept-new
+          CONFIG
 
       - name: 📤 Transfer compose.yaml
         run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -p "${SSH_PORT}" localhost 2>/dev/null >> ~/.ssh/known_hosts || true
-          ssh -p "${SSH_PORT}" "${SSH_USER}@localhost" "mkdir -p ~/tumiki"
-          scp -P "${SSH_PORT}" docker/apps/compose.yaml "${SSH_USER}@localhost:~/tumiki/compose.yaml"
+          ssh -o ConnectTimeout=30 "${SSH_USER}@${SSH_HOST}" "echo connected && mkdir -p ~/tumiki"
+          scp docker/apps/compose.yaml "${SSH_USER}@${SSH_HOST}:~/tumiki/compose.yaml"
 
       - name: 🐳 Deploy containers
         run: |
           IMAGE_TAG_VAL="${IMAGE_TAG}"
-          ssh -p "${SSH_PORT}" "${SSH_USER}@localhost" bash -l << REMOTE_SCRIPT
+          ssh "${SSH_USER}@${SSH_HOST}" bash -l << REMOTE_SCRIPT
             set -euo pipefail
             cd ~/tumiki
             export IMAGE_TAG="${IMAGE_TAG_VAL}"
@@ -166,7 +177,7 @@ jobs:
 
       - name: ✅ Verify health endpoints
         run: |
-          ssh -p "${SSH_PORT}" "${SSH_USER}@localhost" bash << 'HEALTHCHECK'
+          ssh "${SSH_USER}@${SSH_HOST}" bash << 'HEALTHCHECK'
             for i in $(seq 1 20); do
               if curl -sf http://localhost:8080/api/health > /dev/null 2>&1 && \
                  curl -sf http://localhost:8081/health > /dev/null 2>&1 && \
@@ -186,5 +197,4 @@ jobs:
       - name: 🧹 Cleanup
         if: always()
         run: |
-          kill "${CLOUDFLARED_PID}" 2>/dev/null || true
-          rm -f /tmp/cloudflared.deb
+          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh
