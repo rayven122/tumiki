@@ -201,7 +201,8 @@ MCPサーバー（仮想・統合サーバー = Proxyエンドポイント）
   - `errorSummary`: エラーメッセージ要約
   - `detail`: 操作の補足情報（例: 引数の概要やリソースパス等）
   - `piiDetections`
-    > PII マスキングフィルタが検出した type 別件数（例: {"EMAIL": 1, "JP_PHONE": 2}）
+    > PII マスキング検出記録 { summary: { TYPE: { count, tokens } }, maskedArgs: {...} }
+    > summary は type 別の件数とマスク後トークン、maskedArgs は upstream に渡された args 全体
     > null の場合はフィルタ無効 or 検出なし
   - `piiPolicy`
     > 検出時に適用したマスキングポリシー（mask / detect-only / block）

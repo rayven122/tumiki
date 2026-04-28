@@ -94,9 +94,7 @@ describe("curatedSecretPatterns 統合: 実 production パターンが OpenRedac
 
     expect(result.detections.length).toBeGreaterThan(0);
     expect(result.redacted).not.toContain(secret);
-    expect(result.detections.some((d) => d.type.includes("GITHUB"))).toBe(
-      true,
-    );
+    expect(result.detections.some((d) => d.type.includes("GITHUB"))).toBe(true);
   });
 
   test("Slack Bot Token を含むテキストがマスキングされる", async () => {
