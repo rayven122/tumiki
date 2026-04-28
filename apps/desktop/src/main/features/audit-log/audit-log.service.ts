@@ -17,10 +17,13 @@ type AuditLogRecord = Awaited<
 
 /**
  * AuditLogレコードをIPC通信用の型に変換
+ * piiDetections は writeAuditLog 時に PiiDetectionsSummary 形式でしか書き込まないため
+ * Prisma の JsonValue 型を IPC 用の具体型にキャストして渡す
  */
 const toAuditLogItem = (record: AuditLogRecord): AuditLogItem => ({
   ...record,
   createdAt: record.createdAt.toISOString(),
+  piiDetections: record.piiDetections as AuditLogItem["piiDetections"],
 });
 
 /**
