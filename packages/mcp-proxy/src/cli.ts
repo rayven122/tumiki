@@ -9,6 +9,7 @@
  * 単体サーバーとして動作させる。
  */
 import type {
+  Logger,
   McpServerConfig,
   ServerStatus,
   ToolCallFilter,
@@ -16,7 +17,29 @@ import type {
 } from "./types.js";
 import { createProxyCore } from "./core.js";
 import { startStdioInbound } from "./inbound/stdio-inbound.js";
+import {
+  DEFAULT_ALLOWLIST_TOOLS,
+  DEFAULT_PII_MASKING_ENABLED,
+  DEFAULT_REDACTION_POLICY,
+  DEFAULT_REDACTOR_OPTIONS,
+} from "./security/config.js";
+import { allCustomPatterns } from "./security/patterns/index.js";
+import { createRedactionFilter } from "./security/redaction-filter.js";
 import { stderrLogger as logger } from "./stderr-logger.js";
+
+// PII マスキングフィルタをデフォルト設定で構築（呼び出し側で hooks.filter を渡せば上書き可能）
+const buildDefaultRedactionFilter = (
+  log: Logger,
+): ToolCallFilter | undefined => {
+  if (!DEFAULT_PII_MASKING_ENABLED) return undefined;
+  return createRedactionFilter({
+    policy: DEFAULT_REDACTION_POLICY,
+    redactor: DEFAULT_REDACTOR_OPTIONS,
+    customPatterns: allCustomPatterns,
+    allowlistTools: DEFAULT_ALLOWLIST_TOOLS,
+    logger: log,
+  });
+};
 
 // mcp-cli.cjs バンドル経由で desktop 側から PII マスキング API を使えるように再 export
 export { stderrLogger } from "./stderr-logger.js";
@@ -61,11 +84,17 @@ export const runMcpProxy = async (
     core.onStatusChange(hooks.onStatusChange);
   }
 
+  // PII マスキングフィルタを内蔵（呼び出し側が hooks.filter を指定すればそちらを優先）
+  const enrichedHooks: ProxyHooks = {
+    ...hooks,
+    filter: hooks?.filter ?? buildDefaultRedactionFilter(logger),
+  };
+
   // 全MCPサーバーに接続
   await core.startAll();
 
   // stdio inboundサーバーを起動（AIツールからのリクエストを受け付け）
-  await startStdioInbound(core, logger, hooks);
+  await startStdioInbound(core, logger, enrichedHooks);
 
   logger.info("tumiki-mcp-proxy の起動が完了しました");
 
