@@ -240,6 +240,12 @@ model AuditLog {
   errorSummary   String?
   /// 操作の補足情報（例: 引数の概要やリソースパス等）
   detail         String?
+  /// PII マスキングフィルタが検出した type 別件数（例: {"EMAIL": 1, "JP_PHONE": 2}）
+  /// null の場合はフィルタ無効 or 検出なし
+  piiDetections  Json?
+  /// 検出時に適用したマスキングポリシー（mask / detect-only / block）
+  /// null の場合はフィルタ無効
+  piiPolicy      String?
   createdAt      DateTime      @default(now())
 
   /// 対象MCPサーバー

@@ -65,6 +65,13 @@ export type CallToolResult = {
   isError?: boolean;
 };
 
+// PII マスキングフィルタの検出結果サマリ（type ごとの件数とマスク後トークン）
+// 例: { EMAIL: { count: 1, tokens: ["[EMAIL_1105]"] } }
+export type PiiDetectionSummary = Record<
+  string,
+  { count: number; tokens: string[] }
+>;
+
 // ツール実行イベント（監査ログ等の外部処理を注入するためのコールバック型）
 export type ToolCallEvent = {
   /** プレフィックス付きツール名（例: "server-name__tool-name"） */
@@ -83,6 +90,10 @@ export type ToolCallEvent = {
   clientName?: string;
   /** AIクライアントバージョン */
   clientVersion?: string;
+  /** PII フィルタが検出した type 別サマリ（フィルタ無効 or 検出なしの場合は undefined） */
+  piiDetections?: PiiDetectionSummary;
+  /** PII フィルタの適用ポリシー（フィルタ無効時は undefined） */
+  piiPolicy?: string;
 };
 
 export type ToolCallHook = (event: ToolCallEvent) => void | Promise<void>;
@@ -105,6 +116,10 @@ export type ToolCallFilter = {
     context: unknown,
     result: CallToolResult,
   ) => Promise<CallToolResult>;
+  // 監査ログ等のため、context から検出サマリを取り出す（任意実装）
+  getDetectionSummary?: (context: unknown) => PiiDetectionSummary | undefined;
+  // 適用したポリシー名（mask / detect-only / block 等）
+  policy?: string;
 };
 
 // Logger型（注入用）

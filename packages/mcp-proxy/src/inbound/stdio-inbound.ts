@@ -160,6 +160,10 @@ export const startStdioInbound = async (
       if (hooks?.onToolCall) {
         const durationMs = Date.now() - startTime;
         const clientInfo = server.getClientVersion();
+        // フィルタ context から PII 検出サマリを取り出す（getDetectionSummary 実装時のみ）
+        const piiDetections = hooks.filter?.getDetectionSummary
+          ? hooks.filter.getDetectionSummary(filterContext)
+          : undefined;
         // フックは非同期でもfire-and-forget（ツール応答を遅延させない）
         // try-catchで同期throwも捕捉する
         try {
@@ -173,6 +177,8 @@ export const startStdioInbound = async (
               resultContent,
               clientName: clientInfo?.name,
               clientVersion: clientInfo?.version,
+              piiDetections,
+              piiPolicy: hooks.filter?.policy,
             }),
           ).catch((e: unknown) => {
             logger.error("ツール実行フックでエラーが発生しました", {

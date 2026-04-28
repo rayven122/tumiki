@@ -1,4 +1,13 @@
 /**
+ * PII マスキングフィルタの検出サマリ
+ * 例: { EMAIL: { count: 1, tokens: ["[EMAIL_1105]"] } }
+ */
+export type PiiDetectionsSummary = Record<
+  string,
+  { count: number; tokens: string[] }
+>;
+
+/**
  * 監査ログ情報型（IPC通信用）
  * Prisma AuditLog を起点に、Date→stringへ変換
  */
@@ -19,6 +28,10 @@ export type AuditLogItem = {
   connectionName: string | null;
   clientName: string | null;
   clientVersion: string | null;
+  /** PII マスキングフィルタの検出サマリ（フィルタ無効 or 検出なしなら null） */
+  piiDetections: PiiDetectionsSummary | null;
+  /** 適用したマスキングポリシー（mask / detect-only / block） */
+  piiPolicy: string | null;
 };
 
 /**

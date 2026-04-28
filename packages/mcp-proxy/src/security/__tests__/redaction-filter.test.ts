@@ -149,7 +149,7 @@ describe("createRedactionFilter - beforeCall", () => {
     expect(result.args.note).toMatch(/\[EMPLOYEE_ID_\d+\]/);
   });
 
-  test("検出時に Logger に type と件数が記録される（生 PII は出力されない）", async () => {
+  test("検出時に Logger に type / 件数 / トークンが記録される（生 PII は出力されない）", async () => {
     const logger = createMockLogger();
     const filter = buildFilter({ policy: "mask", logger });
     const args = { description: `${SAMPLE_EMAIL} に通知` };
@@ -159,9 +159,38 @@ describe("createRedactionFilter - beforeCall", () => {
     const calls = vi.mocked(logger.info).mock.calls;
     const piiLogCall = calls.find((c) => c[0] === "[PII Detection] tools/call");
     expect(piiLogCall).toBeDefined();
-    const meta = piiLogCall?.[1] as { types: Record<string, number> };
-    expect(meta.types).toBeDefined();
+    const meta = piiLogCall?.[1] as {
+      summary: Record<string, { count: number; tokens: string[] }>;
+    };
+    expect(meta.summary).toBeDefined();
+    expect(meta.summary.EMAIL.count).toBeGreaterThanOrEqual(1);
+    expect(meta.summary.EMAIL.tokens[0]).toMatch(/\[EMAIL_\d+\]/);
     expect(JSON.stringify(meta)).not.toContain(SAMPLE_EMAIL);
+  });
+
+  test("getDetectionSummary: mask 時の context から サマリを取り出せる", async () => {
+    const filter = buildFilter({ policy: "mask" });
+    const args = { description: `${SAMPLE_EMAIL} に通知` };
+
+    const before = await filter.beforeCall(TOOL_NAME, args);
+    const summary = filter.getDetectionSummary?.(before.context);
+
+    expect(summary).toBeDefined();
+    expect(summary?.EMAIL.count).toBe(1);
+    expect(summary?.EMAIL.tokens[0]).toMatch(/\[EMAIL_\d+\]/);
+  });
+
+  test("getDetectionSummary: 検出なしの場合は undefined を返す", async () => {
+    const filter = buildFilter({ policy: "mask" });
+    const before = await filter.beforeCall(TOOL_NAME, { msg: "通常の文章" });
+    const summary = filter.getDetectionSummary?.(before.context);
+
+    expect(summary).toBeUndefined();
+  });
+
+  test("policy フィールドにポリシー名が公開される", () => {
+    const filter = buildFilter({ policy: "block" });
+    expect(filter.policy).toBe("block");
   });
 
   test("プリミティブ値（number / boolean / null）はそのまま通過", async () => {

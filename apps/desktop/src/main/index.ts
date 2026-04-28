@@ -132,6 +132,9 @@ if (isMcpProxyMode) {
           connectionName: connMeta.connectionName,
           clientName: event.clientName?.slice(0, 100),
           clientVersion: event.clientVersion?.slice(0, 50),
+          // Prisma の Json 型は null を直接受け付けないため undefined で省略する（DBはNULLになる）
+          piiDetections: event.piiDetections,
+          piiPolicy: event.piiPolicy,
         });
       };
 
