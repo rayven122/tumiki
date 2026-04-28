@@ -2,8 +2,27 @@ import type { PIIPattern } from "openredaction";
 
 import { parseGitleaksToml } from "./loader.js";
 
-// gitleaks 互換 TOML テキスト（template literal 内に直書き）
-// 形式は gitleaks 公式 https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml に準拠
+// ─────────────────────────────────────────────────────────────────────────────
+// なぜ TOML を別ファイル (.toml) ではなく TS の template literal に inline しているか
+// ─────────────────────────────────────────────────────────────────────────────
+// TOML 形式（gitleaks 互換）を採用する利点:
+//   - gitleaks 公式 / 社内独自 .gitleaks.toml / trufflehog 設定 等の業界標準資産を
+//     そのままコピペで取り込める
+//   - 形式が安定しているため将来の更新追従が容易
+//
+// にもかかわらず .toml ファイルとして外部化せず、template literal で inline
+// している理由:
+//   1. electron-vite で .toml を asset として bundle に正しく含める設定
+//      （dev / production の path 解決、配布時の dist-electron へのコピー等）
+//      が別途必要になり、本機能の PoC スコープ外
+//   2. inline でも 「gitleaks 形式そのままで書ける」という資産流用の利点は維持できる
+//   3. 必要になった時点で `parseGitleaksToml(readFileSync(tomlPath, "utf-8"))`
+//      に置き換えれば外部 .toml ファイル化への移行は最小限で済む
+//
+// したがって現状は「形式は TOML、配置は TS」というハイブリッド構成。
+// 設定とコードの完全分離（非エンジニアによる編集等）が必要になったら、
+// 別チケットで .toml 外部化 + electron-vite plugin 追加を行う想定。
+// ─────────────────────────────────────────────────────────────────────────────
 //
 // ルール追加方法:
 // 1. gitleaks.toml や trufflehog の rule から regex/id/description を抽出

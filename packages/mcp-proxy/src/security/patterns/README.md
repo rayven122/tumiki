@@ -11,6 +11,16 @@
 | `secrets-curated.ts` | gitleaks 互換 TOML を template literal として inline。vendor シークレット系（GitHub PAT / Stripe / Slack 等）を定義 |
 | `japan.ts`           | 日本特化 PII（電話 / 郵便 / マイナンバー等）を TS 直書き。チェックディジット検証等のロジック付き検出を含む          |
 
+## なぜ TOML を別ファイルではなく TS 内に inline しているか
+
+`secrets-curated.ts` は gitleaks 互換の TOML テキストを template literal として埋め込む方式を採用している。本来は `.toml` ファイルに分離するほうが「設定とコードの分離」が徹底できるが、現状は以下の理由で inline:
+
+- electron-vite で `.toml` を bundle 対象に含める設定が PoC スコープ外
+- inline でも 「gitleaks 形式そのままコピペできる」という TOML 形式の中心的利点は維持できる
+- 必要になった時点で `parseGitleaksToml(readFileSync(path, "utf-8"))` への置換で簡単に外部化できる
+
+形式は TOML、配置は TS、というハイブリッド構成として理解してください。詳細は `secrets-curated.ts` 冒頭のコメント参照。
+
 ## どっちに書くか？
 
 | パターンの性質                                       | 配置先                                           |
