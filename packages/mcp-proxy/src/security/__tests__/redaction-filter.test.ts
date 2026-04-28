@@ -163,8 +163,8 @@ describe("createRedactionFilter - beforeCall", () => {
       summary: Record<string, { count: number; tokens: string[] }>;
     };
     expect(meta.summary).toBeDefined();
-    expect(meta.summary.EMAIL.count).toBeGreaterThanOrEqual(1);
-    expect(meta.summary.EMAIL.tokens[0]).toMatch(/\[EMAIL_\d+\]/);
+    expect(meta.summary.EMAIL?.count).toBeGreaterThanOrEqual(1);
+    expect(meta.summary.EMAIL?.tokens[0]).toMatch(/\[EMAIL_\d+\]/);
     expect(JSON.stringify(meta)).not.toContain(SAMPLE_EMAIL);
   });
 
@@ -176,8 +176,8 @@ describe("createRedactionFilter - beforeCall", () => {
     const summary = filter.getDetectionSummary?.(before.context);
 
     expect(summary).toBeDefined();
-    expect(summary?.EMAIL.count).toBe(1);
-    expect(summary?.EMAIL.tokens[0]).toMatch(/\[EMAIL_\d+\]/);
+    expect(summary?.EMAIL?.count).toBe(1);
+    expect(summary?.EMAIL?.tokens[0]).toMatch(/\[EMAIL_\d+\]/);
   });
 
   test("getDetectionSummary: 検出なしの場合は undefined を返す", async () => {

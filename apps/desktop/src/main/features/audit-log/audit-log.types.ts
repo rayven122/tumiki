@@ -1,11 +1,21 @@
 /**
- * PII マスキングフィルタの検出サマリ
+ * PII マスキングフィルタの検出サマリ（type 別の件数とマスク後トークン）
  * 例: { EMAIL: { count: 1, tokens: ["[EMAIL_1105]"] } }
  */
 export type PiiDetectionsSummary = Record<
   string,
   { count: number; tokens: string[] }
 >;
+
+/**
+ * AuditLog.piiDetections に保存される構造
+ * - summary: type 別の検出集計
+ * - maskedArgs: 上流 MCP に実際に渡された args 全体（生 PII は含まない）
+ */
+export type PiiDetectionRecord = {
+  summary: PiiDetectionsSummary;
+  maskedArgs: Record<string, unknown> | null;
+};
 
 /**
  * 監査ログ情報型（IPC通信用）
@@ -28,8 +38,8 @@ export type AuditLogItem = {
   connectionName: string | null;
   clientName: string | null;
   clientVersion: string | null;
-  /** PII マスキングフィルタの検出サマリ（フィルタ無効 or 検出なしなら null） */
-  piiDetections: PiiDetectionsSummary | null;
+  /** PII マスキングフィルタの検出記録（フィルタ無効 or 検出なしなら null） */
+  piiDetections: PiiDetectionRecord | null;
   /** 適用したマスキングポリシー（mask / detect-only / block） */
   piiPolicy: string | null;
 };

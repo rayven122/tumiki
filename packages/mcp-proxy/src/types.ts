@@ -94,6 +94,8 @@ export type ToolCallEvent = {
   piiDetections?: PiiDetectionSummary;
   /** PII フィルタの適用ポリシー（フィルタ無効時は undefined） */
   piiPolicy?: string;
+  /** マスキング処理で実際に upstream に渡される args 全体（検出があった場合のみ設定される） */
+  maskedArgs?: Record<string, unknown>;
 };
 
 export type ToolCallHook = (event: ToolCallEvent) => void | Promise<void>;

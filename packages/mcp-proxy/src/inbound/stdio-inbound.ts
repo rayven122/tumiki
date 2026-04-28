@@ -164,6 +164,8 @@ export const startStdioInbound = async (
         const piiDetections = hooks.filter?.getDetectionSummary
           ? hooks.filter.getDetectionSummary(filterContext)
           : undefined;
+        // 検出があった場合のみマスク後 args を渡す（生 PII が DB に残らないよう、未検出時は省略）
+        const maskedArgs = piiDetections ? processedArgs : undefined;
         // フックは非同期でもfire-and-forget（ツール応答を遅延させない）
         // try-catchで同期throwも捕捉する
         try {
@@ -179,6 +181,7 @@ export const startStdioInbound = async (
               clientVersion: clientInfo?.version,
               piiDetections,
               piiPolicy: hooks.filter?.policy,
+              maskedArgs,
             }),
           ).catch((e: unknown) => {
             logger.error("ツール実行フックでエラーが発生しました", {
