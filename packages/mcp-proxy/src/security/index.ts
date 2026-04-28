@@ -3,6 +3,7 @@ export type {
   RedactionPolicy,
   RedactionFilterOptions,
 } from "./redaction-filter.js";
+export { createFileLogger, combineLoggers } from "./file-logger.js";
 export {
   DEFAULT_PII_MASKING_ENABLED,
   DEFAULT_REDACTION_POLICY,

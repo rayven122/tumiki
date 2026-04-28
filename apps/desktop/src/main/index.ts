@@ -136,12 +136,15 @@ if (isMcpProxyMode) {
       };
 
       const { join } = await import("path");
+      const { homedir } = await import("os");
       const mod = (await import(join(__dirname, "mcp-cli.cjs"))) as {
         runMcpProxy: (
           configs: import("@tumiki/mcp-proxy-core").McpServerConfig[],
           hooks?: import("@tumiki/mcp-proxy-core").ProxyHooks,
         ) => Promise<void>;
         createRedactionFilter: typeof import("@tumiki/mcp-proxy-core").createRedactionFilter;
+        createFileLogger: typeof import("@tumiki/mcp-proxy-core").createFileLogger;
+        combineLoggers: typeof import("@tumiki/mcp-proxy-core").combineLoggers;
         stderrLogger: import("@tumiki/mcp-proxy-core").Logger;
         DEFAULT_PII_MASKING_ENABLED: boolean;
         DEFAULT_REDACTION_POLICY: import("@tumiki/mcp-proxy-core").RedactionPolicy;
@@ -151,13 +154,20 @@ if (isMcpProxyMode) {
       };
 
       // PII マスキングフィルタを構築（packages/mcp-proxy/src/security/config.ts で有効化判定）
+      // CLI モード（Claude Code 等から spawn）では stderr が呼び出し元に取り込まれて見えづらいため、
+      // ~/.tumiki/logs/mcp-proxy.log にも書き出して `tail -f` で観測できるようにする
       const filter = mod.DEFAULT_PII_MASKING_ENABLED
         ? mod.createRedactionFilter({
             policy: mod.DEFAULT_REDACTION_POLICY,
             redactor: mod.DEFAULT_REDACTOR_OPTIONS,
             customPatterns: mod.allCustomPatterns,
             allowlistTools: mod.DEFAULT_ALLOWLIST_TOOLS,
-            logger: mod.stderrLogger,
+            logger: mod.combineLoggers(
+              mod.stderrLogger,
+              mod.createFileLogger(
+                join(homedir(), ".tumiki", "logs", "mcp-proxy.log"),
+              ),
+            ),
           })
         : undefined;
 
