@@ -50,9 +50,34 @@ jobs:
           sudo dpkg -i /tmp/cloudflared.deb
           cloudflared --version
 
+      - name: 🔍 Debug: cloudflared access ssh flags
+        run: |
+          echo "=== cloudflared access ssh --help ==="
+          cloudflared access ssh --help 2>&1 || true
+          echo ""
+          echo "=== cloudflared access token --help ==="
+          cloudflared access token --help 2>&1 || true
+
+      - name: 🌐 Cloudflare Access Token取得
+        run: |
+          echo "CF_ACCESS_CLIENT_ID length: ${#CF_ACCESS_CLIENT_ID}"
+          echo "CF_ACCESS_CLIENT_SECRET length: ${#CF_ACCESS_CLIENT_SECRET}"
+          echo ""
+          echo "=== cloudflared access token でサービストークン認証テスト ==="
+          TOKEN_RESULT=$(CF_ACCESS_CLIENT_ID="${CF_ACCESS_CLIENT_ID}" \
+                         CF_ACCESS_CLIENT_SECRET="${CF_ACCESS_CLIENT_SECRET}" \
+                         cloudflared access token --app-domain "${SSH_HOST}" 2>&1) && {
+            echo "SUCCESS: トークン取得成功 (length=${#TOKEN_RESULT})"
+            echo "Token prefix: ${TOKEN_RESULT:0:20}..."
+          } || {
+            echo "FAILED: トークン取得失敗"
+            echo "Output: ${TOKEN_RESULT}"
+            exit 1
+          }
+
       - name: 🌐 Configure Cloudflare SSH
         run: |
-          mkdir -p ~/.ssh
+          mkdir -p ~/.ssh ~/.cloudflared
 
           # ProxyCommandはサブプロセスで動くため、認証情報をスクリプトに直接埋め込む
           cat > /tmp/cf-proxy.sh << WRAPPER
@@ -67,20 +92,20 @@ jobs:
             StrictHostKeyChecking accept-new
           CONFIG
 
-          echo "=== SSH config ==="
-          cat ~/.ssh/config
-          echo "=== cf-proxy.sh (credentials masked) ==="
-          sed 's/CF_ACCESS_CLIENT_ID="[^"]*"/CF_ACCESS_CLIENT_ID="***"/g; s/CF_ACCESS_CLIENT_SECRET="[^"]*"/CF_ACCESS_CLIENT_SECRET="***"/g' /tmp/cf-proxy.sh
+      - name: 🔐 SSH鍵設定
+        run: |
+          echo "${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
 
       - name: 📤 Transfer compose.yaml
         run: |
-          ssh -o ConnectTimeout=30 "${SSH_USER}@${SSH_HOST}" "echo connected && mkdir -p ~/tumiki"
-          scp docker/apps/compose.yaml "${SSH_USER}@${SSH_HOST}:~/tumiki/compose.yaml"
+          ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" "echo connected && mkdir -p ~/tumiki"
+          scp -i ~/.ssh/id_ed25519 docker/apps/compose.yaml "${SSH_USER}@${SSH_HOST}:~/tumiki/compose.yaml"
 
       - name: 🐳 Deploy containers
         run: |
           IMAGE_TAG_VAL="${IMAGE_TAG}"
-          ssh "${SSH_USER}@${SSH_HOST}" bash -l << REMOTE_SCRIPT
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -l << REMOTE_SCRIPT
             set -euo pipefail
             cd ~/tumiki
             export IMAGE_TAG="${IMAGE_TAG_VAL}"
@@ -92,7 +117,7 @@ jobs:
 
       - name: ✅ Verify health endpoints
         run: |
-          ssh "${SSH_USER}@${SSH_HOST}" bash << 'HEALTHCHECK'
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash << 'HEALTHCHECK'
             for i in $(seq 1 20); do
               if curl -sf http://localhost:8080/api/health > /dev/null 2>&1 && \
                  curl -sf http://localhost:8081/health > /dev/null 2>&1 && \
@@ -112,7 +137,7 @@ jobs:
       - name: 🧹 Cleanup
         if: always()
         run: |
-          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh
+          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh ~/.ssh/id_ed25519
 
   deploy-production:
     name: 🚀 Deploy to production
@@ -141,6 +166,10 @@ jobs:
           curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o /tmp/cloudflared.deb
           sudo dpkg -i /tmp/cloudflared.deb
 
+      - name: 🌐 Cloudflare Access Token取得
+        run: |
+          cloudflared access token --app-domain "${SSH_HOST}" 2>&1
+
       - name: 🌐 Configure Cloudflare SSH
         run: |
           mkdir -p ~/.ssh
@@ -157,15 +186,20 @@ jobs:
             StrictHostKeyChecking accept-new
           CONFIG
 
+      - name: 🔐 SSH鍵設定
+        run: |
+          echo "${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
       - name: 📤 Transfer compose.yaml
         run: |
-          ssh -o ConnectTimeout=30 "${SSH_USER}@${SSH_HOST}" "echo connected && mkdir -p ~/tumiki"
-          scp docker/apps/compose.yaml "${SSH_USER}@${SSH_HOST}:~/tumiki/compose.yaml"
+          ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" "echo connected && mkdir -p ~/tumiki"
+          scp -i ~/.ssh/id_ed25519 docker/apps/compose.yaml "${SSH_USER}@${SSH_HOST}:~/tumiki/compose.yaml"
 
       - name: 🐳 Deploy containers
         run: |
           IMAGE_TAG_VAL="${IMAGE_TAG}"
-          ssh "${SSH_USER}@${SSH_HOST}" bash -l << REMOTE_SCRIPT
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -l << REMOTE_SCRIPT
             set -euo pipefail
             cd ~/tumiki
             export IMAGE_TAG="${IMAGE_TAG_VAL}"
@@ -177,7 +211,7 @@ jobs:
 
       - name: ✅ Verify health endpoints
         run: |
-          ssh "${SSH_USER}@${SSH_HOST}" bash << 'HEALTHCHECK'
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash << 'HEALTHCHECK'
             for i in $(seq 1 20); do
               if curl -sf http://localhost:8080/api/health > /dev/null 2>&1 && \
                  curl -sf http://localhost:8081/health > /dev/null 2>&1 && \
@@ -197,4 +231,4 @@ jobs:
       - name: 🧹 Cleanup
         if: always()
         run: |
-          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh
+          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh ~/.ssh/id_ed25519
