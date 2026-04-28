@@ -1,5 +1,24 @@
 import type { PIIPattern } from "openredaction";
 
+// 日本特化の PII 検出パターン
+//
+// なぜ secrets-curated.ts (gitleaks 互換 TOML) ではなく TS で直接定義しているか:
+//
+// 1. validator 関数が必要なパターンがあるため
+//    マイナンバー (JP_MY_NUMBER) や運転免許 (JP_DRIVER_LICENSE) は
+//    「12 桁の数字」だけだと業務 ID 等と区別できないため、チェックディジット
+//    検証で偽陽性を除去する必要がある。OpenRedaction の PIIPattern.validator は
+//    JS 関数を要求するため、データ記述言語の TOML では表現できない。
+//
+// 2. 流用元の TOML 資産が存在しないため
+//    secrets-curated.ts で TOML 形式を採用した最大の利点は「gitleaks 公式 /
+//    trufflehog 等の業界資産をコピペで取り込める」点。一方、日本特化 PII
+//    (マイナンバー / パスポート 等) は gitleaks の標準ルールに含まれていない
+//    ため、TOML 形式で書く旨味が薄い。
+//
+// したがって validator 不要の単純な regex (JP_PHONE / JP_POSTAL_CODE 等) も
+// 含めて、日本特化パターンはこのファイルにまとめて配置する。
+
 // マイナンバーのチェックディジット検証
 // 仕様: 11 桁の数字に対して係数 (6,5,4,3,2,7,6,5,4,3,2) を掛けて和を出し、11 で割った余りから検査値を計算
 // https://www.soumu.go.jp/main_content/000291950.pdf
@@ -15,8 +34,8 @@ export const validateMyNumberChecksum = (digits: string): boolean => {
   return expected === Number(digits[11]);
 };
 
-// 日本特化の PII 検出パターン
-// gitleaks の TOML には載らない、ロジック付き検証 (チェックディジット等) を要するパターンは TS 側に置く
+// 上記コメント参照: validator が必要なもの (JP_MY_NUMBER 等) と、流用元 TOML が
+// 存在しない単純 regex (JP_PHONE 等) をまとめてここに配置している
 export const japanPatterns: PIIPattern[] = [
   {
     type: "JP_PHONE",
