@@ -20,7 +20,7 @@ on:
         default: false
 
 concurrency:
-  group: keycloak-tf-${{ inputs.environment || 'staging' }}
+  group: keycloak-tf-${{ github.event_name == 'release' && 'production' || inputs.environment || 'staging' }}
   cancel-in-progress: false
 
 permissions:
@@ -71,15 +71,15 @@ jobs:
             set -euo pipefail
             cd ~/keycloak-tf
             infisical run --env=staging --domain https://secrets.rayven.cloud -- \
-              terraform init -reconfigure -input=false
+              terraform init -input=false
             infisical run --env=staging --domain https://secrets.rayven.cloud -- \
               terraform validate
             if [ "${DRY_RUN}" = "true" ]; then
               infisical run --env=staging --domain https://secrets.rayven.cloud -- \
-                terraform plan -var-file=terraform.tfvars.staging -input=false
+                terraform plan -var-file=terraform.tfvars.staging -input=false -no-color
             else
               infisical run --env=staging --domain https://secrets.rayven.cloud -- \
-                terraform apply -var-file=terraform.tfvars.staging -auto-approve -input=false
+                terraform apply -var-file=terraform.tfvars.staging -auto-approve -input=false -no-color
             fi
           REMOTE_SCRIPT
 
@@ -132,15 +132,15 @@ jobs:
             set -euo pipefail
             cd ~/keycloak-tf
             infisical run --env=prod --domain https://secrets.rayven.cloud -- \
-              terraform init -reconfigure -input=false
+              terraform init -input=false
             infisical run --env=prod --domain https://secrets.rayven.cloud -- \
               terraform validate
             if [ "${DRY_RUN}" = "true" ]; then
               infisical run --env=prod --domain https://secrets.rayven.cloud -- \
-                terraform plan -var-file=terraform.tfvars.production -input=false
+                terraform plan -var-file=terraform.tfvars.production -input=false -no-color
             else
               infisical run --env=prod --domain https://secrets.rayven.cloud -- \
-                terraform apply -var-file=terraform.tfvars.production -auto-approve -input=false
+                terraform apply -var-file=terraform.tfvars.production -auto-approve -input=false -no-color
             fi
           REMOTE_SCRIPT
 

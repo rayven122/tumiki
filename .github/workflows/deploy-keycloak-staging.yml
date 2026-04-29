@@ -56,6 +56,7 @@ jobs:
           ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash << 'REMOTE_SCRIPT'
             set -euo pipefail
             cd ~/keycloak
+            infisical run --env=staging --domain https://secrets.rayven.cloud -- docker compose pull keycloak
             infisical run --env=staging --domain https://secrets.rayven.cloud -- docker compose up -d --force-recreate keycloak
           REMOTE_SCRIPT
 
