@@ -79,10 +79,14 @@ jobs:
         run: |
           mkdir -p ~/.ssh ~/.cloudflared
 
-          # ProxyCommandはサブプロセスで動くため、認証情報をスクリプトに直接埋め込む
+          # cloudflared access ssh/tcp はサービストークンに TUNNEL_SERVICE_TOKEN_ID/SECRET を使用
+          # (CF_ACCESS_CLIENT_ID/SECRET ではない)
           cat > /tmp/cf-proxy.sh << WRAPPER
           #!/bin/bash
-          exec env CF_ACCESS_CLIENT_ID="${CF_ACCESS_CLIENT_ID}" CF_ACCESS_CLIENT_SECRET="${CF_ACCESS_CLIENT_SECRET}" cloudflared access ssh --hostname "\$@"
+          exec cloudflared access ssh \
+            --service-token-id "${CF_ACCESS_CLIENT_ID}" \
+            --service-token-secret "${CF_ACCESS_CLIENT_SECRET}" \
+            --hostname "\$@"
           WRAPPER
           chmod +x /tmp/cf-proxy.sh
 
@@ -176,7 +180,10 @@ jobs:
 
           cat > /tmp/cf-proxy.sh << WRAPPER
           #!/bin/bash
-          exec env CF_ACCESS_CLIENT_ID="${CF_ACCESS_CLIENT_ID}" CF_ACCESS_CLIENT_SECRET="${CF_ACCESS_CLIENT_SECRET}" cloudflared access ssh --hostname "\$@"
+          exec cloudflared access ssh \
+            --service-token-id "${CF_ACCESS_CLIENT_ID}" \
+            --service-token-secret "${CF_ACCESS_CLIENT_SECRET}" \
+            --hostname "\$@"
           WRAPPER
           chmod +x /tmp/cf-proxy.sh
 
