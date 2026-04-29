@@ -5,6 +5,7 @@
  * Infisical Certificate Manager を使って CSR に署名し証明書を発行する
  */
 
+import { TIMEOUT_CONFIG } from "../../shared/constants/config.js";
 import type { EnrollResponse } from "./schema.js";
 
 type InfisicalSignResponse = {
@@ -34,16 +35,20 @@ export const signCertificate = async (
       },
       body: JSON.stringify({
         csr,
-        // CN は CSR から取得。org_id と一致することは呼び出し元で保証済み
         commonName: orgId,
         ttl: "8760h", // 1年
       }),
+      signal: AbortSignal.timeout(TIMEOUT_CONFIG.certificateEnroll),
     },
   );
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Infisical sign failed: ${response.status} ${text}`);
+    console.error(
+      `[certificates/service] Infisical sign failed: ${response.status}`,
+      text,
+    );
+    throw new Error("Certificate signing failed");
   }
 
   const data = (await response.json()) as InfisicalSignResponse;

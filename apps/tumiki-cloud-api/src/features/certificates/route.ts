@@ -9,6 +9,8 @@
  * - 更新: 既存クライアント証明書（mTLS）で認証 → 新証明書を返す
  */
 
+import type { TLSSocket } from "node:tls";
+
 import { Hono } from "hono";
 import { importSPKI, jwtVerify } from "jose";
 
@@ -20,27 +22,40 @@ const certificatesRoute = new Hono();
 
 certificatesRoute.post("/v1/certificates/enroll", async (c) => {
   const authHeader = c.req.header("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
+  let orgId: string | null = null;
 
-  const token = authHeader.slice(7);
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice(7);
 
-  // Bootstrap Token（tumiki_ プレフィックスの JWT）を検証
-  if (!token.startsWith(BOOTSTRAP_TOKEN_CONFIG.prefix)) {
-    // TODO: 更新時は mTLS クライアント証明書で認証
-    return c.json({ error: "Unauthorized" }, 401);
-  }
+    // Bootstrap Token（tumiki_ プレフィックスの JWT）を検証
+    if (!token.startsWith(BOOTSTRAP_TOKEN_CONFIG.prefix)) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
 
-  const orgId = await verifyBootstrapToken(token);
-  if (!orgId) {
-    return c.json({ error: "Invalid or expired bootstrap token" }, 401);
+    orgId = await verifyBootstrapToken(token);
+    if (!orgId) {
+      return c.json({ error: "Invalid or expired bootstrap token" }, 401);
+    }
+  } else {
+    // 証明書更新パス: mTLS クライアント証明書で認証
+    const incoming = (
+      c.env as { incoming?: { socket?: TLSSocket } } | undefined
+    )?.incoming;
+    const socket = incoming?.socket;
+    if (!socket?.authorized) {
+      return c.json({ error: "Valid client certificate required" }, 401);
+    }
+    orgId = socket.getPeerCertificate()?.subject?.CN ?? null;
+    if (!orgId) {
+      return c.json({ error: "Certificate must have org_id in CN field" }, 401);
+    }
   }
 
   let body: unknown;
   try {
     body = await c.req.json();
-  } catch {
+  } catch (err) {
+    console.error("[certificates/enroll] Failed to parse request body:", err);
     return c.json({ error: "Invalid request body" }, 400);
   }
 
@@ -49,8 +64,13 @@ certificatesRoute.post("/v1/certificates/enroll", async (c) => {
     return c.json({ error: "Invalid request body" }, 400);
   }
 
-  const result = await signCertificate(parsed.data.csr, orgId);
-  return c.json(result);
+  try {
+    const result = await signCertificate(parsed.data.csr, orgId);
+    return c.json(result);
+  } catch (err) {
+    console.error("[certificates/enroll] Failed to sign certificate:", err);
+    return c.json({ error: "Internal Server Error" }, 500);
+  }
 });
 
 /**
@@ -71,7 +91,11 @@ const verifyBootstrapToken = async (token: string): Promise<string | null> => {
     });
 
     return payload.sub ?? null;
-  } catch {
+  } catch (err) {
+    console.error(
+      "[certificates/enroll] Bootstrap token verification failed:",
+      err,
+    );
     return null;
   }
 };

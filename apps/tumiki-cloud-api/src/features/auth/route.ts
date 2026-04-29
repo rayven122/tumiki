@@ -35,27 +35,29 @@ authRoute.post("/v1/auth/token", async (c) => {
     return c.json({ error: "Certificate must have org_id in CN field" }, 401);
   }
 
-  const token = await issueShortLivedJwt(orgId);
-  if (!token) {
+  const result = await issueShortLivedJwt(orgId);
+  if (!result) {
     return c.json({ error: "Internal Server Error" }, 500);
   }
 
-  const ttlSeconds =
-    Number(process.env.JWT_TTL_SECONDS) || JWT_CONFIG.defaultTtlSeconds;
-
-  return c.json({ token, expiresIn: ttlSeconds });
+  return c.json({ token: result.token, expiresIn: result.ttlSeconds });
 });
 
-const issueShortLivedJwt = async (orgId: string): Promise<string | null> => {
+const issueShortLivedJwt = async (
+  orgId: string,
+): Promise<{ token: string; ttlSeconds: number } | null> => {
   const privateKeyPem = process.env.JWT_SIGNING_PRIVATE_KEY;
-  if (!privateKeyPem) return null;
+  if (!privateKeyPem) {
+    console.error("[auth/token] JWT_SIGNING_PRIVATE_KEY is not configured");
+    return null;
+  }
 
   const ttlSeconds =
     Number(process.env.JWT_TTL_SECONDS) || JWT_CONFIG.defaultTtlSeconds;
 
   const privateKey = await importPKCS8(privateKeyPem, "RS256");
 
-  return new SignJWT({ org_id: orgId })
+  const token = await new SignJWT({ org_id: orgId })
     .setProtectedHeader({ alg: "RS256" })
     .setSubject(orgId)
     .setIssuer("tumiki-cloud-api")
@@ -63,6 +65,8 @@ const issueShortLivedJwt = async (orgId: string): Promise<string | null> => {
     .setIssuedAt()
     .setExpirationTime(`${ttlSeconds}s`)
     .sign(privateKey);
+
+  return { token, ttlSeconds };
 };
 
 export { authRoute };

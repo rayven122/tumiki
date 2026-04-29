@@ -14,6 +14,20 @@ const tlsKey = process.env.TLS_KEY;
 const caCert = process.env.RAYVEN_CA_CERT;
 
 if (tlsCert && tlsKey && caCert) {
+  // mTLS モードの場合のみ必須環境変数を検証し、不足していれば起動を失敗させる
+  const requiredEnvVars = [
+    "JWT_SIGNING_PRIVATE_KEY",
+    "JWT_SIGNING_PUBLIC_KEY",
+    "BOOTSTRAP_TOKEN_PUBLIC_KEY",
+  ];
+  const missingEnvVars = requiredEnvVars.filter((key) => !process.env[key]);
+  if (missingEnvVars.length > 0) {
+    console.error(
+      `[tumiki-cloud-api] FATAL: Missing required env vars: ${missingEnvVars.join(", ")}`,
+    );
+    process.exit(1);
+  }
+
   // mTLS サーバー起動（本番環境）
   // requestCert: true でクライアント証明書を要求
   // rejectUnauthorized: false で接続は受け入れ、/v1/auth/token ハンドラ内で証明書を検証

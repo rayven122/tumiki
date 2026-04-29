@@ -15,6 +15,7 @@ import {
   gateway,
   TOOL_SEARCH_MODEL,
 } from "../../infrastructure/ai/provider.js";
+import { TIMEOUT_CONFIG } from "../../shared/constants/config.js";
 import type { ToolSearchRequest, ToolSearchResponse } from "./schema.js";
 
 const searchResultSchema = z.object({
@@ -42,6 +43,7 @@ export const searchTools = async (
   const { object } = await generateObject({
     model: gateway(TOOL_SEARCH_MODEL),
     schema: searchResultSchema,
+    abortSignal: AbortSignal.timeout(TIMEOUT_CONFIG.toolSearch),
     prompt: `以下のツールリストから、ユーザーのクエリに関連するツールを選んでください。
 
 クエリ: "${query}"

@@ -13,7 +13,8 @@ toolSearchRoute.post("/v1/tool-search", jwtAuth, async (c) => {
   let body: unknown;
   try {
     body = await c.req.json();
-  } catch {
+  } catch (err) {
+    console.error("[tool-search] Failed to parse request body:", err);
     return c.json({ error: "Invalid request body" }, 400);
   }
 
