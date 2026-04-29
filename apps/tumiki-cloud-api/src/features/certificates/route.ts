@@ -85,7 +85,9 @@ const verifyBootstrapToken = async (token: string): Promise<string | null> => {
 
   try {
     const publicKey = await importSPKI(publicKeyPem, "RS256");
-    const { payload } = await jwtVerify(token, publicKey, {
+    // tumiki_ プレフィックスを除去してから JWT として検証する
+    const jwt = token.slice(BOOTSTRAP_TOKEN_CONFIG.prefix.length);
+    const { payload } = await jwtVerify(jwt, publicKey, {
       issuer: "rayven-cloud",
       audience: "tumiki-cloud-api",
     });

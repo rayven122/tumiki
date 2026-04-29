@@ -15,5 +15,4 @@ export const JWT_CONFIG = {
 
 export const BOOTSTRAP_TOKEN_CONFIG = {
   prefix: "tumiki_",
-  ttlHours: 72,
 } as const;

@@ -23,8 +23,13 @@ toolSearchRoute.post("/v1/tool-search", jwtAuth, async (c) => {
     return c.json({ error: "Invalid request body" }, 400);
   }
 
-  const results = await searchTools(parsed.data);
-  return c.json({ results });
+  try {
+    const results = await searchTools(parsed.data);
+    return c.json({ results });
+  } catch (err) {
+    console.error("[tool-search] searchTools failed:", err);
+    return c.json({ error: "Internal Server Error" }, 500);
+  }
 });
 
 export { toolSearchRoute };

@@ -5,7 +5,12 @@ import { z } from "zod";
 
 export const enrollRequestSchema = z.object({
   /** PEM 形式の CSR */
-  csr: z.string().min(1),
+  csr: z
+    .string()
+    .min(1)
+    .refine((v) => v.includes("-----BEGIN CERTIFICATE REQUEST-----"), {
+      message: "CSR must be PEM-encoded",
+    }),
 });
 
 export const enrollResponseSchema = z.object({

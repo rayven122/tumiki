@@ -131,7 +131,7 @@ describe("signCertificate / Infisical API 連携", () => {
     expect(parsedBody).toStrictEqual({
       csr: "my-csr",
       commonName: "org-xyz",
-      ttl: "8760h",
+      ttl: "2160h",
     });
   });
 });

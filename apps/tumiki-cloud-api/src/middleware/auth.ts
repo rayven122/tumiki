@@ -8,6 +8,15 @@ type AuthVariables = {
   orgId: string;
 };
 
+// 公開鍵のパースは暗号演算を伴うため、モジュールスコープでキャッシュする
+type PublicKey = Awaited<ReturnType<typeof importSPKI>>;
+let cachedPublicKey: PublicKey | null = null;
+
+const getPublicKey = async (pem: string): Promise<PublicKey> => {
+  cachedPublicKey ??= await importSPKI(pem, "RS256");
+  return cachedPublicKey;
+};
+
 /**
  * Short-lived JWT を検証して orgId をコンテキストに設定するミドルウェア
  */
@@ -25,7 +34,7 @@ export const jwtAuth = createMiddleware<{ Variables: AuthVariables }>(
     }
 
     try {
-      const publicKey = await importSPKI(publicKeyPem, "RS256");
+      const publicKey = await getPublicKey(publicKeyPem);
       const { payload } = await jwtVerify(token, publicKey, {
         issuer: "tumiki-cloud-api",
         audience: "tumiki-desktop",

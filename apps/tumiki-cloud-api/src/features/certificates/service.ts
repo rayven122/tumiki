@@ -36,7 +36,7 @@ export const signCertificate = async (
       body: JSON.stringify({
         csr,
         commonName: orgId,
-        ttl: "8760h", // 1年
+        ttl: process.env.CERT_TTL ?? "2160h", // デフォルト 90 日（環境変数で上書き可）
       }),
       signal: AbortSignal.timeout(TIMEOUT_CONFIG.certificateEnroll),
     },
