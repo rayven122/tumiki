@@ -38,6 +38,8 @@ const createMockAuditLog = (
   errorCode: null,
   errorSummary: null,
   detail: null,
+  piiDetections: null,
+  piiPolicy: null,
   createdAt: overrides.createdAt ?? new Date("2026-04-01T10:00:00.000Z"),
   serverId: 1,
   connectionName: "conn-1",

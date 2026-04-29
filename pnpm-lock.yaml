@@ -1115,9 +1115,15 @@ importers:
 
   packages/mcp-core-proxy:
     dependencies:
+      '@iarna/toml':
+        specifier: ^2.2.5
+        version: 2.2.5
       '@modelcontextprotocol/sdk':
         specifier: ^1.26.0
         version: 1.26.0(@cfworker/json-schema@4.1.1)(zod@4.1.13)
+      openredaction:
+        specifier: ^1.1.2
+        version: 1.1.2(react@19.2.4)
     devDependencies:
       '@tumiki/eslint-config':
         specifier: workspace:*
@@ -2856,6 +2862,9 @@ packages:
         optional: true
       prettier-plugin-ember-template-tag:
         optional: true
+
+  '@iarna/toml@2.2.5':
+    resolution: {integrity: sha512-trnsAYxU3xnS1gPHPyU961coFyLkh4gAD/0zQ5mymY4yOZ+CYvsPqUbOFSw0aDM4y0tV7tiFxL/1XfXPNC6IPg==}
 
   '@img/colour@1.0.0':
     resolution: {integrity: sha512-A5P/LfWGFSl6nsckYtjw9da+19jB8hkJ6ACTGcDfEJ0aE+l2n2El7dsVM7UVHZQ9s2lmYMWlrS21YLy2IR1LUw==}
@@ -8799,6 +8808,24 @@ packages:
   openid-client@6.8.1:
     resolution: {integrity: sha512-VoYT6enBo6Vj2j3Q5Ec0AezS+9YGzQo1f5Xc42lreMGlfP4ljiXPKVDvCADh+XHCV/bqPu/wWSiCVXbJKvrODw==}
 
+  openredaction@1.1.2:
+    resolution: {integrity: sha512-jxHG+LcNvqCFJDrDpCsNygE26XFCfj3kafyVfNtdbQBSApDDNcoQYWMp5rIKstQQ70Eg5AjEU41jFRp6pnfIqw==}
+    engines: {node: '>=20.0.0'}
+    peerDependencies:
+      mammoth: ^1.6.0
+      pdf-parse: ^1.1.1
+      react: ^18.0.0 || ^19.0.0
+      tesseract.js: ^5.0.0
+    peerDependenciesMeta:
+      mammoth:
+        optional: true
+      pdf-parse:
+        optional: true
+      react:
+        optional: true
+      tesseract.js:
+        optional: true
+
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
     engines: {node: '>= 0.8.0'}
@@ -12619,6 +12646,8 @@ snapshots:
       semver: 7.7.3
     transitivePeerDependencies:
       - supports-color
+
+  '@iarna/toml@2.2.5': {}
 
   '@img/colour@1.0.0':
     optional: true
@@ -20168,6 +20197,10 @@ snapshots:
     dependencies:
       jose: 6.1.3
       oauth4webapi: 3.8.3
+
+  openredaction@1.1.2(react@19.2.4):
+    optionalDependencies:
+      react: 19.2.4
 
   optionator@0.9.4:
     dependencies:

@@ -65,6 +65,13 @@ export type CallToolResult = {
   isError?: boolean;
 };
 
+// PII マスキングフィルタの検出結果サマリ（type ごとの件数とマスク後トークン）
+// 例: { EMAIL: { count: 1, tokens: ["[EMAIL_1105]"] } }
+export type PiiDetectionSummary = Record<
+  string,
+  { count: number; tokens: string[] }
+>;
+
 // ツール実行イベント（監査ログ等の外部処理を注入するためのコールバック型）
 export type ToolCallEvent = {
   /** プレフィックス付きツール名（例: "server-name__tool-name"） */
@@ -83,9 +90,39 @@ export type ToolCallEvent = {
   clientName?: string;
   /** AIクライアントバージョン */
   clientVersion?: string;
+  /** PII フィルタが検出した type 別サマリ（フィルタ無効 or 検出なしの場合は undefined） */
+  piiDetections?: PiiDetectionSummary;
+  /** PII フィルタの適用ポリシー（フィルタ無効時は undefined） */
+  piiPolicy?: string;
+  /** マスキング処理で実際に upstream に渡される args 全体（検出があった場合のみ設定される） */
+  maskedArgs?: Record<string, unknown>;
 };
 
 export type ToolCallHook = (event: ToolCallEvent) => void | Promise<void>;
+
+// ツール呼び出しフィルタ（PII マスキング等）
+// beforeCall で args を変換または block、afterCall で result を変換する
+export type ToolCallFilter = {
+  // リクエスト送信前: args を変換し、afterCall に渡すコンテキストを返す
+  // blocked が返された場合は upstream を呼ばずにエラー応答を返す
+  beforeCall: (
+    toolName: string,
+    args: Record<string, unknown>,
+  ) => Promise<{
+    args: Record<string, unknown>;
+    context: unknown;
+    blocked?: { reason: string };
+  }>;
+  // レスポンス受信後: context を使って result を変換する
+  afterCall: (
+    context: unknown,
+    result: CallToolResult,
+  ) => Promise<CallToolResult>;
+  // 監査ログ等のため、context から検出サマリを取り出す（任意実装）
+  getDetectionSummary?: (context: unknown) => PiiDetectionSummary | undefined;
+  // 適用したポリシー名（mask / detect-only / block 等）
+  policy?: string;
+};
 
 // Logger型（注入用）
 export type Logger = {

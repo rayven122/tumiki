@@ -102,6 +102,8 @@ erDiagram
   Int errorCode "nullable"
   String errorSummary "nullable"
   String detail "nullable"
+  Json piiDetections "nullable"
+  String piiPolicy "nullable"
   DateTime createdAt
   Int serverId FK
   String connectionName "nullable"
@@ -198,6 +200,13 @@ MCPサーバー（仮想・統合サーバー = Proxyエンドポイント）
   - `errorCode`: MCPエラーコード（エラー時のみ）
   - `errorSummary`: エラーメッセージ要約
   - `detail`: 操作の補足情報（例: 引数の概要やリソースパス等）
+  - `piiDetections`
+    > PII マスキング検出記録 { summary: { TYPE: { count, tokens } }, maskedArgs: {...} }
+    > summary は type 別の件数とマスク後トークン、maskedArgs は upstream に渡された args 全体
+    > null の場合はフィルタ無効 or 検出なし
+  - `piiPolicy`
+    > 検出時に適用したマスキングポリシー（mask / detect-only / block）
+    > null の場合はフィルタ無効
   - `createdAt`: 
   - `serverId`: 対象MCPサーバー
   - `connectionName`: 対象MCP接続名（接続削除後もログで識別可能にするため名前で保持）

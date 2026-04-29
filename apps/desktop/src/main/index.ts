@@ -132,6 +132,19 @@ if (isMcpProxyMode) {
           connectionName: connMeta.connectionName,
           clientName: event.clientName?.slice(0, 100),
           clientVersion: event.clientVersion?.slice(0, 50),
+          // 検出があった時だけ { summary, maskedArgs } の階層構造で残す（NULL なら DB は NULL）
+          // - summary: type 別の件数とマスク後トークンの集計
+          // - maskedArgs: 上流 MCP に実際に渡された args 全体（生 PII を含まない）
+          // Prisma Json 型へキャスト（実値は JSON シリアライズ可能なオブジェクトのみ）
+          piiDetections: event.piiDetections
+            ? (JSON.parse(
+                JSON.stringify({
+                  summary: event.piiDetections,
+                  maskedArgs: event.maskedArgs ?? null,
+                }),
+              ) as import("@prisma/desktop-client").Prisma.InputJsonValue)
+            : undefined,
+          piiPolicy: event.piiPolicy,
         });
       };
 
@@ -142,6 +155,9 @@ if (isMcpProxyMode) {
           hooks?: import("@tumiki/mcp-core-proxy").ProxyHooks,
         ) => Promise<void>;
       };
+
+      // PII マスキングは runMcpProxy 内でデフォルト有効化されるため、Desktop 側は何も指定しない
+      // （カスタマイズしたい場合のみ hooks.filter を渡す）
       await mod.runMcpProxy(configs, {
         onToolCall,
         onStatusChange,

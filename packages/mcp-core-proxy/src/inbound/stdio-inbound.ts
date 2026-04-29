@@ -50,15 +50,80 @@ export const startStdioInbound = async (
     let isSuccess = true;
     let errorMessage: string | undefined;
     let resultContent: unknown[] = [];
+    let processedArgs = safeArgs;
+    let filterContext: unknown = undefined;
 
+    // pre-call フィルタ処理は try ブロック内に置き、block / フィルタ失敗時の早期 return も
+    // finally に到達して onToolCall が確実に呼ばれるようにする（監査ログを必ず残すため）
     try {
-      const result = await core.callTool(name, safeArgs);
-      resultContent = result.content;
+      if (hooks?.filter) {
+        try {
+          const filtered = await hooks.filter.beforeCall(name, safeArgs);
+          // block 判定の有無に関わらず context は保存（getDetectionSummary でサマリ取得）
+          filterContext = filtered.context;
+          if (filtered.blocked) {
+            isSuccess = false;
+            errorMessage = filtered.blocked.reason;
+            resultContent = [
+              { type: "text", text: `エラー: ${filtered.blocked.reason}` },
+            ];
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: `エラー: ${filtered.blocked.reason}`,
+                },
+              ],
+              isError: true,
+            };
+          }
+          processedArgs = filtered.args;
+        } catch (e) {
+          // フィルタ自体が落ちたら fail-close（PII 流出を防ぐためブロック側に倒す）
+          isSuccess = false;
+          errorMessage = `フィルタの実行に失敗しました: ${e instanceof Error ? e.message : String(e)}`;
+          logger.error("ツール呼び出しフィルタの前処理でエラーが発生しました", {
+            tool: name,
+            error: errorMessage,
+          });
+          resultContent = [{ type: "text", text: `エラー: ${errorMessage}` }];
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `エラー: ${errorMessage}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      }
 
-      if (result.isError) {
+      const result = await core.callTool(name, processedArgs);
+
+      // post-call フィルタ: result を変換（マスク済みトークンの復号等）
+      // 失敗時はマスク済みのまま返す（fail-open）— 情報漏洩は発生しないため
+      let finalResult = result;
+      if (hooks?.filter) {
+        try {
+          finalResult = await hooks.filter.afterCall(filterContext, result);
+        } catch (e) {
+          logger.error(
+            "ツール呼び出しフィルタの後処理でエラーが発生しました（マスク済みのまま返します）",
+            {
+              tool: name,
+              error: e instanceof Error ? e.message : String(e),
+            },
+          );
+        }
+      }
+
+      resultContent = finalResult.content;
+
+      if (finalResult.isError) {
         isSuccess = false;
         // isError=trueの場合、contentからエラーメッセージを抽出
-        const textContent = result.content.find(
+        const textContent = finalResult.content.find(
           (c): c is { type: string; text: string } =>
             typeof c === "object" && c !== null && "type" in c && "text" in c,
         );
@@ -66,7 +131,7 @@ export const startStdioInbound = async (
       }
 
       return {
-        content: result.content.map((c) => {
+        content: finalResult.content.map((c) => {
           // MCP SDKのコンテンツ型（text, image, audio, resource, resource_link）をそのまま返す
           if (typeof c === "object" && c !== null && "type" in c) {
             return c as Record<string, unknown>;
@@ -74,7 +139,7 @@ export const startStdioInbound = async (
           // 不明な形式はテキストに変換
           return { type: "text" as const, text: JSON.stringify(c) };
         }),
-        isError: result.isError,
+        isError: finalResult.isError,
       };
     } catch (error) {
       isSuccess = false;
@@ -97,6 +162,12 @@ export const startStdioInbound = async (
       if (hooks?.onToolCall) {
         const durationMs = Date.now() - startTime;
         const clientInfo = server.getClientVersion();
+        // フィルタ context から PII 検出サマリを取り出す（getDetectionSummary 実装時のみ）
+        const piiDetections = hooks.filter?.getDetectionSummary
+          ? hooks.filter.getDetectionSummary(filterContext)
+          : undefined;
+        // 検出があった場合のみマスク後 args を渡す（生 PII が DB に残らないよう、未検出時は省略）
+        const maskedArgs = piiDetections ? processedArgs : undefined;
         // フックは非同期でもfire-and-forget（ツール応答を遅延させない）
         // try-catchで同期throwも捕捉する
         try {
@@ -110,6 +181,9 @@ export const startStdioInbound = async (
               resultContent,
               clientName: clientInfo?.name,
               clientVersion: clientInfo?.version,
+              piiDetections,
+              piiPolicy: hooks.filter?.policy,
+              maskedArgs,
             }),
           ).catch((e: unknown) => {
             logger.error("ツール実行フックでエラーが発生しました", {

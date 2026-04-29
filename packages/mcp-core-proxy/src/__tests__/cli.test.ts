@@ -85,10 +85,11 @@ describe("runMcpProxy", () => {
       expect.any(Object),
     );
     expect(mocks.mockStartAll).toHaveBeenCalledOnce();
+    // PII マスキングフィルタが runMcpProxy 内で自動構築されるため、3引数目には常に filter が含まれる
     expect(mocks.mockStartStdioInbound).toHaveBeenCalledWith(
       mocks.mockCore,
       expect.any(Object),
-      undefined,
+      expect.objectContaining({ filter: expect.any(Object) as unknown }),
     );
   });
 
@@ -126,7 +127,7 @@ describe("runMcpProxy", () => {
     );
   });
 
-  test("hooks を startStdioInbound に渡す", async () => {
+  test("hooks を startStdioInbound に渡す（filter は内蔵で追加される）", async () => {
     const onToolCall = vi.fn();
     const hooks = { onToolCall };
 
@@ -135,7 +136,25 @@ describe("runMcpProxy", () => {
     expect(mocks.mockStartStdioInbound).toHaveBeenCalledWith(
       mocks.mockCore,
       expect.any(Object),
-      hooks,
+      expect.objectContaining({
+        onToolCall,
+        filter: expect.any(Object) as unknown,
+      }),
+    );
+  });
+
+  test("呼び出し側で hooks.filter を渡せばデフォルト filter を上書きできる", async () => {
+    const customFilter = {
+      beforeCall: vi.fn(),
+      afterCall: vi.fn(),
+    };
+
+    await runMcpProxy([], { filter: customFilter });
+
+    expect(mocks.mockStartStdioInbound).toHaveBeenCalledWith(
+      mocks.mockCore,
+      expect.any(Object),
+      expect.objectContaining({ filter: customFilter }),
     );
   });
 });

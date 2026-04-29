@@ -22,7 +22,9 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.26.0"
+    "@iarna/toml": "^2.2.5",
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "openredaction": "^1.1.2"
   },
   "devDependencies": {
     "@tumiki/eslint-config": "workspace:*",

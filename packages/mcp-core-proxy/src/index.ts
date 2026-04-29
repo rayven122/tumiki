@@ -18,6 +18,8 @@ export type {
   ProxyEvent,
   ToolCallEvent,
   ToolCallHook,
+  ToolCallFilter,
+  PiiDetectionSummary,
 } from "./types.js";
 
 // MCPクライアントヘルパー
@@ -39,3 +41,21 @@ export { startStdioInbound } from "./inbound/stdio-inbound.js";
 
 // Logger
 export { stderrLogger } from "./stderr-logger.js";
+
+// PII マスキングフィルタ
+export { createRedactionFilter } from "./security/redaction-filter.js";
+export type {
+  RedactionPolicy,
+  RedactionFilterOptions,
+} from "./security/redaction-filter.js";
+export {
+  DEFAULT_PII_MASKING_ENABLED,
+  DEFAULT_REDACTION_POLICY,
+  DEFAULT_REDACTOR_OPTIONS,
+  DEFAULT_ALLOWLIST_TOOLS,
+} from "./security/config.js";
+export {
+  allCustomPatterns,
+  japanPatterns,
+  secretPatterns,
+} from "./security/patterns/index.js";

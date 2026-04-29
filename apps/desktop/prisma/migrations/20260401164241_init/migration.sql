@@ -101,6 +101,8 @@ CREATE TABLE "AuditLog" (
     "errorCode" INTEGER,
     "errorSummary" TEXT,
     "detail" TEXT,
+    "piiDetections" JSONB,
+    "piiPolicy" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "serverId" INTEGER NOT NULL,
     "connectionName" TEXT,

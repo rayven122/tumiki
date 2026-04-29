@@ -3,7 +3,9 @@ import {
   createTRPCRouter,
   publicProcedure,
 } from "@/server/api/trpc";
+import { groupsRouter } from "./routers/groups";
 import { scimTokenRouter } from "./routers/scim-token";
+import { usersRouter } from "./routers/users";
 
 /**
  * サーバーのメインルーター。
@@ -16,6 +18,8 @@ export const appRouter = createTRPCRouter({
     return { status: "ok" };
   }),
   scimToken: scimTokenRouter,
+  groups: groupsRouter,
+  users: usersRouter,
 });
 
 // APIの型定義をエクスポート
