@@ -20,6 +20,7 @@ jobs:
     name: 🔑 Deploy Keycloak to Staging
     runs-on: ubuntu-latest
     environment: staging
+    timeout-minutes: 30
 
     env:
       CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
@@ -76,4 +77,4 @@ jobs:
       - name: 🧹 Cleanup
         if: always()
         run: |
-          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh ~/.ssh/id_ed25519
+          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh ~/.ssh/id_ed25519 ~/.ssh/config

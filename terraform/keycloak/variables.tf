@@ -5,7 +5,7 @@
 variable "keycloak_url" {
   description = "Keycloak サーバーURL（本番: TF_VAR_keycloak_url 環境変数で上書き）"
   type        = string
-  default     = "http://localhost:8443"
+  default     = "http://localhost:8080"
 }
 
 variable "keycloak_admin_username" {

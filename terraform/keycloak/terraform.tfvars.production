@@ -5,10 +5,15 @@
 #   pnpm keycloak:prod:plan   # 変更プレビュー
 #   pnpm keycloak:prod:apply  # 設定適用
 #
-# 認証情報は.envファイルから環境変数で取得:
-# - KEYCLOAK_ADMIN_USERNAME / KEYCLOAK_ADMIN_PASSWORD
-# - KEYCLOAK_CLIENT_ID / KEYCLOAK_CLIENT_SECRET
-# - GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET (任意)
+# 認証情報は Infisical から TF_VAR_* 環境変数で注入:
+# - TF_VAR_keycloak_admin_password
+# - TF_VAR_manager_client_secret
+# - TF_VAR_proxy_client_secret
+# - TF_VAR_test_user_password
+# - TF_VAR_smtp_host
+# - TF_VAR_smtp_user
+# - TF_VAR_smtp_from
+# - TF_VAR_smtp_password
 
 # Keycloak接続設定（VM上でローカル実行するため localhost を使用）
 keycloak_url = "http://localhost:8080"
