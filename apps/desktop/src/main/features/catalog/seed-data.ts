@@ -303,7 +303,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
       "マネーフォワード クラウド会計 MCP - 取引・口座・帳票など会計データへのアクセス",
     iconPath: "/logos/services/moneyforward.svg",
     transportType: "STREAMABLE_HTTP",
-    url: "https://beta.mcp.developers.biz.moneyforward.com/mcp/ca/v3",
+    url: "https://mcp.moneyforward.com/mcp",
     credentialKeys: [],
     authType: "OAUTH",
     isOfficial: true,
