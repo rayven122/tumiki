@@ -60,7 +60,6 @@ const buildHeaders = (
         credentials["token"] ??
         credentials["accessToken"] ??
         credentials["access_token"] ??
-        Object.values(credentials)[0] ??
         "";
       return token ? { Authorization: `Bearer ${token}` } : {};
     }
