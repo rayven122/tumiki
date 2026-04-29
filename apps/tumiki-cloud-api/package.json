@@ -1,0 +1,39 @@
+{
+  "name": "@tumiki/tumiki-cloud-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm with-env tsx watch src/index.ts",
+    "build": "pnpm build:clean && tsc --project tsconfig.build.json",
+    "build:clean": "rm -rf dist .cache",
+    "start": "pnpm with-env node dist/src/index.js",
+    "start:prod": "pnpm with-env:prod node dist/src/index.js",
+    "typecheck": "tsc --noEmit",
+    "with-env": "infisical run --env=dev --",
+    "with-env:prod": "infisical run --env=prod --",
+    "with-env-test": "dotenv -e ../../.env.test --",
+    "lint": "eslint",
+    "format": "prettier --check . --ignore-path ../../.gitignore",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.11",
+    "ai": "6.0.111",
+    "hono": "^4.12.5",
+    "jose": "^6.1.2",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@tumiki/vitest-config": "workspace:*",
+    "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "dotenv-cli": "^11.0.0",
+    "eslint": "catalog:",
+    "tsx": "^4.21.0",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
