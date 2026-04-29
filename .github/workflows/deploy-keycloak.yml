@@ -20,7 +20,7 @@ on:
         default: false
 
 concurrency:
-  group: keycloak-tf-${{ github.event.workflow_run.head_branch || inputs.environment || 'staging' }}
+  group: keycloak-tf-${{ inputs.environment || 'staging' }}
   cancel-in-progress: false
 
 permissions:
@@ -70,6 +70,8 @@ jobs:
             cd ~/keycloak-tf
             infisical run --env=staging --domain https://secrets.rayven.cloud -- \
               terraform init -reconfigure -input=false
+            infisical run --env=staging --domain https://secrets.rayven.cloud -- \
+              terraform validate
             if [ "${DRY_RUN}" = "true" ]; then
               infisical run --env=staging --domain https://secrets.rayven.cloud -- \
                 terraform plan -var-file=terraform.tfvars.staging -input=false
@@ -127,6 +129,8 @@ jobs:
             cd ~/keycloak-tf
             infisical run --env=prod --domain https://secrets.rayven.cloud -- \
               terraform init -reconfigure -input=false
+            infisical run --env=prod --domain https://secrets.rayven.cloud -- \
+              terraform validate
             if [ "${DRY_RUN}" = "true" ]; then
               infisical run --env=prod --domain https://secrets.rayven.cloud -- \
                 terraform plan -var-file=terraform.tfvars.production -input=false
@@ -137,7 +141,7 @@ jobs:
           REMOTE_SCRIPT
 
       - name: 📣 Notify Slack on Success
-        if: success() && vars.SLACK_WEBHOOK_URL != ''
+        if: success() && !inputs.dry_run && vars.SLACK_WEBHOOK_URL != ''
         env:
           SLACK_WEBHOOK_URL: ${{ vars.SLACK_WEBHOOK_URL }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
