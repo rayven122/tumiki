@@ -9,6 +9,7 @@ import { setupAuditLogIpc } from "./features/audit-log/audit-log.ipc";
 import { setupDashboardIpc } from "./features/dashboard/dashboard.ipc";
 import { seedCatalogs } from "./features/catalog/catalog.seed";
 import { createOAuthManager } from "./auth/oauth-manager";
+import { resolveOidcEndpoints } from "./auth/keycloak";
 import { getOAuthManager, setOAuthManager } from "./auth/manager-registry";
 import { getKeycloakEnvOptional } from "./utils/env";
 import { createMcpOAuthManager } from "./features/oauth/oauth.service";
@@ -207,11 +208,15 @@ if (isMcpProxyMode) {
     const prev = getOAuthManager();
     prev?.stopAutoRefresh();
 
+    // OIDC Discovery でプロバイダー固有のエンドポイントを取得（Dex・Keycloak・Okta 等に対応）
+    const endpoints = await resolveOidcEndpoints(issuer);
+
     const manager = createOAuthManager(
       {
         issuer,
         clientId,
         redirectUri: `${PROTOCOL}://${CALLBACK_HOST}${CALLBACK_PATHNAME}`,
+        endpoints,
       },
       {
         onAuthExpired: () => {
