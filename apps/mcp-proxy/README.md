@@ -167,6 +167,10 @@ DATABASE_URL=postgresql://...
 
 # ログ設定
 LOG_LEVEL=info  # info, warn, error, debug
+
+# 動的ツール検索 API（EE 機能: DYNAMIC_SEARCH_ENABLED=true 時に必要）
+TUMIKI_CLOUD_API_URL=http://localhost:8081
+TUMIKI_CLOUD_API_TOKEN=  # tumiki-cloud-api が発行する Short-lived JWT
 ```
 
 ## MCPサーバー設定
