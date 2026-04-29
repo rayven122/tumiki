@@ -361,6 +361,17 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
+    name: "Limitless MCP",
+    description:
+      "Limitless AI Lifelog統合 - 会話履歴の検索とパーソナルメモリへのアクセス",
+    iconPath: "/logos/services/limitless.svg",
+    transportType: "STREAMABLE_HTTP",
+    url: "https://api.limitless.ai/mcp",
+    credentialKeys: ["X-API-Key"],
+    authType: "API_KEY",
+    isOfficial: true,
+  },
+  {
     name: "HubSpot MCP",
     description:
       "HubSpot CRM MCP - コンタクト、会社、取引、マーケティング活動の管理",
@@ -380,6 +391,17 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     url: "https://mcp.box.com",
     credentialKeys: [],
     authType: "OAUTH",
+    isOfficial: true,
+  },
+  {
+    name: "Omi MCP",
+    description:
+      "Omi MCP（SSE）- デバイス・会話・パーソナルメモリ API へのアクセス",
+    iconPath: "/logos/services/omi.svg",
+    transportType: "SSE",
+    url: "https://api.omi.me/v1/mcp/sse",
+    credentialKeys: ["Authorization"],
+    authType: "API_KEY",
     isOfficial: true,
   },
   {
@@ -409,7 +431,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
       "Outline ナレッジベース MCP - コレクション・ドキュメントの検索と参照",
     iconPath: "/logos/services/outline.svg",
     transportType: "STREAMABLE_HTTP",
-    url: "https://app.getoutline.com/mcp",
+    url: "http://127.0.0.1:3000/mcp",
     credentialKeys: ["OUTLINE_API_KEY"],
     authType: "BEARER",
     isOfficial: true,
