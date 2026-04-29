@@ -2,7 +2,10 @@ import type { JSX } from "react";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { X, Info } from "lucide-react";
 import type { CatalogItem } from "../../types/catalog";
-import { FILESYSTEM_STDIO_NAME } from "../../shared/catalog.constants";
+import {
+  FILESYSTEM_STDIO_NAME,
+  OUTLINE_MCP_NAME,
+} from "../../shared/catalog.constants";
 import {
   authTypeLabel,
   parseCredentialKeys,
@@ -39,7 +42,7 @@ export const AddMcpModal = ({
   const [oauthClientSecret, setOauthClientSecret] = useState("");
 
   const isFilesystemStdio = catalog.name === FILESYSTEM_STDIO_NAME;
-  const isOutline = catalog.name === "Outline MCP";
+  const isOutline = catalog.name === OUTLINE_MCP_NAME;
   const [directoryPath, setDirectoryPath] = useState("");
   const [customUrl, setCustomUrl] = useState(catalog.url ?? "");
 
@@ -97,6 +100,11 @@ export const AddMcpModal = ({
 
     if (isFilesystemStdio && !directoryPath.trim()) {
       setError("アクセスディレクトリを入力してください");
+      return;
+    }
+
+    if (isOutline && !customUrl.trim()) {
+      setError("サーバーURLを入力してください");
       return;
     }
 
