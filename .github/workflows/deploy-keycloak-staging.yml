@@ -55,9 +55,7 @@ jobs:
           ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash << 'REMOTE_SCRIPT'
             set -euo pipefail
             cd ~/keycloak
-            infisical export --env=staging --format=dotenv --domain https://secrets.rayven.cloud > .env
-            docker compose up -d --force-recreate keycloak
-            rm -f .env
+            infisical run --env=staging --domain https://secrets.rayven.cloud -- docker compose up -d --force-recreate keycloak
           REMOTE_SCRIPT
 
       - name: ✅ Verify Keycloak health
