@@ -57,6 +57,6 @@ runs:
       env:
         SSH_PRIVATE_KEY: ${{ inputs.ssh-private-key }}
       run: |
-        # printf を使いプロセス引数への秘密鍵露出を防ぐ
-        printf '%s' "${SSH_PRIVATE_KEY}" > ~/.ssh/id_ed25519
+        # printf '%s\n' で末尾改行を保証（SSH鍵は改行終端が必須）
+        printf '%s\n' "${SSH_PRIVATE_KEY}" > ~/.ssh/id_ed25519
         chmod 600 ~/.ssh/id_ed25519
