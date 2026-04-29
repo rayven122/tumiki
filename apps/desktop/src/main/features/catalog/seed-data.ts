@@ -178,18 +178,6 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "国土交通データプラットフォーム MCP STDIO",
-    description:
-      "国土交通データプラットフォーム MCP - 地理・オープンデータの検索と取得",
-    iconPath: "/logos/services/mlit-geospatial.svg",
-    transportType: "STDIO",
-    command: "pipx",
-    args: ["run", "mlit-dpf-mcp"],
-    credentialKeys: [],
-    authType: "NONE",
-    isOfficial: true,
-  },
-  {
     name: "Google Analytics MCP",
     description:
       "Google アナリティクス MCP - プロパティ・レポート・指標へのアクセス",
