@@ -1,12 +1,12 @@
 name: Deploy Keycloak Staging
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'docker/keycloak-staging/**'
+      - 'docker/keycloak/themes/tumiki/**'
   workflow_dispatch:
-    inputs:
-      image_tag:
-        description: 'Keycloakイメージタグ（省略時は 26.4）'
-        type: string
-        default: "26.4"
 
 concurrency:
   group: deploy-keycloak-staging
@@ -21,50 +21,48 @@ jobs:
     runs-on: ubuntu-latest
     environment: staging
 
+    env:
+      CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+      CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+      SSH_HOST: ${{ vars.KEYCLOAK_TUNNEL_HOSTNAME }}
+      SSH_USER: ${{ vars.KEYCLOAK_DEPLOY_USER }}
+
     steps:
       - name: 📥 Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - name: 🔑 Configure SSH (Cloudflare Tunnel)
+      - name: 🌐 Setup Cloudflare SSH
         uses: ./.github/actions/setup-cloudflare-ssh
         with:
-          tunnel-hostname: ${{ vars.KEYCLOAK_TUNNEL_HOSTNAME }}
+          ssh-host: ${{ env.SSH_HOST }}
           cf-access-client-id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           cf-access-client-secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
 
       - name: 📤 Transfer files
-        env:
-          DEPLOY_USER: ${{ vars.KEYCLOAK_DEPLOY_USER }}
-          DEPLOY_TUNNEL_HOSTNAME: ${{ vars.KEYCLOAK_TUNNEL_HOSTNAME }}
         run: |
-          SSH_TARGET="${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}"
-          ssh "$SSH_TARGET" "mkdir -p ~/keycloak/themes"
-          scp docker/keycloak-staging/compose.yaml "$SSH_TARGET:~/keycloak/compose.yaml"
-          scp -r docker/keycloak/themes/tumiki "$SSH_TARGET:~/keycloak/themes/tumiki"
-          scp -r docker/keycloak/themes/keywind "$SSH_TARGET:~/keycloak/themes/keywind"
+          ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
+            "mkdir -p ~/keycloak/themes"
+          scp -i ~/.ssh/id_ed25519 \
+            docker/keycloak-staging/compose.yaml \
+            "${SSH_USER}@${SSH_HOST}:~/keycloak/compose.yaml"
+          scp -r -i ~/.ssh/id_ed25519 \
+            docker/keycloak/themes/tumiki \
+            "${SSH_USER}@${SSH_HOST}:~/keycloak/themes/"
 
-      - name: 🐳 Deploy Keycloak container
-        env:
-          DEPLOY_USER: ${{ vars.KEYCLOAK_DEPLOY_USER }}
-          DEPLOY_TUNNEL_HOSTNAME: ${{ vars.KEYCLOAK_TUNNEL_HOSTNAME }}
+      - name: 🔐 Deploy Keycloak
         run: |
-          SSH_TARGET="${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}"
-          ssh "$SSH_TARGET" bash -l << 'REMOTE_SCRIPT'
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash << 'REMOTE_SCRIPT'
             set -euo pipefail
             cd ~/keycloak
-            infisical export --env=staging --format=dotenv > .env
-            docker compose pull
-            docker compose up -d --remove-orphans
+            infisical export --env=staging --format=dotenv --domain https://secrets.rayven.cloud > .env
+            docker compose up -d --force-recreate keycloak
             rm -f .env
           REMOTE_SCRIPT
 
       - name: ✅ Verify Keycloak health
-        env:
-          DEPLOY_USER: ${{ vars.KEYCLOAK_DEPLOY_USER }}
-          DEPLOY_TUNNEL_HOSTNAME: ${{ vars.KEYCLOAK_TUNNEL_HOSTNAME }}
         run: |
-          SSH_TARGET="${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}"
-          ssh "$SSH_TARGET" bash << 'HEALTHCHECK'
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash << 'HEALTHCHECK'
             for i in $(seq 1 30); do
               if curl -sf http://localhost:9000/health/ready > /dev/null 2>&1; then
                 echo "=== Keycloak ===" && curl -sf http://localhost:9000/health/ready | jq .
@@ -73,10 +71,11 @@ jobs:
               echo "Waiting... ($i/30)" && sleep 10
             done
             echo "Timeout: Keycloakが起動しませんでした"
-            docker compose logs --tail=50
+            cd ~/keycloak && docker compose logs keycloak --tail=50
             exit 1
           HEALTHCHECK
 
       - name: 🧹 Cleanup
         if: always()
-        run: rm -f ~/.ssh/config /tmp/cloudflared.deb
+        run: |
+          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh ~/.ssh/id_ed25519
