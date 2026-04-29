@@ -37,6 +37,7 @@ jobs:
       IMAGE_TAG: ${{ inputs.image_tag || 'main' }}
       CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
       CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+      INFISICAL_TOKEN: ${{ secrets.INFISICAL_TOKEN }}
       SSH_HOST: stg-ssh.tumiki.cloud
       SSH_USER: hisuzuya
 
@@ -109,11 +110,12 @@ jobs:
       - name: 🐳 Deploy containers
         run: |
           IMAGE_TAG_VAL="${IMAGE_TAG}"
+          INFISICAL_TOKEN_VAL="${INFISICAL_TOKEN}"
           ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -l << REMOTE_SCRIPT
             set -euo pipefail
             cd ~/tumiki
             export IMAGE_TAG="${IMAGE_TAG_VAL}"
-            infisical export --env=staging --format=dotenv > .env
+            INFISICAL_TOKEN="${INFISICAL_TOKEN_VAL}" infisical export --env=staging --format=dotenv > .env
             docker compose pull
             docker compose up -d --remove-orphans
             rm -f .env
@@ -158,6 +160,7 @@ jobs:
       IMAGE_TAG: ${{ inputs.image_tag || 'latest' }}
       CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
       CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+      INFISICAL_TOKEN: ${{ secrets.INFISICAL_TOKEN }}
       SSH_HOST: ${{ vars.DEPLOY_TUNNEL_HOSTNAME }}
       SSH_USER: ${{ vars.DEPLOY_USER }}
 
@@ -206,11 +209,12 @@ jobs:
       - name: 🐳 Deploy containers
         run: |
           IMAGE_TAG_VAL="${IMAGE_TAG}"
+          INFISICAL_TOKEN_VAL="${INFISICAL_TOKEN}"
           ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -l << REMOTE_SCRIPT
             set -euo pipefail
             cd ~/tumiki
             export IMAGE_TAG="${IMAGE_TAG_VAL}"
-            infisical export --env=prod --format=dotenv > .env
+            INFISICAL_TOKEN="${INFISICAL_TOKEN_VAL}" infisical export --env=prod --format=dotenv > .env
             docker compose pull
             docker compose up -d --remove-orphans
             rm -f .env
