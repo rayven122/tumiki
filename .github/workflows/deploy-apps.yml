@@ -44,34 +44,13 @@ jobs:
       - name: 📥 Checkout
         uses: actions/checkout@v4
 
-      - name: 🔑 Install cloudflared
-        run: |
-          curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o /tmp/cloudflared.deb
-          sudo dpkg -i /tmp/cloudflared.deb
-
-      - name: 🌐 Configure Cloudflare SSH
-        run: |
-          mkdir -p ~/.ssh
-
-          cat > /tmp/cf-proxy.sh << WRAPPER
-          #!/bin/bash
-          exec cloudflared access ssh \
-            --service-token-id "${CF_ACCESS_CLIENT_ID}" \
-            --service-token-secret "${CF_ACCESS_CLIENT_SECRET}" \
-            --hostname "\$@"
-          WRAPPER
-          chmod +x /tmp/cf-proxy.sh
-
-          cat >> ~/.ssh/config << CONFIG
-          Host ${SSH_HOST}
-            ProxyCommand /tmp/cf-proxy.sh %h
-            StrictHostKeyChecking accept-new
-          CONFIG
-
-      - name: 🔐 SSH鍵設定
-        run: |
-          echo "${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
+      - name: 🌐 Setup Cloudflare SSH
+        uses: ./.github/actions/setup-cloudflare-ssh
+        with:
+          ssh-host: ${{ env.SSH_HOST }}
+          cf-access-client-id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          cf-access-client-secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
 
       - name: 📤 Transfer compose.yaml
         run: |
@@ -137,34 +116,13 @@ jobs:
       - name: 📥 Checkout
         uses: actions/checkout@v4
 
-      - name: 🔑 Install cloudflared
-        run: |
-          curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o /tmp/cloudflared.deb
-          sudo dpkg -i /tmp/cloudflared.deb
-
-      - name: 🌐 Configure Cloudflare SSH
-        run: |
-          mkdir -p ~/.ssh
-
-          cat > /tmp/cf-proxy.sh << WRAPPER
-          #!/bin/bash
-          exec cloudflared access ssh \
-            --service-token-id "${CF_ACCESS_CLIENT_ID}" \
-            --service-token-secret "${CF_ACCESS_CLIENT_SECRET}" \
-            --hostname "\$@"
-          WRAPPER
-          chmod +x /tmp/cf-proxy.sh
-
-          cat >> ~/.ssh/config << CONFIG
-          Host ${SSH_HOST}
-            ProxyCommand /tmp/cf-proxy.sh %h
-            StrictHostKeyChecking accept-new
-          CONFIG
-
-      - name: 🔐 SSH鍵設定
-        run: |
-          echo "${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
+      - name: 🌐 Setup Cloudflare SSH
+        uses: ./.github/actions/setup-cloudflare-ssh
+        with:
+          ssh-host: ${{ env.SSH_HOST }}
+          cf-access-client-id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          cf-access-client-secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
 
       - name: 📤 Transfer compose.yaml
         run: |
