@@ -48,39 +48,11 @@ jobs:
         run: |
           curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o /tmp/cloudflared.deb
           sudo dpkg -i /tmp/cloudflared.deb
-          cloudflared --version
-
-      - name: "🔍 Debug: cloudflared flags"
-        run: |
-          echo "=== cloudflared access ssh --help ==="
-          cloudflared access ssh --help 2>&1 || true
-          echo ""
-          echo "=== cloudflared access token --help ==="
-          cloudflared access token --help 2>&1 || true
-
-      - name: 🌐 Cloudflare Access Token取得
-        run: |
-          echo "CF_ACCESS_CLIENT_ID length: ${#CF_ACCESS_CLIENT_ID}"
-          echo "CF_ACCESS_CLIENT_SECRET length: ${#CF_ACCESS_CLIENT_SECRET}"
-          echo ""
-          echo "=== cloudflared access token でサービストークン認証テスト ==="
-          TOKEN_RESULT=$(CF_ACCESS_CLIENT_ID="${CF_ACCESS_CLIENT_ID}" \
-                         CF_ACCESS_CLIENT_SECRET="${CF_ACCESS_CLIENT_SECRET}" \
-                         cloudflared access token --app-domain "${SSH_HOST}" 2>&1) && {
-            echo "SUCCESS: トークン取得成功 (length=${#TOKEN_RESULT})"
-            echo "Token prefix: ${TOKEN_RESULT:0:20}..."
-          } || {
-            echo "FAILED: トークン取得失敗"
-            echo "Output: ${TOKEN_RESULT}"
-            exit 1
-          }
 
       - name: 🌐 Configure Cloudflare SSH
         run: |
-          mkdir -p ~/.ssh ~/.cloudflared
+          mkdir -p ~/.ssh
 
-          # cloudflared access ssh/tcp はサービストークンに TUNNEL_SERVICE_TOKEN_ID/SECRET を使用
-          # (CF_ACCESS_CLIENT_ID/SECRET ではない)
           cat > /tmp/cf-proxy.sh << WRAPPER
           #!/bin/bash
           exec cloudflared access ssh \
@@ -134,7 +106,7 @@ jobs:
               echo "Waiting... ($i/20)" && sleep 5
             done
             echo "Timeout: コンテナが起動しませんでした"
-            docker compose logs --tail=50
+            cd ~/tumiki && docker compose logs --tail=50
             exit 1
           HEALTHCHECK
 
@@ -169,10 +141,6 @@ jobs:
         run: |
           curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o /tmp/cloudflared.deb
           sudo dpkg -i /tmp/cloudflared.deb
-
-      - name: 🌐 Cloudflare Access Token取得
-        run: |
-          cloudflared access token --app-domain "${SSH_HOST}" 2>&1
 
       - name: 🌐 Configure Cloudflare SSH
         run: |
@@ -231,7 +199,7 @@ jobs:
               echo "Waiting... ($i/20)" && sleep 5
             done
             echo "Timeout: コンテナが起動しませんでした"
-            docker compose logs --tail=50
+            cd ~/tumiki && docker compose logs --tail=50
             exit 1
           HEALTHCHECK
 
