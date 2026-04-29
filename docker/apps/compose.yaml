@@ -44,6 +44,8 @@ services:
       timeout: 10s
       start_period: 30s
       retries: 3
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
 
   mcp-proxy:
     image: ghcr.io/rayven122/tumiki-mcp-proxy:${IMAGE_TAG:-latest}
@@ -63,6 +65,8 @@ services:
       timeout: 10s
       start_period: 30s
       retries: 3
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
 
   internal-manager:
     image: ghcr.io/rayven122/tumiki-internal-manager:${IMAGE_TAG:-latest}
@@ -80,6 +84,20 @@ services:
       timeout: 10s
       start_period: 30s
       retries: 3
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: tumiki-watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_LABEL_ENABLE=true
+      - WATCHTOWER_POLL_INTERVAL=300
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_INCLUDE_RESTARTING=true
 
 volumes:
   db_vol:
