@@ -50,7 +50,7 @@ jobs:
           sudo dpkg -i /tmp/cloudflared.deb
           cloudflared --version
 
-      - name: 🔍 Debug: cloudflared access ssh flags
+      - name: "🔍 Debug: cloudflared flags"
         run: |
           echo "=== cloudflared access ssh --help ==="
           cloudflared access ssh --help 2>&1 || true
