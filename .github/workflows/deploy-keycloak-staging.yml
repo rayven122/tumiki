@@ -63,7 +63,7 @@ jobs:
           ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash << 'HEALTHCHECK'
             for i in $(seq 1 30); do
               if curl -sf http://localhost:9000/health/ready > /dev/null 2>&1; then
-                echo "=== Keycloak ===" && curl -sf http://localhost:9000/health/ready | jq .
+                echo "=== Keycloak ===" && curl -sf http://localhost:9000/health/ready | (command -v jq &>/dev/null && jq . || cat)
                 exit 0
               fi
               echo "Waiting... ($i/30)" && sleep 10

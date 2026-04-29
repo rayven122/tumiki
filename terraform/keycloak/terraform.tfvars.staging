@@ -5,6 +5,9 @@
 # - TF_VAR_manager_client_secret
 # - TF_VAR_proxy_client_secret
 # - TF_VAR_test_user_password
+# - TF_VAR_smtp_host
+# - TF_VAR_smtp_user
+# - TF_VAR_smtp_from
 # - TF_VAR_smtp_password
 
 # Keycloak接続設定（VM上でローカル実行するため localhost を使用）
