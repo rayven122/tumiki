@@ -21,24 +21,28 @@ runs:
     - name: Install cloudflared
       shell: bash
       run: |
-        curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o /tmp/cloudflared.deb
+        # バージョンを固定してサプライチェーン攻撃を防ぐ
+        CLOUDFLARED_VERSION="2026.3.0"
+        EXPECTED_SHA256="00f2475bad5874e9a110c2f5b8d1ce8a1bf5b6280628886a68bdc4ee76fd376c"
+        curl -fsSL "https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-amd64.deb" -o /tmp/cloudflared.deb
+        echo "${EXPECTED_SHA256}  /tmp/cloudflared.deb" | sha256sum -c -
         sudo dpkg -i /tmp/cloudflared.deb
 
     - name: Configure Cloudflare SSH
       shell: bash
       env:
         SSH_HOST: ${{ inputs.ssh-host }}
-        CF_ACCESS_CLIENT_ID: ${{ inputs.cf-access-client-id }}
-        CF_ACCESS_CLIENT_SECRET: ${{ inputs.cf-access-client-secret }}
       run: |
         mkdir -p ~/.ssh
 
-        cat > /tmp/cf-proxy.sh << WRAPPER
+        # クォートしたヒアドキュメントでシークレットをファイルに埋め込まない
+        # 実行時に CF_ACCESS_CLIENT_ID / CF_ACCESS_CLIENT_SECRET をジョブの環境変数から読む
+        cat > /tmp/cf-proxy.sh << 'WRAPPER'
         #!/bin/bash
         exec cloudflared access ssh \
           --service-token-id "${CF_ACCESS_CLIENT_ID}" \
           --service-token-secret "${CF_ACCESS_CLIENT_SECRET}" \
-          --hostname "\$@"
+          --hostname "$@"
         WRAPPER
         chmod +x /tmp/cf-proxy.sh
 
@@ -50,6 +54,9 @@ runs:
 
     - name: Setup SSH key
       shell: bash
+      env:
+        SSH_PRIVATE_KEY: ${{ inputs.ssh-private-key }}
       run: |
-        echo "${{ inputs.ssh-private-key }}" > ~/.ssh/id_ed25519
+        # printf を使いプロセス引数への秘密鍵露出を防ぐ
+        printf '%s' "${SSH_PRIVATE_KEY}" > ~/.ssh/id_ed25519
         chmod 600 ~/.ssh/id_ed25519
