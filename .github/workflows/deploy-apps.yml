@@ -29,6 +29,7 @@ jobs:
     if: |
       (github.event_name == 'workflow_run' &&
        github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.repository.full_name == github.repository &&
        github.event.workflow_run.head_branch == 'main') ||
       (github.event_name == 'workflow_dispatch' && inputs.environment == 'staging')
     environment: staging
@@ -42,7 +43,7 @@ jobs:
 
     steps:
       - name: 📥 Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: 🌐 Setup Cloudflare SSH
         uses: ./.github/actions/setup-cloudflare-ssh
@@ -59,11 +60,11 @@ jobs:
 
       - name: 🐳 Deploy containers
         run: |
-          IMAGE_TAG_VAL="${IMAGE_TAG}"
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -l << REMOTE_SCRIPT
+          # IMAGE_TAG を bash の引数として渡してシェルインジェクションを防ぐ
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -ls -- "${IMAGE_TAG}" << 'REMOTE_SCRIPT'
             set -euo pipefail
+            IMAGE_TAG="$1"
             cd ~/tumiki
-            export IMAGE_TAG="${IMAGE_TAG_VAL}"
             infisical export --env=staging --format=dotenv --domain https://secrets.rayven.cloud > .env
             docker compose pull
             docker compose up -d --remove-orphans
@@ -100,6 +101,7 @@ jobs:
     if: |
       (github.event_name == 'workflow_run' &&
        github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.repository.full_name == github.repository &&
        startsWith(github.event.workflow_run.head_branch, 'v') &&
        contains(github.event.workflow_run.head_branch, '.')) ||
       (github.event_name == 'workflow_dispatch' && inputs.environment == 'production')
@@ -114,7 +116,7 @@ jobs:
 
     steps:
       - name: 📥 Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: 🌐 Setup Cloudflare SSH
         uses: ./.github/actions/setup-cloudflare-ssh
@@ -131,11 +133,11 @@ jobs:
 
       - name: 🐳 Deploy containers
         run: |
-          IMAGE_TAG_VAL="${IMAGE_TAG}"
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -l << REMOTE_SCRIPT
+          # IMAGE_TAG を bash の引数として渡してシェルインジェクションを防ぐ
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -ls -- "${IMAGE_TAG}" << 'REMOTE_SCRIPT'
             set -euo pipefail
+            IMAGE_TAG="$1"
             cd ~/tumiki
-            export IMAGE_TAG="${IMAGE_TAG_VAL}"
             infisical export --env=prod --format=dotenv --domain https://secrets.rayven.cloud > .env
             docker compose pull
             docker compose up -d --remove-orphans

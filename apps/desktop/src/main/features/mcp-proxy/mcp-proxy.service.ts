@@ -60,6 +60,8 @@ const buildHeaders = (
         credentials["token"] ??
         credentials["accessToken"] ??
         credentials["access_token"] ??
+        // OUTLINE_API_KEY 等、既知のキー名に一致しない場合は最初のクレデンシャルを使用
+        Object.values(credentials)[0] ??
         "";
       return token ? { Authorization: `Bearer ${token}` } : {};
     }
