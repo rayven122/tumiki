@@ -10,8 +10,8 @@
 # - KEYCLOAK_CLIENT_ID / KEYCLOAK_CLIENT_SECRET
 # - GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET (任意)
 
-# Keycloak接続設定（Cloudflare Tunnel経由）
-keycloak_url = "https://auth.tumiki.cloud"
+# Keycloak接続設定（VM上でローカル実行するため localhost を使用）
+keycloak_url = "http://localhost:8080"
 
 # Realm設定
 realm_name         = "tumiki"
