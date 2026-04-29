@@ -1,0 +1,37 @@
+/// @namespace AuditLog
+/// Desktop（PER_USER直接接続）からの監査ログ
+/// mcpServerIdはpackages/dbのMcpServer.idと対応（FK制約なし・DBが分離しているため）
+model DesktopAuditLog {
+  id String @id @default(cuid())
+
+  /// 実行ユーザー
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// 対象MCPサーバーID（packages/dbのMcpServer.idと対応）
+  mcpServerId String
+
+  /// 実行されたツール名
+  toolName String @db.VarChar(255)
+  /// MCPメソッド（例: "tools/call"）
+  method   String @db.VarChar(64)
+  /// HTTPステータスコード
+  httpStatus Int @db.SmallInt
+  /// 実行時間（ミリ秒）
+  durationMs  Int
+  /// 入力データサイズ（バイト）
+  inputBytes  Int
+  /// 出力データサイズ（バイト）
+  outputBytes Int
+
+  /// エラー情報（エラー発生時のみ）
+  errorCode    Int?
+  errorSummary String? @db.VarChar(500)
+
+  /// Desktopで記録したリクエスト発生時刻
+  occurredAt DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([userId, occurredAt])
+  @@index([mcpServerId, occurredAt])
+}

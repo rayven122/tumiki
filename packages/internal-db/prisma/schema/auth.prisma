@@ -28,6 +28,7 @@ model User {
   groupMemberships      UserGroupMembership[]
   individualPermissions IndividualPermission[]
   scimTokens            ScimToken[]
+  desktopAuditLogs      DesktopAuditLog[]
 }
 
 /// @namespace Auth

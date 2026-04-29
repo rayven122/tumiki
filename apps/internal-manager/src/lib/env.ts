@@ -8,6 +8,10 @@ const oidcEnvSchema = z.object({
   OIDC_CLIENT_ID: z.string().min(1, "OIDC_CLIENT_ID is required"),
   OIDC_CLIENT_SECRET: z.string().min(1, "OIDC_CLIENT_SECRET is required"),
   OIDC_ISSUER: z.string().url("OIDC_ISSUER must be a valid URL"),
+  // Desktop（Electron）向けのパブリックPKCEクライアントID
+  OIDC_DESKTOP_CLIENT_ID: z
+    .string()
+    .min(1, "OIDC_DESKTOP_CLIENT_ID is required"),
 });
 
 /**
@@ -36,6 +40,12 @@ export const getOidcEnv = () => {
         ? issuer
         : isCI
           ? "https://dummy.oidc.local"
+          : undefined,
+    OIDC_DESKTOP_CLIENT_ID:
+      (process.env.OIDC_DESKTOP_CLIENT_ID ?? "") !== ""
+        ? process.env.OIDC_DESKTOP_CLIENT_ID
+        : isCI
+          ? "dummy-desktop-client-id"
           : undefined,
   });
 

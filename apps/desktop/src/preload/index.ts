@@ -102,6 +102,13 @@ const api = {
       ipcRenderer.invoke("dashboard:get", input),
   },
 
+  // 管理サーバー連携 API
+  manager: {
+    getUrl: (): Promise<string | null> => ipcRenderer.invoke("manager:getUrl"),
+    connect: (url: string): Promise<void> =>
+      ipcRenderer.invoke("manager:connect", url),
+  },
+
   // MCP OAuth認証 API
   oauth: {
     startAuth: (input: StartOAuthInput): Promise<void> =>
