@@ -1,15 +1,18 @@
 name: Setup Cloudflare SSH
-description: Cloudflare Tunnel + Access Service Token 経由で SSH できるようにセットアップする
+description: cloudflaredインストール、Cloudflare Access SSH設定、SSH鍵設定をまとめて行う
 
 inputs:
-  tunnel-hostname:
-    description: 'Cloudflare Tunnel のホスト名（例: stg-ssh.tumiki.cloud）'
+  ssh-host:
+    description: SSH接続先ホスト名（Cloudflare Tunnel経由）
     required: true
   cf-access-client-id:
-    description: 'Cloudflare Access Service Token の Client ID'
+    description: Cloudflare Access Service Token の Client ID
     required: true
   cf-access-client-secret:
-    description: 'Cloudflare Access Service Token の Client Secret'
+    description: Cloudflare Access Service Token の Client Secret
+    required: true
+  ssh-private-key:
+    description: SSH秘密鍵
     required: true
 
 runs:
@@ -21,25 +24,32 @@ runs:
         curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o /tmp/cloudflared.deb
         sudo dpkg -i /tmp/cloudflared.deb
 
-    - name: Configure SSH
+    - name: Configure Cloudflare SSH
       shell: bash
       env:
-        TUNNEL_HOSTNAME: ${{ inputs.tunnel-hostname }}
-        CF_ID: ${{ inputs.cf-access-client-id }}
-        CF_SECRET: ${{ inputs.cf-access-client-secret }}
+        SSH_HOST: ${{ inputs.ssh-host }}
+        CF_ACCESS_CLIENT_ID: ${{ inputs.cf-access-client-id }}
+        CF_ACCESS_CLIENT_SECRET: ${{ inputs.cf-access-client-secret }}
       run: |
         mkdir -p ~/.ssh
 
-        # Service Token を埋め込んだラッパースクリプトを生成
-        # ProxyCommand 経由では env 変数が継承されないため直接埋め込む
-        cat > /tmp/cf-proxy.sh << EOF
+        cat > /tmp/cf-proxy.sh << WRAPPER
         #!/bin/bash
-        exec env CF_ACCESS_CLIENT_ID="${CF_ID}" CF_ACCESS_CLIENT_SECRET="${CF_SECRET}" cloudflared access ssh --hostname "\$@"
-        EOF
+        exec cloudflared access ssh \
+          --service-token-id "${CF_ACCESS_CLIENT_ID}" \
+          --service-token-secret "${CF_ACCESS_CLIENT_SECRET}" \
+          --hostname "\$@"
+        WRAPPER
         chmod +x /tmp/cf-proxy.sh
 
         cat >> ~/.ssh/config << CONFIG
-        Host ${TUNNEL_HOSTNAME}
+        Host ${SSH_HOST}
           ProxyCommand /tmp/cf-proxy.sh %h
           StrictHostKeyChecking accept-new
         CONFIG
+
+    - name: Setup SSH key
+      shell: bash
+      run: |
+        echo "${{ inputs.ssh-private-key }}" > ~/.ssh/id_ed25519
+        chmod 600 ~/.ssh/id_ed25519
