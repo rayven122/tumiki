@@ -22,6 +22,13 @@ export type {
   PiiDetectionSummary,
 } from "./types.js";
 
+// MCPクライアントヘルパー
+export type {
+  McpClientConnection,
+  McpClientConnectionOptions,
+} from "./outbound/mcp-client.js";
+export { connectMcpClient, createMcpClient } from "./outbound/mcp-client.js";
+
 // コア
 export { createProxyCore, createSingleServerCore } from "./core.js";
 export type { ProxyCore } from "./core.js";

@@ -89,7 +89,7 @@ if (isMcpProxyMode) {
       };
 
       // 監査ログフックを構築
-      const onToolCall: import("@tumiki/mcp-proxy-core").ToolCallHook = (
+      const onToolCall: import("@tumiki/mcp-core-proxy").ToolCallHook = (
         event,
       ) => {
         const sepIdx = event.prefixedToolName.indexOf("__");
@@ -151,8 +151,8 @@ if (isMcpProxyMode) {
       const { join } = await import("path");
       const mod = (await import(join(__dirname, "mcp-cli.cjs"))) as {
         runMcpProxy: (
-          configs: import("@tumiki/mcp-proxy-core").McpServerConfig[],
-          hooks?: import("@tumiki/mcp-proxy-core").ProxyHooks,
+          configs: import("@tumiki/mcp-core-proxy").McpServerConfig[],
+          hooks?: import("@tumiki/mcp-core-proxy").ProxyHooks,
         ) => Promise<void>;
       };
 

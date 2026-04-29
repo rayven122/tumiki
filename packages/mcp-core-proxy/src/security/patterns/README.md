@@ -1,6 +1,6 @@
 # PII / シークレットマスキング パターン定義
 
-`packages/mcp-proxy` の OpenRedaction フィルタが使う検出パターンの一覧。
+`packages/mcp-core-proxy` の OpenRedaction フィルタが使う検出パターンの一覧。
 
 ## ファイル構成
 

@@ -1,7 +1,13 @@
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import type { McpConfig, McpServerTemplate } from "@tumiki/db/prisma";
+import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import {
+  connectMcpClient,
+  type AuthType,
+  type McpServerConfig,
+} from "@tumiki/mcp-core-proxy";
+import type {
+  McpConfig as DbMcpConfig,
+  McpServerTemplate,
+} from "@tumiki/db/prisma";
 import { ReAuthRequiredError } from "@tumiki/oauth-token-manager";
 import { injectAuthHeaders } from "./authHeaderInjector.js";
 import { logError, logInfo } from "../../shared/logger/index.js";
@@ -19,9 +25,13 @@ export const connectToMcpServer = async (
   mcpServerTemplate: McpServerTemplate,
   userId: string,
   mcpServerTemplateInstanceId: string,
-  mcpConfig: McpConfig | null,
+  mcpConfig: DbMcpConfig | null,
 ): Promise<Client> => {
   const { transportType, name, authType } = mcpServerTemplate;
+  const mappedAuthType: AuthType =
+    mcpServerTemplate.authType === "OAUTH"
+      ? "BEARER"
+      : mcpServerTemplate.authType;
 
   logInfo("Connecting to MCP server", {
     templateName: name,
@@ -32,9 +42,6 @@ export const connectToMcpServer = async (
   });
 
   try {
-    // トランスポートタイプに応じてクライアントを作成
-    let transport;
-
     // 認証ヘッダーを注入
     const headers: Record<string, string> = await injectAuthHeaders(
       mcpServerTemplate,
@@ -42,22 +49,33 @@ export const connectToMcpServer = async (
       mcpServerTemplateInstanceId,
       mcpConfig,
     );
+    const baseConfig = {
+      name,
+      headers,
+      authType: mappedAuthType,
+    };
+    const connectWithCore = (config: McpServerConfig): Promise<Client> =>
+      connectMcpClient(config, {
+        clientName: `tumiki-mcp-proxy-${name}`,
+      });
 
     switch (transportType) {
+      case "STDIO":
+        throw new Error(
+          `STDIO transport is not supported for template ${name}. Please use SSE or STREAMABLE_HTTPS instead.`,
+        );
+
       case "SSE": {
         const url = mcpServerTemplate.url;
         if (!url) {
           throw new Error(`SSE transport requires URL for template ${name}`);
         }
 
-        transport = new SSEClientTransport(new URL(url));
-        break;
-      }
-
-      case "STDIO": {
-        throw new Error(
-          `STDIO transport is not supported for template ${name}. Please use SSE or STREAMABLE_HTTPS instead.`,
-        );
+        return await connectWithCore({
+          ...baseConfig,
+          transportType: "SSE",
+          url,
+        });
       }
 
       case "STREAMABLE_HTTPS": {
@@ -68,12 +86,11 @@ export const connectToMcpServer = async (
           );
         }
 
-        transport = new StreamableHTTPClientTransport(new URL(url), {
-          requestInit: {
-            headers,
-          },
+        return await connectWithCore({
+          ...baseConfig,
+          transportType: "STREAMABLE_HTTP",
+          url,
         });
-        break;
       }
 
       default: {
@@ -81,26 +98,6 @@ export const connectToMcpServer = async (
         throw new Error(`Unknown transport type: ${String(_exhaustiveCheck)}`);
       }
     }
-
-    // クライアントを作成して接続
-    const client = new Client(
-      {
-        name: `tumiki-mcp-proxy-${name}`,
-        version: "1.0.0",
-      },
-      {
-        capabilities: {},
-      },
-    );
-
-    await client.connect(transport);
-
-    logInfo("Successfully connected to MCP server", {
-      templateName: name,
-      transportType,
-    });
-
-    return client;
   } catch (error) {
     // ReAuthRequiredError はそのまま伝播させる（401 レスポンス生成のため）
     if (error instanceof ReAuthRequiredError) {

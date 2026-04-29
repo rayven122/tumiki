@@ -1,5 +1,5 @@
 // PII マスキングフィルタの検出サマリ（mcp-proxy-core と同名で統一）
-import type { PiiDetectionSummary } from "@tumiki/mcp-proxy-core";
+import type { PiiDetectionSummary } from "@tumiki/mcp-core-proxy";
 
 export type { PiiDetectionSummary };
 

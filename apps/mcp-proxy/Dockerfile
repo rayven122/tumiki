@@ -28,6 +28,7 @@ COPY .npmrc ./
 COPY tooling ./tooling
 COPY packages/db ./packages/db
 COPY packages/license ./packages/license
+COPY packages/mcp-core-proxy ./packages/mcp-core-proxy
 COPY packages/oauth-token-manager ./packages/oauth-token-manager
 COPY packages/prompts ./packages/prompts
 COPY packages/shared ./packages/shared
@@ -78,6 +79,7 @@ COPY --chown=nodejs:nodejs package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY --chown=nodejs:nodejs .npmrc ./
 COPY --chown=nodejs:nodejs packages/db/package.json ./packages/db/
 COPY --chown=nodejs:nodejs packages/license/package.json ./packages/license/
+COPY --chown=nodejs:nodejs packages/mcp-core-proxy/package.json ./packages/mcp-core-proxy/
 COPY --chown=nodejs:nodejs packages/oauth-token-manager/package.json ./packages/oauth-token-manager/
 COPY --chown=nodejs:nodejs packages/prompts/package.json ./packages/prompts/
 COPY --chown=nodejs:nodejs packages/shared/package.json ./packages/shared/
@@ -108,6 +110,7 @@ RUN DEST=$(find node_modules/.pnpm -path '*/@prisma+client@*/node_modules' -type
 # ビルド成果物
 COPY --from=build --chown=nodejs:nodejs /app/packages/db/dist ./packages/db/dist
 COPY --from=build --chown=nodejs:nodejs /app/packages/license/dist ./packages/license/dist
+COPY --from=build --chown=nodejs:nodejs /app/packages/mcp-core-proxy/dist ./packages/mcp-core-proxy/dist
 COPY --from=build --chown=nodejs:nodejs /app/packages/oauth-token-manager/dist ./packages/oauth-token-manager/dist
 COPY --from=build --chown=nodejs:nodejs /app/packages/prompts/dist ./packages/prompts/dist
 COPY --from=build --chown=nodejs:nodejs /app/packages/shared/dist ./packages/shared/dist

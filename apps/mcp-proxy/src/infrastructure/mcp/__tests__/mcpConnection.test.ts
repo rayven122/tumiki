@@ -1,4 +1,9 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
+import type * as McpCoreProxy from "@tumiki/mcp-core-proxy";
+import type {
+  McpClientConnectionOptions,
+  McpServerConfig,
+} from "@tumiki/mcp-core-proxy";
 import type { McpConfig, McpServerTemplate } from "@tumiki/db/prisma";
 
 // @modelcontextprotocol/sdk のモック
@@ -15,6 +20,22 @@ vi.mock("@modelcontextprotocol/sdk/client/sse.js", () => ({
 vi.mock("@modelcontextprotocol/sdk/client/streamableHttp.js", () => ({
   StreamableHTTPClientTransport: vi.fn(),
 }));
+
+vi.mock("@tumiki/mcp-core-proxy", async (importOriginal) => {
+  const actual = await importOriginal<typeof McpCoreProxy>();
+  return {
+    ...actual,
+    connectMcpClient: vi.fn(
+      async (config: McpServerConfig, options?: McpClientConnectionOptions) => {
+        const { client, transport } = actual.createMcpClient(config, options);
+        if (typeof client.connect === "function") {
+          await client.connect(transport);
+        }
+        return client;
+      },
+    ),
+  };
+});
 
 // authHeaderInjector のモック
 vi.mock("../authHeaderInjector.js", () => ({
@@ -53,7 +74,8 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { injectAuthHeaders } from "../authHeaderInjector.js";
-import { ReAuthRequiredError } from "@tumiki/oauth-token-manager";
+
+const { ReAuthRequiredError } = await import("@tumiki/oauth-token-manager");
 
 // モック関数を取得
 const MockClient = vi.mocked(Client);
@@ -62,6 +84,9 @@ const MockStreamableHTTPClientTransport = vi.mocked(
   StreamableHTTPClientTransport,
 );
 const mockInjectAuthHeaders = vi.mocked(injectAuthHeaders);
+
+const userId = "user-123";
+const instanceId = "instance-456";
 
 // テスト用のベーステンプレート生成ヘルパー
 const createMockTemplate = (
@@ -93,12 +118,9 @@ const createMockConfig = (overrides: Partial<McpConfig> = {}): McpConfig =>
   }) as McpConfig;
 
 describe("connectToMcpServer", () => {
-  const userId = "user-123";
-  const instanceId = "instance-456";
   let mockConnect: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    vi.clearAllMocks();
     mockConnect = vi.fn().mockResolvedValue(undefined);
     MockClient.mockImplementation(
       () =>
@@ -190,7 +212,14 @@ describe("connectToMcpServer", () => {
       );
 
       expect(client).toBeDefined();
-      expect(MockSSEClientTransport).toHaveBeenCalledWith(expect.any(URL));
+      expect(MockSSEClientTransport).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          requestInit: {
+            headers: { Authorization: "Bearer test-token" },
+          },
+        }),
+      );
       expect(mockConnect).toHaveBeenCalled();
     });
 
@@ -336,5 +365,71 @@ describe("connectToMcpServer", () => {
         connectToMcpServer(template, userId, instanceId, null),
       ).rejects.toThrow("Unknown transport type: INVALID");
     });
+  });
+});
+
+describe("connectToMcpServer core helper delegation", () => {
+  test("STREAMABLE_HTTPS が core helper を経由し STREAMABLE_HTTP で接続される", async () => {
+    const coreProxy = await import("@tumiki/mcp-core-proxy");
+    const connectSpy = vi.mocked(coreProxy.connectMcpClient);
+
+    const template = createMockTemplate({
+      transportType: "STREAMABLE_HTTPS",
+      url: "https://mcp.example.com/mcp",
+      authType: "OAUTH",
+    });
+
+    mockInjectAuthHeaders.mockResolvedValue({
+      Authorization: "Bearer test-token",
+      "X-Custom-Header": "custom-value",
+    });
+
+    const client = await connectToMcpServer(template, userId, instanceId, null);
+
+    expect(client).toBeDefined();
+    expect(connectSpy).toHaveBeenCalledOnce();
+    expect(connectSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: template.name,
+        transportType: "STREAMABLE_HTTP",
+        url: template.url,
+        authType: "BEARER",
+        headers: {
+          Authorization: "Bearer test-token",
+          "X-Custom-Header": "custom-value",
+        },
+      }),
+      {
+        clientName: `tumiki-mcp-proxy-${template.name}`,
+      },
+    );
+  });
+
+  test("SSE が core helper を経由して接続される", async () => {
+    const coreProxy = await import("@tumiki/mcp-core-proxy");
+    const connectSpy = vi.mocked(coreProxy.connectMcpClient);
+    const template = createMockTemplate({
+      transportType: "SSE",
+      url: "https://mcp.example.com/events",
+    });
+    mockInjectAuthHeaders.mockResolvedValue({
+      Authorization: "Bearer test-token",
+    });
+
+    await connectToMcpServer(template, userId, instanceId, null);
+
+    expect(connectSpy).toHaveBeenCalledOnce();
+    expect(connectSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        transportType: "SSE",
+        url: template.url,
+        headers: {
+          Authorization: "Bearer test-token",
+        },
+      }),
+      {
+        clientName: `tumiki-mcp-proxy-${template.name}`,
+      },
+    );
   });
 });
