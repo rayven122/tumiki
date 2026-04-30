@@ -39,7 +39,7 @@
     "fetch-to-node": "^2.1.0",
     "google-auth-library": "^10.5.0",
     "hono": "^4.12.5",
-    "jose": "^6.1.2",
+    "jose": "^6.1.3",
     "node-cron": "^4.2.1",
     "openid-client": "^6.3.3",
     "zod": "catalog:"
