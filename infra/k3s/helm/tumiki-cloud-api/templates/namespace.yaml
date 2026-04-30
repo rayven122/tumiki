@@ -1,4 +1,4 @@
-{{- include "tumiki-cloud-api.validateRequiredValues" . }}
+{{- include "tumiki-cloud-api.validateAll" . }}
 apiVersion: v1
 kind: Namespace
 metadata:

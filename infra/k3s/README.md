@@ -192,22 +192,29 @@ kubectl delete namespace tenant-company-a
 #          BOOTSTRAP_TOKEN_PUBLIC_KEY,
 #          INFISICAL_URL, INFISICAL_API_TOKEN, INFISICAL_CA_ID
 
-# 2. Helm で Namespace + Deployment + Service を一括作成
-helm install tumiki-cloud-api ./infra/k3s/helm/tumiki-cloud-api \
-  --set infisical.projectSlug=tumiki-cloud-api \
-  --set infisical.environment=prod \
-  --set image.tag=<IMAGE_TAG>
-
-# 3. Infisical Machine Identity の認証情報を k8s Secret として作成
+# 2. Namespace を先に作成し infisical-machine-identity を事前投入
+#    helm install 時点で tumiki-cloud-api-env Secret が存在しないと
+#    Pod が CreateContainerConfigError になるため、Operator が認証して同期できる状態を先に整える
+kubectl create namespace tumiki-system --dry-run=client -o yaml | kubectl apply -f -
 kubectl create secret generic infisical-machine-identity \
   --namespace tumiki-system \
   --from-literal=clientId=<INFISICAL_CLIENT_ID> \
   --from-literal=clientSecret=<INFISICAL_CLIENT_SECRET>
 
+# 3. Helm で Deployment + Service を作成（Namespace は手順2で作成済み）
+helm install tumiki-cloud-api ./infra/k3s/helm/tumiki-cloud-api \
+  --set infisical.projectSlug=tumiki-cloud-api \
+  --set infisical.environment=prod \
+  --set image.tag=<IMAGE_TAG>
+
 # 4. 状態確認
 kubectl get all -n tumiki-system
 kubectl get svc tumiki-cloud-api -n tumiki-system  # EXTERNAL-IP を確認
 ```
+
+> **Note**: Helm install 前に Secret を投入することで Infisical Operator が `tumiki-cloud-api-env`
+> Secret を即座に同期し、Pod が初回起動から成功する。投入順序を逆にすると Pod が
+> `CreateContainerConfigError` になり、Secret 同期後に自動回復するまで数十秒の不整合状態になる。
 
 ## ディレクトリ構成
 

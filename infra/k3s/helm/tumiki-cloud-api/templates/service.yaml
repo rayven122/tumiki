@@ -28,7 +28,7 @@ spec:
     app.kubernetes.io/component: api
 ---
 # クラスター内部からのアクセス用 Service（テナント Namespace から参照）
-# DNS: tumiki-cloud-api.tumiki-system.svc.cluster.local
+# DNS: tumiki-cloud-api-internal.tumiki-system.svc.cluster.local
 apiVersion: v1
 kind: Service
 metadata:

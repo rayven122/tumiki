@@ -1,4 +1,4 @@
-{{- include "tumiki-cloud-api.validateImageTag" . }}
+{{- include "tumiki-cloud-api.validateAll" . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -12,9 +12,9 @@ metadata:
     secret.reloader.stakater.com/reload: "tumiki-cloud-api-env"
 spec:
   revisionHistoryLimit: 3
-  {{- if not .Values.autoscaling.enabled }}
+  # autoscaling 有効時も初期 replicas を明示し HPA 起動前の Pod 不足を防ぐ
+  # HPA が起動した後は HPA 側のリプリカ数で上書きされる
   replicas: {{ .Values.replicaCount }}
-  {{- end }}
   selector:
     matchLabels:
       {{- include "tumiki-cloud-api.selectorLabels" . | nindent 6 }}

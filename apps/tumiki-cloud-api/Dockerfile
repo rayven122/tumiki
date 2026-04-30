@@ -63,11 +63,11 @@ ENV PORT=8443
 EXPOSE 8443
 
 # /health エンドポイント（mTLS 不要のヘルスチェックパス）
-# TLS 証明書未設定時は HTTP、設定時は HTTPS（自己ヘルスチェック用に --no-check-certificate）
+# 本番では NODE_ENV=production ガードで TLS 必須となるため HTTPS のみで検査する
+# 自己ヘルスチェック用に --no-check-certificate を使用（証明書の検証は外部から行う）
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD wget --no-verbose --tries=1 --no-check-certificate --spider \
-    "https://localhost:${PORT}/health" 2>/dev/null || \
-    wget --no-verbose --tries=1 --spider "http://localhost:${PORT}/health" || exit 1
+    "https://localhost:${PORT}/health" || exit 1
 
 ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "dist/src/index.js"]

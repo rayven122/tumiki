@@ -48,3 +48,13 @@ image.tag の必須バリデーション
 {{- fail "image.tag に空白文字を含めることはできません" }}
 {{- end }}
 {{- end }}
+
+{{/*
+全バリデーションを一括実行する単一エントリポイント
+全テンプレート（namespace.yaml, deployment.yaml, etc.）の冒頭から呼び出すことで
+helm template --show-only による部分レンダリング時もバリデーションが実行される
+*/}}
+{{- define "tumiki-cloud-api.validateAll" -}}
+{{- include "tumiki-cloud-api.validateRequiredValues" . }}
+{{- include "tumiki-cloud-api.validateImageTag" . }}
+{{- end }}
