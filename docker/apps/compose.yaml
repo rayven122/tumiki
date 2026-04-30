@@ -71,6 +71,9 @@ services:
     ports:
       - "3100:3100"
     env_file: .env
+    environment:
+      # .env 内の NEXTAUTH_URL は manager 用なので、internal-manager 専用の値で上書きする
+      NEXTAUTH_URL: ${NEXTAUTH_URL_INTERNAL_MANAGER}
     depends_on:
       db:
         condition: service_healthy
