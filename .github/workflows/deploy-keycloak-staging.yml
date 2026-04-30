@@ -73,6 +73,7 @@ jobs:
           # クォートなしヒアドキュメントでランナー側の環境変数をリモートに展開する
           ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" bash -l << REMOTE_SCRIPT
             set -euo pipefail
+            set +o history
             cd ~/keycloak
             export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID}"
             export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET}"
