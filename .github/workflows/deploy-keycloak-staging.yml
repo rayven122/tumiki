@@ -28,7 +28,7 @@ jobs:
       # Cloudflare tunnel 経由で到達する staging VM のホスト名（変数化不要・固定値）
       STAGING_SSH_HOST: stg-ssh.tumiki.cloud
       # staging VM から ProxyJump で到達する Keycloak VM のプライベート IP
-      KEYCLOAK_HOST: 192.168.0.90
+      KEYCLOAK_HOST: 10.11.0.15
       SSH_USER: ${{ vars.KEYCLOAK_DEPLOY_USER }}
 
     steps:
