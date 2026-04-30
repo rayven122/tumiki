@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { TRPCError } from "@trpc/server";
+import { Prisma } from "../../../../prisma/generated/client/index.js";
 import type { Context } from "@/server/api/trpc";
 import type { CreateTenantInput } from "./schemas";
 
@@ -32,14 +33,32 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
   const domain = `${input.slug}-manager.tumiki.cloud`;
   const namespace = `tenant-${input.slug}`;
 
-  const tenant = await ctx.db.tenant.create({
-    data: {
-      slug: input.slug,
-      domain,
-      status: "PROVISIONING",
-      oidcType: input.oidcType,
-    },
-  });
+  let tenant;
+  try {
+    tenant = await ctx.db.tenant.create({
+      data: {
+        slug: input.slug,
+        domain,
+        status: "PROVISIONING",
+        oidcType: input.oidcType,
+      },
+    });
+  } catch (dbError) {
+    if (
+      dbError instanceof Prisma.PrismaClientKnownRequestError &&
+      dbError.code === "P2002"
+    ) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: `スラッグ "${input.slug}" は既に使用されています`,
+      });
+    }
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "テナント情報の DB 登録に失敗しました",
+      cause: dbError,
+    });
+  }
 
   try {
     const tmpDir = mkdtempSync(join(tmpdir(), "helm-values-"));
