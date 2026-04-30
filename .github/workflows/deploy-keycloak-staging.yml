@@ -25,10 +25,8 @@ jobs:
     env:
       CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
       CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
-      # Cloudflare tunnel 経由の踏み台サーバー経由で Keycloak VM に ProxyJump
-      SSH_JUMP_HOST: ssh.tumiki.cloud
-      SSH_KEYCLOAK_HOST: 192.168.0.90
-      SSH_USER: ubuntu
+      SSH_HOST: ${{ vars.KEYCLOAK_TUNNEL_HOSTNAME }}
+      SSH_USER: ${{ vars.KEYCLOAK_DEPLOY_USER }}
 
     steps:
       - name: 📥 Checkout
@@ -37,51 +35,48 @@ jobs:
       - name: 🌐 Setup Cloudflare SSH
         uses: ./.github/actions/setup-cloudflare-ssh
         with:
-          ssh-host: ${{ env.SSH_JUMP_HOST }}
+          ssh-host: ${{ env.SSH_HOST }}
           cf-access-client-id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           cf-access-client-secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
           ssh-private-key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
 
-      - name: 🔗 Configure ProxyJump for Keycloak VM
-        run: |
-          cat >> ~/.ssh/config << CONFIG
-          Host ${SSH_KEYCLOAK_HOST}
-            ProxyJump ${SSH_USER}@${SSH_JUMP_HOST}
-            StrictHostKeyChecking accept-new
-          CONFIG
-
       - name: 📤 Transfer files
         run: |
-          ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_KEYCLOAK_HOST}" \
-            "sudo mkdir -p /opt/keycloak/themes"
+          ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
+            "mkdir -p ~/keycloak/themes"
           scp -i ~/.ssh/id_ed25519 \
             docker/keycloak-staging/compose.yaml \
-            "${SSH_USER}@${SSH_KEYCLOAK_HOST}:/tmp/kc-compose.yaml"
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_KEYCLOAK_HOST}" \
-            "sudo mv /tmp/kc-compose.yaml /opt/keycloak/compose.yaml"
-          tar -czf - -C docker/keycloak/themes tumiki \
-            | ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_KEYCLOAK_HOST}" \
-              "sudo tar -xzf - -C /opt/keycloak/themes"
+            "${SSH_USER}@${SSH_HOST}:~/keycloak/compose.yaml"
+          scp -r -i ~/.ssh/id_ed25519 \
+            docker/keycloak/themes/tumiki \
+            "${SSH_USER}@${SSH_HOST}:~/keycloak/themes/"
 
       - name: 🔐 Deploy Keycloak
+        env:
+          INFISICAL_CLIENT_ID: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
+          INFISICAL_CLIENT_SECRET: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
         run: |
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_KEYCLOAK_HOST}" bash -l << 'REMOTE_SCRIPT'
+          # ${INFISICAL_CLIENT_ID/SECRET} はランナー側で展開してリモートに送信する（意図的なクォートなしヒアドキュメント）
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -l << REMOTE_SCRIPT
             set -euo pipefail
-            cd /opt/keycloak
-            # Infisical からシークレットを .env に書き出して docker compose に渡す
-            infisical export --env=staging --domain https://secrets.rayven.cloud --format=dotenv \
-              | sudo tee /opt/keycloak/.env > /dev/null
-            sudo docker compose pull keycloak
+            cd ~/keycloak
+            # Machine Identity で自動ログイン（ブラウザ不要）
+            ~/.local/bin/infisical login \
+              --method=universal-auth \
+              --client-id="${INFISICAL_CLIENT_ID}" \
+              --client-secret="${INFISICAL_CLIENT_SECRET}" \
+              --domain https://secrets.rayven.cloud \
+              --silent
+            ~/.local/bin/infisical run --env=staging --domain https://secrets.rayven.cloud -- docker compose pull keycloak
             # --remove-orphans: compose.yaml から削除されたサービスのコンテナを合わせてクリーンアップ
-            sudo docker compose up -d --force-recreate --remove-orphans keycloak
+            ~/.local/bin/infisical run --env=staging --domain https://secrets.rayven.cloud -- docker compose up -d --force-recreate --remove-orphans keycloak
           REMOTE_SCRIPT
 
       - name: ✅ Verify Keycloak health
         run: |
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_KEYCLOAK_HOST}" bash -l << 'HEALTHCHECK'
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -l << 'HEALTHCHECK'
             for i in $(seq 1 30); do
-              STATUS=$(sudo docker inspect --format='{{.State.Health.Status}}' \
-                $(sudo docker compose -f /opt/keycloak/compose.yaml ps -q keycloak) 2>/dev/null || echo "unknown")
+              STATUS=$(docker inspect --format='{{.State.Health.Status}}' tumiki-keycloak 2>/dev/null || echo "unknown")
               if [ "${STATUS}" = "healthy" ]; then
                 echo "Keycloak is healthy"
                 exit 0
@@ -89,7 +84,7 @@ jobs:
               echo "Waiting... ($i/30) Status: ${STATUS}" && sleep 10
             done
             echo "Timeout: Keycloakが起動しませんでした"
-            sudo docker compose -f /opt/keycloak/compose.yaml logs keycloak --tail=50
+            cd ~/keycloak && docker compose logs keycloak --tail=50
             exit 1
           HEALTHCHECK
 
