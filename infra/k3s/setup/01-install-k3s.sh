@@ -35,7 +35,7 @@ kubectl get nodes
 # kubeconfig をホームディレクトリにコピー
 mkdir -p ~/.kube
 cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
-sed -i "s/127.0.0.1/${PUBLIC_IP}/g" ~/.kube/config
+sed -i "s|127.0.0.1|${PUBLIC_IP}|g" ~/.kube/config
 chmod 600 ~/.kube/config
 
 echo ""

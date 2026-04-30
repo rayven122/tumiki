@@ -26,12 +26,16 @@ if ! command -v helm &>/dev/null; then
 fi
 
 # ----------------------------------------
+# Helm リポジトリ追加（一括 update で不要なネットワークアクセスを削減）
+# ----------------------------------------
+helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/'
+helm repo add stakater https://stakater.github.io/stakater-charts
+helm repo update
+
+# ----------------------------------------
 # Infisical Kubernetes Operator
 # ----------------------------------------
 echo "=== Infisical Kubernetes Operator インストール (${INFISICAL_OPERATOR_VERSION}) ==="
-helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/'
-helm repo update
-
 helm upgrade --install infisical-operator infisical-helm-charts/secrets-operator \
   --version "${INFISICAL_OPERATOR_VERSION}" \
   --namespace infisical-operator \
@@ -43,10 +47,7 @@ echo "  Infisical Operator インストール完了"
 # ----------------------------------------
 # Reloader（Secret変更時にPodを自動再起動）
 # ----------------------------------------
-echo "=== Reloader インストール ==="
-helm repo add stakater https://stakater.github.io/stakater-charts
-helm repo update
-
+echo "=== Reloader インストール (${RELOADER_VERSION}) ==="
 helm upgrade --install reloader stakater/reloader \
   --version "${RELOADER_VERSION}" \
   --namespace reloader \
