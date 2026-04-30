@@ -1,6 +1,10 @@
+import { env } from "@/lib/env";
 import { PrismaClient } from "../../prisma/generated/client/index.js";
 
-const createPrismaClient = () => new PrismaClient();
+const createPrismaClient = () =>
+  new PrismaClient({
+    datasources: { db: { url: env.TENANT_DATABASE_URL } },
+  });
 
 const globalForPrisma = globalThis as unknown as {
   tenantDb: PrismaClient | undefined;
