@@ -1,0 +1,21 @@
+model Tenant {
+  id        String       @id @default(cuid())
+  slug      String       @unique
+  domain    String       @unique // 例: company-a-manager.tumiki.cloud
+  status    TenantStatus @default(PROVISIONING)
+  oidcType  OidcType     @default(KEYCLOAK)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+enum TenantStatus {
+  PROVISIONING
+  ACTIVE
+  ERROR
+  DELETING
+}
+
+enum OidcType {
+  KEYCLOAK // tumiki-keycloak で自動プロビジョニング
+  CUSTOM // テナント独自のOIDCプロバイダー
+}
