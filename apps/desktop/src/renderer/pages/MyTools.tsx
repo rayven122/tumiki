@@ -9,6 +9,7 @@ import {
   Copy,
   Check,
   Trash2,
+  ChevronDown,
 } from "lucide-react";
 import { ToggleSwitch } from "../_components/ToggleSwitch";
 import { ConfirmDialog } from "../_components/ConfirmDialog";
@@ -120,7 +121,7 @@ export const MyTools = (): JSX.Element => {
               {filteredServers.length}件
             </span>
           </div>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {filteredServers.map((server) => (
               <ServerCard
                 key={server.id}
@@ -194,6 +195,7 @@ const ServerCard = ({
 }): JSX.Element => {
   const status = STATUS_CONFIG[server.serverStatus];
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showCommands, setShowCommands] = useState(false);
 
   return (
     <div
@@ -220,7 +222,9 @@ const ServerCard = ({
               <Server size={18} className="text-[var(--text-muted)]" />
             </div>
           )}
-          <span className={`h-2 w-2 rounded-full ${status.dotClass}`} />
+          <span
+            className={`h-2 w-2 rounded-full ${server.isEnabled ? "bg-emerald-400" : "bg-gray-400"}`}
+          />
         </div>
 
         {/* サーバー名 */}
@@ -250,9 +254,22 @@ const ServerCard = ({
       <div className="border-t border-t-[var(--border-subtle)] px-4 py-3">
         {/* トグルスイッチ + 削除 */}
         <div className="flex items-center justify-between">
-          <span className="text-[10px] text-[var(--text-muted)]">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setShowCommands((prev) => !prev);
+            }}
+            className="flex items-center gap-1 text-[10px] text-[var(--text-muted)] transition hover:text-[var(--text-primary)]"
+            aria-expanded={showCommands}
+          >
+            <ChevronDown
+              size={12}
+              className={`transition-transform ${showCommands ? "rotate-180" : ""}`}
+            />
             接続コマンド
-          </span>
+          </button>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -273,22 +290,24 @@ const ServerCard = ({
           </div>
         </div>
 
-        {/* 接続コマンド一覧（常に表示） */}
-        <div className="mt-2 space-y-1.5">
-          {AI_CLIENTS.map((ai) => (
-            <div key={ai.name} className="text-[9px]">
-              <span className="mb-0.5 block text-[var(--text-subtle)]">
-                {ai.name}
-              </span>
-              <div className="flex items-center gap-1">
-                <code className="flex-1 rounded bg-[var(--bg-input)] px-1.5 py-1 font-mono break-all text-[var(--text-secondary)]">
-                  {ai.path(server.slug)}
-                </code>
-                <CopyButton text={ai.path(server.slug)} />
+        {/* 接続コマンド一覧（折りたたみ） */}
+        {showCommands && (
+          <div className="mt-2 space-y-1.5">
+            {AI_CLIENTS.map((ai) => (
+              <div key={ai.name} className="text-[9px]">
+                <span className="mb-0.5 block text-[var(--text-subtle)]">
+                  {ai.name}
+                </span>
+                <div className="flex items-center gap-1">
+                  <code className="flex-1 rounded bg-[var(--bg-input)] px-1.5 py-1 font-mono break-all text-[var(--text-secondary)]">
+                    {ai.path(server.slug)}
+                  </code>
+                  <CopyButton text={ai.path(server.slug)} />
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* 削除確認モーダル */}
