@@ -14,6 +14,11 @@ const oidcEnvSchema = z.object({
  * OIDC環境変数を検証して取得
  * CI環境ではダミー値を使用
  */
+export const isOidcConfigured = (): boolean => {
+  const required = ["OIDC_CLIENT_ID", "OIDC_CLIENT_SECRET", "OIDC_ISSUER"];
+  return required.every((key) => (process.env[key] ?? "").length > 0);
+};
+
 export const getOidcEnv = () => {
   const isCI = process.env.CI === "true";
 
