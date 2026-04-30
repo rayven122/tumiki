@@ -1,0 +1,6 @@
+apiVersion: v2
+name: tumiki-cloud-api
+description: Tumiki Cloud API - 全テナント共有の証明書発行・ライセンス検証サービス
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

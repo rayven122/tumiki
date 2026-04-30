@@ -1,0 +1,102 @@
+{{- include "tumiki-cloud-api.validateAll" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tumiki-cloud-api
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "tumiki-cloud-api.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+  annotations:
+    # Reloader: tumiki-cloud-api-env Secret が更新されたときに自動再起動
+    secret.reloader.stakater.com/reload: "tumiki-cloud-api-env"
+spec:
+  revisionHistoryLimit: 3
+  # autoscaling 有効時も初期 replicas を明示し HPA 起動前の Pod 不足を防ぐ
+  # HPA が起動した後は HPA 側のリプリカ数で上書きされる
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "tumiki-cloud-api.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      labels:
+        {{- include "tumiki-cloud-api.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: api
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      # 複数 Pod を別ノードに分散させて単一障害点を排除
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    {{- include "tumiki-cloud-api.selectorLabels" . | nindent 20 }}
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: tumiki-cloud-api
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - containerPort: {{ .Values.server.port }}
+              name: https
+              protocol: TCP
+          env:
+            - name: PORT
+              value: {{ .Values.server.port | quote }}
+            - name: CERT_TTL
+              value: {{ .Values.server.certTtl | quote }}
+            - name: NODE_ENV
+              value: "production"
+          # Infisical Operator が同期した k8s Secret を環境変数として注入
+          # 必須: TLS_CERT, TLS_KEY, RAYVEN_CA_CERT, BOOTSTRAP_TOKEN_PUBLIC_KEY,
+          #       INFISICAL_URL, INFISICAL_API_TOKEN, INFISICAL_CA_ID
+          envFrom:
+            - secretRef:
+                name: tumiki-cloud-api-env
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          # readOnlyRootFilesystem 有効化に伴い書き込みが必要な領域を tmpfs にマウント
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          # startupProbe: 起動完了まで liveness/readiness を抑制し再起動ループを防止
+          # mTLS 経路ではなく内部 HTTP /health を直接叩く想定
+          # （TLS 設定後は HTTPS で自己ヘルスチェック可。証明書検証はスキップ）
+          startupProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.server.port }}
+              scheme: HTTPS
+            failureThreshold: 12
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.server.port }}
+              scheme: HTTPS
+            periodSeconds: 30
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.server.port }}
+              scheme: HTTPS
+            periodSeconds: 10
+            timeoutSeconds: 3
+      volumes:
+        - name: tmp
+          emptyDir: {}

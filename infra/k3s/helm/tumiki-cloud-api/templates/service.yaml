@@ -1,0 +1,49 @@
+# 外部公開用 LoadBalancer Service
+# mTLS pass-through のため TCP として公開する（HTTP/HTTPS LB ではダメ）
+# Cloudflare Tunnel は TLS を終端してしまうため、Cloudflare 経由ではなく Sakura Cloud LB を使う
+apiVersion: v1
+kind: Service
+metadata:
+  name: tumiki-cloud-api
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "tumiki-cloud-api.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  {{- with .Values.service.loadBalancerIP }}
+  loadBalancerIP: {{ . }}
+  {{- end }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.server.port }}
+      protocol: TCP
+      name: https
+  selector:
+    {{- include "tumiki-cloud-api.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+---
+# クラスター内部からのアクセス用 Service（テナント Namespace から参照）
+# DNS: tumiki-cloud-api-internal.tumiki-system.svc.cluster.local
+apiVersion: v1
+kind: Service
+metadata:
+  name: tumiki-cloud-api-internal
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "tumiki-cloud-api.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.server.port }}
+      targetPort: {{ .Values.server.port }}
+      protocol: TCP
+      name: https
+  selector:
+    {{- include "tumiki-cloud-api.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: api
