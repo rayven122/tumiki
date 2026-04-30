@@ -85,6 +85,11 @@ const api = {
       ipcRenderer.invoke("mcp:toggleServer", input),
     getDetail: (serverId: number): Promise<McpServerDetailItem | null> =>
       ipcRenderer.invoke("mcp-server:getDetail", serverId),
+    toggleTool: (input: {
+      toolId: number;
+      isAllowed: boolean;
+    }): Promise<void> =>
+      ipcRenderer.invoke("mcp-server:toggleTool", input).then(() => undefined),
   },
 
   // 監査ログ API
