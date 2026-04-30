@@ -71,6 +71,10 @@ services:
     ports:
       - "3100:3100"
     env_file: .env
+    environment:
+      # .env 内の NEXTAUTH_URL は manager 用 (https://stg.tumiki.cloud) のため、
+      # internal-manager では空にして auth.ts の trustHost: true による自動検出に任せる
+      NEXTAUTH_URL: ""
     depends_on:
       db:
         condition: service_healthy
