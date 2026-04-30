@@ -37,7 +37,6 @@ const TRANSPORT_LABEL: Record<CatalogItem["transportType"], string> = {
   STDIO: "stdio",
 };
 
-
 export const AddMcpModal = ({
   catalog,
   onClose,
@@ -150,6 +149,11 @@ export const AddMcpModal = ({
     if (isOAuth) {
       if (needsManualOAuthClient && !oauthClientId.trim()) {
         setError("Client IDを入力してください");
+        setLoading(false);
+        return;
+      }
+      if (!catalog.url) {
+        setError("カタログにサーバーURLが設定されていません");
         setLoading(false);
         return;
       }
