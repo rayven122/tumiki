@@ -47,9 +47,14 @@ RUN pnpm --filter @tumiki/tenant-console run build:bare
 FROM node:24-alpine AS production
 
 # helm: テナントプロビジョニング用、dumb-init: シグナル伝播、wget: ヘルスチェック
-RUN apk add --no-cache dumb-init wget curl bash && \
-    curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash && \
-    rm -rf /var/cache/apk/*
+# helmはバージョン固定 + SHA256チェックサム検証（サプライチェーン攻撃対策）
+ENV HELM_VERSION=3.20.2
+RUN apk add --no-cache dumb-init wget curl && \
+    curl -fsSL "https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz" -o helm.tar.gz && \
+    echo "258e830a9e613c8a7a302d6059b4bb3b9758f2f3e1bb8ea0d707ce10a9a72fea  helm.tar.gz" | sha256sum -c - && \
+    tar -zxf helm.tar.gz linux-amd64/helm && \
+    mv linux-amd64/helm /usr/local/bin/helm && \
+    rm -rf linux-amd64 helm.tar.gz /var/cache/apk/*
 
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001

@@ -18,7 +18,6 @@
     "check": "concurrently --kill-others-on-fail --names \"lint,format,typecheck\" \"pnpm run lint\" \"pnpm run format\" \"pnpm run typecheck\""
   },
   "dependencies": {
-    "@kubernetes/client-node": "^1.0.0",
     "@tanstack/react-query": "catalog:",
     "@trpc/client": "11.12.0",
     "@trpc/react-query": "11.12.0",

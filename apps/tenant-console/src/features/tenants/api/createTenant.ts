@@ -1,4 +1,7 @@
 import { execFileSync } from "node:child_process";
+import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { Context } from "@/server/api/trpc";
 import type { CreateTenantInput } from "./schemas";
 
@@ -26,41 +29,75 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
     // TODO: helm チャートは /app/helm/internal-manager にマウントされると想定
     // k8s: helm install でテナント用 internal-manager をデプロイ
     // execFileSync でシェルインジェクションを防止（引数を配列で渡す）
-    const helmArgs = [
-      "install",
-      input.slug,
-      "/app/helm/internal-manager",
-      "--namespace",
-      `tenant-${input.slug}`,
-      "--create-namespace",
-      "--set",
-      `tenant.slug=${input.slug}`,
-      "--set",
-      `tenant.domain=${domain}`,
-      "--set",
-      `tenant.oidcType=${input.oidcType}`,
-      "--set",
-      `image.tag=${input.imageTag}`,
-      "--set",
-      `infisical.clientId=${input.infisicalClientId}`,
-      "--set",
-      `infisical.clientSecret=${input.infisicalClientSecret}`,
-    ];
 
-    // CUSTOM OIDCの場合は追加パラメーターを設定
-    if (input.oidcType === "CUSTOM") {
-      if (input.oidcIssuer) {
-        helmArgs.push("--set", `oidc.issuer=${input.oidcIssuer}`);
+    // シークレット値を一時JSONファイル経由で渡す（ps aux / helm get values での平文漏洩を防止）
+    const tmpDir = mkdtempSync(join(tmpdir(), "helm-values-"));
+    const valuesFile = join(tmpDir, "secret-values.json");
+
+    try {
+      // HelmはJSON valuesファイルをサポートしているため、JSON.stringifyで安全にシリアライズ
+      type OidcSecretValues = { clientSecret: string };
+      type SecretValues = {
+        infisical: {
+          clientId: string;
+          clientSecret: string;
+          projectSlug: string;
+        };
+        oidc?: OidcSecretValues;
+      };
+
+      const secretValues: SecretValues = {
+        infisical: {
+          clientId: input.infisicalClientId,
+          clientSecret: input.infisicalClientSecret,
+          projectSlug: input.infisicalProjectSlug,
+        },
+      };
+
+      if (input.oidcType === "CUSTOM" && input.oidcClientSecret) {
+        secretValues.oidc = { clientSecret: input.oidcClientSecret };
       }
-      if (input.oidcClientId) {
-        helmArgs.push("--set", `oidc.clientId=${input.oidcClientId}`);
+
+      // パーミッション0o600でオーナーのみ読み取り可能にする
+      writeFileSync(valuesFile, JSON.stringify(secretValues, null, 2), {
+        mode: 0o600,
+      });
+
+      const helmArgs = [
+        "install",
+        input.slug,
+        "/app/helm/internal-manager",
+        "--namespace",
+        `tenant-${input.slug}`,
+        "--create-namespace",
+        "--set",
+        `tenant.slug=${input.slug}`,
+        "--set",
+        `tenant.domain=${domain}`,
+        "--set",
+        `tenant.oidcType=${input.oidcType}`,
+        "--set",
+        `image.tag=${input.imageTag}`,
+        // シークレット値はJSONファイル経由で渡す（--set では渡さない）
+        "-f",
+        valuesFile,
+      ];
+
+      // CUSTOM OIDCの場合は非シークレットのパラメーターを追加
+      if (input.oidcType === "CUSTOM") {
+        if (input.oidcIssuer) {
+          helmArgs.push("--set", `oidc.issuer=${input.oidcIssuer}`);
+        }
+        if (input.oidcClientId) {
+          helmArgs.push("--set", `oidc.clientId=${input.oidcClientId}`);
+        }
       }
-      if (input.oidcClientSecret) {
-        helmArgs.push("--set", `oidc.clientSecret=${input.oidcClientSecret}`);
-      }
+
+      execFileSync("/usr/local/bin/helm", helmArgs, { stdio: "inherit" });
+    } finally {
+      // 使用後は一時ディレクトリを確実に削除する
+      rmSync(tmpDir, { recursive: true, force: true });
     }
-
-    execFileSync("/usr/local/bin/helm", helmArgs, { stdio: "inherit" });
 
     // DBのstatusをACTIVEに更新
     const updatedTenant = await ctx.db.tenant.update({
