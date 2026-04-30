@@ -63,7 +63,9 @@ describe("KeycloakClient", () => {
         "tumiki://auth/callback",
       );
       expect(parsed.searchParams.get("response_type")).toBe("code");
-      expect(parsed.searchParams.get("scope")).toBe("openid profile email");
+      expect(parsed.searchParams.get("scope")).toBe(
+        "openid profile email offline_access",
+      );
       expect(parsed.searchParams.get("state")).toBe("test-state");
       expect(parsed.searchParams.get("code_challenge")).toBe("test-challenge");
       expect(parsed.searchParams.get("code_challenge_method")).toBe("S256");

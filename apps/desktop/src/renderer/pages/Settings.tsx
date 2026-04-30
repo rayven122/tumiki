@@ -6,8 +6,7 @@ import {
   PORTAL_NOTIFICATIONS,
 } from "../data/mock";
 import type { NotificationSetting } from "../data/mock";
-// TODO: 認証UI実装後に有効化
-// import { SettingsForm } from "../_components/SettingsForm";
+import { SettingsForm } from "../_components/SettingsForm";
 
 /** トグルスイッチ（CSS変数ベース） */
 const Toggle = ({
@@ -171,8 +170,7 @@ export const SettingsPage = (): JSX.Element => {
         />
       </div>
 
-      {/* TODO: 認証UI実装後に有効化 */}
-      {/* <SettingsForm /> */}
+      <SettingsForm />
 
       {/* 保存ボタン */}
       <button className="rounded-lg bg-[var(--btn-primary-bg)] px-4 py-2 text-sm font-medium text-[var(--btn-primary-text)] transition-colors hover:opacity-90">

@@ -2,12 +2,57 @@ import { z } from "zod";
 import * as logger from "../shared/utils/logger";
 
 /**
+ * OIDCエンドポイント型（Discovery Document から解決）
+ */
+export type OidcEndpoints = {
+  authorizationEndpoint: string;
+  tokenEndpoint: string;
+  endSessionEndpoint?: string;
+};
+
+const oidcDiscoverySchema = z.object({
+  authorization_endpoint: z.string().url(),
+  token_endpoint: z.string().url(),
+  end_session_endpoint: z.string().url().optional(),
+});
+
+/**
+ * OIDC Discovery Document からエンドポイントを取得
+ */
+export const resolveOidcEndpoints = async (
+  issuer: string,
+): Promise<OidcEndpoints> => {
+  const discoveryUrl = `${issuer.replace(/\/$/, "")}/.well-known/openid-configuration`;
+  const response = await fetch(discoveryUrl, {
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) {
+    throw new Error(
+      `OIDC Discovery に失敗しました（${response.status}）: ${discoveryUrl}`,
+    );
+  }
+  const data = oidcDiscoverySchema.parse(await response.json());
+  return {
+    authorizationEndpoint: data.authorization_endpoint,
+    tokenEndpoint: data.token_endpoint,
+    endSessionEndpoint: data.end_session_endpoint,
+  };
+};
+
+/**
  * Keycloak設定のスキーマ
  */
 const keycloakConfigSchema = z.object({
   issuer: z.string().url(),
   clientId: z.string().min(1),
   redirectUri: z.string().min(1),
+  endpoints: z
+    .object({
+      authorizationEndpoint: z.string().url(),
+      tokenEndpoint: z.string().url(),
+      endSessionEndpoint: z.string().url().optional(),
+    })
+    .optional(),
 });
 
 /**
@@ -54,11 +99,18 @@ export const createKeycloakClient = (
   config: KeycloakConfig,
 ): KeycloakClient => {
   const validated = keycloakConfigSchema.parse(config);
-  // issuerの末尾スラッシュを正規化してURL結合時の重複を防止
-  const normalizedConfig: KeycloakConfig = {
-    ...validated,
-    issuer: validated.issuer.replace(/\/$/, ""),
-  };
+  const normalizedIssuer = validated.issuer.replace(/\/$/, "");
+
+  // Discovery で解決済みのエンドポイントがあればそちらを優先、なければ Keycloak 形式にフォールバック
+  const authorizationEndpoint =
+    validated.endpoints?.authorizationEndpoint ??
+    `${normalizedIssuer}/protocol/openid-connect/auth`;
+  const tokenEndpoint =
+    validated.endpoints?.tokenEndpoint ??
+    `${normalizedIssuer}/protocol/openid-connect/token`;
+  const endSessionEndpoint =
+    validated.endpoints?.endSessionEndpoint ??
+    `${normalizedIssuer}/protocol/openid-connect/logout`;
 
   /**
    * 認証URLを生成（OAuth 2.0 + PKCE）
@@ -68,14 +120,12 @@ export const createKeycloakClient = (
     state: string;
   }): string => {
     const { codeChallenge, state } = params;
-    const authUrl = new URL(
-      `${normalizedConfig.issuer}/protocol/openid-connect/auth`,
-    );
+    const authUrl = new URL(authorizationEndpoint);
 
-    authUrl.searchParams.set("client_id", normalizedConfig.clientId);
-    authUrl.searchParams.set("redirect_uri", normalizedConfig.redirectUri);
+    authUrl.searchParams.set("client_id", validated.clientId);
+    authUrl.searchParams.set("redirect_uri", validated.redirectUri);
     authUrl.searchParams.set("response_type", "code");
-    authUrl.searchParams.set("scope", "openid profile email");
+    authUrl.searchParams.set("scope", "openid profile email offline_access");
     authUrl.searchParams.set("state", state);
     authUrl.searchParams.set("code_challenge", codeChallenge);
     authUrl.searchParams.set("code_challenge_method", "S256");
@@ -91,7 +141,7 @@ export const createKeycloakClient = (
     codeVerifier: string;
   }): Promise<TokenResponse> => {
     const { code, codeVerifier } = params;
-    const tokenUrl = `${normalizedConfig.issuer}/protocol/openid-connect/token`;
+    const tokenUrl = tokenEndpoint;
 
     const response = await fetch(tokenUrl, {
       method: "POST",
@@ -100,9 +150,9 @@ export const createKeycloakClient = (
       },
       body: new URLSearchParams({
         grant_type: "authorization_code",
-        client_id: normalizedConfig.clientId,
+        client_id: validated.clientId,
         code,
-        redirect_uri: normalizedConfig.redirectUri,
+        redirect_uri: validated.redirectUri,
         code_verifier: codeVerifier,
       }),
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
@@ -143,7 +193,7 @@ export const createKeycloakClient = (
    * リフレッシュトークンを使用してアクセストークンを更新
    */
   const refreshToken = async (token: string): Promise<TokenResponse> => {
-    const tokenUrl = `${normalizedConfig.issuer}/protocol/openid-connect/token`;
+    const tokenUrl = tokenEndpoint;
 
     const response = await fetch(tokenUrl, {
       method: "POST",
@@ -152,7 +202,7 @@ export const createKeycloakClient = (
       },
       body: new URLSearchParams({
         grant_type: "refresh_token",
-        client_id: normalizedConfig.clientId,
+        client_id: validated.clientId,
         refresh_token: token,
       }),
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
@@ -198,11 +248,11 @@ export const createKeycloakClient = (
     refreshToken: string;
     idToken?: string;
   }): Promise<void> => {
-    const logoutUrl = `${normalizedConfig.issuer}/protocol/openid-connect/logout`;
+    const logoutUrl = endSessionEndpoint;
 
     try {
       const body = new URLSearchParams({
-        client_id: normalizedConfig.clientId,
+        client_id: validated.clientId,
         refresh_token: params.refreshToken,
       });
       if (params.idToken) {
