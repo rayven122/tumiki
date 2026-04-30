@@ -71,6 +71,8 @@ jobs:
         run: |
           # 環境変数経由でシークレットを渡す（CLIオプション経由はps auxで漏洩するリスクがあるため）
           # クォートなしヒアドキュメントでランナー側の環境変数をリモートに展開する
+          # infisical はパッケージマネージャーでインストール済みのためPATH経由で呼び出す
+          # （Keycloak VMはsudo不可のため ~/.local/bin/ に個別インストールしているが、こちらはapt install済み）
           DRY_RUN="${{ inputs.dry_run || 'false' }}"
           ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -l << REMOTE_SCRIPT
             set -euo pipefail
@@ -139,6 +141,7 @@ jobs:
         run: |
           # 環境変数経由でシークレットを渡す（CLIオプション経由はps auxで漏洩するリスクがあるため）
           # クォートなしヒアドキュメントでランナー側の環境変数をリモートに展開する
+          # infisical はパッケージマネージャーでインストール済みのためPATH経由で呼び出す
           DRY_RUN="${{ inputs.dry_run || 'false' }}"
           ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -l << REMOTE_SCRIPT
             set -euo pipefail
