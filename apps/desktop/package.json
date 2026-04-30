@@ -63,7 +63,7 @@
     "autoprefixer": "^10.4.20",
     "concurrently": "^9.2.1",
     "dotenv-cli": "^11.0.0",
-    "electron": "^40.8.0",
+    "electron": "^40.8.5",
     "electron-builder": "^26.0.12",
     "electron-vite": "^4.0.1",
     "eslint": "catalog:",
