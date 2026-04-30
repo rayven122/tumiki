@@ -20,7 +20,12 @@ export const proxy = async (req: NextRequest) => {
 
   const session = await auth();
   if (!session) {
-    return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+    // 未ログイン時は NextAuth の signIn エンドポイントへ。
+    // 以前は "/" にリダイレクトしていたが、"/" 自体が "/admin" にリダイレクトするため
+    // 無限ループが発生していた。
+    const signInUrl = new URL("/api/auth/signin", req.nextUrl.origin);
+    signInUrl.searchParams.set("callbackUrl", pathname);
+    return NextResponse.redirect(signInUrl);
   }
 };
 
