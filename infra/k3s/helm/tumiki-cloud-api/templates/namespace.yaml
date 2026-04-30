@@ -1,0 +1,9 @@
+{{- include "tumiki-cloud-api.validateRequiredValues" . }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.namespace }}
+  labels:
+    {{- include "tumiki-cloud-api.labels" . | nindent 4 }}
+    # テナント Namespace との明確な区別
+    tumiki.cloud/role: system

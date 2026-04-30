@@ -1,0 +1,59 @@
+# tumiki-cloud-api は RAYVEN が管理する共有サービス
+# 全テナント Namespace から egress で参照される
+# テナント Namespace と分離するために専用 Namespace 'tumiki-system' を使用
+
+namespace: tumiki-system
+
+# コンテナイメージ
+image:
+  repository: ghcr.io/rayven122/tumiki-cloud-api
+  tag: ""               # 必須: 再現性確保のため明示指定（latest 不可）
+  pullPolicy: IfNotPresent
+
+# レプリカ数（HA: 複数 Pod で証明書発行リクエストを処理）
+replicaCount: 2
+
+# サーバー設定
+server:
+  port: 8443            # mTLS / HTTPS ポート
+  certTtl: "2160h"      # 発行する X.509 のデフォルト TTL（90日）
+
+# Infisical 設定（API 側用シークレット同期）
+infisical:
+  hostAPI: https://app.infisical.com/api
+  projectSlug: ""       # 必須: tumiki-cloud-api 用プロジェクトの slug
+  secretsPath: "/tumiki-cloud-api"
+  environment: ""       # 必須: prod / staging など
+  resyncInterval: 60
+  # Machine Identity 認証情報は kubectl で k8s Secret として事前作成
+  # Secret 名: infisical-machine-identity（デプロイ前に kubectl apply で作成）
+
+# Service 設定（外部公開）
+# mTLS pass-through のため LoadBalancer で TCP として公開する
+# Cloudflare Tunnel は TLS を終端してしまうため経由させない
+service:
+  type: LoadBalancer
+  port: 443             # 外部公開ポート（HTTPS 標準）
+  # Sakura Cloud LB のアノテーション例（実際のクラスタ構成に合わせて調整）
+  annotations: {}
+  # loadBalancerIP: ""  # 固定 IP を使う場合に指定
+
+# リソース制限
+resources:
+  requests:
+    memory: "128Mi"
+    cpu: "100m"
+  limits:
+    memory: "256Mi"
+    cpu: "500m"
+
+# HPA 設定
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+
+# PodDisruptionBudget
+pdb:
+  minAvailable: 1
