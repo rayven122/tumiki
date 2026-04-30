@@ -5,15 +5,11 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import { TRPCError } from "@trpc/server";
 import { Prisma } from "../../../../prisma/generated/client/index.js";
+import { HELM_BIN, KUBECTL_BIN, HELM_TIMEOUT_MS } from "./constants";
 import type { Context } from "@/server/api/trpc";
 import type { CreateTenantInput } from "./schemas";
 
 const execFileAsync = promisify(execFile);
-
-const HELM_BIN = "/usr/local/bin/helm";
-const KUBECTL_BIN = "/usr/local/bin/kubectl";
-/** Helm操作のタイムアウト: Node.js側はHelm側（5分）より30秒長く設定 */
-const HELM_TIMEOUT_MS = 5 * 60 * 1000 + 30_000;
 
 /** Helm に渡す非シークレット値の型（シークレットは kubectl Secret で管理） */
 type HelmValues = {

@@ -61,7 +61,7 @@
     },
     "@tumiki/tenant-console#build": {
       "dependsOn": ["^build", "db:generate"],
-      "outputs": [".next/**"]
+      "outputs": [".next/**", "!.next/cache/**"]
     },
     "@tumiki/tenant-console#lint": {
       "dependsOn": ["db:generate"],

@@ -1,15 +1,11 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { TRPCError } from "@trpc/server";
+import { HELM_BIN, KUBECTL_BIN, HELM_TIMEOUT_MS } from "./constants";
 import type { Context } from "@/server/api/trpc";
 import type { DeleteTenantInput } from "./schemas";
 
 const execFileAsync = promisify(execFile);
-
-const HELM_BIN = "/usr/local/bin/helm";
-const KUBECTL_BIN = "/usr/local/bin/kubectl";
-/** Helm操作のタイムアウト: Node.js側はHelm側（5分）より30秒長く設定 */
-const HELM_TIMEOUT_MS = 5 * 60 * 1000 + 30_000;
 
 /**
  * テナント削除処理
@@ -20,10 +16,16 @@ const HELM_TIMEOUT_MS = 5 * 60 * 1000 + 30_000;
  * 5. DB からテナントレコードを削除
  */
 export const deleteTenant = async (ctx: Context, input: DeleteTenantInput) => {
-  // DBからテナントを取得
-  const tenant = await ctx.db.tenant.findUniqueOrThrow({
+  // テナント存在チェック（NOT_FOUND を 500 に変換しない）
+  const tenant = await ctx.db.tenant.findUnique({
     where: { id: input.id },
   });
+  if (!tenant) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "テナントが見つかりません",
+    });
+  }
 
   // プロビジョニング中・削除中のテナントは操作不可
   if (tenant.status === "PROVISIONING" || tenant.status === "DELETING") {
