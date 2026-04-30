@@ -14,6 +14,12 @@ const oidcEnvSchema = z.object({
     .min(1, "OIDC_DESKTOP_CLIENT_ID is required"),
 });
 
+/** OIDC必須環境変数がすべて設定されているか確認（throw しない） */
+export const isOidcConfigured = (): boolean => {
+  const required = ["OIDC_CLIENT_ID", "OIDC_CLIENT_SECRET", "OIDC_ISSUER"];
+  return required.every((key) => (process.env[key] ?? "").length > 0);
+};
+
 /**
  * OIDC環境変数を検証して取得
  * CI環境ではダミー値を使用

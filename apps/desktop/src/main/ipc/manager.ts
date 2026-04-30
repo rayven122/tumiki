@@ -41,8 +41,8 @@ export const setupManagerIpc = (
     clientId: string,
   ) => Promise<void>,
 ): void => {
-  ipcMain.handle("manager:getUrl", () => {
-    const store = getAppStore();
+  ipcMain.handle("manager:getUrl", async () => {
+    const store = await getAppStore();
     return store.get("managerUrl") ?? null;
   });
 
@@ -59,7 +59,7 @@ export const setupManagerIpc = (
     const config = await fetchManagerOidcConfig(url);
     await initOAuthManager(url, config.issuer, config.clientId);
 
-    const store = getAppStore();
+    const store = await getAppStore();
     store.set("managerUrl", url);
 
     logger.info("Manager URL connected", { url });

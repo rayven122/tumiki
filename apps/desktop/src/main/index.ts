@@ -414,7 +414,7 @@ if (isMcpProxyMode) {
       await initializeDb();
 
       // OAuthManager初期化: electron-store保存済みURLを優先、フォールバックで環境変数
-      const savedManagerUrl = getAppStore().get("managerUrl");
+      const savedManagerUrl = (await getAppStore()).get("managerUrl");
       if (savedManagerUrl) {
         try {
           const config = await fetchManagerOidcConfig(savedManagerUrl);

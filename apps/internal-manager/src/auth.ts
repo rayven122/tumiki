@@ -1,6 +1,6 @@
 import NextAuth from "next-auth";
 import type { OAuthConfig } from "next-auth/providers";
-import { getOidcEnv } from "~/lib/env";
+import { getOidcEnv, isOidcConfigured } from "~/lib/env";
 import { createCustomAdapter } from "~/lib/auth/adapter";
 import { jwtCallback, sessionCallback } from "~/lib/auth/callbacks";
 import type { OidcProfile } from "~/lib/auth/types";
@@ -10,7 +10,14 @@ import "~/lib/auth/types";
 
 export type { Session as SessionReturnType } from "next-auth";
 
-const { OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_ISSUER } = getOidcEnv();
+// 未設定時はダミー値でクラッシュを回避し、middleware が /setup へ誘導する
+const oidcEnv = isOidcConfigured()
+  ? getOidcEnv()
+  : {
+      OIDC_CLIENT_ID: "unconfigured",
+      OIDC_CLIENT_SECRET: "unconfigured",
+      OIDC_ISSUER: "https://unconfigured.invalid",
+    };
 
 /**
  * 汎用OIDCプロバイダー設定
@@ -20,9 +27,9 @@ const oidcProvider: OAuthConfig<OidcProfile> = {
   id: "oidc",
   name: "SSO",
   type: "oidc",
-  clientId: OIDC_CLIENT_ID,
-  clientSecret: OIDC_CLIENT_SECRET,
-  issuer: OIDC_ISSUER,
+  clientId: oidcEnv.OIDC_CLIENT_ID,
+  clientSecret: oidcEnv.OIDC_CLIENT_SECRET,
+  issuer: oidcEnv.OIDC_ISSUER,
   // sub を User.id に使うことで ExternalIdentity の (provider, sub) → userId マッピングが成立する
   profile(profile) {
     return {

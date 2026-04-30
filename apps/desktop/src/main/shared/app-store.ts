@@ -1,4 +1,5 @@
-import Store from "electron-store";
+// electron-store v11 は ESM のみのため動的 import で初期化する
+import type Store from "electron-store";
 
 type AppStoreSchema = {
   managerUrl?: string;
@@ -6,9 +7,10 @@ type AppStoreSchema = {
 
 let storeInstance: Store<AppStoreSchema> | null = null;
 
-export const getAppStore = (): Store<AppStoreSchema> => {
+export const getAppStore = async (): Promise<Store<AppStoreSchema>> => {
   if (!storeInstance) {
-    storeInstance = new Store<AppStoreSchema>();
+    const { default: StoreClass } = await import("electron-store");
+    storeInstance = new StoreClass<AppStoreSchema>();
   }
   return storeInstance;
 };
