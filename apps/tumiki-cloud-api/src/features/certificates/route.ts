@@ -18,6 +18,21 @@ import { BOOTSTRAP_TOKEN_CONFIG } from "../../shared/constants/config.js";
 import { enrollRequestSchema } from "./schema.js";
 import { signCertificate } from "./service.js";
 
+// 公開鍵のパースは暗号演算を伴うため、モジュールスコープでキャッシュする
+type BootstrapPublicKey = Awaited<ReturnType<typeof importSPKI>>;
+let cachedBootstrapPem: string | null = null;
+let cachedBootstrapPublicKey: BootstrapPublicKey | null = null;
+
+const getBootstrapPublicKey = async (
+  pem: string,
+): Promise<BootstrapPublicKey> => {
+  if (cachedBootstrapPublicKey === null || cachedBootstrapPem !== pem) {
+    cachedBootstrapPublicKey = await importSPKI(pem, "RS256");
+    cachedBootstrapPem = pem;
+  }
+  return cachedBootstrapPublicKey;
+};
+
 const certificatesRoute = new Hono();
 
 certificatesRoute.post("/v1/certificates/enroll", async (c) => {
@@ -84,7 +99,7 @@ const verifyBootstrapToken = async (token: string): Promise<string | null> => {
   if (!publicKeyPem) return null;
 
   try {
-    const publicKey = await importSPKI(publicKeyPem, "RS256");
+    const publicKey = await getBootstrapPublicKey(publicKeyPem);
     // tumiki_ プレフィックスを除去してから JWT として検証する
     const jwt = token.slice(BOOTSTRAP_TOKEN_CONFIG.prefix.length);
     const { payload } = await jwtVerify(jwt, publicKey, {

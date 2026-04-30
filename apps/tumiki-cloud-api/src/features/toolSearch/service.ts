@@ -36,9 +36,20 @@ export const searchTools = async (
     return [];
   }
 
+  // サードパーティ MCPサーバーのツール名・説明は信頼できないため、プロンプト注入を防ぐためにサニタイズする
+  const sanitizeName = (name: string) => name.replace(/[^\w\-.]/g, "_");
+  const sanitizeDesc = (desc: string) =>
+    desc.replace(/[`"\\]/g, "").slice(0, 200);
+
   const toolDescriptions = tools
-    .map((t) => `- ${t.name}: ${t.description ?? "説明なし"}`)
+    .map(
+      (t) =>
+        `- ${sanitizeName(t.name)}: ${sanitizeDesc(t.description ?? "説明なし")}`,
+    )
     .join("\n");
+
+  // query もサニタイズして注入を防ぐ
+  const sanitizedQuery = query.replace(/[`"\\]/g, "").slice(0, 500);
 
   const { object } = await generateObject({
     model: gateway(TOOL_SEARCH_MODEL),
@@ -46,7 +57,7 @@ export const searchTools = async (
     abortSignal: AbortSignal.timeout(TIMEOUT_CONFIG.toolSearch),
     prompt: `以下のツールリストから、ユーザーのクエリに関連するツールを選んでください。
 
-クエリ: "${query}"
+クエリ: "${sanitizedQuery}"
 
 利用可能なツール:
 ${toolDescriptions}

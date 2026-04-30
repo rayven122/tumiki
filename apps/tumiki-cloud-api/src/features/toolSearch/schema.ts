@@ -4,13 +4,15 @@
 import { z } from "zod";
 
 export const toolSearchRequestSchema = z.object({
-  query: z.string().min(1),
-  tools: z.array(
-    z.object({
-      name: z.string(),
-      description: z.string().optional(),
-    }),
-  ),
+  query: z.string().min(1).max(500),
+  tools: z
+    .array(
+      z.object({
+        name: z.string(),
+        description: z.string().optional(),
+      }),
+    )
+    .max(200),
   limit: z.number().int().positive().max(50).default(10),
 });
 

@@ -30,7 +30,9 @@ if (tlsCert && tlsKey && caCert) {
 
   // mTLS サーバー起動（本番環境）
   // requestCert: true でクライアント証明書を要求
-  // rejectUnauthorized: false で接続は受け入れ、/v1/auth/token ハンドラ内で証明書を検証
+  // rejectUnauthorized: false は意図的な設定: TLS レイヤーで接続を切断せず、
+  // 各ハンドラ内で socket.authorized を確認して認証要否を制御する。
+  // mTLS 認証が必要なエンドポイントは必ず socket.authorized チェックを実装すること。
   serve(
     {
       fetch: app.fetch,
