@@ -53,7 +53,7 @@ jobs:
 
       - name: 🔐 Deploy Keycloak
         run: |
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash << 'REMOTE_SCRIPT'
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -l << 'REMOTE_SCRIPT'
             set -euo pipefail
             cd ~/keycloak
             infisical run --env=staging --domain https://secrets.rayven.cloud -- docker compose pull keycloak
@@ -62,7 +62,7 @@ jobs:
 
       - name: ✅ Verify Keycloak health
         run: |
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash << 'HEALTHCHECK'
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -l << 'HEALTHCHECK'
             for i in $(seq 1 30); do
               if curl -sf http://localhost:9000/health/ready > /dev/null 2>&1; then
                 echo "=== Keycloak ===" && curl -sf http://localhost:9000/health/ready | (command -v jq &>/dev/null && jq . || cat)

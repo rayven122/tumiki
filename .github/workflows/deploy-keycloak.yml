@@ -66,8 +66,9 @@ jobs:
 
       - name: 🏗️ Terraform Apply (staging)
         run: |
+          # ${DRY_RUN} はランナー側で展開してリモートに送信する（意図的なクォートなしヒアドキュメント）
           DRY_RUN="${{ inputs.dry_run || 'false' }}"
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash << REMOTE_SCRIPT
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -l << REMOTE_SCRIPT
             set -euo pipefail
             cd ~/keycloak-tf
             infisical run --env=staging --domain https://secrets.rayven.cloud -- \
@@ -127,8 +128,9 @@ jobs:
 
       - name: 🏗️ Terraform Apply (production)
         run: |
+          # ${DRY_RUN} はランナー側で展開してリモートに送信する（意図的なクォートなしヒアドキュメント）
           DRY_RUN="${{ inputs.dry_run || 'false' }}"
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash << REMOTE_SCRIPT
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -l << REMOTE_SCRIPT
             set -euo pipefail
             cd ~/keycloak-tf
             infisical run --env=prod --domain https://secrets.rayven.cloud -- \
