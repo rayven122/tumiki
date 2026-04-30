@@ -1,0 +1,23 @@
+# Ingress
+# TLSはCloudflare Tunnelが担うため、クラスター内はHTTPで通信
+# ルーティング: cloudflared → Traefik → このIngress → internal-manager Service
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: internal-manager
+  namespace: {{ include "internal-manager.namespace" . }}
+  labels:
+    {{- include "internal-manager.labels" . | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: {{ .Values.tenant.domain | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: internal-manager
+                port:
+                  number: 3100

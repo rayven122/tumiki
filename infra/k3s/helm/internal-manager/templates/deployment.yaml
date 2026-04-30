@@ -1,0 +1,82 @@
+{{- include "internal-manager.validateRequiredValues" . }}
+{{- include "internal-manager.validateImageTag" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: internal-manager
+  namespace: {{ include "internal-manager.namespace" . }}
+  labels:
+    {{- include "internal-manager.labels" . | nindent 4 }}
+    app.kubernetes.io/component: app
+  annotations:
+    # Reloader: internal-manager-env Secret が更新されたときに自動再起動
+    secret.reloader.stakater.com/reload: "internal-manager-env"
+spec:
+  revisionHistoryLimit: 3
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: internal-manager
+      app.kubernetes.io/instance: {{ .Values.tenant.slug }}
+      app.kubernetes.io/component: app
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: internal-manager
+        app.kubernetes.io/instance: {{ .Values.tenant.slug }}
+        app.kubernetes.io/component: app
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: internal-manager
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - containerPort: 3100
+              name: http
+          # Infisical Operator が同期した k8s Secret を環境変数として注入
+          envFrom:
+            - secretRef:
+                name: internal-manager-env
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          # readOnlyRootFilesystem 有効化に伴い Next.js が書き込みを要する領域を tmpfs にマウント
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: nextjs-cache
+              mountPath: /app/.next/cache
+          # startupProbe: 起動完了まで liveness/readiness を抑制し再起動ループを防止
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: 3100
+            failureThreshold: 12
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3100
+            periodSeconds: 30
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3100
+            periodSeconds: 10
+            timeoutSeconds: 3
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: nextjs-cache
+          emptyDir: {}
