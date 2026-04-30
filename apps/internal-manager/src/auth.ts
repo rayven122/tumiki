@@ -30,6 +30,9 @@ const oidcProvider: OAuthConfig<OidcProfile> = {
   clientId: oidcEnv.OIDC_CLIENT_ID,
   clientSecret: oidcEnv.OIDC_CLIENT_SECRET,
   issuer: oidcEnv.OIDC_ISSUER,
+  // NextAuth のデフォルト signin ページが authjs.dev/img/providers/oidc.svg を
+  // 取得しようとして 404 になるため、ローカル SVG で上書きする
+  style: { logo: "/sso-logo.svg", text: "#fff", bg: "#1f2937" },
   // sub を User.id に使うことで ExternalIdentity の (provider, sub) → userId マッピングが成立する
   profile(profile) {
     return {
