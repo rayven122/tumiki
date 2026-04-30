@@ -1,3 +1,4 @@
+{{- include "internal-manager.validateRequiredValues" . }}
 {{- include "internal-manager.validateImageTag" . }}
 apiVersion: apps/v1
 kind: Deployment
@@ -45,6 +46,12 @@ spec:
                 name: internal-manager-env
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          # readOnlyRootFilesystem 有効化に伴い Next.js が書き込みを要する領域を tmpfs にマウント
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: nextjs-cache
+              mountPath: /app/.next/cache
           livenessProbe:
             httpGet:
               path: /api/health
@@ -59,3 +66,8 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 3
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: nextjs-cache
+          emptyDir: {}

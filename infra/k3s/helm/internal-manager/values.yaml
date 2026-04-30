@@ -14,6 +14,7 @@ image:
 infisical:
   hostAPI: https://app.infisical.com/api
   projectSlug: ""      # 例: tenant-company-a
+  secretsPath: "/internal-manager"  # Infisical プロジェクト内のシークレットパス（テナント間で共通の慣習名）
   environment: prod
   resyncInterval: 60
   # Machine Identity 認証情報は kubectl で k8s Secret として事前作成（Helmリリース値への保存を防ぐ）

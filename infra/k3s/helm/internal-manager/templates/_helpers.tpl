@@ -16,6 +16,22 @@ app.kubernetes.io/managed-by: Helm
 {{- end }}
 
 {{/*
+必須値の一括バリデーション
+未指定のままインストールすると Namespace 名衝突などで Silo モデルが崩壊するため明示指定を必須化
+*/}}
+{{- define "internal-manager.validateRequiredValues" -}}
+{{- if not .Values.tenant.slug }}
+{{- fail "tenant.slug は必須です。--set tenant.slug=<SLUG> で指定してください" }}
+{{- end }}
+{{- if not .Values.tenant.domain }}
+{{- fail "tenant.domain は必須です。--set tenant.domain=<DOMAIN> で指定してください" }}
+{{- end }}
+{{- if not .Values.infisical.projectSlug }}
+{{- fail "infisical.projectSlug は必須です。--set infisical.projectSlug=<SLUG> で指定してください" }}
+{{- end }}
+{{- end }}
+
+{{/*
 image.tag の必須バリデーション
 空文字の場合 "<repo>:" となり latest 扱いで再現性が損なわれるため明示指定を必須にする
 */}}

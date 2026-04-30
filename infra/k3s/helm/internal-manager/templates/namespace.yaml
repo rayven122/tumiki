@@ -7,3 +7,9 @@ metadata:
   labels:
     {{- include "internal-manager.labels" . | nindent 4 }}
     tumiki/tenant: {{ .Values.tenant.slug | quote }}
+    # Pod Security Standards: Namespace レベルで restricted を強制
+    # 各 Pod の securityContext に依存しないため、将来追加されるリソースもバイパスできない
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: latest

@@ -6,6 +6,7 @@
 
 set -euo pipefail
 
+# 注: /etc/rancher/k3s/k3s.yaml は 600 権限のため、本スクリプトは sudo で実行するか root ユーザーで実行する必要がある
 export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 
 INFISICAL_OPERATOR_VERSION="0.10.32"
