@@ -20,6 +20,7 @@ const buildMockFetch = (status: number, body: unknown) =>
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
@@ -132,6 +133,44 @@ describe("signCertificate / Infisical API 連携", () => {
       csr: "my-csr",
       commonName: "org-xyz",
       ttl: "2160h",
+    });
+  });
+});
+
+describe("signCertificate / CERT_TTL バリデーション", () => {
+  beforeEach(() => {
+    vi.stubEnv("INFISICAL_URL", BASE_ENV.INFISICAL_URL);
+    vi.stubEnv("INFISICAL_API_TOKEN", BASE_ENV.INFISICAL_API_TOKEN);
+    vi.stubEnv("INFISICAL_CA_ID", BASE_ENV.INFISICAL_CA_ID);
+  });
+
+  test("不正な CERT_TTL 形式でエラーをスロー", async () => {
+    vi.stubEnv("CERT_TTL", "invalid");
+
+    await expect(signCertificate("csr-data", "org-001")).rejects.toThrow(
+      'Invalid CERT_TTL format: "invalid"',
+    );
+  });
+
+  test("CERT_TTL が '90d' の場合に正常に動作する", async () => {
+    vi.stubEnv("CERT_TTL", "90d");
+    const mockFetch = buildMockFetch(200, {
+      certificate: "cert",
+      certificateChain: "chain",
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    await expect(signCertificate("csr-data", "org-001")).resolves.toBeDefined();
+
+    const [, options] = mockFetch.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
+    const parsedBody = JSON.parse(options.body as string) as unknown;
+    expect(parsedBody).toStrictEqual({
+      csr: "csr-data",
+      commonName: "org-001",
+      ttl: "90d",
     });
   });
 });

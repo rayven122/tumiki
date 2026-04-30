@@ -4,7 +4,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     name: "tumiki-cloud-api",
-    globals: true,
+    globals: false,
     environment: "node",
     include: ["src/**/*.test.ts"],
   },
