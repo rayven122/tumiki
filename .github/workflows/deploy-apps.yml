@@ -71,8 +71,10 @@ jobs:
             export IMAGE_TAG="\$1"
             export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID}"
             export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET}"
+            # infisical export は --method フラグ未対応のため、login で取得したアクセストークンを --token で渡す
+            ACCESS_TOKEN=\$(infisical login --method=universal-auth --plain --silent --domain=https://secrets.rayven.cloud)
             cd ~/tumiki
-            infisical export --projectId=dbff850c-430a-431b-b7fe-efc744e304d6 --env=staging --format=dotenv --domain=https://secrets.rayven.cloud > .env
+            infisical export --projectId=dbff850c-430a-431b-b7fe-efc744e304d6 --env=staging --format=dotenv --domain=https://secrets.rayven.cloud --token="\$ACCESS_TOKEN" > .env
             docker compose pull
             docker compose up -d --remove-orphans
             rm -f .env
@@ -151,8 +153,10 @@ jobs:
             export IMAGE_TAG="\$1"
             export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID}"
             export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET}"
+            # infisical export は --method フラグ未対応のため、login で取得したアクセストークンを --token で渡す
+            ACCESS_TOKEN=\$(infisical login --method=universal-auth --plain --silent --domain=https://secrets.rayven.cloud)
             cd ~/tumiki
-            infisical export --projectId=dbff850c-430a-431b-b7fe-efc744e304d6 --env=prod --format=dotenv --domain=https://secrets.rayven.cloud > .env
+            infisical export --projectId=dbff850c-430a-431b-b7fe-efc744e304d6 --env=prod --format=dotenv --domain=https://secrets.rayven.cloud --token="\$ACCESS_TOKEN" > .env
             docker compose pull
             docker compose up -d --remove-orphans
             rm -f .env
