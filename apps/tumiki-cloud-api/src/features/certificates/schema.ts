@@ -20,12 +20,12 @@ export const enrollRequestSchema = z.object({
     ),
 });
 
-export const enrollResponseSchema = z.object({
-  /** PEM 形式のクライアント証明書 */
-  certificate: z.string(),
-  /** PEM 形式の CA チェーン */
-  caChain: z.string(),
-});
-
 export type EnrollRequest = z.infer<typeof enrollRequestSchema>;
-export type EnrollResponse = z.infer<typeof enrollResponseSchema>;
+
+/** 証明書発行レスポンス */
+export type EnrollResponse = {
+  /** PEM 形式のクライアント証明書 */
+  certificate: string;
+  /** PEM 形式の CA チェーン */
+  caChain: string;
+};

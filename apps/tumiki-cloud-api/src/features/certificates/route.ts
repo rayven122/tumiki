@@ -21,9 +21,23 @@ let cachedPublicKeyPromise: Promise<BootstrapPublicKey> | null = null;
 const getBootstrapPublicKey = (pem: string): Promise<BootstrapPublicKey> => {
   if (cachedPublicKeyPromise === null || cachedBootstrapPem !== pem) {
     cachedBootstrapPem = pem;
-    cachedPublicKeyPromise = importSPKI(pem, "RS256");
+    const promise = importSPKI(pem, "RS256");
+    // 失敗時はキャッシュをクリアして次回リトライ可能にする
+    promise.catch(() => {
+      if (cachedBootstrapPem === pem) {
+        cachedPublicKeyPromise = null;
+        cachedBootstrapPem = null;
+      }
+    });
+    cachedPublicKeyPromise = promise;
   }
   return cachedPublicKeyPromise;
+};
+
+/** テスト用: Bootstrap 公開鍵キャッシュをリセットする */
+export const resetBootstrapPublicKeyCache = (): void => {
+  cachedBootstrapPem = null;
+  cachedPublicKeyPromise = null;
 };
 
 // Bootstrap Token を検証して org_id を返す（RAYVEN が RS256 署名、sub に org_id）
@@ -36,8 +50,8 @@ const verifyBootstrapToken = async (token: string): Promise<string | null> => {
     // tumiki_ プレフィックスを除去してから JWT として検証する
     const jwt = token.slice(BOOTSTRAP_TOKEN_CONFIG.prefix.length);
     const { payload } = await jwtVerify(jwt, publicKey, {
-      issuer: "rayven-cloud",
-      audience: "tumiki-cloud-api",
+      issuer: BOOTSTRAP_TOKEN_CONFIG.issuer,
+      audience: BOOTSTRAP_TOKEN_CONFIG.audience,
       requiredClaims: ["exp", "sub"],
     });
 

@@ -9,4 +9,6 @@ export const TIMEOUT_CONFIG = {
 
 export const BOOTSTRAP_TOKEN_CONFIG = {
   prefix: "tumiki_",
+  issuer: "rayven-cloud",
+  audience: "tumiki-cloud-api",
 } as const;
