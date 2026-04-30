@@ -39,7 +39,7 @@ jobs:
       CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
       CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
       SSH_HOST: stg-ssh.tumiki.cloud
-      SSH_USER: hisuzuya
+      SSH_USER: staging-deploy
 
     steps:
       - name: 📥 Checkout
