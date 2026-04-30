@@ -22,3 +22,17 @@ export const findByIdWithDetails = async (
     },
   });
 };
+
+/**
+ * MCPツールの isAllowed フラグを更新
+ */
+export const updateToolAllowed = async (
+  db: PrismaClient,
+  toolId: number,
+  isAllowed: boolean,
+) => {
+  return db.mcpTool.update({
+    where: { id: toolId },
+    data: { isAllowed },
+  });
+};

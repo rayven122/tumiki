@@ -1,6 +1,9 @@
 import { getDb } from "../../shared/db";
 import * as repository from "./mcp-server-detail.repository";
-import type { McpServerDetailItem } from "./mcp-server-detail.types";
+import type {
+  McpServerDetailItem,
+  McpToolItem,
+} from "./mcp-server-detail.types";
 
 /**
  * MCPサーバー詳細情報を取得
@@ -38,5 +41,21 @@ export const getServerDetail = async (
         updatedAt: tool.updatedAt.toISOString(),
       })),
     })),
+  };
+};
+
+/**
+ * MCPツールの許可フラグ(isAllowed)を切り替え
+ */
+export const toggleTool = async (
+  toolId: number,
+  isAllowed: boolean,
+): Promise<McpToolItem> => {
+  const db = await getDb();
+  const updated = await repository.updateToolAllowed(db, toolId, isAllowed);
+  return {
+    ...updated,
+    createdAt: updated.createdAt.toISOString(),
+    updatedAt: updated.updatedAt.toISOString(),
   };
 };
