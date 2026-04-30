@@ -28,6 +28,8 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: internal-manager
           image: {{ .Values.image.repository }}:{{ .Values.image.tag }}

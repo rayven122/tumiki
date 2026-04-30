@@ -12,6 +12,9 @@ K3S_VERSION="${K3S_VERSION:-v1.31.4+k3s1}"
 # パブリックIPは環境変数で必須指定（外部サービス依存と MITM リスクを回避）
 : "${PUBLIC_IP:?環境変数 PUBLIC_IP を設定してください（例: PUBLIC_IP=203.0.113.10 ./01-install-k3s.sh）}"
 
+# 起動待機の上限秒数（既定: 120秒）
+K3S_READY_TIMEOUT="${K3S_READY_TIMEOUT:-120}"
+
 echo "=== k3s インストール開始 ==="
 echo "k3s バージョン: ${K3S_VERSION}"
 echo "パブリックIP: ${PUBLIC_IP}"
@@ -23,10 +26,17 @@ curl -sfL https://get.k3s.io | \
   --disable=servicelb \
   --tls-san=${PUBLIC_IP}" sh -
 
-echo "=== k3s 起動待機中 ==="
+echo "=== k3s 起動待機中（タイムアウト ${K3S_READY_TIMEOUT}秒）==="
+elapsed=0
 until kubectl get nodes 2>/dev/null | grep -q " Ready"; do
-  echo "  待機中..."
+  if [ "${elapsed}" -ge "${K3S_READY_TIMEOUT}" ]; then
+    echo "ERROR: k3s が ${K3S_READY_TIMEOUT}秒以内に Ready になりませんでした" >&2
+    kubectl get nodes 2>&1 || true
+    exit 1
+  fi
+  echo "  待機中... (${elapsed}s)"
   sleep 5
+  elapsed=$((elapsed + 5))
 done
 
 echo "=== k3s インストール完了 ==="
