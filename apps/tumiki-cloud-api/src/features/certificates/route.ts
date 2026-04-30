@@ -1,13 +1,7 @@
 // SPDX-License-Identifier: Elastic-2.0
 // Copyright (c) 2024-2025 Reyven Inc.
 
-/**
- * POST /v1/certificates/enroll
- *
- * Kubernetes TLS Bootstrapping パターンに基づく証明書自動発行エンドポイント。
- * - 初回: Bootstrap Token で認証 → CSR に署名して証明書を返す
- * - 更新: 既存クライアント証明書（mTLS）で認証 → 新証明書を返す
- */
+// POST /v1/certificates/enroll: Bootstrap Token/mTLS で認証して CSR に署名
 
 import type { TLSSocket } from "node:tls";
 
@@ -34,12 +28,7 @@ const getBootstrapPublicKey = async (
   return cachedBootstrapPublicKey;
 };
 
-/**
- * Bootstrap Token を検証して org_id を返す
- *
- * Bootstrap Token は RAYVEN が RS256 で署名した JWT。
- * sub クレームに org_id が入っている。
- */
+// Bootstrap Token を検証して org_id を返す（RAYVEN が RS256 署名、sub に org_id）
 const verifyBootstrapToken = async (token: string): Promise<string | null> => {
   const publicKeyPem = process.env.BOOTSTRAP_TOKEN_PUBLIC_KEY;
   if (!publicKeyPem) return null;
@@ -51,13 +40,14 @@ const verifyBootstrapToken = async (token: string): Promise<string | null> => {
     const { payload } = await jwtVerify(jwt, publicKey, {
       issuer: "rayven-cloud",
       audience: "tumiki-cloud-api",
+      requiredClaims: ["exp", "sub"],
     });
 
     return payload.sub ?? null;
   } catch (err) {
     console.error(
       "[certificates/enroll] Bootstrap token verification failed:",
-      err,
+      err instanceof Error ? err.message : "unknown error",
     );
     return null;
   }
@@ -66,6 +56,7 @@ const verifyBootstrapToken = async (token: string): Promise<string | null> => {
 const certificatesRoute = new Hono();
 
 // CSR は通常数 KB 以下のため 50KB に制限してメモリ枯渇攻撃を防ぐ
+// TODO: レート制限は上流リバースプロキシ（nginx/Cloudflare）で実装予定
 certificatesRoute.use(
   "/v1/certificates/enroll",
   bodyLimit({ maxSize: 50 * 1024 }),

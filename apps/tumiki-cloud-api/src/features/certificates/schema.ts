@@ -8,9 +8,12 @@ export const enrollRequestSchema = z.object({
   csr: z
     .string()
     .min(1)
-    .refine((v) => v.includes("-----BEGIN CERTIFICATE REQUEST-----"), {
-      message: "CSR must be PEM-encoded",
-    }),
+    .refine(
+      (v) => v.trimStart().startsWith("-----BEGIN CERTIFICATE REQUEST-----"),
+      {
+        message: "CSR must be PEM-encoded",
+      },
+    ),
 });
 
 export const enrollResponseSchema = z.object({

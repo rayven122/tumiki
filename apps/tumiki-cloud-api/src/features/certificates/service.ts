@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: Elastic-2.0
 // Copyright (c) 2024-2025 Reyven Inc.
 
-/**
- * Infisical Certificate Manager を使って CSR に署名し証明書を発行する
- */
-
+import { z } from "zod";
 import { TIMEOUT_CONFIG } from "../../shared/constants/config.js";
 import type { EnrollResponse } from "./schema.js";
 
-type InfisicalSignResponse = {
-  certificate: string;
-  certificateChain: string;
-};
+// Infisical は { certificate, certificateChain } を返すため caChain にマッピングする
+const infisicalSignResponseSchema = z
+  .object({ certificate: z.string(), certificateChain: z.string() })
+  .transform((v) => ({
+    certificate: v.certificate,
+    caChain: v.certificateChain,
+  }));
 
 export const signCertificate = async (
   csr: string,
@@ -51,10 +51,6 @@ export const signCertificate = async (
     throw new Error("Certificate signing failed");
   }
 
-  const data = (await response.json()) as InfisicalSignResponse;
-
-  return {
-    certificate: data.certificate,
-    caChain: data.certificateChain,
-  };
+  const raw: unknown = await response.json();
+  return infisicalSignResponseSchema.parse(raw);
 };
