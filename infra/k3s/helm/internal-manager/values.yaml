@@ -15,9 +15,8 @@ infisical:
   projectSlug: ""      # 例: tenant-company-a
   environment: prod
   resyncInterval: 60
-  # Machine Identity 認証情報（hosting-console が --set で渡す）
-  clientId: ""
-  clientSecret: ""
+  # Machine Identity 認証情報は kubectl で k8s Secret として事前作成（Helmリリース値への保存を防ぐ）
+  # Secret名: infisical-machine-identity（createTenant.ts が kubectl apply で作成）
 
 # internal-manager のリソース制限
 resources:

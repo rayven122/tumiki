@@ -16,7 +16,13 @@ export const createTenantInputSchema = z
     infisicalClientId: z.string().min(1),
     infisicalClientSecret: z.string().min(1),
     infisicalProjectSlug: z.string().min(1),
-    imageTag: z.string().default("latest"),
+    // Docker imageタグとして有効な文字のみ許可
+    imageTag: z
+      .string()
+      .min(1)
+      .max(128)
+      .regex(/^[a-zA-Z0-9._-]+$/)
+      .default("latest"),
   })
   .superRefine((data, ctx) => {
     // CUSTOM OIDCの場合は追加フィールドを必須とする

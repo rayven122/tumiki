@@ -11,7 +11,7 @@ echo "=== k3s インストール開始 ==="
 echo "パブリックIP: ${PUBLIC_IP}"
 
 curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server \
-  --write-kubeconfig-mode=644 \
+  --write-kubeconfig-mode=600 \
   --disable=servicelb \
   --tls-san=${PUBLIC_IP}" sh -
 
