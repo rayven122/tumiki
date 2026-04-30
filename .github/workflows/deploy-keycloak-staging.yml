@@ -45,10 +45,11 @@ jobs:
 
       - name: 🔧 Configure ProxyJump for Keycloak VM
         run: |
-          # staging VM（stg-ssh.tumiki.cloud）を踏み台に 192.168.0.90 へ ProxyJump
+          # staging-deploy ユーザーで staging VM を踏み台に Keycloak VM へ ProxyJump
+          # staging-deploy は sudo・docker 権限なし（ProxyJump 踏み台専用）
           cat >> ~/.ssh/config << CONFIG
           Host ${KEYCLOAK_HOST}
-            ProxyJump ${STAGING_SSH_HOST}
+            ProxyJump staging-deploy@${STAGING_SSH_HOST}
             StrictHostKeyChecking accept-new
           CONFIG
 
