@@ -2,7 +2,7 @@ import type React from "react";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useAtom } from "jotai";
 import { appConfigAtom } from "../store/atoms";
-import { LogIn, LogOut, CheckCircle, XCircle } from "lucide-react";
+import { LogIn, LogOut, CheckCircle, XCircle, Link } from "lucide-react";
 import { AUTH_SESSION_TIMEOUT_MS } from "../../shared/types";
 
 /**
@@ -40,7 +40,37 @@ export const SettingsForm = (): React.ReactElement => {
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authSuccess, setAuthSuccess] = useState<string | null>(null);
+  const [managerUrl, setManagerUrl] = useState("");
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [connectError, setConnectError] = useState<string | null>(null);
+  const [connectSuccess, setConnectSuccess] = useState<string | null>(null);
   const timeouts = useTimeouts();
+
+  // 起動時に保存済みURLを読み込む
+  useEffect(() => {
+    window.electronAPI.manager.getUrl().then((url) => {
+      if (url) setManagerUrl(url);
+    });
+  }, []);
+
+  const handleConnect = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    if (!managerUrl.trim()) return;
+    setIsConnecting(true);
+    setConnectError(null);
+    setConnectSuccess(null);
+    try {
+      await window.electronAPI.manager.connect(managerUrl.trim());
+      setConnectSuccess("管理サーバーに接続しました");
+      timeouts.set("connectSuccess", () => setConnectSuccess(null), 3000);
+    } catch (err) {
+      setConnectError(
+        err instanceof Error ? err.message : "接続に失敗しました",
+      );
+    } finally {
+      setIsConnecting(false);
+    }
+  };
 
   // エラーメッセージを設定し、10秒後に自動クリアする
   const showAuthError = useCallback(
@@ -122,7 +152,7 @@ export const SettingsForm = (): React.ReactElement => {
     try {
       await window.electronAPI.auth.login();
       // ブラウザが開かれたことを通知
-      setAuthSuccess("ブラウザでKeycloakログインページを開きました");
+      setAuthSuccess("ブラウザで認証ページを開きました");
       // 5分後にコールバックが来ない場合はタイムアウト
       timeouts.set(
         "login",
@@ -173,6 +203,54 @@ export const SettingsForm = (): React.ReactElement => {
 
   return (
     <div className="space-y-6">
+      {/* 管理サーバー接続セクション */}
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">
+        <h3 className="mb-4 text-sm font-medium text-[var(--text-primary)]">
+          管理サーバー接続
+        </h3>
+        <form onSubmit={handleConnect} className="space-y-3">
+          <div>
+            <label
+              htmlFor="manager-url"
+              className="block text-xs font-medium text-[var(--text-secondary)]"
+            >
+              管理サーバー URL
+            </label>
+            <input
+              id="manager-url"
+              type="url"
+              value={managerUrl}
+              onChange={(e) => setManagerUrl(e.target.value)}
+              placeholder="https://manager.example.com"
+              required
+              disabled={isConnecting}
+              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-active)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-subtle)] focus:ring-2 focus:ring-[var(--btn-primary-bg)] focus:outline-none disabled:opacity-50"
+            />
+          </div>
+          {connectError && (
+            <p className="rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">
+              {connectError}
+            </p>
+          )}
+          {connectSuccess && (
+            <p className="rounded-lg bg-green-500/10 px-3 py-2 text-xs text-[var(--badge-success-text)]">
+              {connectSuccess}
+            </p>
+          )}
+          <button
+            type="submit"
+            disabled={isConnecting || !managerUrl.trim()}
+            className="flex items-center space-x-2 rounded-lg bg-[var(--btn-primary-bg)] px-4 py-2 text-sm font-medium text-[var(--btn-primary-text)] transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Link size={16} />
+            <span>{isConnecting ? "接続中..." : "接続"}</span>
+          </button>
+        </form>
+        <p className="mt-3 text-xs text-[var(--text-muted)]">
+          組織の管理サーバーURLを入力してください。個人利用の場合は不要です。
+        </p>
+      </div>
+
       {/* 認証セクション */}
       <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">
         <h3 className="mb-4 text-sm font-medium text-[var(--text-primary)]">
@@ -259,7 +337,7 @@ export const SettingsForm = (): React.ReactElement => {
         </div>
 
         <p className="mt-4 text-xs text-[var(--text-muted)]">
-          ログインボタンをクリックすると、ブラウザでKeycloakのログインページが開きます。
+          ログインボタンをクリックすると、ブラウザで認証ページが開きます。
           認証後、自動的にアプリに戻ります。
         </p>
       </div>

@@ -63,7 +63,7 @@ jobs:
           # IMAGE_TAG を bash の引数として渡してシェルインジェクションを防ぐ
           ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -ls -- "${IMAGE_TAG}" << 'REMOTE_SCRIPT'
             set -euo pipefail
-            IMAGE_TAG="$1"
+            export IMAGE_TAG="$1"
             cd ~/tumiki
             infisical export --env=staging --format=dotenv --domain https://secrets.rayven.cloud > .env
             docker compose pull
@@ -136,7 +136,7 @@ jobs:
           # IMAGE_TAG を bash の引数として渡してシェルインジェクションを防ぐ
           ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -ls -- "${IMAGE_TAG}" << 'REMOTE_SCRIPT'
             set -euo pipefail
-            IMAGE_TAG="$1"
+            export IMAGE_TAG="$1"
             cd ~/tumiki
             infisical export --env=prod --format=dotenv --domain https://secrets.rayven.cloud > .env
             docker compose pull

@@ -1,11 +1,11 @@
 # Keycloak Terraform変数定義
 
 # Keycloak接続設定
-# 本番環境: Terraform Cloud ワークスペース変数 TF_VAR_keycloak_url で設定
+# 本番環境: Infisical 経由の TF_VAR_keycloak_url 環境変数で設定
 variable "keycloak_url" {
-  description = "Keycloak サーバーURL（本番: Terraform Cloud変数で上書き）"
+  description = "Keycloak サーバーURL（本番: TF_VAR_keycloak_url 環境変数で上書き）"
   type        = string
-  default     = "http://localhost:8443"
+  default     = "http://localhost:8080"
 }
 
 variable "keycloak_admin_username" {
