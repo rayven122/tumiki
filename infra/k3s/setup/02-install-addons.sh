@@ -6,7 +6,12 @@
 
 set -euo pipefail
 
-# 注: /etc/rancher/k3s/k3s.yaml は 600 権限のため、本スクリプトは sudo で実行するか root ユーザーで実行する必要がある
+# /etc/rancher/k3s/k3s.yaml は 600 権限のため root 必須
+if [[ $EUID -ne 0 ]]; then
+  echo "ERROR: このスクリプトは root または sudo で実行してください" >&2
+  exit 1
+fi
+
 export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 
 INFISICAL_OPERATOR_VERSION="0.10.32"
@@ -22,7 +27,7 @@ if ! command -v helm &>/dev/null; then
   curl -fsSL "https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz" -o /tmp/helm.tar.gz
   echo "${HELM_SHA256}  /tmp/helm.tar.gz" | sha256sum -c -
   tar -zxf /tmp/helm.tar.gz -C /tmp linux-amd64/helm
-  sudo mv /tmp/linux-amd64/helm /usr/local/bin/helm
+  mv /tmp/linux-amd64/helm /usr/local/bin/helm
   rm -rf /tmp/linux-amd64 /tmp/helm.tar.gz
 fi
 
@@ -62,4 +67,4 @@ echo "=== 全アドオンのインストール完了 ==="
 echo "次のステップ:"
 echo "  1. Cloudflare Zero Trust でトンネルを作成しトークンを取得"
 echo "  2. infra/k3s/manifests/cloudflare-tunnel/ のマニフェストを適用"
-echo "  3. infra/k3s/manifests/hosting-console/namespace.yaml を適用"
+echo "  3. infra/k3s/manifests/tenant-console/namespace.yaml を適用"

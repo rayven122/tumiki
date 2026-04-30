@@ -113,26 +113,32 @@ kubectl apply -f infra/k3s/manifests/tenant-console/namespace.yaml
 #    キー: OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET,
 #          INTERNAL_DATABASE_URL, POSTGRES_PASSWORD, AUTH_SECRET, NEXTAUTH_URL
 
-# 2. テナント Namespace を事前作成（Helm install 前に必要）
-kubectl create namespace tenant-company-a
+# 2. Helm で Namespace を作成（templates/namespace.yaml が管理するため kubectl create は不要）
+#    --create-namespace は使わずテンプレートに任せ、所有権を Helm で一元管理する
+helm install company-a ./infra/k3s/helm/internal-manager \
+  --set tenant.slug=company-a \
+  --set tenant.domain=company-a-manager.tumiki.cloud \
+  --set infisical.projectSlug=tenant-company-a \
+  --set infisical.environment=prod \
+  --set image.tag=<IMAGE_TAG>
 
-# 3. Infisical Machine Identity の認証情報を k8s Secret として事前作成
-#    （--set 経由だと Helm リリース値に保存されるため、Secret を経由する設計）
+# 3. Infisical Machine Identity の認証情報を k8s Secret として作成
+#    Helm install 完了後（Namespace 作成後）に追加する
+#    --set 経由だと Helm リリース値に保存されるため、Secret を経由する設計
 kubectl create secret generic infisical-machine-identity \
   --namespace tenant-company-a \
   --from-literal=clientId=<INFISICAL_CLIENT_ID> \
   --from-literal=clientSecret=<INFISICAL_CLIENT_SECRET>
 
-# 4. Helm install
-helm install company-a ./infra/k3s/helm/internal-manager \
-  --set tenant.slug=company-a \
-  --set tenant.domain=company-a-manager.tumiki.cloud \
-  --set infisical.projectSlug=tenant-company-a \
-  --set image.tag=<IMAGE_TAG>
+# 4. Reloader が Secret 変更を検知して internal-manager Pod を再起動
 
 # 5. 状態確認
 kubectl get all -n tenant-company-a
 ```
+
+> **Note**: `tenant-console` (`apps/tenant-console`) は上記処理を tRPC 経由で実行する際、
+> Helm install 前に Namespace を `kubectl create namespace` してから Infisical Secret を先に
+> 投入し、その後 `helm install --replace` する設計になっている（Pod 起動時に Secret が必要なため）。
 
 ## テナント削除手順
 
@@ -162,7 +168,7 @@ kubectl delete namespace tenant-company-a
 | `INTERNAL_DATABASE_URL` | `postgresql://app:<PW>@postgresql.tenant-{slug}.svc.cluster.local:5432/internal_manager` |
 | `POSTGRES_PASSWORD` | PostgreSQLパスワード（`openssl rand -base64 32` で生成） |
 | `AUTH_SECRET` | NextAuthシークレット（`openssl rand -base64 32` で生成） |
-| `NEXTAUTH_URL` | 例: `https://company-a.manager.example.com` |
+| `NEXTAUTH_URL` | 例: `https://company-a-manager.tumiki.cloud` |
 
 ## ディレクトリ構成
 
