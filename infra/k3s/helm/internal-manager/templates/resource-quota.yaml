@@ -11,3 +11,7 @@ spec:
     requests.memory: {{ .Values.resourceQuota.requests.memory | quote }}
     limits.cpu: {{ .Values.resourceQuota.limits.cpu | quote }}
     limits.memory: {{ .Values.resourceQuota.limits.memory | quote }}
+    # オブジェクト数制限: 暴走時の k8s control plane 負荷を抑制
+    pods: {{ .Values.resourceQuota.objects.pods | quote }}
+    services: {{ .Values.resourceQuota.objects.services | quote }}
+    persistentvolumeclaims: {{ .Values.resourceQuota.objects.persistentvolumeclaims | quote }}

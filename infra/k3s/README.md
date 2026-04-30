@@ -48,22 +48,46 @@ tumiki-k3s VM（さくらのクラウド / 8GB RAM / 4vCPU / 200GB SSD）
 - tumiki プライベートゾーン（192.168.0.x）に接続
 - グローバル IP は kubectl 管理用に付与（HTTP/HTTPS の受信は不要）
 
-### 2. k3s インストール
+### 2. リポジトリを VM に配置
 
 ```bash
 ssh user@<VM-IP>
+git clone https://github.com/rayven122/tumiki.git
+cd tumiki
+```
+
+### 3. k3s インストール
+
+```bash
 chmod +x infra/k3s/setup/01-install-k3s.sh
 # パブリックIPは環境変数で明示指定（必須）
 PUBLIC_IP=<VM-PUBLIC-IP> ./infra/k3s/setup/01-install-k3s.sh
 ```
 
-### 3. アドオンインストール
+### 4. GHCR (プライベートイメージ) の pull 認証
+
+`tumiki-internal-manager` イメージがプライベート公開の場合、k3s containerd に GHCR 認証を設定する。
+public 公開の場合はスキップ可。
+
+```bash
+# GitHub Personal Access Token (read:packages 権限) を取得
+sudo tee /etc/rancher/k3s/registries.yaml > /dev/null <<EOF
+configs:
+  "ghcr.io":
+    auth:
+      username: <GITHUB_USERNAME>
+      password: <GITHUB_PAT>
+EOF
+sudo systemctl restart k3s
+```
+
+### 5. アドオンインストール
 
 ```bash
 ./infra/k3s/setup/02-install-addons.sh
 ```
 
-### 4. Cloudflare Tunnel セットアップ
+### 6. Cloudflare Tunnel セットアップ
 
 tumiki-main で稼働中の既存トンネル（tumiki-sakura-prod）を共用する。
 k3s 内への cloudflared デプロイは不要。
@@ -74,7 +98,7 @@ k3s 内への cloudflared デプロイは不要。
 
 **テナント URL 形式:** `{slug}-manager.tumiki.cloud`（例: `company-a-manager.tumiki.cloud`）
 
-### 5. tenant-console Namespace 作成
+### 7. tenant-console Namespace 作成
 
 ```bash
 kubectl apply -f infra/k3s/manifests/tenant-console/namespace.yaml

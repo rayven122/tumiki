@@ -51,6 +51,11 @@ resourceQuota:
   limits:
     cpu: "1000m"
     memory: "1Gi"
+  # オブジェクト数制限（暴走時の k8s control plane 負荷を抑制）
+  objects:
+    pods: "10"
+    services: "5"
+    persistentvolumeclaims: "3"
 
 # Ingress 設定
 # TLSはCloudflare Tunnelが担うためクラスター内はHTTP

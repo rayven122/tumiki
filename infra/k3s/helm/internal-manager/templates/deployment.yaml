@@ -54,18 +54,23 @@ spec:
               mountPath: /tmp
             - name: nextjs-cache
               mountPath: /app/.next/cache
+          # startupProbe: 起動完了まで liveness/readiness を抑制し再起動ループを防止
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: 3100
+            failureThreshold: 12
+            periodSeconds: 5
           livenessProbe:
             httpGet:
               path: /api/health
               port: 3100
-            initialDelaySeconds: 30
             periodSeconds: 30
             timeoutSeconds: 3
           readinessProbe:
             httpGet:
               path: /api/health
               port: 3100
-            initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 3
       volumes:

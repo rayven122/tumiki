@@ -9,7 +9,7 @@ set -euo pipefail
 # https://github.com/k3s-io/k3s/releases から選定
 K3S_VERSION="${K3S_VERSION:-v1.31.4+k3s1}"
 
-# パブリックIPは環境変数で必須指定（外部サービス依存と MITM リスクを回避）
+# パブリックIPは環境変数で必須指定（curl ifconfig.me 等の外部IP取得サービスへの依存と MITM リスクを回避）
 : "${PUBLIC_IP:?環境変数 PUBLIC_IP を設定してください（例: PUBLIC_IP=203.0.113.10 ./01-install-k3s.sh）}"
 
 # 起動待機の上限秒数（既定: 120秒）
