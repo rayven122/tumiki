@@ -52,9 +52,11 @@ export const connectToMcpServer = async (
     const baseConfig = {
       name,
       headers,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       authType: mappedAuthType,
     };
     const connectWithCore = (config: McpServerConfig): Promise<Client> =>
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
       connectMcpClient(config, {
         clientName: `tumiki-mcp-proxy-${name}`,
       });

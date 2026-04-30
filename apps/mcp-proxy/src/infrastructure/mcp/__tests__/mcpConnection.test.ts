@@ -22,15 +22,21 @@ vi.mock("@modelcontextprotocol/sdk/client/streamableHttp.js", () => ({
 }));
 
 vi.mock("@tumiki/mcp-core-proxy", async (importOriginal) => {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
   const actual = await importOriginal<typeof McpCoreProxy>();
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   return {
     ...actual,
     connectMcpClient: vi.fn(
       async (config: McpServerConfig, options?: McpClientConnectionOptions) => {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
         const { client, transport } = actual.createMcpClient(config, options);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         if (typeof client.connect === "function") {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
           await client.connect(transport);
         }
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
         return client;
       },
     ),
@@ -370,7 +376,9 @@ describe("connectToMcpServer", () => {
 
 describe("connectToMcpServer core helper delegation", () => {
   test("STREAMABLE_HTTPS が core helper を経由し STREAMABLE_HTTP で接続される", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const coreProxy = await import("@tumiki/mcp-core-proxy");
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
     const connectSpy = vi.mocked(coreProxy.connectMcpClient);
 
     const template = createMockTemplate({
@@ -406,7 +414,9 @@ describe("connectToMcpServer core helper delegation", () => {
   });
 
   test("SSE が core helper を経由して接続される", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const coreProxy = await import("@tumiki/mcp-core-proxy");
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
     const connectSpy = vi.mocked(coreProxy.connectMcpClient);
     const template = createMockTemplate({
       transportType: "SSE",
