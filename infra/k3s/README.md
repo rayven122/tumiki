@@ -53,7 +53,8 @@ tumiki-k3s VM（さくらのクラウド / 8GB RAM / 4vCPU / 200GB SSD）
 ```bash
 ssh user@<VM-IP>
 chmod +x infra/k3s/setup/01-install-k3s.sh
-./infra/k3s/setup/01-install-k3s.sh
+# パブリックIPは環境変数で明示指定（必須）
+PUBLIC_IP=<VM-PUBLIC-IP> ./infra/k3s/setup/01-install-k3s.sh
 ```
 
 ### 3. アドオンインストール
@@ -81,23 +82,49 @@ kubectl apply -f infra/k3s/manifests/tenant-console/namespace.yaml
 
 ## テナント手動デプロイ（動作確認用）
 
+実運用では `tenant-console` が以下と同等の処理を tRPC 経由で自動実行する。
+
 ```bash
 # 1. Infisical でテナント用プロジェクトを作成しシークレットを登録
 #    キー: OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET,
 #          INTERNAL_DATABASE_URL, POSTGRES_PASSWORD, AUTH_SECRET, NEXTAUTH_URL
 
-# 2. Helm install（Machine Identity 認証情報を --set で渡す）
+# 2. テナント Namespace を事前作成（Helm install 前に必要）
+kubectl create namespace tenant-company-a
+
+# 3. Infisical Machine Identity の認証情報を k8s Secret として事前作成
+#    （--set 経由だと Helm リリース値に保存されるため、Secret を経由する設計）
+kubectl create secret generic infisical-machine-identity \
+  --namespace tenant-company-a \
+  --from-literal=clientId=<INFISICAL_CLIENT_ID> \
+  --from-literal=clientSecret=<INFISICAL_CLIENT_SECRET>
+
+# 4. Helm install
 helm install company-a ./infra/k3s/helm/internal-manager \
   --set tenant.slug=company-a \
   --set tenant.domain=company-a-manager.tumiki.cloud \
   --set infisical.projectSlug=tenant-company-a \
-  --set infisical.clientId=<INFISICAL_CLIENT_ID> \
-  --set infisical.clientSecret=<INFISICAL_CLIENT_SECRET> \
   --set image.tag=<IMAGE_TAG>
 
-# 4. 状態確認
+# 5. 状態確認
 kubectl get all -n tenant-company-a
 ```
+
+## テナント削除手順
+
+`templates/namespace.yaml` に `helm.sh/resource-policy: keep` アノテーションを付与しているため、
+`helm uninstall` だけでは Namespace と PVC は残る。完全削除には以下を実行する。
+
+```bash
+# 1. Helm リリース削除（Deployment / Service / Ingress 等を削除）
+helm uninstall company-a -n tenant-company-a
+
+# 2. Namespace 削除（PVC・Secret 等の残留リソースも一括削除）
+kubectl delete namespace tenant-company-a
+```
+
+> **Note**: Namespace 削除はテナントの DB データを完全消去する破壊的操作。
+> バックアップを取得した上で実行すること。
 
 ## Infisical プロジェクト構成
 
@@ -108,7 +135,7 @@ kubectl get all -n tenant-company-a
 | `OIDC_ISSUER` | OIDCプロバイダーのIssuer URL |
 | `OIDC_CLIENT_ID` | OIDCクライアントID |
 | `OIDC_CLIENT_SECRET` | OIDCクライアントシークレット |
-| `INTERNAL_DATABASE_URL` | `postgresql://postgres:<PW>@postgresql.tenant-{slug}.svc.cluster.local:5432/internal_manager` |
+| `INTERNAL_DATABASE_URL` | `postgresql://app:<PW>@postgresql.tenant-{slug}.svc.cluster.local:5432/internal_manager` |
 | `POSTGRES_PASSWORD` | PostgreSQLパスワード（`openssl rand -base64 32` で生成） |
 | `AUTH_SECRET` | NextAuthシークレット（`openssl rand -base64 32` で生成） |
 | `NEXTAUTH_URL` | 例: `https://company-a.manager.example.com` |

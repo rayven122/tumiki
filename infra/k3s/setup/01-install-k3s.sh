@@ -5,12 +5,20 @@
 
 set -euo pipefail
 
-PUBLIC_IP=$(curl -s ifconfig.me)
+# k3s バージョン固定（公式インストーラの INSTALL_K3S_VERSION を使用）
+# https://github.com/k3s-io/k3s/releases から選定
+K3S_VERSION="${K3S_VERSION:-v1.31.4+k3s1}"
+
+# パブリックIPは環境変数で必須指定（外部サービス依存と MITM リスクを回避）
+: "${PUBLIC_IP:?環境変数 PUBLIC_IP を設定してください（例: PUBLIC_IP=203.0.113.10 ./01-install-k3s.sh）}"
 
 echo "=== k3s インストール開始 ==="
+echo "k3s バージョン: ${K3S_VERSION}"
 echo "パブリックIP: ${PUBLIC_IP}"
 
-curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server \
+curl -sfL https://get.k3s.io | \
+  INSTALL_K3S_VERSION="${K3S_VERSION}" \
+  INSTALL_K3S_EXEC="server \
   --write-kubeconfig-mode=600 \
   --disable=servicelb \
   --tls-san=${PUBLIC_IP}" sh -

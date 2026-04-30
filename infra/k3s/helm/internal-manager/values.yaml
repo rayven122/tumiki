@@ -30,6 +30,8 @@ resources:
 
 # PostgreSQL 設定
 postgresql:
+  user: "app"           # アプリ用の限定権限ユーザー（superuser である postgres は使わない）
+  database: "internal_manager"
   storage: "10Gi"
   storageClassName: "local-path"
   resources:

@@ -30,6 +30,7 @@ spec:
           image: postgres:16-alpine
           securityContext:
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
           ports:
@@ -37,9 +38,9 @@ spec:
               name: postgres
           env:
             - name: POSTGRES_DB
-              value: internal_manager
+              value: {{ .Values.postgresql.database | quote }}
             - name: POSTGRES_USER
-              value: postgres
+              value: {{ .Values.postgresql.user | quote }}
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -52,16 +53,26 @@ spec:
           volumeMounts:
             - name: postgresql-data
               mountPath: /var/lib/postgresql/data
+            # readOnlyRootFilesystem 有効化に伴い PostgreSQL が書き込みを要する領域を tmpfs にマウント
+            - name: tmp
+              mountPath: /tmp
+            - name: run
+              mountPath: /var/run/postgresql
           livenessProbe:
             exec:
-              command: ["pg_isready", "-U", "postgres"]
+              command: ["pg_isready", "-U", {{ .Values.postgresql.user | quote }}]
             initialDelaySeconds: 30
             periodSeconds: 10
           readinessProbe:
             exec:
-              command: ["pg_isready", "-U", "postgres"]
+              command: ["pg_isready", "-U", {{ .Values.postgresql.user | quote }}]
             initialDelaySeconds: 5
             periodSeconds: 5
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: run
+          emptyDir: {}
   volumeClaimTemplates:
     - metadata:
         name: postgresql-data
