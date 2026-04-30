@@ -42,6 +42,12 @@ tumiki-k3s VM（さくらのクラウド / 8GB RAM / 4vCPU / 200GB SSD）
     └── PostgreSQL StatefulSet（テナント専用DB）
 ```
 
+> **Note**: k3s には NetworkPolicy コントローラー（kube-router ベース）が標準搭載されており、
+> NetworkPolicy CRD は別途 CNI を導入しなくても機能する。確認は以下:
+> ```bash
+> kubectl get pods -n kube-system | grep -E "network-policy|kube-router"
+> ```
+
 ## tumiki-cloud-api（証明書発行サービス）
 
 全テナント Namespace + セルフホスト顧客から参照される共有サービス。

@@ -51,8 +51,10 @@ image.tag の必須バリデーション
 
 {{/*
 全バリデーションを一括実行する単一エントリポイント
-全テンプレート（namespace.yaml, deployment.yaml, etc.）の冒頭から呼び出すことで
-helm template --show-only による部分レンダリング時もバリデーションが実行される
+namespace.yaml と deployment.yaml の冒頭から呼び出すことで
+helm install / helm template 全体実行時に必ずバリデーションが走る。
+（helm template --show-only でこれら以外を単独レンダリングする場合は
+バリデーションがスキップされるため、必要に応じて呼び出し元を追加すること）
 */}}
 {{- define "tumiki-cloud-api.validateAll" -}}
 {{- include "tumiki-cloud-api.validateRequiredValues" . }}

@@ -24,8 +24,12 @@ spec:
       ports:
         - port: {{ .Values.server.port }}
           protocol: TCP
-    # 外部からの LoadBalancer 経由のトラフィック（出口 IP は不定なので Pod 制限なし）
-    # ports は LB が targetPort に転送するため同じ
+    # 外部 LoadBalancer 経由のトラフィック（externalTrafficPolicy=Cluster の場合 SNAT
+    # されたノード IP で届くため Namespace ラベルが一致しないことがある。
+    # from 節なしで全送信元を許可し、認証は mTLS で行う）
+    - ports:
+        - port: {{ .Values.server.port }}
+          protocol: TCP
   egress:
     # DNS（kube-system 内の CoreDNS のみ）
     - to:
