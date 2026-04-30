@@ -3,6 +3,7 @@ import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
+import { TRPCError } from "@trpc/server";
 import type { Context } from "@/server/api/trpc";
 import type { CreateTenantInput } from "./schemas";
 
@@ -10,14 +11,13 @@ const execFileAsync = promisify(execFile);
 
 const HELM_BIN = "/usr/local/bin/helm";
 const KUBECTL_BIN = "/usr/local/bin/kubectl";
+/** Helm操作のタイムアウト: Node.js側はHelm側（5分）より30秒長く設定 */
+const HELM_TIMEOUT_MS = 5 * 60 * 1000 + 30_000;
 
-/** OIDC シークレット値の型 */
-type OidcSecretValues = { clientSecret: string };
-
-/** Helm に渡す非シークレット値の型 */
+/** Helm に渡す非シークレット値の型（シークレットは kubectl Secret で管理） */
 type HelmValues = {
   infisical: { projectSlug: string };
-  oidc?: OidcSecretValues;
+  oidc?: { issuer?: string; clientId?: string };
 };
 
 /**
@@ -32,7 +32,6 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
   const domain = `${input.slug}-manager.tumiki.cloud`;
   const namespace = `tenant-${input.slug}`;
 
-  // DBにテナントレコードを作成（プロビジョニング中）
   const tenant = await ctx.db.tenant.create({
     data: {
       slug: input.slug,
@@ -51,7 +50,6 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
       try {
         await execFileAsync(KUBECTL_BIN, ["create", "namespace", namespace]);
       } catch (nsError) {
-        // 既に存在する場合のエラーは無視する
         if (
           !(nsError instanceof Error) ||
           !nsError.message.includes("AlreadyExists")
@@ -75,7 +73,6 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
       ].join("\n");
 
       const infisicalSecretFile = join(tmpDir, "infisical-secret.yaml");
-      // パーミッション0o600でオーナーのみ読み取り可能にする
       writeFileSync(infisicalSecretFile, infisicalSecretManifest, {
         mode: 0o600,
       });
@@ -99,25 +96,32 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
         await execFileAsync(KUBECTL_BIN, ["apply", "-f", oidcSecretFile]);
       }
 
-      // Helm には非シークレット値のみ渡す（projectSlug はシークレットではないので安全）
+      // Helm には非シークレット値のみ渡す
+      // OIDC issuer/clientId は URL や任意文字列を含むため --set ではなく JSON ファイル経由で渡す
+      // （--set は "," や "=" を特殊文字として扱うためURLが壊れる可能性がある）
       const helmValues: HelmValues = {
         infisical: { projectSlug: input.infisicalProjectSlug },
       };
+      if (input.oidcType === "CUSTOM") {
+        helmValues.oidc = {
+          issuer: input.oidcIssuer,
+          clientId: input.oidcClientId,
+        };
+      }
 
       const valuesFile = join(tmpDir, "values.json");
-      // パーミッション0o600でオーナーのみ読み取り可能にする
       writeFileSync(valuesFile, JSON.stringify(helmValues, null, 2), {
         mode: 0o600,
       });
 
+      // Namespace は kubectl で事前作成済みのため --create-namespace は不要
+      // （namespace.yaml テンプレートが Helm でラベルを付与する）
       const helmArgs = [
         "install",
         input.slug,
         "/app/helm/internal-manager",
         "--namespace",
         namespace,
-        // Namespace は kubectl で事前作成済みのため --create-namespace は不要だが念のため指定
-        "--create-namespace",
         "--set",
         `tenant.slug=${input.slug}`,
         "--set",
@@ -126,28 +130,17 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
         `tenant.oidcType=${input.oidcType}`,
         "--set",
         `image.tag=${input.imageTag}`,
-        // 非シークレット値はJSONファイル経由で渡す（--set では渡さない）
         "-f",
         valuesFile,
+        "--timeout",
+        "5m",
       ];
 
-      // CUSTOM OIDCの場合は非シークレットのパラメーターを追加
-      if (input.oidcType === "CUSTOM") {
-        if (input.oidcIssuer) {
-          helmArgs.push("--set", `oidc.issuer=${input.oidcIssuer}`);
-        }
-        if (input.oidcClientId) {
-          helmArgs.push("--set", `oidc.clientId=${input.oidcClientId}`);
-        }
-      }
-
-      await execFileAsync(HELM_BIN, helmArgs);
+      await execFileAsync(HELM_BIN, helmArgs, { timeout: HELM_TIMEOUT_MS });
     } finally {
-      // 使用後は一時ディレクトリを確実に削除する
       rmSync(tmpDir, { recursive: true, force: true });
     }
 
-    // DBのstatusをACTIVEに更新
     const updatedTenant = await ctx.db.tenant.update({
       where: { id: tenant.id },
       data: { status: "ACTIVE" },
@@ -155,12 +148,16 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
 
     return updatedTenant;
   } catch (error) {
-    // エラー時はDBのstatusをERRORに更新
     await ctx.db.tenant.update({
       where: { id: tenant.id },
       data: { status: "ERROR" },
     });
 
-    throw error;
+    // 内部エラー詳細（kubectl/helmのstderr等）をクライアントに露出しない
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "テナントのプロビジョニングに失敗しました",
+      cause: error,
+    });
   }
 };

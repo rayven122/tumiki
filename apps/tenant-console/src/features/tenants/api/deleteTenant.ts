@@ -8,6 +8,8 @@ const execFileAsync = promisify(execFile);
 
 const HELM_BIN = "/usr/local/bin/helm";
 const KUBECTL_BIN = "/usr/local/bin/kubectl";
+/** Helm操作のタイムアウト: Node.js側はHelm側（5分）より30秒長く設定 */
+const HELM_TIMEOUT_MS = 5 * 60 * 1000 + 30_000;
 
 /**
  * テナント削除処理
@@ -40,8 +42,11 @@ export const deleteTenant = async (ctx: Context, input: DeleteTenantInput) => {
   try {
     const namespace = `tenant-${tenant.slug}`;
 
-    // execFileAsync でシェルインジェクションを防止（引数を配列で渡す）
-    await execFileAsync(HELM_BIN, ["uninstall", tenant.slug, "-n", namespace]);
+    await execFileAsync(
+      HELM_BIN,
+      ["uninstall", tenant.slug, "-n", namespace, "--timeout", "5m"],
+      { timeout: HELM_TIMEOUT_MS },
+    );
 
     // helm uninstall 後も Namespace が残存するため kubectl で明示的に削除する
     await execFileAsync(KUBECTL_BIN, [
@@ -56,7 +61,12 @@ export const deleteTenant = async (ctx: Context, input: DeleteTenantInput) => {
       where: { id: tenant.id },
       data: { status: "ERROR" },
     });
-    throw error;
+    // 内部エラー詳細（kubectl/helmのstderr等）をクライアントに露出しない
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "テナントの削除に失敗しました",
+      cause: error,
+    });
   }
 
   // DBからテナントレコードを削除

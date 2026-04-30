@@ -46,15 +46,20 @@ RUN pnpm --filter @tumiki/tenant-console run build:bare
 # ========================================
 FROM node:24-alpine AS production
 
-# helm: テナントプロビジョニング用、dumb-init: シグナル伝播、wget: ヘルスチェック
-# helmはバージョン固定 + SHA256チェックサム検証（サプライチェーン攻撃対策）
+# helm/kubectl: テナントプロビジョニング用、dumb-init: シグナル伝播、wget: ヘルスチェック
+# バージョン固定 + SHA256チェックサム検証（サプライチェーン攻撃対策）
 ENV HELM_VERSION=3.20.2
+ENV KUBECTL_VERSION=1.32.3
 RUN apk add --no-cache dumb-init wget curl && \
     curl -fsSL "https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz" -o helm.tar.gz && \
     echo "258e830a9e613c8a7a302d6059b4bb3b9758f2f3e1bb8ea0d707ce10a9a72fea  helm.tar.gz" | sha256sum -c - && \
     tar -zxf helm.tar.gz linux-amd64/helm && \
     mv linux-amd64/helm /usr/local/bin/helm && \
-    rm -rf linux-amd64 helm.tar.gz /var/cache/apk/*
+    rm -rf linux-amd64 helm.tar.gz && \
+    curl -fsSL "https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && \
+    echo "ab209d0c5134b61486a0486585604a616a5bb2fc07df46d304b3c95817b2d79f  /usr/local/bin/kubectl" | sha256sum -c - && \
+    chmod +x /usr/local/bin/kubectl && \
+    rm -rf /var/cache/apk/*
 
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
