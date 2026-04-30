@@ -25,7 +25,10 @@ jobs:
     env:
       CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
       CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
-      SSH_HOST: ${{ vars.KEYCLOAK_TUNNEL_HOSTNAME }}
+      # Cloudflare tunnel 経由で到達する staging VM のホスト名（変数化不要・固定値）
+      STAGING_SSH_HOST: stg-ssh.tumiki.cloud
+      # staging VM から ProxyJump で到達する Keycloak VM のプライベート IP
+      KEYCLOAK_HOST: 192.168.0.90
       SSH_USER: ${{ vars.KEYCLOAK_DEPLOY_USER }}
 
     steps:
@@ -35,21 +38,30 @@ jobs:
       - name: 🌐 Setup Cloudflare SSH
         uses: ./.github/actions/setup-cloudflare-ssh
         with:
-          ssh-host: ${{ env.SSH_HOST }}
+          ssh-host: ${{ env.STAGING_SSH_HOST }}
           cf-access-client-id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           cf-access-client-secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
           ssh-private-key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
 
+      - name: 🔧 Configure ProxyJump for Keycloak VM
+        run: |
+          # staging VM（stg-ssh.tumiki.cloud）を踏み台に 192.168.0.90 へ ProxyJump
+          cat >> ~/.ssh/config << CONFIG
+          Host ${KEYCLOAK_HOST}
+            ProxyJump ${STAGING_SSH_HOST}
+            StrictHostKeyChecking accept-new
+          CONFIG
+
       - name: 📤 Transfer files
         run: |
-          ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
+          ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" \
             "mkdir -p ~/keycloak/themes"
           scp -i ~/.ssh/id_ed25519 \
             docker/keycloak-staging/compose.yaml \
-            "${SSH_USER}@${SSH_HOST}:~/keycloak/compose.yaml"
+            "${SSH_USER}@${KEYCLOAK_HOST}:~/keycloak/compose.yaml"
           scp -r -i ~/.ssh/id_ed25519 \
             docker/keycloak/themes/tumiki \
-            "${SSH_USER}@${SSH_HOST}:~/keycloak/themes/"
+            "${SSH_USER}@${KEYCLOAK_HOST}:~/keycloak/themes/"
 
       - name: 🔐 Deploy Keycloak
         env:
@@ -58,7 +70,7 @@ jobs:
         run: |
           # 環境変数経由でシークレットを渡す（CLIオプション経由はps auxで漏洩するリスクがあるため）
           # クォートなしヒアドキュメントでランナー側の環境変数をリモートに展開する
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -l << REMOTE_SCRIPT
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" bash -l << REMOTE_SCRIPT
             set -euo pipefail
             cd ~/keycloak
             export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID}"
@@ -72,7 +84,7 @@ jobs:
 
       - name: ✅ Verify Keycloak health
         run: |
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -l << 'HEALTHCHECK'
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" bash -l << 'HEALTHCHECK'
             for i in $(seq 1 30); do
               STATUS=$(docker inspect --format='{{.State.Health.Status}}' tumiki-keycloak 2>/dev/null || echo "unknown")
               if [ "${STATUS}" = "healthy" ]; then
