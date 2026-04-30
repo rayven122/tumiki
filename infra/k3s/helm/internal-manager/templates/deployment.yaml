@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: internal-manager
+  namespace: {{ include "internal-manager.namespace" . }}
+  labels:
+    {{- include "internal-manager.labels" . | nindent 4 }}
+    app.kubernetes.io/component: app
+  annotations:
+    # Reloader: internal-manager-env Secret が更新されたときに自動再起動
+    secret.reloader.stakater.com/reload: "internal-manager-env"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: internal-manager
+      app.kubernetes.io/instance: {{ .Values.tenant.slug }}
+      app.kubernetes.io/component: app
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: internal-manager
+        app.kubernetes.io/instance: {{ .Values.tenant.slug }}
+        app.kubernetes.io/component: app
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: internal-manager
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - containerPort: 3100
+              name: http
+          # Infisical Operator が同期した k8s Secret を環境変数として注入
+          envFrom:
+            - secretRef:
+                name: internal-manager-env
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3100
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3100
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3

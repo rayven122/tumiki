@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ include "internal-manager.namespace" . }}
+  annotations:
+    helm.sh/resource-policy: keep
+  labels:
+    {{- include "internal-manager.labels" . | nindent 4 }}
+    tumiki/tenant: {{ .Values.tenant.slug | quote }}
