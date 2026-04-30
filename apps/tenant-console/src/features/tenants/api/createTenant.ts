@@ -60,6 +60,7 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
 
       // Infisical 認証情報を k8s Secret として作成
       // Helmリリース値（helm get values）に保存されるのを防ぐため kubectl で直接作成する
+      // stringData ではなく data + base64 を使用してYAMLインジェクションを完全回避する
       const infisicalSecretManifest = [
         `apiVersion: v1`,
         `kind: Secret`,
@@ -67,9 +68,9 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
         `  name: infisical-machine-identity`,
         `  namespace: ${namespace}`,
         `type: Opaque`,
-        `stringData:`,
-        `  clientId: ${JSON.stringify(input.infisicalClientId)}`,
-        `  clientSecret: ${JSON.stringify(input.infisicalClientSecret)}`,
+        `data:`,
+        `  clientId: ${Buffer.from(input.infisicalClientId).toString("base64")}`,
+        `  clientSecret: ${Buffer.from(input.infisicalClientSecret).toString("base64")}`,
       ].join("\n");
 
       const infisicalSecretFile = join(tmpDir, "infisical-secret.yaml");
@@ -87,8 +88,8 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
           `  name: oidc-credentials`,
           `  namespace: ${namespace}`,
           `type: Opaque`,
-          `stringData:`,
-          `  clientSecret: ${JSON.stringify(input.oidcClientSecret)}`,
+          `data:`,
+          `  clientSecret: ${Buffer.from(input.oidcClientSecret).toString("base64")}`,
         ].join("\n");
 
         const oidcSecretFile = join(tmpDir, "oidc-secret.yaml");
@@ -148,6 +149,22 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
 
     return updatedTenant;
   } catch (error) {
+    // ベストエフォートでk8sリソースをクリーンアップ（再試行を可能にする）
+    // クリーンアップ自体の失敗は無視する（リソースが存在しない場合もある）
+    const ignore = (_: unknown) => undefined;
+    await execFileAsync(HELM_BIN, [
+      "uninstall",
+      input.slug,
+      "-n",
+      namespace,
+    ]).catch(ignore);
+    await execFileAsync(KUBECTL_BIN, [
+      "delete",
+      "namespace",
+      namespace,
+      "--ignore-not-found",
+    ]).catch(ignore);
+
     await ctx.db.tenant.update({
       where: { id: tenant.id },
       data: { status: "ERROR" },

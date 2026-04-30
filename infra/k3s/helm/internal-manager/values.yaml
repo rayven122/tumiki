@@ -1,7 +1,8 @@
 # テナント情報
 tenant:
-  slug: ""       # 例: company-a
-  domain: ""     # 例: company-a-manager.tumiki.cloud
+  slug: ""         # 例: company-a
+  domain: ""       # 例: company-a-manager.tumiki.cloud
+  oidcType: "KEYCLOAK"  # KEYCLOAK または CUSTOM
 
 # コンテナイメージ
 image:

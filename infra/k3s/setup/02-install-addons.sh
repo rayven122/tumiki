@@ -15,7 +15,13 @@ INFISICAL_OPERATOR_VERSION="0.10.32"
 # ----------------------------------------
 if ! command -v helm &>/dev/null; then
   echo "=== helm インストール ==="
-  curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+  HELM_VERSION="3.20.2"
+  HELM_SHA256="258e830a9e613c8a7a302d6059b4bb3b9758f2f3e1bb8ea0d707ce10a9a72fea"
+  curl -fsSL "https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz" -o /tmp/helm.tar.gz
+  echo "${HELM_SHA256}  /tmp/helm.tar.gz" | sha256sum -c -
+  tar -zxf /tmp/helm.tar.gz -C /tmp linux-amd64/helm
+  sudo mv /tmp/linux-amd64/helm /usr/local/bin/helm
+  rm -rf /tmp/linux-amd64 /tmp/helm.tar.gz
 fi
 
 # ----------------------------------------
