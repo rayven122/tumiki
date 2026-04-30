@@ -11,7 +11,7 @@ const port = Number(process.env.PORT) || DEFAULT_PORT;
 
 const tlsCert = process.env.TLS_CERT;
 const tlsKey = process.env.TLS_KEY;
-const caCert = process.env.CA_CERT;
+const caCert = process.env.RAYVEN_CA_CERT;
 
 if (tlsCert && tlsKey && caCert) {
   // mTLS モードの場合のみ必須環境変数を検証し、不足していれば起動を失敗させる
@@ -51,8 +51,8 @@ if (tlsCert && tlsKey && caCert) {
 } else {
   // HTTP サーバー起動（開発環境）
   serve({ fetch: app.fetch, port }, (info) => {
-    console.log(
-      `[tumiki-cloud-api] HTTP server running on http://localhost:${info.port}`,
+    console.warn(
+      `[tumiki-cloud-api] WARNING: HTTP mode (no TLS) — development only. Running on http://localhost:${info.port}`,
     );
   });
 }

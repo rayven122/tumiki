@@ -13,19 +13,17 @@ import { BOOTSTRAP_TOKEN_CONFIG } from "../../shared/constants/config.js";
 import { enrollRequestSchema } from "./schema.js";
 import { signCertificate } from "./service.js";
 
-// 公開鍵のパースは暗号演算を伴うため、モジュールスコープでキャッシュする
+// 公開鍵のパースは暗号演算を伴うため、Promise をキャッシュしてスタンピードを防ぐ
 type BootstrapPublicKey = Awaited<ReturnType<typeof importSPKI>>;
 let cachedBootstrapPem: string | null = null;
-let cachedBootstrapPublicKey: BootstrapPublicKey | null = null;
+let cachedPublicKeyPromise: Promise<BootstrapPublicKey> | null = null;
 
-const getBootstrapPublicKey = async (
-  pem: string,
-): Promise<BootstrapPublicKey> => {
-  if (cachedBootstrapPublicKey === null || cachedBootstrapPem !== pem) {
-    cachedBootstrapPublicKey = await importSPKI(pem, "RS256");
+const getBootstrapPublicKey = (pem: string): Promise<BootstrapPublicKey> => {
+  if (cachedPublicKeyPromise === null || cachedBootstrapPem !== pem) {
     cachedBootstrapPem = pem;
+    cachedPublicKeyPromise = importSPKI(pem, "RS256");
   }
-  return cachedBootstrapPublicKey;
+  return cachedPublicKeyPromise;
 };
 
 // Bootstrap Token を検証して org_id を返す（RAYVEN が RS256 署名、sub に org_id）
@@ -97,7 +95,7 @@ certificatesRoute.post("/v1/certificates/enroll", async (c) => {
   try {
     body = await c.req.json();
   } catch (err) {
-    console.error("[certificates/enroll] Failed to parse request body:", err);
+    console.warn("[certificates/enroll] Failed to parse request body:", err);
     return c.json({ error: "Invalid request body" }, 400);
   }
 
@@ -108,6 +106,10 @@ certificatesRoute.post("/v1/certificates/enroll", async (c) => {
 
   try {
     const result = await signCertificate(parsed.data.csr, orgId);
+    const authMethod = authHeader ? "bootstrap" : "mtls";
+    console.log(
+      `[certificates/enroll] Certificate issued: orgId=${orgId} authMethod=${authMethod} at=${new Date().toISOString()}`,
+    );
     return c.json(result);
   } catch (err) {
     console.error("[certificates/enroll] Failed to sign certificate:", err);
