@@ -71,7 +71,7 @@ const NewTenantPage = () => {
               type="text"
               value={slug}
               onChange={(e) => setSlug(e.target.value)}
-              pattern="[a-z0-9-]+"
+              pattern="[a-z0-9]([a-z0-9-]*[a-z0-9])?"
               minLength={2}
               maxLength={50}
               required
