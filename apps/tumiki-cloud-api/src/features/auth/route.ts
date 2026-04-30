@@ -13,6 +13,19 @@ import { Hono } from "hono";
 import { importPKCS8, SignJWT } from "jose";
 import type { TLSSocket } from "node:tls";
 
+// 秘密鍵のパースは暗号演算を伴うため、モジュールスコープでキャッシュする
+type PrivateKey = Awaited<ReturnType<typeof importPKCS8>>;
+let cachedPrivateKeyPem: string | null = null;
+let cachedPrivateKey: PrivateKey | null = null;
+
+const getPrivateKey = async (pem: string): Promise<PrivateKey> => {
+  if (cachedPrivateKey === null || cachedPrivateKeyPem !== pem) {
+    cachedPrivateKey = await importPKCS8(pem, "RS256");
+    cachedPrivateKeyPem = pem;
+  }
+  return cachedPrivateKey;
+};
+
 import { JWT_CONFIG } from "../../shared/constants/config.js";
 
 const authRoute = new Hono();
@@ -55,7 +68,7 @@ const issueShortLivedJwt = async (
   const ttlSeconds =
     Number(process.env.JWT_TTL_SECONDS) || JWT_CONFIG.defaultTtlSeconds;
 
-  const privateKey = await importPKCS8(privateKeyPem, "RS256");
+  const privateKey = await getPrivateKey(privateKeyPem);
 
   const token = await new SignJWT({ org_id: orgId })
     .setProtectedHeader({ alg: "RS256" })

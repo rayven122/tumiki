@@ -13,6 +13,7 @@ vi.mock("jose", () => ({
 
 import { importSPKI, jwtVerify } from "jose";
 
+// テスト用ローカル型（middleware/auth.ts 内部の AuthVariables と同義）
 type AuthVariables = { orgId: string };
 
 const buildApp = () => {

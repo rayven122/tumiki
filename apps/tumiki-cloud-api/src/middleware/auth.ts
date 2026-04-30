@@ -10,10 +10,14 @@ type AuthVariables = {
 
 // 公開鍵のパースは暗号演算を伴うため、モジュールスコープでキャッシュする
 type PublicKey = Awaited<ReturnType<typeof importSPKI>>;
+let cachedPem: string | null = null;
 let cachedPublicKey: PublicKey | null = null;
 
 const getPublicKey = async (pem: string): Promise<PublicKey> => {
-  cachedPublicKey ??= await importSPKI(pem, "RS256");
+  if (cachedPublicKey === null || cachedPem !== pem) {
+    cachedPublicKey = await importSPKI(pem, "RS256");
+    cachedPem = pem;
+  }
   return cachedPublicKey;
 };
 
