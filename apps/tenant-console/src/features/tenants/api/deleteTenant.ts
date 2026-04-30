@@ -69,10 +69,23 @@ export const deleteTenant = async (ctx: Context, input: DeleteTenantInput) => {
     });
   }
 
-  // DBからテナントレコードを削除
-  await ctx.db.tenant.delete({
-    where: { id: tenant.id },
-  });
+  // DBからテナントレコードを削除（k8sリソースは既に消えているのでDB側のみ）
+  // 失敗時は ERROR に倒して状態不整合（k8s なし / DB DELETING のまま）を防止
+  try {
+    await ctx.db.tenant.delete({
+      where: { id: tenant.id },
+    });
+  } catch (dbError) {
+    await ctx.db.tenant.update({
+      where: { id: tenant.id },
+      data: { status: "ERROR" },
+    });
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "テナントレコードの削除に失敗しました",
+      cause: dbError,
+    });
+  }
 
   return { id: tenant.id };
 };

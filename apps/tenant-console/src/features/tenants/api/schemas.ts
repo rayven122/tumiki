@@ -56,7 +56,7 @@ export const createTenantInputSchema = z
 
 // テナント削除の入力スキーマ
 export const deleteTenantInputSchema = z.object({
-  id: z.string(),
+  id: z.string().cuid(),
 });
 
 export type CreateTenantInput = z.infer<typeof createTenantInputSchema>;
