@@ -7,7 +7,10 @@ export const createTenantInputSchema = z
       .string()
       .min(2)
       .max(50)
-      .regex(/^[a-z0-9-]+$/),
+      .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/, {
+        message:
+          "slug は DNS RFC1123 形式（小文字英数字とハイフンのみ、先頭末尾は英数字）でなければなりません",
+      }),
     oidcType: z.enum(["KEYCLOAK", "CUSTOM"]),
     // CUSTOM の場合のみ必須
     oidcIssuer: z.string().url().optional(),

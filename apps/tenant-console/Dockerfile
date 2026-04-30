@@ -26,7 +26,6 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY .npmrc ./
 COPY tooling ./tooling
 COPY packages/db ./packages/db
-COPY packages/tenant-db ./packages/tenant-db
 COPY packages/ui ./packages/ui
 COPY apps/tenant-console ./apps/tenant-console
 
