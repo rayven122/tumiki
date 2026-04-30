@@ -147,18 +147,18 @@ jobs:
           REMOTE_SCRIPT
 
       - name: 📣 Notify Slack on Success
-        if: success() && !inputs.dry_run && vars.SLACK_WEBHOOK_URL != ''
+        if: success() && !inputs.dry_run && secrets.SLACK_WEBHOOK_URL != ''
         env:
-          SLACK_WEBHOOK_URL: ${{ vars.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           PAYLOAD=$(jq -n --arg text "Keycloak設定デプロイ完了: ${RELEASE_TAG:-manual}" '{"text": $text}')
           curl -X POST -H 'Content-Type: application/json' -d "$PAYLOAD" "$SLACK_WEBHOOK_URL"
 
       - name: 📣 Notify Slack on Failure
-        if: failure() && vars.SLACK_WEBHOOK_URL != ''
+        if: failure() && secrets.SLACK_WEBHOOK_URL != ''
         env:
-          SLACK_WEBHOOK_URL: ${{ vars.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           PAYLOAD=$(jq -n --arg text "Keycloak設定デプロイ失敗: ${RELEASE_TAG:-manual}" '{"text": $text}')

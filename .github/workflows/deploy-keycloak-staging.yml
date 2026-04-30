@@ -57,6 +57,7 @@ jobs:
             set -euo pipefail
             cd ~/keycloak
             infisical run --env=staging --domain https://secrets.rayven.cloud -- docker compose pull keycloak
+            # --remove-orphans: compose.yaml から削除されたサービスのコンテナを合わせてクリーンアップ
             infisical run --env=staging --domain https://secrets.rayven.cloud -- docker compose up -d --force-recreate --remove-orphans keycloak
           REMOTE_SCRIPT
 
