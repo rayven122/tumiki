@@ -57,7 +57,7 @@ jobs:
             set -euo pipefail
             cd ~/keycloak
             infisical run --env=staging --domain https://secrets.rayven.cloud -- docker compose pull keycloak
-            infisical run --env=staging --domain https://secrets.rayven.cloud -- docker compose up -d --force-recreate keycloak
+            infisical run --env=staging --domain https://secrets.rayven.cloud -- docker compose up -d --force-recreate --remove-orphans keycloak
           REMOTE_SCRIPT
 
       - name: ✅ Verify Keycloak health
