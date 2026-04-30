@@ -53,23 +53,21 @@ jobs:
 
       - name: 🔐 Deploy Keycloak
         env:
-          INFISICAL_CLIENT_ID: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
-          INFISICAL_CLIENT_SECRET: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
+          INFISICAL_UNIVERSAL_AUTH_CLIENT_ID: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
+          INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
         run: |
-          # ${INFISICAL_CLIENT_ID/SECRET} はランナー側で展開してリモートに送信する（意図的なクォートなしヒアドキュメント）
+          # 環境変数経由でシークレットを渡す（CLIオプション経由はps auxで漏洩するリスクがあるため）
+          # クォートなしヒアドキュメントでランナー側の環境変数をリモートに展開する
           ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -l << REMOTE_SCRIPT
             set -euo pipefail
             cd ~/keycloak
-            # Machine Identity で自動ログイン（ブラウザ不要）
-            ~/.local/bin/infisical login \
-              --method=universal-auth \
-              --client-id="${INFISICAL_CLIENT_ID}" \
-              --client-secret="${INFISICAL_CLIENT_SECRET}" \
-              --domain https://secrets.rayven.cloud \
-              --silent
-            ~/.local/bin/infisical run --env=staging --domain https://secrets.rayven.cloud -- docker compose pull keycloak
+            export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID}"
+            export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET}"
+            ~/.local/bin/infisical run --method=universal-auth --env=staging \
+              --domain https://secrets.rayven.cloud -- docker compose pull keycloak
             # --remove-orphans: compose.yaml から削除されたサービスのコンテナを合わせてクリーンアップ
-            ~/.local/bin/infisical run --env=staging --domain https://secrets.rayven.cloud -- docker compose up -d --force-recreate --remove-orphans keycloak
+            ~/.local/bin/infisical run --method=universal-auth --env=staging \
+              --domain https://secrets.rayven.cloud -- docker compose up -d --force-recreate --remove-orphans keycloak
           REMOTE_SCRIPT
 
       - name: ✅ Verify Keycloak health

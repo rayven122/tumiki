@@ -65,21 +65,27 @@ jobs:
             "tar -xzf - -C ~/keycloak-tf"
 
       - name: 🏗️ Terraform Apply (staging)
+        env:
+          INFISICAL_UNIVERSAL_AUTH_CLIENT_ID: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
+          INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
         run: |
-          # ${DRY_RUN} はランナー側で展開してリモートに送信する（意図的なクォートなしヒアドキュメント）
+          # 環境変数経由でシークレットを渡す（CLIオプション経由はps auxで漏洩するリスクがあるため）
+          # クォートなしヒアドキュメントでランナー側の環境変数をリモートに展開する
           DRY_RUN="${{ inputs.dry_run || 'false' }}"
           ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -l << REMOTE_SCRIPT
             set -euo pipefail
             cd ~/keycloak-tf
-            infisical run --env=staging --domain https://secrets.rayven.cloud -- \
+            export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID}"
+            export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET}"
+            infisical run --method=universal-auth --env=staging --domain https://secrets.rayven.cloud -- \
               terraform init -input=false
-            infisical run --env=staging --domain https://secrets.rayven.cloud -- \
+            infisical run --method=universal-auth --env=staging --domain https://secrets.rayven.cloud -- \
               terraform validate
             if [ "${DRY_RUN}" = "true" ]; then
-              infisical run --env=staging --domain https://secrets.rayven.cloud -- \
+              infisical run --method=universal-auth --env=staging --domain https://secrets.rayven.cloud -- \
                 terraform plan -var-file=terraform.tfvars.staging -input=false -no-color
             else
-              infisical run --env=staging --domain https://secrets.rayven.cloud -- \
+              infisical run --method=universal-auth --env=staging --domain https://secrets.rayven.cloud -- \
                 terraform apply -var-file=terraform.tfvars.staging -auto-approve -input=false -no-color
             fi
           REMOTE_SCRIPT
@@ -127,21 +133,27 @@ jobs:
             "tar -xzf - -C ~/keycloak-tf"
 
       - name: 🏗️ Terraform Apply (production)
+        env:
+          INFISICAL_UNIVERSAL_AUTH_CLIENT_ID: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
+          INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
         run: |
-          # ${DRY_RUN} はランナー側で展開してリモートに送信する（意図的なクォートなしヒアドキュメント）
+          # 環境変数経由でシークレットを渡す（CLIオプション経由はps auxで漏洩するリスクがあるため）
+          # クォートなしヒアドキュメントでランナー側の環境変数をリモートに展開する
           DRY_RUN="${{ inputs.dry_run || 'false' }}"
           ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -l << REMOTE_SCRIPT
             set -euo pipefail
             cd ~/keycloak-tf
-            infisical run --env=prod --domain https://secrets.rayven.cloud -- \
+            export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID}"
+            export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET}"
+            infisical run --method=universal-auth --env=prod --domain https://secrets.rayven.cloud -- \
               terraform init -input=false
-            infisical run --env=prod --domain https://secrets.rayven.cloud -- \
+            infisical run --method=universal-auth --env=prod --domain https://secrets.rayven.cloud -- \
               terraform validate
             if [ "${DRY_RUN}" = "true" ]; then
-              infisical run --env=prod --domain https://secrets.rayven.cloud -- \
+              infisical run --method=universal-auth --env=prod --domain https://secrets.rayven.cloud -- \
                 terraform plan -var-file=terraform.tfvars.production -input=false -no-color
             else
-              infisical run --env=prod --domain https://secrets.rayven.cloud -- \
+              infisical run --method=universal-auth --env=prod --domain https://secrets.rayven.cloud -- \
                 terraform apply -var-file=terraform.tfvars.production -auto-approve -input=false -no-color
             fi
           REMOTE_SCRIPT
