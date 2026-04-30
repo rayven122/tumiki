@@ -50,6 +50,7 @@ yarn-error.log*
 
 **/prisma/generated
 packages/internal-db/generated
+packages/tenant-db/generated
 
 **/dist
 

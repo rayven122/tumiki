@@ -1,0 +1,55 @@
+# テナント情報
+tenant:
+  slug: ""       # 例: company-a
+  domain: ""     # 例: company-a-manager.tumiki.cloud
+
+# コンテナイメージ
+image:
+  repository: ghcr.io/rayven122/tumiki-internal-manager
+  tag: latest
+  pullPolicy: Always
+
+# Infisical 設定
+infisical:
+  hostAPI: https://app.infisical.com/api
+  projectSlug: ""      # 例: tenant-company-a
+  environment: prod
+  resyncInterval: 60
+  # Machine Identity 認証情報（hosting-console が --set で渡す）
+  clientId: ""
+  clientSecret: ""
+
+# internal-manager のリソース制限
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "100m"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"
+
+# PostgreSQL 設定
+postgresql:
+  storage: "10Gi"
+  storageClassName: "local-path"
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "50m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+
+# Namespace 単位のリソースクォータ
+resourceQuota:
+  requests:
+    cpu: "300m"
+    memory: "512Mi"
+  limits:
+    cpu: "1000m"
+    memory: "1Gi"
+
+# Ingress 設定
+# TLSはCloudflare Tunnelが担うためクラスター内はHTTP
+ingress:
+  className: traefik
