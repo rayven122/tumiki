@@ -39,7 +39,7 @@ jobs:
       CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
       CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
       SSH_HOST: stg-ssh.tumiki.cloud
-      SSH_USER: hisuzuya
+      SSH_USER: staging-deploy
 
     steps:
       - name: 📥 Checkout
@@ -59,13 +59,22 @@ jobs:
           scp -i ~/.ssh/id_ed25519 docker/apps/compose.yaml "${SSH_USER}@${SSH_HOST}:~/tumiki/compose.yaml"
 
       - name: 🐳 Deploy containers
+        env:
+          INFISICAL_UNIVERSAL_AUTH_CLIENT_ID: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
+          INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
         run: |
-          # IMAGE_TAG を bash の引数として渡してシェルインジェクションを防ぐ
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -ls -- "${IMAGE_TAG}" << 'REMOTE_SCRIPT'
+          # 環境変数経由でシークレットを渡す（CLIオプション経由はps auxで漏洩するリスクがあるため）
+          # IMAGE_TAG はシェルインジェクション防止のため bash 引数として渡し \$1 でエスケープ
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -ls -- "${IMAGE_TAG}" << REMOTE_SCRIPT
             set -euo pipefail
-            export IMAGE_TAG="$1"
+            set +o history
+            export IMAGE_TAG="\$1"
+            export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID}"
+            export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET}"
+            # infisical export は --method フラグ未対応のため、login で取得したアクセストークンを --token で渡す
+            ACCESS_TOKEN=\$(infisical login --method=universal-auth --plain --silent --domain=https://secrets.rayven.cloud)
             cd ~/tumiki
-            infisical export --env=staging --format=dotenv --domain https://secrets.rayven.cloud > .env
+            infisical export --projectId=dbff850c-430a-431b-b7fe-efc744e304d6 --env=staging --format=dotenv --domain=https://secrets.rayven.cloud --token="\$ACCESS_TOKEN" > .env
             docker compose pull
             docker compose up -d --remove-orphans
             rm -f .env
@@ -132,13 +141,22 @@ jobs:
           scp -i ~/.ssh/id_ed25519 docker/apps/compose.yaml "${SSH_USER}@${SSH_HOST}:~/tumiki/compose.yaml"
 
       - name: 🐳 Deploy containers
+        env:
+          INFISICAL_UNIVERSAL_AUTH_CLIENT_ID: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
+          INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
         run: |
-          # IMAGE_TAG を bash の引数として渡してシェルインジェクションを防ぐ
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -ls -- "${IMAGE_TAG}" << 'REMOTE_SCRIPT'
+          # 環境変数経由でシークレットを渡す（CLIオプション経由はps auxで漏洩するリスクがあるため）
+          # IMAGE_TAG はシェルインジェクション防止のため bash 引数として渡し \$1 でエスケープ
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -ls -- "${IMAGE_TAG}" << REMOTE_SCRIPT
             set -euo pipefail
-            export IMAGE_TAG="$1"
+            set +o history
+            export IMAGE_TAG="\$1"
+            export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID}"
+            export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET}"
+            # infisical export は --method フラグ未対応のため、login で取得したアクセストークンを --token で渡す
+            ACCESS_TOKEN=\$(infisical login --method=universal-auth --plain --silent --domain=https://secrets.rayven.cloud)
             cd ~/tumiki
-            infisical export --env=prod --format=dotenv --domain https://secrets.rayven.cloud > .env
+            infisical export --projectId=dbff850c-430a-431b-b7fe-efc744e304d6 --env=prod --format=dotenv --domain=https://secrets.rayven.cloud --token="\$ACCESS_TOKEN" > .env
             docker compose pull
             docker compose up -d --remove-orphans
             rm -f .env

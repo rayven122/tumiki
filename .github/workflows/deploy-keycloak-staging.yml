@@ -25,7 +25,10 @@ jobs:
     env:
       CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
       CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
-      SSH_HOST: ${{ vars.KEYCLOAK_TUNNEL_HOSTNAME }}
+      # Cloudflare tunnel 経由で到達する staging VM のホスト名（変数化不要・固定値）
+      STAGING_SSH_HOST: stg-ssh.tumiki.cloud
+      # staging VM から ProxyJump で到達する Keycloak VM のプライベート IP
+      KEYCLOAK_HOST: 10.11.0.15
       SSH_USER: ${{ vars.KEYCLOAK_DEPLOY_USER }}
 
     steps:
@@ -35,41 +38,62 @@ jobs:
       - name: 🌐 Setup Cloudflare SSH
         uses: ./.github/actions/setup-cloudflare-ssh
         with:
-          ssh-host: ${{ env.SSH_HOST }}
+          ssh-host: ${{ env.STAGING_SSH_HOST }}
           cf-access-client-id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           cf-access-client-secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
-          ssh-private-key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          ssh-private-key: ${{ secrets.KEYCLOAK_DEPLOY_SSH_PRIVATE_KEY }}
+
+      - name: 🔧 Configure ProxyJump for Keycloak VM
+        run: |
+          # staging-deploy ユーザーで staging VM を踏み台に Keycloak VM へ ProxyJump
+          # staging-deploy は sudo・docker 権限なし（ProxyJump 踏み台専用）
+          cat >> ~/.ssh/config << CONFIG
+          Host ${KEYCLOAK_HOST}
+            ProxyJump staging-deploy@${STAGING_SSH_HOST}
+            StrictHostKeyChecking accept-new
+          CONFIG
 
       - name: 📤 Transfer files
         run: |
-          ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
+          ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" \
             "mkdir -p ~/keycloak/themes"
           scp -i ~/.ssh/id_ed25519 \
             docker/keycloak-staging/compose.yaml \
-            "${SSH_USER}@${SSH_HOST}:~/keycloak/compose.yaml"
+            "${SSH_USER}@${KEYCLOAK_HOST}:~/keycloak/compose.yaml"
           scp -r -i ~/.ssh/id_ed25519 \
             docker/keycloak/themes/tumiki \
-            "${SSH_USER}@${SSH_HOST}:~/keycloak/themes/"
+            "${SSH_USER}@${KEYCLOAK_HOST}:~/keycloak/themes/"
 
       - name: 🔐 Deploy Keycloak
+        env:
+          INFISICAL_UNIVERSAL_AUTH_CLIENT_ID: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
+          INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
         run: |
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -l << 'REMOTE_SCRIPT'
+          # 環境変数経由でシークレットを渡す（CLIオプション経由はps auxで漏洩するリスクがあるため）
+          # クォートなしヒアドキュメントでランナー側の環境変数をリモートに展開する
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" bash -l << REMOTE_SCRIPT
             set -euo pipefail
+            set +o history
             cd ~/keycloak
-            infisical run --env=staging --domain https://secrets.rayven.cloud -- docker compose pull keycloak
+            export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID}"
+            export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET}"
+            ~/.local/bin/infisical run --method=universal-auth --env=staging \
+              --domain https://secrets.rayven.cloud -- docker compose pull keycloak
             # --remove-orphans: compose.yaml から削除されたサービスのコンテナを合わせてクリーンアップ
-            infisical run --env=staging --domain https://secrets.rayven.cloud -- docker compose up -d --force-recreate --remove-orphans keycloak
+            ~/.local/bin/infisical run --method=universal-auth --env=staging \
+              --domain https://secrets.rayven.cloud -- docker compose up -d --force-recreate --remove-orphans keycloak
           REMOTE_SCRIPT
 
       - name: ✅ Verify Keycloak health
         run: |
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -l << 'HEALTHCHECK'
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" bash -l << 'HEALTHCHECK'
             for i in $(seq 1 30); do
-              if curl -sf http://localhost:9000/health/ready > /dev/null 2>&1; then
-                echo "=== Keycloak ===" && curl -sf http://localhost:9000/health/ready | (command -v jq &>/dev/null && jq . || cat)
+              STATUS=$(docker inspect --format='{{.State.Health.Status}}' tumiki-keycloak 2>/dev/null || echo "unknown")
+              if [ "${STATUS}" = "healthy" ]; then
+                echo "Keycloak is healthy"
                 exit 0
               fi
-              echo "Waiting... ($i/30)" && sleep 10
+              echo "Waiting... ($i/30) Status: ${STATUS}" && sleep 10
             done
             echo "Timeout: Keycloakが起動しませんでした"
             cd ~/keycloak && docker compose logs keycloak --tail=50

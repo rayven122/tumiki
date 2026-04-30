@@ -1,0 +1,51 @@
+# テナント Namespace 間の通信を遮断するための NetworkPolicy
+# Silo型マルチテナントの必須要件: tenant-A の Pod が tenant-B のリソースに直接アクセスできないようにする
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-cross-tenant
+  namespace: {{ include "internal-manager.namespace" . }}
+  labels:
+    {{- include "internal-manager.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # 同一テナント Namespace 内からの通信のみ許可
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ include "internal-manager.namespace" . }}
+    # Traefik Ingress Controller からの通信のみ許可（kube-system 全体ではなく Pod を絞る）
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+  egress:
+    # 同一テナント Namespace 内への通信を許可
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ include "internal-manager.namespace" . }}
+    # DNS（kube-system 内の CoreDNS のみ）
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    # 外部 HTTPS（Infisical API、OIDC プロバイダー、Cloudflare Tunnel 等）
+    - ports:
+        - port: 443
+          protocol: TCP
