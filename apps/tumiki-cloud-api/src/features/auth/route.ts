@@ -9,9 +9,12 @@
  * Short-lived JWT を発行する。
  */
 
+import type { TLSSocket } from "node:tls";
+
 import { Hono } from "hono";
 import { importPKCS8, SignJWT } from "jose";
-import type { TLSSocket } from "node:tls";
+
+import { JWT_CONFIG } from "../../shared/constants/config.js";
 
 // 秘密鍵のパースは暗号演算を伴うため、モジュールスコープでキャッシュする
 type PrivateKey = Awaited<ReturnType<typeof importPKCS8>>;
@@ -25,8 +28,6 @@ const getPrivateKey = async (pem: string): Promise<PrivateKey> => {
   }
   return cachedPrivateKey;
 };
-
-import { JWT_CONFIG } from "../../shared/constants/config.js";
 
 const authRoute = new Hono();
 

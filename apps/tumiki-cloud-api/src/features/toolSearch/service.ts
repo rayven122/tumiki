@@ -41,11 +41,15 @@ export const searchTools = async (
   const sanitizeDesc = (desc: string) =>
     desc.replace(/[`"\\]/g, "").slice(0, 200);
 
+  // サニタイズ済み名 → 元の名前のマッピングを保持する
+  // LLM はサニタイズ済み名を返すため、元の名前に戻すために使用する
+  const nameMap = new Map<string, string>();
   const toolDescriptions = tools
-    .map(
-      (t) =>
-        `- ${sanitizeName(t.name)}: ${sanitizeDesc(t.description ?? "説明なし")}`,
-    )
+    .map((t) => {
+      const sanitized = sanitizeName(t.name);
+      nameMap.set(sanitized, t.name);
+      return `- ${sanitized}: ${sanitizeDesc(t.description ?? "説明なし")}`;
+    })
     .join("\n");
 
   // query もサニタイズして注入を防ぐ
@@ -70,5 +74,11 @@ ${toolDescriptions}
 - ツール名は完全に一致させてください（変更しないでください）`,
   });
 
-  return object.results;
+  // サニタイズ済み名を元の名前に戻し、元のリストに存在しないツール名（ハルシネーション）を除外する
+  return object.results
+    .map((r) => ({
+      toolName: nameMap.get(r.toolName) ?? r.toolName,
+      relevanceScore: r.relevanceScore,
+    }))
+    .filter((r) => tools.some((t) => t.name === r.toolName));
 };
