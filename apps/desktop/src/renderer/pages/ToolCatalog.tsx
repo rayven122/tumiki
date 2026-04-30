@@ -1,12 +1,15 @@
 import type { JSX } from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Plus, ArrowLeft } from "lucide-react";
+import { Search, Plus, ArrowLeft, Wrench } from "lucide-react";
 import type { CatalogItem } from "../../types/catalog";
 import { AddMcpModal } from "../_components/AddMcpModal";
+import { CatalogToolsModal } from "../_components/CatalogToolsModal";
 import { toast } from "../_components/Toast";
 import { cardStyle } from "../utils/theme-styles";
 import { authTypeLabel } from "../../shared/catalog.helpers";
+import { CATALOG_TOOLS_MOCK } from "../data/catalog-tools-mock";
+import { DISCOVERY_ERROR_CODE } from "../../shared/oauth/discovery-error-codes";
 
 /** 認証種別バッジスタイル */
 const authBadgeColor: Record<
@@ -27,14 +30,112 @@ export const ToolCatalog = (): JSX.Element => {
   const [selectedCatalog, setSelectedCatalog] = useState<CatalogItem | null>(
     null,
   );
+  const [dcrPrefill, setDcrPrefill] = useState(false);
+  const [toolsModalCatalog, setToolsModalCatalog] =
+    useState<CatalogItem | null>(null);
+
+  // OAuth 直接フロー時のイベントリスナーがモーダル表示中の AddMcpModal と二重発火しないよう参照で最新状態を保持
+  const modalOpenRef = useRef(false);
+  useEffect(() => {
+    modalOpenRef.current = selectedCatalog !== null;
+  }, [selectedCatalog]);
 
   useEffect(() => {
     window.electronAPI.catalog
       .getAll()
+      .then((items) =>
+        // モック由来のツール情報を注入（将来 Prisma 拡張で不要化）
+        items.map((item) => {
+          const tools = CATALOG_TOOLS_MOCK[item.name];
+          return tools
+            ? { ...item, tools, toolCount: tools.length }
+            : { ...item, toolCount: 0 };
+        }),
+      )
       .then(setCatalogs)
       .catch(() => setCatalogs([]))
       .finally(() => setLoading(false));
   }, []);
+
+  // OAuth 直接フロー用のグローバルリスナー（AddMcpModal が開いている時は内部リスナーに任せる）
+  useEffect(() => {
+    const unsubSuccess = window.electronAPI.oauth.onOAuthSuccess((result) => {
+      if (modalOpenRef.current) return;
+      toast.success(`${result.serverName}が正常に追加されました。`);
+      navigate("/tools");
+    });
+    const unsubError = window.electronAPI.oauth.onOAuthError((err) => {
+      if (modalOpenRef.current) return;
+      toast.error(err);
+    });
+    return () => {
+      unsubSuccess();
+      unsubError();
+    };
+  }, [navigate]);
+
+  const handleAddClick = async (item: CatalogItem): Promise<void> => {
+    // 認証なしは直接コネクタへ追加
+    if (item.authType === "NONE") {
+      try {
+        const result = await window.electronAPI.mcp.createFromCatalog({
+          catalogId: item.id,
+          catalogName: item.name,
+          description: item.description,
+          transportType: item.transportType,
+          command: item.command,
+          args: item.args,
+          url: item.url,
+          credentialKeys: [],
+          credentials: {},
+          authType: item.authType,
+        });
+        toast.success(`${result.serverName}が正常に追加されました。`);
+        navigate("/tools");
+      } catch {
+        toast.error("MCPサーバーの登録に失敗しました");
+      }
+      return;
+    }
+    // API Key / Bearer はモーダルで入力
+    if (item.authType !== "OAUTH") {
+      setDcrPrefill(false);
+      setSelectedCatalog(item);
+      return;
+    }
+    if (!item.url) {
+      toast.error("このカタログには認証先URLが設定されていません");
+      return;
+    }
+    // OAuth は認証ページへ直接リダイレクト
+    try {
+      await window.electronAPI.oauth.startAuth({
+        catalogId: item.id,
+        catalogName: item.name,
+        description: item.description,
+        transportType: item.transportType,
+        command: item.command,
+        args: item.args,
+        url: item.url,
+      });
+      toast.success(`${item.name}の認証をブラウザで開始しました。`);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "OAuth認証の開始に失敗しました";
+      const codeMatch = message.match(/\[(\w+)]\s/);
+      const code = codeMatch?.[1];
+      // DCR 非対応サーバー: モーダルを開いて Client ID/Secret 手動入力
+      if (code === DISCOVERY_ERROR_CODE.DCR_NOT_SUPPORTED) {
+        setDcrPrefill(true);
+        setSelectedCatalog(item);
+        return;
+      }
+      const displayMessage = codeMatch
+        ? message.slice((codeMatch.index ?? 0) + codeMatch[0].length)
+        : message;
+      toast.error(displayMessage);
+    }
+  };
 
   const lowerQuery = query.toLowerCase();
   const filtered = catalogs.filter(
@@ -101,7 +202,7 @@ export const ToolCatalog = (): JSX.Element => {
               {filtered.length}件
             </span>
           </div>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {filtered.map((item) => (
               <div
                 key={item.id}
@@ -132,17 +233,30 @@ export const ToolCatalog = (): JSX.Element => {
                   </span>
                 </div>
                 {/* 名前 */}
-                <div className="mb-1 text-sm font-medium text-[var(--text-primary)]">
+                <div className="mb-2 text-sm font-medium text-[var(--text-primary)]">
                   {item.name}
                 </div>
+                {/* 利用可能なツール バッジ（クリックでモーダル） */}
+                <button
+                  type="button"
+                  onClick={() => setToolsModalCatalog(item)}
+                  disabled={!item.tools || item.tools.length === 0}
+                  className="mb-3 flex items-center justify-between rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-input)] px-3 py-2 text-[10px] text-[var(--text-muted)] transition hover:border-[var(--border)] hover:text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:text-[var(--text-muted)]"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Wrench size={12} />
+                    利用可能なツール
+                  </span>
+                  <span className="font-mono">{item.toolCount ?? 0}</span>
+                </button>
                 {/* 説明 */}
                 <div className="mb-3 line-clamp-2 text-[10px] leading-relaxed text-[var(--text-subtle)]">
                   {item.description}
                 </div>
-                {/* 追加ボタン */}
+                {/* 追加ボタン（OAuth は直接認証、それ以外はモーダル） */}
                 <button
                   type="button"
-                  onClick={() => setSelectedCatalog(item)}
+                  onClick={() => void handleAddClick(item)}
                   className="mt-auto flex w-full items-center justify-center gap-1 rounded-md bg-[var(--text-primary)] py-1.5 text-[10px] font-medium text-[var(--bg-card)] transition hover:opacity-90"
                 >
                   <Plus size={10} />
@@ -164,12 +278,26 @@ export const ToolCatalog = (): JSX.Element => {
       {selectedCatalog && (
         <AddMcpModal
           catalog={selectedCatalog}
-          onClose={() => setSelectedCatalog(null)}
+          initialNeedsManualOAuthClient={dcrPrefill}
+          onClose={() => {
+            setSelectedCatalog(null);
+            setDcrPrefill(false);
+          }}
           onSuccess={(serverName) => {
             setSelectedCatalog(null);
+            setDcrPrefill(false);
             toast.success(`${serverName}が正常に追加されました。`);
             navigate("/tools");
           }}
+        />
+      )}
+
+      {/* 利用可能ツールモーダル */}
+      {toolsModalCatalog && toolsModalCatalog.tools && (
+        <CatalogToolsModal
+          catalogName={toolsModalCatalog.name}
+          tools={toolsModalCatalog.tools}
+          onClose={() => setToolsModalCatalog(null)}
         />
       )}
     </div>
