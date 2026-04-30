@@ -73,8 +73,10 @@ services:
     env_file: .env
     environment:
       # .env 内の NEXTAUTH_URL は manager 用 (https://stg.tumiki.cloud) のため、
-      # internal-manager では空にして auth.ts の trustHost: true による自動検出に任せる
-      NEXTAUTH_URL: ""
+      # internal-manager 専用の NEXTAUTH_URL_INTERNAL_MANAGER で上書きする。
+      # auth.ts は trustHost: true だが Next.js standalone の HOSTNAME=0.0.0.0 が
+      # 干渉するため明示的な NEXTAUTH_URL 指定が必要。
+      NEXTAUTH_URL: ${NEXTAUTH_URL_INTERNAL_MANAGER}
     depends_on:
       db:
         condition: service_healthy
