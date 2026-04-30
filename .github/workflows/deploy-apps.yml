@@ -72,7 +72,7 @@ jobs:
             export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID}"
             export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET}"
             cd ~/tumiki
-            infisical export --method=universal-auth --env=staging --format=dotenv --domain https://secrets.rayven.cloud > .env
+            infisical export --projectId=dbff850c-430a-431b-b7fe-efc744e304d6 --env=staging --format=dotenv --domain=https://secrets.rayven.cloud > .env
             docker compose pull
             docker compose up -d --remove-orphans
             rm -f .env
@@ -152,7 +152,7 @@ jobs:
             export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID}"
             export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET}"
             cd ~/tumiki
-            infisical export --method=universal-auth --env=prod --format=dotenv --domain https://secrets.rayven.cloud > .env
+            infisical export --projectId=dbff850c-430a-431b-b7fe-efc744e304d6 --env=prod --format=dotenv --domain=https://secrets.rayven.cloud > .env
             docker compose pull
             docker compose up -d --remove-orphans
             rm -f .env
