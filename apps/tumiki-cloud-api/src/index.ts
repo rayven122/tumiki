@@ -15,11 +15,7 @@ const caCert = process.env.CA_CERT;
 
 if (tlsCert && tlsKey && caCert) {
   // mTLS モードの場合のみ必須環境変数を検証し、不足していれば起動を失敗させる
-  const requiredEnvVars = [
-    "JWT_SIGNING_PRIVATE_KEY",
-    "JWT_SIGNING_PUBLIC_KEY",
-    "BOOTSTRAP_TOKEN_PUBLIC_KEY",
-  ];
+  const requiredEnvVars = ["BOOTSTRAP_TOKEN_PUBLIC_KEY"];
   const missingEnvVars = requiredEnvVars.filter((key) => !process.env[key]);
   if (missingEnvVars.length > 0) {
     console.error(

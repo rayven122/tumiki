@@ -21,7 +21,6 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.19.11",
-    "ai": "6.0.111",
     "hono": "^4.12.5",
     "jose": "^6.1.2",
     "zod": "catalog:"
