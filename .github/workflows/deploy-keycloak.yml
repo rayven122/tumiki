@@ -1,73 +1,170 @@
 name: Deploy Keycloak Configuration
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'terraform/keycloak/**'
   release:
     types: [published]
   workflow_dispatch:
     inputs:
+      environment:
+        description: 'デプロイ先環境'
+        type: choice
+        options: [staging, production]
+        default: staging
       dry_run:
         description: 'Plan only (no apply)'
         type: boolean
         default: false
 
 concurrency:
-  group: keycloak-deploy
+  group: keycloak-tf-${{ github.event_name == 'release' && 'production' || inputs.environment || 'staging' }}
   cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
-  deploy:
-    name: Deploy Keycloak Config
+  deploy-staging:
+    name: 🔑 Deploy Keycloak Config to Staging
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && inputs.environment == 'staging')
+    environment: staging
+
+    env:
+      CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+      CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+      SSH_HOST: ${{ vars.KEYCLOAK_TUNNEL_HOSTNAME }}
+      SSH_USER: ${{ vars.KEYCLOAK_DEPLOY_USER }}
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: 🌐 Setup Cloudflare SSH
+        uses: ./.github/actions/setup-cloudflare-ssh
+        with:
+          ssh-host: ${{ env.SSH_HOST }}
+          cf-access-client-id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          cf-access-client-secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          # DEPLOY_SSH_PRIVATE_KEY は GitHub environment ごとに異なる値を設定
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+
+      - name: 📤 Transfer Terraform files
+        run: |
+          ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
+            "mkdir -p ~/keycloak-tf"
+          tar -czf - -C terraform/keycloak \
+            --exclude='.terraform' --exclude='*.tfstate' --exclude='*.tfstate.*' \
+            . | ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
+            "tar -xzf - -C ~/keycloak-tf"
+
+      - name: 🏗️ Terraform Apply (staging)
+        run: |
+          # ${DRY_RUN} はランナー側で展開してリモートに送信する（意図的なクォートなしヒアドキュメント）
+          DRY_RUN="${{ inputs.dry_run || 'false' }}"
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -l << REMOTE_SCRIPT
+            set -euo pipefail
+            cd ~/keycloak-tf
+            infisical run --env=staging --domain https://secrets.rayven.cloud -- \
+              terraform init -input=false
+            infisical run --env=staging --domain https://secrets.rayven.cloud -- \
+              terraform validate
+            if [ "${DRY_RUN}" = "true" ]; then
+              infisical run --env=staging --domain https://secrets.rayven.cloud -- \
+                terraform plan -var-file=terraform.tfvars.staging -input=false -no-color
+            else
+              infisical run --env=staging --domain https://secrets.rayven.cloud -- \
+                terraform apply -var-file=terraform.tfvars.staging -auto-approve -input=false -no-color
+            fi
+          REMOTE_SCRIPT
+
+      - name: 🧹 Cleanup
+        if: always()
+        run: |
+          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh ~/.ssh/id_ed25519 ~/.ssh/config
+
+  deploy-production:
+    name: 🔑 Deploy Keycloak Config to Production
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: |
+      github.event_name == 'release' ||
+      (github.event_name == 'workflow_dispatch' && inputs.environment == 'production')
     environment: production
 
     env:
-      TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+      CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+      CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+      SSH_HOST: ${{ vars.KC_PROD_TUNNEL_HOSTNAME }}
+      SSH_USER: ${{ vars.KC_PROD_DEPLOY_USER }}
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: 📥 Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v4
+      - name: 🌐 Setup Cloudflare SSH
+        uses: ./.github/actions/setup-cloudflare-ssh
         with:
-          terraform_version: "1.9.8"
+          ssh-host: ${{ env.SSH_HOST }}
+          cf-access-client-id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          cf-access-client-secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          # DEPLOY_SSH_PRIVATE_KEY は GitHub environment ごとに異なる値を設定
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
 
-      - name: Terraform Init
-        working-directory: terraform/keycloak
-        run: terraform init
+      - name: 📤 Transfer Terraform files
+        run: |
+          ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
+            "mkdir -p ~/keycloak-tf"
+          tar -czf - -C terraform/keycloak \
+            --exclude='.terraform' --exclude='*.tfstate' --exclude='*.tfstate.*' \
+            . | ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
+            "tar -xzf - -C ~/keycloak-tf"
 
-      - name: Terraform Validate
-        working-directory: terraform/keycloak
-        run: terraform validate
+      - name: 🏗️ Terraform Apply (production)
+        run: |
+          # ${DRY_RUN} はランナー側で展開してリモートに送信する（意図的なクォートなしヒアドキュメント）
+          DRY_RUN="${{ inputs.dry_run || 'false' }}"
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -l << REMOTE_SCRIPT
+            set -euo pipefail
+            cd ~/keycloak-tf
+            infisical run --env=prod --domain https://secrets.rayven.cloud -- \
+              terraform init -input=false
+            infisical run --env=prod --domain https://secrets.rayven.cloud -- \
+              terraform validate
+            if [ "${DRY_RUN}" = "true" ]; then
+              infisical run --env=prod --domain https://secrets.rayven.cloud -- \
+                terraform plan -var-file=terraform.tfvars.production -input=false -no-color
+            else
+              infisical run --env=prod --domain https://secrets.rayven.cloud -- \
+                terraform apply -var-file=terraform.tfvars.production -auto-approve -input=false -no-color
+            fi
+          REMOTE_SCRIPT
 
-      - name: Terraform Plan
-        if: ${{ inputs.dry_run }}
-        working-directory: terraform/keycloak
-        run: terraform plan -var-file=terraform.tfvars.production
-
-      - name: Terraform Apply
-        if: ${{ !inputs.dry_run }}
-        working-directory: terraform/keycloak
-        run: terraform apply -var-file=terraform.tfvars.production -auto-approve
-
-      - name: Notify Slack on Success
-        if: success() && !inputs.dry_run && vars.SLACK_WEBHOOK_URL != ''
+      - name: 📣 Notify Slack on Success
+        if: success() && !inputs.dry_run && secrets.SLACK_WEBHOOK_URL != ''
         env:
-          SLACK_WEBHOOK_URL: ${{ vars.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           PAYLOAD=$(jq -n --arg text "Keycloak設定デプロイ完了: ${RELEASE_TAG:-manual}" '{"text": $text}')
           curl -X POST -H 'Content-Type: application/json' -d "$PAYLOAD" "$SLACK_WEBHOOK_URL"
 
-      - name: Notify Slack on Failure
-        if: failure() && vars.SLACK_WEBHOOK_URL != ''
+      - name: 📣 Notify Slack on Failure
+        if: failure() && secrets.SLACK_WEBHOOK_URL != ''
         env:
-          SLACK_WEBHOOK_URL: ${{ vars.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           PAYLOAD=$(jq -n --arg text "Keycloak設定デプロイ失敗: ${RELEASE_TAG:-manual}" '{"text": $text}')
           curl -X POST -H 'Content-Type: application/json' -d "$PAYLOAD" "$SLACK_WEBHOOK_URL"
+
+      - name: 🧹 Cleanup
+        if: always()
+        run: |
+          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh ~/.ssh/id_ed25519 ~/.ssh/config
