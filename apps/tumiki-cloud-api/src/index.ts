@@ -49,6 +49,13 @@ if (tlsCert && tlsKey && caCert) {
     },
   );
 } else {
+  // 本番環境で TLS 未設定は致命的エラー
+  if (process.env.NODE_ENV === "production") {
+    console.error(
+      "[tumiki-cloud-api] FATAL: TLS certs are required in production. Set TLS_CERT, TLS_KEY, RAYVEN_CA_CERT.",
+    );
+    process.exit(1);
+  }
   // HTTP サーバー起動（開発環境）
   serve({ fetch: app.fetch, port }, (info) => {
     console.warn(

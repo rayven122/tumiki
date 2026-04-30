@@ -34,7 +34,11 @@ const getBootstrapPublicKey = (pem: string): Promise<BootstrapPublicKey> => {
   return cachedPublicKeyPromise;
 };
 
-/** テスト用: Bootstrap 公開鍵キャッシュをリセットする */
+/**
+ * Bootstrap 公開鍵キャッシュをリセットする
+ *
+ * @internal テスト専用。プロダクションコードから呼び出さないこと。
+ */
 export const resetBootstrapPublicKeyCache = (): void => {
   cachedBootstrapPem = null;
   cachedPublicKeyPromise = null;

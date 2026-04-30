@@ -359,6 +359,26 @@ describe("POST /v1/certificates/enroll - Bootstrap Token エッジケース", ()
   });
 });
 
+describe("POST /v1/certificates/enroll - bodyLimit", () => {
+  test("50KB を超えるリクエストボディで 413 を返す", async () => {
+    // 51KB の CSR を生成（中身は不正でも bodyLimit がより先にチェックされる）
+    const oversizedCsr =
+      "-----BEGIN CERTIFICATE REQUEST-----\n" +
+      "x".repeat(51 * 1024) +
+      "\n-----END CERTIFICATE REQUEST-----";
+    const body = JSON.stringify({ csr: oversizedCsr });
+    const res = await certificatesRoute.request("/v1/certificates/enroll", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Length": String(body.length),
+      },
+      body,
+    });
+    expect(res.status).toStrictEqual(413);
+  });
+});
+
 describe("POST /v1/certificates/enroll - キャッシュリセット", () => {
   test("importSPKI が失敗した後、次のリクエストで再試行できる", async () => {
     vi.stubEnv(

@@ -25,6 +25,15 @@ export const signCertificate = async (
     throw new Error("Infisical configuration is missing");
   }
 
+  // デフォルト 90 日（環境変数で上書き可）
+  const certTtl = process.env.CERT_TTL ?? "2160h";
+  // Infisical TTL 形式（数値 + 時間単位 s/m/h/d/w）を検証
+  if (!/^\d+[smhdw]$/.test(certTtl)) {
+    throw new Error(
+      `Invalid CERT_TTL format: "${certTtl}". Expected format: e.g., "2160h", "90d"`,
+    );
+  }
+
   const response = await fetch(
     `${infisicalUrl}/api/v1/pki/ca/${caId}/sign-certificate`,
     {
@@ -36,7 +45,7 @@ export const signCertificate = async (
       body: JSON.stringify({
         csr,
         commonName: orgId,
-        ttl: process.env.CERT_TTL ?? "2160h", // デフォルト 90 日（環境変数で上書き可）
+        ttl: certTtl,
       }),
       signal: AbortSignal.timeout(TIMEOUT_CONFIG.certificateEnroll),
     },
@@ -44,9 +53,10 @@ export const signCertificate = async (
 
   if (!response.ok) {
     const text = await response.text();
+    // レスポンス本文に内部情報が含まれる可能性があるため先頭 200 文字に制限
     console.error(
       `[certificates/service] Infisical sign failed: ${response.status}`,
-      text,
+      text.slice(0, 200),
     );
     throw new Error("Certificate signing failed");
   }
