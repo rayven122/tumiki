@@ -152,7 +152,7 @@ export const SettingsForm = (): React.ReactElement => {
     try {
       await window.electronAPI.auth.login();
       // ブラウザが開かれたことを通知
-      setAuthSuccess("ブラウザでKeycloakログインページを開きました");
+      setAuthSuccess("ブラウザで認証ページを開きました");
       // 5分後にコールバックが来ない場合はタイムアウト
       timeouts.set(
         "login",

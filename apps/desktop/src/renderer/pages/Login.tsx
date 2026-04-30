@@ -52,7 +52,10 @@ export const Login = (): JSX.Element => {
 
         {view === "buttons" ? (
           <div className="mt-10 flex w-full flex-col gap-3">
-            <button className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--btn-primary-bg)] px-4 py-3 text-sm font-medium text-[var(--btn-primary-text)] transition-colors hover:bg-[var(--btn-primary-hover)]">
+            <button
+              disabled
+              className="flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-[var(--btn-primary-bg)] px-4 py-3 text-sm font-medium text-[var(--btn-primary-text)] opacity-50 transition-colors"
+            >
               <KeyRound size={16} />
               Entra ID でサインイン
             </button>

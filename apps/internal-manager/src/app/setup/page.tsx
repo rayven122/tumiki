@@ -1,14 +1,7 @@
-import { z } from "zod";
-
-const oidcEnvSchema = z.object({
-  OIDC_ISSUER: z.string().min(1, "未設定").url("有効なURLではありません"),
-  OIDC_CLIENT_ID: z.string().min(1, "未設定"),
-  OIDC_CLIENT_SECRET: z.string().min(1, "未設定"),
-  OIDC_DESKTOP_CLIENT_ID: z.string().min(1, "未設定"),
-});
+import { setupOidcSchema } from "~/lib/env";
 
 const getEnvErrors = (): Record<string, string> => {
-  const result = oidcEnvSchema.safeParse({
+  const result = setupOidcSchema.safeParse({
     OIDC_ISSUER: process.env.OIDC_ISSUER,
     OIDC_CLIENT_ID: process.env.OIDC_CLIENT_ID,
     OIDC_CLIENT_SECRET: process.env.OIDC_CLIENT_SECRET,

@@ -15,10 +15,14 @@ const Field = ({ label, value }: { label: string; value: string | null }) => (
 );
 
 const SsoConfigSection = () => {
-  const { data, isLoading } = api.sso.getConfig.useQuery();
+  const { data, isLoading, isError } = api.sso.getConfig.useQuery();
 
   if (isLoading) {
     return <div className="text-text-muted text-xs">読み込み中…</div>;
+  }
+
+  if (isError) {
+    return <div className="text-xs text-red-400">設定の取得に失敗しました</div>;
   }
 
   return (

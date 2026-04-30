@@ -14,9 +14,22 @@ const oidcEnvSchema = z.object({
     .min(1, "OIDC_DESKTOP_CLIENT_ID is required"),
 });
 
+/** セットアップ画面向けユーザー表示用スキーマ（日本語エラーメッセージ） */
+export const setupOidcSchema = z.object({
+  OIDC_ISSUER: z.string().min(1, "未設定").url("有効なURLではありません"),
+  OIDC_CLIENT_ID: z.string().min(1, "未設定"),
+  OIDC_CLIENT_SECRET: z.string().min(1, "未設定"),
+  OIDC_DESKTOP_CLIENT_ID: z.string().min(1, "未設定"),
+});
+
 /** OIDC必須環境変数がすべて設定されているか確認（throw しない） */
 export const isOidcConfigured = (): boolean => {
-  const required = ["OIDC_CLIENT_ID", "OIDC_CLIENT_SECRET", "OIDC_ISSUER"];
+  const required = [
+    "OIDC_CLIENT_ID",
+    "OIDC_CLIENT_SECRET",
+    "OIDC_ISSUER",
+    "OIDC_DESKTOP_CLIENT_ID",
+  ];
   return required.every((key) => (process.env[key] ?? "").length > 0);
 };
 
