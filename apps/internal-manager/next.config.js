@@ -4,6 +4,10 @@ const config = {
   output: "standalone",
   // React Strict Mode を無効化
   reactStrictMode: false,
+  // saml-jackson は内部で動的 import (Function コンストラクタ経由) で jose を読み込むため、
+  // Next.js のバンドルトレースに引っかからず standalone 出力から漏れる。
+  // serverExternalPackages 指定で外部パッケージ扱いとし、standalone の node_modules にコピーさせる。
+  serverExternalPackages: ["@boxyhq/saml-jackson", "jose"],
   // Docker ビルド時にテスト関連ファイルを除外した tsconfig.build.json を使用
   typescript: {
     tsconfigPath: "./tsconfig.build.json",
