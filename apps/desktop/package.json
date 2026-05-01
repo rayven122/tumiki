@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
+    "@radix-ui/react-select": "^2.2.6",
     "@tanstack/react-query": "catalog:",
     "@trpc/client": "catalog:",
     "@trpc/react-query": "catalog:",

@@ -85,6 +85,11 @@ const api = {
       ipcRenderer.invoke("mcp:toggleServer", input),
     getDetail: (serverId: number): Promise<McpServerDetailItem | null> =>
       ipcRenderer.invoke("mcp-server:getDetail", serverId),
+    toggleTool: (input: {
+      toolId: number;
+      isAllowed: boolean;
+    }): Promise<void> =>
+      ipcRenderer.invoke("mcp-server:toggleTool", input).then(() => undefined),
   },
 
   // 監査ログ API
@@ -107,6 +112,12 @@ const api = {
     getUrl: (): Promise<string | null> => ipcRenderer.invoke("manager:getUrl"),
     connect: (url: string): Promise<void> =>
       ipcRenderer.invoke("manager:connect", url),
+  },
+
+  // 外部URLを既定ブラウザで開くシェル API
+  shell: {
+    openExternal: (url: string): Promise<void> =>
+      ipcRenderer.invoke("shell:openExternal", url),
   },
 
   // MCP OAuth認証 API

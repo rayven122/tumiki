@@ -17,6 +17,7 @@ import { setupOAuthIpc } from "./features/oauth/oauth.ipc";
 import { isMcpOAuthCallback } from "./features/oauth/oauth.protocol";
 import type { McpOAuthManager } from "./features/oauth/oauth.service";
 import { setupManagerIpc, fetchManagerOidcConfig } from "./ipc/manager";
+import { setupShellIpc } from "./ipc/shell";
 import { getAppStore } from "./shared/app-store";
 import { ServerStatus } from "@prisma/desktop-client";
 import * as logger from "./shared/utils/logger";
@@ -469,6 +470,7 @@ if (isMcpProxyMode) {
       setupMcpServerDetailIpc();
       setupAuditLogIpc();
       setupDashboardIpc();
+      setupShellIpc();
 
       createWindow();
 
