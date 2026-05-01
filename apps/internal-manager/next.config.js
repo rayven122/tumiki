@@ -8,6 +8,19 @@ const config = {
   typescript: {
     tsconfigPath: "./tsconfig.build.json",
   },
+  // /.well-known/* は OIDC Discovery 用の標準パス。
+  // Next.js のフォルダ名に dot prefix を含めると ESLint project service と相性が悪いため、
+  // 実装は /api/well-known/* に置き、rewrites で /.well-known/* を内部マッピングする。
+  rewrites: async () => [
+    {
+      source: "/.well-known/openid-configuration",
+      destination: "/api/well-known/openid-configuration",
+    },
+    {
+      source: "/.well-known/jwks.json",
+      destination: "/api/well-known/jwks.json",
+    },
+  ],
 };
 
 export default config;
