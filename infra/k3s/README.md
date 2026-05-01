@@ -29,6 +29,9 @@ tumiki-k3s VM（さくらのクラウド / 8GB RAM / 4vCPU / 200GB SSD）
 ├── Infisical Kubernetes Operator（全Namespace監視・シークレット同期）
 ├── Reloader（Secret更新時にPodを自動再起動）
 │
+├── Namespace: tumiki-system（RAYVEN 管理の共有サービス）
+│   └── tumiki-cloud-api Pod × 2（ライセンス検証 + 動的検索 LLM プロキシ）
+│
 ├── Namespace: tenant-console（コントロールパネル）
 │   ├── tenant-console Pod
 │   └── PostgreSQL（テナントメタデータ）
@@ -204,6 +207,106 @@ kubectl delete namespace tenant-company-a
 | `AUTH_SECRET` | NextAuthシークレット（`openssl rand -base64 32` で生成） |
 | `NEXTAUTH_URL` | 例: `https://company-a-manager.tumiki.cloud` |
 
+## tumiki-cloud-api デプロイ手順
+
+RAYVEN が運営する共有 API サーバー。ライセンス JWT を検証し、Vercel AI Gateway 経由で
+LLM を呼び出して動的ツール検索 (`POST /v1/dynamic-search/search`) を提供する。
+
+### 0. RS256 鍵ペア生成（初回のみ・1 度きり）
+
+ライセンス JWT 署名/検証に使う RS256 鍵ペアを生成する。**秘密鍵は絶対に外部に出さない**。
+
+```bash
+# 秘密鍵生成
+openssl genrsa -out license_private.pem 2048
+
+# 公開鍵抽出
+openssl rsa -in license_private.pem -pubout -out license_public.pem
+```
+
+- **秘密鍵 (`license_private.pem`)**: Infisical の RAYVEN 管理プロジェクト（例: `rayven-license-signer`）に
+  `LICENSE_SIGNING_PRIVATE_KEY` として登録。スクリプト `scripts/issue-license.ts` がこれを使って JWT に署名する。
+- **公開鍵 (`license_public.pem`)**: Infisical の `tumiki-cloud-api` プロジェクトに
+  `LICENSE_PUBLIC_KEY` として登録。tumiki-cloud-api Pod がこれを使って JWT を検証する。
+
+### 1. Infisical 設定
+
+`tumiki-cloud-api` 用 Infisical プロジェクトを作成し、`/tumiki-cloud-api` パス配下に登録:
+
+| キー | 説明 |
+|------|------|
+| `LICENSE_PUBLIC_KEY` | RS256 公開鍵（PEM 形式・改行込み） |
+| `AI_GATEWAY_API_KEY` | Vercel AI Gateway の API キー |
+| `DYNAMIC_SEARCH_MODEL` | （任意）使用モデル。省略時 `anthropic/claude-3.5-haiku` |
+
+### 2. Helm でデプロイ
+
+```bash
+# Namespace 作成と Machine Identity 投入を先行
+kubectl create namespace tumiki-system --dry-run=client -o yaml | kubectl apply -f -
+kubectl create secret generic infisical-machine-identity \
+  --namespace tumiki-system \
+  --from-literal=clientId=<INFISICAL_CLIENT_ID> \
+  --from-literal=clientSecret=<INFISICAL_CLIENT_SECRET>
+
+# Helm install
+helm install tumiki-cloud-api ./infra/k3s/helm/tumiki-cloud-api \
+  --set image.tag=<IMAGE_TAG> \
+  --set infisical.projectSlug=tumiki-cloud-api \
+  --set infisical.environment=prod
+
+# Cloudflare Tunnel の ingress に `api.tumiki.cloud` →
+# `http://192.168.0.20:30080` を追加すれば外部からアクセス可能になる
+
+# 状態確認
+kubectl get all -n tumiki-system
+```
+
+### 3. ライセンス発行
+
+```bash
+# 個人モード（90日有効）
+tsx scripts/issue-license.ts \
+  --sub user_abc \
+  --type personal \
+  --features dynamic-search \
+  --ttl 90d \
+  --plan pro \
+  --private-key ./license_private.pem
+
+# テナントモード（短命・internal-manager から呼ばれる想定）
+tsx scripts/issue-license.ts \
+  --sub user_xyz \
+  --type tenant \
+  --tenant acme \
+  --features dynamic-search \
+  --ttl 1h \
+  --private-key ./license_private.pem
+```
+
+出力されたキー（`tumiki_lic_<jwt>` 形式）を顧客に配布する。
+
+### 4. 疎通確認
+
+```bash
+# ヘルスチェック
+curl https://api.tumiki.cloud/health
+
+# Dynamic Search（要ライセンスキー）
+LICENSE_KEY="<手順 3 で発行したキー>"
+curl -X POST https://api.tumiki.cloud/v1/dynamic-search/search \
+  -H "Authorization: Bearer $LICENSE_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "Slack にメッセージ送信",
+    "tools": [
+      {"name": "send_message", "description": "Slack にメッセージを送る"},
+      {"name": "list_channels", "description": "チャンネル一覧"}
+    ],
+    "limit": 5
+  }'
+```
+
 ## ディレクトリ構成
 
 ```
@@ -229,16 +332,28 @@ infra/k3s/
     │       ├── deployment.yaml         # Reloaderアノテーション付き
     │       ├── service.yaml
     │       └── ingress.yaml            # TLSなし（Cloudflare Tunnelが担当）
-    └── tenant-console/                 # テナント管理UI Helm チャート
+    ├── tenant-console/                 # テナント管理UI Helm チャート
+    │   ├── Chart.yaml
+    │   ├── values.yaml
+    │   └── templates/
+    │       ├── _helpers.tpl
+    │       ├── serviceaccount.yaml     # tRPC API が helm/kubectl 実行する RBAC
+    │       ├── deployment.yaml
+    │       ├── service.yaml
+    │       ├── ingress.yaml
+    │       ├── postgresql-statefulset.yaml
+    │       ├── postgresql-service.yaml
+    │       └── infisical-secret.yaml
+    └── tumiki-cloud-api/               # RAYVEN クラウド API（ライセンス検証 + LLM プロキシ）
         ├── Chart.yaml
         ├── values.yaml
         └── templates/
             ├── _helpers.tpl
-            ├── serviceaccount.yaml     # tRPC API が helm/kubectl 実行する RBAC
+            ├── namespace.yaml
+            ├── infisical-secret.yaml
             ├── deployment.yaml
             ├── service.yaml
             ├── ingress.yaml
-            ├── postgresql-statefulset.yaml
-            ├── postgresql-service.yaml
-            └── infisical-secret.yaml
+            ├── hpa.yaml
+            └── pdb.yaml
 ```

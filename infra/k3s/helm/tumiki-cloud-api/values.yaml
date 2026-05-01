@@ -1,0 +1,54 @@
+# tumiki-cloud-api（RAYVEN クラウド API）設定
+# 全テナント + セルフホスト顧客から参照される共有サービス
+
+# 専用 Namespace
+namespace: tumiki-system
+
+# コンテナイメージ
+image:
+  repository: ghcr.io/rayven122/tumiki-cloud-api
+  tag: ""           # 必須: --set image.tag=<TAG> で指定（latest 不可）
+  pullPolicy: IfNotPresent
+
+# 公開ドメイン（Cloudflare Tunnel 経由でアクセス）
+domain: api.tumiki.cloud
+
+# サーバー設定
+server:
+  port: 8080
+
+# レプリカ数（HA: 複数 Pod）
+replicaCount: 2
+
+# Infisical 設定
+infisical:
+  hostAPI: https://app.infisical.com/api
+  projectSlug: ""      # 必須: --set infisical.projectSlug=<SLUG> で指定
+  environment: ""      # 必須: --set infisical.environment=<ENV> で指定（prod / dev 等）
+  secretsPath: "/tumiki-cloud-api"
+  resyncInterval: 60
+  # Machine Identity 認証情報は kubectl で k8s Secret 'infisical-machine-identity' として事前作成
+
+# リソース制限
+resources:
+  requests:
+    memory: "128Mi"
+    cpu: "100m"
+  limits:
+    memory: "256Mi"
+    cpu: "500m"
+
+# HPA 設定
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+
+# PodDisruptionBudget
+pdb:
+  minAvailable: 1
+
+# Ingress 設定（Cloudflare Tunnel が TLS を担うためクラスター内は HTTP）
+ingress:
+  className: traefik
