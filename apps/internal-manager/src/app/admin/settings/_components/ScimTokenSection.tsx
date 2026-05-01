@@ -3,17 +3,6 @@
 import { useRef, useState } from "react";
 import { Copy, RefreshCw, Trash2 } from "lucide-react";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@tumiki/ui/alert-dialog";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -45,6 +34,25 @@ const ScimTokenSection = () => {
   const revoke = api.scimToken.revoke.useMutation({
     onSuccess: () => void utils.scimToken.getCurrent.invalidate(),
   });
+
+  const handleGenerate = () => {
+    const message = current
+      ? "SCIMトークンを再発行しますか？\n\n既存のトークンは即座に無効になります。IDPのSCIM設定で新しいトークンに更新してください。"
+      : "SCIMトークンを生成しますか？\n\n生成されたトークンはIDPのSCIM設定に入力してください。トークンはこの画面でのみ表示されます。";
+    if (window.confirm(message)) {
+      generate.mutate();
+    }
+  };
+
+  const handleRevoke = () => {
+    if (
+      window.confirm(
+        "SCIMトークンを失効しますか？\n\nトークンを削除するとSCIM連携が停止します。IDPのプロビジョニング設定も無効化してください。",
+      )
+    ) {
+      revoke.mutate();
+    }
+  };
 
   const handleCopy = () => {
     if (!newToken) return;
@@ -99,70 +107,26 @@ const ScimTokenSection = () => {
             </div>
             <div className="flex gap-2">
               {/* 再発行 */}
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <button
-                    type="button"
-                    disabled={generate.isPending}
-                    className="bg-bg-active text-text-secondary flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs transition-opacity hover:opacity-80 disabled:opacity-50"
-                  >
-                    <RefreshCw size={11} />
-                    再発行
-                  </button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>
-                      SCIMトークンを再発行しますか？
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      既存のトークンは即座に無効になります。IDPのSCIM設定で新しいトークンに更新してください。
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>キャンセル</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => generate.mutate()}
-                      className="bg-btn-primary-bg text-btn-primary-text"
-                    >
-                      再発行する
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <button
+                type="button"
+                disabled={generate.isPending}
+                onClick={handleGenerate}
+                className="bg-bg-active text-text-secondary flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs transition-opacity hover:opacity-80 disabled:opacity-50"
+              >
+                <RefreshCw size={11} />
+                再発行
+              </button>
 
               {/* 失効 */}
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <button
-                    type="button"
-                    disabled={revoke.isPending}
-                    className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-red-400 transition-opacity hover:opacity-80 disabled:opacity-50"
-                  >
-                    <Trash2 size={11} />
-                    失効
-                  </button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>
-                      SCIMトークンを失効しますか？
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      トークンを削除するとSCIM連携が停止します。IDPのプロビジョニング設定も無効化してください。
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>キャンセル</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => revoke.mutate()}
-                      className="bg-red-500/20 text-red-400 hover:bg-red-500/30"
-                    >
-                      失効する
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <button
+                type="button"
+                disabled={revoke.isPending}
+                onClick={handleRevoke}
+                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-red-400 transition-opacity hover:opacity-80 disabled:opacity-50"
+              >
+                <Trash2 size={11} />
+                失効
+              </button>
             </div>
           </div>
         ) : (
@@ -171,37 +135,15 @@ const ScimTokenSection = () => {
             <div className="bg-bg-app border-border-default text-text-muted rounded-lg border px-3 py-2 text-xs">
               未設定
             </div>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <button
-                  type="button"
-                  disabled={generate.isPending}
-                  className="bg-btn-primary-bg text-btn-primary-text flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs transition-opacity hover:opacity-80 disabled:opacity-50"
-                >
-                  <RefreshCw size={11} />
-                  トークンを生成
-                </button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    SCIMトークンを生成しますか？
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    生成されたトークンはIDPのSCIM設定に入力してください。トークンはこの画面でのみ表示されます。
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>キャンセル</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => generate.mutate()}
-                    className="bg-btn-primary-bg text-btn-primary-text"
-                  >
-                    生成する
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <button
+              type="button"
+              disabled={generate.isPending}
+              onClick={handleGenerate}
+              className="bg-btn-primary-bg text-btn-primary-text flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs transition-opacity hover:opacity-80 disabled:opacity-50"
+            >
+              <RefreshCw size={11} />
+              トークンを生成
+            </button>
           </div>
         )}
       </div>
