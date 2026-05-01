@@ -23,6 +23,7 @@ const t = initTRPC.context<typeof createTRPCContext>().create({
 
 export const createCallerFactory = t.createCallerFactory;
 export const createTRPCRouter = t.router;
+// 認証は Cloudflare Access でネットワークレベルで担保するため、アプリ層の認証ミドルウェアは不要
 export const procedure = t.procedure;
 
 export type Context = Awaited<ReturnType<typeof createTRPCContext>>;

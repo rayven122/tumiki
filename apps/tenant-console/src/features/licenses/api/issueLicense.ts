@@ -2,25 +2,19 @@ import { SignJWT, importPKCS8 } from "jose";
 import { TRPCError } from "@trpc/server";
 import { type Context } from "@/server/api/trpc";
 import { env } from "@/lib/env";
-import { getSecret } from "@/server/infisical/client";
 import { type IssueLicenseInput } from "./schemas";
 
 const TOKEN_PREFIX = "tumiki_lic_";
 
-/** Infisical から秘密鍵を取得してキャッシュする（プロセス内メモリ） */
+/** 起動後に一度だけ秘密鍵を parse してプロセス内キャッシュ */
 let cachedPrivateKey: CryptoKey | null = null;
 
 const getPrivateKey = async (): Promise<CryptoKey> => {
   if (cachedPrivateKey) return cachedPrivateKey;
-
-  const pem = await getSecret({
-    projectId: env.INFISICAL_LICENSE_PROJECT_ID,
-    environment: "prod",
-    secretPath: "/",
-    secretName: "LICENSE_SIGNING_PRIVATE_KEY",
-  });
-
-  cachedPrivateKey = await importPKCS8(pem, "RS256");
+  cachedPrivateKey = await importPKCS8(
+    env.LICENSE_SIGNING_PRIVATE_KEY,
+    "RS256",
+  );
   return cachedPrivateKey;
 };
 

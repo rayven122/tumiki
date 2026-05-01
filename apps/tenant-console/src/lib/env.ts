@@ -12,9 +12,6 @@ const envSchema = z.object({
 
   // ライセンス JWT 署名用秘密鍵（RS256 PKCS#8 PEM）
   LICENSE_SIGNING_PRIVATE_KEY: z.string().min(1),
-
-  // ライセンス署名鍵を取得する Infisical プロジェクト ID
-  INFISICAL_LICENSE_PROJECT_ID: z.string().min(1),
 });
 
 export const env = envSchema.parse(process.env);

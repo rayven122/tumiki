@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { type Context } from "@/server/api/trpc";
 import { type GetLicenseInput } from "./schemas";
+import { computeStatus } from "./utils";
 
 export const getLicense = async (ctx: Context, input: GetLicenseInput) => {
   const license = await ctx.db.license.findUnique({ where: { id: input.id } });
@@ -10,5 +11,5 @@ export const getLicense = async (ctx: Context, input: GetLicenseInput) => {
       message: `ライセンス ID: ${input.id} が見つかりません`,
     });
   }
-  return license;
+  return { ...license, computedStatus: computeStatus(license) };
 };

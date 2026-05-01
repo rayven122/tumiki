@@ -1,5 +1,6 @@
 import { type Context } from "@/server/api/trpc";
 import { type ListLicensesInput } from "./schemas";
+import { computeStatus } from "./utils";
 
 export const listLicenses = async (ctx: Context, input: ListLicensesInput) => {
   const now = new Date();
@@ -40,7 +41,10 @@ export const listLicenses = async (ctx: Context, input: ListLicensesInput) => {
   const nextCursor = hasMore ? result[result.length - 1]?.id : undefined;
 
   return {
-    items: result,
+    items: result.map((license) => ({
+      ...license,
+      computedStatus: computeStatus(license),
+    })),
     nextCursor,
     hasMore,
   };
