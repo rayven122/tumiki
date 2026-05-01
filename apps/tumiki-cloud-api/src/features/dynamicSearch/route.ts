@@ -42,10 +42,14 @@ dynamicSearchRoute.post("/v1/dynamic-search/search", async (c) => {
 
   const parsed = searchRequestSchema.safeParse(body);
   if (!parsed.success) {
-    return c.json(
-      { error: "Invalid request body", details: parsed.error.issues },
-      400,
-    );
+    // 本番ではスキーマ詳細の漏洩を防ぐため details を返さない
+    if (process.env.NODE_ENV !== "production") {
+      return c.json(
+        { error: "Invalid request body", details: parsed.error.issues },
+        400,
+      );
+    }
+    return c.json({ error: "Invalid request body" }, 400);
   }
 
   const license = c.var.license;

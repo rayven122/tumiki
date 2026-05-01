@@ -77,7 +77,7 @@ afterEach(() => {
   resetLicensePublicKeyCache();
 });
 
-describe("verifyLicenseMiddleware", () => {
+describe("verifyLicenseMiddleware（ライセンス検証ミドルウェア）", () => {
   test("有効な personal ライセンスで認証が通る", async () => {
     vi.stubEnv("LICENSE_PUBLIC_KEY", publicKeyPem);
     const app = buildTestApp();

@@ -58,7 +58,7 @@ afterEach(() => {
   resetLicensePublicKeyCache();
 });
 
-describe("POST /v1/dynamic-search/search", () => {
+describe("POST /v1/dynamic-search/search（動的ツール検索エンドポイント）", () => {
   test("認証なしは 401", async () => {
     vi.stubEnv("LICENSE_PUBLIC_KEY", publicKeyPem);
     const res = await dynamicSearchRoute.request("/v1/dynamic-search/search", {

@@ -8,7 +8,7 @@
  * 公開鍵で検証する。検証結果を c.var.license に格納する。
  */
 
-import type { Context, MiddlewareHandler } from "hono";
+import type { Context, MiddlewareHandler, Next } from "hono";
 import { importSPKI, jwtVerify } from "jose";
 
 import {
@@ -143,7 +143,10 @@ const verifyLicense = async (
 export const verifyLicenseMiddleware = (
   requiredFeature?: LicenseFeature,
 ): MiddlewareHandler<{ Variables: LicenseContextVariables }> => {
-  return async (c: Context, next: () => Promise<void>) => {
+  return async (
+    c: Context<{ Variables: LicenseContextVariables }>,
+    next: Next,
+  ) => {
     const publicKeyPem = process.env.LICENSE_PUBLIC_KEY;
     if (!publicKeyPem) {
       console.error(

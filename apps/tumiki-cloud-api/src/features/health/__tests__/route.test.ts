@@ -5,7 +5,7 @@ import { describe, expect, test } from "vitest";
 
 import { healthRoute } from "../route.js";
 
-describe("GET /health", () => {
+describe("GET /health（ヘルスチェック）", () => {
   test("status: ok を返す", async () => {
     const res = await healthRoute.request("/health");
     expect(res.status).toBe(200);
