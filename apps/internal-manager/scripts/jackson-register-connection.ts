@@ -25,7 +25,9 @@ import { getJackson } from "../src/server/jackson";
 const main = async () => {
   const metadataPath = process.argv[2];
   if (!metadataPath) {
-    console.error("Usage: tsx scripts/jackson-register-connection.ts <metadata-xml-path>");
+    console.error(
+      "Usage: tsx scripts/jackson-register-connection.ts <metadata-xml-path>",
+    );
     process.exit(1);
   }
 

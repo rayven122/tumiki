@@ -78,19 +78,19 @@ Entity ID:  https://stg-internal.tumiki.cloud
 
 Google 管理コンソール → Tumiki Internal Manager (SAML) → 「サービス プロバイダの詳細」を編集:
 
-| 項目 | 値 |
-|-----|-----|
-| ACS URL | `https://stg-internal.tumiki.cloud/api/saml/acs` |
-| エンティティ ID | `https://stg-internal.tumiki.cloud` |
+| 項目            | 値                                               |
+| --------------- | ------------------------------------------------ |
+| ACS URL         | `https://stg-internal.tumiki.cloud/api/saml/acs` |
+| エンティティ ID | `https://stg-internal.tumiki.cloud`              |
 
 属性マッピング:
 
-| Google ディレクトリ属性 | アプリ属性 |
-|----------------------|-----------|
-| Primary email | `email` |
-| First name | `firstName` |
-| Last name | `lastName` |
-| (任意) Group membership | `groups` |
+| Google ディレクトリ属性 | アプリ属性  |
+| ----------------------- | ----------- |
+| Primary email           | `email`     |
+| First name              | `firstName` |
+| Last name               | `lastName`  |
+| (任意) Group membership | `groups`    |
 
 ## 6. Infisical の OIDC 環境変数を更新
 
@@ -134,6 +134,7 @@ curl https://stg-internal.tumiki.cloud/.well-known/openid-configuration | jq .
 [https://stg-internal.tumiki.cloud](https://stg-internal.tumiki.cloud) にアクセス → SSO ログインボタンをクリック → Google アカウントで認証 → internal-manager に戻る。
 
 成功時:
+
 - セッションが作成される
 - `/admin/users` に自分が表示される
 - session に Google から取得した `groups` 属性が含まれる

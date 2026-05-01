@@ -14,7 +14,9 @@ export const GET = async (req: NextRequest) => {
 
   try {
     const result = await oauthController.oidcAuthzResponse(
-      params as unknown as Parameters<typeof oauthController.oidcAuthzResponse>[0],
+      params as unknown as Parameters<
+        typeof oauthController.oidcAuthzResponse
+      >[0],
     );
 
     if ("redirect_url" in result && result.redirect_url) {
