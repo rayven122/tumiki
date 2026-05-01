@@ -84,6 +84,7 @@ export const Sidebar = (): JSX.Element => {
         </div>
         {isOpen && (
           <button
+            type="button"
             onClick={() => setIsOpen(false)}
             className="shrink-0 rounded-md p-1 text-[var(--text-subtle)] transition-colors hover:text-[var(--text-secondary)]"
             aria-label="サイドバーを閉じる"
@@ -97,6 +98,7 @@ export const Sidebar = (): JSX.Element => {
       {!isOpen && (
         <div className="mb-2 px-3">
           <button
+            type="button"
             onClick={() => setIsOpen(true)}
             className="flex w-full items-center justify-center rounded-md p-1.5 text-[var(--text-subtle)] transition-colors hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-secondary)]"
             aria-label="サイドバーを開く"
@@ -144,6 +146,7 @@ export const Sidebar = (): JSX.Element => {
 
           {/* テーマ切替 */}
           <button
+            type="button"
             onClick={toggleTheme}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-secondary)]"
             aria-label={

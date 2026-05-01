@@ -28,8 +28,9 @@ const STATUS_CONFIG: Record<
   PENDING: { dotClass: "bg-amber-400", label: "接続中" },
 };
 
-/** AIクライアント接続情報（カード下部に表示） */
-const AI_CLIENTS = [
+// MCP 設定スニペット生成テンプレート（カード下部のコピー用、slug でテンプレート展開）
+// data/ai-clients.ts とは別目的（あちらはロゴ/設定ファイルパス、こちらはスニペット文字列）
+const AI_CLIENT_SNIPPETS = [
   {
     name: "Claude Code / .mcp.json",
     path: (slug: string) =>
@@ -293,7 +294,7 @@ const ServerCard = ({
         {/* 接続コマンド一覧（折りたたみ） */}
         {showCommands && (
           <div className="mt-2 space-y-1.5">
-            {AI_CLIENTS.map((ai) => (
+            {AI_CLIENT_SNIPPETS.map((ai) => (
               <div key={ai.name} className="text-[9px]">
                 <span className="mb-0.5 block text-[var(--text-subtle)]">
                   {ai.name}

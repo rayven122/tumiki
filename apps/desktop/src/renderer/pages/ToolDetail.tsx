@@ -21,7 +21,7 @@ import type {
   McpToolItem,
   AuditLogItem,
 } from "../../main/types";
-import { statusBadge, cardStyle, selectStyle } from "../utils/theme-styles";
+import { statusBadge, cardStyle } from "../utils/theme-styles";
 import { ClientLogo } from "../_components/ClientLogo";
 import { ToggleSwitch } from "../_components/ToggleSwitch";
 import { AiClientInstallModal } from "../_components/AiClientInstallModal";
@@ -73,8 +73,9 @@ type DisplayAuditLog = AuditLogItem & {
 /** 提供ツール表示用の拡張型（connectionName を含む） */
 type DisplayTool = McpToolItem & { connectionName: string };
 
-/** サンプルツール（allTools が空のときの表示用、id は負数でサンプル識別） */
-const sampleTimestamp = new Date().toISOString();
+// サンプルツール（allTools が空のときの表示用、id は負数でサンプル識別）
+// タイムスタンプは固定値（モジュールロード時の副作用回避のため）
+const SAMPLE_TIMESTAMP = "2026-01-01T00:00:00.000Z";
 const SAMPLE_TOOLS: DisplayTool[] = [
   {
     id: -1,
@@ -86,8 +87,8 @@ const SAMPLE_TOOLS: DisplayTool[] = [
     customDescription: null,
     isAllowed: true,
     connectionId: 0,
-    createdAt: sampleTimestamp,
-    updatedAt: sampleTimestamp,
+    createdAt: SAMPLE_TIMESTAMP,
+    updatedAt: SAMPLE_TIMESTAMP,
     connectionName: "sample",
   },
   {
@@ -99,8 +100,8 @@ const SAMPLE_TOOLS: DisplayTool[] = [
     customDescription: null,
     isAllowed: true,
     connectionId: 0,
-    createdAt: sampleTimestamp,
-    updatedAt: sampleTimestamp,
+    createdAt: SAMPLE_TIMESTAMP,
+    updatedAt: SAMPLE_TIMESTAMP,
     connectionName: "sample",
   },
   {
@@ -113,8 +114,8 @@ const SAMPLE_TOOLS: DisplayTool[] = [
     customDescription: null,
     isAllowed: false,
     connectionId: 0,
-    createdAt: sampleTimestamp,
-    updatedAt: sampleTimestamp,
+    createdAt: SAMPLE_TIMESTAMP,
+    updatedAt: SAMPLE_TIMESTAMP,
     connectionName: "sample",
   },
   {
@@ -127,8 +128,8 @@ const SAMPLE_TOOLS: DisplayTool[] = [
     customDescription: null,
     isAllowed: true,
     connectionId: 0,
-    createdAt: sampleTimestamp,
-    updatedAt: sampleTimestamp,
+    createdAt: SAMPLE_TIMESTAMP,
+    updatedAt: SAMPLE_TIMESTAMP,
     connectionName: "sample",
   },
   {
@@ -141,8 +142,8 @@ const SAMPLE_TOOLS: DisplayTool[] = [
     customDescription: null,
     isAllowed: true,
     connectionId: 0,
-    createdAt: sampleTimestamp,
-    updatedAt: sampleTimestamp,
+    createdAt: SAMPLE_TIMESTAMP,
+    updatedAt: SAMPLE_TIMESTAMP,
     connectionName: "sample",
   },
   {
@@ -154,8 +155,8 @@ const SAMPLE_TOOLS: DisplayTool[] = [
     customDescription: null,
     isAllowed: true,
     connectionId: 0,
-    createdAt: sampleTimestamp,
-    updatedAt: sampleTimestamp,
+    createdAt: SAMPLE_TIMESTAMP,
+    updatedAt: SAMPLE_TIMESTAMP,
     connectionName: "sample",
   },
   {
@@ -168,8 +169,8 @@ const SAMPLE_TOOLS: DisplayTool[] = [
     customDescription: null,
     isAllowed: true,
     connectionId: 0,
-    createdAt: sampleTimestamp,
-    updatedAt: sampleTimestamp,
+    createdAt: SAMPLE_TIMESTAMP,
+    updatedAt: SAMPLE_TIMESTAMP,
     connectionName: "sample",
   },
   {
@@ -182,8 +183,8 @@ const SAMPLE_TOOLS: DisplayTool[] = [
     customDescription: null,
     isAllowed: false,
     connectionId: 0,
-    createdAt: sampleTimestamp,
-    updatedAt: sampleTimestamp,
+    createdAt: SAMPLE_TIMESTAMP,
+    updatedAt: SAMPLE_TIMESTAMP,
     connectionName: "sample",
   },
 ];
@@ -965,15 +966,13 @@ export const ToolDetail = (): JSX.Element => {
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="rounded-lg px-2 py-1 text-xs outline-none"
-              style={selectStyle}
+              className="rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-2 py-1 text-xs text-[var(--text-secondary)] outline-none"
             />
             <input
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className="rounded-lg px-2 py-1 text-xs outline-none"
-              style={selectStyle}
+              className="rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-2 py-1 text-xs text-[var(--text-secondary)] outline-none"
             />
           </div>
         </div>
@@ -1120,11 +1119,7 @@ export const ToolDetail = (): JSX.Element => {
                                 </td>
                                 <td className="px-3 py-2 text-right whitespace-nowrap">
                                   <span
-                                    className="inline-block rounded-full px-2 py-0.5 text-[10px] font-medium"
-                                    style={{
-                                      backgroundColor: pill.bg,
-                                      color: pill.text,
-                                    }}
+                                    className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${pill.className}`}
                                   >
                                     {pill.label}
                                   </span>

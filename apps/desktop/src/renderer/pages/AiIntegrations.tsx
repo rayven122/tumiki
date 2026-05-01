@@ -1,5 +1,4 @@
 import type { JSX } from "react";
-import { useState, useEffect } from "react";
 import { useAtomValue } from "jotai";
 import { ArrowRight, Plug } from "lucide-react";
 import { themeAtom } from "../store/atoms";
@@ -9,22 +8,6 @@ import { toast } from "../_components/Toast";
 
 export const AiIntegrations = (): JSX.Element => {
   const theme = useAtomValue(themeAtom);
-  const [connectedCountMap, setConnectedCountMap] = useState<
-    Record<string, number>
-  >({});
-
-  // 接続済み MCP 件数の取得（Phase 4 で実装）。現状はサーバー総数を仮表示。
-  useEffect(() => {
-    void window.electronAPI.mcp
-      .getAll()
-      .then((servers) => {
-        const total = servers.length;
-        setConnectedCountMap(
-          Object.fromEntries(AI_CLIENTS.map((c) => [c.id, total])),
-        );
-      })
-      .catch(() => setConnectedCountMap({}));
-  }, []);
 
   return (
     <div className="space-y-6 p-6">
@@ -47,7 +30,6 @@ export const AiIntegrations = (): JSX.Element => {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
         {AI_CLIENTS.map((client) => {
           const logo = client.logoPath?.(theme);
-          const count = connectedCountMap[client.id] ?? 0;
           return (
             <button
               key={client.id}
@@ -79,7 +61,7 @@ export const AiIntegrations = (): JSX.Element => {
                   {client.name}
                 </div>
                 <div className="mt-0.5 text-[10px] text-[var(--text-subtle)]">
-                  接続可能なMCPサーバー: {count} 件
+                  クリックで MCP 設定をコピー
                 </div>
               </div>
               <code className="w-full truncate rounded bg-[var(--bg-input)] px-2 py-1 font-mono text-[9px] text-[var(--text-subtle)]">
