@@ -8,6 +8,8 @@
     "**/*.test.ts",
     "**/*.test.tsx",
     "**/*.spec.ts",
-    "**/__tests__/**"
+    "**/__tests__/**",
+    "prisma/generated",
+    "prisma.config.ts"
   ]
 }
