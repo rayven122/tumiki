@@ -118,6 +118,18 @@ export const createInMemoryIdentityStore = (
         i.externalId === externalId,
     ) ?? null;
 
+  const findIdentitiesBySourceAndExternalIds = (
+    tenantId: TenantId,
+    source: SourceId,
+    externalIds: ReadonlyArray<ExternalId>,
+  ): ReadonlyArray<Identity> => {
+    const set = new Set(externalIds);
+    return state.identities.filter(
+      (i) =>
+        i.tenantId === tenantId && i.source === source && set.has(i.externalId),
+    );
+  };
+
   const listIdentitiesByUser = (
     tenantId: TenantId,
     userId: UserId,
@@ -270,6 +282,8 @@ export const createInMemoryIdentityStore = (
     deactivateUser: async (t, id) => Promise.resolve(deactivateUser(t, id)),
     findIdentityBySourceAndExternalId: async (t, s, e) =>
       Promise.resolve(findIdentityBySourceAndExternalId(t, s, e)),
+    findIdentitiesBySourceAndExternalIds: async (t, s, es) =>
+      Promise.resolve(findIdentitiesBySourceAndExternalIds(t, s, es)),
     listIdentitiesByUser: async (t, u) =>
       Promise.resolve(listIdentitiesByUser(t, u)),
     createIdentity: async (d) => Promise.resolve(createIdentity(d)),

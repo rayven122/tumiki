@@ -2,7 +2,7 @@
 // 同じ string 型でも UserId と GroupId は混同できないようにする
 
 declare const brand: unique symbol;
-type Brand<T, B> = T & { readonly [brand]: B };
+export type Brand<T, B> = T & { readonly [brand]: B };
 
 export type TenantId = Brand<string, "TenantId">;
 export type UserId = Brand<string, "UserId">;

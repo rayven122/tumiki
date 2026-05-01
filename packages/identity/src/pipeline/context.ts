@@ -36,21 +36,27 @@ export const createPipelineContext = (
 export type EventMetaSeed = {
   readonly externalId: ExternalId;
   readonly payload: unknown;
+  // この event を引き起こした親 event の eventId（Event Sourcing の慣例）
+  // ルート event（外部 snapshot から最初に生成された event）では省略 → eventId 自身を causation とする
+  readonly parentEventId?: string;
 };
 
 export const buildEventMeta = (
   ctx: PipelineContext,
   seed: EventMetaSeed,
-): EventMeta => ({
-  eventId: randomUUID(),
-  occurredAt: ctx.clock.now(),
-  tenantId: ctx.tenantId,
-  source: ctx.source,
-  causationId: randomUUID(),
-  correlationId: ctx.correlationId,
-  idempotencyKey: computeIdempotencyKey(
-    ctx.source,
-    seed.externalId,
-    seed.payload,
-  ),
-});
+): EventMeta => {
+  const eventId = randomUUID();
+  return {
+    eventId,
+    occurredAt: ctx.clock.now(),
+    tenantId: ctx.tenantId,
+    source: ctx.source,
+    causationId: seed.parentEventId ?? eventId,
+    correlationId: ctx.correlationId,
+    idempotencyKey: computeIdempotencyKey(
+      ctx.source,
+      seed.externalId,
+      seed.payload,
+    ),
+  };
+};

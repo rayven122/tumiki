@@ -16,7 +16,7 @@ import {
 describe("normalizeUserSnapshot", () => {
   test("active な user を UserUpserted に変換する", () => {
     const ctx = createPipelineContext(TEST_TENANT_ID, SOURCE_SCIM_OKTA);
-    const result = normalizeUserSnapshot(ctx, {
+    const outcome = normalizeUserSnapshot(ctx, {
       source: SOURCE_SCIM_OKTA,
       externalId: externalId("ext-1"),
       email: "User@Example.com",
@@ -26,21 +26,22 @@ describe("normalizeUserSnapshot", () => {
       attributes: { dept: "eng" },
     });
 
-    expect(result).toMatchObject({
-      type: "UserUpserted",
-      payload: {
-        externalId: "ext-1",
+    expect(outcome.kind).toStrictEqual("ok");
+    if (outcome.kind === "ok") {
+      expect(outcome.event.type).toStrictEqual("UserUpserted");
+      expect(outcome.event.payload).toStrictEqual({
+        externalId: externalId("ext-1"),
         email: canonicalizeEmail("User@Example.com"),
         emailVerified: true,
         displayName: "User One",
         attributes: { dept: "eng" },
-      },
-    });
+      });
+    }
   });
 
   test("inactive な user を UserDeactivated に変換する", () => {
     const ctx = createPipelineContext(TEST_TENANT_ID, SOURCE_SCIM_OKTA);
-    const result = normalizeUserSnapshot(ctx, {
+    const outcome = normalizeUserSnapshot(ctx, {
       source: SOURCE_SCIM_OKTA,
       externalId: externalId("ext-1"),
       email: "user@example.com",
@@ -50,15 +51,18 @@ describe("normalizeUserSnapshot", () => {
       attributes: {},
     });
 
-    expect(result).toMatchObject({
-      type: "UserDeactivated",
-      payload: { externalId: "ext-1" },
-    });
+    expect(outcome.kind).toStrictEqual("ok");
+    if (outcome.kind === "ok") {
+      expect(outcome.event.type).toStrictEqual("UserDeactivated");
+      expect(outcome.event.payload.externalId).toStrictEqual(
+        externalId("ext-1"),
+      );
+    }
   });
 
-  test("不正な email format は NormalizationError を返す", () => {
+  test("不正な email format は error を返す", () => {
     const ctx = createPipelineContext(TEST_TENANT_ID, SOURCE_SCIM_OKTA);
-    const result = normalizeUserSnapshot(ctx, {
+    const outcome = normalizeUserSnapshot(ctx, {
       source: SOURCE_SCIM_OKTA,
       externalId: externalId("ext-1"),
       email: "not-an-email",
@@ -68,11 +72,10 @@ describe("normalizeUserSnapshot", () => {
       attributes: {},
     });
 
-    expect(result).toMatchObject({
-      externalId: "ext-1",
-    });
-    if ("reason" in result) {
-      expect(result.reason).toMatch(/invalid email/);
+    expect(outcome.kind).toStrictEqual("error");
+    if (outcome.kind === "error") {
+      expect(outcome.error.externalId).toStrictEqual("ext-1");
+      expect(outcome.error.reason).toMatch(/invalid email/);
     }
   });
 });
@@ -101,8 +104,8 @@ describe("normalizeUserSnapshots", () => {
       },
     ]);
 
-    expect(result.events).toHaveLength(1);
-    expect(result.errors).toHaveLength(1);
+    expect(result.events.length).toStrictEqual(1);
+    expect(result.errors.length).toStrictEqual(1);
     expect(result.events[0]?.type).toStrictEqual("UserUpserted");
     expect(result.errors[0]?.externalId).toStrictEqual("ng");
   });
@@ -118,10 +121,10 @@ describe("normalizeMembershipSnapshot", () => {
     });
 
     expect(result.type).toStrictEqual("MembershipSet");
-    expect(result.payload.groupExternalId).toStrictEqual("group-1");
+    expect(result.payload.groupExternalId).toStrictEqual(externalId("group-1"));
     expect(result.payload.memberExternalIds).toStrictEqual([
-      "user-1",
-      "user-2",
+      externalId("user-1"),
+      externalId("user-2"),
     ]);
   });
 });

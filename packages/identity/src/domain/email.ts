@@ -1,8 +1,7 @@
 // email を canonical form に正規化する pure 関数
 // 大文字小文字差異・前後空白を吸収し、linking キーとして使えるようにする
 
-declare const brand: unique symbol;
-type Brand<T, B> = T & { readonly [brand]: B };
+import type { Brand } from "./branded.js";
 
 export type CanonicalEmail = Brand<string, "CanonicalEmail">;
 

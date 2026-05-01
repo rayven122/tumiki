@@ -2,6 +2,7 @@
 // linking 戦略 / authoritative source 判定はここで効く
 // store 更新と event 発行を atomic に扱う（in-memory 実装ではループでよい）
 
+import type { UserId } from "../domain/branded.js";
 import type {
   DomainEvent,
   GroupDeletedEvent,
@@ -70,7 +71,7 @@ export const applyUserUpserted = async (
     };
   }
 
-  let userId;
+  let userId: UserId;
   let strategy: IdentityLinkedEvent["payload"]["strategy"];
 
   if (decision.kind === "existing_identity") {
@@ -128,6 +129,7 @@ export const applyUserUpserted = async (
     meta: buildEventMeta(ctx, {
       externalId: event.payload.externalId,
       payload: { userId, strategy },
+      parentEventId: event.meta.eventId,
     }),
     payload: { userId, externalId: event.payload.externalId, strategy },
   };
@@ -245,29 +247,22 @@ export const applyMembershipSet = async (
 
   // 現状の membership と target を比較して差分を作る
   const current = await store.listMembershipsByGroup(ctx.tenantId, group.id);
-  const targetExternalIds = new Set(event.payload.memberExternalIds);
 
-  // 解決した user external_id → User の対応表を作る
-  const targetUserIds = new Set<string>();
-  for (const externalId of targetExternalIds) {
-    const identity = await store.findIdentityBySourceAndExternalId(
-      ctx.tenantId,
-      ctx.source,
-      externalId,
-    );
-    if (identity !== null) {
-      targetUserIds.add(identity.userId);
-    }
-  }
-
-  const currentUserIds = new Set(current.map((m) => m.userId));
+  // 解決した external_id → User の対応表を作る（バルク取得で N+1 回避）
+  const targetIdentities = await store.findIdentitiesBySourceAndExternalIds(
+    ctx.tenantId,
+    ctx.source,
+    event.payload.memberExternalIds,
+  );
+  const targetUserIds = new Set<UserId>(targetIdentities.map((i) => i.userId));
+  const currentUserIds = new Set<UserId>(current.map((m) => m.userId));
 
   // 追加対象: target にあって current にないもの
-  for (const userId of targetUserIds) {
-    if (!currentUserIds.has(userId as never)) {
+  for (const targetUserId of targetUserIds) {
+    if (!currentUserIds.has(targetUserId)) {
       await store.addMembership({
         tenantId: ctx.tenantId,
-        userId: userId as never,
+        userId: targetUserId,
         groupId: group.id,
         source: ctx.source,
         createdAt: ctx.clock.now(),
@@ -276,10 +271,11 @@ export const applyMembershipSet = async (
         type: "MembershipChanged",
         meta: buildEventMeta(ctx, {
           externalId: event.payload.groupExternalId,
-          payload: { userId, action: "added" },
+          payload: { userId: targetUserId, action: "added" },
+          parentEventId: event.meta.eventId,
         }),
         payload: {
-          userId: userId as never,
+          userId: targetUserId,
           groupId: group.id,
           action: "added",
         },
@@ -303,6 +299,7 @@ export const applyMembershipSet = async (
           meta: buildEventMeta(ctx, {
             externalId: event.payload.groupExternalId,
             payload: { userId: m.userId, action: "removed" },
+            parentEventId: event.meta.eventId,
           }),
           payload: {
             userId: m.userId,

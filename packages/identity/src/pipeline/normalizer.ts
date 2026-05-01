@@ -22,6 +22,11 @@ export type NormalizationError = {
   readonly reason: string;
 };
 
+// discriminated union: 呼び出し側は kind で分岐するだけで型ガード不要
+export type NormalizationOutcome<T> =
+  | { readonly kind: "ok"; readonly event: T }
+  | { readonly kind: "error"; readonly error: NormalizationError };
+
 export type NormalizationResult<T> = {
   readonly events: ReadonlyArray<T>;
   readonly errors: ReadonlyArray<NormalizationError>;
@@ -30,44 +35,53 @@ export type NormalizationResult<T> = {
 export const normalizeUserSnapshot = (
   ctx: PipelineContext,
   snapshot: RemoteUserSnapshot,
-): UserUpsertedEvent | UserDeactivatedEvent | NormalizationError => {
+): NormalizationOutcome<UserUpsertedEvent | UserDeactivatedEvent> => {
   if (!isValidEmail(snapshot.email)) {
     return {
-      externalId: snapshot.externalId,
-      reason: `invalid email format: ${snapshot.email}`,
+      kind: "error",
+      error: {
+        externalId: snapshot.externalId,
+        reason: `invalid email format: ${snapshot.email}`,
+      },
     };
   }
 
   if (!snapshot.active) {
     return {
-      type: "UserDeactivated",
-      meta: buildEventMeta(ctx, {
-        externalId: snapshot.externalId,
-        payload: { active: false },
-      }),
-      payload: {
-        externalId: snapshot.externalId,
-        reason: "marked inactive in source IdP",
+      kind: "ok",
+      event: {
+        type: "UserDeactivated",
+        meta: buildEventMeta(ctx, {
+          externalId: snapshot.externalId,
+          payload: { active: false },
+        }),
+        payload: {
+          externalId: snapshot.externalId,
+          reason: "marked inactive in source IdP",
+        },
       },
     };
   }
 
   return {
-    type: "UserUpserted",
-    meta: buildEventMeta(ctx, {
-      externalId: snapshot.externalId,
+    kind: "ok",
+    event: {
+      type: "UserUpserted",
+      meta: buildEventMeta(ctx, {
+        externalId: snapshot.externalId,
+        payload: {
+          email: snapshot.email,
+          displayName: snapshot.displayName,
+          attributes: snapshot.attributes,
+        },
+      }),
       payload: {
-        email: snapshot.email,
+        externalId: snapshot.externalId,
+        email: canonicalizeEmail(snapshot.email),
+        emailVerified: snapshot.emailVerified,
         displayName: snapshot.displayName,
         attributes: snapshot.attributes,
       },
-    }),
-    payload: {
-      externalId: snapshot.externalId,
-      email: canonicalizeEmail(snapshot.email),
-      emailVerified: snapshot.emailVerified,
-      displayName: snapshot.displayName,
-      attributes: snapshot.attributes,
     },
   };
 };
@@ -120,12 +134,6 @@ export const normalizeGroupDeletion = (
   payload: { externalId },
 });
 
-const isNormalizationError = (value: unknown): value is NormalizationError =>
-  typeof value === "object" &&
-  value !== null &&
-  "reason" in value &&
-  typeof (value as { reason?: unknown }).reason === "string";
-
 export const normalizeUserSnapshots = (
   ctx: PipelineContext,
   snapshots: ReadonlyArray<RemoteUserSnapshot>,
@@ -134,11 +142,11 @@ export const normalizeUserSnapshots = (
   const errors: Array<NormalizationError> = [];
 
   for (const snapshot of snapshots) {
-    const result = normalizeUserSnapshot(ctx, snapshot);
-    if (isNormalizationError(result)) {
-      errors.push(result);
+    const outcome = normalizeUserSnapshot(ctx, snapshot);
+    if (outcome.kind === "ok") {
+      events.push(outcome.event);
     } else {
-      events.push(result);
+      errors.push(outcome.error);
     }
   }
 

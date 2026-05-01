@@ -63,6 +63,12 @@ export type IdentityStorePort = {
     source: SourceId,
     externalId: ExternalId,
   ) => Promise<Identity | null>;
+  // バルク取得: Phase 2 で Prisma 実装する際 N+1 を避けるためのコア API
+  readonly findIdentitiesBySourceAndExternalIds: (
+    tenantId: TenantId,
+    source: SourceId,
+    externalIds: ReadonlyArray<ExternalId>,
+  ) => Promise<ReadonlyArray<Identity>>;
   readonly listIdentitiesByUser: (
     tenantId: TenantId,
     userId: UserId,

@@ -9,7 +9,7 @@ import {
   SOURCE_SCIM_OKTA,
   TEST_TENANT_ID,
 } from "../__tests__/fixtures/tenant-config.js";
-import { externalId } from "../domain/branded.js";
+import { externalId, userId } from "../domain/branded.js";
 import { canonicalizeEmail } from "../domain/email.js";
 import {
   applyEvent,
@@ -55,9 +55,10 @@ describe("applyUserUpserted", () => {
       (e) => e.type === "IdentityLinked",
     );
     expect(linkedEvents).toHaveLength(1);
-    expect(linkedEvents[0]).toMatchObject({
-      payload: { strategy: "new_user" },
-    });
+    const linkedEvent = linkedEvents[0];
+    if (linkedEvent?.type === "IdentityLinked") {
+      expect(linkedEvent.payload.strategy).toStrictEqual("new_user");
+    }
   });
 
   test("既存 Identity があれば display name のみ更新する", async () => {
@@ -161,7 +162,7 @@ describe("applyUserUpserted", () => {
       },
     });
 
-    expect(result).toMatchObject({ kind: "skipped" });
+    expect(result.kind).toStrictEqual("skipped");
     expect(deps.store.state.users).toHaveLength(0);
   });
 });
@@ -226,7 +227,7 @@ describe("applyUserDeactivated", () => {
       payload: { externalId: externalId("ext-1"), reason: "from jit" },
     });
 
-    expect(result).toMatchObject({ kind: "skipped" });
+    expect(result.kind).toStrictEqual("skipped");
     expect(deps.store.state.users[0]?.status).toStrictEqual("ACTIVE");
   });
 });
@@ -242,11 +243,11 @@ describe("applyEvent dispatch", () => {
         payload: {},
       }),
       payload: {
-        userId: deps.store.state.users[0]?.id ?? ("u" as never),
+        userId: deps.store.state.users[0]?.id ?? userId("placeholder"),
         externalId: externalId("ext-1"),
         strategy: "new_user",
       },
     });
-    expect(result).toMatchObject({ kind: "skipped" });
+    expect(result.kind).toStrictEqual("skipped");
   });
 });
