@@ -48,9 +48,10 @@ RUN pnpm --filter @tumiki/internal-manager run build:bare
 
 # saml-jackson が動的 import で jose を読み込む際、Node.js は node_modules/jose を探す。
 # pnpm の standalone コピーは .pnpm 仮想ストア形式になるためルートリンクが作られない。
-# 明示的にシンボリックリンクを作成して解決できるようにする。
-RUN jose_path=$(find /app/apps/internal-manager/.next/standalone/node_modules/.pnpm -maxdepth 3 -name "jose" -type d | head -1) && \
-    ln -sf "$jose_path" /app/apps/internal-manager/.next/standalone/node_modules/jose
+# 相対パスで symlink を作成して、production stage へ COPY 後も解決できるようにする。
+RUN cd /app/apps/internal-manager/.next/standalone/node_modules && \
+    jose_pkg=$(ls .pnpm/ | grep '^jose@' | head -1) && \
+    ln -s ".pnpm/${jose_pkg}/node_modules/jose" jose
 
 # ========================================
 # Stage 3: Production
