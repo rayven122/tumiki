@@ -77,13 +77,12 @@ jobs:
             cd ~/keycloak
             export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID}"
             export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET}"
+            export INFISICAL_SITE_URL="https://secrets.rayven.cloud"
             ~/.local/bin/infisical run --env=staging \
-              --projectId=dbff850c-430a-431b-b7fe-efc744e304d6 \
-              --domain https://secrets.rayven.cloud -- docker compose pull keycloak
+              --projectId=dbff850c-430a-431b-b7fe-efc744e304d6 -- docker compose pull keycloak
             # --remove-orphans: compose.yaml から削除されたサービスのコンテナを合わせてクリーンアップ
             ~/.local/bin/infisical run --env=staging \
-              --projectId=dbff850c-430a-431b-b7fe-efc744e304d6 \
-              --domain https://secrets.rayven.cloud -- docker compose up -d --force-recreate --remove-orphans keycloak
+              --projectId=dbff850c-430a-431b-b7fe-efc744e304d6 -- docker compose up -d --force-recreate --remove-orphans keycloak
           REMOTE_SCRIPT
 
       - name: ✅ Verify Keycloak health
