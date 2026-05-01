@@ -20,7 +20,7 @@
  */
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { getJackson } from "../src/server/jackson";
+import { getJackson, resolveExternalUrl } from "../src/server/jackson";
 
 const main = async () => {
   const metadataPath = process.argv[2];
@@ -33,8 +33,8 @@ const main = async () => {
 
   const tenant = process.env.JACKSON_TENANT ?? "default";
   const product = process.env.JACKSON_PRODUCT ?? "tumiki";
-  const externalUrl =
-    process.env.NEXTAUTH_URL_INTERNAL_MANAGER ?? "http://localhost:3100";
+  // モジュールと同じ解決ロジックを使用（不一致防止）
+  const externalUrl = resolveExternalUrl();
 
   const rawMetadata = await readFile(resolve(metadataPath), "utf-8");
 

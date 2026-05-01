@@ -19,11 +19,17 @@ import jackson, {
 let jacksonInstance: SAMLJackson | null = null;
 let initPromise: Promise<SAMLJackson> | null = null;
 
+/**
+ * 公開 URL の解決ロジック（jackson モジュールと登録スクリプトで共有）
+ * - 優先: NEXTAUTH_URL_INTERNAL_MANAGER → NEXTAUTH_URL → localhost
+ */
+export const resolveExternalUrl = (): string =>
+  process.env.NEXTAUTH_URL_INTERNAL_MANAGER ??
+  process.env.NEXTAUTH_URL ??
+  "http://localhost:3100";
+
 const buildJacksonOption = (): JacksonOption => {
-  const externalUrl =
-    process.env.NEXTAUTH_URL_INTERNAL_MANAGER ??
-    process.env.NEXTAUTH_URL ??
-    "http://localhost:3100";
+  const externalUrl = resolveExternalUrl();
 
   const dbUrl = process.env.INTERNAL_DATABASE_URL;
   if (!dbUrl) {

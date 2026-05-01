@@ -47,3 +47,20 @@ export const oauthError = (
   console.error(`[${context}] error:`, e);
   return NextResponse.json({ error: errorCode }, { status });
 };
+
+/**
+ * SAML/OIDC の自動 POST フォーム HTML を返すレスポンスを生成
+ *
+ * Clickjacking と Open Redirect を防ぐため CSP / X-Frame-Options を付与。
+ * form-action 'self' により form がアプリ自身以外に POST されるのを防ぐ。
+ */
+export const htmlFormResponse = (html: string): NextResponse =>
+  new NextResponse(html, {
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "X-Frame-Options": "DENY",
+      "Content-Security-Policy":
+        "default-src 'none'; form-action 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'",
+      "Cache-Control": "no-store",
+    },
+  });

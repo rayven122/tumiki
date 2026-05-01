@@ -1,5 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { ensureJackson, oauthError } from "@/server/jackson/route-helpers";
+import {
+  ensureJackson,
+  htmlFormResponse,
+  oauthError,
+} from "@/server/jackson/route-helpers";
 
 /**
  * SAML SP の ACS（Assertion Consumer Service）エンドポイント
@@ -31,9 +35,7 @@ export const POST = async (req: NextRequest) => {
     }
 
     if ("response_form" in samlResult && samlResult.response_form) {
-      return new NextResponse(samlResult.response_form, {
-        headers: { "Content-Type": "text/html" },
-      });
+      return htmlFormResponse(samlResult.response_form);
     }
 
     return oauthError("saml/acs", "no redirect_url");

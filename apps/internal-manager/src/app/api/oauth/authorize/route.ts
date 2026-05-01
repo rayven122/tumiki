@@ -1,5 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { ensureJackson, oauthError } from "@/server/jackson/route-helpers";
+import {
+  ensureJackson,
+  htmlFormResponse,
+  oauthError,
+} from "@/server/jackson/route-helpers";
 
 /**
  * OIDC IdP の認可エンドポイント
@@ -24,9 +28,7 @@ export const GET = async (req: NextRequest) => {
     }
 
     if ("authorize_form" in authResult && authResult.authorize_form) {
-      return new NextResponse(authResult.authorize_form, {
-        headers: { "Content-Type": "text/html" },
-      });
+      return htmlFormResponse(authResult.authorize_form);
     }
 
     return oauthError("oauth/authorize", "no redirect_url");
