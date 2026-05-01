@@ -58,6 +58,32 @@ const apiFetch = async (
 type CreateProjectResponse = { project: { id: string; slug: string } };
 
 /**
+ * シークレットを格納するフォルダを作成する。
+ * 既存フォルダ（409）は無視して冪等に動作する。
+ */
+export const ensureFolder = async (params: {
+  projectId: string;
+  environment: string;
+  folderPath: string;
+}): Promise<void> => {
+  const parentPath = params.folderPath.replace(/\/[^/]+$/, "") || "/";
+  const name = params.folderPath.replace(/^.*\//, "");
+  const res = await apiFetch("/api/v1/folders", {
+    method: "POST",
+    body: JSON.stringify({
+      workspaceId: params.projectId,
+      environment: params.environment,
+      path: parentPath,
+      name,
+    }),
+  });
+  if (!res.ok && res.status !== 409) {
+    const text = await res.text();
+    throw new Error(`ensureFolder failed: ${res.status} ${text}`);
+  }
+};
+
+/**
  * Infisical プロジェクトを作成する。
  * 同一 slug が既存なら 409 で失敗するため、呼び出し側で重複チェック済み前提。
  */
@@ -167,7 +193,7 @@ export const upsertSecrets = async (params: {
  * プロジェクトを削除する（ロールバック用、ベストエフォート）
  */
 export const deleteProject = async (projectId: string): Promise<void> => {
-  await apiFetch(`/api/v2/workspace/${projectId}`, { method: "DELETE" });
+  await apiFetch(`/api/v1/workspace/${projectId}`, { method: "DELETE" });
 };
 
 type GetSecretResponse = { secret: { secretValue: string } };

@@ -12,7 +12,7 @@ image:
 
 # Infisical 設定
 infisical:
-  hostAPI: https://app.infisical.com/api
+  hostAPI: https://secrets.rayven.cloud/api
   projectSlug: ""      # 例: tenant-company-a
   secretsPath: "/internal-manager"  # Infisical プロジェクト内のシークレットパス（テナント間で共通の慣習名）
   environment: ""    # 必須: prod / dev / staging など Infisical の環境スラグ

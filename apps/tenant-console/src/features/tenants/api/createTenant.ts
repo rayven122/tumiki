@@ -12,6 +12,7 @@ import {
   addIdentityToProject,
   createProject,
   deleteProject,
+  ensureFolder,
   upsertSecrets,
 } from "@/server/infisical/client";
 import { HELM_BIN, HELM_TIMEOUT_MS, KUBECTL_BIN } from "./constants";
@@ -20,7 +21,7 @@ import type { CreateTenantInput } from "./schemas";
 const execFileAsync = promisify(execFile);
 
 type HelmValues = {
-  infisical: { projectSlug: string };
+  infisical: { hostAPI: string; projectSlug: string; environment: string };
   oidc?: { issuer?: string; clientId?: string };
 };
 
@@ -103,6 +104,11 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
       if (input.oidcClientSecret)
         secrets.OIDC_CLIENT_SECRET = input.oidcClientSecret;
     }
+    await ensureFolder({
+      projectId: project.projectId,
+      environment: "prod",
+      folderPath: "/internal-manager",
+    });
     await upsertSecrets({
       projectId: project.projectId,
       environment: "prod",
@@ -123,6 +129,23 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
           throw nsError;
         }
       }
+      // Helm が既存 Namespace を採用できるよう管理ラベル/アノテーションを付与する
+      // （kubectl create namespace で作成した Namespace は Helm ラベルを持たないため必須）
+      await execFileAsync(KUBECTL_BIN, [
+        "label",
+        "namespace",
+        namespace,
+        "app.kubernetes.io/managed-by=Helm",
+        "--overwrite",
+      ]);
+      await execFileAsync(KUBECTL_BIN, [
+        "annotate",
+        "namespace",
+        namespace,
+        `meta.helm.sh/release-name=${input.slug}`,
+        `meta.helm.sh/release-namespace=${namespace}`,
+        "--overwrite",
+      ]);
 
       await execFileAsync(KUBECTL_BIN, [
         "create",
@@ -157,7 +180,11 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
       await execFileAsync(KUBECTL_BIN, ["apply", "-f", infisicalSecretFile]);
 
       const helmValues: HelmValues = {
-        infisical: { projectSlug: infisicalProjectSlug },
+        infisical: {
+          hostAPI: env.INFISICAL_API_URL,
+          projectSlug: infisicalProjectSlug,
+          environment: "prod",
+        },
       };
       if (input.oidcType === "CUSTOM") {
         helmValues.oidc = {
@@ -200,6 +227,7 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
       data: { status: "ACTIVE" },
     });
   } catch (error) {
+    console.error("[createTenant] provisioning failed:", error);
     const ignore = (_: unknown) => undefined;
     await execFileAsync(HELM_BIN, [
       "uninstall",
