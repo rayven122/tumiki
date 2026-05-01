@@ -12,8 +12,32 @@ export const GET = async () => {
   if (!result.ok) return result.response;
   const { oidcDiscoveryController } = result.jackson;
 
-  const jwks = await oidcDiscoveryController.jwks();
-  return NextResponse.json(jwks);
+  try {
+    const jwks = await oidcDiscoveryController.jwks();
+    return NextResponse.json(jwks);
+  } catch (e) {
+    const priv = process.env.JACKSON_OIDC_PRIVATE_KEY ?? "";
+    const pub = process.env.JACKSON_OIDC_PUBLIC_KEY ?? "";
+    const safeDecode = (s: string) => {
+      try {
+        return Buffer.from(s, "base64").toString("ascii").split("\n")[0];
+      } catch {
+        return "<decode-fail>";
+      }
+    };
+    const debug = {
+      error: e instanceof Error ? e.message : String(e),
+      stack: e instanceof Error ? e.stack?.split("\n").slice(0, 6) : undefined,
+      privLen: priv.length,
+      pubLen: pub.length,
+      privPrefix: priv.slice(0, 30),
+      pubPrefix: pub.slice(0, 30),
+      privDecodedFirstLine: safeDecode(priv),
+      pubDecodedFirstLine: safeDecode(pub),
+    };
+    console.error("[jwks debug]", debug);
+    return NextResponse.json(debug, { status: 500 });
+  }
 };
 
 export const dynamic = "force-dynamic";
