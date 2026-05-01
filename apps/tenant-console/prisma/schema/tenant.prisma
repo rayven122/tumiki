@@ -4,6 +4,7 @@ model Tenant {
   domain    String       @unique // 例: company-a-manager.tumiki.cloud
   status    TenantStatus @default(PROVISIONING)
   oidcType  OidcType     @default(KEYCLOAK)
+  licenses  License[]
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 }

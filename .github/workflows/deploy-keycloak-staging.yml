@@ -66,23 +66,29 @@ jobs:
 
       - name: 🔐 Deploy Keycloak
         env:
-          INFISICAL_UNIVERSAL_AUTH_CLIENT_ID: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
-          INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
+          INFISICAL_MACHINE_IDENTITY_CLIENT_ID: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
+          INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
         run: |
-          # 環境変数経由でシークレットを渡す（CLIオプション経由はps auxで漏洩するリスクがあるため）
-          # クォートなしヒアドキュメントでランナー側の環境変数をリモートに展開する
+          # runner 上で curl + jq で Infisical universal-auth トークンを取得
+          # （unquoted heredoc 内の $() はランナー側で実行されるため、runner 上で取得してから展開する）
+          INFISICAL_TOKEN=$(curl -sf \
+            -X POST "https://secrets.rayven.cloud/api/v1/auth/universal-auth/login" \
+            -H "Content-Type: application/json" \
+            -d "{\"clientId\":\"${INFISICAL_MACHINE_IDENTITY_CLIENT_ID}\",\"clientSecret\":\"${INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET}\"}" \
+            | jq -r '.accessToken')
+          # クォートなしヒアドキュメントで runner 側の INFISICAL_TOKEN をリモートに展開する
           ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" bash -l << REMOTE_SCRIPT
             set -euo pipefail
             set +o history
             cd ~/keycloak
-            export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID}"
-            export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET}"
             ~/.local/bin/infisical run --env=staging \
               --projectId=dbff850c-430a-431b-b7fe-efc744e304d6 \
+              --token="${INFISICAL_TOKEN}" \
               --domain https://secrets.rayven.cloud -- docker compose pull keycloak
             # --remove-orphans: compose.yaml から削除されたサービスのコンテナを合わせてクリーンアップ
             ~/.local/bin/infisical run --env=staging \
               --projectId=dbff850c-430a-431b-b7fe-efc744e304d6 \
+              --token="${INFISICAL_TOKEN}" \
               --domain https://secrets.rayven.cloud -- docker compose up -d --force-recreate --remove-orphans keycloak
           REMOTE_SCRIPT
 
