@@ -36,26 +36,8 @@ export const issueLicense = async (ctx: Context, input: IssueLicenseInput) => {
   const now = new Date();
   const expiresAt = new Date(now.getTime() + input.ttlDays * 86400 * 1000);
 
-  const privateKey = await getPrivateKey();
-
-  const payload: Record<string, unknown> = {
-    iss: "tumiki-license",
-    aud: "tumiki-cloud-api",
-    sub: input.subject,
-    type: input.type,
-    features: input.features,
-    jti,
-  };
-  if (input.plan) payload.plan = input.plan;
-  if (input.type === "TENANT") payload.tenant = input.tenantId;
-
-  const jwt = await new SignJWT(payload)
-    .setProtectedHeader({ alg: "RS256" })
-    .setIssuedAt(now)
-    .setExpirationTime(expiresAt)
-    .setJti(jti)
-    .sign(privateKey);
-
+  // DB保存を JWT 署名より先に行う。
+  // 逆順だと JWT 発行後に DB 保存が失敗した場合、revocation list にない有効トークンが流通するリスクがある。
   const license = await ctx.db.license.create({
     data: {
       type: input.type,
@@ -67,9 +49,29 @@ export const issueLicense = async (ctx: Context, input: IssueLicenseInput) => {
       issuedAt: now,
       expiresAt,
       notes: input.notes,
+      // TODO: 認証実装時はコンテキストから自動取得し、クライアント入力に依存しない形にする
       issuedByEmail: input.issuedByEmail,
     },
   });
+
+  const privateKey = await getPrivateKey();
+
+  const payload: Record<string, unknown> = {
+    iss: "tumiki-license",
+    aud: "tumiki-cloud-api",
+    sub: input.subject,
+    type: input.type,
+    features: input.features,
+  };
+  if (input.plan) payload.plan = input.plan;
+  if (input.type === "TENANT") payload.tenant = input.tenantId;
+
+  const jwt = await new SignJWT(payload)
+    .setProtectedHeader({ alg: "RS256" })
+    .setIssuedAt(now)
+    .setExpirationTime(expiresAt)
+    .setJti(jti)
+    .sign(privateKey);
 
   return {
     license,

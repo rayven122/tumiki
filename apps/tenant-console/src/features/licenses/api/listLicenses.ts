@@ -30,7 +30,8 @@ export const listLicenses = async (ctx: Context, input: ListLicensesInput) => {
             ],
           }
         : {}),
-      ...(input.cursor ? { id: { lt: input.cursor } } : {}),
+      // cursor は createdAt の ISO 文字列（orderBy と同じキーで一致させ、ページ境界の欠落・重複を防ぐ）
+      ...(input.cursor ? { createdAt: { lt: new Date(input.cursor) } } : {}),
     },
     orderBy: { createdAt: "desc" },
     take: input.limit + 1,
@@ -38,7 +39,9 @@ export const listLicenses = async (ctx: Context, input: ListLicensesInput) => {
 
   const hasMore = items.length > input.limit;
   const result = hasMore ? items.slice(0, input.limit) : items;
-  const nextCursor = hasMore ? result[result.length - 1]?.id : undefined;
+  const nextCursor = hasMore
+    ? result[result.length - 1]?.createdAt.toISOString()
+    : undefined;
 
   return {
     items: result.map((license) => ({
