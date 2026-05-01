@@ -31,6 +31,19 @@ export const POST = async (req: NextRequest): Promise<NextResponse> => {
   const product = typeof body.product === "string" ? body.product : "tumiki";
   const externalUrl = resolveExternalUrl();
 
+  // 追加の redirectUrl を受け取る（省略時は内部デフォルト）
+  const extraRedirectUrls =
+    Array.isArray(body.extraRedirectUrls) &&
+    body.extraRedirectUrls.every((u) => typeof u === "string")
+      ? body.extraRedirectUrls
+      : [];
+
+  const redirectUrls = [
+    `${externalUrl}/api/auth/callback/oidc`,
+    `${externalUrl}/api/auth/callback/jackson`,
+    ...extraRedirectUrls,
+  ];
+
   try {
     const { connectionAPIController } = await getJackson();
 
@@ -39,10 +52,7 @@ export const POST = async (req: NextRequest): Promise<NextResponse> => {
       product,
       rawMetadata,
       defaultRedirectUrl: `${externalUrl}/api/auth/callback/oidc`,
-      redirectUrl: JSON.stringify([
-        `${externalUrl}/api/auth/callback/oidc`,
-        `${externalUrl}/api/auth/callback/jackson`,
-      ]),
+      redirectUrl: JSON.stringify(redirectUrls),
     });
 
     return NextResponse.json({
