@@ -52,12 +52,17 @@ const main = async () => {
     );
   }
 
+  // Open Redirect 対策のため、redirectUrl はワイルドカードではなく
+  // 具体的なコールバックパスのみを許可する
   const connection = await connectionAPIController.createSAMLConnection({
     tenant,
     product,
     rawMetadata,
     defaultRedirectUrl: `${externalUrl}/api/auth/callback/oidc`,
-    redirectUrl: JSON.stringify([`${externalUrl}/*`]),
+    redirectUrl: JSON.stringify([
+      `${externalUrl}/api/auth/callback/oidc`,
+      `${externalUrl}/api/auth/callback/jackson`,
+    ]),
   });
 
   // クレデンシャルは標準出力ではなくファイルに書き出す（CI ログ等への漏洩防止）
@@ -81,9 +86,15 @@ const main = async () => {
     "",
   ].join("\n");
 
-  const { writeFile, chmod } = await import("node:fs/promises");
-  await writeFile(outputPath, output, "utf-8");
-  await chmod(outputPath, 0o600);
+  // TOCTOU 回避のため open() で権限を指定して作成（writeFile + chmod だと
+  // 一瞬 default umask の権限でファイルが存在する瞬間がある）
+  const { open } = await import("node:fs/promises");
+  const fd = await open(outputPath, "w", 0o600);
+  try {
+    await fd.writeFile(output, "utf-8");
+  } finally {
+    await fd.close();
+  }
 
   console.log("\n=== Connection registered ===");
   console.log(`tenant:       ${tenant}`);
