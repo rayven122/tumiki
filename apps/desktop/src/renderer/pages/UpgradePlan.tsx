@@ -1,5 +1,6 @@
 import type { JSX } from "react";
 import { Sparkles, Check, ExternalLink } from "lucide-react";
+import { toast } from "../_components/Toast";
 
 const PREMIUM_FEATURES = [
   "チーム内での権限申請・承認ワークフロー",
@@ -9,10 +10,13 @@ const PREMIUM_FEATURES = [
   "クラウド同期とバックアップ",
 ];
 
+const PRICING_URL = "https://rayven.app/pricing";
+
 export const UpgradePlan = (): JSX.Element => {
-  const handleUpgrade = () => {
-    // TODO: Electron shell 経由で外部の有料プラン案内ページを開く
-    window.open("https://rayven.app/pricing", "_blank", "noopener,noreferrer");
+  const handleUpgrade = (): void => {
+    void window.electronAPI.shell.openExternal(PRICING_URL).catch(() => {
+      toast.error("外部ブラウザを開けませんでした");
+    });
   };
 
   return (
@@ -47,6 +51,7 @@ export const UpgradePlan = (): JSX.Element => {
         </ul>
 
         <button
+          type="button"
           onClick={handleUpgrade}
           className="mt-7 inline-flex items-center gap-2 rounded-lg bg-[var(--text-primary)] px-5 py-2.5 text-sm font-medium text-[var(--bg-app)] transition-opacity hover:opacity-90"
         >

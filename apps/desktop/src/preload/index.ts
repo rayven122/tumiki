@@ -114,6 +114,12 @@ const api = {
       ipcRenderer.invoke("manager:connect", url),
   },
 
+  // 外部URLを既定ブラウザで開くシェル API
+  shell: {
+    openExternal: (url: string): Promise<void> =>
+      ipcRenderer.invoke("shell:openExternal", url),
+  },
+
   // MCP OAuth認証 API
   oauth: {
     startAuth: (input: StartOAuthInput): Promise<void> =>

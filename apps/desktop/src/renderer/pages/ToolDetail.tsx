@@ -26,6 +26,13 @@ import { ClientLogo } from "../_components/ClientLogo";
 import { ToggleSwitch } from "../_components/ToggleSwitch";
 import { AiClientInstallModal } from "../_components/AiClientInstallModal";
 import { toast } from "../_components/Toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../_components/Select";
 
 /** MCPサーバーステータスバッジの表示定義 */
 const serverStatusBadge: Record<
@@ -939,18 +946,21 @@ export const ToolDetail = (): JSX.Element => {
                 className="w-52 rounded-lg border border-[var(--border)] bg-[var(--bg-input)] py-1 pr-2 pl-7 text-xs text-[var(--text-primary)] outline-none placeholder:text-[var(--text-subtle)]"
               />
             </div>
-            <select
+            <Select
               value={statusFilter}
-              onChange={(e) =>
-                setStatusFilter(e.target.value as "all" | "success" | "error")
+              onValueChange={(value) =>
+                setStatusFilter(value as "all" | "success" | "error")
               }
-              className="rounded-lg px-2 py-1 text-xs outline-none"
-              style={selectStyle}
             >
-              <option value="all">すべてのステータス</option>
-              <option value="success">成功</option>
-              <option value="error">エラー</option>
-            </select>
+              <SelectTrigger className="h-7 w-auto px-2 py-1 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">すべてのステータス</SelectItem>
+                <SelectItem value="success">成功</SelectItem>
+                <SelectItem value="error">エラー</SelectItem>
+              </SelectContent>
+            </Select>
             <input
               type="date"
               value={dateFrom}

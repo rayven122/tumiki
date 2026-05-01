@@ -2,8 +2,7 @@ import type * as React from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
 
-/** shadcn/ui と同じ API シグネチャで、desktop の CSS 変数テーマに合わせた Select。
- * 将来 packages/ui に寄せる時は import パス差し替えのみで済む。 */
+// shadcn/ui 互換 API の desktop 向け Select（CSS 変数テーマ対応）
 const Select = SelectPrimitive.Root;
 const SelectGroup = SelectPrimitive.Group;
 const SelectValue = SelectPrimitive.Value;

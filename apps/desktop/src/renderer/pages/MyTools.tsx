@@ -56,7 +56,7 @@ export const MyTools = (): JSX.Element => {
     (s) =>
       query === "" ||
       s.name.toLowerCase().includes(lowerQuery) ||
-      s.description.includes(query),
+      s.description.toLowerCase().includes(lowerQuery),
   );
 
   return (

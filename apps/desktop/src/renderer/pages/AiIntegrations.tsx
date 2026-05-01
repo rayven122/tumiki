@@ -5,6 +5,7 @@ import { ArrowRight, Plug } from "lucide-react";
 import { themeAtom } from "../store/atoms";
 import { AI_CLIENTS } from "../data/ai-clients";
 import { cardStyle } from "../utils/theme-styles";
+import { toast } from "../_components/Toast";
 
 export const AiIntegrations = (): JSX.Element => {
   const theme = useAtomValue(themeAtom);
@@ -51,6 +52,11 @@ export const AiIntegrations = (): JSX.Element => {
             <button
               key={client.id}
               type="button"
+              onClick={() =>
+                toast.success(
+                  `${client.name} へのワンクリック接続は近日対応予定です`,
+                )
+              }
               className="flex flex-col items-start gap-3 rounded-xl p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-lg"
               style={cardStyle}
             >

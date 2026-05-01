@@ -142,7 +142,7 @@ export const ToolCatalog = (): JSX.Element => {
     (c) =>
       query === "" ||
       c.name.toLowerCase().includes(lowerQuery) ||
-      c.description.includes(query),
+      c.description.toLowerCase().includes(lowerQuery),
   );
 
   if (loading) {
