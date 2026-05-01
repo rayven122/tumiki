@@ -31,24 +31,31 @@ export const POST = async (req: NextRequest): Promise<NextResponse> => {
   const product = typeof body.product === "string" ? body.product : "tumiki";
   const externalUrl = resolveExternalUrl();
 
-  const { connectionAPIController } = await getJackson();
+  try {
+    const { connectionAPIController } = await getJackson();
 
-  const connection = await connectionAPIController.createSAMLConnection({
-    tenant,
-    product,
-    rawMetadata,
-    defaultRedirectUrl: `${externalUrl}/api/auth/callback/oidc`,
-    redirectUrl: JSON.stringify([
-      `${externalUrl}/api/auth/callback/oidc`,
-      `${externalUrl}/api/auth/callback/jackson`,
-    ]),
-  });
+    const connection = await connectionAPIController.createSAMLConnection({
+      tenant,
+      product,
+      rawMetadata,
+      defaultRedirectUrl: `${externalUrl}/api/auth/callback/oidc`,
+      redirectUrl: JSON.stringify([
+        `${externalUrl}/api/auth/callback/oidc`,
+        `${externalUrl}/api/auth/callback/jackson`,
+      ]),
+    });
 
-  return NextResponse.json({
-    clientID: connection.clientID,
-    clientSecret: connection.clientSecret,
-    oidcIssuer: externalUrl,
-  });
+    return NextResponse.json({
+      clientID: connection.clientID,
+      clientSecret: connection.clientSecret,
+      oidcIssuer: externalUrl,
+    });
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : String(e) },
+      { status: 500 },
+    );
+  }
 };
 
 export const dynamic = "force-dynamic";
