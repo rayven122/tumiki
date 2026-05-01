@@ -114,6 +114,19 @@ const main = async () => {
   const args = parseArgs();
 
   const privateKeyPem = readFileSync(args.privateKeyPath, "utf-8");
+
+  // PKCS#1 形式（openssl genrsa の出力）の場合は分かりやすいエラーを出す
+  if (privateKeyPem.includes("BEGIN RSA PRIVATE KEY")) {
+    console.error(`Error: 秘密鍵が PKCS#1 形式です。jose は PKCS#8 を要求します。
+
+PKCS#8 形式に変換してから再実行してください:
+  openssl pkcs8 -topk8 -nocrypt -in ${args.privateKeyPath} -out license_private_pkcs8.pem
+
+または、最初から PKCS#8 形式で生成する:
+  openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out license_private.pem`);
+    exit(1);
+  }
+
   const privateKey = await importPKCS8(privateKeyPem, "RS256");
 
   const payload: Record<string, unknown> = {
