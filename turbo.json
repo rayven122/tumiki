@@ -56,6 +56,13 @@
       "dependsOn": ["^build", "db:generate"],
       "outputs": []
     },
+    "@tumiki/db#db:generate": {
+      "outputs": ["prisma/generated/**"]
+    },
+    "@tumiki/db#typecheck": {
+      "dependsOn": ["^build", "db:generate"],
+      "outputs": []
+    },
     "@tumiki/tenant-console#db:generate": {
       "outputs": ["prisma/generated/**"]
     },
