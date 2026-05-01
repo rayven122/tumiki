@@ -4,18 +4,28 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/trpc/react";
 
-// テナント作成フォームページ
+/**
+ * テナント作成フォーム（Phase 1: Infisical 自動化版）。
+ *
+ * 入力項目:
+ * - slug
+ * - oidcType（CUSTOM のみ選択可、KEYCLOAK は Phase 2 で実装予定）
+ * - CUSTOM 時のみ: oidcIssuer / oidcClientId / oidcClientSecret
+ * - imageTag（任意）
+ *
+ * 自動処理:
+ * - POSTGRES_PASSWORD / AUTH_SECRET の生成
+ * - Infisical プロジェクト作成 + シークレット登録 + Identity 紐付け
+ * - k8s リソース作成 + helm install
+ */
 const NewTenantPage = () => {
   const router = useRouter();
   const [slug, setSlug] = useState("");
-  const [oidcType, setOidcType] = useState<"KEYCLOAK" | "CUSTOM">("KEYCLOAK");
+  const [oidcType, setOidcType] = useState<"KEYCLOAK" | "CUSTOM">("CUSTOM");
   const [oidcIssuer, setOidcIssuer] = useState("");
   const [oidcClientId, setOidcClientId] = useState("");
   const [oidcClientSecret, setOidcClientSecret] = useState("");
-  const [infisicalClientId, setInfisicalClientId] = useState("");
-  const [infisicalClientSecret, setInfisicalClientSecret] = useState("");
-  const [infisicalProjectSlug, setInfisicalProjectSlug] = useState("");
-  const [imageTag, setImageTag] = useState("latest");
+  const [imageTag, setImageTag] = useState("main");
   const [error, setError] = useState<string | null>(null);
 
   const createTenant = api.tenant.create.useMutation({
@@ -37,9 +47,6 @@ const NewTenantPage = () => {
       oidcIssuer: oidcType === "CUSTOM" ? oidcIssuer : undefined,
       oidcClientId: oidcType === "CUSTOM" ? oidcClientId : undefined,
       oidcClientSecret: oidcType === "CUSTOM" ? oidcClientSecret : undefined,
-      infisicalClientId,
-      infisicalClientSecret,
-      infisicalProjectSlug,
       imageTag,
     });
   };
@@ -47,15 +54,18 @@ const NewTenantPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-2xl px-4 py-8">
-        <h1 className="mb-6 text-2xl font-bold text-gray-900">
+        <h1 className="mb-2 text-2xl font-bold text-gray-900">
           新規テナント作成
         </h1>
+        <p className="mb-6 text-sm text-gray-600">
+          Infisical プロジェクト作成・シークレット登録・k8s
+          リソース作成は自動で実行されます。
+        </p>
 
         <form
           onSubmit={handleSubmit}
           className="space-y-6 rounded-lg bg-white p-6 shadow"
         >
-          {/* Slug */}
           <div>
             <label
               htmlFor="slug"
@@ -80,28 +90,27 @@ const NewTenantPage = () => {
             />
             {slug && (
               <p className="mt-1 text-xs text-gray-500">
-                ドメイン: {slug}-manager.tumiki.cloud
+                ドメイン: {slug}-manager.tumiki.cloud / Infisicalプロジェクト:
+                tumiki-tenant-{slug}
               </p>
             )}
           </div>
 
-          {/* OIDCタイプ */}
           <div>
             <label className="block text-sm font-medium text-gray-700">
               OIDCタイプ <span className="text-red-500">*</span>
             </label>
             <div className="mt-2 space-y-2">
-              <label className="flex items-center">
+              <label className="flex items-center text-gray-400">
                 <input
                   type="radio"
                   value="KEYCLOAK"
                   checked={oidcType === "KEYCLOAK"}
                   onChange={() => setOidcType("KEYCLOAK")}
+                  disabled
                   className="mr-2"
                 />
-                <span className="text-sm text-gray-700">
-                  KEYCLOAK（tumiki-keycloak で自動プロビジョニング）
-                </span>
+                <span>Keycloak (自動連携) - Phase 2 で実装予定</span>
               </label>
               <label className="flex items-center">
                 <input
@@ -111,17 +120,16 @@ const NewTenantPage = () => {
                   onChange={() => setOidcType("CUSTOM")}
                   className="mr-2"
                 />
-                <span className="text-sm text-gray-700">
-                  CUSTOM（テナント独自のOIDCプロバイダー）
-                </span>
+                <span>カスタムOIDCプロバイダー</span>
               </label>
             </div>
           </div>
 
-          {/* CUSTOM OIDCの場合のみ表示 */}
           {oidcType === "CUSTOM" && (
-            <div className="space-y-4 rounded-md bg-gray-50 p-4">
-              <p className="text-sm font-medium text-gray-700">OIDC設定</p>
+            <div className="space-y-4 rounded-md border border-gray-200 p-4">
+              <h3 className="text-sm font-medium text-gray-700">
+                OIDCプロバイダー設定
+              </h3>
               <div>
                 <label
                   htmlFor="oidcIssuer"
@@ -134,8 +142,8 @@ const NewTenantPage = () => {
                   type="url"
                   value={oidcIssuer}
                   onChange={(e) => setOidcIssuer(e.target.value)}
-                  required={oidcType === "CUSTOM"}
-                  placeholder="https://your-oidc-provider.example.com"
+                  required
+                  placeholder="https://accounts.example.com"
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
                 />
               </div>
@@ -144,13 +152,15 @@ const NewTenantPage = () => {
                   htmlFor="oidcClientId"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  Client ID
+                  Client ID <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="oidcClientId"
                   type="text"
                   value={oidcClientId}
                   onChange={(e) => setOidcClientId(e.target.value)}
+                  required
+                  autoComplete="off"
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
                 />
               </div>
@@ -159,114 +169,63 @@ const NewTenantPage = () => {
                   htmlFor="oidcClientSecret"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  Client Secret
+                  Client Secret <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="oidcClientSecret"
                   type="password"
                   value={oidcClientSecret}
                   onChange={(e) => setOidcClientSecret(e.target.value)}
+                  required
+                  autoComplete="new-password"
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
                 />
               </div>
             </div>
           )}
 
-          {/* Infisical認証情報 */}
-          <div className="space-y-4">
-            <p className="text-sm font-medium text-gray-700">
-              Infisical認証情報
-            </p>
-            <div>
-              <label
-                htmlFor="infisicalClientId"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Client ID <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="infisicalClientId"
-                type="text"
-                value={infisicalClientId}
-                onChange={(e) => setInfisicalClientId(e.target.value)}
-                required
-                autoComplete="off"
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="infisicalClientSecret"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Client Secret <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="infisicalClientSecret"
-                type="password"
-                value={infisicalClientSecret}
-                onChange={(e) => setInfisicalClientSecret(e.target.value)}
-                required
-                autoComplete="new-password"
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="infisicalProjectSlug"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Project Slug <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="infisicalProjectSlug"
-                type="text"
-                value={infisicalProjectSlug}
-                onChange={(e) => setInfisicalProjectSlug(e.target.value)}
-                required
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
-              />
-            </div>
-          </div>
-
-          {/* イメージタグ */}
           <div>
             <label
               htmlFor="imageTag"
               className="block text-sm font-medium text-gray-700"
             >
-              イメージタグ
+              internal-manager イメージタグ
             </label>
             <input
               id="imageTag"
               type="text"
               value={imageTag}
               onChange={(e) => setImageTag(e.target.value)}
-              placeholder="latest"
+              pattern="[a-zA-Z0-9._-]+"
+              maxLength={128}
               className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
             />
+            <p className="mt-1 text-xs text-gray-500">
+              通常 main を使用。特定バージョンを指定したい場合のみ変更
+            </p>
           </div>
 
           {error && (
-            <div className="rounded-md bg-red-50 p-3">
-              <p className="text-sm text-red-600">{error}</p>
+            <div className="rounded-md bg-red-50 p-4 text-sm text-red-700">
+              {error}
             </div>
           )}
 
-          <div className="flex gap-3">
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => router.push("/tenants")}
+              className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+            >
+              キャンセル
+            </button>
             <button
               type="submit"
               disabled={createTenant.isPending}
-              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:opacity-50"
+              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
             >
-              {createTenant.isPending ? "作成中..." : "テナントを作成"}
+              {createTenant.isPending ? "作成中..." : "作成"}
             </button>
-            <a
-              href="/tenants"
-              className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none"
-            >
-              キャンセル
-            </a>
           </div>
         </form>
       </div>
