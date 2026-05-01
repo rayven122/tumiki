@@ -9,7 +9,7 @@ app.kubernetes.io/managed-by: Helm
 {{- end }}
 
 {{/*
-セレクター用ラベル（Deployment/Service の selector で使用）
+セレクターラベル
 */}}
 {{- define "tumiki-cloud-api.selectorLabels" -}}
 app.kubernetes.io/name: tumiki-cloud-api
@@ -20,43 +20,19 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 必須値の一括バリデーション
 */}}
 {{- define "tumiki-cloud-api.validateRequiredValues" -}}
-{{- if not .Values.namespace }}
-{{- fail "namespace は必須です" }}
-{{- end }}
-{{- if not .Values.infisical.projectSlug }}
-{{- fail "infisical.projectSlug は必須です。--set infisical.projectSlug=<SLUG> で指定してください" }}
-{{- end }}
-{{- if not .Values.infisical.environment }}
-{{- fail "infisical.environment は必須です。--set infisical.environment=<ENV> で指定してください（例: prod / dev）" }}
-{{- end }}
-{{- end }}
-
-{{/*
-image.tag の必須バリデーション
-- 空文字: latest 扱いになるため再現性が損なわれる
-- "latest": 浮動タグで再現性が損なわれる
-- 空白文字: 不正なタグ形式
-*/}}
-{{- define "tumiki-cloud-api.validateImageTag" -}}
 {{- if not .Values.image.tag }}
-{{- fail "image.tag は必須です。--set image.tag=<TAG> で明示指定してください" }}
+{{- fail "image.tag は必須です。--set image.tag=<TAG> で指定してください" }}
 {{- end }}
 {{- if eq .Values.image.tag "latest" }}
-{{- fail "image.tag に 'latest' は指定できません。再現性のあるバージョンタグまたは SHA を指定してください" }}
+{{- fail "image.tag に 'latest' は指定できません。再現性のあるバージョンタグを指定してください" }}
 {{- end }}
 {{- if regexMatch "[[:space:]]" .Values.image.tag }}
 {{- fail "image.tag に空白文字を含めることはできません" }}
 {{- end }}
+{{- if not .Values.infisical.projectSlug }}
+{{- fail "infisical.projectSlug は必須です" }}
 {{- end }}
-
-{{/*
-全バリデーションを一括実行する単一エントリポイント
-namespace.yaml と deployment.yaml の冒頭から呼び出すことで
-helm install / helm template 全体実行時に必ずバリデーションが走る。
-（helm template --show-only でこれら以外を単独レンダリングする場合は
-バリデーションがスキップされるため、必要に応じて呼び出し元を追加すること）
-*/}}
-{{- define "tumiki-cloud-api.validateAll" -}}
-{{- include "tumiki-cloud-api.validateRequiredValues" . }}
-{{- include "tumiki-cloud-api.validateImageTag" . }}
+{{- if not .Values.infisical.environment }}
+{{- fail "infisical.environment は必須です（例: prod / dev）" }}
+{{- end }}
 {{- end }}

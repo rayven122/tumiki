@@ -36,7 +36,9 @@ RUN pnpm turbo run build --filter=@tumiki/tumiki-cloud-api^...
 RUN pnpm --filter @tumiki/tumiki-cloud-api run build
 
 # 本番依存のみ抽出（dist と node_modules 用）
-RUN pnpm --filter @tumiki/tumiki-cloud-api deploy --prod /prod/tumiki-cloud-api
+# pnpm v10 では deploy にデフォルトで inject-workspace-packages=true が必要なため
+# ワークスペースパッケージへ依存しないこのアプリでは --legacy で従来動作にする
+RUN pnpm --filter @tumiki/tumiki-cloud-api deploy --prod --legacy /prod/tumiki-cloud-api
 
 # ========================================
 # Stage 3: Production
@@ -58,16 +60,14 @@ COPY --from=build --chown=nodejs:nodejs /prod/tumiki-cloud-api/package.json ./pa
 USER nodejs
 
 ENV NODE_ENV=production
-ENV PORT=8443
+ENV PORT=8080
 
-EXPOSE 8443
+EXPOSE 8080
 
-# /health エンドポイント（mTLS 不要のヘルスチェックパス）
-# 本番では NODE_ENV=production ガードで TLS 必須となるため HTTPS のみで検査する
-# 自己ヘルスチェック用に --no-check-certificate を使用（証明書の検証は外部から行う）
+# Cloudflare Tunnel + Traefik 経由の HTTP 通信
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --no-check-certificate --spider \
-    "https://localhost:${PORT}/health" || exit 1
+  CMD wget --no-verbose --tries=1 --spider \
+    "http://localhost:${PORT}/health" || exit 1
 
 ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "dist/src/index.js"]

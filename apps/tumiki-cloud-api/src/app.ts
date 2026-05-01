@@ -3,13 +3,12 @@
 
 import { Hono } from "hono";
 
-import { certificatesRoute } from "./features/certificates/route.js";
+import { dynamicSearchRoute } from "./features/dynamicSearch/route.js";
 import { healthRoute } from "./features/health/route.js";
 
-// このAPIはサーバー間通信専用のため CORS 設定は不要
 const app = new Hono();
 
 app.route("/", healthRoute);
-app.route("/", certificatesRoute);
+app.route("/", dynamicSearchRoute);
 
 export default app;

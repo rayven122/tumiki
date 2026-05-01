@@ -2,64 +2,32 @@
 // Copyright (c) 2024-2025 Reyven Inc.
 
 import { serve } from "@hono/node-server";
-import { createServer as createHttpsServer } from "node:https";
 
 import app from "./app.js";
 import { DEFAULT_PORT } from "./shared/constants/config.js";
 
 const port = Number(process.env.PORT) || DEFAULT_PORT;
 
-const tlsCert = process.env.TLS_CERT;
-const tlsKey = process.env.TLS_KEY;
-const caCert = process.env.RAYVEN_CA_CERT;
-
-if (tlsCert && tlsKey && caCert) {
-  // mTLS モードの場合のみ必須環境変数を検証し、不足していれば起動を失敗させる
-  const requiredEnvVars = ["BOOTSTRAP_TOKEN_PUBLIC_KEY"];
-  const missingEnvVars = requiredEnvVars.filter((key) => !process.env[key]);
-  if (missingEnvVars.length > 0) {
+// 必須環境変数の事前検証（本番のみ厳密チェック）
+const isProduction = process.env.NODE_ENV === "production";
+const requiredEnvVars = ["LICENSE_PUBLIC_KEY", "AI_GATEWAY_API_KEY"];
+const missing = requiredEnvVars.filter((key) => !process.env[key]);
+if (missing.length > 0) {
+  if (isProduction) {
     console.error(
-      `[tumiki-cloud-api] FATAL: Missing required env vars: ${missingEnvVars.join(", ")}`,
+      `[tumiki-cloud-api] FATAL: Missing required env vars: ${missing.join(", ")}`,
     );
     process.exit(1);
-  }
-
-  // mTLS サーバー起動（本番環境）
-  // requestCert: true でクライアント証明書を要求
-  // rejectUnauthorized: false は意図的な設定: TLS レイヤーで接続を切断せず、
-  // 各ハンドラ内で socket.authorized を確認して認証要否を制御する。
-  // mTLS 認証が必要なエンドポイントは必ず socket.authorized チェックを実装すること。
-  serve(
-    {
-      fetch: app.fetch,
-      port,
-      createServer: createHttpsServer,
-      serverOptions: {
-        cert: tlsCert,
-        key: tlsKey,
-        ca: caCert,
-        requestCert: true,
-        rejectUnauthorized: false,
-      },
-    },
-    (info) => {
-      console.log(
-        `[tumiki-cloud-api] mTLS server running on https://localhost:${info.port}`,
-      );
-    },
-  );
-} else {
-  // 本番環境で TLS 未設定は致命的エラー
-  if (process.env.NODE_ENV === "production") {
-    console.error(
-      "[tumiki-cloud-api] FATAL: TLS certs are required in production. Set TLS_CERT, TLS_KEY, RAYVEN_CA_CERT.",
-    );
-    process.exit(1);
-  }
-  // HTTP サーバー起動（開発環境）
-  serve({ fetch: app.fetch, port }, (info) => {
+  } else {
     console.warn(
-      `[tumiki-cloud-api] WARNING: HTTP mode (no TLS) — development only. Running on http://localhost:${info.port}`,
+      `[tumiki-cloud-api] WARNING: Missing env vars (development): ${missing.join(", ")}`,
     );
-  });
+  }
 }
+
+// HTTP モードのみ（TLS は Cloudflare Tunnel で終端する）
+serve({ fetch: app.fetch, port }, (info) => {
+  console.log(
+    `[tumiki-cloud-api] HTTP server running on http://localhost:${info.port}`,
+  );
+});

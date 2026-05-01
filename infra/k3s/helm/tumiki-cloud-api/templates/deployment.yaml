@@ -1,4 +1,4 @@
-{{- include "tumiki-cloud-api.validateAll" . }}
+{{- include "tumiki-cloud-api.validateRequiredValues" . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -12,8 +12,6 @@ metadata:
     secret.reloader.stakater.com/reload: "tumiki-cloud-api-env"
 spec:
   revisionHistoryLimit: 3
-  # autoscaling 有効時も初期 replicas を明示し HPA 起動前の Pod 不足を防ぐ
-  # HPA が起動した後は HPA 側のリプリカ数で上書きされる
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
@@ -31,7 +29,7 @@ spec:
         runAsGroup: 1001
         seccompProfile:
           type: RuntimeDefault
-      # 複数 Pod を別ノードに分散させて単一障害点を排除
+      # 複数 Pod を別ノードに分散させて単一障害点を排除（マルチノード時に有効）
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -52,18 +50,16 @@ spec:
               drop: ["ALL"]
           ports:
             - containerPort: {{ .Values.server.port }}
-              name: https
+              name: http
               protocol: TCP
           env:
             - name: PORT
               value: {{ .Values.server.port | quote }}
-            - name: CERT_TTL
-              value: {{ .Values.server.certTtl | quote }}
             - name: NODE_ENV
               value: "production"
           # Infisical Operator が同期した k8s Secret を環境変数として注入
-          # 必須: TLS_CERT, TLS_KEY, RAYVEN_CA_CERT, BOOTSTRAP_TOKEN_PUBLIC_KEY,
-          #       INFISICAL_URL, INFISICAL_API_TOKEN, INFISICAL_CA_ID
+          # 必須: LICENSE_PUBLIC_KEY, AI_GATEWAY_API_KEY
+          # 任意: DYNAMIC_SEARCH_MODEL
           envFrom:
             - secretRef:
                 name: tumiki-cloud-api-env
@@ -73,28 +69,22 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
-          # startupProbe: 起動完了まで liveness/readiness を抑制し再起動ループを防止
-          # mTLS 経路ではなく内部 HTTP /health を直接叩く想定
-          # （TLS 設定後は HTTPS で自己ヘルスチェック可。証明書検証はスキップ）
           startupProbe:
             httpGet:
               path: /health
               port: {{ .Values.server.port }}
-              scheme: HTTPS
             failureThreshold: 12
             periodSeconds: 5
           livenessProbe:
             httpGet:
               path: /health
               port: {{ .Values.server.port }}
-              scheme: HTTPS
             periodSeconds: 30
             timeoutSeconds: 3
           readinessProbe:
             httpGet:
               path: /health
               port: {{ .Values.server.port }}
-              scheme: HTTPS
             periodSeconds: 10
             timeoutSeconds: 3
       volumes:

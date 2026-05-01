@@ -30,7 +30,7 @@ tumiki-k3s VM（さくらのクラウド / 8GB RAM / 4vCPU / 200GB SSD）
 ├── Reloader（Secret更新時にPodを自動再起動）
 │
 ├── Namespace: tumiki-system（RAYVEN 管理の共有サービス）
-│   └── tumiki-cloud-api Pod × 2（証明書発行・ライセンス検証 / mTLS）
+│   └── tumiki-cloud-api Pod × 2（ライセンス検証 + 動的検索 LLM プロキシ）
 │
 ├── Namespace: tenant-console（コントロールパネル）
 │   ├── tenant-console Pod
@@ -47,17 +47,6 @@ tumiki-k3s VM（さくらのクラウド / 8GB RAM / 4vCPU / 200GB SSD）
 > ```bash
 > kubectl get pods -n kube-system | grep -E "network-policy|kube-router"
 > ```
-
-## tumiki-cloud-api（証明書発行サービス）
-
-全テナント Namespace + セルフホスト顧客から参照される共有サービス。
-mTLS / Bootstrap Token JWT で認証し、Infisical PKI で X.509 クライアント証明書を発行する。
-
-**ネットワーク経路:**
-- 外部（セルフホスト顧客）: Sakura Cloud LoadBalancer (TCP 443) → `tumiki-system/tumiki-cloud-api` Pod（mTLS pass-through）
-- クラスター内（k3s silo テナント）: `tumiki-cloud-api-internal.tumiki-system.svc.cluster.local:8443`
-
-**Cloudflare Tunnel は経由しない**: Tunnel は TLS を終端してしまうため mTLS が成立しない。Sakura Cloud LB で TCP pass-through する。
 
 ## セットアップ手順
 
@@ -220,35 +209,112 @@ kubectl delete namespace tenant-company-a
 
 ## tumiki-cloud-api デプロイ手順
 
-```bash
-# 1. Infisical で tumiki-cloud-api 用プロジェクトを作成しシークレットを登録
-#    キー: TLS_CERT, TLS_KEY, RAYVEN_CA_CERT,
-#          BOOTSTRAP_TOKEN_PUBLIC_KEY,
-#          INFISICAL_URL, INFISICAL_API_TOKEN, INFISICAL_CA_ID
+RAYVEN が運営する共有 API サーバー。ライセンス JWT を検証し、Vercel AI Gateway 経由で
+LLM を呼び出して動的ツール検索 (`POST /v1/dynamic-search/search`) を提供する。
 
-# 2. Namespace を先に作成し infisical-machine-identity を事前投入
-#    helm install 時点で tumiki-cloud-api-env Secret が存在しないと
-#    Pod が CreateContainerConfigError になるため、Operator が認証して同期できる状態を先に整える
+### 0. RS256 鍵ペア生成（初回のみ・1 度きり）
+
+ライセンス JWT 署名/検証に使う RS256 鍵ペアを生成する。**秘密鍵は絶対に外部に出さない**。
+
+```bash
+# 秘密鍵生成（PKCS#8 形式・jose ライブラリの importPKCS8 が要求する形式）
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out license_private.pem
+
+# 公開鍵抽出（SPKI 形式）
+openssl pkey -in license_private.pem -pubout -out license_public.pem
+```
+
+> **Note**: `openssl genrsa` は PKCS#1 形式を生成しますが、
+> `scripts/issue-license.ts` で使用する `jose` ライブラリは PKCS#8 形式を要求します。
+> `openssl genpkey` を使うと PKCS#8 で直接出力されます。
+> 既に `genrsa` で生成済みの鍵を変換するには:
+>
+> ```bash
+> openssl pkcs8 -topk8 -nocrypt -in old_pkcs1.pem -out new_pkcs8.pem
+> ```
+
+- **秘密鍵 (`license_private.pem`)**: Infisical の RAYVEN 管理プロジェクト（例: `rayven-license-signer`）に
+  `LICENSE_SIGNING_PRIVATE_KEY` として登録。スクリプト `scripts/issue-license.ts` がこれを使って JWT に署名する。
+- **公開鍵 (`license_public.pem`)**: Infisical の `tumiki-cloud-api` プロジェクトに
+  `LICENSE_PUBLIC_KEY` として登録。tumiki-cloud-api Pod がこれを使って JWT を検証する。
+
+### 1. Infisical 設定
+
+`tumiki-cloud-api` 用 Infisical プロジェクトを作成し、`/tumiki-cloud-api` パス配下に登録:
+
+| キー | 説明 |
+|------|------|
+| `LICENSE_PUBLIC_KEY` | RS256 公開鍵（PEM 形式・改行込み） |
+| `AI_GATEWAY_API_KEY` | Vercel AI Gateway の API キー |
+| `DYNAMIC_SEARCH_MODEL` | （任意）使用モデル。省略時 `anthropic/claude-3.5-haiku` |
+
+### 2. Helm でデプロイ
+
+```bash
+# Namespace 作成と Machine Identity 投入を先行
 kubectl create namespace tumiki-system --dry-run=client -o yaml | kubectl apply -f -
 kubectl create secret generic infisical-machine-identity \
   --namespace tumiki-system \
   --from-literal=clientId=<INFISICAL_CLIENT_ID> \
   --from-literal=clientSecret=<INFISICAL_CLIENT_SECRET>
 
-# 3. Helm で Deployment + Service を作成（Namespace は手順2で作成済み）
+# Helm install
 helm install tumiki-cloud-api ./infra/k3s/helm/tumiki-cloud-api \
+  --set image.tag=<IMAGE_TAG> \
   --set infisical.projectSlug=tumiki-cloud-api \
-  --set infisical.environment=prod \
-  --set image.tag=<IMAGE_TAG>
+  --set infisical.environment=prod
 
-# 4. 状態確認
+# Cloudflare Tunnel の ingress に `api.tumiki.cloud` →
+# `http://192.168.0.20:30080` を追加すれば外部からアクセス可能になる
+
+# 状態確認
 kubectl get all -n tumiki-system
-kubectl get svc tumiki-cloud-api -n tumiki-system  # EXTERNAL-IP を確認
 ```
 
-> **Note**: Helm install 前に Secret を投入することで Infisical Operator が `tumiki-cloud-api-env`
-> Secret を即座に同期し、Pod が初回起動から成功する。投入順序を逆にすると Pod が
-> `CreateContainerConfigError` になり、Secret 同期後に自動回復するまで数十秒の不整合状態になる。
+### 3. ライセンス発行
+
+```bash
+# 個人モード（90日有効）
+tsx scripts/issue-license.ts \
+  --sub user_abc \
+  --type personal \
+  --features dynamic-search \
+  --ttl 90d \
+  --plan pro \
+  --private-key ./license_private.pem
+
+# テナントモード（短命・internal-manager から呼ばれる想定）
+tsx scripts/issue-license.ts \
+  --sub user_xyz \
+  --type tenant \
+  --tenant acme \
+  --features dynamic-search \
+  --ttl 1h \
+  --private-key ./license_private.pem
+```
+
+出力されたキー（`tumiki_lic_<jwt>` 形式）を顧客に配布する。
+
+### 4. 疎通確認
+
+```bash
+# ヘルスチェック
+curl https://api.tumiki.cloud/health
+
+# Dynamic Search（要ライセンスキー）
+LICENSE_KEY="<手順 3 で発行したキー>"
+curl -X POST https://api.tumiki.cloud/v1/dynamic-search/search \
+  -H "Authorization: Bearer $LICENSE_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "Slack にメッセージ送信",
+    "tools": [
+      {"name": "send_message", "description": "Slack にメッセージを送る"},
+      {"name": "list_channels", "description": "チャンネル一覧"}
+    ],
+    "limit": 5
+  }'
+```
 
 ## ディレクトリ構成
 
@@ -287,16 +353,16 @@ infra/k3s/
     │       ├── postgresql-statefulset.yaml
     │       ├── postgresql-service.yaml
     │       └── infisical-secret.yaml
-    └── tumiki-cloud-api/               # 全テナント共有の証明書発行サービス
+    └── tumiki-cloud-api/               # RAYVEN クラウド API（ライセンス検証 + LLM プロキシ）
         ├── Chart.yaml
         ├── values.yaml
         └── templates/
             ├── _helpers.tpl
-            ├── namespace.yaml          # tumiki-system Namespace
+            ├── namespace.yaml
             ├── infisical-secret.yaml
-            ├── deployment.yaml         # HA: replicas + podAntiAffinity
-            ├── service.yaml            # LoadBalancer + ClusterIP の二系統
-            ├── network-policy.yaml     # egress: Infisical のみ
-            ├── pdb.yaml                # PodDisruptionBudget
-            └── hpa.yaml                # HorizontalPodAutoscaler
+            ├── deployment.yaml
+            ├── service.yaml
+            ├── ingress.yaml
+            ├── hpa.yaml
+            └── pdb.yaml
 ```

@@ -1,6 +1,4 @@
 {{- if .Values.autoscaling.enabled }}
-# HorizontalPodAutoscaler
-# CPU 使用率に応じて Pod 数を増減
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:

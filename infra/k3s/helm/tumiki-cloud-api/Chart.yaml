@@ -1,6 +1,6 @@
 apiVersion: v2
 name: tumiki-cloud-api
-description: Tumiki Cloud API - 全テナント共有の証明書発行・ライセンス検証サービス
+description: RAYVEN が提供する Tumiki クラウド API（ライセンス認証 + 動的ツール検索 LLM プロキシ）
 type: application
 version: 0.1.0
-appVersion: "1.0.0"
+appVersion: "0.1.0"
