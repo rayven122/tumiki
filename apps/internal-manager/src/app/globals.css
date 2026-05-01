@@ -1,4 +1,8 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+/* packages/ui のコンポーネントで使われている Tailwind クラスを検出させる */
+@source "../../../../packages/ui/src/**/*.tsx";
 
 @theme {
   --font-sans: "Inter", sans-serif;
@@ -26,6 +30,15 @@
   --color-badge-info-text: #60a5fa;
   --color-btn-primary-bg: #ffffff;
   --color-btn-primary-text: #000000;
+  /* ===== shadcn/ui (Dialog 等) 用カラートークン（ダークテーマ） ===== */
+  --color-background: #0a0a0a;
+  --color-foreground: #ffffff;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-ring: #a1a1aa;
+  --color-muted: #18181b;
+  --color-muted-foreground: #71717a;
+  --color-accent: rgba(255, 255, 255, 0.08);
+  --color-accent-foreground: #ffffff;
 }
 
 /* ===== 管理画面テーマCSS変数（rechartsのSVG props用） ===== */
@@ -265,12 +278,14 @@
   }
 }
 
-/* グレインノイズテクスチャ */
+/* グレインノイズテクスチャ
+ * z-index: -1 で背景に配置し、すべてのインタラクションの妨げにならないようにする
+ * （pointer-events: none でも React 19 のイベント委譲で誤動作する事例あり） */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
-  z-index: 9999;
+  z-index: -1;
   pointer-events: none;
   opacity: 0.015;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
