@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
+    "@boxyhq/saml-jackson": "^26.2.0",
     "@tanstack/react-query": "catalog:",
     "@trpc/client": "11.12.0",
     "@trpc/react-query": "11.12.0",
