@@ -155,15 +155,15 @@ model Tenant {
 
 ### スキーマ設計の判断ポイント
 
-| 項目 | 採用案 | 理由 |
-|------|--------|------|
-| JWT 本体の保存 | **保存しない** | 漏洩リスクが高い。検証は公開鍵側でできるので不要 |
-| `jti` の扱い | DB 主キーとは別に保持（`@unique`） | 失効リストのキー、JWT の jti クレームとして埋め込む |
-| `tenantId` の null 許容 | 許容 | PERSONAL ライセンスでは紐付け先がない |
-| tenant 削除時の挙動 | `SetNull` | テナント削除しても発行履歴は残す（監査目的） |
-| `features` の型 | `String[]`（Postgres array） | カンマ区切りより安全、検索もしやすい |
-| `revokedAt` / `revokedReason` | カラム追加 | 失効履歴の追跡 |
-| `issuedByEmail` | カラム追加（null 許容） | 将来 Auth 導入時の履歴用 |
+| 項目                          | 採用案                             | 理由                                                |
+| ----------------------------- | ---------------------------------- | --------------------------------------------------- |
+| JWT 本体の保存                | **保存しない**                     | 漏洩リスクが高い。検証は公開鍵側でできるので不要    |
+| `jti` の扱い                  | DB 主キーとは別に保持（`@unique`） | 失効リストのキー、JWT の jti クレームとして埋め込む |
+| `tenantId` の null 許容       | 許容                               | PERSONAL ライセンスでは紐付け先がない               |
+| tenant 削除時の挙動           | `SetNull`                          | テナント削除しても発行履歴は残す（監査目的）        |
+| `features` の型               | `String[]`（Postgres array）       | カンマ区切りより安全、検索もしやすい                |
+| `revokedAt` / `revokedReason` | カラム追加                         | 失効履歴の追跡                                      |
+| `issuedByEmail`               | カラム追加（null 許容）            | 将来 Auth 導入時の履歴用                            |
 
 ---
 
@@ -194,6 +194,7 @@ features/licenses/
 #### `license.issue` (mutation)
 
 入力:
+
 ```ts
 {
   type: "PERSONAL" | "TENANT",
@@ -207,6 +208,7 @@ features/licenses/
 ```
 
 出力:
+
 ```ts
 {
   license: License,                 // DB レコード
@@ -215,6 +217,7 @@ features/licenses/
 ```
 
 処理フロー:
+
 ```
 1. 入力バリデーション（Zod）
 2. type=TENANT の場合は tenantId が DB に存在するか検証
@@ -236,6 +239,7 @@ features/licenses/
 #### `license.list` (query)
 
 入力:
+
 ```ts
 {
   type?: "PERSONAL" | "TENANT",
@@ -248,6 +252,7 @@ features/licenses/
 ```
 
 出力:
+
 ```ts
 {
   items: License[],
@@ -265,6 +270,7 @@ features/licenses/
 入力: `{ id: string, reason?: string }` → `License`
 
 処理:
+
 ```
 1. License を取得（既に REVOKED なら 409 Conflict）
 2. status: REVOKED, revokedAt: now, revokedReason: input.reason に更新
@@ -289,8 +295,8 @@ features/licenses/
 
 `tenant-console` プロジェクト（`/`）に追加:
 
-| キー | 値 | 用途 |
-|------|---|------|
+| キー                          | 値               | 用途     |
+| ----------------------------- | ---------------- | -------- |
 | `LICENSE_SIGNING_PRIVATE_KEY` | RS256 PKCS#8 PEM | JWT 署名 |
 
 ### 取得方法
@@ -397,6 +403,7 @@ InfisicalSecret CRD が同期する k8s Secret に `LICENSE_SIGNING_PRIVATE_KEY`
 ```
 
 設計上の注意:
+
 - 閉じる前に確実にコピーさせるため、コピー前は閉じれない（or 警告 confirm）
 - DB には JWT 本体は保存しないため、再表示は本当に不可能（仕様明示）
 
@@ -411,6 +418,7 @@ InfisicalSecret CRD が同期する k8s Secret に `LICENSE_SIGNING_PRIVATE_KEY`
 ```
 
 「ライセンス」タブ:
+
 - 当該テナント紐付けライセンスのみ表示（`?tenantId=xxx`）
 - 「このテナント用に発行」ボタン → `/licenses/new?tenantId=xxx&type=TENANT`
 
@@ -491,13 +499,13 @@ InfisicalSecret CRD が同期する k8s Secret に `LICENSE_SIGNING_PRIVATE_KEY`
 
 ## 📊 推定工数
 
-| PR | 内容 | 工数目安 |
-|----|------|---------|
-| 1 | スキーマ + tRPC + テスト | 4 時間 |
-| 2 | 一覧 + 発行フォーム UI | 4 時間 |
-| 3 | テナント詳細統合 | 1.5 時間 |
-| 4 | CRL（任意） | 2 時間 |
-| **合計** | | **約 9.5〜11.5 時間** |
+| PR       | 内容                     | 工数目安              |
+| -------- | ------------------------ | --------------------- |
+| 1        | スキーマ + tRPC + テスト | 4 時間                |
+| 2        | 一覧 + 発行フォーム UI   | 4 時間                |
+| 3        | テナント詳細統合         | 1.5 時間              |
+| 4        | CRL（任意）              | 2 時間                |
+| **合計** |                          | **約 9.5〜11.5 時間** |
 
 ---
 
@@ -531,6 +539,6 @@ InfisicalSecret CRD が同期する k8s Secret に `LICENSE_SIGNING_PRIVATE_KEY`
 
 ## 🗓️ 改訂履歴
 
-| 日付 | バージョン | 内容 |
-|------|----------|------|
-| 2026-05-01 | 0.1 | 初版作成 |
+| 日付       | バージョン | 内容     |
+| ---------- | ---------- | -------- |
+| 2026-05-01 | 0.1        | 初版作成 |
