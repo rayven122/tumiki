@@ -1,0 +1,21 @@
+# Cloudflare Tunnel が TLS を担うため、クラスター内は HTTP のみ
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tenant-console
+  namespace: tenant-console
+  labels:
+    {{- include "tenant-console.labels" . | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: {{ .Values.domain | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: tenant-console
+                port:
+                  number: 80

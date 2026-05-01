@@ -73,6 +73,24 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
         }
       }
 
+      // テナント Namespace 内のリソース操作権限を tenant-console SA に動的付与する。
+      // tenant-console の ClusterRole は最小権限（Namespace 作成・RoleBinding 作成のみ）に
+      // 絞っており、テナント Namespace 内の Secret 等は当該 Namespace スコープの
+      // RoleBinding 経由でのみ操作可能。これによりテナント間のシークレット漏洩を防ぐ。
+      await execFileAsync(KUBECTL_BIN, [
+        "create",
+        "rolebinding",
+        "tenant-console-operator",
+        "--namespace",
+        namespace,
+        "--clusterrole=tenant-console-tenant-operator",
+        "--serviceaccount=tenant-console:tenant-console",
+      ]).catch((err: unknown) => {
+        if (!(err instanceof Error) || !err.message.includes("AlreadyExists")) {
+          throw err;
+        }
+      });
+
       // Infisical 認証情報を k8s Secret として作成
       // Helmリリース値（helm get values）に保存されるのを防ぐため kubectl で直接作成する
       // stringData ではなく data + base64 を使用してYAMLインジェクションを完全回避する

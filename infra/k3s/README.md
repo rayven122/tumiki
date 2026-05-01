@@ -118,11 +118,39 @@ k3s 内への cloudflared デプロイは不要。
 
 **テナント URL 形式:** `{slug}-manager.tumiki.cloud`（例: `company-a-manager.tumiki.cloud`）
 
-### 7. tenant-console Namespace 作成
+### 7. tenant-console のデプロイ
 
 ```bash
+# Namespace を作成（Helm chart は事前に Namespace が存在することを前提とする）
 kubectl apply -f infra/k3s/manifests/tenant-console/namespace.yaml
+
+# Infisical Machine Identity の認証情報を Secret として事前作成
+kubectl create secret generic infisical-machine-identity \
+  --namespace tenant-console \
+  --from-literal=clientId=<INFISICAL_CLIENT_ID> \
+  --from-literal=clientSecret=<INFISICAL_CLIENT_SECRET>
+
+# tenant-console を Helm でデプロイ
+helm install tenant-console ./infra/k3s/helm/tenant-console \
+  --namespace tenant-console \
+  --set image.tag=<IMAGE_TAG> \
+  --set infisical.projectSlug=tenant-console \
+  --set infisical.environment=prod
+
+# Cloudflare Tunnel の ingress に `tenant-console.tumiki.cloud` →
+# `http://192.168.0.20:30080` を追加すれば外部からアクセス可能になる
+
+# 状態確認
+kubectl get all -n tenant-console
 ```
+
+**Infisical シークレット（`/tenant-console` パス配下）:**
+
+| キー | 説明 |
+|------|------|
+| `TENANT_DATABASE_URL` | `postgresql://app:<PW>@postgresql.tenant-console.svc.cluster.local:5432/tenant_console` |
+| `POSTGRES_PASSWORD` | PostgreSQL パスワード |
+| `AUTH_SECRET` | NextAuth シークレット |
 
 ## テナント手動デプロイ（動作確認用）
 
@@ -247,6 +275,18 @@ infra/k3s/
     │       ├── deployment.yaml         # Reloaderアノテーション付き
     │       ├── service.yaml
     │       └── ingress.yaml            # TLSなし（Cloudflare Tunnelが担当）
+    ├── tenant-console/                 # テナント管理UI Helm チャート
+    │   ├── Chart.yaml
+    │   ├── values.yaml
+    │   └── templates/
+    │       ├── _helpers.tpl
+    │       ├── serviceaccount.yaml     # tRPC API が helm/kubectl 実行する RBAC
+    │       ├── deployment.yaml
+    │       ├── service.yaml
+    │       ├── ingress.yaml
+    │       ├── postgresql-statefulset.yaml
+    │       ├── postgresql-service.yaml
+    │       └── infisical-secret.yaml
     └── tumiki-cloud-api/               # 全テナント共有の証明書発行サービス
         ├── Chart.yaml
         ├── values.yaml
