@@ -29,6 +29,43 @@ spec:
         runAsGroup: 1001
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+        # DB マイグレーション: prisma schema から SQL 生成 → psql で適用
+        # 既存スキーマと一致していれば no-op（idempotent）
+        - name: db-migrate
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              cd /app/apps/tenant-console
+              prisma migrate diff \
+                --from-url "$TENANT_DATABASE_URL" \
+                --to-schema-datamodel ./prisma/schema \
+                --script > /tmp/migration.sql
+              if [ -s /tmp/migration.sql ] && grep -qv '^-- This is an empty migration' /tmp/migration.sql; then
+                echo "Applying schema changes..."
+                psql "$TENANT_DATABASE_URL" -f /tmp/migration.sql
+                echo "Schema sync completed."
+              else
+                echo "No schema changes; skipping migration."
+              fi
+          env:
+            - name: TENANT_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: tenant-console-env
+                  key: TENANT_DATABASE_URL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
       containers:
         - name: tenant-console
           image: {{ .Values.image.repository }}:{{ .Values.image.tag }}

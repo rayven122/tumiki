@@ -73,6 +73,14 @@ COPY --from=build --chown=nodejs:nodejs /app/apps/tenant-console/.next/standalon
 COPY --from=build --chown=nodejs:nodejs /app/apps/tenant-console/.next/static ./apps/tenant-console/.next/static
 COPY --from=build --chown=nodejs:nodejs /app/apps/tenant-console/public ./apps/tenant-console/public
 
+# Prisma schema + CLI（DB マイグレーション Job 用に同梱）
+# Migration Job が `prisma migrate diff --script` で SQL を生成→ psql で適用する
+COPY --from=build --chown=nodejs:nodejs /app/apps/tenant-console/prisma ./apps/tenant-console/prisma
+COPY --from=build --chown=nodejs:nodejs /app/apps/tenant-console/prisma.config.ts ./apps/tenant-console/prisma.config.ts
+RUN apk add --no-cache postgresql16-client && \
+    npm install -g prisma@6.19.0 && \
+    rm -rf /var/cache/apk/*
+
 # Helm chart を同梱（テナントデプロイ用）
 COPY --chown=nodejs:nodejs infra/k3s/helm/internal-manager ./helm/internal-manager
 
