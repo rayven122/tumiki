@@ -39,6 +39,15 @@ export const AiClientInstallModal = ({
     [],
   );
 
+  // Escape キーでモーダルを閉じる（キーボードユーザーのアクセシビリティ対応）
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   const handleCopy = () => {
     void navigator.clipboard.writeText(configSnippet).then(() => {
       setCopied(true);

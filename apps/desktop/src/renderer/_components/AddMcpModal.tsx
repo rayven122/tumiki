@@ -109,6 +109,19 @@ export const AddMcpModal = ({
     if (needsManualOAuthClient) setShowOAuthSettings(true);
   }, [needsManualOAuthClient]);
 
+  // Escape キーでモーダルを閉じる（OAuth 認証中はキャンセル扱い）
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (e.key !== "Escape") return;
+      if (isOAuth && loading) {
+        window.electronAPI.oauth.cancelAuth();
+      }
+      onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose, isOAuth, loading]);
+
   const handleSubmit = async (): Promise<void> => {
     if (!serverName.trim()) {
       setError("サーバー名を入力してください");

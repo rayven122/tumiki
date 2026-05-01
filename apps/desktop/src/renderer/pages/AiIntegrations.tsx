@@ -61,7 +61,7 @@ export const AiIntegrations = (): JSX.Element => {
                   {client.name}
                 </div>
                 <div className="mt-0.5 text-[10px] text-[var(--text-subtle)]">
-                  クリックで MCP 設定をコピー
+                  接続設定（近日対応予定）
                 </div>
               </div>
               <code className="w-full truncate rounded bg-[var(--bg-input)] px-2 py-1 font-mono text-[9px] text-[var(--text-subtle)]">
