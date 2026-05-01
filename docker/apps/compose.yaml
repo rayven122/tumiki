@@ -35,6 +35,10 @@ services:
     ports:
       - "8080:8080"
     env_file: .env
+    environment:
+      # .env の env_file だと単一引用符が残る可能性があるため、
+      # HOSTNAME=0.0.0.0 の Next.js standalone 干渉を回避するために明示指定。
+      NEXTAUTH_URL: ${NEXTAUTH_URL}
     depends_on:
       db:
         condition: service_healthy
