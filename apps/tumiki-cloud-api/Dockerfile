@@ -36,7 +36,9 @@ RUN pnpm turbo run build --filter=@tumiki/tumiki-cloud-api^...
 RUN pnpm --filter @tumiki/tumiki-cloud-api run build
 
 # 本番依存のみ抽出（dist と node_modules 用）
-RUN pnpm --filter @tumiki/tumiki-cloud-api deploy --prod /prod/tumiki-cloud-api
+# pnpm v10 では deploy にデフォルトで inject-workspace-packages=true が必要なため
+# ワークスペースパッケージへ依存しないこのアプリでは --legacy で従来動作にする
+RUN pnpm --filter @tumiki/tumiki-cloud-api deploy --prod --legacy /prod/tumiki-cloud-api
 
 # ========================================
 # Stage 3: Production
