@@ -36,8 +36,10 @@ services:
       - "8080:8080"
     env_file: .env
     environment:
-      # .env の env_file だと単一引用符が残る可能性があるため、
-      # HOSTNAME=0.0.0.0 の Next.js standalone 干渉を回避するために明示指定。
+      # .env.example が apps/manager/.env として Docker image に焼き込まれており、
+      # AUTH_URL="http://localhost:3000" が設定されている。
+      # AUTH_URL は NEXTAUTH_URL より優先されるため、両方を上書きする。
+      AUTH_URL: ${NEXTAUTH_URL}
       NEXTAUTH_URL: ${NEXTAUTH_URL}
     depends_on:
       db:
