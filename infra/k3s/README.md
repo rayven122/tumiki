@@ -29,9 +29,6 @@ tumiki-k3s VM（さくらのクラウド / 8GB RAM / 4vCPU / 200GB SSD）
 ├── Infisical Kubernetes Operator（全Namespace監視・シークレット同期）
 ├── Reloader（Secret更新時にPodを自動再起動）
 │
-├── Namespace: tumiki-system（RAYVEN 管理の共有サービス）
-│   └── tumiki-cloud-api Pod × 2（証明書発行・ライセンス検証 / mTLS）
-│
 ├── Namespace: tenant-console（コントロールパネル）
 │   ├── tenant-console Pod
 │   └── PostgreSQL（テナントメタデータ）
@@ -47,17 +44,6 @@ tumiki-k3s VM（さくらのクラウド / 8GB RAM / 4vCPU / 200GB SSD）
 > ```bash
 > kubectl get pods -n kube-system | grep -E "network-policy|kube-router"
 > ```
-
-## tumiki-cloud-api（証明書発行サービス）
-
-全テナント Namespace + セルフホスト顧客から参照される共有サービス。
-mTLS / Bootstrap Token JWT で認証し、Infisical PKI で X.509 クライアント証明書を発行する。
-
-**ネットワーク経路:**
-- 外部（セルフホスト顧客）: Sakura Cloud LoadBalancer (TCP 443) → `tumiki-system/tumiki-cloud-api` Pod（mTLS pass-through）
-- クラスター内（k3s silo テナント）: `tumiki-cloud-api-internal.tumiki-system.svc.cluster.local:8443`
-
-**Cloudflare Tunnel は経由しない**: Tunnel は TLS を終端してしまうため mTLS が成立しない。Sakura Cloud LB で TCP pass-through する。
 
 ## セットアップ手順
 
@@ -218,38 +204,6 @@ kubectl delete namespace tenant-company-a
 | `AUTH_SECRET` | NextAuthシークレット（`openssl rand -base64 32` で生成） |
 | `NEXTAUTH_URL` | 例: `https://company-a-manager.tumiki.cloud` |
 
-## tumiki-cloud-api デプロイ手順
-
-```bash
-# 1. Infisical で tumiki-cloud-api 用プロジェクトを作成しシークレットを登録
-#    キー: TLS_CERT, TLS_KEY, RAYVEN_CA_CERT,
-#          BOOTSTRAP_TOKEN_PUBLIC_KEY,
-#          INFISICAL_URL, INFISICAL_API_TOKEN, INFISICAL_CA_ID
-
-# 2. Namespace を先に作成し infisical-machine-identity を事前投入
-#    helm install 時点で tumiki-cloud-api-env Secret が存在しないと
-#    Pod が CreateContainerConfigError になるため、Operator が認証して同期できる状態を先に整える
-kubectl create namespace tumiki-system --dry-run=client -o yaml | kubectl apply -f -
-kubectl create secret generic infisical-machine-identity \
-  --namespace tumiki-system \
-  --from-literal=clientId=<INFISICAL_CLIENT_ID> \
-  --from-literal=clientSecret=<INFISICAL_CLIENT_SECRET>
-
-# 3. Helm で Deployment + Service を作成（Namespace は手順2で作成済み）
-helm install tumiki-cloud-api ./infra/k3s/helm/tumiki-cloud-api \
-  --set infisical.projectSlug=tumiki-cloud-api \
-  --set infisical.environment=prod \
-  --set image.tag=<IMAGE_TAG>
-
-# 4. 状態確認
-kubectl get all -n tumiki-system
-kubectl get svc tumiki-cloud-api -n tumiki-system  # EXTERNAL-IP を確認
-```
-
-> **Note**: Helm install 前に Secret を投入することで Infisical Operator が `tumiki-cloud-api-env`
-> Secret を即座に同期し、Pod が初回起動から成功する。投入順序を逆にすると Pod が
-> `CreateContainerConfigError` になり、Secret 同期後に自動回復するまで数十秒の不整合状態になる。
-
 ## ディレクトリ構成
 
 ```
@@ -275,28 +229,16 @@ infra/k3s/
     │       ├── deployment.yaml         # Reloaderアノテーション付き
     │       ├── service.yaml
     │       └── ingress.yaml            # TLSなし（Cloudflare Tunnelが担当）
-    ├── tenant-console/                 # テナント管理UI Helm チャート
-    │   ├── Chart.yaml
-    │   ├── values.yaml
-    │   └── templates/
-    │       ├── _helpers.tpl
-    │       ├── serviceaccount.yaml     # tRPC API が helm/kubectl 実行する RBAC
-    │       ├── deployment.yaml
-    │       ├── service.yaml
-    │       ├── ingress.yaml
-    │       ├── postgresql-statefulset.yaml
-    │       ├── postgresql-service.yaml
-    │       └── infisical-secret.yaml
-    └── tumiki-cloud-api/               # 全テナント共有の証明書発行サービス
+    └── tenant-console/                 # テナント管理UI Helm チャート
         ├── Chart.yaml
         ├── values.yaml
         └── templates/
             ├── _helpers.tpl
-            ├── namespace.yaml          # tumiki-system Namespace
-            ├── infisical-secret.yaml
-            ├── deployment.yaml         # HA: replicas + podAntiAffinity
-            ├── service.yaml            # LoadBalancer + ClusterIP の二系統
-            ├── network-policy.yaml     # egress: Infisical のみ
-            ├── pdb.yaml                # PodDisruptionBudget
-            └── hpa.yaml                # HorizontalPodAutoscaler
+            ├── serviceaccount.yaml     # tRPC API が helm/kubectl 実行する RBAC
+            ├── deployment.yaml
+            ├── service.yaml
+            ├── ingress.yaml
+            ├── postgresql-statefulset.yaml
+            ├── postgresql-service.yaml
+            └── infisical-secret.yaml
 ```
