@@ -64,27 +64,44 @@ export const issueLicense = async (ctx: Context, input: IssueLicenseInput) => {
     },
   });
 
-  const privateKey = await getPrivateKey();
+  try {
+    const privateKey = await getPrivateKey();
 
-  const payload: LicenseJwtPayload = {
-    iss: "tumiki-license",
-    aud: "tumiki-cloud-api",
-    sub: input.subject,
-    type: input.type,
-    features: input.features,
-  };
-  if (input.plan) payload.plan = input.plan;
-  if (input.type === "TENANT") payload.tenant = input.tenantId;
+    const payload: LicenseJwtPayload = {
+      iss: "tumiki-license",
+      aud: "tumiki-cloud-api",
+      sub: input.subject,
+      type: input.type,
+      features: input.features,
+    };
+    if (input.plan) payload.plan = input.plan;
+    if (input.type === "TENANT") payload.tenant = input.tenantId;
 
-  const jwt = await new SignJWT(payload)
-    .setProtectedHeader({ alg: "RS256" })
-    .setIssuedAt(now)
-    .setExpirationTime(expiresAt)
-    .setJti(jti)
-    .sign(privateKey);
+    const jwt = await new SignJWT(payload)
+      .setProtectedHeader({ alg: "RS256" })
+      .setIssuedAt(now)
+      .setExpirationTime(expiresAt)
+      .setJti(jti)
+      .sign(privateKey);
 
-  return {
-    license,
-    token: `${TOKEN_PREFIX}${jwt}`,
-  };
+    return {
+      license,
+      token: `${TOKEN_PREFIX}${jwt}`,
+    };
+  } catch (e) {
+    // JWT 署名失敗時は孤立 ACTIVE レコードを REVOKED に倒す
+    await ctx.db.license.update({
+      where: { id: license.id },
+      data: {
+        status: "REVOKED",
+        revokedAt: new Date(),
+        revokedReason: "issue_failed",
+      },
+    });
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "ライセンスの JWT 署名に失敗しました",
+      cause: e,
+    });
+  }
 };

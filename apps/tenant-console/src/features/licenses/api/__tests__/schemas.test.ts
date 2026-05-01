@@ -28,7 +28,6 @@ describe("issueLicenseInputSchema", () => {
         ttlDays: 365,
         plan: "pro",
         notes: "テスト発行",
-        issuedByEmail: "admin@example.com",
       };
       const result = issueLicenseInputSchema.parse(input);
       expect(result.type).toStrictEqual("PERSONAL");
@@ -103,6 +102,18 @@ describe("issueLicenseInputSchema", () => {
         type: "TENANT" as const,
         subject: "not-a-cuid",
         tenantId: VALID_CUID,
+        features: ["dynamic-search"] as ["dynamic-search"],
+        ttlDays: 365,
+      };
+      expect(() => issueLicenseInputSchema.parse(input)).toThrow();
+    });
+
+    test("subjectとtenantIdが異なる場合を拒否する", () => {
+      const OTHER_CUID = "clh9999999990abcdefghijk0";
+      const input = {
+        type: "TENANT" as const,
+        subject: VALID_CUID,
+        tenantId: OTHER_CUID,
         features: ["dynamic-search"] as ["dynamic-search"],
         ttlDays: 365,
       };

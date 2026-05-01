@@ -13,15 +13,20 @@ export const issueLicenseInputSchema = z.discriminatedUnion("type", [
     plan: z.string().optional(),
     notes: z.string().optional(),
   }),
-  z.object({
-    type: z.literal("TENANT"),
-    subject: z.string().cuid("テナント ID の形式が正しくありません"),
-    tenantId: z.string().cuid("テナント ID の形式が正しくありません"),
-    features: z.array(z.enum(AVAILABLE_FEATURES)).min(1),
-    ttlDays: z.number().int().min(1).max(730),
-    plan: z.string().optional(),
-    notes: z.string().optional(),
-  }),
+  z
+    .object({
+      type: z.literal("TENANT"),
+      subject: z.string().cuid("テナント ID の形式が正しくありません"),
+      tenantId: z.string().cuid("テナント ID の形式が正しくありません"),
+      features: z.array(z.enum(AVAILABLE_FEATURES)).min(1),
+      ttlDays: z.number().int().min(1).max(730),
+      plan: z.string().optional(),
+      notes: z.string().optional(),
+    })
+    .refine((v) => v.subject === v.tenantId, {
+      message: "TENANT タイプでは subject と tenantId は同一にしてください",
+      path: ["subject"],
+    }),
 ]);
 
 export const listLicensesInputSchema = z.object({

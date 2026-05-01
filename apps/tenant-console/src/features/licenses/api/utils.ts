@@ -4,6 +4,6 @@ export const computeStatus = (license: {
   expiresAt: Date;
 }): "ACTIVE" | "REVOKED" | "EXPIRED" => {
   if (license.status === "REVOKED") return "REVOKED";
-  if (license.expiresAt < new Date()) return "EXPIRED";
+  if (license.expiresAt <= new Date()) return "EXPIRED";
   return "ACTIVE";
 };

@@ -2,6 +2,10 @@ import { type Context } from "@/server/api/trpc";
 import { type ListLicensesInput } from "./schemas";
 import { computeStatus } from "./utils";
 
+/**
+ * ライセンス一覧を返す。
+ * status 未指定時は ACTIVE・EXPIRED・REVOKED 全ステータスを返す（computedStatus で確認可能）。
+ */
 export const listLicenses = async (ctx: Context, input: ListLicensesInput) => {
   const now = new Date();
 
