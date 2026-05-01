@@ -71,7 +71,7 @@ WORKDIR /app
 
 COPY --from=build --chown=nodejs:nodejs /app/apps/tenant-console/.next/standalone/ ./
 COPY --from=build --chown=nodejs:nodejs /app/apps/tenant-console/.next/static ./apps/tenant-console/.next/static
-COPY --from=build --chown=nodejs:nodejs /app/apps/tenant-console/public ./apps/tenant-console/public 2>/dev/null || true
+COPY --from=build --chown=nodejs:nodejs /app/apps/tenant-console/public ./apps/tenant-console/public
 
 # Helm chart を同梱（テナントデプロイ用）
 COPY --chown=nodejs:nodejs infra/k3s/helm/internal-manager ./helm/internal-manager
