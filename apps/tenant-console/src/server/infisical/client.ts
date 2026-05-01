@@ -57,6 +57,10 @@ const apiFetch = async (
 
 type CreateProjectResponse = { project: { id: string; slug: string } };
 
+/**
+ * Infisical プロジェクトを作成する。
+ * 同一 slug が既存なら 409 で失敗するため、呼び出し側で重複チェック済み前提。
+ */
 export const createProject = async (params: {
   projectName: string;
   slug: string;
@@ -64,6 +68,7 @@ export const createProject = async (params: {
   const res = await apiFetch("/api/v2/workspace", {
     method: "POST",
     body: JSON.stringify({
+      organizationId: env.INFISICAL_ORG_ID,
       projectName: params.projectName,
       slug: params.slug,
       type: "secret-manager",
@@ -79,9 +84,14 @@ export const createProject = async (params: {
   return { projectId: data.project.id, projectSlug: data.project.slug };
 };
 
+/**
+ * Machine Identity をプロジェクトに紐付ける。
+ * 同じ Identity を複数プロジェクトで使い回す際に使用する。
+ */
 export const addIdentityToProject = async (params: {
   projectId: string;
   identityId: string;
+  /** Project Role の slug。デフォルトは developer (read-only) */
   role?: string;
 }): Promise<void> => {
   const res = await apiFetch(
@@ -100,6 +110,11 @@ export const addIdentityToProject = async (params: {
   }
 };
 
+/**
+ * シークレットを upsert する（存在しなければ POST、存在すれば PATCH）。
+ * Infisical API の POST は create / PATCH は update 専用なので、409 (Conflict) を
+ * 検知して PATCH にフォールバックする方式で冪等性を担保する。
+ */
 export const upsertSecrets = async (params: {
   projectId: string;
   environment: string;
@@ -107,27 +122,50 @@ export const upsertSecrets = async (params: {
   secrets: Record<string, string>;
 }): Promise<void> => {
   for (const [key, value] of Object.entries(params.secrets)) {
-    const res = await apiFetch(
-      `/api/v3/secrets/raw/${encodeURIComponent(key)}`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          workspaceId: params.projectId,
-          environment: params.environment,
-          secretPath: params.secretsPath,
-          secretValue: value,
-          type: "shared",
-        }),
-      },
-    );
+    const path = `/api/v3/secrets/raw/${encodeURIComponent(key)}`;
+    const body = {
+      workspaceId: params.projectId,
+      environment: params.environment,
+      secretPath: params.secretsPath,
+      secretValue: value,
+      type: "shared" as const,
+    };
 
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`upsertSecret(${key}) failed: ${res.status} ${text}`);
+    // まず create を試す
+    const createRes = await apiFetch(path, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+
+    if (createRes.ok) {
+      continue;
     }
+
+    // 409 Conflict（既存）なら PATCH で更新する
+    if (createRes.status === 409) {
+      const updateRes = await apiFetch(path, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      });
+      if (!updateRes.ok) {
+        const text = await updateRes.text();
+        throw new Error(
+          `upsertSecret PATCH(${key}) failed: ${updateRes.status} ${text}`,
+        );
+      }
+      continue;
+    }
+
+    const text = await createRes.text();
+    throw new Error(
+      `upsertSecret POST(${key}) failed: ${createRes.status} ${text}`,
+    );
   }
 };
 
+/**
+ * プロジェクトを削除する（ロールバック用、ベストエフォート）
+ */
 export const deleteProject = async (projectId: string): Promise<void> => {
   await apiFetch(`/api/v2/workspace/${projectId}`, { method: "DELETE" });
 };
