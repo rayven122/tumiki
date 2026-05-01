@@ -294,11 +294,11 @@ export const AddMcpModal = ({
             <Info size={14} className="ml-auto text-[var(--text-subtle)]" />
           </div>
           <div
-            className="pointer-events-none absolute bottom-full left-0 z-10 mb-2 w-80 rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-4 py-3 text-xs shadow-lg transition-all duration-150"
-            style={{
-              opacity: showSlugInfo ? 1 : 0,
-              transform: showSlugInfo ? "translateY(0)" : "translateY(4px)",
-            }}
+            className={`pointer-events-none absolute bottom-full left-0 z-10 mb-2 w-80 rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-4 py-3 text-xs shadow-lg transition-all duration-150 ${
+              showSlugInfo
+                ? "translate-y-0 opacity-100"
+                : "translate-y-1 opacity-0"
+            }`}
           >
             <div className="mb-1.5 font-semibold text-[var(--text-primary)]">
               MCPサーバー識別子の用途

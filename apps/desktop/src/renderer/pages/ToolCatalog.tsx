@@ -12,14 +12,11 @@ import { CATALOG_TOOLS_MOCK } from "../data/catalog-tools-mock";
 import { DISCOVERY_ERROR_CODE } from "../../shared/oauth/discovery-error-codes";
 
 /** 認証種別バッジスタイル */
-const authBadgeColor: Record<
-  CatalogItem["authType"],
-  { bg: string; text: string }
-> = {
-  NONE: { bg: "var(--badge-success-bg)", text: "var(--badge-success-text)" },
-  BEARER: { bg: "var(--badge-warn-bg)", text: "var(--badge-warn-text)" },
-  API_KEY: { bg: "var(--badge-warn-bg)", text: "var(--badge-warn-text)" },
-  OAUTH: { bg: "var(--badge-info-bg)", text: "var(--badge-info-text)" },
+const authBadgeClass: Record<CatalogItem["authType"], string> = {
+  NONE: "bg-[var(--badge-success-bg)] text-[var(--badge-success-text)]",
+  BEARER: "bg-[var(--badge-warn-bg)] text-[var(--badge-warn-text)]",
+  API_KEY: "bg-[var(--badge-warn-bg)] text-[var(--badge-warn-text)]",
+  OAUTH: "bg-[var(--badge-info-bg)] text-[var(--badge-info-text)]",
 };
 
 export const ToolCatalog = (): JSX.Element => {
@@ -223,11 +220,7 @@ export const ToolCatalog = (): JSX.Element => {
                     </div>
                   )}
                   <span
-                    className="rounded-full px-2 py-0.5 text-[9px] font-medium"
-                    style={{
-                      backgroundColor: authBadgeColor[item.authType].bg,
-                      color: authBadgeColor[item.authType].text,
-                    }}
+                    className={`rounded-full px-2 py-0.5 text-[9px] font-medium ${authBadgeClass[item.authType]}`}
                   >
                     {authTypeLabel[item.authType]}
                   </span>
