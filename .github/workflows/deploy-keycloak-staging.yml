@@ -75,14 +75,22 @@ jobs:
             set -euo pipefail
             set +o history
             cd ~/keycloak
-            export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID}"
-            export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET}"
-            export INFISICAL_SITE_URL="https://secrets.rayven.cloud"
+            # universal-auth でログインしてアクセストークンを取得（--method 廃止のため login 経由）
+            INFISICAL_TOKEN=$(~/.local/bin/infisical login \
+              --method=universal-auth \
+              --client-id="${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID}" \
+              --client-secret="${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET}" \
+              --domain https://secrets.rayven.cloud \
+              --silent --plain)
             ~/.local/bin/infisical run --env=staging \
-              --projectId=dbff850c-430a-431b-b7fe-efc744e304d6 -- docker compose pull keycloak
+              --projectId=dbff850c-430a-431b-b7fe-efc744e304d6 \
+              --token="${INFISICAL_TOKEN}" \
+              --domain https://secrets.rayven.cloud -- docker compose pull keycloak
             # --remove-orphans: compose.yaml から削除されたサービスのコンテナを合わせてクリーンアップ
             ~/.local/bin/infisical run --env=staging \
-              --projectId=dbff850c-430a-431b-b7fe-efc744e304d6 -- docker compose up -d --force-recreate --remove-orphans keycloak
+              --projectId=dbff850c-430a-431b-b7fe-efc744e304d6 \
+              --token="${INFISICAL_TOKEN}" \
+              --domain https://secrets.rayven.cloud -- docker compose up -d --force-recreate --remove-orphans keycloak
           REMOTE_SCRIPT
 
       - name: ✅ Verify Keycloak health
