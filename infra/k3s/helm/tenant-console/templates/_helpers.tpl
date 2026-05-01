@@ -18,6 +18,9 @@ app.kubernetes.io/managed-by: Helm
 {{- if eq .Values.image.tag "latest" }}
 {{- fail "image.tag に 'latest' は指定できません。再現性のあるバージョンタグを指定してください" }}
 {{- end }}
+{{- if regexMatch "[[:space:]]" .Values.image.tag }}
+{{- fail "image.tag に空白文字を含めることはできません" }}
+{{- end }}
 {{- if not .Values.infisical.projectSlug }}
 {{- fail "infisical.projectSlug は必須です" }}
 {{- end }}

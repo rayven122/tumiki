@@ -275,6 +275,18 @@ infra/k3s/
     │       ├── deployment.yaml         # Reloaderアノテーション付き
     │       ├── service.yaml
     │       └── ingress.yaml            # TLSなし（Cloudflare Tunnelが担当）
+    ├── tenant-console/                 # テナント管理UI Helm チャート
+    │   ├── Chart.yaml
+    │   ├── values.yaml
+    │   └── templates/
+    │       ├── _helpers.tpl
+    │       ├── serviceaccount.yaml     # tRPC API が helm/kubectl 実行する RBAC
+    │       ├── deployment.yaml
+    │       ├── service.yaml
+    │       ├── ingress.yaml
+    │       ├── postgresql-statefulset.yaml
+    │       ├── postgresql-service.yaml
+    │       └── infisical-secret.yaml
     └── tumiki-cloud-api/               # 全テナント共有の証明書発行サービス
         ├── Chart.yaml
         ├── values.yaml
