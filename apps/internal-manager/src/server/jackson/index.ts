@@ -114,7 +114,10 @@ export const getJackson = async (): Promise<SAMLJackson> => {
   initPromise = (async () => {
     try {
       const option = buildJacksonOption();
-      const instance = await jackson(option);
+      // tsx (Node.js CJS) 環境では ESM default import が module object になるため interop が必要
+      const jacksonFn =
+        (jackson as unknown as { default?: typeof jackson }).default ?? jackson;
+      const instance = await jacksonFn(option);
       jacksonInstance = instance;
       return instance;
     } catch (e) {
