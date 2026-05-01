@@ -169,3 +169,34 @@ export const upsertSecrets = async (params: {
 export const deleteProject = async (projectId: string): Promise<void> => {
   await apiFetch(`/api/v2/workspace/${projectId}`, { method: "DELETE" });
 };
+
+type GetSecretResponse = { secret: { secretValue: string } };
+
+/**
+ * Infisical からシークレット値を取得する
+ */
+export const getSecret = async (params: {
+  projectId: string;
+  environment: string;
+  secretPath: string;
+  secretName: string;
+}): Promise<string> => {
+  const query = new URLSearchParams({
+    workspaceId: params.projectId,
+    environment: params.environment,
+    secretPath: params.secretPath,
+  });
+  const res = await apiFetch(
+    `/api/v3/secrets/raw/${encodeURIComponent(params.secretName)}?${query}`,
+  );
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(
+      `getSecret(${params.secretName}) failed: ${res.status} ${text}`,
+    );
+  }
+
+  const data = (await res.json()) as GetSecretResponse;
+  return data.secret.secretValue;
+};
