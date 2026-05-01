@@ -35,6 +35,12 @@ services:
     ports:
       - "8080:8080"
     env_file: .env
+    environment:
+      # .env.example が apps/manager/.env として Docker image に焼き込まれており、
+      # AUTH_URL="http://localhost:3000" が設定されている。
+      # AUTH_URL は NEXTAUTH_URL より優先されるため、両方を上書きする。
+      AUTH_URL: ${NEXTAUTH_URL}
+      NEXTAUTH_URL: ${NEXTAUTH_URL}
     depends_on:
       db:
         condition: service_healthy
