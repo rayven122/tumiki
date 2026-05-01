@@ -20,6 +20,7 @@ import type { PipelineContext } from "./context.js";
 import {
   canDeactivateUser,
   canDefineGroupMembership,
+  canDeleteGroup,
   isJitAllowed,
 } from "../linking/authoritative-source.js";
 import { decideLinking } from "../linking/strategy.js";
@@ -82,6 +83,14 @@ export const applyUserUpserted = async (
       userId,
       event.payload.displayName,
     );
+    // IdP 側で email が変更された場合に反映する
+    // emailVerified が true のときのみ反映（不正な email 変更による乗っ取り防止）
+    if (
+      event.payload.emailVerified &&
+      decision.user.email !== event.payload.email
+    ) {
+      await store.updateUserEmail(ctx.tenantId, userId, event.payload.email);
+    }
     if (existingIdentity !== null) {
       await store.updateIdentityAttributes(
         ctx.tenantId,
@@ -208,7 +217,7 @@ export const applyGroupDeleted = async (
 ): Promise<ApplyOutcome> => {
   const { store, eventBus, tenantConfig } = deps;
 
-  if (!canDefineGroupMembership(tenantConfig, ctx.source)) {
+  if (!canDeleteGroup(tenantConfig, ctx.source)) {
     return {
       kind: "skipped",
       reason: `source ${ctx.source} is not authoritative for group deletion`,

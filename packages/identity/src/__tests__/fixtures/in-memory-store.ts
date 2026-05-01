@@ -90,6 +90,26 @@ export const createInMemoryIdentityStore = (
     return updated;
   };
 
+  const updateUserEmail = (
+    tenantId: TenantId,
+    id: UserId,
+    email: CanonicalEmail,
+  ): User => {
+    const idx = state.users.findIndex(
+      (u) => u.tenantId === tenantId && u.id === id,
+    );
+    if (idx === -1) throw new Error(`user not found: ${id}`);
+    const current = state.users[idx];
+    if (current === undefined) throw new Error(`user not found: ${id}`);
+    const updated: User = {
+      ...current,
+      email,
+      updatedAt: new Date(),
+    };
+    state.users[idx] = updated;
+    return updated;
+  };
+
   const deactivateUser = (tenantId: TenantId, id: UserId): User => {
     const idx = state.users.findIndex(
       (u) => u.tenantId === tenantId && u.id === id,
@@ -279,6 +299,8 @@ export const createInMemoryIdentityStore = (
     createUser: async (d) => Promise.resolve(createUser(d)),
     updateUserDisplayName: async (t, id, n) =>
       Promise.resolve(updateUserDisplayName(t, id, n)),
+    updateUserEmail: async (t, id, e) =>
+      Promise.resolve(updateUserEmail(t, id, e)),
     deactivateUser: async (t, id) => Promise.resolve(deactivateUser(t, id)),
     findIdentityBySourceAndExternalId: async (t, s, e) =>
       Promise.resolve(findIdentityBySourceAndExternalId(t, s, e)),

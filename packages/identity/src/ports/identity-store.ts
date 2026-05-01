@@ -55,6 +55,13 @@ export type IdentityStorePort = {
     id: UserId,
     displayName: string,
   ) => Promise<User>;
+  // IdP 側で email が変更された場合に反映する
+  // 呼び出し側で email_verified を確認した上で呼ぶこと
+  readonly updateUserEmail: (
+    tenantId: TenantId,
+    id: UserId,
+    email: CanonicalEmail,
+  ) => Promise<User>;
   readonly deactivateUser: (tenantId: TenantId, id: UserId) => Promise<User>;
 
   // ---- Identity ----

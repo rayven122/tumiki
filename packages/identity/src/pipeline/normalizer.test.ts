@@ -8,6 +8,8 @@ import { externalId } from "../domain/branded.js";
 import { canonicalizeEmail } from "../domain/email.js";
 import { createPipelineContext } from "./context.js";
 import {
+  normalizeGroupDeletion,
+  normalizeGroupSnapshot,
   normalizeMembershipSnapshot,
   normalizeUserSnapshot,
   normalizeUserSnapshots,
@@ -126,5 +128,49 @@ describe("normalizeMembershipSnapshot", () => {
       externalId("user-1"),
       externalId("user-2"),
     ]);
+  });
+});
+
+describe("normalizeGroupSnapshot", () => {
+  test("IDP origin の Group を GroupUpserted に変換する", () => {
+    const ctx = createPipelineContext(TEST_TENANT_ID, SOURCE_SCIM_OKTA);
+    const result = normalizeGroupSnapshot(ctx, {
+      source: SOURCE_SCIM_OKTA,
+      externalId: externalId("group-1"),
+      origin: "IDP",
+      name: "Engineering",
+      description: "Eng team",
+    });
+
+    expect(result.type).toStrictEqual("GroupUpserted");
+    expect(result.payload.externalId).toStrictEqual(externalId("group-1"));
+    expect(result.payload.origin).toStrictEqual("IDP");
+    expect(result.payload.name).toStrictEqual("Engineering");
+    expect(result.payload.description).toStrictEqual("Eng team");
+  });
+
+  test("description が null の場合もそのまま伝搬する", () => {
+    const ctx = createPipelineContext(TEST_TENANT_ID, SOURCE_SCIM_OKTA);
+    const result = normalizeGroupSnapshot(ctx, {
+      source: SOURCE_SCIM_OKTA,
+      externalId: externalId("group-2"),
+      origin: "IDP",
+      name: "Sales",
+      description: null,
+    });
+
+    expect(result.payload.description).toBeNull();
+  });
+});
+
+describe("normalizeGroupDeletion", () => {
+  test("GroupDeleted event を生成する", () => {
+    const ctx = createPipelineContext(TEST_TENANT_ID, SOURCE_SCIM_OKTA);
+    const result = normalizeGroupDeletion(ctx, externalId("group-1"));
+
+    expect(result.type).toStrictEqual("GroupDeleted");
+    expect(result.payload.externalId).toStrictEqual(externalId("group-1"));
+    expect(result.meta.tenantId).toStrictEqual(TEST_TENANT_ID);
+    expect(result.meta.source).toStrictEqual(SOURCE_SCIM_OKTA);
   });
 });

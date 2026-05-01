@@ -38,4 +38,15 @@ describe("computeIdempotencyKey", () => {
     });
     expect(a).not.toStrictEqual(b);
   });
+
+  test("payload に undefined を含む場合でも null と同じく安定して扱う", () => {
+    // undefined と null の挙動を一致させる: 配列要素や object 値に undefined を含む際の曖昧さ排除
+    const a = computeIdempotencyKey(source, ext, undefined);
+    const b = computeIdempotencyKey(source, ext, null);
+    expect(a).toStrictEqual(b);
+
+    const c = computeIdempotencyKey(source, ext, [undefined, "x"]);
+    const d = computeIdempotencyKey(source, ext, [null, "x"]);
+    expect(c).toStrictEqual(d);
+  });
 });

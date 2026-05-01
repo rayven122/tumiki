@@ -18,6 +18,14 @@ export const canDefineGroupMembership = (
   source: SourceId,
 ): boolean => config.authoritativeSourceForGroups === source;
 
+// Group 削除権限の判定
+// 現状は canDefineGroupMembership と同じ authoritative source を参照するが、
+// 将来 membership 制御と group 削除制御を分離する場合に備えて専用関数を提供する
+export const canDeleteGroup = (
+  config: TenantIdpConfiguration,
+  source: SourceId,
+): boolean => config.authoritativeSourceForGroups === source;
+
 // JIT 経路で新規 User を作成してよいかをテナント設定で判定
 export const isJitAllowed = (config: TenantIdpConfiguration): boolean =>
   config.jitAllowed;
