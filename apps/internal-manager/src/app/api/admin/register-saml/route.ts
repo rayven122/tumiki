@@ -21,7 +21,10 @@ export const POST = async (req: NextRequest): Promise<NextResponse> => {
   const body = (await req.json()) as Record<string, unknown>;
   const rawMetadata = body.rawMetadata;
   if (typeof rawMetadata !== "string" || !rawMetadata) {
-    return NextResponse.json({ error: "rawMetadata required" }, { status: 400 });
+    return NextResponse.json(
+      { error: "rawMetadata required" },
+      { status: 400 },
+    );
   }
 
   const tenant = typeof body.tenant === "string" ? body.tenant : "default";
