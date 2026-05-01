@@ -5,7 +5,7 @@ import { getJackson, resolveExternalUrl } from "@/server/jackson";
  * SAML Connection 一時登録 API（使用後に削除すること）
  *
  * Authorization: Bearer <ADMIN_REGISTER_SECRET> で認証。
- * multipart/form-data で rawMetadata (XML) を受け取り Connection を登録する。
+ * JSON body で rawMetadata (XML 文字列) を受け取り Connection を登録する。
  */
 export const POST = async (req: NextRequest): Promise<NextResponse> => {
   const secret = process.env.ADMIN_REGISTER_SECRET;
@@ -18,14 +18,14 @@ export const POST = async (req: NextRequest): Promise<NextResponse> => {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const formData = await req.formData();
-  const rawMetadata = formData.get("rawMetadata");
+  const body = (await req.json()) as Record<string, unknown>;
+  const rawMetadata = body.rawMetadata;
   if (typeof rawMetadata !== "string" || !rawMetadata) {
     return NextResponse.json({ error: "rawMetadata required" }, { status: 400 });
   }
 
-  const tenant = (formData.get("tenant") as string | null) ?? "default";
-  const product = (formData.get("product") as string | null) ?? "tumiki";
+  const tenant = typeof body.tenant === "string" ? body.tenant : "default";
+  const product = typeof body.product === "string" ? body.product : "tumiki";
   const externalUrl = resolveExternalUrl();
 
   const { connectionAPIController } = await getJackson();
