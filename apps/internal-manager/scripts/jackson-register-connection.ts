@@ -60,20 +60,43 @@ const main = async () => {
     redirectUrl: JSON.stringify([`${externalUrl}/*`]),
   });
 
+  // クレデンシャルは標準出力ではなくファイルに書き出す（CI ログ等への漏洩防止）
+  const outputPath =
+    process.env.JACKSON_OUTPUT_FILE ?? "/tmp/jackson-connection.txt";
+  const output = [
+    "=== Connection registered ===",
+    `tenant:       ${tenant}`,
+    `product:      ${product}`,
+    `clientID:     ${connection.clientID}`,
+    `clientSecret: ${connection.clientSecret}`,
+    "",
+    "=== Set these env vars in Infisical (staging) ===",
+    `OIDC_ISSUER=${externalUrl}`,
+    `OIDC_CLIENT_ID=${connection.clientID}`,
+    `OIDC_CLIENT_SECRET=${connection.clientSecret}`,
+    "",
+    "=== Update Google Workspace custom SAML app ===",
+    `ACS URL:    ${externalUrl}/api/saml/acs`,
+    `Entity ID:  ${externalUrl}`,
+    "",
+  ].join("\n");
+
+  const { writeFile, chmod } = await import("node:fs/promises");
+  await writeFile(outputPath, output, "utf-8");
+  await chmod(outputPath, 0o600);
+
   console.log("\n=== Connection registered ===");
-  console.log(`tenant:      ${tenant}`);
-  console.log(`product:     ${product}`);
-  console.log(`clientID:    ${connection.clientID}`);
-  console.log(`clientSecret: ${connection.clientSecret}`);
-  console.log("\n=== Next: set these env vars in Infisical ===");
-  console.log(`OIDC_ISSUER=${externalUrl}`);
-  console.log(`OIDC_CLIENT_ID=${connection.clientID}`);
-  console.log(`OIDC_CLIENT_SECRET=${connection.clientSecret}`);
-  console.log(
-    "\nCopy ACS URL / Entity ID into Google Workspace custom SAML app:",
-  );
-  console.log(`ACS URL:    ${externalUrl}/api/saml/acs`);
-  console.log(`Entity ID:  ${externalUrl}`);
+  console.log(`tenant:       ${tenant}`);
+  console.log(`product:      ${product}`);
+  console.log(`clientID:     ${connection.clientID.slice(0, 8)}...`);
+  console.log(`clientSecret: ***（マスク）***`);
+  console.log("");
+  console.log(`✓ 完全な値は保存先に書き出しました: ${outputPath}`);
+  console.log(`  権限 0600 で保存。確認後は手動で削除してください:`);
+  console.log(`  rm ${outputPath}`);
+  console.log("");
+  console.log("Infisical CLI で直接設定する場合:");
+  console.log(`  source ${outputPath} の値を Infisical secrets set で投入`);
 
   process.exit(0);
 };

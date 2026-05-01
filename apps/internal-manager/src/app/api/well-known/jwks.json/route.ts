@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getJackson } from "@/server/jackson";
+import { ensureJackson } from "@/server/jackson/route-helpers";
 
 /**
  * OIDC IdP の JWKS（JSON Web Key Set）公開エンドポイント
@@ -8,7 +8,10 @@ import { getJackson } from "@/server/jackson";
  * アプリ（Auth.js）が ID Token の署名検証に使用する公開鍵を提供する。
  */
 export const GET = async () => {
-  const { oidcDiscoveryController } = await getJackson();
+  const result = await ensureJackson();
+  if (!result.ok) return result.response;
+  const { oidcDiscoveryController } = result.jackson;
+
   const jwks = await oidcDiscoveryController.jwks();
   return NextResponse.json(jwks);
 };

@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getJackson } from "@/server/jackson";
+import { ensureJackson, oauthError } from "@/server/jackson/route-helpers";
 
 /**
  * SAML SP の ACS（Assertion Consumer Service）エンドポイント
@@ -9,7 +9,10 @@ import { getJackson } from "@/server/jackson";
  * jackson が SAML を OIDC ID Token に変換し、アプリにリダイレクトする。
  */
 export const POST = async (req: NextRequest) => {
-  const { oauthController } = await getJackson();
+  const result = await ensureJackson();
+  if (!result.ok) return result.response;
+  const { oauthController } = result.jackson;
+
   const formData = await req.formData();
   const params: Record<string, string> = {};
   for (const [key, value] of formData.entries()) {
@@ -19,24 +22,23 @@ export const POST = async (req: NextRequest) => {
   }
 
   try {
-    const result = await oauthController.samlResponse(
+    const samlResult = await oauthController.samlResponse(
       params as unknown as Parameters<typeof oauthController.samlResponse>[0],
     );
 
-    if ("redirect_url" in result && result.redirect_url) {
-      return NextResponse.redirect(result.redirect_url, { status: 302 });
+    if ("redirect_url" in samlResult && samlResult.redirect_url) {
+      return NextResponse.redirect(samlResult.redirect_url, { status: 302 });
     }
 
-    if ("response_form" in result && result.response_form) {
-      return new NextResponse(result.response_form, {
+    if ("response_form" in samlResult && samlResult.response_form) {
+      return new NextResponse(samlResult.response_form, {
         headers: { "Content-Type": "text/html" },
       });
     }
 
-    return NextResponse.json({ error: "invalid_response" }, { status: 400 });
+    return oauthError("saml/acs", "no redirect_url");
   } catch (e) {
-    const message = e instanceof Error ? e.message : "saml_error";
-    return NextResponse.json({ error: message }, { status: 400 });
+    return oauthError("saml/acs", e);
   }
 };
 

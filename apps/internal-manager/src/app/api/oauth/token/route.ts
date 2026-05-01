@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getJackson } from "@/server/jackson";
+import { ensureJackson, oauthError } from "@/server/jackson/route-helpers";
 
 /**
  * OIDC IdP のトークンエンドポイント
@@ -8,7 +8,9 @@ import { getJackson } from "@/server/jackson";
  * PKCE（code_verifier）に対応しているので Desktop アプリも利用可能。
  */
 export const POST = async (req: NextRequest) => {
-  const { oauthController } = await getJackson();
+  const result = await ensureJackson();
+  if (!result.ok) return result.response;
+  const { oauthController } = result.jackson;
 
   const formData = await req.formData();
   const params: Record<string, string> = {};
@@ -30,13 +32,12 @@ export const POST = async (req: NextRequest) => {
   }
 
   try {
-    const result = await oauthController.token(
+    const tokenResult = await oauthController.token(
       params as unknown as Parameters<typeof oauthController.token>[0],
     );
-    return NextResponse.json(result);
+    return NextResponse.json(tokenResult);
   } catch (e) {
-    const message = e instanceof Error ? e.message : "token_error";
-    return NextResponse.json({ error: message }, { status: 400 });
+    return oauthError("oauth/token", e, "invalid_grant");
   }
 };
 

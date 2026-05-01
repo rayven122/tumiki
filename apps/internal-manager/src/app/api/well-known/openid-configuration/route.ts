@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getJackson } from "@/server/jackson";
+import { ensureJackson } from "@/server/jackson/route-helpers";
 
 /**
  * OIDC Discovery エンドポイント
@@ -9,7 +9,10 @@ import { getJackson } from "@/server/jackson";
  * 自動検出するために使う。
  */
 export const GET = async () => {
-  const { oidcDiscoveryController } = await getJackson();
+  const result = await ensureJackson();
+  if (!result.ok) return result.response;
+  const { oidcDiscoveryController } = result.jackson;
+
   const config = oidcDiscoveryController.openidConfig();
   return NextResponse.json(config);
 };

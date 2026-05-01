@@ -11,7 +11,7 @@ const config = {
   // /.well-known/* は OIDC Discovery 用の標準パス。
   // Next.js のフォルダ名に dot prefix を含めると ESLint project service と相性が悪いため、
   // 実装は /api/well-known/* に置き、rewrites で /.well-known/* を内部マッピングする。
-  rewrites: async () => [
+  rewrites: () => [
     {
       source: "/.well-known/openid-configuration",
       destination: "/api/well-known/openid-configuration",

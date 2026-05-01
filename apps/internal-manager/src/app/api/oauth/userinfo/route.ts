@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getJackson } from "@/server/jackson";
+import { ensureJackson, oauthError } from "@/server/jackson/route-helpers";
 
 /**
  * OIDC IdP の UserInfo エンドポイント
@@ -7,7 +7,10 @@ import { getJackson } from "@/server/jackson";
  * Bearer トークンを受けて、認証されたユーザーの情報（email / name / groups 等）を返す。
  */
 const handler = async (req: NextRequest) => {
-  const { oauthController } = await getJackson();
+  const result = await ensureJackson();
+  if (!result.ok) return result.response;
+  const { oauthController } = result.jackson;
+
   const authHeader = req.headers.get("authorization");
   if (!authHeader?.startsWith("Bearer ")) {
     return NextResponse.json({ error: "invalid_token" }, { status: 401 });
@@ -18,8 +21,7 @@ const handler = async (req: NextRequest) => {
     const userInfo = await oauthController.userInfo(token);
     return NextResponse.json(userInfo);
   } catch (e) {
-    const message = e instanceof Error ? e.message : "userinfo_error";
-    return NextResponse.json({ error: message }, { status: 401 });
+    return oauthError("oauth/userinfo", e, "invalid_token", 401);
   }
 };
 

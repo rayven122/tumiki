@@ -78,10 +78,24 @@ const buildJacksonOption = (): JacksonOption => {
 };
 
 /**
+ * jackson 設定が完了しているかを env 変数で判定
+ *
+ * 必須環境変数が揃っていない時は初期化を試みず、エンドポイント側で
+ * 503 を返すようにする（500 エラーで全体障害にしない）。
+ */
+export const isJacksonConfigured = (): boolean =>
+  !!process.env.INTERNAL_DATABASE_URL &&
+  !!process.env.JACKSON_ENCRYPTION_KEY &&
+  process.env.JACKSON_ENCRYPTION_KEY.length >= 32;
+
+/**
  * jackson インスタンスを取得（シングルトン）
  *
  * Next.js のサーバーレス環境では複数の Lambda インスタンスが立ち上がるが、
  * 各インスタンスごとに 1 つの jackson controller を保持する。
+ *
+ * 初期化失敗時は initPromise を null に戻して次回リクエストで再試行できる
+ * ようにする（DB の一時障害等で永続的に死なないため）。
  */
 export const getJackson = async (): Promise<SAMLJackson> => {
   if (jacksonInstance) {
@@ -92,10 +106,16 @@ export const getJackson = async (): Promise<SAMLJackson> => {
   }
 
   initPromise = (async () => {
-    const option = buildJacksonOption();
-    const instance = await jackson(option);
-    jacksonInstance = instance;
-    return instance;
+    try {
+      const option = buildJacksonOption();
+      const instance = await jackson(option);
+      jacksonInstance = instance;
+      return instance;
+    } catch (e) {
+      // 失敗時はリセットして次回リクエストで再試行可能にする
+      initPromise = null;
+      throw e;
+    }
   })();
 
   return initPromise;
