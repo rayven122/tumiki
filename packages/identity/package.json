@@ -1,0 +1,49 @@
+{
+  "name": "@tumiki/identity",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./domain": {
+      "types": "./dist/domain/index.d.ts",
+      "default": "./dist/domain/index.js"
+    },
+    "./ports": {
+      "types": "./dist/ports/index.d.ts",
+      "default": "./dist/ports/index.js"
+    },
+    "./linking": {
+      "types": "./dist/linking/index.d.ts",
+      "default": "./dist/linking/index.js"
+    },
+    "./pipeline": {
+      "types": "./dist/pipeline/index.d.ts",
+      "default": "./dist/pipeline/index.js"
+    }
+  },
+  "scripts": {
+    "dev": "tsc --project tsconfig.build.json --watch",
+    "build": "tsc --project tsconfig.build.json",
+    "clean": "git clean -xdf .cache .turbo node_modules dist",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint",
+    "format": "prettier --check . --ignore-path ../../.gitignore --write",
+    "test": "vitest"
+  },
+  "devDependencies": {
+    "@tumiki/eslint-config": "workspace:*",
+    "@tumiki/prettier-config": "workspace:*",
+    "@tumiki/tsconfig": "workspace:*",
+    "@tumiki/vitest-config": "workspace:*",
+    "@vitest/coverage-v8": "catalog:",
+    "eslint": "catalog:",
+    "prettier": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "prettier": "@tumiki/prettier-config"
+}
