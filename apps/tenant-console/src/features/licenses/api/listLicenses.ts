@@ -30,18 +30,17 @@ export const listLicenses = async (ctx: Context, input: ListLicensesInput) => {
             ],
           }
         : {}),
-      // cursor は createdAt の ISO 文字列（orderBy と同じキーで一致させ、ページ境界の欠落・重複を防ぐ）
-      ...(input.cursor ? { createdAt: { lt: new Date(input.cursor) } } : {}),
     },
+    // Prisma cursor API で id をカーソルとする（createdAt は同一ミリ秒で重複し得るため id が安定）
+    cursor: input.cursor ? { id: input.cursor } : undefined,
+    skip: input.cursor ? 1 : 0,
     orderBy: { createdAt: "desc" },
     take: input.limit + 1,
   });
 
   const hasMore = items.length > input.limit;
   const result = hasMore ? items.slice(0, input.limit) : items;
-  const nextCursor = hasMore
-    ? result[result.length - 1]?.createdAt.toISOString()
-    : undefined;
+  const nextCursor = hasMore ? result[result.length - 1]?.id : undefined;
 
   return {
     items: result.map((license) => ({

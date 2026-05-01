@@ -1,12 +1,23 @@
-import { describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { computeStatus } from "../utils";
 
+const FIXED_NOW = new Date("2026-01-01T00:00:00.000Z");
+
 describe("computeStatus", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: false });
+    vi.setSystemTime(FIXED_NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   test("REVOKEDはexpiresAtに関わらずREVOKEDを返す", () => {
     expect(
       computeStatus({
         status: "REVOKED",
-        expiresAt: new Date(Date.now() + 10000),
+        expiresAt: new Date("2026-01-02T00:00:00.000Z"),
       }),
     ).toStrictEqual("REVOKED");
   });
@@ -15,7 +26,7 @@ describe("computeStatus", () => {
     expect(
       computeStatus({
         status: "ACTIVE",
-        expiresAt: new Date(Date.now() - 1),
+        expiresAt: new Date("2025-12-31T23:59:59.999Z"),
       }),
     ).toStrictEqual("EXPIRED");
   });
@@ -24,16 +35,16 @@ describe("computeStatus", () => {
     expect(
       computeStatus({
         status: "ACTIVE",
-        expiresAt: new Date(Date.now() + 10000),
+        expiresAt: new Date("2026-01-02T00:00:00.000Z"),
       }),
     ).toStrictEqual("ACTIVE");
   });
 
-  test("REVOKED かつ expiresAt が過去の場合も REVOKED を返す（REVOKED が優先）", () => {
+  test("REVOKED かつ expiresAt が過去でも REVOKED を返す（REVOKED が EXPIRED より優先）", () => {
     expect(
       computeStatus({
         status: "REVOKED",
-        expiresAt: new Date(Date.now() - 1),
+        expiresAt: new Date("2025-12-31T23:59:59.999Z"),
       }),
     ).toStrictEqual("REVOKED");
   });

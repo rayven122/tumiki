@@ -4,9 +4,20 @@ import { type Context } from "@/server/api/trpc";
 import { env } from "@/lib/env";
 import { type IssueLicenseInput } from "./schemas";
 
+// APIコンシューマーは `tumiki_lic_` プレフィックスを除去してから JWT を検証する
 const TOKEN_PREFIX = "tumiki_lic_";
 
-/** 起動後に一度だけ秘密鍵を parse してプロセス内キャッシュ */
+type LicenseJwtPayload = {
+  iss: string;
+  aud: string;
+  sub: string;
+  type: "PERSONAL" | "TENANT";
+  features: string[];
+  plan?: string;
+  tenant?: string;
+};
+
+/** ウォームスタート時のみ有効なプロセス内秘密鍵キャッシュ */
 let cachedPrivateKey: CryptoKey | null = null;
 
 const getPrivateKey = async (): Promise<CryptoKey> => {
@@ -49,14 +60,13 @@ export const issueLicense = async (ctx: Context, input: IssueLicenseInput) => {
       issuedAt: now,
       expiresAt,
       notes: input.notes,
-      // TODO: 認証実装時はコンテキストから自動取得し、クライアント入力に依存しない形にする
-      issuedByEmail: input.issuedByEmail,
+      // issuedByEmail は認証実装後にコンテキストから取得する設計のため、現時点では記録しない
     },
   });
 
   const privateKey = await getPrivateKey();
 
-  const payload: Record<string, unknown> = {
+  const payload: LicenseJwtPayload = {
     iss: "tumiki-license",
     aud: "tumiki-cloud-api",
     sub: input.subject,

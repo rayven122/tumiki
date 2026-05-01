@@ -12,7 +12,6 @@ export const issueLicenseInputSchema = z.discriminatedUnion("type", [
     ttlDays: z.number().int().min(1).max(730),
     plan: z.string().optional(),
     notes: z.string().optional(),
-    issuedByEmail: z.string().email().optional(),
   }),
   z.object({
     type: z.literal("TENANT"),
@@ -22,7 +21,6 @@ export const issueLicenseInputSchema = z.discriminatedUnion("type", [
     ttlDays: z.number().int().min(1).max(730),
     plan: z.string().optional(),
     notes: z.string().optional(),
-    issuedByEmail: z.string().email().optional(),
   }),
 ]);
 
@@ -31,7 +29,7 @@ export const listLicensesInputSchema = z.object({
   status: z.enum(["ACTIVE", "REVOKED", "EXPIRED"]).optional(),
   tenantId: z.string().cuid().optional(),
   search: z.string().optional(),
-  cursor: z.string().optional(),
+  cursor: z.string().cuid().optional(),
   limit: z.number().int().min(1).max(100).default(20),
 });
 

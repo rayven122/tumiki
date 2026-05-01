@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { TRPCError } from "@trpc/server";
-import { Prisma } from "../../../../prisma/generated/client/index.js";
+import { Prisma } from "@db-client";
 import { env } from "@/lib/env";
 import type { Context } from "@/server/api/trpc";
 import {

@@ -4,7 +4,8 @@
     "verbatimModuleSyntax": true,
     "paths": {
       "@/*": ["./src/*"],
-      "~/*": ["./src/*"]
+      "~/*": ["./src/*"],
+      "@db-client": ["./prisma/generated/client"]
     }
   },
   "include": [

@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { Prisma } from "../../../../prisma/generated/client/index.js";
+import { Prisma } from "@db-client";
 import { type Context } from "@/server/api/trpc";
 import { type RevokeLicenseInput } from "./schemas";
 
