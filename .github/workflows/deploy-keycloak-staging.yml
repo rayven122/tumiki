@@ -67,6 +67,9 @@ jobs:
           export-type: file
           file-output-path: /tmp/keycloak.env
 
+      - name: 🔒 Restrict secrets file permissions
+        run: chmod 600 /tmp/keycloak.env
+
       - name: 📤 Transfer files
         run: |
           ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" \
@@ -81,7 +84,7 @@ jobs:
             /tmp/keycloak.env \
             "${SSH_USER}@${KEYCLOAK_HOST}:~/keycloak/.env"
 
-      - name: 🔐 Deploy Keycloak
+      - name: 🐳 Deploy Keycloak
         run: |
           # ヒアドキュメントは quoted で runner 側変数の意図しない展開を防ぐ
           # docker compose は同ディレクトリの .env を自動読み込みする
@@ -114,4 +117,7 @@ jobs:
       - name: 🧹 Cleanup
         if: always()
         run: |
+          # デプロイ失敗時に Keycloak VM 上に .env が残らないよう SSH 越しに確実に削除
+          # SSH 鍵・設定を削除する前に実行する必要がある
+          ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=10 "${SSH_USER}@${KEYCLOAK_HOST}" 'rm -f ~/keycloak/.env' || true
           rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh /tmp/keycloak.env ~/.ssh/id_ed25519 ~/.ssh/config

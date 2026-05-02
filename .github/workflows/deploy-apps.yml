@@ -67,6 +67,9 @@ jobs:
           export-type: file
           file-output-path: /tmp/tumiki.env
 
+      - name: 🔒 Restrict secrets file permissions
+        run: chmod 600 /tmp/tumiki.env
+
       - name: 📤 Transfer compose.yaml and .env
         run: |
           ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" "echo connected && mkdir -p ~/tumiki"
@@ -109,6 +112,9 @@ jobs:
       - name: 🧹 Cleanup
         if: always()
         run: |
+          # デプロイ失敗時に VM 上に .env が残らないよう SSH 越しに確実に削除
+          # SSH 鍵を削除する前に実行する必要がある
+          ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=10 "${SSH_USER}@${SSH_HOST}" 'rm -f ~/tumiki/.env' || true
           rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh /tmp/tumiki.env ~/.ssh/id_ed25519
 
   deploy-production:
@@ -156,6 +162,9 @@ jobs:
           export-type: file
           file-output-path: /tmp/tumiki.env
 
+      - name: 🔒 Restrict secrets file permissions
+        run: chmod 600 /tmp/tumiki.env
+
       - name: 📤 Transfer compose.yaml and .env
         run: |
           ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" "echo connected && mkdir -p ~/tumiki"
@@ -198,4 +207,7 @@ jobs:
       - name: 🧹 Cleanup
         if: always()
         run: |
+          # デプロイ失敗時に VM 上に .env が残らないよう SSH 越しに確実に削除
+          # SSH 鍵を削除する前に実行する必要がある
+          ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=10 "${SSH_USER}@${SSH_HOST}" 'rm -f ~/tumiki/.env' || true
           rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh /tmp/tumiki.env ~/.ssh/id_ed25519
