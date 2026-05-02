@@ -2,13 +2,18 @@
 /**
  * Tumiki Desktop 用 ランタイムバンドルスクリプト
  *
- * Node.js / uv の公式バイナリをプラットフォーム別に取得し、
+ * Node.js / uv の公式配布物をプラットフォーム別に取得し、
  * `apps/desktop/resources/runtime/<platform>/` 配下に展開する。
+ *
+ * Node 本体（bin/node）は Electron に内包されたランタイムを再利用するため
+ * **同梱しない**（実行時に userData/runtime/bin/node という shim スクリプトを
+ * 生成して `ELECTRON_RUN_AS_NODE=1` で Electron バイナリを exec する設計）。
+ * これにより約 119MB / プラットフォーム のサイズ削減を達成する。
  *
  * 配置後の構造:
  *   resources/runtime/<platform>/
- *   ├── bin/   (node, npm, npx, uv, uvx)
- *   └── lib/   (Node.js の lib/node_modules/npm 等)
+ *   ├── bin/   (npm, npx, corepack の symlink + uv, uvx の Rust バイナリ)
+ *   └── lib/   (Node 配布物の lib/node_modules/{npm,corepack})
  *
  * electron-builder の extraResources で同梱され、本番では
  * `<App>.app/Contents/Resources/runtime/<platform>/` に配置される。
@@ -21,7 +26,15 @@
  */
 
 import { spawn } from "node:child_process";
-import { access, cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import {
+  access,
+  cp,
+  mkdir,
+  mkdtemp,
+  rm,
+  unlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -134,6 +147,15 @@ const installNode = async (platform, target) => {
       recursive: true,
       verbatimSymlinks: true,
     });
+    // bin/node は Electron 同梱の Node を流用するため削除（~119MB節約）
+    // npm / npx / corepack（symlink）と lib/ の npm モジュールはバンドル必要
+    const bundledNodeBinary = path.join(target, "bin", "node");
+    try {
+      await unlink(bundledNodeBinary);
+    } catch (error) {
+      // 元々無かった等は無視（ENOENT）
+      if (error?.code !== "ENOENT") throw error;
+    }
   } finally {
     await rm(tmpDir, { recursive: true, force: true });
   }

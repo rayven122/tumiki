@@ -26,6 +26,7 @@ import { setupShellIpc } from "./ipc/shell";
 import { getAppStore } from "./shared/app-store";
 import { ServerStatus } from "@prisma/desktop-client";
 import * as logger from "./shared/utils/logger";
+import { ensureNodeShim } from "./runtime/path-resolver";
 
 // --mcp-proxy モード: GUI不要、stdioでMCPプロキシとして動作
 const isMcpProxyMode = process.argv.includes("--mcp-proxy");
@@ -36,6 +37,10 @@ if (isMcpProxyMode) {
   void app.whenReady().then(async () => {
     // macOSでDockアイコンを非表示にする（CLIモードのためGUI不要）
     app.dock?.hide();
+
+    // バンドル済みランタイムの Node shim を userData 配下に生成（DEV-1597）
+    // MCPコネクタ spawn 前に必ず存在させる必要がある
+    ensureNodeShim();
 
     try {
       // --server <slug> で起動する仮想MCPサーバーを指定（省略時は全有効サーバー）
@@ -419,6 +424,10 @@ if (isMcpProxyMode) {
       // dev モードでは Electron 実行パスが起動ごとに変わる可能性があるため、
       // 起動時に毎回上書き登録する（setAsDefaultProtocolClient は冪等）
       app.setAsDefaultProtocolClient(PROTOCOL);
+
+      // バンドル済みランタイムの Node shim を userData 配下に生成（DEV-1597）
+      // MCPコネクタ spawn 前に必ず存在させる必要がある
+      ensureNodeShim();
 
       // production 用の tumiki-bundle:// プロトコルハンドラを登録（dev では vite dev server を使うため不要）
       // レンダラー dist の絶対パス基点で配信し、`<img src="/logos/foo.svg">` を解決可能にする
