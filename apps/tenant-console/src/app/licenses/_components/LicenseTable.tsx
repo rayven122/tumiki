@@ -44,16 +44,22 @@ const LicenseTable = ({ initialData, tenants }: Props) => {
 
   const utils = api.useUtils();
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
 
   // cursor ベースの追加読み込み（list は query のため useUtils 経由で手動フェッチ）
   const handleLoadMore = useCallback(async () => {
     if (!nextCursor) return;
     setIsLoadingMore(true);
+    setLoadMoreError(null);
     try {
       const data = await utils.license.list.fetch({ cursor: nextCursor });
       setItems((prev) => [...prev, ...data.items]);
       setNextCursor(data.nextCursor);
       setHasMore(data.hasMore);
+    } catch (err) {
+      setLoadMoreError(
+        err instanceof Error ? err.message : "読み込みに失敗しました",
+      );
     } finally {
       setIsLoadingMore(false);
     }
@@ -143,7 +149,7 @@ const LicenseTable = ({ initialData, tenants }: Props) => {
                         <button
                           type="button"
                           onClick={() => setRevokeTarget(item)}
-                          className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+                          className="min-h-[44px] rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
                         >
                           失効
                         </button>
@@ -157,12 +163,15 @@ const LicenseTable = ({ initialData, tenants }: Props) => {
 
           {/* さらに読み込むボタン */}
           {hasMore && (
-            <div className="mt-4 flex justify-center">
+            <div className="mt-4 flex flex-col items-center gap-2">
+              {loadMoreError && (
+                <p className="text-sm text-red-600">{loadMoreError}</p>
+              )}
               <button
                 type="button"
                 onClick={() => void handleLoadMore()}
                 disabled={isLoadingMore}
-                className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="min-h-[44px] rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
               >
                 {isLoadingMore ? "読み込み中..." : "さらに読み込む"}
               </button>
@@ -176,7 +185,7 @@ const LicenseTable = ({ initialData, tenants }: Props) => {
         <RevokeConfirmDialog
           licenseId={revokeTarget.id}
           subject={revokeTarget.subject}
-          isOpen={revokeTarget !== null}
+          isOpen={true}
           onClose={() => setRevokeTarget(null)}
           onRevoked={handleRevoked}
         />

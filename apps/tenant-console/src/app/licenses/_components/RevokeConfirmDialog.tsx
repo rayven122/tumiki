@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/trpc/react";
 
 type Props = {
@@ -32,6 +32,16 @@ const RevokeConfirmDialog = ({
     },
   });
 
+  // Escape キーでダイアログを閉じる
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen]);
+
   const handleRevoke = () => {
     setError(null);
     revokeLicense.mutate({ id: licenseId, reason: reason || undefined });
@@ -46,9 +56,22 @@ const RevokeConfirmDialog = ({
   if (!isOpen) return null;
 
   return (
-    <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black">
-      <div className="mx-4 w-full max-w-lg rounded-lg bg-white p-6">
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">
+    // オーバーレイクリックで閉じる
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      onClick={handleClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="revoke-dialog-title"
+        className="mx-4 w-full max-w-lg rounded-lg bg-white p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2
+          id="revoke-dialog-title"
+          className="mb-4 text-lg font-semibold text-gray-900"
+        >
           ライセンスの失効確認
         </h2>
         <p className="mb-4 text-sm text-gray-700">
@@ -85,7 +108,7 @@ const RevokeConfirmDialog = ({
             type="button"
             onClick={handleClose}
             disabled={revokeLicense.isPending}
-            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="min-h-[44px] rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             キャンセル
           </button>
@@ -93,7 +116,7 @@ const RevokeConfirmDialog = ({
             type="button"
             onClick={handleRevoke}
             disabled={revokeLicense.isPending}
-            className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+            className="min-h-[44px] rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
           >
             {revokeLicense.isPending ? "失効処理中..." : "失効する"}
           </button>
