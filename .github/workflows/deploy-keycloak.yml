@@ -81,6 +81,8 @@ jobs:
             . | ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
             "tar -xzf - -C ~/keycloak-tf"
           scp -i ~/.ssh/id_ed25519 /tmp/keycloak-tf.env "${SSH_USER}@${SSH_HOST}:~/keycloak-tf/.env"
+          # VM 側 umask 依存を排除し明示的に 600 に制限（Defence in Depth）
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" 'chmod 600 ~/keycloak-tf/.env'
 
       - name: 🏗️ Terraform Apply (staging)
         env:
@@ -113,7 +115,9 @@ jobs:
         run: |
           # デプロイ失敗時に VM 上に .env が残らないよう SSH 越しに確実に削除
           # SSH 鍵・設定を削除する前に実行する必要がある
-          ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=10 "${SSH_USER}@${SSH_HOST}" 'rm -f ~/keycloak-tf/.env' || true
+          # 削除失敗時は warning を出して運用側で検知できるようにする（cleanup の失敗で job 自体は失敗扱いにしない）
+          ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=10 "${SSH_USER}@${SSH_HOST}" 'rm -f ~/keycloak-tf/.env' \
+            || echo "::warning::VM上の .env 削除に失敗しました。手動確認が必要です"
           rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh /tmp/keycloak-tf.env ~/.ssh/id_ed25519 ~/.ssh/config
 
   deploy-production:
@@ -170,6 +174,8 @@ jobs:
             . | ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
             "tar -xzf - -C ~/keycloak-tf"
           scp -i ~/.ssh/id_ed25519 /tmp/keycloak-tf.env "${SSH_USER}@${SSH_HOST}:~/keycloak-tf/.env"
+          # VM 側 umask 依存を排除し明示的に 600 に制限（Defence in Depth）
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" 'chmod 600 ~/keycloak-tf/.env'
 
       - name: 🏗️ Terraform Apply (production)
         env:
@@ -222,5 +228,7 @@ jobs:
         run: |
           # デプロイ失敗時に VM 上に .env が残らないよう SSH 越しに確実に削除
           # SSH 鍵・設定を削除する前に実行する必要がある
-          ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=10 "${SSH_USER}@${SSH_HOST}" 'rm -f ~/keycloak-tf/.env' || true
+          # 削除失敗時は warning を出して運用側で検知できるようにする（cleanup の失敗で job 自体は失敗扱いにしない）
+          ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=10 "${SSH_USER}@${SSH_HOST}" 'rm -f ~/keycloak-tf/.env' \
+            || echo "::warning::VM上の .env 削除に失敗しました。手動確認が必要です"
           rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh /tmp/keycloak-tf.env ~/.ssh/id_ed25519 ~/.ssh/config

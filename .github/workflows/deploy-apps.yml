@@ -76,6 +76,8 @@ jobs:
           ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" "echo connected && mkdir -p ~/tumiki"
           scp -i ~/.ssh/id_ed25519 docker/apps/compose.yaml "${SSH_USER}@${SSH_HOST}:~/tumiki/compose.yaml"
           scp -i ~/.ssh/id_ed25519 /tmp/tumiki.env "${SSH_USER}@${SSH_HOST}:~/tumiki/.env"
+          # VM 側 umask 依存を排除し明示的に 600 に制限（Defence in Depth）
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" 'chmod 600 ~/tumiki/.env'
 
       - name: 🐳 Deploy containers
         run: |
@@ -115,7 +117,9 @@ jobs:
         run: |
           # デプロイ失敗時に VM 上に .env が残らないよう SSH 越しに確実に削除
           # SSH 鍵を削除する前に実行する必要がある
-          ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=10 "${SSH_USER}@${SSH_HOST}" 'rm -f ~/tumiki/.env' || true
+          # 削除失敗時は warning を出して運用側で検知できるようにする（cleanup の失敗で job 自体は失敗扱いにしない）
+          ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=10 "${SSH_USER}@${SSH_HOST}" 'rm -f ~/tumiki/.env' \
+            || echo "::warning::VM上の .env 削除に失敗しました。手動確認が必要です"
           rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh /tmp/tumiki.env ~/.ssh/id_ed25519
 
   deploy-production:
@@ -172,6 +176,8 @@ jobs:
           ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" "echo connected && mkdir -p ~/tumiki"
           scp -i ~/.ssh/id_ed25519 docker/apps/compose.yaml "${SSH_USER}@${SSH_HOST}:~/tumiki/compose.yaml"
           scp -i ~/.ssh/id_ed25519 /tmp/tumiki.env "${SSH_USER}@${SSH_HOST}:~/tumiki/.env"
+          # VM 側 umask 依存を排除し明示的に 600 に制限（Defence in Depth）
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" 'chmod 600 ~/tumiki/.env'
 
       - name: 🐳 Deploy containers
         run: |
@@ -211,5 +217,7 @@ jobs:
         run: |
           # デプロイ失敗時に VM 上に .env が残らないよう SSH 越しに確実に削除
           # SSH 鍵を削除する前に実行する必要がある
-          ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=10 "${SSH_USER}@${SSH_HOST}" 'rm -f ~/tumiki/.env' || true
+          # 削除失敗時は warning を出して運用側で検知できるようにする（cleanup の失敗で job 自体は失敗扱いにしない）
+          ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=10 "${SSH_USER}@${SSH_HOST}" 'rm -f ~/tumiki/.env' \
+            || echo "::warning::VM上の .env 削除に失敗しました。手動確認が必要です"
           rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh /tmp/tumiki.env ~/.ssh/id_ed25519

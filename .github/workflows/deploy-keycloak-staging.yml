@@ -83,6 +83,8 @@ jobs:
           scp -i ~/.ssh/id_ed25519 \
             /tmp/keycloak.env \
             "${SSH_USER}@${KEYCLOAK_HOST}:~/keycloak/.env"
+          # VM 側 umask 依存を排除し明示的に 600 に制限（Defence in Depth）
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" 'chmod 600 ~/keycloak/.env'
 
       - name: 🐳 Deploy Keycloak
         run: |
@@ -119,5 +121,7 @@ jobs:
         run: |
           # デプロイ失敗時に Keycloak VM 上に .env が残らないよう SSH 越しに確実に削除
           # SSH 鍵・設定を削除する前に実行する必要がある
-          ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=10 "${SSH_USER}@${KEYCLOAK_HOST}" 'rm -f ~/keycloak/.env' || true
+          # 削除失敗時は warning を出して運用側で検知できるようにする（cleanup の失敗で job 自体は失敗扱いにしない）
+          ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=10 "${SSH_USER}@${KEYCLOAK_HOST}" 'rm -f ~/keycloak/.env' \
+            || echo "::warning::Keycloak VM上の .env 削除に失敗しました。手動確認が必要です"
           rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh /tmp/keycloak.env ~/.ssh/id_ed25519 ~/.ssh/config
