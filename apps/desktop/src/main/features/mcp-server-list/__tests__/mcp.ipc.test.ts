@@ -370,10 +370,131 @@ describe("setupMcpIpc", () => {
     });
   });
 
+  describe("mcp:fetchToolsForCatalogs", () => {
+    const validInput = {
+      items: [{ catalogId: 1, credentials: { GITHUB_TOKEN: "a" } }],
+    };
+
+    test("有効な入力でツール一覧を取得する", async () => {
+      const mockResult = {
+        items: [
+          {
+            catalogId: 1,
+            tools: [
+              {
+                name: "create_issue",
+                description: "Issue作成",
+                inputSchema: "{}",
+              },
+            ],
+          },
+        ],
+      };
+      vi.mocked(mcpService.fetchToolsForCatalogs).mockResolvedValue(mockResult);
+      const handler = mockIpcHandlers.get("mcp:fetchToolsForCatalogs");
+
+      const result = await handler!({} as IpcMainInvokeEvent, validInput);
+
+      expect(result).toStrictEqual(mockResult);
+      expect(mcpService.fetchToolsForCatalogs).toHaveBeenCalledWith(validInput);
+    });
+
+    test("itemsが空配列の場合はエラーになる", async () => {
+      const handler = mockIpcHandlers.get("mcp:fetchToolsForCatalogs");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, { items: [] }),
+      ).rejects.toThrow("ツール一覧の取得に失敗しました");
+    });
+
+    test("catalogIdが0以下の場合はエラーになる", async () => {
+      const handler = mockIpcHandlers.get("mcp:fetchToolsForCatalogs");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, {
+          items: [{ catalogId: 0, credentials: {} }],
+        }),
+      ).rejects.toThrow("ツール一覧の取得に失敗しました");
+    });
+
+    test("サービスがエラーを投げた場合はラップして再スローする", async () => {
+      vi.mocked(mcpService.fetchToolsForCatalogs).mockRejectedValue(
+        new Error("接続失敗"),
+      );
+      const handler = mockIpcHandlers.get("mcp:fetchToolsForCatalogs");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, validInput),
+      ).rejects.toThrow("ツール一覧の取得に失敗しました: 接続失敗");
+    });
+  });
+
+  describe("createVirtualServer with tools", () => {
+    test("toolsを含む入力を受け付ける", async () => {
+      vi.mocked(mcpService.createVirtualServer).mockResolvedValue({
+        serverId: 1,
+        serverName: "test",
+      });
+      const handler = mockIpcHandlers.get("mcp:createVirtualServer");
+
+      const inputWithTools = {
+        name: "test",
+        description: "",
+        connections: [
+          {
+            catalogId: 1,
+            credentials: {},
+            tools: [
+              {
+                name: "tool-a",
+                description: "説明",
+                inputSchema: "{}",
+                isAllowed: true,
+                customDescription: "上書き",
+              },
+            ],
+          },
+        ],
+      };
+
+      await handler!({} as IpcMainInvokeEvent, inputWithTools);
+
+      expect(mcpService.createVirtualServer).toHaveBeenCalledWith(
+        inputWithTools,
+      );
+    });
+
+    test("toolsの isAllowed が boolean 以外の場合はエラーになる", async () => {
+      const handler = mockIpcHandlers.get("mcp:createVirtualServer");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, {
+          name: "test",
+          description: "",
+          connections: [
+            {
+              catalogId: 1,
+              credentials: {},
+              tools: [
+                {
+                  name: "tool-a",
+                  description: "",
+                  inputSchema: "{}",
+                  isAllowed: "yes",
+                },
+              ],
+            },
+          ],
+        }),
+      ).rejects.toThrow("仮想MCPサーバーの登録に失敗しました");
+    });
+  });
+
   describe("ハンドラー登録", () => {
     test("全てのIPCハンドラーが登録される", () => {
       expect(mockIpcHandlers.has("mcp:createFromCatalog")).toBe(true);
       expect(mockIpcHandlers.has("mcp:createVirtualServer")).toBe(true);
+      expect(mockIpcHandlers.has("mcp:fetchToolsForCatalogs")).toBe(true);
       expect(mockIpcHandlers.has("mcp:getAll")).toBe(true);
       expect(mockIpcHandlers.has("mcp:updateServer")).toBe(true);
       expect(mockIpcHandlers.has("mcp:deleteServer")).toBe(true);

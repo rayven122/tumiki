@@ -1,4 +1,5 @@
 import { ServerStatus } from "@prisma/desktop-client";
+import type { ToolPolicy } from "@tumiki/mcp-core-proxy";
 import { getDb } from "../../shared/db";
 import type { DbClient } from "../../shared/db";
 import * as mcpRepository from "./mcp.repository";
@@ -15,12 +16,29 @@ import { decryptCredentials } from "../../utils/credentials";
 import type {
   CreateFromCatalogInput,
   CreateVirtualServerInput,
+  FetchToolsInput,
+  FetchToolsResult,
+  VirtualServerToolInput,
 } from "./mcp.types";
+import { fetchToolsForCatalogs as fetchToolsForCatalogsImpl } from "./mcp-tool-fetcher.service";
+
+/**
+ * customDescription を「上書きあり」と判定したときだけ元の値、それ以外は undefined を返す
+ * 空文字・空白のみは「上書きなし」として扱う（DB上は null 保存・読み出し時は undefined）
+ */
+const normalizeCustomDescription = (
+  value: string | null | undefined,
+): string | undefined => {
+  if (value === null || value === undefined) return undefined;
+  return value.trim() === "" ? undefined : value;
+};
 
 // IPC / テストから参照できるよう re-export
 export type {
   CreateFromCatalogInput,
   CreateVirtualServerInput,
+  FetchToolsInput,
+  FetchToolsResult,
 } from "./mcp.types";
 
 /**
@@ -104,6 +122,22 @@ export const createFromCatalog = async (
 
   return { serverId: server.id, serverName: uniqueName };
 };
+
+/**
+ * VirtualServerToolInput を MCP DB の CreateMcpToolInput へマッピング
+ * 空白のみの customDescription は null（上書きなし）として保存する
+ */
+const toCreateMcpToolInput = (
+  tool: VirtualServerToolInput,
+  connectionId: number,
+): mcpRepository.CreateMcpToolInput => ({
+  name: tool.name,
+  description: tool.description,
+  inputSchema: tool.inputSchema,
+  isAllowed: tool.isAllowed,
+  customDescription: normalizeCustomDescription(tool.customDescription) ?? null,
+  connectionId,
+});
 
 /**
  * 仮想MCPサーバーを作成
@@ -197,7 +231,7 @@ export const createVirtualServer = async (
     });
 
     for (const { catalog, index, connectionSlug } of connectionsWithSlug) {
-      await mcpRepository.createConnection(tx, {
+      const connection = await mcpRepository.createConnection(tx, {
         name: catalog.name,
         slug: connectionSlug,
         transportType: catalog.transportType,
@@ -211,6 +245,16 @@ export const createVirtualServer = async (
         catalogId: catalog.id,
         displayOrder: index,
       });
+
+      // 接続単位のツール一覧が渡されている場合のみ McpTool を保存
+      // 旧呼び出し（tools未指定）も後方互換で動作させるため optional 扱い
+      const inputTools = input.connections[index]?.tools;
+      if (inputTools && inputTools.length > 0) {
+        await mcpRepository.createTools(
+          tx,
+          inputTools.map((t) => toCreateMcpToolInput(t, connection.id)),
+        );
+      }
     }
 
     return { serverId: server.id, serverName: uniqueName };
@@ -288,4 +332,57 @@ export const updateServerStatus = async (
 export const resetAllServerStatus = async () => {
   const db = await getDb();
   return mcpRepository.updateAllServerStatus(db, ServerStatus.STOPPED);
+};
+
+/** policyMap のキー形式: `${configName}::${toolName}` */
+export const toolPolicyKey = (configName: string, toolName: string): string =>
+  `${configName}::${toolName}`;
+
+/**
+ * proxy 起動時に使うツール公開ポリシーマップを構築する
+ * key 形式: `${configName}::${toolName}` （configName は `${serverSlug}-${connectionSlug}`）
+ * value は McpTool レコードから派生した ToolPolicy
+ *
+ * McpTool レコードが存在しないツールは map に含まれず、proxy 側ではデフォルト動作（公開）になる。
+ * これにより 1:1 (createFromCatalog) で作成された既存サーバーは挙動が変わらない。
+ */
+export const buildToolPolicyMap = async (
+  serverSlug: string,
+): Promise<Map<string, ToolPolicy>> => {
+  const db = await getDb();
+  const tools = await mcpRepository.findToolsByServerSlug(db, serverSlug);
+  const policyMap = new Map<string, ToolPolicy>();
+  for (const tool of tools) {
+    const configName = `${tool.connection.server.slug}-${tool.connection.slug}`;
+    policyMap.set(toolPolicyKey(configName, tool.name), {
+      isAllowed: tool.isAllowed,
+      customDescription: normalizeCustomDescription(tool.customDescription),
+    });
+  }
+  return policyMap;
+};
+
+/**
+ * 仮想MCP作成前に各カタログのツール一覧を取得する
+ * UIで「次へ」ボタンを押した時に呼ばれる前段処理
+ *
+ * - inputs: カタログIDと認証情報のペア
+ * - 各カタログに一時接続して tools/list を取得 → 切断
+ * - 1件失敗しても他は続行する（Promise.allSettled）
+ */
+export const fetchToolsForCatalogs = async (
+  input: FetchToolsInput,
+): Promise<FetchToolsResult> => {
+  const results = await fetchToolsForCatalogsImpl(input.items);
+  return {
+    items: results.map((r) => ({
+      catalogId: r.catalogId,
+      tools: r.tools.map((t) => ({
+        name: t.name,
+        description: t.description ?? "",
+        inputSchema: JSON.stringify(t.inputSchema ?? {}),
+      })),
+      error: r.error,
+    })),
+  };
 };

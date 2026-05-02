@@ -69,14 +69,33 @@ export type ToggleServerInput = {
 };
 
 /**
+ * 仮想MCP作成時の各ツールに対する設定（公開可否・説明上書き）
+ */
+export type VirtualServerToolInput = {
+  // 元MCPから取得したツール名
+  name: string;
+  // 元の説明（取得時の値、表示用）
+  description: string;
+  // 入力スキーマJSON文字列（取得時の値）
+  inputSchema: string;
+  // 公開可否（trueなら公開、falseなら非公開）
+  isAllowed: boolean;
+  // カスタム説明（未指定または空文字なら元の説明を使用）
+  customDescription?: string;
+};
+
+/**
  * 仮想MCP作成における1接続分の入力型
- * カタログIDとそのカタログに対する認証情報を持つ
+ * カタログIDとそのカタログに対する認証情報・ツール設定を持つ
  */
 export type VirtualServerConnectionInput = {
   catalogId: number;
   // STDIO: 環境変数 / SSE・Streamable HTTP: HTTPヘッダー
   // カタログのcredentialKeysに対応するキーを持つことを期待する
   credentials: Record<string, string>;
+  // 取得済みツール一覧（fetchToolsForCatalogsの結果ベース）
+  // 省略可能（後方互換のため）。指定があればMcpToolレコードを生成する
+  tools?: VirtualServerToolInput[];
 };
 
 /**
@@ -87,4 +106,29 @@ export type CreateVirtualServerInput = {
   name: string;
   description: string;
   connections: VirtualServerConnectionInput[];
+};
+
+/**
+ * fetchToolsForCatalogs の入力（renderer → main）
+ */
+export type FetchToolsInput = {
+  items: Array<{
+    catalogId: number;
+    credentials: Record<string, string>;
+  }>;
+};
+
+/**
+ * fetchToolsForCatalogs の出力（main → renderer）
+ */
+export type FetchToolsResult = {
+  items: Array<{
+    catalogId: number;
+    tools: Array<{
+      name: string;
+      description: string;
+      inputSchema: string;
+    }>;
+    error?: string;
+  }>;
 };

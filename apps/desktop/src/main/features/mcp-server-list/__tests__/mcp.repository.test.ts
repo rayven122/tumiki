@@ -23,6 +23,8 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  // ツール → 接続 → サーバーの順で削除（FK制約を考慮）
+  await db.mcpTool.deleteMany();
   await db.mcpConnection.deleteMany();
   await db.mcpServer.deleteMany();
 });
@@ -325,6 +327,92 @@ describe("mcp.repository（実DB）", () => {
       await expect(
         mcpRepository.toggleServerEnabled(db, 99999, false),
       ).rejects.toThrow();
+    });
+  });
+
+  describe("createTools / findToolsByServerSlug", () => {
+    test("接続にひもづくMcpToolを一括作成し、サーバーslug指定で取得できる", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+      const connection = await mcpRepository.createConnection(
+        db,
+        buildConnectionData(server.id),
+      );
+
+      await mcpRepository.createTools(db, [
+        {
+          name: "tool-a",
+          description: "ツールA",
+          inputSchema: '{"type":"object"}',
+          isAllowed: true,
+          customDescription: "上書き",
+          connectionId: connection.id,
+        },
+        {
+          name: "tool-b",
+          description: "ツールB",
+          inputSchema: "{}",
+          isAllowed: false,
+          customDescription: null,
+          connectionId: connection.id,
+        },
+      ]);
+
+      const tools = await mcpRepository.findToolsByServerSlug(db, server.slug);
+      expect(tools).toHaveLength(2);
+      const toolA = tools.find((t) => t.name === "tool-a");
+      expect(toolA?.isAllowed).toBe(true);
+      expect(toolA?.customDescription).toBe("上書き");
+      expect(toolA?.connection.slug).toBe("test-connection");
+      expect(toolA?.connection.server.slug).toBe("test-server");
+      const toolB = tools.find((t) => t.name === "tool-b");
+      expect(toolB?.isAllowed).toBe(false);
+      expect(toolB?.customDescription).toBeNull();
+    });
+
+    test("ツールが0件の配列を渡しても正常に処理される", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+      await mcpRepository.createTools(db, []);
+
+      const tools = await mcpRepository.findToolsByServerSlug(db, server.slug);
+      expect(tools).toStrictEqual([]);
+    });
+
+    test("別サーバーのツールは取得結果に含まれない", async () => {
+      const server1 = await mcpRepository.createServer(db, serverData);
+      const conn1 = await mcpRepository.createConnection(
+        db,
+        buildConnectionData(server1.id),
+      );
+      const server2 = await mcpRepository.createServer(db, {
+        name: "Other Server",
+        slug: "other-server",
+        description: "",
+      });
+      const conn2 = await mcpRepository.createConnection(db, {
+        ...buildConnectionData(server2.id),
+        slug: "other-connection",
+      });
+
+      await mcpRepository.createTools(db, [
+        {
+          name: "tool-1",
+          description: "",
+          inputSchema: "{}",
+          isAllowed: true,
+          connectionId: conn1.id,
+        },
+        {
+          name: "tool-2",
+          description: "",
+          inputSchema: "{}",
+          isAllowed: true,
+          connectionId: conn2.id,
+        },
+      ]);
+
+      const tools = await mcpRepository.findToolsByServerSlug(db, server1.slug);
+      expect(tools).toHaveLength(1);
+      expect(tools[0]?.name).toBe("tool-1");
     });
   });
 });
