@@ -1,4 +1,8 @@
-import { createTRPCRouter, procedure } from "@/server/api/trpc";
+import {
+  createTRPCRouter,
+  operatorProcedure,
+  procedure,
+} from "@/server/api/trpc";
 import {
   issueLicenseInputSchema,
   listLicensesInputSchema,
@@ -11,7 +15,8 @@ import { getLicense } from "./getLicense";
 import { revokeLicense } from "./revokeLicense";
 
 export const licenseRouter = createTRPCRouter({
-  issue: procedure
+  // issue / revoke は CF-Access ヘッダーを必須とするオペレーター専用操作
+  issue: operatorProcedure
     .input(issueLicenseInputSchema)
     .mutation(({ ctx, input }) => issueLicense(ctx, input)),
   list: procedure
@@ -20,7 +25,7 @@ export const licenseRouter = createTRPCRouter({
   get: procedure
     .input(getLicenseInputSchema)
     .query(({ ctx, input }) => getLicense(ctx, input)),
-  revoke: procedure
+  revoke: operatorProcedure
     .input(revokeLicenseInputSchema)
     .mutation(({ ctx, input }) => revokeLicense(ctx, input)),
 });

@@ -49,11 +49,16 @@ export const DELETE = async (req: NextRequest): Promise<NextResponse> => {
   const body = (await req.json()) as Record<string, unknown>;
   const tenant = typeof body.tenant === "string" ? body.tenant : "default";
   const product = typeof body.product === "string" ? body.product : "tumiki";
-  const clientID = typeof body.clientID === "string" ? body.clientID : undefined;
+  const clientID =
+    typeof body.clientID === "string" ? body.clientID : undefined;
 
   try {
     const { connectionAPIController } = await getJackson();
-    await connectionAPIController.deleteConnections({ tenant, product, clientID });
+    await connectionAPIController.deleteConnections({
+      tenant,
+      product,
+      clientID,
+    });
     return NextResponse.json({ deleted: true, tenant, product, clientID });
   } catch (e) {
     return NextResponse.json(
@@ -65,7 +70,8 @@ export const DELETE = async (req: NextRequest): Promise<NextResponse> => {
 
 export const POST = async (req: NextRequest): Promise<NextResponse> => {
   const secret = process.env.ADMIN_REGISTER_SECRET;
-  if (!secret) return NextResponse.json({ error: "not_configured" }, { status: 503 });
+  if (!secret)
+    return NextResponse.json({ error: "not_configured" }, { status: 503 });
   if (!authorize(req, secret)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }

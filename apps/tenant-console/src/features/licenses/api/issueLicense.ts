@@ -5,7 +5,7 @@ import { env } from "@/lib/env";
 import { type IssueLicenseInput } from "./schemas";
 
 // APIコンシューマーは `tumiki_lic_` プレフィックスを除去してから JWT を検証する
-const TOKEN_PREFIX = "tumiki_lic_";
+export const TOKEN_PREFIX = "tumiki_lic_";
 
 type LicenseJwtPayload = {
   iss: string;
@@ -17,16 +17,21 @@ type LicenseJwtPayload = {
   tenant?: string;
 };
 
-/** ウォームスタート時のみ有効なプロセス内秘密鍵キャッシュ */
-let cachedPrivateKey: CryptoKey | null = null;
+// Promise キャッシュ: 並行リクエストで importPKCS8 が二重実行されないよう Promise を共有する。
+// モジュールロード時に初期化が始まり、不正な PEM 設定をサーバー起動直後に検出できる。
+let privateKeyPromise: Promise<CryptoKey> | null = null;
 
-const getPrivateKey = async (): Promise<CryptoKey> => {
-  if (cachedPrivateKey) return cachedPrivateKey;
-  cachedPrivateKey = await importPKCS8(
+const getPrivateKey = (): Promise<CryptoKey> => {
+  privateKeyPromise ??= importPKCS8(
     env.LICENSE_SIGNING_PRIVATE_KEY,
     "RS256",
-  );
-  return cachedPrivateKey;
+  ).catch((cause: unknown) => {
+    throw new Error(
+      "LICENSE_SIGNING_PRIVATE_KEY が無効な RS256 PKCS#8 PEM です",
+      { cause },
+    );
+  });
+  return privateKeyPromise;
 };
 
 export const issueLicense = async (ctx: Context, input: IssueLicenseInput) => {
@@ -90,14 +95,23 @@ export const issueLicense = async (ctx: Context, input: IssueLicenseInput) => {
     };
   } catch (e) {
     // JWT 署名失敗時は孤立 ACTIVE レコードを REVOKED に倒す
-    await ctx.db.license.update({
-      where: { id: license.id },
-      data: {
-        status: "REVOKED",
-        revokedAt: new Date(),
-        revokedReason: "issue_failed",
-      },
-    });
+    try {
+      await ctx.db.license.update({
+        where: { id: license.id },
+        data: {
+          status: "REVOKED",
+          revokedAt: new Date(),
+          revokedReason: "issue_failed",
+        },
+      });
+    } catch (rollbackError) {
+      // ロールバック失敗は手動対処が必要な孤立レコードを生むため ERROR ログを必ず出す
+      console.error(
+        "[issueLicense] JWT 署名失敗後のロールバックに失敗。孤立 ACTIVE レコード id:",
+        license.id,
+        rollbackError,
+      );
+    }
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
       message: "ライセンスの JWT 署名に失敗しました",
