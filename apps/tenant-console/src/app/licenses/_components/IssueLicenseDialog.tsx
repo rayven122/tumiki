@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "@/trpc/react";
-import { type AvailableFeature } from "@/features/licenses/api/schemas";
+import {
+  AVAILABLE_FEATURES,
+  type AvailableFeature,
+} from "@/features/licenses/api/schemas";
 
 type Props = {
   tenants: Array<{ id: string; slug: string }>;
@@ -12,8 +15,8 @@ type LicenseType = "PERSONAL" | "TENANT";
 
 const IssueLicenseDialog = ({ tenants }: Props) => {
   const [isOpen, setIsOpen] = useState(false);
-  // 発行完了後にトークンを保持する state
   const [issuedToken, setIssuedToken] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const [licenseType, setLicenseType] = useState<LicenseType>("PERSONAL");
   const [subject, setSubject] = useState("");
@@ -36,16 +39,6 @@ const IssueLicenseDialog = ({ tenants }: Props) => {
     },
   });
 
-  // Escape キーでダイアログを閉じる
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") handleClose();
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen]);
-
   const resetForm = () => {
     setLicenseType("PERSONAL");
     setSubject("");
@@ -57,17 +50,27 @@ const IssueLicenseDialog = ({ tenants }: Props) => {
     setError(null);
   };
 
+  const handleClose = useCallback(() => {
+    setIsOpen(false);
+    setIssuedToken(null);
+    resetForm();
+  }, []);
+
   const handleOpen = () => {
     setIsOpen(true);
     setIssuedToken(null);
     resetForm();
   };
 
-  const handleClose = () => {
-    setIsOpen(false);
-    setIssuedToken(null);
-    resetForm();
-  };
+  // Escape キーでダイアログを閉じる
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, handleClose]);
 
   const handleFeatureToggle = (feature: AvailableFeature) => {
     setFeatures((prev) =>
@@ -109,9 +112,11 @@ const IssueLicenseDialog = ({ tenants }: Props) => {
     }
   };
 
-  const handleCopyToken = () => {
+  const handleCopyToken = async () => {
     if (issuedToken) {
-      void navigator.clipboard.writeText(issuedToken);
+      await navigator.clipboard.writeText(issuedToken);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -162,10 +167,10 @@ const IssueLicenseDialog = ({ tenants }: Props) => {
                 <div className="flex justify-end gap-2">
                   <button
                     type="button"
-                    onClick={handleCopyToken}
+                    onClick={() => void handleCopyToken()}
                     className="min-h-[44px] rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                   >
-                    コピー
+                    {copied ? "コピー済み ✓" : "コピー"}
                   </button>
                   <button
                     type="button"
@@ -257,28 +262,20 @@ const IssueLicenseDialog = ({ tenants }: Props) => {
                     Features <span className="text-red-500">*</span>
                   </label>
                   <div className="mt-2 space-y-2">
-                    <label className="flex min-h-[44px] items-center">
-                      <input
-                        type="checkbox"
-                        checked={features.includes("dynamic-search")}
-                        onChange={() => handleFeatureToggle("dynamic-search")}
-                        className="mr-2"
-                      />
-                      <span className="text-sm text-gray-700">
-                        dynamic-search
-                      </span>
-                    </label>
-                    <label className="flex min-h-[44px] items-center">
-                      <input
-                        type="checkbox"
-                        checked={features.includes("pii-dashboard")}
-                        onChange={() => handleFeatureToggle("pii-dashboard")}
-                        className="mr-2"
-                      />
-                      <span className="text-sm text-gray-700">
-                        pii-dashboard
-                      </span>
-                    </label>
+                    {AVAILABLE_FEATURES.map((feature) => (
+                      <label
+                        key={feature}
+                        className="flex min-h-[44px] items-center"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={features.includes(feature)}
+                          onChange={() => handleFeatureToggle(feature)}
+                          className="mr-2"
+                        />
+                        <span className="text-sm text-gray-700">{feature}</span>
+                      </label>
+                    ))}
                   </div>
                 </div>
 
