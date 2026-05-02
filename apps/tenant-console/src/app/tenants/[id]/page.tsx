@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { TRPCClientError } from "@trpc/client";
 import { api } from "@/trpc/server";
 import TenantDetailTabs from "./_components/TenantDetailTabs";
 
@@ -11,7 +12,13 @@ const TenantDetailPage = async ({ params }: Props) => {
   const { id } = await params;
 
   const [tenant, licenses] = await Promise.all([
-    api.tenant.get({ id }).catch(() => null),
+    api.tenant.get({ id }).catch((err: unknown) => {
+      if (err instanceof TRPCClientError) {
+        const code = (err.data as { code?: string } | undefined)?.code;
+        if (code === "NOT_FOUND") return null;
+      }
+      throw err;
+    }),
     api.license.list({ tenantId: id }),
   ]);
 

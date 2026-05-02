@@ -102,6 +102,7 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
         {activeTab === "licenses" && (
           <TenantLicenseTab
             tenantId={tenant.id}
+            tenantSlug={tenant.slug}
             initialData={initialLicenses}
           />
         )}

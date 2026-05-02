@@ -216,34 +216,36 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                   ライセンス発行
                 </h2>
 
-                {/* 種別 */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">
-                    種別 <span className="text-red-500">*</span>
-                  </label>
-                  <div className="mt-2 flex gap-4">
-                    <label className="flex min-h-[44px] items-center">
-                      <input
-                        type="radio"
-                        value="PERSONAL"
-                        checked={licenseType === "PERSONAL"}
-                        onChange={() => setLicenseType("PERSONAL")}
-                        className="mr-2"
-                      />
-                      <span className="text-sm text-gray-700">PERSONAL</span>
+                {/* 種別（テナント固定の場合は非表示） */}
+                {!defaultTenantId && (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700">
+                      種別 <span className="text-red-500">*</span>
                     </label>
-                    <label className="flex min-h-[44px] items-center">
-                      <input
-                        type="radio"
-                        value="TENANT"
-                        checked={licenseType === "TENANT"}
-                        onChange={() => setLicenseType("TENANT")}
-                        className="mr-2"
-                      />
-                      <span className="text-sm text-gray-700">TENANT</span>
-                    </label>
+                    <div className="mt-2 flex gap-4">
+                      <label className="flex min-h-[44px] items-center">
+                        <input
+                          type="radio"
+                          value="PERSONAL"
+                          checked={licenseType === "PERSONAL"}
+                          onChange={() => setLicenseType("PERSONAL")}
+                          className="mr-2"
+                        />
+                        <span className="text-sm text-gray-700">PERSONAL</span>
+                      </label>
+                      <label className="flex min-h-[44px] items-center">
+                        <input
+                          type="radio"
+                          value="TENANT"
+                          checked={licenseType === "TENANT"}
+                          onChange={() => setLicenseType("TENANT")}
+                          className="mr-2"
+                        />
+                        <span className="text-sm text-gray-700">TENANT</span>
+                      </label>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Subject */}
                 <div className="mb-4">

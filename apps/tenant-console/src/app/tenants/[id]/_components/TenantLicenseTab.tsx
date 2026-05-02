@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { api, type RouterOutputs } from "@/trpc/react";
 import RevokeConfirmDialog from "@/app/licenses/_components/RevokeConfirmDialog";
 import IssueLicenseDialog from "@/app/licenses/_components/IssueLicenseDialog";
@@ -10,6 +9,7 @@ type LicenseItem = RouterOutputs["license"]["list"]["items"][number];
 
 type Props = {
   tenantId: string;
+  tenantSlug: string;
   initialData: RouterOutputs["license"]["list"];
 };
 
@@ -19,7 +19,7 @@ const statusBadgeClass = (status: "ACTIVE" | "REVOKED" | "EXPIRED") => {
   return "bg-red-100 text-red-800";
 };
 
-const TenantLicenseTab = ({ tenantId, initialData }: Props) => {
+const TenantLicenseTab = ({ tenantId, tenantSlug, initialData }: Props) => {
   const [revokeTarget, setRevokeTarget] = useState<LicenseItem | null>(null);
 
   const {
@@ -46,7 +46,7 @@ const TenantLicenseTab = ({ tenantId, initialData }: Props) => {
     <div>
       <div className="mb-4 flex justify-end">
         <IssueLicenseDialog
-          tenants={[{ id: tenantId, slug: tenantId }]}
+          tenants={[{ id: tenantId, slug: tenantSlug }]}
           defaultTenantId={tenantId}
         />
       </div>
