@@ -178,6 +178,18 @@ export const findServerById = async (db: DbClient, id: number) => {
 };
 
 /**
+ * 複数IDで接続をまとめて取得（仮想MCP作成時に既存コネクタの設定をコピー元として参照する）
+ * server を include しているのは、コピー時のslug基準（元コネクタの名前）を取得するため
+ */
+export const findConnectionsByIds = async (db: DbClient, ids: number[]) => {
+  if (ids.length === 0) return [];
+  return db.mcpConnection.findMany({
+    where: { id: { in: ids } },
+    include: { server: true },
+  });
+};
+
+/**
  * サーバー情報を更新
  */
 export const updateServer = async (

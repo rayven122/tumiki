@@ -55,8 +55,7 @@ const createVirtualServerSchema = z.object({
   connections: z
     .array(
       z.object({
-        catalogId: z.number().int().positive(),
-        credentials: z.record(z.string(), z.string()),
+        connectionId: z.number().int().positive(),
         tools: z.array(virtualServerToolSchema).optional(),
       }),
     )
@@ -65,13 +64,8 @@ const createVirtualServerSchema = z.object({
 }) satisfies z.ZodType<CreateVirtualServerInput>;
 
 const fetchToolsSchema = z.object({
-  items: z
-    .array(
-      z.object({
-        catalogId: z.number().int().positive(),
-        credentials: z.record(z.string(), z.string()),
-      }),
-    )
+  connectionIds: z
+    .array(z.number().int().positive())
     .min(1)
     .max(VIRTUAL_SERVER_MAX_CONNECTIONS),
 }) satisfies z.ZodType<FetchToolsInput>;
@@ -95,15 +89,15 @@ export const setupMcpIpc = (): void => {
     }
   });
 
-  // 仮想MCP作成前のツール一覧取得（各カタログに一時接続してtools/listを取得）
-  ipcMain.handle("mcp:fetchToolsForCatalogs", async (_, input: unknown) => {
+  // 仮想MCP作成前のツール一覧取得（既存コネクタに一時接続してtools/listを取得）
+  ipcMain.handle("mcp:fetchToolsForConnections", async (_, input: unknown) => {
     try {
       const validated = fetchToolsSchema.parse(input);
-      return await mcpService.fetchToolsForCatalogs(validated);
+      return await mcpService.fetchToolsForConnections(validated);
     } catch (error) {
       const message = error instanceof Error ? error.message : "不明なエラー";
       logger.error(
-        "Failed to fetch tools for catalogs",
+        "Failed to fetch tools for connections",
         error instanceof Error ? error : { error },
       );
       throw new Error(`ツール一覧の取得に失敗しました: ${message}`);

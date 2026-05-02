@@ -86,14 +86,12 @@ export type VirtualServerToolInput = {
 
 /**
  * 仮想MCP作成における1接続分の入力型
- * カタログIDとそのカタログに対する認証情報・ツール設定を持つ
+ * 既存コネクタのMcpConnection IDを参照し、その設定（credentials/transport等）をコピーする
  */
 export type VirtualServerConnectionInput = {
-  catalogId: number;
-  // STDIO: 環境変数 / SSE・Streamable HTTP: HTTPヘッダー
-  // カタログのcredentialKeysに対応するキーを持つことを期待する
-  credentials: Record<string, string>;
-  // 取得済みツール一覧（fetchToolsForCatalogsの結果ベース）
+  // 既存のMcpConnection ID（コネクト画面で追加済みのコネクタを選択）
+  connectionId: number;
+  // 取得済みツール一覧（fetchToolsForConnectionsの結果ベース）
   // 省略可能（後方互換のため）。指定があればMcpToolレコードを生成する
   tools?: VirtualServerToolInput[];
 };
@@ -101,6 +99,7 @@ export type VirtualServerConnectionInput = {
 /**
  * 仮想MCP作成の入力型（renderer → main）
  * 1つのMcpServerに対して複数のMcpConnectionを束ねて公開する
+ * 各接続は既存コネクタ（McpConnection）の設定をコピーして生成される
  */
 export type CreateVirtualServerInput = {
   name: string;
@@ -109,21 +108,19 @@ export type CreateVirtualServerInput = {
 };
 
 /**
- * fetchToolsForCatalogs の入力（renderer → main）
+ * fetchToolsForConnections の入力（renderer → main）
+ * 既存コネクタの credentials を再利用してツール一覧を取得する
  */
 export type FetchToolsInput = {
-  items: Array<{
-    catalogId: number;
-    credentials: Record<string, string>;
-  }>;
+  connectionIds: number[];
 };
 
 /**
- * fetchToolsForCatalogs の出力（main → renderer）
+ * fetchToolsForConnections の出力（main → renderer）
  */
 export type FetchToolsResult = {
   items: Array<{
-    catalogId: number;
+    connectionId: number;
     tools: Array<{
       name: string;
       description: string;
