@@ -70,6 +70,9 @@ jobs:
       - name: 📝 Create .env file for CI
         run: cp .env.example .env
 
+      - name: 🗃️ Generate Prisma clients
+        run: pnpm turbo db:generate
+
       - name: 🔬 Run typecheck
         run: pnpm turbo typecheck
 
