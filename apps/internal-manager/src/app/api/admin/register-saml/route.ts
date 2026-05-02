@@ -126,4 +126,66 @@ export const POST = async (req: NextRequest): Promise<NextResponse> => {
   }
 };
 
+/**
+ * PATCH: redirectUrl などの接続設定を更新（clientID/clientSecret は変わらない）
+ *
+ * Body: { clientID, redirectUrls?: string[] }
+ */
+export const PATCH = async (req: NextRequest): Promise<NextResponse> => {
+  const secret = process.env.ADMIN_REGISTER_SECRET;
+  if (!secret)
+    return NextResponse.json({ error: "not_configured" }, { status: 503 });
+  if (!authorize(req, secret)) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const body = (await req.json()) as Record<string, unknown>;
+  const clientID =
+    typeof body.clientID === "string" ? body.clientID : undefined;
+  if (!clientID) {
+    return NextResponse.json({ error: "clientID required" }, { status: 400 });
+  }
+
+  const tenant = typeof body.tenant === "string" ? body.tenant : "default";
+  const product = typeof body.product === "string" ? body.product : "tumiki";
+  const externalUrl = resolveExternalUrl();
+  const extraRedirectUrls =
+    Array.isArray(body.extraRedirectUrls) &&
+    body.extraRedirectUrls.every((u) => typeof u === "string")
+      ? body.extraRedirectUrls
+      : [];
+
+  const redirectUrls = [
+    `${externalUrl}/api/auth/callback/oidc`,
+    `${externalUrl}/api/auth/callback/jackson`,
+    ...extraRedirectUrls,
+  ];
+
+  const clientSecret = process.env.OIDC_CLIENT_SECRET;
+  if (!clientSecret) {
+    return NextResponse.json(
+      { error: "OIDC_CLIENT_SECRET not configured" },
+      { status: 503 },
+    );
+  }
+
+  try {
+    const { connectionAPIController } = await getJackson();
+    await connectionAPIController.updateSAMLConnection({
+      clientID,
+      clientSecret,
+      tenant,
+      product,
+      redirectUrl: JSON.stringify(redirectUrls),
+      defaultRedirectUrl: `${externalUrl}/api/auth/callback/oidc`,
+    });
+    return NextResponse.json({ updated: true, clientID, redirectUrls });
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : String(e) },
+      { status: 500 },
+    );
+  }
+};
+
 export const dynamic = "force-dynamic";
