@@ -12,8 +12,8 @@
  *
  * 配置後の構造:
  *   resources/runtime/<platform>/
- *   ├── bin/   (npm, npx, corepack の symlink + uv, uvx の Rust バイナリ)
- *   └── lib/   (Node 配布物の lib/node_modules/{npm,corepack})
+ *   ├── bin/   (npm/npx スクリプト + uv/uvx バイナリ)
+ *   └── lib/   (POSIXのみ。Node 配布物の lib/node_modules/{npm,corepack})
  *
  * electron-builder の extraResources で同梱され、本番では
  * `<App>.app/Contents/Resources/runtime/<platform>/` に配置される。
@@ -23,6 +23,9 @@
  *   node scripts/download-runtimes.mjs --all        # サポート全プラットフォーム
  *   node scripts/download-runtimes.mjs --platform darwin-x64
  *   node scripts/download-runtimes.mjs --force      # 既存を再ダウンロード
+ *
+ * CI 環境（CI=true）では取得をスキップする。
+ * typecheck / lint / test はランタイム実体を使わないため。
  */
 
 import { spawn } from "node:child_process";
@@ -48,12 +51,50 @@ const VERSIONS = {
   uv: "0.5.10",
 };
 
+/**
+ * プラットフォーム別配布物の定義
+ * - nodeArch: Node 公式 tarball/zip のサフィックス
+ * - uvTriple: astral-sh/uv リリースの target triple
+ * - archive : 配布形式（"tar.gz" or "zip"）
+ * - layout  : "posix" = bin/ + lib/ 構造 / "win" = 全ファイル平置き（Node Windows 配布物の構造）
+ */
 const PLATFORM_MAP = {
   "darwin-arm64": {
     nodeArch: "darwin-arm64",
     uvTriple: "aarch64-apple-darwin",
+    archive: "tar.gz",
+    layout: "posix",
   },
-  "darwin-x64": { nodeArch: "darwin-x64", uvTriple: "x86_64-apple-darwin" },
+  "darwin-x64": {
+    nodeArch: "darwin-x64",
+    uvTriple: "x86_64-apple-darwin",
+    archive: "tar.gz",
+    layout: "posix",
+  },
+  "linux-x64": {
+    nodeArch: "linux-x64",
+    uvTriple: "x86_64-unknown-linux-gnu",
+    archive: "tar.gz",
+    layout: "posix",
+  },
+  "linux-arm64": {
+    nodeArch: "linux-arm64",
+    uvTriple: "aarch64-unknown-linux-gnu",
+    archive: "tar.gz",
+    layout: "posix",
+  },
+  "win32-x64": {
+    nodeArch: "win-x64",
+    uvTriple: "x86_64-pc-windows-msvc",
+    archive: "zip",
+    layout: "win",
+  },
+  "win32-arm64": {
+    nodeArch: "win-arm64",
+    uvTriple: "aarch64-pc-windows-msvc",
+    archive: "zip",
+    layout: "win",
+  },
 };
 
 const log = (msg) => console.log(`[download-runtimes] ${msg}`);
@@ -72,17 +113,27 @@ const detectPlatform = () => `${process.platform}-${process.arch}`;
 const parseArgs = () => {
   const argv = process.argv.slice(2);
   const force = argv.includes("--force");
-  // --strict 指定 or --all/--platform で明示指定された場合は未対応プラットフォームをエラーにする
-  // postinstall 経由のデフォルト呼び出しではスキップで CI を通す
   if (argv.includes("--all")) {
-    return { platforms: Object.keys(PLATFORM_MAP), force, strict: true };
+    return { platforms: Object.keys(PLATFORM_MAP), force };
   }
   const platformIndex = argv.indexOf("--platform");
   if (platformIndex >= 0 && argv[platformIndex + 1]) {
-    return { platforms: [argv[platformIndex + 1]], force, strict: true };
+    return { platforms: [argv[platformIndex + 1]], force };
   }
-  const strict = argv.includes("--strict");
-  return { platforms: [detectPlatform()], force, strict };
+  return { platforms: [detectPlatform()], force };
+};
+
+const runCommand = async (command, args, label) => {
+  await new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      stdio: ["ignore", "ignore", "inherit"],
+    });
+    child.on("exit", (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`${label} exit code ${code}`));
+    });
+    child.on("error", reject);
+  });
 };
 
 /**
@@ -91,73 +142,86 @@ const parseArgs = () => {
  */
 const downloadTo = async (url, destPath) => {
   log(`  fetching ${url}`);
-  await new Promise((resolve, reject) => {
-    const child = spawn(
-      "curl",
-      [
-        "--fail",
-        "--location",
-        "--silent",
-        "--show-error",
-        "--output",
-        destPath,
-        url,
-      ],
-      { stdio: ["ignore", "ignore", "inherit"] },
-    );
-    child.on("exit", (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`curl exit code ${code} for ${url}`));
-    });
-    child.on("error", reject);
-  });
+  await runCommand(
+    "curl",
+    [
+      "--fail",
+      "--location",
+      "--silent",
+      "--show-error",
+      "--output",
+      destPath,
+      url,
+    ],
+    `curl ${url}`,
+  );
 };
 
-const extractTarGz = async (tarPath, destDir) => {
-  log(`  extracting ${path.basename(tarPath)}`);
+/**
+ * tar.gz / zip を抽出する。
+ * libarchive (macOS/Linux/Win10+ 標準 tar) は zip を自動検出するが、
+ * GNU tar は zip 非対応なので Linux 上は unzip を併用する。
+ */
+const extractArchive = async (archivePath, destDir, archive) => {
+  log(`  extracting ${path.basename(archivePath)}`);
   await mkdir(destDir, { recursive: true });
-  await new Promise((resolve, reject) => {
-    const child = spawn("tar", ["-xzf", tarPath, "-C", destDir], {
-      stdio: ["ignore", "inherit", "inherit"],
-    });
-    child.on("exit", (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`tar exit code ${code}`));
-    });
-    child.on("error", reject);
-  });
+  if (archive === "zip" && process.platform === "linux") {
+    await runCommand("unzip", ["-q", archivePath, "-d", destDir], "unzip");
+  } else {
+    // tar.gz / macOS の zip 共通: tar に任せる
+    const flags = archive === "zip" ? ["-xf"] : ["-xzf"];
+    await runCommand("tar", [...flags, archivePath, "-C", destDir], "tar");
+  }
 };
 
 const installNode = async (platform, target) => {
-  const { nodeArch } = PLATFORM_MAP[platform];
-  const version = VERSIONS.node;
-  const baseName = `node-v${version}-${nodeArch}`;
-  const url = `https://nodejs.org/dist/v${version}/${baseName}.tar.gz`;
+  const { nodeArch, archive, layout } = PLATFORM_MAP[platform];
+  const baseName = `node-v${VERSIONS.node}-${nodeArch}`;
+  const url = `https://nodejs.org/dist/v${VERSIONS.node}/${baseName}.${archive}`;
 
   const tmpDir = await mkdtemp(path.join(tmpdir(), "tumiki-node-"));
   try {
-    const tarPath = path.join(tmpDir, `${baseName}.tar.gz`);
-    await downloadTo(url, tarPath);
-    await extractTarGz(tarPath, tmpDir);
+    const archivePath = path.join(tmpDir, `${baseName}.${archive}`);
+    await downloadTo(url, archivePath);
+    await extractArchive(archivePath, tmpDir, archive);
 
     const extractedRoot = path.join(tmpDir, baseName);
-    // bin/ と lib/ のみ採用（include/, share/ は不要）
-    await cp(path.join(extractedRoot, "bin"), path.join(target, "bin"), {
-      recursive: true,
-      verbatimSymlinks: true,
-    });
-    await cp(path.join(extractedRoot, "lib"), path.join(target, "lib"), {
-      recursive: true,
-      verbatimSymlinks: true,
-    });
-    // bin/node は Electron 同梱の Node を流用するため削除（~119MB節約）
-    // npm / npx / corepack（symlink）と lib/ の npm モジュールはバンドル必要
-    const bundledNodeBinary = path.join(target, "bin", "node");
-    try {
-      await unlink(bundledNodeBinary);
-    } catch (error) {
-      // 元々無かった等は無視（ENOENT）
-      if (error?.code !== "ENOENT") throw error;
+    const binDir = path.join(target, "bin");
+    await mkdir(binDir, { recursive: true });
+
+    if (layout === "win") {
+      // Windows 配布物は全ファイルが root に平置き。
+      // npm/npx の .cmd は ../node_modules を見るため、bin/ 配下に同居させる。
+      await cp(
+        path.join(extractedRoot, "npm.cmd"),
+        path.join(binDir, "npm.cmd"),
+      );
+      await cp(
+        path.join(extractedRoot, "npx.cmd"),
+        path.join(binDir, "npx.cmd"),
+      );
+      await cp(
+        path.join(extractedRoot, "node_modules"),
+        path.join(binDir, "node_modules"),
+        { recursive: true, verbatimSymlinks: true },
+      );
+      // node.exe は Electron 同梱を流用するため同梱しない
+    } else {
+      // POSIX: bin/ と lib/ をそのまま採用（include/, share/ は不要）
+      await cp(path.join(extractedRoot, "bin"), binDir, {
+        recursive: true,
+        verbatimSymlinks: true,
+      });
+      await cp(path.join(extractedRoot, "lib"), path.join(target, "lib"), {
+        recursive: true,
+        verbatimSymlinks: true,
+      });
+      // bin/node は Electron 同梱の Node を流用するため削除（~119MB節約）
+      try {
+        await unlink(path.join(binDir, "node"));
+      } catch (error) {
+        if (error?.code !== "ENOENT") throw error;
+      }
     }
   } finally {
     await rm(tmpDir, { recursive: true, force: true });
@@ -165,37 +229,42 @@ const installNode = async (platform, target) => {
 };
 
 const installUv = async (platform, target) => {
-  const { uvTriple } = PLATFORM_MAP[platform];
-  const version = VERSIONS.uv;
+  const { uvTriple, archive } = PLATFORM_MAP[platform];
   const baseName = `uv-${uvTriple}`;
-  const url = `https://github.com/astral-sh/uv/releases/download/${version}/${baseName}.tar.gz`;
+  const url = `https://github.com/astral-sh/uv/releases/download/${VERSIONS.uv}/${baseName}.${archive}`;
 
   const tmpDir = await mkdtemp(path.join(tmpdir(), "tumiki-uv-"));
   try {
-    const tarPath = path.join(tmpDir, `${baseName}.tar.gz`);
-    await downloadTo(url, tarPath);
-    await extractTarGz(tarPath, tmpDir);
+    const archivePath = path.join(tmpDir, `${baseName}.${archive}`);
+    await downloadTo(url, archivePath);
+    await extractArchive(archivePath, tmpDir, archive);
 
-    const extractedRoot = path.join(tmpDir, baseName);
+    // 配布形式の差を吸収:
+    //   tar.gz: uv-<triple>/uv, uv-<triple>/uvx （ディレクトリ階層あり）
+    //   zip   : uv.exe, uvx.exe （root に平置き）
+    const extractedRoot =
+      archive === "zip" ? tmpDir : path.join(tmpDir, baseName);
     const binDir = path.join(target, "bin");
+    const exeSuffix = archive === "zip" ? ".exe" : "";
     await mkdir(binDir, { recursive: true });
-    await cp(path.join(extractedRoot, "uv"), path.join(binDir, "uv"));
-    await cp(path.join(extractedRoot, "uvx"), path.join(binDir, "uvx"));
+    await cp(
+      path.join(extractedRoot, `uv${exeSuffix}`),
+      path.join(binDir, `uv${exeSuffix}`),
+    );
+    await cp(
+      path.join(extractedRoot, `uvx${exeSuffix}`),
+      path.join(binDir, `uvx${exeSuffix}`),
+    );
   } finally {
     await rm(tmpDir, { recursive: true, force: true });
   }
 };
 
-const setupPlatform = async (platform, force, strict) => {
+const setupPlatform = async (platform, force) => {
   if (!PLATFORM_MAP[platform]) {
-    const message = `未対応プラットフォーム: ${platform} (対応: ${Object.keys(PLATFORM_MAP).join(", ")})`;
-    if (strict) {
-      throw new Error(message);
-    }
-    // CI (Linux) や開発しないプラットフォームでは postinstall 経由で呼ばれた際にスキップする
-    // リリースビルドでは --all でサポート全プラットフォームを明示的に取得するため、ここはスキップで安全
-    log(`${platform}: ${message} → スキップ`);
-    return;
+    throw new Error(
+      `未対応プラットフォーム: ${platform} (対応: ${Object.keys(PLATFORM_MAP).join(", ")})`,
+    );
   }
   const target = path.join(RUNTIME_ROOT, platform);
   const sentinel = path.join(target, ".tumiki-runtime.json");
@@ -223,12 +292,19 @@ const setupPlatform = async (platform, force, strict) => {
 };
 
 const main = async () => {
-  const { platforms, force, strict } = parseArgs();
+  // CI 環境ではランタイム実体を使わない（typecheck/lint/test のみ）ためスキップ
+  // 必要なら CI 上で `--force` 付きで明示実行することは可能（force だけではスキップは外れない設計）
+  if (process.env.CI === "true") {
+    log("CI 環境を検出 - ランタイム取得をスキップします");
+    return;
+  }
+
+  const { platforms, force } = parseArgs();
   log(
     `対象プラットフォーム: ${platforms.join(", ")}${force ? " (--force)" : ""}`,
   );
   for (const platform of platforms) {
-    await setupPlatform(platform, force, strict);
+    await setupPlatform(platform, force);
   }
   log("すべてのランタイム取得が完了しました");
 };
