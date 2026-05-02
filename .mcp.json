@@ -38,6 +38,14 @@
       "env": {
         "DATABASE_URI": "${DATABASE_URL}"
       }
+    },
+    "sequential-thinking-stdio": {
+      "command": "/Users/koji.iwase/dev/rayven/tumiki/node_modules/.pnpm/electron@40.8.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron",
+      "args": ["/Users/koji.iwase/dev/rayven/tumiki/apps/desktop", "--mcp-proxy", "--server", "sequential-thinking-stdio"]
+    },
+    "serena-stdio": {
+      "command": "/Users/koji.iwase/dev/rayven/tumiki/node_modules/.pnpm/electron@40.8.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron",
+      "args": ["/Users/koji.iwase/dev/rayven/tumiki/apps/desktop", "--mcp-proxy", "--server", "serena-stdio"]
     }
   }
 }
