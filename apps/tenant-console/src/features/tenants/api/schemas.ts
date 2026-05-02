@@ -62,5 +62,10 @@ export const deleteTenantInputSchema = z.object({
   id: z.string().cuid(),
 });
 
+export const getTenantInputSchema = z.object({
+  id: z.string().cuid(),
+});
+
 export type CreateTenantInput = z.infer<typeof createTenantInputSchema>;
 export type DeleteTenantInput = z.infer<typeof deleteTenantInputSchema>;
+export type GetTenantInput = z.infer<typeof getTenantInputSchema>;

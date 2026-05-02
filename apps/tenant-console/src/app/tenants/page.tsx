@@ -41,6 +41,7 @@ const TenantsPage = async () => {
                   <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
                     作成日時
                   </th>
+                  <th className="px-6 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
@@ -72,6 +73,14 @@ const TenantsPage = async () => {
                     </td>
                     <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
                       {tenant.createdAt.toLocaleString("ja-JP")}
+                    </td>
+                    <td className="px-6 py-4 text-sm whitespace-nowrap">
+                      <Link
+                        href={`/tenants/${tenant.id}`}
+                        className="text-indigo-600 hover:text-indigo-800"
+                      >
+                        詳細
+                      </Link>
                     </td>
                   </tr>
                 ))}
