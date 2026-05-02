@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/trpc/react";
 import { type RouterOutputs } from "@/trpc/react";
@@ -38,6 +38,13 @@ const LicenseTable = ({ initialData, tenants }: Props) => {
     initialData.nextCursor,
   );
   const [hasMore, setHasMore] = useState(initialData.hasMore);
+
+  // router.refresh() 後に RSC から新しい initialData が来たとき state を同期する
+  useEffect(() => {
+    setItems(initialData.items);
+    setNextCursor(initialData.nextCursor);
+    setHasMore(initialData.hasMore);
+  }, [initialData]);
 
   // 失効確認ダイアログの表示対象
   const [revokeTarget, setRevokeTarget] = useState<LicenseItem | null>(null);
