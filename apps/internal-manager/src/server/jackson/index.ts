@@ -48,6 +48,9 @@ const buildJacksonOption = (): JacksonOption => {
 
   return {
     externalUrl,
+    // SAML SP の Entity ID（SAMLRequest の Issuer として送出される）
+    // 未設定だと jackson デフォルトの https://saml.boxyhq.com になり Google に拒否される
+    samlAudience: externalUrl,
     // SAML SP の ACS URL（顧客 SAML IdP からのレスポンスを受ける）
     samlPath: "/api/saml/acs",
     // OIDC Connection のコールバック URL（顧客 OIDC IdP からのコールバックを受ける）
