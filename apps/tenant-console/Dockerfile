@@ -23,6 +23,7 @@ WORKDIR /app
 FROM base AS build
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY patches ./patches
 COPY .npmrc ./
 COPY tooling ./tooling
 COPY packages/db ./packages/db
@@ -42,6 +43,14 @@ RUN pnpm turbo run build --filter=@tumiki/tenant-console^...
 # /api/health から db.ts → env.ts が読まれ TENANT_DATABASE_URL が必須になるため、
 # ビルド専用のダミー値を渡す（実行時は Infisical Operator が同期した値で上書きされる）。
 ENV TENANT_DATABASE_URL=postgresql://build:build@localhost:5432/build
+# Infisical 自動プロビジョニング用ダミー値（実行時は Infisical Operator が同期した正しい値で上書き）
+ENV INFISICAL_API_URL=https://build.invalid
+ENV INFISICAL_ORG_ID=build
+ENV INFISICAL_OPERATOR_CLIENT_ID=build
+ENV INFISICAL_OPERATOR_CLIENT_SECRET=build
+ENV INFISICAL_OPERATOR_IDENTITY_ID=build
+# ライセンス署名秘密鍵ダミー値（実行時は Infisical Operator が同期した正しい値で上書き）
+ENV LICENSE_SIGNING_PRIVATE_KEY=build
 RUN pnpm --filter @tumiki/tenant-console run build:bare
 
 # ========================================

@@ -34,6 +34,9 @@ jobs:
           - name: tenant-console
             image: ghcr.io/rayven122/tumiki-tenant-console
             dockerfile: apps/tenant-console/Dockerfile
+          - name: tumiki-cloud-api
+            image: ghcr.io/rayven122/tumiki-cloud-api
+            dockerfile: apps/tumiki-cloud-api/Dockerfile
     steps:
       - uses: actions/checkout@v4
 

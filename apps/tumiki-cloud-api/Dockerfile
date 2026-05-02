@@ -23,6 +23,7 @@ WORKDIR /app
 FROM base AS build
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY patches ./patches
 COPY .npmrc ./
 COPY tooling ./tooling
 COPY apps/tumiki-cloud-api ./apps/tumiki-cloud-api
@@ -36,7 +37,11 @@ RUN pnpm turbo run build --filter=@tumiki/tumiki-cloud-api^...
 RUN pnpm --filter @tumiki/tumiki-cloud-api run build
 
 # 本番依存のみ抽出（dist と node_modules 用）
-RUN pnpm --filter @tumiki/tumiki-cloud-api deploy --prod /prod/tumiki-cloud-api
+# pnpm v10 では deploy にデフォルトで inject-workspace-packages=true が必要なため
+# ワークスペースパッケージへ依存しないこのアプリでは --legacy で従来動作にする
+# zod-prisma-types のパッチはこのアプリに不要なため deploy 前に除去する
+RUN node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('package.json')); if(p.pnpm?.patchedDependencies) delete p.pnpm.patchedDependencies; fs.writeFileSync('package.json', JSON.stringify(p, null, 2));"
+RUN pnpm --filter @tumiki/tumiki-cloud-api deploy --prod --legacy /prod/tumiki-cloud-api
 
 # ========================================
 # Stage 3: Production

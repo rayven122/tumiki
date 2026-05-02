@@ -9,9 +9,7 @@ import { ToolDetail } from "./pages/ToolDetail";
 import { ToolCatalog } from "./pages/ToolCatalog";
 import { HistoryList } from "./pages/HistoryList";
 import { HistoryDetail } from "./pages/HistoryDetail";
-import { RequestList } from "./pages/RequestList";
-import { RequestForm } from "./pages/RequestForm";
-import { RequestDetail } from "./pages/RequestDetail";
+import { UpgradePlan } from "./pages/UpgradePlan";
 import { SettingsPage } from "./pages/Settings";
 import { Notifications } from "./pages/Notifications";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
@@ -22,6 +20,7 @@ import { AdminTools } from "./pages/admin/AdminTools";
 import { AdminApprovals } from "./pages/admin/AdminApprovals";
 import { ConnectorAuto } from "./pages/ConnectorAuto";
 import { ConnectorManual } from "./pages/ConnectorManual";
+import { AiIntegrations } from "./pages/AiIntegrations";
 
 export const App = (): JSX.Element => {
   return (
@@ -42,9 +41,10 @@ export const App = (): JSX.Element => {
             <Route path="tools/:toolId" element={<ToolDetail />} />
             <Route path="history" element={<HistoryList />} />
             <Route path="history/:historyId" element={<HistoryDetail />} />
-            <Route path="requests" element={<RequestList />} />
-            <Route path="requests/new" element={<RequestForm />} />
-            <Route path="requests/:requestId" element={<RequestDetail />} />
+            <Route path="requests" element={<UpgradePlan />} />
+            <Route path="requests/new" element={<UpgradePlan />} />
+            <Route path="requests/:requestId" element={<UpgradePlan />} />
+            <Route path="ai-integrations" element={<AiIntegrations />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="notifications" element={<Notifications />} />
             <Route path="admin" element={<AdminDashboard />} />

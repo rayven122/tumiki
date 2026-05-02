@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 // テナント作成の入力スキーマ
+// Phase 1: Infisical 操作は自動化されたため、Client ID/Secret/projectSlug の入力を廃止
+// CUSTOM OIDC の場合のみユーザーが OIDC 値を入力する（KEYCLOAK は Phase 2 で自動化予定）
 export const createTenantInputSchema = z
   .object({
     slug: z
@@ -12,23 +14,17 @@ export const createTenantInputSchema = z
           "slug は DNS RFC1123 形式（小文字英数字とハイフンのみ、先頭末尾は英数字）でなければなりません",
       }),
     oidcType: z.enum(["KEYCLOAK", "CUSTOM"]),
-    // CUSTOM の場合のみ必須
     oidcIssuer: z.string().url().optional(),
     oidcClientId: z.string().optional(),
     oidcClientSecret: z.string().optional(),
-    infisicalClientId: z.string().min(1),
-    infisicalClientSecret: z.string().min(1),
-    infisicalProjectSlug: z.string().min(1),
-    // Docker imageタグとして有効な文字のみ許可
     imageTag: z
       .string()
       .min(1)
       .max(128)
       .regex(/^[a-zA-Z0-9._-]+$/)
-      .default("latest"),
+      .default("main"),
   })
   .superRefine((data, ctx) => {
-    // CUSTOM OIDCの場合は追加フィールドを必須とする
     if (data.oidcType === "CUSTOM") {
       if (!data.oidcIssuer) {
         ctx.addIssue({
@@ -52,9 +48,16 @@ export const createTenantInputSchema = z
         });
       }
     }
+    if (data.oidcType === "KEYCLOAK") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "KEYCLOAK 自動連携は未実装です。CUSTOM を選択して OIDC 情報を直接入力してください",
+        path: ["oidcType"],
+      });
+    }
   });
 
-// テナント削除の入力スキーマ
 export const deleteTenantInputSchema = z.object({
   id: z.string().cuid(),
 });

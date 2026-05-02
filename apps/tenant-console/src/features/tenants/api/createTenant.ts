@@ -1,33 +1,49 @@
 import { execFile } from "node:child_process";
-import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { randomBytes } from "node:crypto";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { TRPCError } from "@trpc/server";
-import { Prisma } from "../../../../prisma/generated/client/index.js";
-import { HELM_BIN, KUBECTL_BIN, HELM_TIMEOUT_MS } from "./constants";
+import { Prisma } from "@db-client";
+import { env } from "@/lib/env";
 import type { Context } from "@/server/api/trpc";
+import {
+  addIdentityToProject,
+  createProject,
+  deleteProject,
+  ensureFolder,
+  upsertSecrets,
+} from "@/server/infisical/client";
+import { HELM_BIN, HELM_TIMEOUT_MS, KUBECTL_BIN } from "./constants";
 import type { CreateTenantInput } from "./schemas";
 
 const execFileAsync = promisify(execFile);
 
-/** Helm に渡す非シークレット値の型（シークレットは kubectl Secret で管理） */
 type HelmValues = {
-  infisical: { projectSlug: string };
+  infisical: { hostAPI: string; projectSlug: string; environment: string };
   oidc?: { issuer?: string; clientId?: string };
 };
 
+const generateHexSecret = (): string => randomBytes(32).toString("hex");
+
 /**
- * テナント作成処理
- * 1. DB に Tenant レコード作成（status: PROVISIONING）
- * 2. k8s Secret を kubectl で事前作成（Helmリリース値への保存を防ぐ）
- * 3. k8s: helm install でテナント用 internal-manager をデプロイ
- * 4. DB の status を ACTIVE に更新
- * エラー時は status を ERROR に更新してエラーを再スロー
+ * テナント自動プロビジョニング処理（Phase 1）。
+ *
+ *  1. DB レコード作成 (PROVISIONING)
+ *  2. シークレット自動生成 (POSTGRES_PASSWORD / AUTH_SECRET)
+ *  3. Infisical プロジェクト作成 + シークレット登録 + Operator Identity 紐付け
+ *  4. k8s Namespace + RoleBinding + infisical-machine-identity Secret 作成
+ *  5. helm install で internal-manager デプロイ
+ *  6. DB の status を ACTIVE に更新
+ *
+ *  失敗時は Infisical プロジェクト削除 + k8s リソースクリーンアップ + DB ステータス ERROR に倒す。
  */
 export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
   const domain = `${input.slug}-manager.tumiki.cloud`;
   const namespace = `tenant-${input.slug}`;
+  const infisicalProjectName = `tumiki-tenant-${input.slug}`;
+  const infisicalProjectSlug = infisicalProjectName;
 
   let tenant;
   try {
@@ -56,12 +72,53 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
     });
   }
 
+  let createdProjectId: string | null = null;
+
   try {
+    const postgresPassword = generateHexSecret();
+    const authSecret = generateHexSecret();
+    const internalDatabaseUrl = `postgresql://app:${postgresPassword}@postgresql.${namespace}.svc.cluster.local:5432/internal_manager`;
+    const nextAuthUrl = `https://${domain}`;
+
+    const project = await createProject({
+      projectName: infisicalProjectName,
+      slug: infisicalProjectSlug,
+    });
+    createdProjectId = project.projectId;
+
+    await addIdentityToProject({
+      projectId: project.projectId,
+      identityId: env.INFISICAL_OPERATOR_IDENTITY_ID,
+      role: "developer",
+    });
+
+    const secrets: Record<string, string> = {
+      POSTGRES_PASSWORD: postgresPassword,
+      AUTH_SECRET: authSecret,
+      INTERNAL_DATABASE_URL: internalDatabaseUrl,
+      NEXTAUTH_URL: nextAuthUrl,
+    };
+    if (input.oidcType === "CUSTOM") {
+      if (input.oidcIssuer) secrets.OIDC_ISSUER = input.oidcIssuer;
+      if (input.oidcClientId) secrets.OIDC_CLIENT_ID = input.oidcClientId;
+      if (input.oidcClientSecret)
+        secrets.OIDC_CLIENT_SECRET = input.oidcClientSecret;
+    }
+    await ensureFolder({
+      projectId: project.projectId,
+      environment: "prod",
+      folderPath: "/internal-manager",
+    });
+    await upsertSecrets({
+      projectId: project.projectId,
+      environment: "prod",
+      secretsPath: "/internal-manager",
+      secrets,
+    });
+
     const tmpDir = mkdtempSync(join(tmpdir(), "helm-values-"));
 
     try {
-      // Namespace を事前作成（helm install より前に Secret を作る必要があるため）
-      // AlreadyExists エラーは無視する
       try {
         await execFileAsync(KUBECTL_BIN, ["create", "namespace", namespace]);
       } catch (nsError) {
@@ -72,11 +129,24 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
           throw nsError;
         }
       }
+      // Helm が既存 Namespace を採用できるよう管理ラベル/アノテーションを付与する
+      // （kubectl create namespace で作成した Namespace は Helm ラベルを持たないため必須）
+      await execFileAsync(KUBECTL_BIN, [
+        "label",
+        "namespace",
+        namespace,
+        "app.kubernetes.io/managed-by=Helm",
+        "--overwrite",
+      ]);
+      await execFileAsync(KUBECTL_BIN, [
+        "annotate",
+        "namespace",
+        namespace,
+        `meta.helm.sh/release-name=${input.slug}`,
+        `meta.helm.sh/release-namespace=${namespace}`,
+        "--overwrite",
+      ]);
 
-      // テナント Namespace 内のリソース操作権限を tenant-console SA に動的付与する。
-      // tenant-console の ClusterRole は最小権限（Namespace 作成・RoleBinding 作成のみ）に
-      // 絞っており、テナント Namespace 内の Secret 等は当該 Namespace スコープの
-      // RoleBinding 経由でのみ操作可能。これによりテナント間のシークレット漏洩を防ぐ。
       await execFileAsync(KUBECTL_BIN, [
         "create",
         "rolebinding",
@@ -91,9 +161,6 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
         }
       });
 
-      // Infisical 認証情報を k8s Secret として作成
-      // Helmリリース値（helm get values）に保存されるのを防ぐため kubectl で直接作成する
-      // stringData ではなく data + base64 を使用してYAMLインジェクションを完全回避する
       const infisicalSecretManifest = [
         `apiVersion: v1`,
         `kind: Secret`,
@@ -102,8 +169,8 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
         `  namespace: ${namespace}`,
         `type: Opaque`,
         `data:`,
-        `  clientId: ${Buffer.from(input.infisicalClientId).toString("base64")}`,
-        `  clientSecret: ${Buffer.from(input.infisicalClientSecret).toString("base64")}`,
+        `  clientId: ${Buffer.from(env.INFISICAL_OPERATOR_CLIENT_ID).toString("base64")}`,
+        `  clientSecret: ${Buffer.from(env.INFISICAL_OPERATOR_CLIENT_SECRET).toString("base64")}`,
       ].join("\n");
 
       const infisicalSecretFile = join(tmpDir, "infisical-secret.yaml");
@@ -112,29 +179,12 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
       });
       await execFileAsync(KUBECTL_BIN, ["apply", "-f", infisicalSecretFile]);
 
-      // CUSTOM OIDC の場合は oidc-credentials Secret を事前作成
-      if (input.oidcType === "CUSTOM" && input.oidcClientSecret) {
-        const oidcSecretManifest = [
-          `apiVersion: v1`,
-          `kind: Secret`,
-          `metadata:`,
-          `  name: oidc-credentials`,
-          `  namespace: ${namespace}`,
-          `type: Opaque`,
-          `data:`,
-          `  clientSecret: ${Buffer.from(input.oidcClientSecret).toString("base64")}`,
-        ].join("\n");
-
-        const oidcSecretFile = join(tmpDir, "oidc-secret.yaml");
-        writeFileSync(oidcSecretFile, oidcSecretManifest, { mode: 0o600 });
-        await execFileAsync(KUBECTL_BIN, ["apply", "-f", oidcSecretFile]);
-      }
-
-      // Helm には非シークレット値のみ渡す
-      // OIDC issuer/clientId は URL や任意文字列を含むため --set ではなく JSON ファイル経由で渡す
-      // （--set は "," や "=" を特殊文字として扱うためURLが壊れる可能性がある）
       const helmValues: HelmValues = {
-        infisical: { projectSlug: input.infisicalProjectSlug },
+        infisical: {
+          hostAPI: env.INFISICAL_API_URL,
+          projectSlug: infisicalProjectSlug,
+          environment: "prod",
+        },
       };
       if (input.oidcType === "CUSTOM") {
         helmValues.oidc = {
@@ -148,8 +198,6 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
         mode: 0o600,
       });
 
-      // Namespace は kubectl で事前作成済みのため --create-namespace は不要
-      // （namespace.yaml テンプレートが Helm でラベルを付与する）
       const helmArgs = [
         "install",
         input.slug,
@@ -169,21 +217,17 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
         "--timeout",
         "5m",
       ];
-
       await execFileAsync(HELM_BIN, helmArgs, { timeout: HELM_TIMEOUT_MS });
     } finally {
       rmSync(tmpDir, { recursive: true, force: true });
     }
 
-    const updatedTenant = await ctx.db.tenant.update({
+    return await ctx.db.tenant.update({
       where: { id: tenant.id },
       data: { status: "ACTIVE" },
     });
-
-    return updatedTenant;
   } catch (error) {
-    // ベストエフォートでk8sリソースをクリーンアップ（再試行を可能にする）
-    // クリーンアップ自体の失敗は無視する（リソースが存在しない場合もある）
+    console.error("[createTenant] provisioning failed:", error);
     const ignore = (_: unknown) => undefined;
     await execFileAsync(HELM_BIN, [
       "uninstall",
@@ -197,13 +241,15 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
       namespace,
       "--ignore-not-found",
     ]).catch(ignore);
+    if (createdProjectId) {
+      await deleteProject(createdProjectId).catch(ignore);
+    }
 
     await ctx.db.tenant.update({
       where: { id: tenant.id },
       data: { status: "ERROR" },
     });
 
-    // 内部エラー詳細（kubectl/helmのstderr等）をクライアントに露出しない
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
       message: "テナントのプロビジョニングに失敗しました",

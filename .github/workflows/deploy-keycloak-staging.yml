@@ -53,35 +53,52 @@ jobs:
             StrictHostKeyChecking accept-new
           CONFIG
 
+      - name: 🔐 Fetch secrets from Infisical
+        uses: Infisical/secrets-action@77ab1f4ccd183a543cb5b42435fbd181189f4995 # v1.0.16
+        with:
+          method: universal
+          client-id: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
+          client-secret: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
+          domain: https://secrets.rayven.cloud
+          project-slug: tumiki
+          env-slug: staging
+          secret-path: /
+          recursive: true
+          export-type: file
+          # file-output-path は ${GITHUB_WORKSPACE} と単純連結される仕様（先頭 / は連結区切り扱い）
+          # /tmp など絶対パスは使えず、ワークスペース直下にのみ書き込み可能
+          file-output-path: /keycloak.env
+
+      - name: 🔒 Restrict secrets file permissions
+        run: chmod 600 keycloak.env
+
       - name: 📤 Transfer files
         run: |
+          # 前回 cleanup が失敗していた場合に備えて既存 .env を削除（リカバリ）
           ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" \
-            "mkdir -p ~/keycloak/themes"
+            "mkdir -p ~/keycloak/themes && rm -f ~/keycloak/.env"
           scp -i ~/.ssh/id_ed25519 \
             docker/keycloak-staging/compose.yaml \
             "${SSH_USER}@${KEYCLOAK_HOST}:~/keycloak/compose.yaml"
           scp -r -i ~/.ssh/id_ed25519 \
             docker/keycloak/themes/tumiki \
             "${SSH_USER}@${KEYCLOAK_HOST}:~/keycloak/themes/"
+          # install -m 600 でファイル作成と権限設定をアトミックに実施（scp + chmod のウィンドウを排除）
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" \
+            'install -m 600 /dev/stdin ~/keycloak/.env' < keycloak.env
 
-      - name: 🔐 Deploy Keycloak
-        env:
-          INFISICAL_UNIVERSAL_AUTH_CLIENT_ID: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
-          INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
+      - name: 🐳 Deploy Keycloak
         run: |
-          # 環境変数経由でシークレットを渡す（CLIオプション経由はps auxで漏洩するリスクがあるため）
-          # クォートなしヒアドキュメントでランナー側の環境変数をリモートに展開する
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" bash -l << REMOTE_SCRIPT
+          # ヒアドキュメントは quoted で runner 側変数の意図しない展開を防ぐ
+          # docker compose は同ディレクトリの .env を自動読み込みする
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" bash -l << 'REMOTE_SCRIPT'
             set -euo pipefail
             set +o history
             cd ~/keycloak
-            export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID}"
-            export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET}"
-            ~/.local/bin/infisical run --method=universal-auth --env=staging \
-              --domain https://secrets.rayven.cloud -- docker compose pull keycloak
+            docker compose pull keycloak
             # --remove-orphans: compose.yaml から削除されたサービスのコンテナを合わせてクリーンアップ
-            ~/.local/bin/infisical run --method=universal-auth --env=staging \
-              --domain https://secrets.rayven.cloud -- docker compose up -d --force-recreate --remove-orphans keycloak
+            docker compose up -d --force-recreate --remove-orphans keycloak
+            rm -f .env
           REMOTE_SCRIPT
 
       - name: ✅ Verify Keycloak health
@@ -103,4 +120,9 @@ jobs:
       - name: 🧹 Cleanup
         if: always()
         run: |
-          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh ~/.ssh/id_ed25519 ~/.ssh/config
+          # デプロイ失敗時に Keycloak VM 上に .env が残らないよう SSH 越しに確実に削除
+          # SSH 鍵・設定を削除する前に実行する必要がある
+          # 削除失敗時は warning を出して運用側で検知できるようにする（cleanup の失敗で job 自体は失敗扱いにしない）
+          ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=10 "${SSH_USER}@${KEYCLOAK_HOST}" 'rm -f ~/keycloak/.env' \
+            || echo "::warning::Keycloak VM上の .env 削除に失敗しました。手動確認が必要です"
+          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh keycloak.env ~/.ssh/id_ed25519 ~/.ssh/config
