@@ -59,8 +59,8 @@ GitHub Actions の `Deploy Apps` ワークフローを手動実行。
 ```
 ① Checkout                  リポジトリをチェックアウト
 ② Setup Cloudflare SSH      cloudflared + SSH 設定（composite action）
-③ Fetch secrets             runner 上で Infisical/secrets-action@v1 → /tmp/tumiki.env 生成
-④ Restrict permissions      chmod 600 /tmp/tumiki.env
+③ Fetch secrets             runner 上で Infisical/secrets-action@v1 → ワークスペース直下に tumiki.env 生成
+④ Restrict permissions      chmod 600 tumiki.env
 ⑤ Transfer files            compose.yaml・.env を VM に scp 転送
 ⑥ Deploy containers         VM 上で実行:
    - docker compose pull（最新イメージ取得）
@@ -78,8 +78,8 @@ GitHub Actions の `Deploy Apps` ワークフローを手動実行。
 ① Checkout
 ② Setup Cloudflare SSH      cloudflared + SSH 設定（stg-ssh.tumiki.cloud 宛て）
 ③ Configure ProxyJump       ~/.ssh/config に 10.11.0.15 向け ProxyJump を設定
-④ Fetch secrets             runner 上で Infisical/secrets-action@v1 → /tmp/keycloak.env 生成
-⑤ Restrict permissions      chmod 600 /tmp/keycloak.env
+④ Fetch secrets             runner 上で Infisical/secrets-action@v1 → ワークスペース直下に keycloak.env 生成
+⑤ Restrict permissions      chmod 600 keycloak.env
 ⑥ Transfer files            compose.yaml・テーマファイル・.env を Keycloak VM に scp 転送
 ⑦ Deploy Keycloak           Keycloak VM 上で docker compose pull & up（.env を自動読み込み）
 ⑧ Verify health             localhost:9000/health/ready を確認
@@ -157,7 +157,7 @@ no-pty,no-X11-forwarding,no-agent-forwarding,no-port-forwarding ssh-ed25519 AAAA
 ```
 GitHub Actions runner
   → Infisical/secrets-action@v1（Machine Identity / Universal Auth）
-  → /tmp/*.env を runner 上に生成
+  → ワークスペース直下に *.env を runner 上で生成（file-output-path は GITHUB_WORKSPACE 相対）
   → scp で VM の compose ディレクトリへ転送
   → ssh で docker compose up（or terraform apply）
   → デプロイ完了後に .env を VM・runner 双方から削除
@@ -178,7 +178,9 @@ GitHub Actions runner
     secret-path: /
     recursive: true
     export-type: file
-    file-output-path: /tmp/tumiki.env
+    # file-output-path は ${GITHUB_WORKSPACE} と単純連結される仕様
+    # (Infisical/secrets-action v1.0.16 のソース実装で確認)
+    file-output-path: /tumiki.env
 ```
 
 ### Infisical 設定

@@ -67,10 +67,12 @@ jobs:
           secret-path: /
           recursive: true
           export-type: file
-          file-output-path: /tmp/keycloak-tf.env
+          # file-output-path は ${GITHUB_WORKSPACE} と単純連結される仕様（先頭 / は連結区切り扱い）
+          # /tmp など絶対パスは使えず、ワークスペース直下にのみ書き込み可能
+          file-output-path: /keycloak-tf.env
 
       - name: 🔒 Restrict secrets file permissions
-        run: chmod 600 /tmp/keycloak-tf.env
+        run: chmod 600 keycloak-tf.env
 
       - name: 📤 Transfer Terraform files
         run: |
@@ -83,7 +85,7 @@ jobs:
             "tar -xzf - -C ~/keycloak-tf"
           # install -m 600 でファイル作成と権限設定をアトミックに実施（scp + chmod のウィンドウを排除）
           ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
-            'install -m 600 /dev/stdin ~/keycloak-tf/.env' < /tmp/keycloak-tf.env
+            'install -m 600 /dev/stdin ~/keycloak-tf/.env' < keycloak-tf.env
 
       - name: 🏗️ Terraform Apply (staging)
         env:
@@ -119,7 +121,7 @@ jobs:
           # 削除失敗時は warning を出して運用側で検知できるようにする（cleanup の失敗で job 自体は失敗扱いにしない）
           ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=10 "${SSH_USER}@${SSH_HOST}" 'rm -f ~/keycloak-tf/.env' \
             || echo "::warning::VM上の .env 削除に失敗しました。手動確認が必要です"
-          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh /tmp/keycloak-tf.env ~/.ssh/id_ed25519 ~/.ssh/config
+          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh keycloak-tf.env ~/.ssh/id_ed25519 ~/.ssh/config
 
   deploy-production:
     name: 🔑 Deploy Keycloak Config to Production
@@ -161,10 +163,12 @@ jobs:
           secret-path: /
           recursive: true
           export-type: file
-          file-output-path: /tmp/keycloak-tf.env
+          # file-output-path は ${GITHUB_WORKSPACE} と単純連結される仕様（先頭 / は連結区切り扱い）
+          # /tmp など絶対パスは使えず、ワークスペース直下にのみ書き込み可能
+          file-output-path: /keycloak-tf.env
 
       - name: 🔒 Restrict secrets file permissions
-        run: chmod 600 /tmp/keycloak-tf.env
+        run: chmod 600 keycloak-tf.env
 
       - name: 📤 Transfer Terraform files
         run: |
@@ -177,7 +181,7 @@ jobs:
             "tar -xzf - -C ~/keycloak-tf"
           # install -m 600 でファイル作成と権限設定をアトミックに実施（scp + chmod のウィンドウを排除）
           ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
-            'install -m 600 /dev/stdin ~/keycloak-tf/.env' < /tmp/keycloak-tf.env
+            'install -m 600 /dev/stdin ~/keycloak-tf/.env' < keycloak-tf.env
 
       - name: 🏗️ Terraform Apply (production)
         env:
@@ -233,4 +237,4 @@ jobs:
           # 削除失敗時は warning を出して運用側で検知できるようにする（cleanup の失敗で job 自体は失敗扱いにしない）
           ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=10 "${SSH_USER}@${SSH_HOST}" 'rm -f ~/keycloak-tf/.env' \
             || echo "::warning::VM上の .env 削除に失敗しました。手動確認が必要です"
-          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh /tmp/keycloak-tf.env ~/.ssh/id_ed25519 ~/.ssh/config
+          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh keycloak-tf.env ~/.ssh/id_ed25519 ~/.ssh/config

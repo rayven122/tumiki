@@ -66,10 +66,12 @@ jobs:
           secret-path: /
           recursive: true
           export-type: file
-          file-output-path: /tmp/tumiki.env
+          # file-output-path は ${GITHUB_WORKSPACE} と単純連結される仕様（先頭 / は連結区切り扱い）
+          # /tmp など絶対パスは使えず、ワークスペース直下にのみ書き込み可能
+          file-output-path: /tumiki.env
 
       - name: 🔒 Restrict secrets file permissions
-        run: chmod 600 /tmp/tumiki.env
+        run: chmod 600 tumiki.env
 
       - name: 📤 Transfer compose.yaml and .env
         run: |
@@ -77,7 +79,7 @@ jobs:
           ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" "mkdir -p ~/tumiki && rm -f ~/tumiki/.env"
           scp -i ~/.ssh/id_ed25519 docker/apps/compose.yaml "${SSH_USER}@${SSH_HOST}:~/tumiki/compose.yaml"
           # install -m 600 でファイル作成と権限設定をアトミックに実施（scp + chmod のウィンドウを排除）
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" 'install -m 600 /dev/stdin ~/tumiki/.env' < /tmp/tumiki.env
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" 'install -m 600 /dev/stdin ~/tumiki/.env' < tumiki.env
 
       - name: 🐳 Deploy containers
         run: |
@@ -120,7 +122,7 @@ jobs:
           # 削除失敗時は warning を出して運用側で検知できるようにする（cleanup の失敗で job 自体は失敗扱いにしない）
           ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=10 "${SSH_USER}@${SSH_HOST}" 'rm -f ~/tumiki/.env' \
             || echo "::warning::VM上の .env 削除に失敗しました。手動確認が必要です"
-          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh /tmp/tumiki.env ~/.ssh/id_ed25519
+          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh tumiki.env ~/.ssh/id_ed25519
 
   deploy-production:
     name: 🚀 Deploy to production
@@ -166,10 +168,12 @@ jobs:
           secret-path: /
           recursive: true
           export-type: file
-          file-output-path: /tmp/tumiki.env
+          # file-output-path は ${GITHUB_WORKSPACE} と単純連結される仕様（先頭 / は連結区切り扱い）
+          # /tmp など絶対パスは使えず、ワークスペース直下にのみ書き込み可能
+          file-output-path: /tumiki.env
 
       - name: 🔒 Restrict secrets file permissions
-        run: chmod 600 /tmp/tumiki.env
+        run: chmod 600 tumiki.env
 
       - name: 📤 Transfer compose.yaml and .env
         run: |
@@ -177,7 +181,7 @@ jobs:
           ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" "mkdir -p ~/tumiki && rm -f ~/tumiki/.env"
           scp -i ~/.ssh/id_ed25519 docker/apps/compose.yaml "${SSH_USER}@${SSH_HOST}:~/tumiki/compose.yaml"
           # install -m 600 でファイル作成と権限設定をアトミックに実施（scp + chmod のウィンドウを排除）
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" 'install -m 600 /dev/stdin ~/tumiki/.env' < /tmp/tumiki.env
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" 'install -m 600 /dev/stdin ~/tumiki/.env' < tumiki.env
 
       - name: 🐳 Deploy containers
         run: |
@@ -220,4 +224,4 @@ jobs:
           # 削除失敗時は warning を出して運用側で検知できるようにする（cleanup の失敗で job 自体は失敗扱いにしない）
           ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=10 "${SSH_USER}@${SSH_HOST}" 'rm -f ~/tumiki/.env' \
             || echo "::warning::VM上の .env 削除に失敗しました。手動確認が必要です"
-          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh /tmp/tumiki.env ~/.ssh/id_ed25519
+          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh tumiki.env ~/.ssh/id_ed25519
