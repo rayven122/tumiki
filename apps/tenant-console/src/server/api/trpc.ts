@@ -21,8 +21,7 @@ const t = initTRPC.context<typeof createTRPCContext>().create({
   }),
 });
 
-// Cloudflare Access が設定するヘッダーの存在を確認するミドルウェア。
-// CF Access 設定ミスや内部ネットワークからの直接アクセスを防ぐアプリ層の多重防御。
+// CF-Access ヘッダーなしの直接アクセスを防ぐアプリ層の多重防御
 const operatorGuard = t.middleware(({ ctx, next }) => {
   // ローカル開発環境では CF-Access チェックをスキップする
   if (

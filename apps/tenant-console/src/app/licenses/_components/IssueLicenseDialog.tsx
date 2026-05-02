@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/trpc/react";
 import {
   AVAILABLE_FEATURES,
@@ -17,6 +17,7 @@ const IssueLicenseDialog = ({ tenants }: Props) => {
   const [isOpen, setIsOpen] = useState(false);
   const [issuedToken, setIssuedToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [licenseType, setLicenseType] = useState<LicenseType>("PERSONAL");
   const [subject, setSubject] = useState("");
@@ -39,8 +40,7 @@ const IssueLicenseDialog = ({ tenants }: Props) => {
     },
   });
 
-  const handleClose = useCallback(() => {
-    setIsOpen(false);
+  const resetForm = useCallback(() => {
     setIssuedToken(null);
     setLicenseType("PERSONAL");
     setSubject("");
@@ -52,18 +52,15 @@ const IssueLicenseDialog = ({ tenants }: Props) => {
     setError(null);
   }, []);
 
-  const handleOpen = () => {
+  const handleClose = useCallback(() => {
+    setIsOpen(false);
+    resetForm();
+  }, [resetForm]);
+
+  const handleOpen = useCallback(() => {
     setIsOpen(true);
-    setIssuedToken(null);
-    setLicenseType("PERSONAL");
-    setSubject("");
-    setTenantId("");
-    setFeatures([]);
-    setTtlDays(365);
-    setPlan("");
-    setNotes("");
-    setError(null);
-  };
+    resetForm();
+  }, [resetForm]);
 
   // Escape キーでダイアログを閉じる
   useEffect(() => {
@@ -74,6 +71,13 @@ const IssueLicenseDialog = ({ tenants }: Props) => {
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, handleClose]);
+
+  // コピータイマーのクリーンアップ
+  useEffect(() => {
+    return () => {
+      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+    };
+  }, []);
 
   const handleFeatureToggle = (feature: AvailableFeature) => {
     setFeatures((prev) =>
@@ -116,10 +120,16 @@ const IssueLicenseDialog = ({ tenants }: Props) => {
   };
 
   const handleCopyToken = async () => {
-    if (issuedToken) {
+    if (!issuedToken) return;
+    try {
       await navigator.clipboard.writeText(issuedToken);
+      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      copiedTimerRef.current = setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError(
+        "クリップボードへのコピーに失敗しました。手動でコピーしてください。",
+      );
     }
   };
 
@@ -144,6 +154,7 @@ const IssueLicenseDialog = ({ tenants }: Props) => {
             role="dialog"
             aria-modal="true"
             aria-labelledby="issue-dialog-title"
+            aria-describedby={issuedToken ? "issue-complete-desc" : undefined}
             className="mx-4 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-6"
             onClick={(e) => e.stopPropagation()}
           >
@@ -156,7 +167,10 @@ const IssueLicenseDialog = ({ tenants }: Props) => {
                 >
                   ライセンス発行完了
                 </h2>
-                <div className="mb-4 rounded-md bg-amber-50 p-4 text-sm text-amber-700">
+                <div
+                  id="issue-complete-desc"
+                  className="mb-4 rounded-md bg-amber-50 p-4 text-sm text-amber-700"
+                >
                   このトークンは再表示できません。必ずコピーしてください。
                 </div>
                 <div className="mb-4">
@@ -167,6 +181,11 @@ const IssueLicenseDialog = ({ tenants }: Props) => {
                     {issuedToken}
                   </div>
                 </div>
+                {error && (
+                  <div className="mb-4 rounded-md bg-red-50 p-4 text-sm text-red-700">
+                    {error}
+                  </div>
+                )}
                 <div className="flex justify-end gap-2">
                   <button
                     type="button"
@@ -280,6 +299,11 @@ const IssueLicenseDialog = ({ tenants }: Props) => {
                       </label>
                     ))}
                   </div>
+                  {features.length === 0 && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      1つ以上選択してください
+                    </p>
+                  )}
                 </div>
 
                 {/* 有効期限（日数） */}

@@ -62,6 +62,7 @@ const RevokeConfirmDialog = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="revoke-dialog-title"
+        aria-describedby="revoke-dialog-desc"
         className="mx-4 w-full max-w-lg rounded-lg bg-white p-6"
         onClick={(e) => e.stopPropagation()}
       >
@@ -71,7 +72,7 @@ const RevokeConfirmDialog = ({
         >
           ライセンスの失効確認
         </h2>
-        <p className="mb-4 text-sm text-gray-700">
+        <p id="revoke-dialog-desc" className="mb-4 text-sm text-gray-700">
           ライセンス{" "}
           <span className="font-medium text-gray-900">{subject}</span>{" "}
           を失効させますか？この操作は取り消せません。
