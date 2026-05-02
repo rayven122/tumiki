@@ -75,6 +75,12 @@ describe("path-resolver", () => {
       );
     });
 
+    test("${runtime:uv}はバンドル binディレクトリの絶対パスに解決する", () => {
+      expect(resolveValue("${runtime:uv}")).toStrictEqual(
+        "/app/resources/runtime/darwin-arm64/bin/uv",
+      );
+    });
+
     test("素の 'node' (後方互換) は shim パスに解決する", () => {
       expect(resolveValue("node")).toStrictEqual(
         path.join(tmpUserData, "runtime", "bin", "node"),

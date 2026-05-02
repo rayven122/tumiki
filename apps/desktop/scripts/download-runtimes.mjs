@@ -29,17 +29,21 @@
  */
 
 import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
+import { createReadStream } from "node:fs";
 import {
   access,
   cp,
   mkdir,
   mkdtemp,
+  readFile,
   rm,
   unlink,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -158,6 +162,75 @@ const downloadTo = async (url, destPath) => {
 };
 
 /**
+ * ファイルの SHA256 ハッシュを計算する（ストリーミング）。
+ * 大きなアーカイブをメモリに載せずに済むよう createHash + stream pipeline を使用。
+ */
+const computeSha256 = async (filePath) => {
+  const hash = createHash("sha256");
+  await pipeline(createReadStream(filePath), hash);
+  return hash.digest("hex").toLowerCase();
+};
+
+/**
+ * ダウンロード済みファイルの SHA256 を期待値と照合する。
+ * サプライチェーン攻撃 (CDN 侵害 / MITM 等) で改ざんされたバイナリ実行を防ぐ。
+ */
+const verifySha256 = async (filePath, expectedHex) => {
+  const actual = await computeSha256(filePath);
+  const expected = expectedHex.trim().toLowerCase();
+  if (actual !== expected) {
+    throw new Error(
+      `SHA256 mismatch for ${path.basename(filePath)}: expected ${expected}, got ${actual}`,
+    );
+  }
+};
+
+/**
+ * Node.js 公式 SHASUMS256.txt から指定アーカイブのチェックサムを取得する。
+ * フォーマット例:
+ *   "abc123...  node-v22.11.0-darwin-arm64.tar.gz"
+ */
+const fetchNodeChecksum = async (filename) => {
+  const url = `https://nodejs.org/dist/v${VERSIONS.node}/SHASUMS256.txt`;
+  const tmpDir = await mkdtemp(path.join(tmpdir(), "tumiki-shasums-"));
+  try {
+    const sumsPath = path.join(tmpDir, "SHASUMS256.txt");
+    await downloadTo(url, sumsPath);
+    const content = await readFile(sumsPath, "utf8");
+    for (const line of content.split("\n")) {
+      const match = line.match(/^([0-9a-f]+)\s+(.+)$/i);
+      if (match && match[2].trim() === filename) {
+        return match[1];
+      }
+    }
+    throw new Error(`SHASUMS256.txt に ${filename} のエントリがありません`);
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+};
+
+/**
+ * astral-sh/uv リリースの `<archive>.sha256` ファイルからチェックサムを取得する。
+ * フォーマット例:
+ *   "abc123...  uv-aarch64-apple-darwin.tar.gz"
+ */
+const fetchUvChecksum = async (archiveUrl) => {
+  const tmpDir = await mkdtemp(path.join(tmpdir(), "tumiki-uvshasum-"));
+  try {
+    const sumsPath = path.join(tmpDir, "checksum.txt");
+    await downloadTo(`${archiveUrl}.sha256`, sumsPath);
+    const content = (await readFile(sumsPath, "utf8")).trim();
+    const match = content.match(/^([0-9a-f]+)/i);
+    if (!match) {
+      throw new Error(`uv チェックサムフォーマットが不正: ${content}`);
+    }
+    return match[1];
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+};
+
+/**
  * tar.gz / zip を抽出する。
  * libarchive (macOS/Linux/Win10+ 標準 tar) は zip を自動検出するが、
  * GNU tar は zip 非対応なので Linux 上は unzip を併用する。
@@ -177,12 +250,16 @@ const extractArchive = async (archivePath, destDir, archive) => {
 const installNode = async (platform, target) => {
   const { nodeArch, archive, layout } = PLATFORM_MAP[platform];
   const baseName = `node-v${VERSIONS.node}-${nodeArch}`;
-  const url = `https://nodejs.org/dist/v${VERSIONS.node}/${baseName}.${archive}`;
+  const archiveName = `${baseName}.${archive}`;
+  const url = `https://nodejs.org/dist/v${VERSIONS.node}/${archiveName}`;
 
   const tmpDir = await mkdtemp(path.join(tmpdir(), "tumiki-node-"));
   try {
-    const archivePath = path.join(tmpDir, `${baseName}.${archive}`);
+    const archivePath = path.join(tmpDir, archiveName);
     await downloadTo(url, archivePath);
+    log(`  verifying SHA256 (${archiveName})`);
+    const expected = await fetchNodeChecksum(archiveName);
+    await verifySha256(archivePath, expected);
     await extractArchive(archivePath, tmpDir, archive);
 
     const extractedRoot = path.join(tmpDir, baseName);
@@ -231,12 +308,16 @@ const installNode = async (platform, target) => {
 const installUv = async (platform, target) => {
   const { uvTriple, archive } = PLATFORM_MAP[platform];
   const baseName = `uv-${uvTriple}`;
-  const url = `https://github.com/astral-sh/uv/releases/download/${VERSIONS.uv}/${baseName}.${archive}`;
+  const archiveName = `${baseName}.${archive}`;
+  const url = `https://github.com/astral-sh/uv/releases/download/${VERSIONS.uv}/${archiveName}`;
 
   const tmpDir = await mkdtemp(path.join(tmpdir(), "tumiki-uv-"));
   try {
-    const archivePath = path.join(tmpDir, `${baseName}.${archive}`);
+    const archivePath = path.join(tmpDir, archiveName);
     await downloadTo(url, archivePath);
+    log(`  verifying SHA256 (${archiveName})`);
+    const expected = await fetchUvChecksum(url);
+    await verifySha256(archivePath, expected);
     await extractArchive(archivePath, tmpDir, archive);
 
     // 配布形式の差を吸収:

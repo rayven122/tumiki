@@ -39,8 +39,16 @@ if (isMcpProxyMode) {
     app.dock?.hide();
 
     // バンドル済みランタイムの Node shim を userData 配下に生成（DEV-1597）
-    // MCPコネクタ spawn 前に必ず存在させる必要がある
-    ensureNodeShim();
+    // MCPコネクタ spawn 前に必ず存在させる必要がある。失敗してもプロキシ起動は継続
+    // （shim 不在時は MCP コネクタ spawn が後段でエラーになる）。
+    try {
+      ensureNodeShim();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      process.stderr.write(
+        `[tumiki-mcp-proxy] Node shim 生成失敗（MCP起動に影響する可能性）: ${message}\n`,
+      );
+    }
 
     try {
       // --server <slug> で起動する仮想MCPサーバーを指定（省略時は全有効サーバー）
@@ -426,8 +434,16 @@ if (isMcpProxyMode) {
       app.setAsDefaultProtocolClient(PROTOCOL);
 
       // バンドル済みランタイムの Node shim を userData 配下に生成（DEV-1597）
-      // MCPコネクタ spawn 前に必ず存在させる必要がある
-      ensureNodeShim();
+      // MCPコネクタ spawn 前に必ず存在させる必要がある。失敗しても GUI 起動は継続
+      // （shim 不在時は MCP コネクタ起動のみが影響を受ける）。
+      try {
+        ensureNodeShim();
+      } catch (error) {
+        logger.error(
+          "Node shim の生成に失敗しました（MCPコネクタが起動できない可能性）",
+          { error: error instanceof Error ? error.message : String(error) },
+        );
+      }
 
       // production 用の tumiki-bundle:// プロトコルハンドラを登録（dev では vite dev server を使うため不要）
       // レンダラー dist の絶対パス基点で配信し、`<img src="/logos/foo.svg">` を解決可能にする
