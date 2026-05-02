@@ -53,28 +53,35 @@ jobs:
           cf-access-client-secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
           ssh-private-key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
 
-      - name: 📤 Transfer compose.yaml
+      - name: 🔐 Fetch secrets from Infisical
+        uses: Infisical/secrets-action@77ab1f4ccd183a543cb5b42435fbd181189f4995 # v1.0.16
+        with:
+          method: universal
+          client-id: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
+          client-secret: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
+          domain: https://secrets.rayven.cloud
+          project-slug: tumiki
+          env-slug: staging
+          secret-path: /
+          recursive: true
+          export-type: file
+          file-output-path: /tmp/tumiki.env
+
+      - name: 📤 Transfer compose.yaml and .env
         run: |
           ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" "echo connected && mkdir -p ~/tumiki"
           scp -i ~/.ssh/id_ed25519 docker/apps/compose.yaml "${SSH_USER}@${SSH_HOST}:~/tumiki/compose.yaml"
+          scp -i ~/.ssh/id_ed25519 /tmp/tumiki.env "${SSH_USER}@${SSH_HOST}:~/tumiki/.env"
 
       - name: 🐳 Deploy containers
-        env:
-          INFISICAL_UNIVERSAL_AUTH_CLIENT_ID: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
-          INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
         run: |
-          # 環境変数経由でシークレットを渡す（CLIオプション経由はps auxで漏洩するリスクがあるため）
-          # IMAGE_TAG はシェルインジェクション防止のため bash 引数として渡し \$1 でエスケープ
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -ls -- "${IMAGE_TAG}" << REMOTE_SCRIPT
+          # IMAGE_TAG はシェルインジェクション防止のため bash 引数として渡し $1 でエスケープ
+          # ヒアドキュメントは quoted で runner 側変数の意図しない展開を防ぐ
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -ls -- "${IMAGE_TAG}" << 'REMOTE_SCRIPT'
             set -euo pipefail
             set +o history
-            export IMAGE_TAG="\$1"
-            export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID}"
-            export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET}"
-            # infisical export は --method フラグ未対応のため、login で取得したアクセストークンを --token で渡す
-            ACCESS_TOKEN=\$(infisical login --method=universal-auth --plain --silent --domain=https://secrets.rayven.cloud)
+            export IMAGE_TAG="$1"
             cd ~/tumiki
-            infisical export --projectId=dbff850c-430a-431b-b7fe-efc744e304d6 --env=staging --format=dotenv --domain=https://secrets.rayven.cloud --token="\$ACCESS_TOKEN" > .env
             docker compose pull
             docker compose up -d --remove-orphans
             rm -f .env
@@ -102,7 +109,7 @@ jobs:
       - name: 🧹 Cleanup
         if: always()
         run: |
-          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh ~/.ssh/id_ed25519
+          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh /tmp/tumiki.env ~/.ssh/id_ed25519
 
   deploy-production:
     name: 🚀 Deploy to production
@@ -135,28 +142,35 @@ jobs:
           cf-access-client-secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
           ssh-private-key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
 
-      - name: 📤 Transfer compose.yaml
+      - name: 🔐 Fetch secrets from Infisical
+        uses: Infisical/secrets-action@77ab1f4ccd183a543cb5b42435fbd181189f4995 # v1.0.16
+        with:
+          method: universal
+          client-id: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
+          client-secret: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
+          domain: https://secrets.rayven.cloud
+          project-slug: tumiki
+          env-slug: prod
+          secret-path: /
+          recursive: true
+          export-type: file
+          file-output-path: /tmp/tumiki.env
+
+      - name: 📤 Transfer compose.yaml and .env
         run: |
           ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" "echo connected && mkdir -p ~/tumiki"
           scp -i ~/.ssh/id_ed25519 docker/apps/compose.yaml "${SSH_USER}@${SSH_HOST}:~/tumiki/compose.yaml"
+          scp -i ~/.ssh/id_ed25519 /tmp/tumiki.env "${SSH_USER}@${SSH_HOST}:~/tumiki/.env"
 
       - name: 🐳 Deploy containers
-        env:
-          INFISICAL_UNIVERSAL_AUTH_CLIENT_ID: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
-          INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
         run: |
-          # 環境変数経由でシークレットを渡す（CLIオプション経由はps auxで漏洩するリスクがあるため）
-          # IMAGE_TAG はシェルインジェクション防止のため bash 引数として渡し \$1 でエスケープ
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -ls -- "${IMAGE_TAG}" << REMOTE_SCRIPT
+          # IMAGE_TAG はシェルインジェクション防止のため bash 引数として渡し $1 でエスケープ
+          # ヒアドキュメントは quoted で runner 側変数の意図しない展開を防ぐ
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -ls -- "${IMAGE_TAG}" << 'REMOTE_SCRIPT'
             set -euo pipefail
             set +o history
-            export IMAGE_TAG="\$1"
-            export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID}"
-            export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET}"
-            # infisical export は --method フラグ未対応のため、login で取得したアクセストークンを --token で渡す
-            ACCESS_TOKEN=\$(infisical login --method=universal-auth --plain --silent --domain=https://secrets.rayven.cloud)
+            export IMAGE_TAG="$1"
             cd ~/tumiki
-            infisical export --projectId=dbff850c-430a-431b-b7fe-efc744e304d6 --env=prod --format=dotenv --domain=https://secrets.rayven.cloud --token="\$ACCESS_TOKEN" > .env
             docker compose pull
             docker compose up -d --remove-orphans
             rm -f .env
@@ -184,4 +198,4 @@ jobs:
       - name: 🧹 Cleanup
         if: always()
         run: |
-          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh ~/.ssh/id_ed25519
+          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh /tmp/tumiki.env ~/.ssh/id_ed25519

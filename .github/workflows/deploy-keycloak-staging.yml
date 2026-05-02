@@ -53,6 +53,20 @@ jobs:
             StrictHostKeyChecking accept-new
           CONFIG
 
+      - name: 🔐 Fetch secrets from Infisical
+        uses: Infisical/secrets-action@77ab1f4ccd183a543cb5b42435fbd181189f4995 # v1.0.16
+        with:
+          method: universal
+          client-id: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
+          client-secret: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
+          domain: https://secrets.rayven.cloud
+          project-slug: tumiki
+          env-slug: staging
+          secret-path: /
+          recursive: true
+          export-type: file
+          file-output-path: /tmp/keycloak.env
+
       - name: 📤 Transfer files
         run: |
           ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" \
@@ -63,33 +77,22 @@ jobs:
           scp -r -i ~/.ssh/id_ed25519 \
             docker/keycloak/themes/tumiki \
             "${SSH_USER}@${KEYCLOAK_HOST}:~/keycloak/themes/"
+          scp -i ~/.ssh/id_ed25519 \
+            /tmp/keycloak.env \
+            "${SSH_USER}@${KEYCLOAK_HOST}:~/keycloak/.env"
 
       - name: 🔐 Deploy Keycloak
-        env:
-          INFISICAL_MACHINE_IDENTITY_CLIENT_ID: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
-          INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
         run: |
-          # runner 上で curl + jq で Infisical universal-auth トークンを取得
-          # （unquoted heredoc 内の $() はランナー側で実行されるため、runner 上で取得してから展開する）
-          INFISICAL_TOKEN=$(curl -sf \
-            -X POST "https://secrets.rayven.cloud/api/v1/auth/universal-auth/login" \
-            -H "Content-Type: application/json" \
-            -d "{\"clientId\":\"${INFISICAL_MACHINE_IDENTITY_CLIENT_ID}\",\"clientSecret\":\"${INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET}\"}" \
-            | jq -r '.accessToken')
-          # クォートなしヒアドキュメントで runner 側の INFISICAL_TOKEN をリモートに展開する
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" bash -l << REMOTE_SCRIPT
+          # ヒアドキュメントは quoted で runner 側変数の意図しない展開を防ぐ
+          # docker compose は同ディレクトリの .env を自動読み込みする
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" bash -l << 'REMOTE_SCRIPT'
             set -euo pipefail
             set +o history
             cd ~/keycloak
-            ~/.local/bin/infisical run --env=staging \
-              --projectId=dbff850c-430a-431b-b7fe-efc744e304d6 \
-              --token="${INFISICAL_TOKEN}" \
-              --domain https://secrets.rayven.cloud -- docker compose pull keycloak
+            docker compose pull keycloak
             # --remove-orphans: compose.yaml から削除されたサービスのコンテナを合わせてクリーンアップ
-            ~/.local/bin/infisical run --env=staging \
-              --projectId=dbff850c-430a-431b-b7fe-efc744e304d6 \
-              --token="${INFISICAL_TOKEN}" \
-              --domain https://secrets.rayven.cloud -- docker compose up -d --force-recreate --remove-orphans keycloak
+            docker compose up -d --force-recreate --remove-orphans keycloak
+            rm -f .env
           REMOTE_SCRIPT
 
       - name: ✅ Verify Keycloak health
@@ -111,4 +114,4 @@ jobs:
       - name: 🧹 Cleanup
         if: always()
         run: |
-          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh ~/.ssh/id_ed25519 ~/.ssh/config
+          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh /tmp/keycloak.env ~/.ssh/id_ed25519 ~/.ssh/config
