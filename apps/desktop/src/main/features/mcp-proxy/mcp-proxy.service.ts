@@ -6,6 +6,11 @@ import * as mcpRepository from "../mcp-server-list/mcp.repository";
 import * as logger from "../../shared/utils/logger";
 import { decryptCredentials } from "../../utils/credentials";
 import { refreshOAuthTokenIfNeeded } from "../oauth/oauth.refresh";
+import {
+  buildChildEnv,
+  resolveArgs,
+  resolveValue,
+} from "../../runtime/path-resolver";
 
 /** CLI監査ログ用: configName → DB情報のマッピング */
 export type McpConnectionMeta = {
@@ -132,12 +137,14 @@ const buildConfigFromConnection = async (
         connectionArgsSchema,
         `connection(${connLabel}).args`,
       );
+      // バンドル済みランタイム (Node.js / uv) を解決し、PATHにバンドルbinを差し込む
+      // これによりユーザーPCに npx / uvx が無くても MCP コネクタが起動できる
       config = {
         name,
         transportType: "STDIO",
-        command: conn.command,
-        args,
-        env: credentials,
+        command: resolveValue(conn.command),
+        args: resolveArgs(args),
+        env: buildChildEnv(process.env, credentials),
       };
       break;
     }

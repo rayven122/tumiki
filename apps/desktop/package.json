@@ -21,8 +21,10 @@
     "db:reset": "pnpm with-env prisma migrate reset",
     "db:push": "pnpm with-env prisma db push",
     "db:studio": "pnpm with-env prisma studio",
-    "postinstall": "pnpm db:generate",
-    "build:release": "electron-builder --config electron-builder.yml --publish never"
+    "postinstall": "pnpm db:generate && node scripts/download-runtimes.mjs",
+    "runtimes:download": "node scripts/download-runtimes.mjs",
+    "runtimes:download:all": "node scripts/download-runtimes.mjs --all",
+    "build:release": "node scripts/download-runtimes.mjs --all && electron-builder --config electron-builder.yml --publish never"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",

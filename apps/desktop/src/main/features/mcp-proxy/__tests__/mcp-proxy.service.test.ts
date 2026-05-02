@@ -13,6 +13,14 @@ vi.mock("../../mcp-server-list/mcp.repository");
 vi.mock("../../../utils/encryption");
 vi.mock("../../../utils/credentials");
 vi.mock("../../oauth/oauth.refresh");
+// path-resolver は別ユニットでテスト済みのため、本テストでは恒等変換に固定して
+// service 側の組み立てロジックのみを検証する
+vi.mock("../../../runtime/path-resolver", () => ({
+  resolveValue: (value: string) => value,
+  resolveArgs: (args: readonly string[]) => [...args],
+  buildChildEnv: (_base: NodeJS.ProcessEnv, extra: Record<string, string>) =>
+    extra,
+}));
 
 // テスト対象のインポート（モックの後に行う）
 import * as mcpProxyService from "../mcp-proxy.service";
