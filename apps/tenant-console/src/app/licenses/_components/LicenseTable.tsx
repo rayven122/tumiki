@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { api } from "@/trpc/react";
-import { type RouterOutputs } from "@/trpc/react";
+import { api, type RouterOutputs } from "@/trpc/react";
 import RevokeConfirmDialog from "./RevokeConfirmDialog";
 import IssueLicenseDialog from "./IssueLicenseDialog";
 

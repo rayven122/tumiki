@@ -39,7 +39,9 @@ const IssueLicenseDialog = ({ tenants }: Props) => {
     },
   });
 
-  const resetForm = () => {
+  const handleClose = useCallback(() => {
+    setIsOpen(false);
+    setIssuedToken(null);
     setLicenseType("PERSONAL");
     setSubject("");
     setTenantId("");
@@ -48,18 +50,19 @@ const IssueLicenseDialog = ({ tenants }: Props) => {
     setPlan("");
     setNotes("");
     setError(null);
-  };
-
-  const handleClose = useCallback(() => {
-    setIsOpen(false);
-    setIssuedToken(null);
-    resetForm();
   }, []);
 
   const handleOpen = () => {
     setIsOpen(true);
     setIssuedToken(null);
-    resetForm();
+    setLicenseType("PERSONAL");
+    setSubject("");
+    setTenantId("");
+    setFeatures([]);
+    setTtlDays(365);
+    setPlan("");
+    setNotes("");
+    setError(null);
   };
 
   // Escape キーでダイアログを閉じる
@@ -141,7 +144,7 @@ const IssueLicenseDialog = ({ tenants }: Props) => {
             role="dialog"
             aria-modal="true"
             aria-labelledby="issue-dialog-title"
-            className="mx-4 w-full max-w-lg rounded-lg bg-white p-6"
+            className="mx-4 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-6"
             onClick={(e) => e.stopPropagation()}
           >
             {/* 発行完了画面 */}
