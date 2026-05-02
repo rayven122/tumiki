@@ -55,48 +55,71 @@ jobs:
           # DEPLOY_SSH_PRIVATE_KEY は GitHub environment ごとに異なる値を設定
           ssh-private-key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
 
+      - name: 🔐 Fetch secrets from Infisical
+        uses: Infisical/secrets-action@77ab1f4ccd183a543cb5b42435fbd181189f4995 # v1.0.16
+        with:
+          method: universal
+          client-id: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
+          client-secret: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
+          domain: https://secrets.rayven.cloud
+          project-slug: tumiki
+          env-slug: staging
+          secret-path: /
+          recursive: true
+          export-type: file
+          file-output-path: /tmp/keycloak-tf.env
+
+      - name: 🔒 Restrict secrets file permissions
+        run: chmod 600 /tmp/keycloak-tf.env
+
       - name: 📤 Transfer Terraform files
         run: |
+          # 前回 cleanup が失敗していた場合に備えて既存 .env を削除（リカバリ）
           ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
-            "mkdir -p ~/keycloak-tf"
+            "mkdir -p ~/keycloak-tf && rm -f ~/keycloak-tf/.env"
           tar -czf - -C terraform/keycloak \
             --exclude='.terraform' --exclude='*.tfstate' --exclude='*.tfstate.*' \
             . | ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
             "tar -xzf - -C ~/keycloak-tf"
+          # install -m 600 でファイル作成と権限設定をアトミックに実施（scp + chmod のウィンドウを排除）
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
+            'install -m 600 /dev/stdin ~/keycloak-tf/.env' < /tmp/keycloak-tf.env
 
       - name: 🏗️ Terraform Apply (staging)
         env:
-          INFISICAL_UNIVERSAL_AUTH_CLIENT_ID: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
-          INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
         run: |
-          # 環境変数経由でシークレットを渡す（CLIオプション経由はps auxで漏洩するリスクがあるため）
-          # クォートなしヒアドキュメントでランナー側の環境変数をリモートに展開する
-          # infisical はパッケージマネージャーでインストール済みのためPATH経由で呼び出す
-          # （Keycloak VMはsudo不可のため ~/.local/bin/ に個別インストールしているが、こちらはapt install済み）
-          DRY_RUN="${{ inputs.dry_run || 'false' }}"
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -l << REMOTE_SCRIPT
+          # DRY_RUN はシェルインジェクション防止のため bash 引数として渡し $1 でエスケープ
+          # ヒアドキュメントは quoted で runner 側変数の意図しない展開を防ぐ
+          # .env を source して terraform に TF_VAR_* 等を渡す
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -ls -- "${DRY_RUN}" << 'REMOTE_SCRIPT'
             set -euo pipefail
             set +o history
+            DRY_RUN="$1"
             cd ~/keycloak-tf
-            export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID}"
-            export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET}"
-            infisical run --method=universal-auth --env=staging --domain https://secrets.rayven.cloud -- \
-              terraform init -input=false
-            infisical run --method=universal-auth --env=staging --domain https://secrets.rayven.cloud -- \
-              terraform validate
+            set -a
+            # shellcheck disable=SC1091
+            source .env
+            set +a
+            terraform init -input=false
+            terraform validate
             if [ "${DRY_RUN}" = "true" ]; then
-              infisical run --method=universal-auth --env=staging --domain https://secrets.rayven.cloud -- \
-                terraform plan -var-file=terraform.tfvars.staging -input=false -no-color
+              terraform plan -var-file=terraform.tfvars.staging -input=false -no-color
             else
-              infisical run --method=universal-auth --env=staging --domain https://secrets.rayven.cloud -- \
-                terraform apply -var-file=terraform.tfvars.staging -auto-approve -input=false -no-color
+              terraform apply -var-file=terraform.tfvars.staging -auto-approve -input=false -no-color
             fi
+            rm -f .env
           REMOTE_SCRIPT
 
       - name: 🧹 Cleanup
         if: always()
         run: |
-          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh ~/.ssh/id_ed25519 ~/.ssh/config
+          # デプロイ失敗時に VM 上に .env が残らないよう SSH 越しに確実に削除
+          # SSH 鍵・設定を削除する前に実行する必要がある
+          # 削除失敗時は warning を出して運用側で検知できるようにする（cleanup の失敗で job 自体は失敗扱いにしない）
+          ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=10 "${SSH_USER}@${SSH_HOST}" 'rm -f ~/keycloak-tf/.env' \
+            || echo "::warning::VM上の .env 削除に失敗しました。手動確認が必要です"
+          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh /tmp/keycloak-tf.env ~/.ssh/id_ed25519 ~/.ssh/config
 
   deploy-production:
     name: 🔑 Deploy Keycloak Config to Production
@@ -126,41 +149,60 @@ jobs:
           # DEPLOY_SSH_PRIVATE_KEY は GitHub environment ごとに異なる値を設定
           ssh-private-key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
 
+      - name: 🔐 Fetch secrets from Infisical
+        uses: Infisical/secrets-action@77ab1f4ccd183a543cb5b42435fbd181189f4995 # v1.0.16
+        with:
+          method: universal
+          client-id: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
+          client-secret: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
+          domain: https://secrets.rayven.cloud
+          project-slug: tumiki
+          env-slug: prod
+          secret-path: /
+          recursive: true
+          export-type: file
+          file-output-path: /tmp/keycloak-tf.env
+
+      - name: 🔒 Restrict secrets file permissions
+        run: chmod 600 /tmp/keycloak-tf.env
+
       - name: 📤 Transfer Terraform files
         run: |
+          # 前回 cleanup が失敗していた場合に備えて既存 .env を削除（リカバリ）
           ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
-            "mkdir -p ~/keycloak-tf"
+            "mkdir -p ~/keycloak-tf && rm -f ~/keycloak-tf/.env"
           tar -czf - -C terraform/keycloak \
             --exclude='.terraform' --exclude='*.tfstate' --exclude='*.tfstate.*' \
             . | ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
             "tar -xzf - -C ~/keycloak-tf"
+          # install -m 600 でファイル作成と権限設定をアトミックに実施（scp + chmod のウィンドウを排除）
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
+            'install -m 600 /dev/stdin ~/keycloak-tf/.env' < /tmp/keycloak-tf.env
 
       - name: 🏗️ Terraform Apply (production)
         env:
-          INFISICAL_UNIVERSAL_AUTH_CLIENT_ID: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
-          INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
         run: |
-          # 環境変数経由でシークレットを渡す（CLIオプション経由はps auxで漏洩するリスクがあるため）
-          # クォートなしヒアドキュメントでランナー側の環境変数をリモートに展開する
-          # infisical はパッケージマネージャーでインストール済みのためPATH経由で呼び出す
-          DRY_RUN="${{ inputs.dry_run || 'false' }}"
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -l << REMOTE_SCRIPT
+          # DRY_RUN はシェルインジェクション防止のため bash 引数として渡し $1 でエスケープ
+          # ヒアドキュメントは quoted で runner 側変数の意図しない展開を防ぐ
+          # .env を source して terraform に TF_VAR_* 等を渡す
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -ls -- "${DRY_RUN}" << 'REMOTE_SCRIPT'
             set -euo pipefail
             set +o history
+            DRY_RUN="$1"
             cd ~/keycloak-tf
-            export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID}"
-            export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET}"
-            infisical run --method=universal-auth --env=prod --domain https://secrets.rayven.cloud -- \
-              terraform init -input=false
-            infisical run --method=universal-auth --env=prod --domain https://secrets.rayven.cloud -- \
-              terraform validate
+            set -a
+            # shellcheck disable=SC1091
+            source .env
+            set +a
+            terraform init -input=false
+            terraform validate
             if [ "${DRY_RUN}" = "true" ]; then
-              infisical run --method=universal-auth --env=prod --domain https://secrets.rayven.cloud -- \
-                terraform plan -var-file=terraform.tfvars.production -input=false -no-color
+              terraform plan -var-file=terraform.tfvars.production -input=false -no-color
             else
-              infisical run --method=universal-auth --env=prod --domain https://secrets.rayven.cloud -- \
-                terraform apply -var-file=terraform.tfvars.production -auto-approve -input=false -no-color
+              terraform apply -var-file=terraform.tfvars.production -auto-approve -input=false -no-color
             fi
+            rm -f .env
           REMOTE_SCRIPT
 
       - name: 📣 Notify Slack on Success
@@ -186,4 +228,9 @@ jobs:
       - name: 🧹 Cleanup
         if: always()
         run: |
-          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh ~/.ssh/id_ed25519 ~/.ssh/config
+          # デプロイ失敗時に VM 上に .env が残らないよう SSH 越しに確実に削除
+          # SSH 鍵・設定を削除する前に実行する必要がある
+          # 削除失敗時は warning を出して運用側で検知できるようにする（cleanup の失敗で job 自体は失敗扱いにしない）
+          ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=10 "${SSH_USER}@${SSH_HOST}" 'rm -f ~/keycloak-tf/.env' \
+            || echo "::warning::VM上の .env 削除に失敗しました。手動確認が必要です"
+          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh /tmp/keycloak-tf.env ~/.ssh/id_ed25519 ~/.ssh/config

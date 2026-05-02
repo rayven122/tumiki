@@ -57,16 +57,17 @@ GitHub Actions の `Deploy Apps` ワークフローを手動実行。
 ### アプリデプロイフロー
 
 ```
-① Checkout               リポジトリをチェックアウト
-② Setup Cloudflare SSH   cloudflared + SSH 設定（composite action）
-③ Transfer compose.yaml  VM に compose.yaml を転送
-④ Deploy containers      VM 上で実行:
-   - infisical export → .env 生成（VM が Infisical から直接取得）
+① Checkout                  リポジトリをチェックアウト
+② Setup Cloudflare SSH      cloudflared + SSH 設定（composite action）
+③ Fetch secrets             runner 上で Infisical/secrets-action@v1 → /tmp/tumiki.env 生成
+④ Restrict permissions      chmod 600 /tmp/tumiki.env
+⑤ Transfer files            compose.yaml・.env を VM に scp 転送
+⑥ Deploy containers         VM 上で実行:
    - docker compose pull（最新イメージ取得）
-   - docker compose up -d
+   - docker compose up -d --remove-orphans
    - .env 削除
-⑤ Verify health endpoints 3エンドポイントが 200 OK になるまで確認
-⑥ Cleanup               一時ファイル・SSH 鍵を削除
+⑦ Verify health endpoints   3エンドポイントが 200 OK になるまで確認
+⑧ Cleanup                   VM 側 .env を SSH 越しに削除 + 一時ファイル・SSH 鍵を削除
 ```
 
 ### Keycloak デプロイフロー
@@ -75,14 +76,14 @@ GitHub Actions の `Deploy Apps` ワークフローを手動実行。
 
 ```
 ① Checkout
-② Setup Cloudflare SSH    cloudflared + SSH 設定（stg-ssh.tumiki.cloud 宛て）
-③ Configure ProxyJump     ~/.ssh/config に 10.11.0.15 向け ProxyJump を設定
-④ Transfer files          compose.yaml・テーマファイルを Keycloak VM に転送
-⑤ Deploy Keycloak         Keycloak VM 上で:
-   - infisical run（Machine Identity）でシークレット注入
-   - docker compose pull & up
-⑥ Verify health           localhost:9000/health/ready を確認
-⑦ Cleanup
+② Setup Cloudflare SSH      cloudflared + SSH 設定（stg-ssh.tumiki.cloud 宛て）
+③ Configure ProxyJump       ~/.ssh/config に 10.11.0.15 向け ProxyJump を設定
+④ Fetch secrets             runner 上で Infisical/secrets-action@v1 → /tmp/keycloak.env 生成
+⑤ Restrict permissions      chmod 600 /tmp/keycloak.env
+⑥ Transfer files            compose.yaml・テーマファイル・.env を Keycloak VM に scp 転送
+⑦ Deploy Keycloak           Keycloak VM 上で docker compose pull & up（.env を自動読み込み）
+⑧ Verify health             localhost:9000/health/ready を確認
+⑨ Cleanup                   VM 側 .env を SSH 越しに削除 + 一時ファイル・SSH 鍵を削除
 ```
 
 ### Keycloak 接続経路（2ホップ）
@@ -149,31 +150,35 @@ no-pty,no-X11-forwarding,no-agent-forwarding,no-port-forwarding ssh-ed25519 AAAA
 
 ## シークレット管理
 
-シークレットは Infisical（セルフホスト）で管理。**GitHub Actions を通過しない。**
+シークレットは Infisical（セルフホスト）で管理。GitHub Actions の runner 上で取得し、`.env` ファイルとして VM に転送する。
 
-### アプリデプロイ時
+### デプロイ時のフロー
 
 ```
-VM（Infisical CLI）
-  → infisical export --env=staging
-  → .env 生成（デプロイ後に即削除）
-  → docker compose up
+GitHub Actions runner
+  → Infisical/secrets-action@v1（Machine Identity / Universal Auth）
+  → /tmp/*.env を runner 上に生成
+  → scp で VM の compose ディレクトリへ転送
+  → ssh で docker compose up（or terraform apply）
+  → デプロイ完了後に .env を VM・runner 双方から削除
 ```
 
-### Keycloak デプロイ時（GitHub Actions → リモート VM）
-
-GitHub Actions で Machine Identity（Universal Auth）を使い、env var 経由でリモートに渡す。
+### Infisical/secrets-action の設定例
 
 ```yaml
-env:
-  INFISICAL_UNIVERSAL_AUTH_CLIENT_ID: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
-  INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
-run: |
-  ssh keycloak-deploy@10.11.0.15 bash -l << REMOTE_SCRIPT
-    export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID}"
-    export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET}"
-    infisical run --method=universal-auth --env=staging ...
-  REMOTE_SCRIPT
+- name: 🔐 Fetch secrets from Infisical
+  uses: Infisical/secrets-action@77ab1f4ccd183a543cb5b42435fbd181189f4995 # v1.0.16
+  with:
+    method: universal
+    client-id: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
+    client-secret: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
+    domain: https://secrets.rayven.cloud
+    project-slug: tumiki
+    env-slug: staging   # production の場合は prod
+    secret-path: /
+    recursive: true
+    export-type: file
+    file-output-path: /tmp/tumiki.env
 ```
 
 ### Infisical 設定
@@ -181,8 +186,9 @@ run: |
 | 項目 | 値 |
 |------|-----|
 | ドメイン | https://secrets.rayven.cloud |
+| プロジェクト slug | `tumiki` |
 | プロジェクト ID | `dbff850c-430a-431b-b7fe-efc744e304d6` |
-| 環境 | `staging` |
+| 環境 | `staging` / `prod` |
 | 認証方式 | Machine Identity（Universal Auth） |
 
 ## GitHub Secrets / Variables
@@ -224,9 +230,10 @@ cd ~/tumiki && docker compose ps
 # ログ確認
 docker compose logs <service> --tail=50
 
-# 手動再起動
+# 手動再起動（VM上に手元の Infisical CLI が残っている場合）
 export IMAGE_TAG=main
-infisical export --env=staging --format=dotenv --domain https://secrets.rayven.cloud > .env
+infisical export --projectId=dbff850c-430a-431b-b7fe-efc744e304d6 \
+  --env=staging --format=dotenv --domain https://secrets.rayven.cloud > .env
 docker compose up -d --remove-orphans
 rm -f .env
 ```
@@ -273,13 +280,13 @@ cd ~/keycloak && docker compose logs keycloak --tail=50
 
 手動デプロイを実行して .env を再生成してください。
 
-### Infisical 認証エラー（アプリ VM）
+### Infisical 認証エラー（GitHub Actions）
 
-VM 上で Machine Identity が正しく設定されているか確認。
+GitHub Actions のジョブログで `Infisical/secrets-action` が失敗している場合:
 
-```bash
-infisical export --env=staging --domain https://secrets.rayven.cloud
-```
+- `INFISICAL_MACHINE_IDENTITY_CLIENT_ID` / `INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET` が environment secrets に設定されているか確認
+- Machine Identity が `tumiki` プロジェクトの該当環境（`staging` / `prod`）に対する read 権限を持っているか確認
+- セルフホスト Infisical (`https://secrets.rayven.cloud`) が稼働しているか確認
 
 ### SSH 接続できない
 
