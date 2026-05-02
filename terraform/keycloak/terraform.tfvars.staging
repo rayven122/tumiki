@@ -1,0 +1,40 @@
+# Keycloak Terraform ステージング環境設定
+#
+# 認証情報は Infisical から TF_VAR_* 環境変数で注入:
+# - TF_VAR_keycloak_admin_password
+# - TF_VAR_manager_client_secret
+# - TF_VAR_proxy_client_secret
+# - TF_VAR_test_user_password
+# - TF_VAR_smtp_host
+# - TF_VAR_smtp_user
+# - TF_VAR_smtp_from
+# - TF_VAR_smtp_password
+
+# Keycloak接続設定（VM上でローカル実行するため localhost を使用）
+keycloak_url = "http://localhost:8080"
+
+# Realm設定
+realm_name         = "tumiki"
+realm_display_name = "Tumiki Platform"
+
+# Manager Appクライアント設定
+manager_redirect_uris = [
+  "https://stg.tumiki.cloud/*"
+]
+manager_web_origins = [
+  "https://stg.tumiki.cloud"
+]
+
+# MCP Proxyクライアント設定
+proxy_client_id = "tumiki-proxy"
+proxy_redirect_uris = [
+  "https://stg-mcp.tumiki.cloud/*"
+]
+
+# セキュリティ設定
+ssl_required = "external"
+
+# テストユーザー設定
+test_user_email      = "admin@stg.tumiki.cloud"
+test_user_first_name = "Admin"
+test_user_last_name  = "User"

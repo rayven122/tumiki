@@ -1,6 +1,11 @@
 import { app, BrowserWindow, powerMonitor } from "electron";
 import { createMainWindow } from "./window";
 import { initializeDb, closeDb } from "./shared/db";
+import {
+  registerAppProtocolSchemes,
+  handleAppProtocol,
+  getRendererRoot,
+} from "./shared/app-protocol";
 import { setupAuthIpc } from "./ipc/auth";
 import { setupCatalogIpc } from "./features/catalog/catalog.ipc";
 import { setupMcpIpc } from "./features/mcp-server-list/mcp.ipc";
@@ -9,12 +14,16 @@ import { setupAuditLogIpc } from "./features/audit-log/audit-log.ipc";
 import { setupDashboardIpc } from "./features/dashboard/dashboard.ipc";
 import { seedCatalogs } from "./features/catalog/catalog.seed";
 import { createOAuthManager } from "./auth/oauth-manager";
+import { resolveOidcEndpoints } from "./auth/keycloak";
 import { getOAuthManager, setOAuthManager } from "./auth/manager-registry";
 import { getKeycloakEnvOptional } from "./utils/env";
 import { createMcpOAuthManager } from "./features/oauth/oauth.service";
 import { setupOAuthIpc } from "./features/oauth/oauth.ipc";
 import { isMcpOAuthCallback } from "./features/oauth/oauth.protocol";
 import type { McpOAuthManager } from "./features/oauth/oauth.service";
+import { setupManagerIpc, fetchManagerOidcConfig } from "./ipc/manager";
+import { setupShellIpc } from "./ipc/shell";
+import { getAppStore } from "./shared/app-store";
 import { ServerStatus } from "@prisma/desktop-client";
 import * as logger from "./shared/utils/logger";
 
@@ -181,6 +190,10 @@ if (isMcpProxyMode) {
     }
   });
 } else {
+  // GUI モード: `app.ready` 前にカスタム tumiki-bundle:// スキームを privileged 登録する
+  // （Electronの仕様上、registerSchemesAsPrivileged は ready 前に呼ぶ必要がある）
+  registerAppProtocolSchemes();
+
   const PROTOCOL = "tumiki";
   const CALLBACK_HOST = "auth";
   const CALLBACK_PATHNAME = "/callback";
@@ -193,6 +206,49 @@ if (isMcpProxyMode) {
 
   let mainWindow: BrowserWindow | null = null;
   let mcpOAuthManager: McpOAuthManager | null = null;
+
+  /**
+   * 管理サーバーURLとOIDC設定からOAuthManagerを初期化（or 再初期化）
+   */
+  const initOAuthManagerFromUrl = async (
+    url: string,
+    issuer: string,
+    clientId: string,
+  ): Promise<void> => {
+    const prev = getOAuthManager();
+    prev?.stopAutoRefresh();
+
+    // OIDC Discovery でプロバイダー固有のエンドポイントを取得（Dex・Keycloak・Okta 等に対応）
+    const endpoints = await resolveOidcEndpoints(issuer);
+
+    const manager = createOAuthManager(
+      {
+        issuer,
+        clientId,
+        redirectUri: `${PROTOCOL}://${CALLBACK_HOST}${CALLBACK_PATHNAME}`,
+        endpoints,
+      },
+      {
+        onAuthExpired: () => {
+          mainWindow?.webContents.send(
+            "auth:sessionExpired",
+            "認証セッションの有効期限が切れました。再度ログインしてください。",
+          );
+        },
+      },
+    );
+    setOAuthManager(manager);
+
+    try {
+      await manager.initialize();
+      logger.info("OAuthManager initialized from manager URL", { url });
+    } catch (error) {
+      logger.error(
+        "OAuthManager initialization failed (new login still available)",
+        { error: error instanceof Error ? error.message : error },
+      );
+    }
+  };
 
   const createWindow = (): void => {
     mainWindow = createMainWindow();
@@ -364,42 +420,45 @@ if (isMcpProxyMode) {
       // 起動時に毎回上書き登録する（setAsDefaultProtocolClient は冪等）
       app.setAsDefaultProtocolClient(PROTOCOL);
 
+      // production 用の tumiki-bundle:// プロトコルハンドラを登録（dev では vite dev server を使うため不要）
+      // レンダラー dist の絶対パス基点で配信し、`<img src="/logos/foo.svg">` を解決可能にする
+      if (!process.env["ELECTRON_RENDERER_URL"]) {
+        handleAppProtocol(getRendererRoot(__dirname));
+      }
+
       // データベース初期化
       await initializeDb();
 
-      // OAuthManager初期化（環境変数が設定されている場合のみ）
-      const keycloakEnv = getKeycloakEnvOptional();
-      if (keycloakEnv) {
-        const manager = createOAuthManager(
-          {
-            issuer: keycloakEnv.KEYCLOAK_ISSUER,
-            clientId: keycloakEnv.KEYCLOAK_DESKTOP_CLIENT_ID,
-            redirectUri: `${PROTOCOL}://${CALLBACK_HOST}${CALLBACK_PATHNAME}`,
-          },
-          {
-            onAuthExpired: () => {
-              mainWindow?.webContents.send(
-                "auth:sessionExpired",
-                "認証セッションの有効期限が切れました。再度ログインしてください。",
-              );
-            },
-          },
-        );
-        setOAuthManager(manager);
+      // OAuthManager初期化: electron-store保存済みURLを優先、フォールバックで環境変数
+      const savedManagerUrl = (await getAppStore()).get("managerUrl");
+      if (savedManagerUrl) {
         try {
-          await manager.initialize();
-          logger.info("OAuthManager initialized");
+          const config = await fetchManagerOidcConfig(savedManagerUrl);
+          await initOAuthManagerFromUrl(
+            savedManagerUrl,
+            config.issuer,
+            config.clientId,
+          );
         } catch (error) {
-          // 既存トークンの復元に失敗しても、新規ログインフローは利用可能なためマネージャーは維持
-          logger.error(
-            "OAuthManager initialization failed (new login still available)",
-            {
-              error: error instanceof Error ? error.message : error,
-            },
+          logger.warn(
+            "Saved manager URL is unreachable, OAuth disabled until reconnect",
+            { error: error instanceof Error ? error.message : error },
           );
         }
       } else {
-        logger.warn("Keycloak environment variables not set, OAuth disabled");
+        // 後方互換: Keycloak環境変数フォールバック
+        const keycloakEnv = getKeycloakEnvOptional();
+        if (keycloakEnv) {
+          await initOAuthManagerFromUrl(
+            "",
+            keycloakEnv.KEYCLOAK_ISSUER,
+            keycloakEnv.KEYCLOAK_DESKTOP_CLIENT_ID,
+          );
+        } else {
+          logger.warn(
+            "No manager URL or Keycloak env vars configured, OAuth disabled",
+          );
+        }
       }
 
       // カタログ初期データを投入（冪等・失敗してもアプリ起動は継続）
@@ -419,12 +478,14 @@ if (isMcpProxyMode) {
       setupOAuthIpc(mcpOAuthManager);
 
       // IPC ハンドラー登録
+      setupManagerIpc(initOAuthManagerFromUrl);
       setupAuthIpc();
       setupCatalogIpc();
       setupMcpIpc();
       setupMcpServerDetailIpc();
       setupAuditLogIpc();
       setupDashboardIpc();
+      setupShellIpc();
 
       createWindow();
 

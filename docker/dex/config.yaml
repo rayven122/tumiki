@@ -18,6 +18,12 @@ staticClients:
     redirectURIs:
       - http://localhost:3100/api/auth/callback/oidc
 
+  - id: tumiki-desktop
+    public: true
+    name: Tumiki Desktop
+    redirectURIs:
+      - tumiki://auth/callback
+
 enablePasswordDB: true
 
 staticPasswords:

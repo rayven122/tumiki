@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Copy } from "lucide-react";
+import { useState } from "react";
 import ScimTokenSection from "./_components/ScimTokenSection";
+import SsoConfigSection from "./_components/SsoConfigSection";
 
 /* ===== システム設定画面 ===== */
 
@@ -77,18 +77,6 @@ const AdminSettingsPage = () => {
   const [orgName, setOrgName] = useState("株式会社Example");
   const [adminEmail, setAdminEmail] = useState("admin@example.co.jp");
 
-  /* 認証・SSO */
-  const [oidcUrl, setOidcUrl] = useState(
-    "https://accounts.example.com/.well-known/openid-configuration",
-  );
-  const [clientId, setClientId] = useState("tumiki-client-prod");
-  const [clientSecret, setClientSecret] = useState("sk-prod-xxxxxxxxxxxx");
-  const [jitEnabled, setJitEnabled] = useState(true);
-  const [sessionExpiry, setSessionExpiry] = useState("8h");
-
-  /* SCIMトークン */
-  const scimEndpoint = "https://proxy.tumiki.example.co.jp/scim/v2";
-
   /* セキュリティ */
   const [mfaPolicy, setMfaPolicy] = useState<"all" | "admin" | "optional">(
     "admin",
@@ -112,23 +100,6 @@ const AdminSettingsPage = () => {
   const [slackWebhook, setSlackWebhook] = useState("");
   const [notifyEmail, setNotifyEmail] = useState("ops-team@example.co.jp");
   const [blockRateThreshold, setBlockRateThreshold] = useState(5);
-
-  /* SCIMエンドポイントのコピー */
-  const [copied, setCopied] = useState(false);
-  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
-    };
-  }, []);
-
-  const handleCopy = () => {
-    void navigator.clipboard.writeText(scimEndpoint);
-    setCopied(true);
-    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
-    copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
-  };
 
   return (
     <div className="space-y-5 p-6">
@@ -163,82 +134,16 @@ const AdminSettingsPage = () => {
       </SectionCard>
 
       {/* 2. 認証・SSO */}
-      <SectionCard title="認証・SSO">
-        <Field label="OIDC Discovery URL">
-          <input
-            type="url"
-            value={oidcUrl}
-            onChange={(e) => setOidcUrl(e.target.value)}
-            className={inputCls}
-          />
-        </Field>
-        <Field label="Client ID">
-          <input
-            type="text"
-            value={clientId}
-            onChange={(e) => setClientId(e.target.value)}
-            className={inputCls}
-          />
-        </Field>
-        <Field label="Client Secret">
-          <input
-            type="password"
-            value={clientSecret}
-            onChange={(e) => setClientSecret(e.target.value)}
-            className={inputCls}
-          />
-        </Field>
-        {/* JITプロビジョニング */}
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-text-secondary text-xs font-medium">
-              JITプロビジョニング
-            </div>
-            <div className="text-text-muted text-[10px]">
-              初回ログイン時にユーザーを自動作成
-            </div>
-          </div>
-          <Toggle
-            checked={jitEnabled}
-            onChange={setJitEnabled}
-            label="JITプロビジョニングを切り替え"
-          />
+      <div className="bg-bg-card border-border-default rounded-xl border p-5">
+        <h2 className="text-text-primary mb-4 text-sm font-semibold">
+          認証・SSO
+        </h2>
+        <div className="space-y-4">
+          <SsoConfigSection />
+          {/* SCIMトークン */}
+          <ScimTokenSection />
         </div>
-        {/* SCIMエンドポイント */}
-        <Field label="SCIMエンドポイント（読み取り専用）">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={scimEndpoint}
-              readOnly
-              className={`${inputCls} text-text-muted flex-1`}
-            />
-            <button
-              type="button"
-              onClick={handleCopy}
-              className="bg-bg-active text-text-secondary flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs transition-opacity hover:opacity-80"
-            >
-              <Copy size={11} />
-              {copied ? "コピー済み" : "コピー"}
-            </button>
-          </div>
-        </Field>
-        {/* SCIMトークン */}
-        <ScimTokenSection />
-        {/* セッション有効期限 */}
-        <Field label="セッション有効期限">
-          <select
-            value={sessionExpiry}
-            onChange={(e) => setSessionExpiry(e.target.value)}
-            className={inputCls}
-          >
-            <option value="1h">1時間</option>
-            <option value="8h">8時間</option>
-            <option value="24h">24時間</option>
-            <option value="7d">7日</option>
-          </select>
-        </Field>
-      </SectionCard>
+      </div>
 
       {/* 3. セキュリティ */}
       <SectionCard title="セキュリティ">

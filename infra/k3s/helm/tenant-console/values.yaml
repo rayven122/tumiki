@@ -1,0 +1,46 @@
+# tenant-console（テナント管理UI）設定
+
+# コンテナイメージ
+image:
+  repository: ghcr.io/rayven122/tumiki-tenant-console
+  tag: ""           # 必須: --set image.tag=<TAG> で指定
+  pullPolicy: IfNotPresent
+
+# 公開ドメイン
+domain: tenant-console.tumiki.cloud
+
+# Infisical 設定
+infisical:
+  hostAPI: https://app.infisical.com/api
+  projectSlug: ""      # 必須: --set infisical.projectSlug=<SLUG> で指定
+  environment: ""      # 必須: --set infisical.environment=<ENV> で指定（prod / dev 等）
+  secretsPath: "/tenant-console"
+  resyncInterval: 60
+  # Machine Identity 認証情報は kubectl で k8s Secret 'infisical-machine-identity' として事前作成
+
+# tenant-console のリソース制限
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "100m"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"
+
+# PostgreSQL 設定（テナント台帳 DB）
+postgresql:
+  user: "app"
+  database: "tenant_console"
+  storage: "10Gi"
+  storageClassName: "local-path"
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "50m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+
+# Ingress 設定（Cloudflare Tunnel が TLS を担うためクラスター内は HTTP）
+ingress:
+  className: traefik

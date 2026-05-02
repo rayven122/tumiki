@@ -1,5 +1,6 @@
 import { BrowserWindow } from "electron";
 import { join } from "path";
+import { APP_INDEX_URL } from "./shared/app-protocol";
 
 export const createMainWindow = (): BrowserWindow => {
   const mainWindow = new BrowserWindow({
@@ -19,7 +20,9 @@ export const createMainWindow = (): BrowserWindow => {
     mainWindow.loadURL(rendererUrl);
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
+    // production では file:// ではなくカスタム tumiki-bundle:// スキームで読み込む。
+    // file:// だと `<img src="/logos/foo.svg">` がOSルートを指してしまうため。
+    mainWindow.loadURL(APP_INDEX_URL);
   }
 
   return mainWindow;

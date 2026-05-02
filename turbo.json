@@ -5,7 +5,12 @@
     "DATABASE_URL",
     "INTERNAL_DATABASE_URL",
     "PRISMA_FIELD_ENCRYPTION_KEY",
-    "PRISMA_FIELD_ENCRYPTION_HASH_SALT"
+    "PRISMA_FIELD_ENCRYPTION_HASH_SALT",
+    "OIDC_CLIENT_ID",
+    "OIDC_CLIENT_SECRET",
+    "OIDC_ISSUER",
+    "OIDC_DESKTOP_CLIENT_ID",
+    "TENANT_DATABASE_URL"
   ],
   "tasks": {
     "build": {
@@ -48,6 +53,28 @@
       "outputs": ["generated/**"]
     },
     "@tumiki/internal-db#typecheck": {
+      "dependsOn": ["^build", "db:generate"],
+      "outputs": []
+    },
+    "@tumiki/db#db:generate": {
+      "outputs": ["prisma/generated/**"]
+    },
+    "@tumiki/db#typecheck": {
+      "dependsOn": ["^build", "db:generate"],
+      "outputs": []
+    },
+    "@tumiki/tenant-console#db:generate": {
+      "outputs": ["prisma/generated/**"]
+    },
+    "@tumiki/tenant-console#build": {
+      "dependsOn": ["^build", "db:generate"],
+      "outputs": [".next/**", "!.next/cache/**"]
+    },
+    "@tumiki/tenant-console#lint": {
+      "dependsOn": ["db:generate"],
+      "outputs": [".cache/.eslintcache"]
+    },
+    "@tumiki/tenant-console#typecheck": {
       "dependsOn": ["^build", "db:generate"],
       "outputs": []
     },

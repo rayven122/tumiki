@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: tenant-quota
+  namespace: {{ include "internal-manager.namespace" . }}
+  labels:
+    {{- include "internal-manager.labels" . | nindent 4 }}
+spec:
+  hard:
+    requests.cpu: {{ .Values.resourceQuota.requests.cpu | quote }}
+    requests.memory: {{ .Values.resourceQuota.requests.memory | quote }}
+    limits.cpu: {{ .Values.resourceQuota.limits.cpu | quote }}
+    limits.memory: {{ .Values.resourceQuota.limits.memory | quote }}
+    # オブジェクト数制限: 暴走時の k8s control plane 負荷を抑制
+    pods: {{ .Values.resourceQuota.objects.pods | quote }}
+    services: {{ .Values.resourceQuota.objects.services | quote }}
+    persistentvolumeclaims: {{ .Values.resourceQuota.objects.persistentvolumeclaims | quote }}

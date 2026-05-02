@@ -5,13 +5,18 @@
 #   pnpm keycloak:prod:plan   # 変更プレビュー
 #   pnpm keycloak:prod:apply  # 設定適用
 #
-# 認証情報は.envファイルから環境変数で取得:
-# - KEYCLOAK_ADMIN_USERNAME / KEYCLOAK_ADMIN_PASSWORD
-# - KEYCLOAK_CLIENT_ID / KEYCLOAK_CLIENT_SECRET
-# - GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET (任意)
+# 認証情報は Infisical から TF_VAR_* 環境変数で注入:
+# - TF_VAR_keycloak_admin_password
+# - TF_VAR_manager_client_secret
+# - TF_VAR_proxy_client_secret
+# - TF_VAR_test_user_password
+# - TF_VAR_smtp_host
+# - TF_VAR_smtp_user
+# - TF_VAR_smtp_from
+# - TF_VAR_smtp_password
 
-# Keycloak接続設定（Cloudflare Tunnel経由）
-keycloak_url = "https://auth.tumiki.cloud"
+# Keycloak接続設定（VM上でローカル実行するため localhost を使用）
+keycloak_url = "http://localhost:8080"
 
 # Realm設定
 realm_name         = "tumiki"
@@ -39,7 +44,7 @@ proxy_redirect_uris = [
 # セキュリティ設定
 ssl_required = "external"
 
-# テストユーザー設定
+# テストユーザー設定（動作確認・監視用アカウント）
 # test_user_passwordは環境変数TF_VAR_test_user_passwordで設定
 test_user_email      = "admin@tumiki.cloud"
 test_user_first_name = "Admin"

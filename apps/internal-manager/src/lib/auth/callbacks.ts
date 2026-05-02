@@ -111,7 +111,12 @@ export const jwtCallback = async ({
 }): Promise<JWT | null> => {
   if (user) {
     token.sub = user.id ?? user.email ?? "";
-    token.role = "USER";
+    // DB から role を取得（管理者によるロール昇格を即時反映するため）
+    const dbUser = await db.user.findUnique({
+      where: { id: token.sub },
+      select: { role: true },
+    });
+    token.role = dbUser?.role ?? "USER";
   }
 
   if (account) {
@@ -186,6 +191,14 @@ export const jwtCallback = async ({
     }
 
     token.tumiki = updatedTumiki;
+
+    // DB の role を毎回反映（管理者によるロール変更を即時反映）
+    const dbUser = await db.user.findUnique({
+      where: { id: token.sub },
+      select: { role: true },
+    });
+    token.role = dbUser?.role ?? "USER";
+
     return token;
   }
 

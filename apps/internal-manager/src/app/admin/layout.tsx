@@ -5,7 +5,7 @@ import { AdminSidebar } from "./_components/AdminSidebar";
 
 const AdminLayout = async ({ children }: { children: ReactNode }) => {
   const session = await auth();
-  if (!session) redirect("/");
+  if (!session) redirect("/api/auth/signin?callbackUrl=/admin");
 
   return (
     <div className="bg-bg-main flex h-screen">
