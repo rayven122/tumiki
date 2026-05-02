@@ -83,6 +83,7 @@ describe("runMcpProxy", () => {
     expect(mocks.mockCreateProxyCore).toHaveBeenCalledWith(
       [],
       expect.any(Object),
+      undefined,
     );
     expect(mocks.mockStartAll).toHaveBeenCalledOnce();
     // PII マスキングフィルタが runMcpProxy 内で自動構築されるため、3引数目には常に filter が含まれる
@@ -111,6 +112,7 @@ describe("runMcpProxy", () => {
     expect(mocks.mockCreateProxyCore).toHaveBeenCalledWith(
       configs,
       expect.any(Object),
+      undefined,
     );
   });
 
@@ -124,6 +126,7 @@ describe("runMcpProxy", () => {
     expect(mocks.mockCreateProxyCore).toHaveBeenCalledWith(
       configs,
       expect.any(Object),
+      undefined,
     );
   });
 
@@ -155,6 +158,18 @@ describe("runMcpProxy", () => {
       mocks.mockCore,
       expect.any(Object),
       expect.objectContaining({ filter: customFilter }),
+    );
+  });
+
+  test("hooks.getToolPolicy が createProxyCore へ伝搬される", async () => {
+    const getToolPolicy = vi.fn().mockReturnValue(undefined);
+
+    await runMcpProxy([], { getToolPolicy });
+
+    expect(mocks.mockCreateProxyCore).toHaveBeenCalledWith(
+      [],
+      expect.any(Object),
+      getToolPolicy,
     );
   });
 });

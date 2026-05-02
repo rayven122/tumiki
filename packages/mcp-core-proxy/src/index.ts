@@ -19,6 +19,8 @@ export type {
   ToolCallEvent,
   ToolCallHook,
   ToolCallFilter,
+  ToolPolicy,
+  ToolPolicyResolver,
   PiiDetectionSummary,
 } from "./types.js";
 
@@ -28,6 +30,10 @@ export type {
   McpClientConnectionOptions,
 } from "./outbound/mcp-client.js";
 export { connectMcpClient, createMcpClient } from "./outbound/mcp-client.js";
+
+// 単一サーバー用 UpstreamClient（仮想MCP作成時の一時接続でツール一覧を取得する用途）
+export type { UpstreamClient } from "./outbound/upstream-client.js";
+export { createUpstreamClient } from "./outbound/upstream-client.js";
 
 // コア
 export { createProxyCore, createSingleServerCore } from "./core.js";

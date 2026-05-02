@@ -1,26 +1,42 @@
 import { ServerStatus } from "@prisma/desktop-client";
+import type { ToolPolicy } from "@tumiki/mcp-core-proxy";
 import { getDb } from "../../shared/db";
 import type { DbClient } from "../../shared/db";
 import * as mcpRepository from "./mcp.repository";
-import * as catalogRepository from "../catalog/catalog.repository";
 import * as logger from "../../shared/utils/logger";
 import { toSlug, generateRandomSuffix } from "../../../shared/mcp.slug";
 import {
   SLUG_FALLBACK_PREFIX,
   VIRTUAL_SERVER_MAX_CONNECTIONS,
 } from "../../../shared/mcp.constants";
-import { FILESYSTEM_STDIO_NAME } from "../../../shared/catalog.constants";
 import { encryptToken } from "../../utils/encryption";
 import { decryptCredentials } from "../../utils/credentials";
 import type {
   CreateFromCatalogInput,
   CreateVirtualServerInput,
+  FetchToolsInput,
+  FetchToolsResult,
+  VirtualServerToolInput,
 } from "./mcp.types";
+import { fetchToolsForConnections as fetchToolsForConnectionsImpl } from "./mcp-tool-fetcher.service";
+
+/**
+ * customDescription を「上書きあり」と判定したときだけ元の値、それ以外は undefined を返す
+ * 空文字・空白のみは「上書きなし」として扱う（DB上は null 保存・読み出し時は undefined）
+ */
+const normalizeCustomDescription = (
+  value: string | null | undefined,
+): string | undefined => {
+  if (value === null || value === undefined) return undefined;
+  return value.trim() === "" ? undefined : value;
+};
 
 // IPC / テストから参照できるよう re-export
 export type {
   CreateFromCatalogInput,
   CreateVirtualServerInput,
+  FetchToolsInput,
+  FetchToolsResult,
 } from "./mcp.types";
 
 /**
@@ -106,15 +122,32 @@ export const createFromCatalog = async (
 };
 
 /**
+ * VirtualServerToolInput を MCP DB の CreateMcpToolInput へマッピング
+ * 空白のみの customDescription は null（上書きなし）として保存する
+ */
+const toCreateMcpToolInput = (
+  tool: VirtualServerToolInput,
+  connectionId: number,
+): mcpRepository.CreateMcpToolInput => ({
+  name: tool.name,
+  description: tool.description,
+  inputSchema: tool.inputSchema,
+  isAllowed: tool.isAllowed,
+  customDescription: normalizeCustomDescription(tool.customDescription) ?? null,
+  connectionId,
+});
+
+/**
  * 仮想MCPサーバーを作成
- * 1つのMcpServerに対して複数のMcpConnection（カタログ参照）を1トランザクションで登録する。
+ * 1つのMcpServerに対して複数のMcpConnection（既存コネクタからのコピー）を1トランザクションで登録する。
  *
  * - 接続0件は不正入力として拒否（最低1接続必須）
- * - OAuth認証のカタログは現状サポート外（OAuthはAddMcpModalの専用フローを利用）
- * - 各接続のslugはサーバー内で一意（カタログ名 + 必要に応じてサフィックス）
+ * - OAuth認証のコネクタは現状サポート外（OAuthはAddMcpModalの専用フローを利用）
+ * - 各接続のslugはサーバー内で一意（コネクタ名 + 必要に応じてサフィックス）
  *
- * SQLiteの$transactionタイムアウト回避のため、書き込み以外（カタログ取得・OAuth拒否チェック・
- * slug計算・暗号化）は全てtx外で先に実行し、tx内には書き込みI/Oだけを残す
+ * 既存コネクタ（McpConnection）の設定（transportType / command / args / url / 暗号化済み
+ * credentials / authType / catalogId）をそのままコピーし、新しい仮想MCPサーバー配下に複製する。
+ * credentials は既に暗号化済みのため復号・再暗号化は不要（暗号化blobをそのまま転送）。
  */
 export const createVirtualServer = async (
   input: CreateVirtualServerInput,
@@ -131,47 +164,30 @@ export const createVirtualServer = async (
 
   const db = await getDb();
 
-  // カタログ取得・バリデーションを並列実行
-  // 並列なので1件目失敗でも他の取得自体はキャンセルされないが、Promise.allが即rejectされるため
-  // 後段の暗号化（CPU/IO重）は実行されない＝バリデーション失敗時のコストを最小化できる
+  // 既存コネクタを一括取得（IDは重複してもUI上は同一カードを2回選択する想定）
+  const connectionIds = input.connections.map((c) => c.connectionId);
+  const sourceConnections = await mcpRepository.findConnectionsByIds(
+    db,
+    connectionIds,
+  );
+  const sourceById = new Map(sourceConnections.map((c) => [c.id, c]));
+
+  // 入力順を維持しつつ、各接続のソース確定 + バリデーション
   const usedConnectionSlugs = new Set<string>();
-  const enrichedConnections = await Promise.all(
-    input.connections.map(async (connection, index) => {
-      const catalog = await catalogRepository.findById(
-        db,
-        connection.catalogId,
+  const enrichedConnections = input.connections.map((connection, index) => {
+    const source = sourceById.get(connection.connectionId);
+    if (!source) {
+      throw new Error(
+        `コネクタ(id=${String(connection.connectionId)})が見つかりません`,
       );
-      if (!catalog) {
-        throw new Error(
-          `カタログ(id=${String(connection.catalogId)})が見つかりません`,
-        );
-      }
-      if (catalog.authType === "OAUTH") {
-        throw new Error(
-          `OAuth認証のカタログ「${catalog.name}」は仮想MCP作成では未対応です`,
-        );
-      }
-      // Filesystem STDIOはアクセス許可ディレクトリのargs指定UIが仮想MCP作成画面に未実装のため未対応
-      // （単体作成フローのAddMcpModalにはdirectoryPath入力UIがある）
-      if (catalog.name === FILESYSTEM_STDIO_NAME) {
-        throw new Error(
-          `「${catalog.name}」は仮想MCP作成では未対応です（単体作成をご利用ください）`,
-        );
-      }
-      return { catalog, index };
-    }),
-  );
-
-  // バリデーション通過後に暗号化（CPU/IO重）をtx外で実行（SQLiteタイムアウト回避）
-  const encryptedCredentialsList = await Promise.all(
-    input.connections.map((conn) =>
-      encryptToken(JSON.stringify(conn.credentials)),
-    ),
-  );
-
-  // 接続slugを入力順で確定（Promise.allの結果はindex順を保証しているため決定論的）
-  const connectionsWithSlug = enrichedConnections.map(({ catalog, index }) => {
-    const baseSlug = toSlug(catalog.name) || generateFallbackSlug();
+    }
+    if (source.authType === "OAUTH") {
+      throw new Error(
+        `OAuth認証のコネクタ「${source.name}」は仮想MCP作成では未対応です`,
+      );
+    }
+    // 接続slug: 元コネクタのslugを優先、衝突時はサフィックス付与
+    const baseSlug = toSlug(source.name) || generateFallbackSlug();
     let connectionSlug = baseSlug;
     let counter = 1;
     while (usedConnectionSlugs.has(connectionSlug)) {
@@ -179,7 +195,7 @@ export const createVirtualServer = async (
       counter++;
     }
     usedConnectionSlugs.add(connectionSlug);
-    return { catalog, index, connectionSlug };
+    return { source, index, connectionSlug };
   });
 
   // tx内は書き込みI/Oのみ（generateUniqueNameは重複時のサフィックス付与にDB参照が必要なため内側に残す）
@@ -196,21 +212,32 @@ export const createVirtualServer = async (
       description: input.description,
     });
 
-    for (const { catalog, index, connectionSlug } of connectionsWithSlug) {
-      await mcpRepository.createConnection(tx, {
-        name: catalog.name,
+    for (const { source, index, connectionSlug } of enrichedConnections) {
+      // 既存コネクタの設定を新しい仮想MCP配下にコピーする
+      // credentials は既に暗号化済みのため復号せずblobをそのまま再利用する
+      const connection = await mcpRepository.createConnection(tx, {
+        name: source.name,
         slug: connectionSlug,
-        transportType: catalog.transportType,
-        command: catalog.command,
-        args: catalog.args,
-        url: catalog.url,
-        // Promise.allのindex対応により実質undefinedにならないが、型ガードのためfallbackはスキーマdefaultと揃える
-        credentials: encryptedCredentialsList[index] ?? "{}",
-        authType: catalog.authType,
+        transportType: source.transportType,
+        command: source.command,
+        args: source.args,
+        url: source.url,
+        credentials: source.credentials,
+        authType: source.authType,
         serverId: server.id,
-        catalogId: catalog.id,
+        catalogId: source.catalogId,
         displayOrder: index,
       });
+
+      // 接続単位のツール一覧が渡されている場合のみ McpTool を保存
+      // 旧呼び出し（tools未指定）も後方互換で動作させるため optional 扱い
+      const inputTools = input.connections[index]?.tools;
+      if (inputTools && inputTools.length > 0) {
+        await mcpRepository.createTools(
+          tx,
+          inputTools.map((t) => toCreateMcpToolInput(t, connection.id)),
+        );
+      }
     }
 
     return { serverId: server.id, serverName: uniqueName };
@@ -288,4 +315,57 @@ export const updateServerStatus = async (
 export const resetAllServerStatus = async () => {
   const db = await getDb();
   return mcpRepository.updateAllServerStatus(db, ServerStatus.STOPPED);
+};
+
+/** policyMap のキー形式: `${configName}::${toolName}` */
+export const toolPolicyKey = (configName: string, toolName: string): string =>
+  `${configName}::${toolName}`;
+
+/**
+ * proxy 起動時に使うツール公開ポリシーマップを構築する
+ * key 形式: `${configName}::${toolName}` （configName は `${serverSlug}-${connectionSlug}`）
+ * value は McpTool レコードから派生した ToolPolicy
+ *
+ * McpTool レコードが存在しないツールは map に含まれず、proxy 側ではデフォルト動作（公開）になる。
+ * これにより 1:1 (createFromCatalog) で作成された既存サーバーは挙動が変わらない。
+ */
+export const buildToolPolicyMap = async (
+  serverSlug: string,
+): Promise<Map<string, ToolPolicy>> => {
+  const db = await getDb();
+  const tools = await mcpRepository.findToolsByServerSlug(db, serverSlug);
+  const policyMap = new Map<string, ToolPolicy>();
+  for (const tool of tools) {
+    const configName = `${tool.connection.server.slug}-${tool.connection.slug}`;
+    policyMap.set(toolPolicyKey(configName, tool.name), {
+      isAllowed: tool.isAllowed,
+      customDescription: normalizeCustomDescription(tool.customDescription),
+    });
+  }
+  return policyMap;
+};
+
+/**
+ * 仮想MCP作成前に各既存コネクタのツール一覧を取得する
+ * UIで「次へ」ボタンを押した時に呼ばれる前段処理
+ *
+ * - input: 既存McpConnection IDの配列
+ * - 各接続のcredentialsを復号して一時接続し、tools/list を取得 → 切断
+ * - 1件失敗しても他は続行する（Promise.allSettled）
+ */
+export const fetchToolsForConnections = async (
+  input: FetchToolsInput,
+): Promise<FetchToolsResult> => {
+  const results = await fetchToolsForConnectionsImpl(input.connectionIds);
+  return {
+    items: results.map((r) => ({
+      connectionId: r.connectionId,
+      tools: r.tools.map((t) => ({
+        name: t.name,
+        description: t.description ?? "",
+        inputSchema: JSON.stringify(t.inputSchema ?? {}),
+      })),
+      error: r.error,
+    })),
+  };
 };

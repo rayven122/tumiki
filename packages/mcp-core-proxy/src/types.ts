@@ -100,6 +100,21 @@ export type ToolCallEvent = {
 
 export type ToolCallHook = (event: ToolCallEvent) => void | Promise<void>;
 
+// ツール公開ポリシー（仮想MCP等で各ツールの公開可否・説明上書きを制御する）
+export type ToolPolicy = {
+  // ツールを公開するかどうか（false の場合 tools/list から除外、tools/call も拒否）
+  isAllowed: boolean;
+  // description の上書き（未指定時は元の description を使用）
+  customDescription?: string;
+};
+
+// (serverName, toolName) からポリシーを解決するルックアップ関数
+// 戻り値が undefined の場合はデフォルト動作（公開・上書きなし）
+export type ToolPolicyResolver = (
+  serverName: string,
+  toolName: string,
+) => ToolPolicy | undefined;
+
 // ツール呼び出しフィルタ（PII マスキング等）
 // beforeCall で args を変換または block、afterCall で result を変換する
 export type ToolCallFilter = {

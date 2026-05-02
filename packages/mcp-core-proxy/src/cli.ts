@@ -14,6 +14,7 @@ import type {
   ServerStatus,
   ToolCallFilter,
   ToolCallHook,
+  ToolPolicyResolver,
 } from "./types.js";
 import { createProxyCore } from "./core.js";
 import { startStdioInbound } from "./inbound/stdio-inbound.js";
@@ -70,6 +71,11 @@ export type ProxyHooks = {
   onStatusChange?: (name: string, status: ServerStatus, error?: string) => void;
   /** ツール呼び出しフィルタ（PII マスキング等の前処理・後処理） */
   filter?: ToolCallFilter;
+  /**
+   * ツール公開ポリシー解決関数（仮想MCP等で各ツールの公開可否・説明上書きを制御）
+   * 未指定時は全ツール公開・上書きなし（既存挙動）
+   */
+  getToolPolicy?: ToolPolicyResolver;
 };
 
 export const runMcpProxy = async (
@@ -78,7 +84,7 @@ export const runMcpProxy = async (
 ): Promise<void> => {
   logger.info("tumiki-mcp-proxy を起動しています...");
 
-  const core = createProxyCore(configs, logger);
+  const core = createProxyCore(configs, logger, hooks?.getToolPolicy);
 
   // ステータス変更フックを登録
   if (hooks?.onStatusChange) {

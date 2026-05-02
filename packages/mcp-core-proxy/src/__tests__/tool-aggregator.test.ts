@@ -224,4 +224,115 @@ describe("ToolAggregator", () => {
       expect(mockCallTool).toHaveBeenCalledWith("some__tool", {});
     });
   });
+
+  describe("getToolPolicy", () => {
+    test("isAllowed=false のツールは listTools の結果から除外される", async () => {
+      const client = createMockClient("serena", {
+        listTools: vi.fn().mockResolvedValue([
+          { name: "read_file", description: "読み込み", inputSchema: {} },
+          { name: "delete_file", description: "削除", inputSchema: {} },
+        ]),
+      });
+      const clients = new Map([["serena", client]]);
+      const aggregator = createToolAggregator(
+        () => clients,
+        mockLogger,
+        (serverName, toolName) =>
+          serverName === "serena" && toolName === "delete_file"
+            ? { isAllowed: false }
+            : undefined,
+      );
+
+      const tools = await aggregator.listTools();
+
+      expect(tools).toStrictEqual([
+        {
+          name: "serena__read_file",
+          description: "読み込み",
+          inputSchema: {},
+          serverName: "serena",
+        },
+      ]);
+    });
+
+    test("customDescription が指定されている場合は description を上書きする", async () => {
+      const client = createMockClient("serena", {
+        listTools: vi
+          .fn()
+          .mockResolvedValue([
+            { name: "read_file", description: "元の説明", inputSchema: {} },
+          ]),
+      });
+      const clients = new Map([["serena", client]]);
+      const aggregator = createToolAggregator(
+        () => clients,
+        mockLogger,
+        () => ({ isAllowed: true, customDescription: "上書き済み" }),
+      );
+
+      const tools = await aggregator.listTools();
+
+      expect(tools[0]?.description).toStrictEqual("上書き済み");
+    });
+
+    test("policy 未指定（undefined）のツールは元の description のまま公開される", async () => {
+      const client = createMockClient("serena", {
+        listTools: vi
+          .fn()
+          .mockResolvedValue([
+            { name: "read_file", description: "元の説明", inputSchema: {} },
+          ]),
+      });
+      const clients = new Map([["serena", client]]);
+      const aggregator = createToolAggregator(
+        () => clients,
+        mockLogger,
+        () => undefined,
+      );
+
+      const tools = await aggregator.listTools();
+
+      expect(tools).toStrictEqual([
+        {
+          name: "serena__read_file",
+          description: "元の説明",
+          inputSchema: {},
+          serverName: "serena",
+        },
+      ]);
+    });
+
+    test("isAllowed=false のツールは callTool で拒否される", async () => {
+      const mockCallTool = vi.fn();
+      const client = createMockClient("serena", { callTool: mockCallTool });
+      const clients = new Map([["serena", client]]);
+      const aggregator = createToolAggregator(
+        () => clients,
+        mockLogger,
+        () => ({ isAllowed: false }),
+      );
+
+      await expect(
+        aggregator.callTool("serena__read_file", {}),
+      ).rejects.toThrow("無効化されているため実行できません");
+      expect(mockCallTool).not.toHaveBeenCalled();
+    });
+
+    test("isAllowed=true のツールは通常通り callTool が実行される", async () => {
+      const mockCallTool = vi
+        .fn()
+        .mockResolvedValue({ content: [], isError: false });
+      const client = createMockClient("serena", { callTool: mockCallTool });
+      const clients = new Map([["serena", client]]);
+      const aggregator = createToolAggregator(
+        () => clients,
+        mockLogger,
+        () => ({ isAllowed: true, customDescription: "上書き" }),
+      );
+
+      await aggregator.callTool("serena__read_file", { path: "/tmp" });
+
+      expect(mockCallTool).toHaveBeenCalledWith("read_file", { path: "/tmp" });
+    });
+  });
 });
