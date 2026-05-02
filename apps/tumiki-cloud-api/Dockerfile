@@ -39,6 +39,8 @@ RUN pnpm --filter @tumiki/tumiki-cloud-api run build
 # 本番依存のみ抽出（dist と node_modules 用）
 # pnpm v10 では deploy にデフォルトで inject-workspace-packages=true が必要なため
 # ワークスペースパッケージへ依存しないこのアプリでは --legacy で従来動作にする
+# zod-prisma-types のパッチはこのアプリに不要なため deploy 前に除去する
+RUN node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('package.json')); if(p.pnpm?.patchedDependencies) delete p.pnpm.patchedDependencies; fs.writeFileSync('package.json', JSON.stringify(p, null, 2));"
 RUN pnpm --filter @tumiki/tumiki-cloud-api deploy --prod --legacy /prod/tumiki-cloud-api
 
 # ========================================
