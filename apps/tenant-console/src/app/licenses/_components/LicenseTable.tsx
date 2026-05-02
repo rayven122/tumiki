@@ -61,7 +61,7 @@ const LicenseTable = ({ initialData, tenants }: Props) => {
         </div>
       ) : (
         <>
-          <div className="overflow-hidden rounded-lg bg-white shadow">
+          <div className="overflow-x-auto rounded-lg bg-white shadow">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -138,7 +138,9 @@ const LicenseTable = ({ initialData, tenants }: Props) => {
           {hasMore && (
             <div className="mt-4 flex flex-col items-center gap-2">
               {loadMoreError && (
-                <p className="text-sm text-red-600">{loadMoreError.message}</p>
+                <p className="text-sm text-red-600">
+                  追加データの読み込みに失敗しました。再度お試しください。
+                </p>
               )}
               <button
                 type="button"
@@ -158,7 +160,6 @@ const LicenseTable = ({ initialData, tenants }: Props) => {
         <RevokeConfirmDialog
           licenseId={revokeTarget.id}
           subject={revokeTarget.subject}
-          isOpen={true}
           onClose={() => setRevokeTarget(null)}
           onRevoked={() => setRevokeTarget(null)}
         />

@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "@/trpc/react";
 
 type Props = {
   licenseId: string;
   subject: string;
-  isOpen: boolean;
   onClose: () => void;
   onRevoked: () => void;
 };
@@ -14,7 +13,6 @@ type Props = {
 const RevokeConfirmDialog = ({
   licenseId,
   subject,
-  isOpen,
   onClose,
   onRevoked,
 }: Props) => {
@@ -34,28 +32,25 @@ const RevokeConfirmDialog = ({
     },
   });
 
+  const handleClose = useCallback(() => {
+    setReason("");
+    setError(null);
+    onClose();
+  }, [onClose]);
+
   // Escape キーでダイアログを閉じる
   useEffect(() => {
-    if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") handleClose();
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen]);
+  }, [handleClose]);
 
   const handleRevoke = () => {
     setError(null);
     revokeLicense.mutate({ id: licenseId, reason: reason || undefined });
   };
-
-  const handleClose = () => {
-    setReason("");
-    setError(null);
-    onClose();
-  };
-
-  if (!isOpen) return null;
 
   return (
     // オーバーレイクリックで閉じる
