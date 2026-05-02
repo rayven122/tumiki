@@ -59,6 +59,10 @@
     "@tumiki/db#db:generate": {
       "outputs": ["prisma/generated/**"]
     },
+    "@tumiki/db#build": {
+      "dependsOn": ["^build", "db:generate"],
+      "outputs": ["dist/**"]
+    },
     "@tumiki/db#typecheck": {
       "dependsOn": ["^build", "db:generate"],
       "outputs": []
