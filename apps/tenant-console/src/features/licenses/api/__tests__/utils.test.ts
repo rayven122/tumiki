@@ -48,4 +48,10 @@ describe("computeStatus", () => {
       }),
     ).toStrictEqual("REVOKED");
   });
+
+  test("ACTIVE かつ expiresAt が現在時刻と同値の場合 EXPIRED を返す（<= 境界値）", () => {
+    expect(
+      computeStatus({ status: "ACTIVE", expiresAt: FIXED_NOW }),
+    ).toStrictEqual("EXPIRED");
+  });
 });

@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { Prisma } from "@db-client";
 import { type Context } from "@/server/api/trpc";
 import { type RevokeLicenseInput } from "./schemas";
+import { computeStatus } from "./utils";
 
 export const revokeLicense = async (
   ctx: Context,
@@ -10,7 +11,7 @@ export const revokeLicense = async (
   try {
     // status: "ACTIVE" を where に含めることで findUnique + update の TOCTOU 競合を原子的に防ぐ。
     // EXPIRED (status=ACTIVE かつ expiresAt 超過) も revoke 可能とする（不正流通 JWT の失効リスト追加用途）。
-    return await ctx.db.license.update({
+    const updated = await ctx.db.license.update({
       where: { id: input.id, status: "ACTIVE" },
       data: {
         status: "REVOKED",
@@ -18,6 +19,7 @@ export const revokeLicense = async (
         revokedReason: input.reason,
       },
     });
+    return { ...updated, computedStatus: computeStatus(updated) };
   } catch (e) {
     if (
       !(e instanceof Prisma.PrismaClientKnownRequestError) ||

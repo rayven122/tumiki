@@ -1,6 +1,6 @@
 import "server-only";
 
-import { initTRPC } from "@trpc/server";
+import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
@@ -21,9 +21,21 @@ const t = initTRPC.context<typeof createTRPCContext>().create({
   }),
 });
 
+// Cloudflare Access が設定するヘッダーの存在を確認するミドルウェア。
+// CF Access 設定ミスや内部ネットワークからの直接アクセスを防ぐアプリ層の多重防御。
+const operatorGuard = t.middleware(({ ctx, next }) => {
+  if (!ctx.headers.get("cf-access-jwt-assertion")) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "認証が必要です",
+    });
+  }
+  return next({ ctx });
+});
+
 export const createCallerFactory = t.createCallerFactory;
 export const createTRPCRouter = t.router;
-// 認証は Cloudflare Access でネットワークレベルで担保するため、アプリ層の認証ミドルウェアは不要
 export const procedure = t.procedure;
+export const operatorProcedure = t.procedure.use(operatorGuard);
 
 export type Context = Awaited<ReturnType<typeof createTRPCContext>>;

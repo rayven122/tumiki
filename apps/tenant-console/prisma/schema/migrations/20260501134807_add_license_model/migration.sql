@@ -1,17 +1,22 @@
--- CreateEnum
-CREATE TYPE "LicenseType" AS ENUM ('PERSONAL', 'TENANT');
+-- CreateEnum (db:push 済み環境での重複エラーを防ぐため DO ブロックで冪等化)
+DO $$ BEGIN
+  CREATE TYPE "LicenseType" AS ENUM ('PERSONAL', 'TENANT');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
--- CreateEnum
-CREATE TYPE "LicenseStatus" AS ENUM ('ACTIVE', 'REVOKED');
+DO $$ BEGIN
+  CREATE TYPE "LicenseStatus" AS ENUM ('ACTIVE', 'REVOKED');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
--- CreateEnum
-CREATE TYPE "TenantStatus" AS ENUM ('PROVISIONING', 'ACTIVE', 'ERROR', 'DELETING');
+DO $$ BEGIN
+  CREATE TYPE "TenantStatus" AS ENUM ('PROVISIONING', 'ACTIVE', 'ERROR', 'DELETING');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
--- CreateEnum
-CREATE TYPE "OidcType" AS ENUM ('KEYCLOAK', 'CUSTOM');
+DO $$ BEGIN
+  CREATE TYPE "OidcType" AS ENUM ('KEYCLOAK', 'CUSTOM');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- CreateTable
-CREATE TABLE "License" (
+CREATE TABLE IF NOT EXISTS "License" (
     "id" TEXT NOT NULL,
     "type" "LicenseType" NOT NULL,
     "subject" TEXT NOT NULL,
@@ -33,7 +38,7 @@ CREATE TABLE "License" (
 );
 
 -- CreateTable
-CREATE TABLE "Tenant" (
+CREATE TABLE IF NOT EXISTS "Tenant" (
     "id" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "domain" TEXT NOT NULL,
@@ -46,25 +51,27 @@ CREATE TABLE "Tenant" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "License_jti_key" ON "License"("jti");
+CREATE UNIQUE INDEX IF NOT EXISTS "License_jti_key" ON "License"("jti");
 
 -- CreateIndex
-CREATE INDEX "License_tenantId_idx" ON "License"("tenantId");
+CREATE INDEX IF NOT EXISTS "License_tenantId_idx" ON "License"("tenantId");
 
 -- CreateIndex
-CREATE INDEX "License_status_expiresAt_idx" ON "License"("status", "expiresAt");
+CREATE INDEX IF NOT EXISTS "License_status_expiresAt_idx" ON "License"("status", "expiresAt");
 
 -- CreateIndex
-CREATE INDEX "License_type_status_idx" ON "License"("type", "status");
+CREATE INDEX IF NOT EXISTS "License_type_status_idx" ON "License"("type", "status");
 
 -- CreateIndex
-CREATE INDEX "License_subject_idx" ON "License"("subject");
+CREATE INDEX IF NOT EXISTS "License_subject_idx" ON "License"("subject");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Tenant_slug_key" ON "Tenant"("slug");
+CREATE UNIQUE INDEX IF NOT EXISTS "Tenant_slug_key" ON "Tenant"("slug");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Tenant_domain_key" ON "Tenant"("domain");
+CREATE UNIQUE INDEX IF NOT EXISTS "Tenant_domain_key" ON "Tenant"("domain");
 
--- AddForeignKey
-ALTER TABLE "License" ADD CONSTRAINT "License_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+-- AddForeignKey (重複制約エラーを DO ブロックで安全処理)
+DO $$ BEGIN
+  ALTER TABLE "License" ADD CONSTRAINT "License_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
