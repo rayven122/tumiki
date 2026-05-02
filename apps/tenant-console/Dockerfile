@@ -49,6 +49,8 @@ ENV INFISICAL_ORG_ID=build
 ENV INFISICAL_OPERATOR_CLIENT_ID=build
 ENV INFISICAL_OPERATOR_CLIENT_SECRET=build
 ENV INFISICAL_OPERATOR_IDENTITY_ID=build
+# ライセンス署名秘密鍵ダミー値（実行時は Infisical Operator が同期した正しい値で上書き）
+ENV LICENSE_SIGNING_PRIVATE_KEY=build
 RUN pnpm --filter @tumiki/tenant-console run build:bare
 
 # ========================================
