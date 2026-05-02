@@ -72,14 +72,17 @@ const detectPlatform = () => `${process.platform}-${process.arch}`;
 const parseArgs = () => {
   const argv = process.argv.slice(2);
   const force = argv.includes("--force");
+  // --strict 指定 or --all/--platform で明示指定された場合は未対応プラットフォームをエラーにする
+  // postinstall 経由のデフォルト呼び出しではスキップで CI を通す
   if (argv.includes("--all")) {
-    return { platforms: Object.keys(PLATFORM_MAP), force };
+    return { platforms: Object.keys(PLATFORM_MAP), force, strict: true };
   }
   const platformIndex = argv.indexOf("--platform");
   if (platformIndex >= 0 && argv[platformIndex + 1]) {
-    return { platforms: [argv[platformIndex + 1]], force };
+    return { platforms: [argv[platformIndex + 1]], force, strict: true };
   }
-  return { platforms: [detectPlatform()], force };
+  const strict = argv.includes("--strict");
+  return { platforms: [detectPlatform()], force, strict };
 };
 
 /**
@@ -183,11 +186,16 @@ const installUv = async (platform, target) => {
   }
 };
 
-const setupPlatform = async (platform, force) => {
+const setupPlatform = async (platform, force, strict) => {
   if (!PLATFORM_MAP[platform]) {
-    throw new Error(
-      `未対応プラットフォーム: ${platform} (対応: ${Object.keys(PLATFORM_MAP).join(", ")})`,
-    );
+    const message = `未対応プラットフォーム: ${platform} (対応: ${Object.keys(PLATFORM_MAP).join(", ")})`;
+    if (strict) {
+      throw new Error(message);
+    }
+    // CI (Linux) や開発しないプラットフォームでは postinstall 経由で呼ばれた際にスキップする
+    // リリースビルドでは --all でサポート全プラットフォームを明示的に取得するため、ここはスキップで安全
+    log(`${platform}: ${message} → スキップ`);
+    return;
   }
   const target = path.join(RUNTIME_ROOT, platform);
   const sentinel = path.join(target, ".tumiki-runtime.json");
@@ -215,12 +223,12 @@ const setupPlatform = async (platform, force) => {
 };
 
 const main = async () => {
-  const { platforms, force } = parseArgs();
+  const { platforms, force, strict } = parseArgs();
   log(
     `対象プラットフォーム: ${platforms.join(", ")}${force ? " (--force)" : ""}`,
   );
   for (const platform of platforms) {
-    await setupPlatform(platform, force);
+    await setupPlatform(platform, force, strict);
   }
   log("すべてのランタイム取得が完了しました");
 };
