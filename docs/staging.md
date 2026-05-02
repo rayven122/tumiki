@@ -57,16 +57,17 @@ GitHub Actions の `Deploy Apps` ワークフローを手動実行。
 ### アプリデプロイフロー
 
 ```
-① Checkout               リポジトリをチェックアウト
-② Setup Cloudflare SSH   cloudflared + SSH 設定（composite action）
-③ Transfer compose.yaml  VM に compose.yaml を転送
-④ Deploy containers      VM 上で実行:
-   - infisical export → .env 生成（VM が Infisical から直接取得）
+① Checkout                  リポジトリをチェックアウト
+② Setup Cloudflare SSH      cloudflared + SSH 設定（composite action）
+③ Fetch secrets             runner 上で Infisical/secrets-action@v1 → /tmp/tumiki.env 生成
+④ Restrict permissions      chmod 600 /tmp/tumiki.env
+⑤ Transfer files            compose.yaml・.env を VM に scp 転送
+⑥ Deploy containers         VM 上で実行:
    - docker compose pull（最新イメージ取得）
-   - docker compose up -d
+   - docker compose up -d --remove-orphans
    - .env 削除
-⑤ Verify health endpoints 3エンドポイントが 200 OK になるまで確認
-⑥ Cleanup               一時ファイル・SSH 鍵を削除
+⑦ Verify health endpoints   3エンドポイントが 200 OK になるまで確認
+⑧ Cleanup                   VM 側 .env を SSH 越しに削除 + 一時ファイル・SSH 鍵を削除
 ```
 
 ### Keycloak デプロイフロー
@@ -75,14 +76,14 @@ GitHub Actions の `Deploy Apps` ワークフローを手動実行。
 
 ```
 ① Checkout
-② Setup Cloudflare SSH    cloudflared + SSH 設定（stg-ssh.tumiki.cloud 宛て）
-③ Configure ProxyJump     ~/.ssh/config に 10.11.0.15 向け ProxyJump を設定
-④ Transfer files          compose.yaml・テーマファイルを Keycloak VM に転送
-⑤ Deploy Keycloak         Keycloak VM 上で:
-   - infisical run（Machine Identity）でシークレット注入
-   - docker compose pull & up
-⑥ Verify health           localhost:9000/health/ready を確認
-⑦ Cleanup
+② Setup Cloudflare SSH      cloudflared + SSH 設定（stg-ssh.tumiki.cloud 宛て）
+③ Configure ProxyJump       ~/.ssh/config に 10.11.0.15 向け ProxyJump を設定
+④ Fetch secrets             runner 上で Infisical/secrets-action@v1 → /tmp/keycloak.env 生成
+⑤ Restrict permissions      chmod 600 /tmp/keycloak.env
+⑥ Transfer files            compose.yaml・テーマファイル・.env を Keycloak VM に scp 転送
+⑦ Deploy Keycloak           Keycloak VM 上で docker compose pull & up（.env を自動読み込み）
+⑧ Verify health             localhost:9000/health/ready を確認
+⑨ Cleanup                   VM 側 .env を SSH 越しに削除 + 一時ファイル・SSH 鍵を削除
 ```
 
 ### Keycloak 接続経路（2ホップ）
