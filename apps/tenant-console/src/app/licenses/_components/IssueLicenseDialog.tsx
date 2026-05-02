@@ -6,12 +6,11 @@ import { type AvailableFeature } from "@/features/licenses/api/schemas";
 
 type Props = {
   tenants: Array<{ id: string; slug: string }>;
-  onSuccess?: () => void;
 };
 
 type LicenseType = "PERSONAL" | "TENANT";
 
-const IssueLicenseDialog = ({ tenants, onSuccess }: Props) => {
+const IssueLicenseDialog = ({ tenants }: Props) => {
   const [isOpen, setIsOpen] = useState(false);
   // 発行完了後にトークンを保持する state
   const [issuedToken, setIssuedToken] = useState<string | null>(null);
@@ -25,10 +24,12 @@ const IssueLicenseDialog = ({ tenants, onSuccess }: Props) => {
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  const utils = api.useUtils();
   const issueLicense = api.license.issue.useMutation({
     onSuccess: (data) => {
       setIssuedToken(data.token);
       setError(null);
+      void utils.license.list.invalidate();
     },
     onError: (err) => {
       setError(err.message);
@@ -66,7 +67,6 @@ const IssueLicenseDialog = ({ tenants, onSuccess }: Props) => {
     setIsOpen(false);
     setIssuedToken(null);
     resetForm();
-    onSuccess?.();
   };
 
   const handleFeatureToggle = (feature: AvailableFeature) => {

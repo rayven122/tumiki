@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useCallback } from "react";
 import { api } from "@/trpc/react";
 import { type RouterOutputs } from "@/trpc/react";
 import RevokeConfirmDialog from "./RevokeConfirmDialog";
@@ -10,83 +9,50 @@ import IssueLicenseDialog from "./IssueLicenseDialog";
 type LicenseItem = RouterOutputs["license"]["list"]["items"][number];
 
 type Props = {
-  initialData: {
-    items: LicenseItem[];
-    nextCursor: string | undefined;
-    hasMore: boolean;
-  };
+  initialData: RouterOutputs["license"]["list"];
   tenants: Array<{ id: string; slug: string }>;
 };
 
-// computedStatus に応じたバッジのスタイルを返す
 const statusBadgeClass = (status: "ACTIVE" | "REVOKED" | "EXPIRED") => {
   if (status === "ACTIVE") return "bg-green-100 text-green-800";
   if (status === "EXPIRED") return "bg-yellow-100 text-yellow-800";
   return "bg-red-100 text-red-800";
 };
 
-// type に応じたバッジのスタイルを返す
 const typeBadgeClass = (type: "PERSONAL" | "TENANT") => {
   if (type === "PERSONAL") return "bg-blue-100 text-blue-800";
   return "bg-purple-100 text-purple-800";
 };
 
 const LicenseTable = ({ initialData, tenants }: Props) => {
-  const router = useRouter();
-  const [items, setItems] = useState<LicenseItem[]>(initialData.items);
-  const [nextCursor, setNextCursor] = useState<string | undefined>(
-    initialData.nextCursor,
-  );
-  const [hasMore, setHasMore] = useState(initialData.hasMore);
-
-  // router.refresh() 後に RSC から新しい initialData が来たとき state を同期する
-  useEffect(() => {
-    setItems(initialData.items);
-    setNextCursor(initialData.nextCursor);
-    setHasMore(initialData.hasMore);
-  }, [initialData]);
-
-  // 失効確認ダイアログの表示対象
   const [revokeTarget, setRevokeTarget] = useState<LicenseItem | null>(null);
 
-  const utils = api.useUtils();
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
+  const {
+    data,
+    fetchNextPage,
+    isFetchingNextPage,
+    error: loadMoreError,
+  } = api.license.list.useInfiniteQuery(
+    {},
+    {
+      getNextPageParam: (lastPage) => lastPage.nextCursor,
+      initialData: { pages: [initialData], pageParams: [undefined] },
+    },
+  );
 
-  // cursor ベースの追加読み込み（list は query のため useUtils 経由で手動フェッチ）
-  const handleLoadMore = useCallback(async () => {
-    if (!nextCursor) return;
-    setIsLoadingMore(true);
-    setLoadMoreError(null);
-    try {
-      const data = await utils.license.list.fetch({ cursor: nextCursor });
-      setItems((prev) => [...prev, ...data.items]);
-      setNextCursor(data.nextCursor);
-      setHasMore(data.hasMore);
-    } catch (err) {
-      setLoadMoreError(
-        err instanceof Error ? err.message : "読み込みに失敗しました",
-      );
-    } finally {
-      setIsLoadingMore(false);
-    }
-  }, [nextCursor, utils.license.list]);
+  const items = data.pages.flatMap((page) => page.items);
+  const hasMore = data.pages[data.pages.length - 1]?.hasMore ?? false;
 
-  const handleRevoked = useCallback(() => {
-    setRevokeTarget(null);
-    router.refresh();
-  }, [router]);
-
-  const handleIssueSuccess = useCallback(() => {
-    router.refresh();
-  }, [router]);
+  const handleLoadMore = useCallback(() => {
+    void fetchNextPage();
+  }, [fetchNextPage]);
 
   return (
     <div>
       {/* ヘッダー行 */}
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">ライセンス一覧</h1>
-        <IssueLicenseDialog tenants={tenants} onSuccess={handleIssueSuccess} />
+        <IssueLicenseDialog tenants={tenants} />
       </div>
 
       {items.length === 0 ? (
@@ -172,15 +138,15 @@ const LicenseTable = ({ initialData, tenants }: Props) => {
           {hasMore && (
             <div className="mt-4 flex flex-col items-center gap-2">
               {loadMoreError && (
-                <p className="text-sm text-red-600">{loadMoreError}</p>
+                <p className="text-sm text-red-600">{loadMoreError.message}</p>
               )}
               <button
                 type="button"
-                onClick={() => void handleLoadMore()}
-                disabled={isLoadingMore}
+                onClick={handleLoadMore}
+                disabled={isFetchingNextPage}
                 className="min-h-[44px] rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
               >
-                {isLoadingMore ? "読み込み中..." : "さらに読み込む"}
+                {isFetchingNextPage ? "読み込み中..." : "さらに読み込む"}
               </button>
             </div>
           )}
@@ -194,7 +160,7 @@ const LicenseTable = ({ initialData, tenants }: Props) => {
           subject={revokeTarget.subject}
           isOpen={true}
           onClose={() => setRevokeTarget(null)}
-          onRevoked={handleRevoked}
+          onRevoked={() => setRevokeTarget(null)}
         />
       )}
     </div>

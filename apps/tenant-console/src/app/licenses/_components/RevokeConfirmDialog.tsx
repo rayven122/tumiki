@@ -21,10 +21,12 @@ const RevokeConfirmDialog = ({
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  const utils = api.useUtils();
   const revokeLicense = api.license.revoke.useMutation({
     onSuccess: () => {
       setReason("");
       setError(null);
+      void utils.license.list.invalidate();
       onRevoked();
     },
     onError: (err) => {
