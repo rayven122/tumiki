@@ -9,19 +9,22 @@ import {
 
 type Props = {
   tenants: Array<{ id: string; slug: string }>;
+  defaultTenantId?: string;
 };
 
 type LicenseType = "PERSONAL" | "TENANT";
 
-const IssueLicenseDialog = ({ tenants }: Props) => {
+const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
   const [isOpen, setIsOpen] = useState(false);
   const [issuedToken, setIssuedToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [licenseType, setLicenseType] = useState<LicenseType>("PERSONAL");
-  const [subject, setSubject] = useState("");
-  const [tenantId, setTenantId] = useState("");
+  const [licenseType, setLicenseType] = useState<LicenseType>(
+    defaultTenantId ? "TENANT" : "PERSONAL",
+  );
+  const [subject, setSubject] = useState(defaultTenantId ?? "");
+  const [tenantId, setTenantId] = useState(defaultTenantId ?? "");
   const [features, setFeatures] = useState<AvailableFeature[]>([]);
   const [ttlDays, setTtlDays] = useState(365);
   const [plan, setPlan] = useState("");
@@ -42,15 +45,15 @@ const IssueLicenseDialog = ({ tenants }: Props) => {
 
   const resetForm = useCallback(() => {
     setIssuedToken(null);
-    setLicenseType("PERSONAL");
-    setSubject("");
-    setTenantId("");
+    setLicenseType(defaultTenantId ? "TENANT" : "PERSONAL");
+    setSubject(defaultTenantId ?? "");
+    setTenantId(defaultTenantId ?? "");
     setFeatures([]);
     setTtlDays(365);
     setPlan("");
     setNotes("");
     setError(null);
-  }, []);
+  }, [defaultTenantId]);
 
   const handleClose = useCallback(() => {
     setIsOpen(false);
