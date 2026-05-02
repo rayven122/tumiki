@@ -74,15 +74,16 @@ jobs:
 
       - name: 📤 Transfer Terraform files
         run: |
+          # 前回 cleanup が失敗していた場合に備えて既存 .env を削除（リカバリ）
           ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
-            "mkdir -p ~/keycloak-tf"
+            "mkdir -p ~/keycloak-tf && rm -f ~/keycloak-tf/.env"
           tar -czf - -C terraform/keycloak \
             --exclude='.terraform' --exclude='*.tfstate' --exclude='*.tfstate.*' \
             . | ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
             "tar -xzf - -C ~/keycloak-tf"
-          scp -i ~/.ssh/id_ed25519 /tmp/keycloak-tf.env "${SSH_USER}@${SSH_HOST}:~/keycloak-tf/.env"
-          # VM 側 umask 依存を排除し明示的に 600 に制限（Defence in Depth）
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" 'chmod 600 ~/keycloak-tf/.env'
+          # install -m 600 でファイル作成と権限設定をアトミックに実施（scp + chmod のウィンドウを排除）
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
+            'install -m 600 /dev/stdin ~/keycloak-tf/.env' < /tmp/keycloak-tf.env
 
       - name: 🏗️ Terraform Apply (staging)
         env:
@@ -167,15 +168,16 @@ jobs:
 
       - name: 📤 Transfer Terraform files
         run: |
+          # 前回 cleanup が失敗していた場合に備えて既存 .env を削除（リカバリ）
           ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
-            "mkdir -p ~/keycloak-tf"
+            "mkdir -p ~/keycloak-tf && rm -f ~/keycloak-tf/.env"
           tar -czf - -C terraform/keycloak \
             --exclude='.terraform' --exclude='*.tfstate' --exclude='*.tfstate.*' \
             . | ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
             "tar -xzf - -C ~/keycloak-tf"
-          scp -i ~/.ssh/id_ed25519 /tmp/keycloak-tf.env "${SSH_USER}@${SSH_HOST}:~/keycloak-tf/.env"
-          # VM 側 umask 依存を排除し明示的に 600 に制限（Defence in Depth）
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" 'chmod 600 ~/keycloak-tf/.env'
+          # install -m 600 でファイル作成と権限設定をアトミックに実施（scp + chmod のウィンドウを排除）
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
+            'install -m 600 /dev/stdin ~/keycloak-tf/.env' < /tmp/keycloak-tf.env
 
       - name: 🏗️ Terraform Apply (production)
         env:
