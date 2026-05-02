@@ -24,6 +24,11 @@ const config = {
       source: "/.well-known/jwks.json",
       destination: "/api/well-known/jwks.json",
     },
+    // jackson の OIDC Discovery が返す jwks_uri は /oauth/jwks のため rewrite で吸収する
+    {
+      source: "/oauth/jwks",
+      destination: "/api/well-known/jwks.json",
+    },
   ],
 };
 
