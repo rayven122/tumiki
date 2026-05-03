@@ -5,10 +5,12 @@ import { db } from "@tumiki/internal-db/server";
 import { verifyDesktopJwt } from "~/lib/auth/verify-desktop-jwt";
 
 const auditLogEntrySchema = z.object({
-  mcpServerId: z.string(),
-  toolName: z.string().max(255),
-  method: z.string().max(64),
-  httpStatus: z.number().int(),
+  sourceInstallationId: z.string().min(1).max(128),
+  sourceAuditLogId: z.number().int().positive(),
+  mcpServerId: z.string().min(1).max(64),
+  toolName: z.string().min(1).max(255),
+  method: z.string().min(1).max(64),
+  httpStatus: z.number().int().min(100).max(599),
   durationMs: z.number().int().nonnegative(),
   inputBytes: z.number().int().nonnegative(),
   outputBytes: z.number().int().nonnegative(),
@@ -19,16 +21,18 @@ const auditLogEntrySchema = z.object({
 });
 
 const requestBodySchema = z.object({
-  logs: z.array(auditLogEntrySchema).min(1).max(1000),
+  logs: z.array(auditLogEntrySchema).min(1).max(100),
 });
 
-/**
- * Desktop監査ログ一括受信エンドポイント
- *
- * PER_USER接続（Desktop→MCPサーバー直接）のログをDesktopが定期送信する。
- * Bearer JWT（OIDCアクセストークン）で認証。
- */
+// Desktop監査ログ一括受信エンドポイント。Bearer JWTで認証する。
 export const POST = async (request: NextRequest) => {
+  let verifiedUser: Awaited<ReturnType<typeof verifyDesktopJwt>>;
+  try {
+    verifiedUser = await verifyDesktopJwt(request.headers.get("Authorization"));
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   let body: unknown;
   try {
     body = await request.json();
@@ -44,32 +48,36 @@ export const POST = async (request: NextRequest) => {
     );
   }
 
-  let verifiedUser: Awaited<ReturnType<typeof verifyDesktopJwt>>;
-  try {
-    verifiedUser = await verifyDesktopJwt(request.headers.get("Authorization"));
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const { logs } = parsed.data;
 
-  await db.desktopAuditLog.createMany({
-    data: logs.map((log) => ({
-      userId: verifiedUser.userId,
-      mcpServerId: log.mcpServerId,
-      toolName: log.toolName,
-      method: log.method,
-      httpStatus: log.httpStatus,
-      durationMs: log.durationMs,
-      inputBytes: log.inputBytes,
-      outputBytes: log.outputBytes,
-      errorCode: log.errorCode,
-      errorSummary: log.errorSummary,
-      occurredAt: new Date(log.occurredAt),
-    })),
-  });
+  let result: { count: number };
+  try {
+    result = await db.desktopAuditLog.createMany({
+      data: logs.map((log) => ({
+        sourceInstallationId: log.sourceInstallationId,
+        sourceAuditLogId: log.sourceAuditLogId,
+        userId: verifiedUser.userId,
+        mcpServerId: log.mcpServerId,
+        toolName: log.toolName,
+        method: log.method,
+        httpStatus: log.httpStatus,
+        durationMs: log.durationMs,
+        inputBytes: log.inputBytes,
+        outputBytes: log.outputBytes,
+        errorCode: log.errorCode,
+        errorSummary: log.errorSummary,
+        occurredAt: new Date(log.occurredAt),
+      })),
+      skipDuplicates: true,
+    });
+  } catch {
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
+  }
 
-  return NextResponse.json({ inserted: logs.length });
+  return NextResponse.json({ inserted: result.count });
 };
 
 export const dynamic = "force-dynamic";

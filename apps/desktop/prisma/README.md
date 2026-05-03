@@ -104,6 +104,10 @@ erDiagram
   String detail "nullable"
   Json piiDetections "nullable"
   String piiPolicy "nullable"
+  AuditLogSyncStatus syncStatus
+  DateTime syncedAt "nullable"
+  Int retryCount
+  DateTime lastSyncTriedAt "nullable"
   DateTime createdAt
   Int serverId FK
   String connectionName "nullable"
@@ -207,6 +211,10 @@ MCPサーバー（仮想・統合サーバー = Proxyエンドポイント）
   - `piiPolicy`
     > 検出時に適用したマスキングポリシー（mask / detect-only / block）
     > null の場合はフィルタ無効
+  - `syncStatus`: 管理サーバーへの同期状態
+  - `syncedAt`: 管理サーバーへの同期完了日時
+  - `retryCount`: 管理サーバーへの同期試行回数
+  - `lastSyncTriedAt`: 最後の同期試行日時
   - `createdAt`: 
   - `serverId`: 対象MCPサーバー
   - `connectionName`: 対象MCP接続名（接続削除後もログで識別可能にするため名前で保持）

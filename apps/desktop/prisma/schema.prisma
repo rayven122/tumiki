@@ -51,6 +51,17 @@ enum ServerStatus {
   PENDING
 }
 
+/// 監査ログの管理サーバー同期状態
+/// @namespace McpServer
+enum AuditLogSyncStatus {
+  /// 未送信
+  PENDING
+  /// 送信済み
+  SYNCED
+  /// 送信失敗（次回以降に再試行）
+  FAILED
+}
+
 /// 認証トークン
 /// @namespace Auth
 model AuthToken {
@@ -247,6 +258,14 @@ model AuditLog {
   /// 検出時に適用したマスキングポリシー（mask / detect-only / block）
   /// null の場合はフィルタ無効
   piiPolicy      String?
+  /// 管理サーバーへの同期状態
+  syncStatus     AuditLogSyncStatus @default(PENDING)
+  /// 管理サーバーへの同期完了日時
+  syncedAt       DateTime?
+  /// 管理サーバーへの同期試行回数
+  retryCount     Int                @default(0)
+  /// 最後の同期試行日時
+  lastSyncTriedAt DateTime?
   createdAt      DateTime      @default(now())
 
   /// 対象MCPサーバー
@@ -261,4 +280,5 @@ model AuditLog {
 
   @@index([serverId, createdAt])
   @@index([createdAt])
+  @@index([syncStatus, createdAt])
 }
