@@ -29,6 +29,16 @@ export type CreateMcpConnectionInput = {
 };
 
 /**
+ * MCPツール作成時の入力データ型（接続単位で一括投入する）
+ */
+export type CreateMcpToolInput = {
+  name: string;
+  description: string;
+  inputSchema: string;
+  connectionId: number;
+};
+
+/**
  * MCPサーバーを接続情報付きで全件取得
  */
 export const findAllWithConnections = async (db: DbClient) => {
@@ -64,6 +74,39 @@ export const createConnection = async (
   data: CreateMcpConnectionInput,
 ) => {
   return db.mcpConnection.create({ data });
+};
+
+/**
+ * 指定接続のツールを一括作成
+ * 同一接続に対する2回目以降の呼び出しに備え、unique制約 [connectionId, name] 違反は
+ * createMany 単体では skip できないため、再取得シナリオでは事前に既存tools削除を行う
+ */
+export const createTools = async (db: DbClient, data: CreateMcpToolInput[]) => {
+  if (data.length === 0) return { count: 0 };
+  return db.mcpTool.createMany({ data });
+};
+
+/**
+ * 指定接続のツールを取得（catalogIdなしのツール再取得時のクリーンアップ等で使用）
+ */
+export const deleteToolsByConnectionId = async (
+  db: DbClient,
+  connectionId: number,
+) => {
+  return db.mcpTool.deleteMany({ where: { connectionId } });
+};
+
+/**
+ * 接続をIDで取得（ツール取得時のconfig生成用にserver情報を含める）
+ */
+export const findConnectionByIdWithServer = async (
+  db: DbClient,
+  connectionId: number,
+) => {
+  return db.mcpConnection.findUnique({
+    where: { id: connectionId },
+    include: { server: true },
+  });
 };
 
 /**
