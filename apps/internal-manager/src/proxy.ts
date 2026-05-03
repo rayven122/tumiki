@@ -33,7 +33,7 @@ export const proxy = async (req: NextRequest) => {
     pathname.startsWith("/admin") &&
     session.user.role !== Role.SYSTEM_ADMIN
   ) {
-    return new NextResponse("Forbidden", { status: 403 });
+    return new NextResponse(null, { status: 404 });
   }
 };
 

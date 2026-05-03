@@ -38,6 +38,7 @@ export const createUser = async (
   input: CreateUserInput,
 ): Promise<CreateUserOutput> => {
   const existingUserCount = await tx.user.count();
+  // 初期セットアップの単一路径を前提に、最初の1ユーザーだけ管理者にする。
   const role = existingUserCount === 0 ? Role.SYSTEM_ADMIN : Role.USER;
 
   const createdUser = await tx.user.create({

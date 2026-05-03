@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { getOidcEnv } from "~/lib/env";
 
 /**
- * Desktop向けOIDC設定取得エンドポイント（認証不要）
+ * OIDC設定取得エンドポイント（認証不要）
  *
- * DesktopはこのエンドポイントでissuerとclientIdを取得し、
+ * クライアントはこのエンドポイントでissuerと管理サーバー用clientIdを取得し、
  * OIDCディスカバリ経由で認証エンドポイントを動的取得する。
  * 管理サーバーのURLだけ知っていれば認証を開始できる。
  */
