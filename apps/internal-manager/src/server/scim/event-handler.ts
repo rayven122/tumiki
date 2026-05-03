@@ -26,6 +26,28 @@ const buildDisplayName = (firstName?: string, lastName?: string) => {
   return parts.length > 0 ? parts.join(" ") : null;
 };
 
+// user.created と user.updated の両方で使う upsert ロジック
+// （update のみだと P2025、create のみだと P2002 が出るため両イベントで同じ実装を共有）
+type ScimUserData = Extract<DirectorySyncEvent["data"], { email: string }>;
+const upsertScimUser = (data: ScimUserData) =>
+  db.user.upsert({
+    where: { id: data.id },
+    create: {
+      id: data.id,
+      email: data.email || null,
+      name: buildDisplayName(data.first_name, data.last_name),
+      isActive: data.active,
+      externalIdentities: {
+        create: { provider: SCIM_PROVIDER, sub: data.id },
+      },
+    },
+    update: {
+      email: data.email || null,
+      name: buildDisplayName(data.first_name, data.last_name),
+      isActive: data.active,
+    },
+  });
+
 /**
  * Jackson Directory Sync の eventCallback
  *
@@ -50,23 +72,7 @@ export const handleDirectorySyncEvent = async (
     switch (type) {
       case "user.created": {
         if (!isUser(data)) break;
-        await db.user.upsert({
-          where: { id: data.id },
-          create: {
-            id: data.id,
-            email: data.email || null,
-            name: buildDisplayName(data.first_name, data.last_name),
-            isActive: data.active,
-            externalIdentities: {
-              create: { provider: SCIM_PROVIDER, sub: data.id },
-            },
-          },
-          update: {
-            email: data.email || null,
-            name: buildDisplayName(data.first_name, data.last_name),
-            isActive: data.active,
-          },
-        });
+        await upsertScimUser(data);
         added = 1;
         break;
       }
@@ -75,23 +81,7 @@ export const handleDirectorySyncEvent = async (
         if (!isUser(data)) break;
         // 過去に user.created がエラーで失敗していた場合に備えて upsert を使用
         // （update のみだと P2025 RecordNotFound で同期が永続的に失敗し続ける）
-        await db.user.upsert({
-          where: { id: data.id },
-          create: {
-            id: data.id,
-            email: data.email || null,
-            name: buildDisplayName(data.first_name, data.last_name),
-            isActive: data.active,
-            externalIdentities: {
-              create: { provider: SCIM_PROVIDER, sub: data.id },
-            },
-          },
-          update: {
-            email: data.email || null,
-            name: buildDisplayName(data.first_name, data.last_name),
-            isActive: data.active,
-          },
-        });
+        await upsertScimUser(data);
         break;
       }
 
@@ -180,7 +170,8 @@ export const handleDirectorySyncEvent = async (
         });
         groupId = data.group.id;
         added = 1;
-        await db.group.update({
+        // group が削除済みでも P2025 を出さないよう updateMany を使用（冪等）
+        await db.group.updateMany({
           where: { id: data.group.id },
           data: { lastSyncedAt: new Date() },
         });
@@ -194,7 +185,8 @@ export const handleDirectorySyncEvent = async (
         });
         groupId = data.group.id;
         removed = del.count;
-        await db.group.update({
+        // group が削除済みでも P2025 を出さないよう updateMany を使用（冪等）
+        await db.group.updateMany({
           where: { id: data.group.id },
           data: { lastSyncedAt: new Date() },
         });
