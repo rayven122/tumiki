@@ -1,7 +1,7 @@
 import { ipcMain } from "electron";
 import { z } from "zod";
 import * as service from "./audit-log.service";
-import { deleteOldAuditLogs } from "./audit-log.writer";
+import { deleteOldAuditLogs } from "../mcp-audit-log/mcp-audit-log.writer";
 import * as logger from "../../shared/utils/logger";
 
 // IPC入力のバリデーションスキーマ

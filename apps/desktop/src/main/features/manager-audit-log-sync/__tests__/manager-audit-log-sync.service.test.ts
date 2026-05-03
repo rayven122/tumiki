@@ -10,10 +10,10 @@ vi.mock("../../../shared/utils/logger", () => ({
   warn: vi.fn(),
 }));
 
-import { syncAuditLogToManager } from "../audit-log.sync";
+import { syncAuditLogToManager } from "../manager-audit-log-sync.service";
 import { postManagerApi } from "../../../shared/manager-api-client";
 
-describe("audit-log.sync", () => {
+describe("manager-audit-log-sync.service", () => {
   const input = {
     toolName: "list_repos",
     method: "tools/call" as const,

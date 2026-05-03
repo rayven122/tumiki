@@ -10,10 +10,10 @@ vi.mock("electron", () => ({
 vi.mock("../../../shared/db");
 
 // テスト対象のインポート（モックの後に行う）
-import { writeAuditLog, deleteOldAuditLogs } from "../audit-log.writer";
+import { writeAuditLog, deleteOldAuditLogs } from "../mcp-audit-log.writer";
 import { getDb } from "../../../shared/db";
 
-describe("audit-log.writer", () => {
+describe("mcp-audit-log.writer", () => {
   const mockCreate = vi.fn().mockResolvedValue({ id: 1 });
   const mockDeleteMany = vi.fn().mockResolvedValue({ count: 3 });
   const mockDb = {
