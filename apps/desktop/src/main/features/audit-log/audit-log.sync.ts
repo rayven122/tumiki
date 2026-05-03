@@ -1,5 +1,5 @@
 import type { Prisma } from "@prisma/desktop-client";
-import { postManagerJson } from "../../shared/manager-api-client";
+import { postManagerApi } from "../../shared/manager-api-client";
 import * as logger from "../../shared/utils/logger";
 
 const POST_TIMEOUT_MS = 10_000;
@@ -49,7 +49,7 @@ export const syncAuditLogToManager = async (
   input: Prisma.AuditLogUncheckedCreateInput,
 ): Promise<boolean> => {
   try {
-    const response = await postManagerJson(
+    const response = await postManagerApi(
       "/api/internal/audit-logs",
       { logs: [buildRemoteLog(input)] },
       {

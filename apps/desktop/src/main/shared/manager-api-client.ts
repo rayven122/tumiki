@@ -63,7 +63,7 @@ export const requestManagerApi = async (
   });
 };
 
-export const postManagerJson = async (
+export const postManagerApi = async (
   path: string,
   body: unknown,
   options: ManagerRequestOptions = {},

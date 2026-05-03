@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 vi.mock("../../../shared/manager-api-client", () => ({
-  postManagerJson: vi.fn(),
+  postManagerApi: vi.fn(),
 }));
 vi.mock("../../../shared/utils/logger", () => ({
   debug: vi.fn(),
@@ -11,7 +11,7 @@ vi.mock("../../../shared/utils/logger", () => ({
 }));
 
 import { syncAuditLogToManager } from "../audit-log.sync";
-import { postManagerJson } from "../../../shared/manager-api-client";
+import { postManagerApi } from "../../../shared/manager-api-client";
 
 describe("audit-log.sync", () => {
   const input = {
@@ -29,13 +29,13 @@ describe("audit-log.sync", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(postManagerJson).mockResolvedValue(
+    vi.mocked(postManagerApi).mockResolvedValue(
       new Response(JSON.stringify({ inserted: 1 }), { status: 200 }),
     );
   });
 
   test("Manager API clientがスキップした場合はfalseを返す", async () => {
-    vi.mocked(postManagerJson).mockResolvedValue(null);
+    vi.mocked(postManagerApi).mockResolvedValue(null);
 
     const result = await syncAuditLogToManager(input);
 
@@ -46,7 +46,7 @@ describe("audit-log.sync", () => {
     const result = await syncAuditLogToManager(input);
 
     expect(result).toBe(true);
-    expect(postManagerJson).toHaveBeenCalledWith(
+    expect(postManagerApi).toHaveBeenCalledWith(
       "/api/internal/audit-logs",
       {
         logs: [
@@ -71,7 +71,7 @@ describe("audit-log.sync", () => {
   });
 
   test("POSTが失敗した場合はfalseを返す", async () => {
-    vi.mocked(postManagerJson).mockResolvedValue(
+    vi.mocked(postManagerApi).mockResolvedValue(
       new Response("error", { status: 500 }),
     );
 

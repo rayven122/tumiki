@@ -20,7 +20,7 @@ vi.mock("../app-store", () => ({
 vi.mock("../db");
 vi.mock("../../utils/encryption");
 
-import { postManagerJson, requestManagerApi } from "../manager-api-client";
+import { postManagerApi, requestManagerApi } from "../manager-api-client";
 import { getDb } from "../db";
 import { decryptToken } from "../../utils/encryption";
 
@@ -65,7 +65,7 @@ describe("manager-api-client", () => {
       updatedAt: new Date("2026-05-03T09:00:00.000Z"),
     });
 
-    const result = await postManagerJson("/api/internal/example", {
+    const result = await postManagerApi("/api/internal/example", {
       hello: "world",
     });
 
