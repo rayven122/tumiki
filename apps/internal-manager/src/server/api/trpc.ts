@@ -152,7 +152,9 @@ export const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
     });
   }
 
-  return next({ ctx });
+  return next({
+    ctx: ctx as AdminContext,
+  });
 });
 
 export type Context = Awaited<ReturnType<typeof createTRPCContext>>;

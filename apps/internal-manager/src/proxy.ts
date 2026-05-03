@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { Role } from "@tumiki/internal-db";
 import { auth } from "~/auth";
 import { isOidcConfigured } from "~/lib/env";
 
@@ -28,7 +29,10 @@ export const proxy = async (req: NextRequest) => {
     return NextResponse.redirect(signInUrl);
   }
 
-  if (pathname.startsWith("/admin") && session.user.role !== "SYSTEM_ADMIN") {
+  if (
+    pathname.startsWith("/admin") &&
+    session.user.role !== Role.SYSTEM_ADMIN
+  ) {
     return new NextResponse("Forbidden", { status: 403 });
   }
 };

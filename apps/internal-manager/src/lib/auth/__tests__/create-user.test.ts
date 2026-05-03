@@ -68,7 +68,7 @@ describe("createUser", () => {
 
     expect(createArgs?.data.id).toStrictEqual(input.id);
     expect(createArgs?.data.role).toStrictEqual(Role.SYSTEM_ADMIN);
-    expect(result.role).toBe(Role.SYSTEM_ADMIN);
+    expect(result.role).toStrictEqual(Role.SYSTEM_ADMIN);
   });
 
   test("2人目以降のユーザーをUSERとして作成する", async () => {
@@ -90,7 +90,7 @@ describe("createUser", () => {
 
     expect(createArgs?.data.id).toStrictEqual("user-002");
     expect(createArgs?.data.role).toStrictEqual(Role.USER);
-    expect(result.role).toBe(Role.USER);
+    expect(result.role).toStrictEqual(Role.USER);
   });
 
   test("emailがnullの場合にエラーをスローする", async () => {
