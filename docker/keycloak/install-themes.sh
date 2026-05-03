@@ -35,7 +35,7 @@ git checkout --quiet "$(printf "%s" "${KEYWIND_COMMIT_PARTS[@]}")"
 # 依存関係をインストール（npmまたはpnpmを使用）
 echo "依存関係をインストール中..."
 if command -v pnpm >/dev/null 2>&1; then
-    pnpm install --silent --ignore-scripts 2>/dev/null || npm install --silent --ignore-scripts
+    pnpm install --silent --ignore-scripts || npm install --silent --ignore-scripts
 else
     npm install --silent --ignore-scripts
 fi
