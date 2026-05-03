@@ -138,7 +138,7 @@ describe("setupProfileIpc", () => {
     });
   });
 
-  test("組織切断時にDB削除が失敗した場合は状態を変更しない", async () => {
+  test("組織切断時にDB削除が失敗してもプロファイル状態はクリアする", async () => {
     const cancelAuthFlow = vi.fn();
     const stopAutoRefresh = vi.fn();
     mockGetOAuthManager.mockReturnValue({ cancelAuthFlow, stopAutoRefresh });
@@ -147,24 +147,20 @@ describe("setupProfileIpc", () => {
     storeData.set("managerUrl", "https://manager.example.com");
 
     const handler = mockIpcHandlers.get("profile:disconnectOrganization");
+    const result = await handler!({} as IpcMainInvokeEvent);
 
-    await expect(handler!({} as IpcMainInvokeEvent)).rejects.toThrow(
-      "組織利用の停止に失敗しました",
-    );
-
-    expect(cancelAuthFlow).not.toHaveBeenCalled();
-    expect(stopAutoRefresh).not.toHaveBeenCalled();
-    expect(mockSetOAuthManager).not.toHaveBeenCalled();
-    expect(storeData.get("managerUrl")).toBe("https://manager.example.com");
-    expect(storeData.get("activeProfile")).toBe("organization");
-    expect(storeData.get("organizationProfile")).toStrictEqual({
-      managerUrl: "https://manager.example.com",
-      connectedAt: expect.any(String) as string,
+    expect(cancelAuthFlow).toHaveBeenCalled();
+    expect(stopAutoRefresh).toHaveBeenCalled();
+    expect(mockSetOAuthManager).toHaveBeenCalledWith(null);
+    expect(storeData.has("managerUrl")).toBe(false);
+    expect(result).toStrictEqual({
+      activeProfile: null,
+      organizationProfile: null,
+      hasCompletedInitialProfileSetup: false,
     });
-    expect(storeData.get("hasCompletedInitialProfileSetup")).toBe(true);
   });
 
-  test("組織切断時にプロファイルクリアが失敗してもOAuthManagerを停止する", async () => {
+  test("組織切断時にプロファイルクリアが失敗した場合は状態を変更しない", async () => {
     const cancelAuthFlow = vi.fn();
     const stopAutoRefresh = vi.fn();
     mockGetOAuthManager.mockReturnValue({ cancelAuthFlow, stopAutoRefresh });
@@ -180,9 +176,16 @@ describe("setupProfileIpc", () => {
       "組織利用の停止に失敗しました",
     );
 
-    expect(mockDbAuthToken.deleteMany).toHaveBeenCalledWith({});
-    expect(cancelAuthFlow).toHaveBeenCalled();
-    expect(stopAutoRefresh).toHaveBeenCalled();
-    expect(mockSetOAuthManager).toHaveBeenCalledWith(null);
+    expect(mockDbAuthToken.deleteMany).not.toHaveBeenCalled();
+    expect(cancelAuthFlow).not.toHaveBeenCalled();
+    expect(stopAutoRefresh).not.toHaveBeenCalled();
+    expect(mockSetOAuthManager).not.toHaveBeenCalled();
+    expect(storeData.get("managerUrl")).toBe("https://manager.example.com");
+    expect(storeData.get("activeProfile")).toBe("organization");
+    expect(storeData.get("organizationProfile")).toStrictEqual({
+      managerUrl: "https://manager.example.com",
+      connectedAt: expect.any(String) as string,
+    });
+    expect(storeData.get("hasCompletedInitialProfileSetup")).toBe(true);
   });
 });

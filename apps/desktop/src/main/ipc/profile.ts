@@ -7,6 +7,7 @@ import {
 } from "../shared/profile-store";
 import { getOAuthManager, setOAuthManager } from "../auth/manager-registry";
 import * as logger from "../shared/utils/logger";
+import type { ProfileState } from "../../shared/types";
 
 export const setupProfileIpc = (): void => {
   ipcMain.handle("profile:getState", () => getProfileState());
@@ -23,31 +24,30 @@ export const setupProfileIpc = (): void => {
   });
 
   ipcMain.handle("profile:disconnectOrganization", async () => {
+    let profileState: ProfileState;
     try {
-      const db = await getDb();
-      await db.authToken.deleteMany({});
+      profileState = await clearOrganizationProfile();
     } catch (error) {
       logger.error(
-        "Failed to clear auth tokens while disconnecting organization profile",
+        "Failed to clear organization profile while disconnecting organization profile",
         error instanceof Error ? error : { error },
       );
       throw new Error("組織利用の停止に失敗しました", { cause: error });
     }
 
-    let profileState: Awaited<ReturnType<typeof clearOrganizationProfile>>;
+    const manager = getOAuthManager();
+    manager?.cancelAuthFlow();
+    manager?.stopAutoRefresh();
+    setOAuthManager(null);
+
     try {
-      profileState = await clearOrganizationProfile();
+      const db = await getDb();
+      await db.authToken.deleteMany({});
     } catch (error) {
       logger.error(
-        "Failed to clear organization profile after clearing auth tokens",
+        "Failed to clear auth tokens after clearing organization profile",
         error instanceof Error ? error : { error },
       );
-      throw new Error("組織利用の停止に失敗しました", { cause: error });
-    } finally {
-      const manager = getOAuthManager();
-      manager?.cancelAuthFlow();
-      manager?.stopAutoRefresh();
-      setOAuthManager(null);
     }
 
     return profileState;
