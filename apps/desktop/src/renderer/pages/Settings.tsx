@@ -118,9 +118,11 @@ export const SettingsPage = (): JSX.Element => {
     setDisconnectError(null);
     try {
       await window.electronAPI.profile.disconnectOrganization();
-      if (mountedRef.current) setShowDisconnectConfirm(false);
-      window.dispatchEvent(new Event(PROFILE_CHANGED_EVENT));
-      navigate("/profile-setup", { replace: true });
+      if (mountedRef.current) {
+        setShowDisconnectConfirm(false);
+        window.dispatchEvent(new Event(PROFILE_CHANGED_EVENT));
+        navigate("/profile-setup", { replace: true });
+      }
     } catch (err) {
       if (mountedRef.current) {
         setDisconnectError(

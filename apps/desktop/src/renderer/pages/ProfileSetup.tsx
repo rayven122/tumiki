@@ -115,17 +115,23 @@ export const ProfileSetup = (): JSX.Element => {
   const cancelOrganizationSetup = async (): Promise<void> => {
     try {
       await window.electronAPI.profile.cancelOrganizationSetup();
-      setError(null);
-      setView("choice");
+      if (mountedRef.current) {
+        setError(null);
+        setView("choice");
+      }
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "組織セットアップのキャンセルに失敗しました",
-      );
+      if (mountedRef.current) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "組織セットアップのキャンセルに失敗しました",
+        );
+      }
     } finally {
-      setIsSubmitting(false);
-      setIsWaitingForCallback(false);
+      if (mountedRef.current) {
+        setIsSubmitting(false);
+        setIsWaitingForCallback(false);
+      }
     }
   };
 
