@@ -103,7 +103,7 @@ const timingMiddleware = t.middleware(async ({ next, path }) => {
  */
 export const publicProcedure = t.procedure.use(timingMiddleware);
 
-const enforceUserIsAuthed = t.middleware(async ({ ctx, next }) => {
+const enforceUserIsAuthed = t.middleware(({ ctx, next }) => {
   const session = ctx.session;
   if (!session?.user?.sub) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
@@ -144,11 +144,7 @@ export const protectedProcedure = t.procedure
  *
  * SYSTEM_ADMIN のみアクセス可能な管理系 API で使用します。
  */
-const enforceUserIsAdmin = t.middleware(async ({ ctx, next }) => {
-  if (!ctx.session?.user?.sub) {
-    throw new TRPCError({ code: "UNAUTHORIZED" });
-  }
-
+const enforceUserIsAdmin = t.middleware(({ ctx, next }) => {
   // protectedProcedure後段ではenforceUserIsAuthedによりid付与済み。
   const protectedCtx = ctx as ProtectedContext;
   if (protectedCtx.session.user.role !== Role.SYSTEM_ADMIN) {
