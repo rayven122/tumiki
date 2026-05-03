@@ -72,20 +72,34 @@ const generateUniqueName = async (
 
 /**
  * 登録直後の接続から `tools/list` を取得して `McpTool` テーブルへ保存する。
- * ツール取得は MCP サーバー起動を伴うため失敗しやすく、登録自体は成功させる方針で
- * 例外は warning ログに留める（呼び出し側の登録フローを巻き戻さない）。
+ *
+ * いずれの失敗もサーバー登録自体は成功扱いとし呼び出し元へ伝播させない方針だが、
+ * ログレベルは原因によって分ける:
+ * - MCP接続/取得失敗（外部依存・再現性なしも多い）→ warn
+ * - DB書き込み失敗（システム側の深刻な問題の可能性あり）→ error
  */
 const fetchAndStoreToolsForConnection = async (
   connectionId: number,
 ): Promise<void> => {
+  let tools;
   try {
-    const tools = await mcpProxyService.fetchToolsForConnection(connectionId);
-    if (tools.length === 0) {
-      logger.info(
-        `Connection(id=${String(connectionId)}): ツール 0件のため保存をスキップ`,
-      );
-      return;
-    }
+    tools = await mcpProxyService.fetchToolsForConnection(connectionId);
+  } catch (error) {
+    logger.warn(
+      `Connection(id=${String(connectionId)}): ツール取得に失敗しました（接続自体は登録済み）`,
+      { error: error instanceof Error ? error.message : String(error) },
+    );
+    return;
+  }
+
+  if (tools.length === 0) {
+    logger.info(
+      `Connection(id=${String(connectionId)}): ツール 0件のため保存をスキップ`,
+    );
+    return;
+  }
+
+  try {
     const db = await getDb();
     await mcpRepository.createTools(
       db,
@@ -100,8 +114,8 @@ const fetchAndStoreToolsForConnection = async (
       `Connection(id=${String(connectionId)}): ツール${String(tools.length)}件を保存しました`,
     );
   } catch (error) {
-    logger.warn(
-      `Connection(id=${String(connectionId)}): ツール取得に失敗しました（接続自体は登録済み）`,
+    logger.error(
+      `Connection(id=${String(connectionId)}): ツールのDB書き込みに失敗しました（接続自体は登録済み）`,
       { error: error instanceof Error ? error.message : String(error) },
     );
   }

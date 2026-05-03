@@ -310,6 +310,11 @@ export const fetchToolsForConnection = async (
   });
 
   try {
+    // タイムアウト時、内部の async IIFE は Promise.race の解決後も継続実行される。
+    // STDIO の場合、connect 中だった子プロセスは finally の client.close() に
+    // よって停止するが、その挙動は SDK の実装に依存するため完全な保証ではない。
+    // 現状の MCP SDK では transport.close() がプロセスに SIGTERM を送るため、
+    // タイムアウト後でもプロセスリークは発生しない想定。
     const tools = await Promise.race([
       (async (): Promise<McpToolInfo[]> => {
         await client.connect(transport);

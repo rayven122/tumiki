@@ -77,23 +77,11 @@ export const createConnection = async (
 };
 
 /**
- * 指定接続のツールを一括作成
- * 同一接続に対する2回目以降の呼び出しに備え、unique制約 [connectionId, name] 違反は
- * createMany 単体では skip できないため、再取得シナリオでは事前に既存tools削除を行う
+ * 指定接続のツールを一括作成（接続新規登録直後のツール初期投入用）
  */
 export const createTools = async (db: DbClient, data: CreateMcpToolInput[]) => {
   if (data.length === 0) return { count: 0 };
   return db.mcpTool.createMany({ data });
-};
-
-/**
- * 指定接続のツールを取得（catalogIdなしのツール再取得時のクリーンアップ等で使用）
- */
-export const deleteToolsByConnectionId = async (
-  db: DbClient,
-  connectionId: number,
-) => {
-  return db.mcpTool.deleteMany({ where: { connectionId } });
 };
 
 /**

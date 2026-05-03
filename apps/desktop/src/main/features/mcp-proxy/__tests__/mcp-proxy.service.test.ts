@@ -555,10 +555,12 @@ describe("mcp-proxy.service", () => {
     });
 
     test("タイムアウト経過時はエラーを投げ client.close() が呼ばれる", async () => {
+      // 実タイマーを使用（fake timer + Promise.race + 永遠ペンディングのconnect()
+      // という組み合わせで unhandled rejection が誤検知されるため）。
+      // タイムアウト値は5msに固定し、CI環境でも十分に決定論的に動作する。
       vi.mocked(mcpRepository.findConnectionByIdWithServer).mockResolvedValue(
         buildConnectionWithServer(),
       );
-      // 接続が永遠に解決しないモックを使い、タイムアウトを発火させる
       const close = vi.fn().mockResolvedValue(undefined);
       const connect = vi.fn().mockReturnValue(new Promise(() => undefined));
       const listTools = vi.fn();
