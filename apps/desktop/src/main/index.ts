@@ -21,11 +21,6 @@ import { createMcpOAuthManager } from "./features/oauth/oauth.service";
 import { setupOAuthIpc } from "./features/oauth/oauth.ipc";
 import { isMcpOAuthCallback } from "./features/oauth/oauth.protocol";
 import type { McpOAuthManager } from "./features/oauth/oauth.service";
-import { setupProfileIpc } from "./features/profile/profile.ipc";
-import {
-  bootstrapManagedProfileFromStore,
-  ensureProfileSetup,
-} from "./features/profile/profile.service";
 import { setupManagerIpc, fetchManagerOidcConfig } from "./ipc/manager";
 import { setupShellIpc } from "./ipc/shell";
 import { getAppStore } from "./shared/app-store";
@@ -65,7 +60,6 @@ if (isMcpProxyMode) {
 
       // DB初期化
       await initializeDb();
-      await ensureProfileSetup();
 
       // 古い監査ログを自動削除（7日以上）— 失敗してもプロキシ起動は継続
       const { deleteOldAuditLogs, writeAuditLog } =
@@ -459,8 +453,6 @@ if (isMcpProxyMode) {
 
       // データベース初期化
       await initializeDb();
-      await ensureProfileSetup();
-      await bootstrapManagedProfileFromStore();
 
       // OAuthManager初期化: electron-store保存済みURLを優先、フォールバックで環境変数
       const savedManagerUrl = (await getAppStore()).get("managerUrl");
@@ -512,7 +504,6 @@ if (isMcpProxyMode) {
 
       // IPC ハンドラー登録
       setupManagerIpc(initOAuthManagerFromUrl);
-      setupProfileIpc();
       setupAuthIpc();
       setupCatalogIpc();
       setupMcpIpc();

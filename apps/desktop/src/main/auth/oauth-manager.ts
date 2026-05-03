@@ -14,7 +14,6 @@ import { getDb } from "../shared/db";
 import { encryptToken, decryptToken } from "../utils/encryption";
 import * as logger from "../shared/utils/logger";
 import { AUTH_SESSION_TIMEOUT_MS } from "../../shared/types";
-import { getActiveProfileId } from "../features/profile/profile.service";
 
 /**
  * OAuth認証セッションの状態
@@ -72,7 +71,6 @@ export const createOAuthManager = (
     tokenResponse: Omit<TokenResponse, "token_type">,
   ): Promise<void> => {
     const db = await getDb();
-    const profileId = await getActiveProfileId(db);
 
     // 有効期限を計算（現在時刻 + expires_in秒）
     const expiresAt = new Date(Date.now() + tokenResponse.expires_in * 1000);
@@ -94,7 +92,6 @@ export const createOAuthManager = (
           refreshToken: encryptedRefreshToken,
           idToken: encryptedIdToken,
           expiresAt,
-          profileId,
         },
       });
 
@@ -102,7 +99,6 @@ export const createOAuthManager = (
       await tx.authToken.deleteMany({
         where: {
           id: { not: newToken.id },
-          profileId,
         },
       });
     });
@@ -387,6 +383,7 @@ export const createOAuthManager = (
       if (token) {
         try {
           if (!token.refreshToken) {
+            // refresh_token なし（jackson OIDC）はローカルクリーンアップのみ
             logger.info(
               "No refresh token, skipping Keycloak server-side logout",
             );
