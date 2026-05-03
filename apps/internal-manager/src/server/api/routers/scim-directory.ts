@@ -1,9 +1,13 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { adminProcedure, createTRPCRouter } from "@/server/api/trpc";
-import { getJackson, isJacksonConfigured } from "~/server/jackson";
+import {
+  getJackson,
+  isJacksonConfigured,
+  resolveExternalUrl,
+} from "~/server/jackson";
 
-/// Jackson が対応する SCIM プロバイダ種別
+// Jackson が対応する SCIM プロバイダ種別
 const directoryTypeSchema = z.enum([
   "azure-scim-v2",
   "okta-scim-v2",
@@ -25,6 +29,12 @@ const ensureJackson = async () => {
   return getJackson();
 };
 
+// Jackson の Directory.scim.endpoint が未設定の場合に備えて、外部URL+pathで
+// 完全なエンドポイントURLを組み立てる。フォールバックを path のみにすると
+// 管理者がIdPに不完全URLを設定してしまうリスクがある。
+const buildScimEndpoint = (scim: { endpoint?: string; path: string }) =>
+  scim.endpoint ?? `${resolveExternalUrl()}${scim.path}`;
+
 export const scimDirectoryRouter = createTRPCRouter({
   /** SCIM Directory 一覧を取得 */
   list: adminProcedure.query(async () => {
@@ -45,7 +55,7 @@ export const scimDirectoryRouter = createTRPCRouter({
       name: d.name,
       type: d.type,
       deactivated: d.deactivated ?? false,
-      scimEndpoint: d.scim.endpoint ?? d.scim.path,
+      scimEndpoint: buildScimEndpoint(d.scim),
     }));
   }),
 
@@ -76,7 +86,7 @@ export const scimDirectoryRouter = createTRPCRouter({
       return {
         id: data.id,
         name: data.name,
-        scimEndpoint: data.scim.endpoint ?? data.scim.path,
+        scimEndpoint: buildScimEndpoint(data.scim),
         scimSecret: data.scim.secret,
       };
     }),

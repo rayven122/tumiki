@@ -2,7 +2,7 @@ import type { DirectorySyncEvent } from "@boxyhq/saml-jackson";
 import { db } from "@tumiki/internal-db/server";
 import { GroupSource, SyncStatus, SyncTrigger } from "@tumiki/internal-db";
 
-/// SCIM経由で同期されたユーザー/グループの provider 識別子
+// SCIM経由で同期されたユーザー/グループの provider 識別子
 export const SCIM_PROVIDER = "scim" as const;
 
 // 注: first_name はオプショナル属性のため判定に含めない（Okta等で省略される場合あり）
@@ -108,13 +108,20 @@ export const handleDirectorySyncEvent = async (
 
       case "group.created": {
         if (!isGroup(data)) break;
-        const created = await db.group.create({
-          data: {
+        // IdP のリトライ（タイムアウト後の再送等）で重複イベントが届いても
+        // P2002 を出さないよう upsert を使用（user.created と同じ方針）
+        const created = await db.group.upsert({
+          where: { id: data.id },
+          create: {
             id: data.id,
             name: data.name,
             source: GroupSource.IDP,
             provider: SCIM_PROVIDER,
             externalId: data.id,
+            lastSyncedAt: new Date(),
+          },
+          update: {
+            name: data.name,
             lastSyncedAt: new Date(),
           },
         });
@@ -124,9 +131,19 @@ export const handleDirectorySyncEvent = async (
 
       case "group.updated": {
         if (!isGroup(data)) break;
-        const updated = await db.group.update({
+        // 過去に group.created が失敗していた場合に備えて upsert を使用
+        // （update のみだと P2025 RecordNotFound で同期が永続的に失敗し続ける）
+        const updated = await db.group.upsert({
           where: { id: data.id },
-          data: { name: data.name, lastSyncedAt: new Date() },
+          create: {
+            id: data.id,
+            name: data.name,
+            source: GroupSource.IDP,
+            provider: SCIM_PROVIDER,
+            externalId: data.id,
+            lastSyncedAt: new Date(),
+          },
+          update: { name: data.name, lastSyncedAt: new Date() },
         });
         groupId = updated.id;
         break;
@@ -148,7 +165,7 @@ export const handleDirectorySyncEvent = async (
 
       case "group.user_added": {
         if (!isUserWithGroup(data)) break;
-        const result = await db.userGroupMembership.upsert({
+        await db.userGroupMembership.upsert({
           where: {
             userId_groupId: { userId: data.id, groupId: data.group.id },
           },
@@ -165,8 +182,6 @@ export const handleDirectorySyncEvent = async (
           where: { id: data.group.id },
           data: { lastSyncedAt: new Date() },
         });
-        // 戻り値の参照警告を避ける
-        void result;
         break;
       }
 
