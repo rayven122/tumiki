@@ -3,6 +3,7 @@ import { getDb } from "../../shared/db";
 import type { DbClient } from "../../shared/db";
 import * as mcpRepository from "./mcp.repository";
 import * as catalogRepository from "../catalog/catalog.repository";
+import * as mcpProxyService from "../mcp-proxy/mcp-proxy.service";
 import * as logger from "../../shared/utils/logger";
 import { toSlug, generateRandomSuffix } from "../../../shared/mcp.slug";
 import {
@@ -70,6 +71,57 @@ const generateUniqueName = async (
 };
 
 /**
+ * 登録直後の接続から `tools/list` を取得して `McpTool` テーブルへ保存する。
+ *
+ * いずれの失敗もサーバー登録自体は成功扱いとし呼び出し元へ伝播させない方針だが、
+ * ログレベルは原因によって分ける:
+ * - MCP接続/取得失敗（外部依存・再現性なしも多い）→ warn
+ * - DB書き込み失敗（システム側の深刻な問題の可能性あり）→ error
+ */
+const fetchAndStoreToolsForConnection = async (
+  connectionId: number,
+): Promise<void> => {
+  let tools;
+  try {
+    tools = await mcpProxyService.fetchToolsForConnection(connectionId);
+  } catch (error) {
+    logger.warn(
+      `Connection(id=${String(connectionId)}): ツール取得に失敗しました（接続自体は登録済み）`,
+      { error: error instanceof Error ? error.message : String(error) },
+    );
+    return;
+  }
+
+  if (tools.length === 0) {
+    logger.info(
+      `Connection(id=${String(connectionId)}): ツール 0件のため保存をスキップ`,
+    );
+    return;
+  }
+
+  try {
+    const db = await getDb();
+    await mcpRepository.createTools(
+      db,
+      tools.map((tool) => ({
+        name: tool.name,
+        description: tool.description ?? "",
+        inputSchema: JSON.stringify(tool.inputSchema ?? {}),
+        connectionId,
+      })),
+    );
+    logger.info(
+      `Connection(id=${String(connectionId)}): ツール${String(tools.length)}件を保存しました`,
+    );
+  } catch (error) {
+    logger.error(
+      `Connection(id=${String(connectionId)}): ツールのDB書き込みに失敗しました（接続自体は登録済み）`,
+      { error: error instanceof Error ? error.message : String(error) },
+    );
+  }
+};
+
+/**
  * カタログからMCPサーバーを登録
  */
 export const createFromCatalog = async (
@@ -87,7 +139,7 @@ export const createFromCatalog = async (
   });
 
   // MCP接続作成
-  await mcpRepository.createConnection(db, {
+  const connection = await mcpRepository.createConnection(db, {
     name: uniqueName,
     slug,
     transportType: input.transportType,
@@ -101,6 +153,9 @@ export const createFromCatalog = async (
   });
 
   logger.info(`MCP server created from catalog: ${uniqueName}`);
+
+  // 登録直後にツール一覧を取得して保存（失敗しても登録自体は成功扱い）
+  await fetchAndStoreToolsForConnection(connection.id);
 
   return { serverId: server.id, serverName: uniqueName };
 };
@@ -196,8 +251,9 @@ export const createVirtualServer = async (
       description: input.description,
     });
 
+    const connectionIds: number[] = [];
     for (const { catalog, index, connectionSlug } of connectionsWithSlug) {
-      await mcpRepository.createConnection(tx, {
+      const connection = await mcpRepository.createConnection(tx, {
         name: catalog.name,
         slug: connectionSlug,
         transportType: catalog.transportType,
@@ -211,16 +267,22 @@ export const createVirtualServer = async (
         catalogId: catalog.id,
         displayOrder: index,
       });
+      connectionIds.push(connection.id);
     }
 
-    return { serverId: server.id, serverName: uniqueName };
+    return { serverId: server.id, serverName: uniqueName, connectionIds };
   });
 
   logger.info(
     `Virtual MCP server created: ${result.serverName} (${String(input.connections.length)} connections)`,
   );
 
-  return result;
+  // tx commit 後に各接続のツール一覧を取得・保存（並列、失敗しても登録自体は成功扱い）
+  await Promise.all(
+    result.connectionIds.map((id) => fetchAndStoreToolsForConnection(id)),
+  );
+
+  return { serverId: result.serverId, serverName: result.serverName };
 };
 
 /**
