@@ -9,6 +9,7 @@ import { z } from "zod";
 // OIDCアクセストークンのペイロードスキーマ
 const tumikiIdpClaimsSchema = z.object({
   group_roles: z.array(z.string()).optional(),
+  // Keycloakのrealm rolesマッパー用。現時点の認可判定はgroup_rolesを使用する。
   roles: z.array(z.string()).optional(),
 });
 

@@ -145,13 +145,13 @@ variable "ssl_required" {
 variable "login_theme" {
   description = "ログイン画面テーマ"
   type        = string
-  default     = null
+  default     = "tumiki"
 }
 
 variable "account_theme" {
   description = "アカウント管理画面テーマ"
   type        = string
-  default     = null
+  default     = "tumiki"
 }
 
 # テストユーザー設定
