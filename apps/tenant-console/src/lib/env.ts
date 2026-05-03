@@ -10,6 +10,10 @@ const envSchema = z.object({
   INFISICAL_OPERATOR_CLIENT_SECRET: z.string().min(1),
   INFISICAL_OPERATOR_IDENTITY_ID: z.string().min(1),
 
+  // Keycloak Admin API（テナント自動プロビジョニング）
+  KEYCLOAK_ADMIN_URL: z.string().url(),
+  KEYCLOAK_ADMIN_PASSWORD: z.string().min(1),
+
   // ライセンス JWT 署名用秘密鍵（RS256 PKCS#8 PEM）
   LICENSE_SIGNING_PRIVATE_KEY: z.string().min(1),
 });

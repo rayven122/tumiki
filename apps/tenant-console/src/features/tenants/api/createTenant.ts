@@ -15,6 +15,7 @@ import {
   ensureFolder,
   upsertSecrets,
 } from "@/server/infisical/client";
+import { createTenantRealm, deleteTenantRealm } from "@/server/keycloak/client";
 import {
   HELM_BIN,
   HELM_INSTALL_TIMEOUT_MS,
@@ -78,6 +79,7 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
   }
 
   let createdProjectId: string | null = null;
+  let keycloakRealmCreated = false;
 
   try {
     const postgresPassword = generateHexSecret();
@@ -103,11 +105,23 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
       INTERNAL_DATABASE_URL: internalDatabaseUrl,
       NEXTAUTH_URL: nextAuthUrl,
     };
-    if (input.oidcType === "CUSTOM") {
+    if (input.oidcType === "KEYCLOAK") {
+      const { clientSecret } = await createTenantRealm({
+        slug: input.slug,
+        domain,
+      });
+      keycloakRealmCreated = true;
+      secrets.OIDC_ISSUER = `https://auth.tumiki.cloud/realms/${input.slug}`;
+      secrets.OIDC_CLIENT_ID = "internal-manager";
+      secrets.OIDC_CLIENT_SECRET = clientSecret;
+      secrets.OIDC_DESKTOP_CLIENT_ID = "internal-manager-desktop";
+    } else if (input.oidcType === "CUSTOM") {
       if (input.oidcIssuer) secrets.OIDC_ISSUER = input.oidcIssuer;
       if (input.oidcClientId) secrets.OIDC_CLIENT_ID = input.oidcClientId;
       if (input.oidcClientSecret)
         secrets.OIDC_CLIENT_SECRET = input.oidcClientSecret;
+      if (input.oidcDesktopClientId)
+        secrets.OIDC_DESKTOP_CLIENT_ID = input.oidcDesktopClientId;
     }
     await ensureFolder({
       projectId: project.projectId,
@@ -263,6 +277,9 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
     ]).catch(ignore);
     if (createdProjectId) {
       await deleteProject(createdProjectId).catch(ignore);
+    }
+    if (keycloakRealmCreated) {
+      await deleteTenantRealm(input.slug).catch(ignore);
     }
 
     await ctx.db.tenant.update({

@@ -4,27 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/trpc/react";
 
-/**
- * テナント作成フォーム（Phase 1: Infisical 自動化版）。
- *
- * 入力項目:
- * - slug
- * - oidcType（CUSTOM のみ選択可、KEYCLOAK は Phase 2 で実装予定）
- * - CUSTOM 時のみ: oidcIssuer / oidcClientId / oidcClientSecret
- * - imageTag（任意）
- *
- * 自動処理:
- * - POSTGRES_PASSWORD / AUTH_SECRET の生成
- * - Infisical プロジェクト作成 + シークレット登録 + Identity 紐付け
- * - k8s リソース作成 + helm install
- */
 const NewTenantPage = () => {
   const router = useRouter();
   const [slug, setSlug] = useState("");
-  const [oidcType, setOidcType] = useState<"KEYCLOAK" | "CUSTOM">("CUSTOM");
+  const [oidcType, setOidcType] = useState<"KEYCLOAK" | "CUSTOM">("KEYCLOAK");
   const [oidcIssuer, setOidcIssuer] = useState("");
   const [oidcClientId, setOidcClientId] = useState("");
   const [oidcClientSecret, setOidcClientSecret] = useState("");
+  const [oidcDesktopClientId, setOidcDesktopClientId] = useState("");
   const [imageTag, setImageTag] = useState("main");
   const [error, setError] = useState<string | null>(null);
 
@@ -47,6 +34,8 @@ const NewTenantPage = () => {
       oidcIssuer: oidcType === "CUSTOM" ? oidcIssuer : undefined,
       oidcClientId: oidcType === "CUSTOM" ? oidcClientId : undefined,
       oidcClientSecret: oidcType === "CUSTOM" ? oidcClientSecret : undefined,
+      oidcDesktopClientId:
+        oidcType === "CUSTOM" ? oidcDesktopClientId : undefined,
       imageTag,
     });
   };
@@ -101,16 +90,15 @@ const NewTenantPage = () => {
               OIDCタイプ <span className="text-red-500">*</span>
             </label>
             <div className="mt-2 space-y-2">
-              <label className="flex items-center text-gray-400">
+              <label className="flex items-center">
                 <input
                   type="radio"
                   value="KEYCLOAK"
                   checked={oidcType === "KEYCLOAK"}
                   onChange={() => setOidcType("KEYCLOAK")}
-                  disabled
                   className="mr-2"
                 />
-                <span>Keycloak (自動連携) - Phase 2 で実装予定</span>
+                <span>Keycloak (自動連携) - auth.tumiki.cloud</span>
               </label>
               <label className="flex items-center">
                 <input
@@ -178,6 +166,26 @@ const NewTenantPage = () => {
                   onChange={(e) => setOidcClientSecret(e.target.value)}
                   required
                   autoComplete="new-password"
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="oidcDesktopClientId"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Desktop Client ID <span className="text-red-500">*</span>
+                </label>
+                <p className="text-xs text-gray-500">
+                  Electron デスクトップアプリ用 PKCE クライアントの ID
+                </p>
+                <input
+                  id="oidcDesktopClientId"
+                  type="text"
+                  value={oidcDesktopClientId}
+                  onChange={(e) => setOidcDesktopClientId(e.target.value)}
+                  required
+                  autoComplete="off"
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
                 />
               </div>

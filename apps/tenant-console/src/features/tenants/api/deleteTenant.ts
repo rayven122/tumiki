@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { TRPCError } from "@trpc/server";
+import { deleteTenantRealm } from "@/server/keycloak/client";
 import { HELM_BIN, HELM_UNINSTALL_TIMEOUT_MS, KUBECTL_BIN } from "./constants";
 import type { Context } from "@/server/api/trpc";
 import type { DeleteTenantInput } from "./schemas";
@@ -57,6 +58,10 @@ export const deleteTenant = async (ctx: Context, input: DeleteTenantInput) => {
       namespace,
       "--ignore-not-found",
     ]);
+
+    if (tenant.oidcType === "KEYCLOAK") {
+      await deleteTenantRealm(tenant.slug);
+    }
   } catch (error) {
     // helm/kubectl失敗時はERRORに更新してDBレコードを保持（再試行可能にする）
     await ctx.db.tenant.update({

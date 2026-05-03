@@ -1,8 +1,5 @@
 import { z } from "zod";
 
-// テナント作成の入力スキーマ
-// Phase 1: Infisical 操作は自動化されたため、Client ID/Secret/projectSlug の入力を廃止
-// CUSTOM OIDC の場合のみユーザーが OIDC 値を入力する（KEYCLOAK は Phase 2 で自動化予定）
 export const createTenantInputSchema = z
   .object({
     slug: z
@@ -17,6 +14,7 @@ export const createTenantInputSchema = z
     oidcIssuer: z.string().url().optional(),
     oidcClientId: z.string().optional(),
     oidcClientSecret: z.string().optional(),
+    oidcDesktopClientId: z.string().optional(),
     imageTag: z
       .string()
       .min(1)
@@ -47,14 +45,13 @@ export const createTenantInputSchema = z
           path: ["oidcClientSecret"],
         });
       }
-    }
-    if (data.oidcType === "KEYCLOAK") {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message:
-          "KEYCLOAK 自動連携は未実装です。CUSTOM を選択して OIDC 情報を直接入力してください",
-        path: ["oidcType"],
-      });
+      if (!data.oidcDesktopClientId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "CUSTOM OIDCにはDesktop Client IDが必要です",
+          path: ["oidcDesktopClientId"],
+        });
+      }
     }
   });
 
