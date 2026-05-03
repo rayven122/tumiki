@@ -164,9 +164,9 @@ export type Context = Awaited<ReturnType<typeof createTRPCContext>>;
  * protectedProcedureのコンテキスト型
  * 認証済みが保証されている状態
  */
-export type ProtectedContext = {
+export type ProtectedContext = Omit<Context, "session"> & {
   session: NonNullable<Context["session"]>;
-} & Context;
+};
 
 /**
  * 管理者権限が保証されているコンテキスト型
