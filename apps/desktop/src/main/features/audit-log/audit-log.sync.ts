@@ -1,29 +1,8 @@
-import type { AuthToken, Prisma } from "@prisma/desktop-client";
-import { getAppStore } from "../../shared/app-store";
-import { getDb } from "../../shared/db";
-import { decryptToken } from "../../utils/encryption";
+import type { Prisma } from "@prisma/desktop-client";
+import { postManagerJson } from "../../shared/manager-api-client";
 import * as logger from "../../shared/utils/logger";
 
 const POST_TIMEOUT_MS = 10_000;
-
-const findValidAccessToken = async (): Promise<AuthToken | null> => {
-  const db = await getDb();
-  const token = await db.authToken.findFirst({
-    orderBy: { createdAt: "desc" },
-  });
-
-  if (!token) return null;
-
-  const now = new Date();
-  if (now > token.expiresAt) {
-    await db.authToken.deleteMany({
-      where: { expiresAt: { lte: now } },
-    });
-    return null;
-  }
-
-  return token;
-};
 
 const toOccurredAt = (
   value: Prisma.AuditLogUncheckedCreateInput["createdAt"],
@@ -70,26 +49,14 @@ export const syncAuditLogToManager = async (
   input: Prisma.AuditLogUncheckedCreateInput,
 ): Promise<boolean> => {
   try {
-    const store = await getAppStore();
-    const managerUrl = store.get("managerUrl");
-    if (!managerUrl) return false;
-
-    const token = await findValidAccessToken();
-    if (!token) return false;
-
-    const accessToken = await decryptToken(token.accessToken);
-    if (!accessToken) return false;
-
-    const endpoint = `${managerUrl.replace(/\/$/, "")}/api/internal/audit-logs`;
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
+    const response = await postManagerJson(
+      "/api/internal/audit-logs",
+      { logs: [buildRemoteLog(input)] },
+      {
+        signal: AbortSignal.timeout(POST_TIMEOUT_MS),
       },
-      body: JSON.stringify({ logs: [buildRemoteLog(input)] }),
-      signal: AbortSignal.timeout(POST_TIMEOUT_MS),
-    });
+    );
+    if (!response) return false;
 
     if (!response.ok) {
       logger.warn("Failed to sync audit log to manager", {
