@@ -1,4 +1,3 @@
-import "server-only";
 import type { DirectorySyncEvent } from "@boxyhq/saml-jackson";
 import { db } from "@tumiki/internal-db/server";
 import { GroupSource, SyncStatus, SyncTrigger } from "@tumiki/internal-db";
