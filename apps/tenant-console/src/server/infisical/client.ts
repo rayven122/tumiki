@@ -56,6 +56,7 @@ const apiFetch = async (
 };
 
 type CreateProjectResponse = { project: { id: string; slug: string } };
+type ListProjectsResponse = { workspaces: { id: string; slug: string }[] };
 
 /**
  * シークレットを格納するフォルダを作成する。
@@ -103,6 +104,18 @@ export const createProject = async (params: {
 
   if (!res.ok) {
     const text = await res.text();
+    // スラッグが既存の場合は既存プロジェクトを取得して冪等に動作する
+    if (res.status === 400 && text.includes("already exists")) {
+      const listRes = await apiFetch(
+        `/api/v1/workspace?organizationId=${env.INFISICAL_ORG_ID}`,
+      );
+      if (!listRes.ok)
+        throw new Error(`createProject failed: ${res.status} ${text}`);
+      const list = (await listRes.json()) as ListProjectsResponse;
+      const existing = list.workspaces.find((w) => w.slug === params.slug);
+      if (existing)
+        return { projectId: existing.id, projectSlug: existing.slug };
+    }
     throw new Error(`createProject failed: ${res.status} ${text}`);
   }
 
