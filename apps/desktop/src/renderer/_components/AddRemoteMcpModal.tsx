@@ -127,12 +127,25 @@ export const AddRemoteMcpModal = ({
     });
   };
 
-  const isFormValid = (): boolean => {
+  const isFormValid = useMemo(() => {
     if (!serverName.trim() || !url.trim()) return false;
     if (authMethod === "apikey" && Object.keys(envVars).length === 0)
       return false;
+    if (
+      authMethod === "oauth" &&
+      needsManualOAuthClient &&
+      !oauthClientId.trim()
+    )
+      return false;
     return true;
-  };
+  }, [
+    serverName,
+    url,
+    authMethod,
+    envVars,
+    needsManualOAuthClient,
+    oauthClientId,
+  ]);
 
   const handleSubmit = async (): Promise<void> => {
     if (!serverName.trim()) {
@@ -320,7 +333,11 @@ export const AddRemoteMcpModal = ({
             </label>
             <Select
               value={authMethod}
-              onValueChange={(v) => setAuthMethod(v as AuthMethod)}
+              onValueChange={(v) => {
+                setAuthMethod(v as AuthMethod);
+                setNeedsManualOAuthClient(false);
+                setError(null);
+              }}
               disabled={loading}
             >
               <SelectTrigger className="w-full">
@@ -513,7 +530,7 @@ export const AddRemoteMcpModal = ({
           <button
             type="button"
             onClick={() => void handleSubmit()}
-            disabled={loading || !isFormValid()}
+            disabled={loading || !isFormValid}
             className="rounded-lg bg-[var(--text-primary)] px-6 py-2.5 text-sm font-medium text-[var(--bg-card)] transition hover:opacity-90 disabled:opacity-50"
           >
             {submitLabel}

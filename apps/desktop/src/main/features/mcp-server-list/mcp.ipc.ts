@@ -43,7 +43,7 @@ const createFromCatalogSchema = z.object({
 
 const createCustomServerSchema = z.object({
   serverName: z.string().min(1),
-  url: z.string().url(),
+  url: z.string().url({ message: "有効なURLを入力してください" }),
   transportType: z.enum(["SSE", "STREAMABLE_HTTP"]),
   authType: z.enum(["NONE", "API_KEY", "OAUTH"]),
   credentials: z.record(z.string(), z.string()),
