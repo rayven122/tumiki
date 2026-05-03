@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/trpc/react";
 
@@ -18,12 +18,27 @@ const InitialAdminPasswordModal = ({
   onClose,
 }: InitialAdminPasswordModalProps) => {
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+    };
+  }, []);
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(password);
-    setCopied(true);
-    // 2秒後にコピー完了表示をリセット
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(password);
+      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+      setCopyError(null);
+      setCopied(true);
+      copiedTimerRef.current = setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopyError(
+        "クリップボードへのコピーに失敗しました。手動でコピーしてください。",
+      );
+    }
   };
 
   return (
@@ -66,6 +81,11 @@ const InitialAdminPasswordModal = ({
         <p className="text-badge-warn-text mb-4 text-xs">
           ※ 初回ログイン時にパスワードの変更が必要です。
         </p>
+        {copyError && (
+          <p className="bg-badge-error-bg text-badge-error-text mb-4 rounded-lg px-3 py-2 text-xs">
+            {copyError}
+          </p>
+        )}
 
         <button
           type="button"

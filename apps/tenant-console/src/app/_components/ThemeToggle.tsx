@@ -3,34 +3,48 @@
 import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 
-type Theme = "dark" | "light";
+export type Theme = "dark" | "light";
 
 const STORAGE_KEY = "tenant-console-theme";
+const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
 const applyTheme = (theme: Theme) => {
   document.documentElement.dataset.theme = theme;
 };
 
-const readInitialTheme = (): Theme => {
+const readStoredTheme = (): Theme | null => {
   const stored = window.localStorage.getItem(STORAGE_KEY);
-  return stored === "light" ? "light" : "dark";
+  return stored === "light" || stored === "dark" ? stored : null;
 };
 
-const ThemeToggle = ({ collapsed }: { collapsed: boolean }) => {
-  const [theme, setTheme] = useState<Theme>("dark");
+const persistTheme = (theme: Theme) => {
+  window.localStorage.setItem(STORAGE_KEY, theme);
+  document.cookie = `${STORAGE_KEY}=${theme}; path=/; max-age=${COOKIE_MAX_AGE_SECONDS}; samesite=lax`;
+};
+
+const ThemeToggle = ({
+  collapsed,
+  initialTheme,
+}: {
+  collapsed: boolean;
+  initialTheme: Theme;
+}) => {
+  const [theme, setTheme] = useState<Theme>(initialTheme);
 
   useEffect(() => {
-    const initialTheme = readInitialTheme();
-    setTheme(initialTheme);
-    applyTheme(initialTheme);
-  }, []);
+    const storedTheme = readStoredTheme();
+    const resolvedTheme = storedTheme ?? initialTheme;
+    setTheme(resolvedTheme);
+    applyTheme(resolvedTheme);
+    persistTheme(resolvedTheme);
+  }, [initialTheme]);
 
   const nextTheme = theme === "dark" ? "light" : "dark";
 
   const toggleTheme = () => {
     setTheme(nextTheme);
     applyTheme(nextTheme);
-    window.localStorage.setItem(STORAGE_KEY, nextTheme);
+    persistTheme(nextTheme);
   };
 
   return (
@@ -38,7 +52,7 @@ const ThemeToggle = ({ collapsed }: { collapsed: boolean }) => {
       type="button"
       aria-label={`テーマを${nextTheme === "light" ? "ライト" : "ダーク"}に切り替え`}
       onClick={toggleTheme}
-      className={`text-text-secondary hover:bg-bg-active hover:text-text-primary flex w-full items-center rounded-lg px-2 py-2 text-xs transition-colors ${collapsed ? "justify-center" : "gap-2.5"}`}
+      className={`text-text-secondary hover:bg-bg-active hover:text-text-primary flex min-h-[44px] w-full items-center rounded-lg px-2 text-xs transition-colors ${collapsed ? "justify-center" : "gap-2.5"}`}
     >
       {theme === "dark" ? (
         <Moon size={14} className="shrink-0" />

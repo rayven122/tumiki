@@ -5,18 +5,13 @@ import { KeyRound } from "lucide-react";
 import { api, type RouterOutputs } from "@/trpc/react";
 import RevokeConfirmDialog from "./RevokeConfirmDialog";
 import IssueLicenseDialog from "./IssueLicenseDialog";
+import { licenseStatusBadgeClass } from "./licenseStyles";
 
 type LicenseItem = RouterOutputs["license"]["list"]["items"][number];
 
 type Props = {
   initialData: RouterOutputs["license"]["list"];
   tenants: Array<{ id: string; slug: string }>;
-};
-
-const statusBadgeClass = (status: "ACTIVE" | "REVOKED" | "EXPIRED") => {
-  if (status === "ACTIVE") return "bg-badge-success-bg text-badge-success-text";
-  if (status === "EXPIRED") return "bg-badge-warn-bg text-badge-warn-text";
-  return "bg-badge-error-bg text-badge-error-text";
 };
 
 const typeBadgeClass = (type: "PERSONAL" | "TENANT") => {
@@ -98,7 +93,7 @@ const LicenseTable = ({ initialData, tenants }: Props) => {
                     {item.features.join(", ")}
                   </span>
                   <span
-                    className={`w-fit rounded-full px-2 py-0.5 text-[10px] font-medium ${statusBadgeClass(item.computedStatus)}`}
+                    className={`w-fit rounded-full px-2 py-0.5 text-[10px] font-medium ${licenseStatusBadgeClass(item.computedStatus)}`}
                   >
                     {item.computedStatus}
                   </span>

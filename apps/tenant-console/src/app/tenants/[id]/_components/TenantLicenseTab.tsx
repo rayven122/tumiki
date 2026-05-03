@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { api, type RouterOutputs } from "@/trpc/react";
 import RevokeConfirmDialog from "@/app/licenses/_components/RevokeConfirmDialog";
 import IssueLicenseDialog from "@/app/licenses/_components/IssueLicenseDialog";
+import { licenseStatusBadgeClass } from "@/app/licenses/_components/licenseStyles";
 
 type LicenseItem = RouterOutputs["license"]["list"]["items"][number];
 
@@ -11,12 +12,6 @@ type Props = {
   tenantId: string;
   tenantSlug: string;
   initialData: RouterOutputs["license"]["list"];
-};
-
-const statusBadgeClass = (status: "ACTIVE" | "REVOKED" | "EXPIRED") => {
-  if (status === "ACTIVE") return "bg-badge-success-bg text-badge-success-text";
-  if (status === "EXPIRED") return "bg-badge-warn-bg text-badge-warn-text";
-  return "bg-badge-error-bg text-badge-error-text";
 };
 
 const TenantLicenseTab = ({ tenantId, tenantSlug, initialData }: Props) => {
@@ -77,7 +72,7 @@ const TenantLicenseTab = ({ tenantId, tenantSlug, initialData }: Props) => {
                     {item.features.join(", ")}
                   </span>
                   <span
-                    className={`w-fit rounded-full px-2 py-0.5 text-[10px] font-medium ${statusBadgeClass(item.computedStatus)}`}
+                    className={`w-fit rounded-full px-2 py-0.5 text-[10px] font-medium ${licenseStatusBadgeClass(item.computedStatus)}`}
                   >
                     {item.computedStatus}
                   </span>

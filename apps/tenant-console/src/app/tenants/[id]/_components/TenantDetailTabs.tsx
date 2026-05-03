@@ -60,9 +60,12 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") handleDeleteClose();
     };
+    const focusTimer = setTimeout(() => confirmInputRef.current?.focus(), 50);
     document.addEventListener("keydown", handleKeyDown);
-    setTimeout(() => confirmInputRef.current?.focus(), 50);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      clearTimeout(focusTimer);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [showDeleteDialog, handleDeleteClose]);
 
   return (
