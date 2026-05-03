@@ -1,6 +1,6 @@
--- Existing development databases may have been created before refreshToken/idToken
--- became nullable. Rebuild AuthToken so OIDC providers that do not issue
--- refresh_token can still complete login.
+-- 既存の開発DBは refreshToken/idToken が nullable になる前に作成されている場合がある。
+-- refresh_token を発行しない OIDC provider でもログイン完了できるように
+-- AuthToken を再構築する。
 DROP TABLE IF EXISTS "AuthToken_new";
 
 CREATE TABLE "AuthToken_new" (

@@ -54,12 +54,14 @@ export const ProfileSetup = (): JSX.Element => {
       });
 
     const cleanupSuccess = window.electronAPI.auth.onCallbackSuccess(() => {
+      if (!mounted) return;
       setIsWaitingForCallback(false);
       setIsSubmitting(false);
       window.dispatchEvent(new Event(PROFILE_CHANGED_EVENT));
       navigate("/", { replace: true });
     });
     const cleanupError = window.electronAPI.auth.onCallbackError((message) => {
+      if (!mounted) return;
       setIsWaitingForCallback(false);
       setIsSubmitting(false);
       setError(`ログインに失敗しました: ${message}`);
@@ -110,19 +112,19 @@ export const ProfileSetup = (): JSX.Element => {
   };
 
   const cancelOrganizationSetup = async (): Promise<void> => {
-    let cancelError: string | null = null;
     try {
       await window.electronAPI.profile.cancelOrganizationSetup();
+      setError(null);
+      setView("choice");
     } catch (err) {
-      cancelError =
+      setError(
         err instanceof Error
           ? err.message
-          : "組織セットアップのキャンセルに失敗しました";
+          : "組織セットアップのキャンセルに失敗しました",
+      );
     } finally {
       setIsSubmitting(false);
       setIsWaitingForCallback(false);
-      setError(cancelError);
-      if (!cancelError) setView("choice");
     }
   };
 

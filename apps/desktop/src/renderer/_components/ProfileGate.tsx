@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import type { ProfileState } from "../../shared/types";
 import { PROFILE_CHANGED_EVENT } from "../../shared/events";
@@ -8,35 +8,37 @@ export const ProfileGate = (): JSX.Element => {
   const [profile, setProfile] = useState<ProfileState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
+
+  const refreshProfile = useCallback((): void => {
+    window.electronAPI.profile
+      .getState()
+      .then((state) => {
+        if (mountedRef.current) {
+          setError(null);
+          setProfile(state);
+        }
+      })
+      .catch(() => {
+        if (mountedRef.current) {
+          setError("プロファイル状態の取得に失敗しました");
+          setProfile(null);
+        }
+      })
+      .finally(() => {
+        if (mountedRef.current) setLoading(false);
+      });
+  }, []);
 
   useEffect(() => {
-    let mounted = true;
-    const refreshProfile = (): void => {
-      window.electronAPI.profile
-        .getState()
-        .then((state) => {
-          if (mounted) {
-            setError(null);
-            setProfile(state);
-          }
-        })
-        .catch(() => {
-          if (mounted) {
-            setError("プロファイル状態の取得に失敗しました");
-            setProfile(null);
-          }
-        })
-        .finally(() => {
-          if (mounted) setLoading(false);
-        });
-    };
+    mountedRef.current = true;
     refreshProfile();
     window.addEventListener(PROFILE_CHANGED_EVENT, refreshProfile);
     return () => {
-      mounted = false;
+      mountedRef.current = false;
       window.removeEventListener(PROFILE_CHANGED_EVENT, refreshProfile);
     };
-  }, []);
+  }, [refreshProfile]);
 
   if (loading) {
     return (
@@ -55,7 +57,7 @@ export const ProfileGate = (): JSX.Element => {
           onClick={() => {
             setLoading(true);
             setError(null);
-            window.dispatchEvent(new Event(PROFILE_CHANGED_EVENT));
+            refreshProfile();
           }}
           className="rounded-lg border border-[var(--border)] px-4 py-2 text-[var(--text-secondary)] transition hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)]"
         >

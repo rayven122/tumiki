@@ -1,4 +1,4 @@
-import { type JSX, useEffect, useRef, useState } from "react";
+import { type JSX, useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CURRENT_USER,
@@ -78,7 +78,7 @@ export const SettingsPage = (): JSX.Element => {
   const [disconnectError, setDisconnectError] = useState<string | null>(null);
   const mountedRef = useRef(true);
 
-  useEffect(() => {
+  const refreshProfile = useCallback((): void => {
     window.electronAPI.profile
       .getState()
       .then((state) => {
@@ -87,10 +87,17 @@ export const SettingsPage = (): JSX.Element => {
       .catch(() => {
         if (mountedRef.current) setProfile(null);
       });
+  }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    refreshProfile();
+    window.addEventListener(PROFILE_CHANGED_EVENT, refreshProfile);
     return () => {
       mountedRef.current = false;
+      window.removeEventListener(PROFILE_CHANGED_EVENT, refreshProfile);
     };
-  }, []);
+  }, [refreshProfile]);
 
   /** 通知トグル */
   const toggleEmail = (id: string): void => {
