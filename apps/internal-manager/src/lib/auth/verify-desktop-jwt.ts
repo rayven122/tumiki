@@ -7,15 +7,17 @@ export type VerifiedDesktopUser = {
   userId: string;
 };
 
-// JWKSはモジュールスコープでキャッシュ（プロセス再起動まで再利用）
+// Discovery結果は短時間キャッシュし、IdP設定変更時もプロセス再起動なしで追従する
 let cachedJwks: ReturnType<typeof createRemoteJWKSet> | null = null;
+let cachedJwksExpiresAt = 0;
+const JWKS_DISCOVERY_CACHE_TTL_MS = 10 * 60 * 1000;
 
 /**
  * OIDCディスカバリ経由でJWKS URIを取得してJWKSクライアントを生成
  * EntraID / Okta / Google / Keycloak など任意のOIDCプロバイダーに対応
  */
 const getJwks = async () => {
-  if (cachedJwks) return cachedJwks;
+  if (cachedJwks && Date.now() < cachedJwksExpiresAt) return cachedJwks;
 
   const { OIDC_ISSUER } = getOidcEnv();
   const discoveryUrl = `${OIDC_ISSUER.replace(/\/$/, "")}/.well-known/openid-configuration`;
@@ -31,6 +33,7 @@ const getJwks = async () => {
   }
 
   cachedJwks = createRemoteJWKSet(new URL(config.jwks_uri));
+  cachedJwksExpiresAt = Date.now() + JWKS_DISCOVERY_CACHE_TTL_MS;
   return cachedJwks;
 };
 
