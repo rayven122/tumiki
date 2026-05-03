@@ -65,9 +65,10 @@ describe("createUser", () => {
 
     const result = await createUser(buildDb(), input);
     const createArgs = mockDb.user.create.mock.calls[0]?.[0];
+    if (!createArgs) throw new Error("user.createが呼び出されませんでした");
 
-    expect(createArgs?.data.id).toStrictEqual(input.id);
-    expect(createArgs?.data.role).toStrictEqual(Role.SYSTEM_ADMIN);
+    expect(createArgs.data.id).toStrictEqual(input.id);
+    expect(createArgs.data.role).toStrictEqual(Role.SYSTEM_ADMIN);
     expect(result.role).toStrictEqual(Role.SYSTEM_ADMIN);
   });
 
@@ -87,9 +88,10 @@ describe("createUser", () => {
       email: "second@example.com",
     });
     const createArgs = mockDb.user.create.mock.calls[0]?.[0];
+    if (!createArgs) throw new Error("user.createが呼び出されませんでした");
 
-    expect(createArgs?.data.id).toStrictEqual("user-002");
-    expect(createArgs?.data.role).toStrictEqual(Role.USER);
+    expect(createArgs.data.id).toStrictEqual("user-002");
+    expect(createArgs.data.role).toStrictEqual(Role.USER);
     expect(result.role).toStrictEqual(Role.USER);
   });
 

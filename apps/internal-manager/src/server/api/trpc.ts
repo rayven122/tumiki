@@ -145,8 +145,21 @@ export const protectedProcedure = t.procedure
  * SYSTEM_ADMIN のみアクセス可能な管理系 API で使用します。
  */
 const enforceUserIsAdmin = t.middleware(({ ctx, next }) => {
-  // protectedProcedure後段ではenforceUserIsAuthedによりid付与済み。
-  const protectedCtx = ctx as ProtectedContext;
+  const session = ctx.session;
+  if (!session?.user?.sub) {
+    throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+
+  const protectedCtx: ProtectedContext = {
+    ...ctx,
+    session: {
+      ...session,
+      user: {
+        ...session.user,
+        id: session.user.sub,
+      },
+    },
+  };
   if (protectedCtx.session.user.role !== Role.SYSTEM_ADMIN) {
     throw new TRPCError({
       code: "FORBIDDEN",
@@ -169,7 +182,11 @@ export type Context = Awaited<ReturnType<typeof createTRPCContext>>;
  * 認証済みが保証されている状態
  */
 export type ProtectedContext = Omit<Context, "session"> & {
-  session: NonNullable<Context["session"]>;
+  session: NonNullable<Context["session"]> & {
+    user: NonNullable<Context["session"]>["user"] & {
+      id: string;
+    };
+  };
 };
 
 /**
