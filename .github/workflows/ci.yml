@@ -238,6 +238,7 @@ jobs:
           # スモークテスト専用のダミーキー。実際の暗号化には使用しない。
           smoke_prisma_key="k1.aesgcm256.$(printf '12345678901234567890123456789012' | base64 | tr '+/' '-_' | tr -d '=')"
           smoke_env_file="$(mktemp)"
+          trap 'rm -f "${smoke_env_file}"' EXIT
           {
             echo "PRISMA_FIELD_ENCRYPTION_KEY=${smoke_prisma_key}"
             cat <<'EOF'
@@ -269,7 +270,7 @@ jobs:
         run: echo "No Docker smoke relevant changes for ${{ matrix.app }}."
 
       - name: 🧹 Cleanup container
-        if: always()
+        if: always() && needs.docker-smoke-changes.outputs[matrix.change_output] == 'true'
         run: docker rm -f "${{ matrix.container }}" || true
 
   docker-smoke-test:
