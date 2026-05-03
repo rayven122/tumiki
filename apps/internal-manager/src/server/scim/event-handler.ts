@@ -98,11 +98,13 @@ export const handleDirectorySyncEvent = async (
       case "user.deleted": {
         if (!isUser(data)) break;
         // ソフト削除（履歴・権限追跡のため物理削除しない）
-        await db.user.update({
+        // user.created が過去に失敗していた場合に P2025 を出さないよう updateMany を使用
+        // （0件マッチでも { count: 0 } を返すため冪等）
+        const del = await db.user.updateMany({
           where: { id: data.id },
           data: { isActive: false },
         });
-        removed = 1;
+        removed = del.count;
         break;
       }
 

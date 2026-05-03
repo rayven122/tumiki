@@ -26,7 +26,17 @@ const ensureJackson = async () => {
       message: "Jackson が初期化されていません",
     });
   }
-  return getJackson();
+  // getJackson() は DB 接続エラー等でスローし得る。tRPC に内部エラーが
+  // 漏れないよう SERVICE_UNAVAILABLE に正規化する（route-helpers.ts と対称）
+  try {
+    return await getJackson();
+  } catch (e) {
+    console.error("[scim-directory] jackson init failed:", e);
+    throw new TRPCError({
+      code: "SERVICE_UNAVAILABLE",
+      message: "Jackson の初期化に失敗しました",
+    });
+  }
 };
 
 // Jackson の Directory.scim.endpoint が未設定の場合に備えて、外部URL+pathで

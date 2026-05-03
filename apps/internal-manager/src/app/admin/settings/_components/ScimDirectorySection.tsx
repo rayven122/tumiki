@@ -172,7 +172,14 @@ const ScimDirectorySection = () => {
                 className="bg-bg-app border-border-default flex items-center gap-2 rounded-lg border px-3 py-2"
               >
                 <div className="flex-1">
-                  <div className="text-text-primary text-xs">{d.name}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-text-primary text-xs">{d.name}</span>
+                    {d.deactivated && (
+                      <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-400">
+                        無効
+                      </span>
+                    )}
+                  </div>
                   <div className="text-text-muted font-mono text-[10px] break-all">
                     {d.scimEndpoint}
                   </div>
