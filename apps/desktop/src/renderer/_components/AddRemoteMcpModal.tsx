@@ -100,7 +100,7 @@ export const AddRemoteMcpModal = ({
     const handleKeyDown = (e: KeyboardEvent): void => {
       if (e.key !== "Escape") return;
       if (authMethod === "oauth" && loading) {
-        window.electronAPI.oauth.cancelAuth();
+        void window.electronAPI.oauth.cancelAuth();
       }
       onClose();
     };
@@ -223,17 +223,25 @@ export const AddRemoteMcpModal = ({
       : "作成";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="remote-mcp-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+    >
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-8">
         {/* タイトル + 閉じるボタン */}
         <div className="mb-1 flex items-start justify-between">
-          <h2 className="text-xl font-bold text-[var(--text-primary)]">
+          <h2
+            id="remote-mcp-modal-title"
+            className="text-xl font-bold text-[var(--text-primary)]"
+          >
             リモートMCPサーバーの追加
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-[var(--text-muted)] transition hover:opacity-70"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-[var(--text-muted)] transition hover:opacity-70"
           >
             <X size={20} />
           </button>
@@ -486,7 +494,7 @@ export const AddRemoteMcpModal = ({
                       type="button"
                       onClick={() => handleRemoveEnvVar(key)}
                       disabled={loading}
-                      className="rounded p-1 text-[var(--text-muted)] transition hover:opacity-70 disabled:opacity-50"
+                      className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-[var(--text-muted)] transition hover:opacity-70 disabled:opacity-50"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -519,7 +527,7 @@ export const AddRemoteMcpModal = ({
             type="button"
             onClick={() => {
               if (authMethod === "oauth" && loading) {
-                window.electronAPI.oauth.cancelAuth();
+                void window.electronAPI.oauth.cancelAuth();
               }
               onClose();
             }}
