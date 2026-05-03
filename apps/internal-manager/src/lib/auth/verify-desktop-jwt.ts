@@ -14,10 +14,7 @@ let jwksPromise: Promise<ReturnType<typeof createRemoteJWKSet>> | null = null;
 const JWKS_DISCOVERY_CACHE_TTL_MS = 10 * 60 * 1000;
 const OIDC_DISCOVERY_TIMEOUT_MS = 5 * 1000;
 
-/**
- * OIDCディスカバリ経由でJWKS URIを取得してJWKSクライアントを生成
- * EntraID / Okta / Google / Keycloak など任意のOIDCプロバイダーに対応
- */
+// OIDCディスカバリ経由でJWKS URIを取得してJWKSクライアントを生成
 const getJwks = async () => {
   if (cachedJwks && Date.now() < cachedJwksExpiresAt) return cachedJwks;
   if (jwksPromise) return jwksPromise;
@@ -46,7 +43,7 @@ const getJwks = async () => {
       throw new Error("OIDCディスカバリ取得失敗");
     }
 
-    const config = (await res.json()) as { jwks_uri?: string };
+    const config = (await res.json()) as unknown as { jwks_uri?: string };
     if (!config.jwks_uri) {
       throw new Error("OIDCディスカバリにjwks_uriが含まれていません");
     }
@@ -61,11 +58,7 @@ const getJwks = async () => {
   return jwksPromise;
 };
 
-/**
- * DesktopからのBearer JWTを検証し、ユーザーを特定する
- *
- * @param authHeader Authorization ヘッダー値（"Bearer <token>"形式）
- */
+// DesktopからのBearer JWTを検証し、ユーザーを特定する
 export const verifyDesktopJwt = async (
   authHeader: string | null,
 ): Promise<VerifiedDesktopUser> => {

@@ -61,6 +61,22 @@ beforeEach(() => {
 });
 
 describe("verifyDesktopJwt", () => {
+  test("Authorizationヘッダーがない場合はUnauthorizedエラーを返す", async () => {
+    const { verifyDesktopJwt } = await loadModule();
+
+    await expect(verifyDesktopJwt(null)).rejects.toThrow("Unauthorized");
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  test("Bearer形式でない場合はUnauthorizedエラーを返す", async () => {
+    const { verifyDesktopJwt } = await loadModule();
+
+    await expect(verifyDesktopJwt("Basic token-001")).rejects.toThrow(
+      "Unauthorized",
+    );
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
   test("OIDC_CLIENT_IDをaudienceとしてJWTを検証する", async () => {
     const { verifyDesktopJwt } = await loadModule();
 
@@ -73,8 +89,30 @@ describe("verifyDesktopJwt", () => {
     });
   });
 
+  test("subクレームがない場合はUnauthorizedエラーを返す", async () => {
+    mockJwtVerify.mockResolvedValueOnce({
+      payload: {},
+      protectedHeader: { alg: "RS256" },
+      key: new Uint8Array(),
+    });
+    const { verifyDesktopJwt } = await loadModule();
+
+    await expect(verifyDesktopJwt("Bearer token-001")).rejects.toThrow(
+      "Unauthorized",
+    );
+  });
+
+  test("ExternalIdentityが見つからない場合はUnauthorizedエラーを返す", async () => {
+    mockFindFirst.mockResolvedValueOnce(null);
+    const { verifyDesktopJwt } = await loadModule();
+
+    await expect(verifyDesktopJwt("Bearer token-001")).rejects.toThrow(
+      "Unauthorized",
+    );
+  });
+
   test("JWKS discoveryをTTL内で再利用する", async () => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ shouldAdvanceTime: false });
     const { verifyDesktopJwt } = await loadModule();
 
     await verifyDesktopJwt("Bearer token-001");
@@ -124,8 +162,20 @@ describe("verifyDesktopJwt", () => {
     expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 
+  test("JWKS discoveryにjwks_uriがない場合はエラーを返す", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({}),
+    } as Response);
+    const { verifyDesktopJwt } = await loadModule();
+
+    await expect(verifyDesktopJwt("Bearer token-001")).rejects.toThrow(
+      "OIDCディスカバリにjwks_uriが含まれていません",
+    );
+  });
+
   test("JWKS discoveryが応答しない場合はタイムアウトする", async () => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ shouldAdvanceTime: false });
     mockFetch.mockImplementation((_input, init) => {
       const signal = init?.signal;
       return new Promise<Response>((_resolve, reject) => {
