@@ -103,6 +103,38 @@ const timingMiddleware = t.middleware(async ({ next, path }) => {
  */
 export const publicProcedure = t.procedure.use(timingMiddleware);
 
+const enforceUserIsAuthed = t.middleware(async ({ ctx, next }) => {
+  const session = ctx.session;
+  if (!session?.user?.sub) {
+    throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      // sessionをnon-nullableとして推論
+      session: {
+        ...session,
+        user: {
+          ...session.user,
+          id: session.user.sub,
+        },
+      },
+    },
+  });
+});
+
+const enforceUserIsAdmin = t.middleware(async ({ ctx, next }) => {
+  if (ctx.session?.user.role !== "SYSTEM_ADMIN") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "SYSTEM_ADMINのみ操作できます",
+    });
+  }
+
+  return next({ ctx });
+});
+
 /**
  * 保護されたプロシージャ（認証必須）
  *
@@ -116,25 +148,14 @@ export const publicProcedure = t.procedure.use(timingMiddleware);
  */
 export const protectedProcedure = t.procedure
   .use(timingMiddleware)
-  .use(async ({ ctx, next }) => {
-    if (!ctx.session?.user?.sub) {
-      throw new TRPCError({ code: "UNAUTHORIZED" });
-    }
+  .use(enforceUserIsAuthed);
 
-    return next({
-      ctx: {
-        ...ctx,
-        // sessionをnon-nullableとして推論
-        session: {
-          ...ctx.session,
-          user: {
-            ...ctx.session.user,
-            id: ctx.session.user.sub,
-          },
-        },
-      },
-    });
-  });
+/**
+ * 管理者専用プロシージャ
+ *
+ * SYSTEM_ADMIN のみアクセス可能な管理系 API で使用します。
+ */
+export const adminProcedure = protectedProcedure.use(enforceUserIsAdmin);
 
 export type Context = Awaited<ReturnType<typeof createTRPCContext>>;
 

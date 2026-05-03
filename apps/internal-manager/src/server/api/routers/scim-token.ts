@@ -1,6 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
+import { adminProcedure, createTRPCRouter } from "@/server/api/trpc";
 
 /** `scim_<64hex>` 形式のトークンを生成し hash と hint を返す */
 const buildToken = () => {
@@ -10,20 +9,9 @@ const buildToken = () => {
   return { raw, hash, hint };
 };
 
-/** SYSTEM_ADMIN のみ操作を許可 */
-const adminCheck = (role: string) => {
-  if (role !== "SYSTEM_ADMIN") {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "SYSTEM_ADMINのみ操作できます",
-    });
-  }
-};
-
 export const scimTokenRouter = createTRPCRouter({
   /** 現在のトークン情報を取得（hint と作成日時のみ。平文は返さない） */
-  getCurrent: protectedProcedure.query(async ({ ctx }) => {
-    adminCheck(ctx.session.user.role);
+  getCurrent: adminProcedure.query(async ({ ctx }) => {
     return ctx.db.scimToken.findFirst({
       select: { id: true, hint: true, createdAt: true },
       orderBy: { createdAt: "desc" },
@@ -31,14 +19,15 @@ export const scimTokenRouter = createTRPCRouter({
   }),
 
   /** トークンを生成（既存トークンは全て削除して新規作成） */
-  generate: protectedProcedure.mutation(async ({ ctx }) => {
-    adminCheck(ctx.session.user.role);
+  generate: adminProcedure.mutation(async ({ ctx }) => {
     const { raw, hash, hint } = buildToken();
+    const createdBy = ctx.session?.user.id;
+    if (!createdBy) throw new Error("Authenticated session is required");
 
     await ctx.db.$transaction([
       ctx.db.scimToken.deleteMany(),
       ctx.db.scimToken.create({
-        data: { hash, hint, createdBy: ctx.session.user.id },
+        data: { hash, hint, createdBy },
       }),
     ]);
 
@@ -47,8 +36,7 @@ export const scimTokenRouter = createTRPCRouter({
   }),
 
   /** トークンを失効（削除） */
-  revoke: protectedProcedure.mutation(async ({ ctx }) => {
-    adminCheck(ctx.session.user.role);
+  revoke: adminProcedure.mutation(async ({ ctx }) => {
     await ctx.db.scimToken.deleteMany();
   }),
 });

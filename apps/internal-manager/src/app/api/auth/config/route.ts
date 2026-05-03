@@ -12,7 +12,7 @@ export const GET = () => {
   const env = getOidcEnv();
   return NextResponse.json({
     issuer: env.OIDC_ISSUER,
-    clientId: env.OIDC_DESKTOP_CLIENT_ID,
+    clientId: env.OIDC_CLIENT_ID,
   });
 };
 

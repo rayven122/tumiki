@@ -27,6 +27,10 @@ export const proxy = async (req: NextRequest) => {
     signInUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(signInUrl);
   }
+
+  if (pathname.startsWith("/admin") && session.user.role !== "SYSTEM_ADMIN") {
+    return new NextResponse("Forbidden", { status: 403 });
+  }
 };
 
 export const config = {

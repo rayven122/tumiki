@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { auth } from "~/auth";
 import { AdminSidebar } from "./_components/AdminSidebar";
@@ -6,6 +6,7 @@ import { AdminSidebar } from "./_components/AdminSidebar";
 const AdminLayout = async ({ children }: { children: ReactNode }) => {
   const session = await auth();
   if (!session) redirect("/api/auth/signin?callbackUrl=/admin");
+  if (session.user.role !== "SYSTEM_ADMIN") notFound();
 
   return (
     <div className="bg-bg-main flex h-screen">
