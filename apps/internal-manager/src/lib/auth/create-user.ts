@@ -37,6 +37,9 @@ export const createUser = async (
   tx: PrismaTransactionClient,
   input: CreateUserInput,
 ): Promise<CreateUserOutput> => {
+  const existingUserCount = await tx.user.count();
+  const role = existingUserCount === 0 ? Role.SYSTEM_ADMIN : Role.USER;
+
   // ユーザーを作成
   const createdUser = await tx.user.create({
     data: {
@@ -45,6 +48,7 @@ export const createUser = async (
       email: input.email,
       emailVerified: input.emailVerified ?? null,
       image: input.image ?? null,
+      role,
     },
   });
 
