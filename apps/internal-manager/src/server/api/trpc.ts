@@ -145,7 +145,11 @@ export const protectedProcedure = t.procedure
  * SYSTEM_ADMIN のみアクセス可能な管理系 API で使用します。
  */
 const enforceUserIsAdmin = t.middleware(async ({ ctx, next }) => {
-  // protectedProcedure後段でのみ使うため、enforceUserIsAuthedでsessionは保証済み。
+  if (!ctx.session?.user?.sub) {
+    throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+
+  // protectedProcedure後段ではenforceUserIsAuthedによりid付与済み。
   const protectedCtx = ctx as ProtectedContext;
   if (protectedCtx.session.user.role !== Role.SYSTEM_ADMIN) {
     throw new TRPCError({
