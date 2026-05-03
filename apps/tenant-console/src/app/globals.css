@@ -1,1 +1,93 @@
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  --color-bg-app: #0a0a0a;
+  --color-bg-main: #111111;
+  --color-bg-card: #18181b;
+  --color-bg-card-hover: rgba(255, 255, 255, 0.04);
+  --color-bg-active: rgba(255, 255, 255, 0.08);
+  --color-bg-input: rgba(255, 255, 255, 0.03);
+  --color-border-default: rgba(255, 255, 255, 0.08);
+  --color-border-focus: rgba(255, 255, 255, 0.2);
+  --color-border-subtle: rgba(255, 255, 255, 0.03);
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #a1a1aa;
+  --color-text-muted: #71717a;
+  --color-text-subtle: #52525b;
+  --color-badge-success-bg: rgba(52, 211, 153, 0.1);
+  --color-badge-success-text: #34d399;
+  --color-badge-warn-bg: rgba(251, 191, 36, 0.1);
+  --color-badge-warn-text: #fbbf24;
+  --color-badge-error-bg: rgba(248, 113, 113, 0.1);
+  --color-badge-error-text: #f87171;
+  --color-badge-info-bg: rgba(96, 165, 250, 0.1);
+  --color-badge-info-text: #60a5fa;
+  --color-btn-primary-bg: #ffffff;
+  --color-btn-primary-text: #000000;
+}
+
+:root[data-theme="light"] {
+  --color-bg-app: #e8eaed;
+  --color-bg-main: #f4f5f7;
+  --color-bg-card: #ffffff;
+  --color-bg-card-hover: rgba(0, 0, 0, 0.02);
+  --color-bg-active: rgba(0, 0, 0, 0.06);
+  --color-bg-input: rgba(0, 0, 0, 0.02);
+  --color-border-default: #e5e7eb;
+  --color-border-focus: rgba(0, 0, 0, 0.3);
+  --color-border-subtle: #f3f4f6;
+  --color-text-primary: #111827;
+  --color-text-secondary: #4b5563;
+  --color-text-muted: #6b7280;
+  --color-text-subtle: #9ca3af;
+  --color-badge-success-bg: rgba(16, 185, 129, 0.1);
+  --color-badge-success-text: #059669;
+  --color-badge-warn-bg: rgba(245, 158, 11, 0.1);
+  --color-badge-warn-text: #d97706;
+  --color-badge-error-bg: rgba(239, 68, 68, 0.1);
+  --color-badge-error-text: #dc2626;
+  --color-badge-info-bg: rgba(37, 99, 235, 0.1);
+  --color-badge-info-text: #2563eb;
+  --color-btn-primary-bg: #111827;
+  --color-btn-primary-text: #ffffff;
+}
+
+@layer base {
+  body {
+    @apply bg-bg-main text-text-secondary antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border-default) transparent;
+  }
+
+  ::selection {
+    @apply bg-white/20 text-white;
+  }
+
+  :root[data-theme="light"] ::selection {
+    @apply bg-blue-100 text-blue-900;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-default);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-subtle);
+}

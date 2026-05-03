@@ -1,46 +1,30 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { cookies } from "next/headers";
 import "./globals.css";
 import { TRPCReactProvider } from "@/trpc/react";
+import { THEME_STORAGE_KEY, type Theme } from "./_components/ThemeToggle";
+import TenantConsoleSidebar from "./_components/TenantConsoleSidebar";
 
 export const metadata: Metadata = {
   title: "Tenant Console — Tumiki テナント管理",
   description: "k3s クラスター上のテナントを管理する内部管理画面",
 };
 
-const RootLayout = ({ children }: Readonly<{ children: React.ReactNode }>) => {
+const RootLayout = async ({
+  children,
+}: Readonly<{ children: React.ReactNode }>) => {
+  const cookieStore = await cookies();
+  const initialTheme: Theme =
+    cookieStore.get(THEME_STORAGE_KEY)?.value === "light" ? "light" : "dark";
+
   return (
-    <html lang="ja">
+    <html lang="ja" data-theme={initialTheme}>
       <body>
         <TRPCReactProvider>
-          <nav className="border-b border-gray-200 bg-white">
-            <div className="mx-auto max-w-5xl px-4">
-              <div className="flex h-14 items-center gap-6">
-                <span className="text-sm font-bold text-gray-900">
-                  Tenant Console
-                </span>
-                <Link
-                  href="/tenants"
-                  className="text-sm text-gray-600 hover:text-gray-900"
-                >
-                  テナント
-                </Link>
-                <Link
-                  href="/licenses"
-                  className="text-sm text-gray-600 hover:text-gray-900"
-                >
-                  ライセンス
-                </Link>
-                <Link
-                  href="/monitoring"
-                  className="text-sm text-gray-600 hover:text-gray-900"
-                >
-                  Pod 監視
-                </Link>
-              </div>
-            </div>
-          </nav>
-          {children}
+          <div className="bg-bg-main flex h-screen overflow-hidden">
+            <TenantConsoleSidebar initialTheme={initialTheme} />
+            <main className="min-w-0 flex-1 overflow-y-auto">{children}</main>
+          </div>
         </TRPCReactProvider>
       </body>
     </html>

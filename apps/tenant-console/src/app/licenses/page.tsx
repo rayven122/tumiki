@@ -8,13 +8,11 @@ const LicensesPage = async () => {
   ]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="mx-auto max-w-5xl px-4 py-8">
-        <LicenseTable
-          initialData={result}
-          tenants={tenants.map((t) => ({ id: t.id, slug: t.slug }))}
-        />
-      </div>
+    <div className="p-6">
+      <LicenseTable
+        initialData={result}
+        tenants={tenants.map((t) => ({ id: t.id, slug: t.slug }))}
+      />
     </div>
   );
 };

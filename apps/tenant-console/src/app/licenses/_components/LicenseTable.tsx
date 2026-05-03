@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { KeyRound } from "lucide-react";
 import { api, type RouterOutputs } from "@/trpc/react";
 import RevokeConfirmDialog from "./RevokeConfirmDialog";
 import IssueLicenseDialog from "./IssueLicenseDialog";
+import { licenseStatusBadgeClass } from "./licenseStyles";
 
 type LicenseItem = RouterOutputs["license"]["list"]["items"][number];
 
@@ -12,15 +14,9 @@ type Props = {
   tenants: Array<{ id: string; slug: string }>;
 };
 
-const statusBadgeClass = (status: "ACTIVE" | "REVOKED" | "EXPIRED") => {
-  if (status === "ACTIVE") return "bg-green-100 text-green-800";
-  if (status === "EXPIRED") return "bg-yellow-100 text-yellow-800";
-  return "bg-red-100 text-red-800";
-};
-
 const typeBadgeClass = (type: "PERSONAL" | "TENANT") => {
-  if (type === "PERSONAL") return "bg-blue-100 text-blue-800";
-  return "bg-purple-100 text-purple-800";
+  if (type === "PERSONAL") return "bg-badge-info-bg text-badge-info-text";
+  return "bg-bg-active text-text-secondary";
 };
 
 const LicenseTable = ({ initialData, tenants }: Props) => {
@@ -47,97 +43,86 @@ const LicenseTable = ({ initialData, tenants }: Props) => {
   }, [fetchNextPage]);
 
   return (
-    <div>
-      {/* ヘッダー行 */}
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">ライセンス一覧</h1>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-text-primary text-lg font-semibold">
+            ライセンス
+          </h1>
+          <p className="text-text-secondary mt-1 text-xs">
+            発行済みライセンスと有効期限を管理します
+          </p>
+        </div>
         <IssueLicenseDialog tenants={tenants} />
       </div>
 
       {items.length === 0 ? (
-        <div className="rounded-lg bg-white p-8 text-center shadow">
-          <p className="text-gray-500">ライセンスがまだ存在しません</p>
+        <div className="bg-bg-card border-border-default rounded-xl border py-14 text-center">
+          <KeyRound className="text-text-subtle mx-auto mb-3 h-5 w-5" />
+          <p className="text-text-muted text-sm">
+            ライセンスがまだ存在しません
+          </p>
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-lg bg-white shadow">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                    種別
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                    Subject
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                    Features
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                    ステータス
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                    有効期限
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                    発行日
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                    操作
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 bg-white">
-                {items.map((item) => (
-                  <tr key={item.id}>
-                    <td className="px-6 py-4 text-sm whitespace-nowrap">
-                      <span
-                        className={`inline-flex rounded-full px-2 text-xs leading-5 font-semibold ${typeBadgeClass(item.type)}`}
+          <div className="bg-bg-card border-border-default overflow-hidden rounded-xl border">
+            <div className="overflow-x-auto">
+              <div className="border-b-border-default text-text-subtle grid min-w-[980px] grid-cols-[88px_1.4fr_1.2fr_96px_132px_132px_72px] items-center gap-3 border-b px-5 py-2.5 text-[10px]">
+                <span>種別</span>
+                <span>Subject</span>
+                <span>Features</span>
+                <span>ステータス</span>
+                <span>有効期限</span>
+                <span>発行日</span>
+                <span className="text-right">操作</span>
+              </div>
+              {items.map((item) => (
+                <div
+                  key={item.id}
+                  className="border-b-border-subtle hover:bg-bg-card-hover grid min-w-[980px] grid-cols-[88px_1.4fr_1.2fr_96px_132px_132px_72px] items-center gap-3 border-b px-5 py-3 text-xs transition-colors"
+                >
+                  <span
+                    className={`w-fit rounded-full px-2 py-0.5 text-[10px] font-medium ${typeBadgeClass(item.type)}`}
+                  >
+                    {item.type}
+                  </span>
+                  <span className="text-text-primary truncate font-mono">
+                    {item.subject}
+                  </span>
+                  <span className="text-text-muted truncate">
+                    {item.features.join(", ")}
+                  </span>
+                  <span
+                    className={`w-fit rounded-full px-2 py-0.5 text-[10px] font-medium ${licenseStatusBadgeClass(item.computedStatus)}`}
+                  >
+                    {item.computedStatus}
+                  </span>
+                  <span className="text-text-muted font-mono text-[11px]">
+                    {item.expiresAt.toLocaleDateString("ja-JP")}
+                  </span>
+                  <span className="text-text-muted font-mono text-[11px]">
+                    {item.issuedAt.toLocaleDateString("ja-JP")}
+                  </span>
+                  <span className="text-right">
+                    {item.computedStatus === "ACTIVE" && (
+                      <button
+                        type="button"
+                        onClick={() => setRevokeTarget(item)}
+                        className="text-badge-error-text hover:bg-badge-error-bg inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded px-2 py-1 text-[11px] transition-colors"
                       >
-                        {item.type}
-                      </span>
-                    </td>
-                    <td className="max-w-xs truncate px-6 py-4 text-sm text-gray-900">
-                      {item.subject}
-                    </td>
-                    <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
-                      {item.features.join(", ")}
-                    </td>
-                    <td className="px-6 py-4 text-sm whitespace-nowrap">
-                      <span
-                        className={`inline-flex rounded-full px-2 text-xs leading-5 font-semibold ${statusBadgeClass(item.computedStatus)}`}
-                      >
-                        {item.computedStatus}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
-                      {item.expiresAt.toLocaleString("ja-JP")}
-                    </td>
-                    <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
-                      {item.issuedAt.toLocaleString("ja-JP")}
-                    </td>
-                    <td className="px-6 py-4 text-sm whitespace-nowrap">
-                      {item.computedStatus === "ACTIVE" && (
-                        <button
-                          type="button"
-                          onClick={() => setRevokeTarget(item)}
-                          className="min-h-[44px] rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
-                        >
-                          失効
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                        失効
+                      </button>
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* さらに読み込むボタン */}
           {hasMore && (
             <div className="mt-4 flex flex-col items-center gap-2">
               {loadMoreError && (
-                <p className="text-sm text-red-600">
+                <p className="text-badge-error-text text-sm">
                   追加データの読み込みに失敗しました。再度お試しください。
                 </p>
               )}
@@ -145,7 +130,7 @@ const LicenseTable = ({ initialData, tenants }: Props) => {
                 type="button"
                 onClick={handleLoadMore}
                 disabled={isFetchingNextPage}
-                className="min-h-[44px] rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="border-border-default text-text-secondary min-h-[44px] rounded-lg border px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
               >
                 {isFetchingNextPage ? "読み込み中..." : "さらに読み込む"}
               </button>
@@ -154,7 +139,6 @@ const LicenseTable = ({ initialData, tenants }: Props) => {
         </>
       )}
 
-      {/* 失効確認ダイアログ */}
       {revokeTarget && (
         <RevokeConfirmDialog
           licenseId={revokeTarget.id}
