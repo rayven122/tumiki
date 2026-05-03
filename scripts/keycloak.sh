@@ -45,6 +45,15 @@ REQUIRED_VARS=(
 # TF_VAR_*にエクスポート
 export_tf_vars() {
   if [ "${ENV:-}" = "local" ]; then
+    local keycloak_url="${TF_VAR_keycloak_url:-${KEYCLOAK_URL:-http://localhost:8888}}"
+    case "$keycloak_url" in
+      http://localhost:* | http://127.0.0.1:* | "http://[::1]:"*) ;;
+      *)
+        log_error "localモードではlocalhostのKeycloak URLのみ使用できます: ${keycloak_url}"
+        exit 1
+        ;;
+    esac
+
     # ローカル検証は .env なしでも起動できるよう、開発専用の既定値を補完する。
     KEYCLOAK_ADMIN_USERNAME="${KEYCLOAK_ADMIN_USERNAME:-admin}"
     KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD:-admin123}"
@@ -60,6 +69,7 @@ export_tf_vars() {
     FROM_EMAIL="${FROM_EMAIL:-noreply@tumiki.local}"
     KEYCLOAK_LOGIN_THEME="${KEYCLOAK_LOGIN_THEME:-keycloak}"
     KEYCLOAK_ACCOUNT_THEME="${KEYCLOAK_ACCOUNT_THEME:-keycloak}"
+    export TF_VAR_keycloak_url="$keycloak_url"
   fi
 
   if ! check_required_vars "${REQUIRED_VARS[@]}"; then
