@@ -14,7 +14,7 @@ import { setupAuditLogIpc } from "./features/audit-log/audit-log.ipc";
 import { setupDashboardIpc } from "./features/dashboard/dashboard.ipc";
 import { seedCatalogs } from "./features/catalog/catalog.seed";
 import { createOAuthManager } from "./auth/oauth-manager";
-import { resolveOidcEndpoints } from "./auth/keycloak";
+import { resolveOidcEndpoints } from "./auth/oidc-client";
 import { getOAuthManager, setOAuthManager } from "./auth/manager-registry";
 import { getKeycloakEnvOptional } from "./utils/env";
 import { createMcpOAuthManager } from "./features/oauth/oauth.service";
