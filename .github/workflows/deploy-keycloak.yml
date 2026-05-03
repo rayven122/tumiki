@@ -132,7 +132,8 @@ jobs:
             terraform init -input=false
             terraform validate
             if ! terraform state show keycloak_realm.tumiki >/dev/null 2>&1; then
-              if curl -fsS --max-time 10 "${TF_VAR_keycloak_url%/}/realms/tumiki" >/dev/null; then
+              KEYCLOAK_URL=$(grep -oP '^\s*keycloak_url\s*=\s*"\K[^"]+' terraform.tfvars.staging)
+              if curl -fsS --max-time 10 "${KEYCLOAK_URL%/}/realms/tumiki" >/dev/null; then
                 terraform import -var-file=terraform.tfvars.staging -input=false keycloak_realm.tumiki tumiki
               else
                 echo "tumiki realm does not exist yet; terraform apply will create it"
