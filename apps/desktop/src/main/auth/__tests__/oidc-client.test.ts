@@ -6,19 +6,19 @@ vi.mock("electron", () => ({
 
 vi.mock("../../shared/utils/logger");
 
-import { createKeycloakClient } from "../keycloak";
-import type { KeycloakConfig } from "../keycloak";
+import { createOidcClient } from "../oidc-client";
+import type { OidcClientConfig } from "../oidc-client";
 
 const createConfig = (
-  overrides: Partial<KeycloakConfig> = {},
-): KeycloakConfig => ({
+  overrides: Partial<OidcClientConfig> = {},
+): OidcClientConfig => ({
   issuer: "https://keycloak.example.com/realms/test",
   clientId: "test-client",
   redirectUri: "tumiki://auth/callback",
   ...overrides,
 });
 
-describe("KeycloakClient", () => {
+describe("OidcClient", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -27,28 +27,26 @@ describe("KeycloakClient", () => {
     vi.unstubAllGlobals();
   });
 
-  describe("createKeycloakClient", () => {
+  describe("createOidcClient", () => {
     test("有効な設定でインスタンスを作成できる", () => {
-      const client = createKeycloakClient(createConfig());
+      const client = createOidcClient(createConfig());
       expect(client).toBeDefined();
     });
 
     test("issuerがURLでない場合はエラーをスローする", () => {
       expect(() =>
-        createKeycloakClient(createConfig({ issuer: "invalid" })),
+        createOidcClient(createConfig({ issuer: "invalid" })),
       ).toThrow();
     });
 
     test("clientIdが空の場合はエラーをスローする", () => {
-      expect(() =>
-        createKeycloakClient(createConfig({ clientId: "" })),
-      ).toThrow();
+      expect(() => createOidcClient(createConfig({ clientId: "" }))).toThrow();
     });
   });
 
   describe("generateAuthUrl", () => {
     test("正しいOAuth認証URLを生成する", () => {
-      const client = createKeycloakClient(createConfig());
+      const client = createOidcClient(createConfig());
       const url = client.generateAuthUrl({
         codeChallenge: "test-challenge",
         state: "test-state",
@@ -89,7 +87,7 @@ describe("KeycloakClient", () => {
         }),
       );
 
-      const client = createKeycloakClient(createConfig());
+      const client = createOidcClient(createConfig());
       const result = await client.exchangeCodeForToken({
         code: "auth-code",
         codeVerifier: "verifier",
@@ -117,7 +115,7 @@ describe("KeycloakClient", () => {
         }),
       );
 
-      const client = createKeycloakClient(createConfig());
+      const client = createOidcClient(createConfig());
 
       await expect(
         client.exchangeCodeForToken({
@@ -139,7 +137,7 @@ describe("KeycloakClient", () => {
         }),
       );
 
-      const client = createKeycloakClient(createConfig());
+      const client = createOidcClient(createConfig());
 
       await expect(
         client.exchangeCodeForToken({
@@ -167,7 +165,7 @@ describe("KeycloakClient", () => {
         }),
       );
 
-      const client = createKeycloakClient(createConfig());
+      const client = createOidcClient(createConfig());
       const result = await client.refreshToken("old-refresh-token");
 
       expect(result).toStrictEqual(mockResponse);
@@ -188,7 +186,7 @@ describe("KeycloakClient", () => {
         }),
       );
 
-      const client = createKeycloakClient(createConfig());
+      const client = createOidcClient(createConfig());
 
       await expect(client.refreshToken("refresh-token")).rejects.toThrow(
         "トークンリフレッシュに失敗しました（レスポンス解析エラー: 200）",
@@ -205,7 +203,7 @@ describe("KeycloakClient", () => {
         }),
       );
 
-      const client = createKeycloakClient(createConfig());
+      const client = createOidcClient(createConfig());
 
       await expect(
         client.refreshToken("expired-refresh-token"),
@@ -214,10 +212,10 @@ describe("KeycloakClient", () => {
   });
 
   describe("logout", () => {
-    test("Keycloakからログアウトできる", async () => {
+    test("OIDCプロバイダーからログアウトできる", async () => {
       vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
 
-      const client = createKeycloakClient(createConfig());
+      const client = createOidcClient(createConfig());
       await client.logout({ refreshToken: "refresh-token" });
 
       const fetchCall = vi.mocked(fetch).mock.calls[0];
@@ -236,7 +234,7 @@ describe("KeycloakClient", () => {
         }),
       );
 
-      const client = createKeycloakClient(createConfig());
+      const client = createOidcClient(createConfig());
       // エラーなしで完了すればOK
       await client.logout({ refreshToken: "refresh-token" });
     });
@@ -247,7 +245,7 @@ describe("KeycloakClient", () => {
         vi.fn().mockRejectedValue(new DOMException("Aborted", "AbortError")),
       );
 
-      const client = createKeycloakClient(createConfig());
+      const client = createOidcClient(createConfig());
       // エラーなしで完了すればOK
       await client.logout({ refreshToken: "refresh-token" });
     });
@@ -260,7 +258,7 @@ describe("KeycloakClient", () => {
           .mockRejectedValue(new Error("fetch failed: connection refused")),
       );
 
-      const client = createKeycloakClient(createConfig());
+      const client = createOidcClient(createConfig());
       // エラーなしで完了すればOK
       await client.logout({ refreshToken: "refresh-token" });
     });
@@ -271,7 +269,7 @@ describe("KeycloakClient", () => {
         vi.fn().mockRejectedValue(new TypeError("Invalid URL")),
       );
 
-      const client = createKeycloakClient(createConfig());
+      const client = createOidcClient(createConfig());
       // ログアウトAPIの失敗は全て警告のみ — ローカルクリーンアップは呼び出し元で実施
       await expect(
         client.logout({ refreshToken: "refresh-token" }),
@@ -281,7 +279,7 @@ describe("KeycloakClient", () => {
     test("リクエストボディにclient_idとrefresh_tokenが含まれる", async () => {
       vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
 
-      const client = createKeycloakClient(createConfig());
+      const client = createOidcClient(createConfig());
       await client.logout({
         refreshToken: "refresh-token",
         idToken: "id-token",

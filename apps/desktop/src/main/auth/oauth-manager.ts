@@ -1,10 +1,10 @@
 import { shell } from "electron";
 import {
-  createKeycloakClient,
-  type KeycloakClient,
-  type KeycloakConfig,
+  createOidcClient,
+  type OidcClient,
+  type OidcClientConfig,
   type TokenResponse,
-} from "./keycloak";
+} from "./oidc-client";
 import {
   generateCodeVerifier,
   generateCodeChallenge,
@@ -14,6 +14,7 @@ import { getDb } from "../shared/db";
 import { encryptToken, decryptToken } from "../utils/encryption";
 import * as logger from "../shared/utils/logger";
 import { AUTH_SESSION_TIMEOUT_MS } from "../../shared/types";
+import { getActiveProfileId } from "../features/profile/profile.service";
 
 /**
  * OAuth認証セッションの状態
@@ -53,13 +54,13 @@ const AUTO_REFRESH_RETRY = {
 
 /**
  * OAuth認証マネージャーを作成
- * Keycloak認証フローを管理
+ * OIDC認証フローを管理（Keycloak・jackson・Dex 等に対応）
  */
 export const createOAuthManager = (
-  config: KeycloakConfig,
+  config: OidcClientConfig,
   options: OAuthManagerOptions = {},
 ): OAuthManager => {
-  const keycloakClient: KeycloakClient = createKeycloakClient(config);
+  const keycloakClient: OidcClient = createOidcClient(config);
   let currentSession: OAuthSession | null = null;
   let refreshTimerId: NodeJS.Timeout | null = null;
   let refreshPromise: Promise<void> | null = null;
@@ -71,6 +72,7 @@ export const createOAuthManager = (
     tokenResponse: Omit<TokenResponse, "token_type">,
   ): Promise<void> => {
     const db = await getDb();
+    const profileId = await getActiveProfileId(db);
 
     // 有効期限を計算（現在時刻 + expires_in秒）
     const expiresAt = new Date(Date.now() + tokenResponse.expires_in * 1000);
@@ -92,6 +94,7 @@ export const createOAuthManager = (
           refreshToken: encryptedRefreshToken,
           idToken: encryptedIdToken,
           expiresAt,
+          profileId,
         },
       });
 
@@ -99,6 +102,7 @@ export const createOAuthManager = (
       await tx.authToken.deleteMany({
         where: {
           id: { not: newToken.id },
+          profileId,
         },
       });
     });
