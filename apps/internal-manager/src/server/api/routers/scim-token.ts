@@ -21,8 +21,7 @@ export const scimTokenRouter = createTRPCRouter({
   /** トークンを生成（既存トークンは全て削除して新規作成） */
   generate: adminProcedure.mutation(async ({ ctx }) => {
     const { raw, hash, hint } = buildToken();
-    const createdBy = ctx.session?.user.id;
-    if (!createdBy) throw new Error("Authenticated session is required");
+    const createdBy = ctx.session.user.id;
 
     await ctx.db.$transaction([
       ctx.db.scimToken.deleteMany(),

@@ -124,17 +124,6 @@ const enforceUserIsAuthed = t.middleware(async ({ ctx, next }) => {
   });
 });
 
-const enforceUserIsAdmin = t.middleware(async ({ ctx, next }) => {
-  if (ctx.session?.user.role !== "SYSTEM_ADMIN") {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "SYSTEM_ADMINのみ操作できます",
-    });
-  }
-
-  return next({ ctx });
-});
-
 /**
  * 保護されたプロシージャ（認証必須）
  *
@@ -155,7 +144,16 @@ export const protectedProcedure = t.procedure
  *
  * SYSTEM_ADMIN のみアクセス可能な管理系 API で使用します。
  */
-export const adminProcedure = protectedProcedure.use(enforceUserIsAdmin);
+export const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
+  if (ctx.session.user.role !== "SYSTEM_ADMIN") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "SYSTEM_ADMINのみ操作できます",
+    });
+  }
+
+  return next({ ctx });
+});
 
 export type Context = Awaited<ReturnType<typeof createTRPCContext>>;
 
