@@ -57,15 +57,11 @@ export const Sidebar = (): JSX.Element => {
   }, []);
 
   useEffect(() => {
+    mountedRef.current = true;
     refreshProfile();
-    return () => {
-      mountedRef.current = false;
-    };
-  }, [refreshProfile]);
-
-  useEffect(() => {
     window.addEventListener(PROFILE_CHANGED_EVENT, refreshProfile);
     return () => {
+      mountedRef.current = false;
       window.removeEventListener(PROFILE_CHANGED_EVENT, refreshProfile);
     };
   }, [refreshProfile]);

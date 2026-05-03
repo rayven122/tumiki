@@ -1,5 +1,5 @@
 import type { FormEvent, JSX } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAtomValue } from "jotai";
 import {
@@ -23,14 +23,15 @@ export const ProfileSetup = (): JSX.Element => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isWaitingForCallback, setIsWaitingForCallback] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
-    let mounted = true;
+    mountedRef.current = true;
     window.electronAPI.profile
       .getState()
       .then((state) => {
         if (
-          mounted &&
+          mountedRef.current &&
           state.hasCompletedInitialProfileSetup &&
           state.activeProfile
         ) {
@@ -38,37 +39,37 @@ export const ProfileSetup = (): JSX.Element => {
         }
       })
       .catch(() => {
-        if (mounted) {
+        if (mountedRef.current) {
           setError("プロファイル状態の取得に失敗しました");
         }
       });
     window.electronAPI.manager
       .getUrl()
       .then((url) => {
-        if (mounted && url) setManagerUrl(url);
+        if (mountedRef.current && url) setManagerUrl(url);
       })
       .catch(() => {
-        if (mounted) {
+        if (mountedRef.current) {
           setManagerUrl("");
         }
       });
 
     const cleanupSuccess = window.electronAPI.auth.onCallbackSuccess(() => {
-      if (!mounted) return;
+      if (!mountedRef.current) return;
       setIsWaitingForCallback(false);
       setIsSubmitting(false);
       window.dispatchEvent(new Event(PROFILE_CHANGED_EVENT));
       navigate("/", { replace: true });
     });
     const cleanupError = window.electronAPI.auth.onCallbackError((message) => {
-      if (!mounted) return;
+      if (!mountedRef.current) return;
       setIsWaitingForCallback(false);
       setIsSubmitting(false);
       setError(`ログインに失敗しました: ${message}`);
     });
 
     return () => {
-      mounted = false;
+      mountedRef.current = false;
       cleanupSuccess();
       cleanupError();
     };
