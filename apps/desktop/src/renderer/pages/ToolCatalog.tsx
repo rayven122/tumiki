@@ -1,14 +1,12 @@
 import type { JSX } from "react";
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Plus, ArrowLeft, Wrench } from "lucide-react";
+import { Search, Plus, ArrowLeft } from "lucide-react";
 import type { CatalogItem } from "../../types/catalog";
 import { AddMcpModal } from "../_components/AddMcpModal";
-import { CatalogToolsModal } from "../_components/CatalogToolsModal";
 import { toast } from "../_components/Toast";
 import { cardStyle } from "../utils/theme-styles";
 import { authTypeLabel } from "../../shared/catalog.helpers";
-import { CATALOG_TOOLS_MOCK } from "../data/catalog-tools-mock";
 import { DISCOVERY_ERROR_CODE } from "../../shared/oauth/discovery-error-codes";
 
 /** 認証種別バッジスタイル */
@@ -28,8 +26,6 @@ export const ToolCatalog = (): JSX.Element => {
     null,
   );
   const [dcrPrefill, setDcrPrefill] = useState(false);
-  const [toolsModalCatalog, setToolsModalCatalog] =
-    useState<CatalogItem | null>(null);
 
   // OAuth 直接フロー時のイベントリスナーがモーダル表示中の AddMcpModal と二重発火しないよう参照で最新状態を保持
   const modalOpenRef = useRef(false);
@@ -40,15 +36,6 @@ export const ToolCatalog = (): JSX.Element => {
   useEffect(() => {
     window.electronAPI.catalog
       .getAll()
-      .then((items) =>
-        // モック由来のツール情報を注入（将来 Prisma 拡張で不要化）
-        items.map((item) => {
-          const tools = CATALOG_TOOLS_MOCK[item.name];
-          return tools
-            ? { ...item, tools, toolCount: tools.length }
-            : { ...item, toolCount: 0 };
-        }),
-      )
       .then(setCatalogs)
       .catch(() => setCatalogs([]))
       .finally(() => setLoading(false));
@@ -229,19 +216,6 @@ export const ToolCatalog = (): JSX.Element => {
                 <div className="mb-2 text-sm font-medium text-[var(--text-primary)]">
                   {item.name}
                 </div>
-                {/* 利用可能なツール バッジ（クリックでモーダル） */}
-                <button
-                  type="button"
-                  onClick={() => setToolsModalCatalog(item)}
-                  disabled={!item.tools || item.tools.length === 0}
-                  className="mb-3 flex items-center justify-between rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-input)] px-3 py-2 text-[10px] text-[var(--text-muted)] transition hover:border-[var(--border)] hover:text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:text-[var(--text-muted)]"
-                >
-                  <span className="flex items-center gap-1.5">
-                    <Wrench size={12} />
-                    利用可能なツール
-                  </span>
-                  <span className="font-mono">{item.toolCount ?? 0}</span>
-                </button>
                 {/* 説明 */}
                 <div className="mb-3 line-clamp-2 text-[10px] leading-relaxed text-[var(--text-subtle)]">
                   {item.description}
@@ -282,15 +256,6 @@ export const ToolCatalog = (): JSX.Element => {
             toast.success(`${serverName}が正常に追加されました。`);
             navigate("/tools");
           }}
-        />
-      )}
-
-      {/* 利用可能ツールモーダル */}
-      {toolsModalCatalog && toolsModalCatalog.tools && (
-        <CatalogToolsModal
-          catalogName={toolsModalCatalog.name}
-          tools={toolsModalCatalog.tools}
-          onClose={() => setToolsModalCatalog(null)}
         />
       )}
     </div>
