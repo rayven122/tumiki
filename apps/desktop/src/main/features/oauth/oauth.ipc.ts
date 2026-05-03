@@ -6,7 +6,7 @@ import * as logger from "../../shared/utils/logger";
 
 /** IPC入力のバリデーションスキーマ */
 const StartOAuthInputSchema = z.object({
-  catalogId: z.number().int().positive(),
+  catalogId: z.number().int().positive().optional(),
   catalogName: z.string().min(1),
   description: z.string(),
   transportType: z.enum(["STDIO", "SSE", "STREAMABLE_HTTP"]),

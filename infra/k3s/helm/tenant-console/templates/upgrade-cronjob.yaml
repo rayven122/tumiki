@@ -1,0 +1,43 @@
+{{- if .Values.upgradeSchedule.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: tenant-console-upgrade
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "tenant-console.labels" . | nindent 4 }}
+    app.kubernetes.io/component: upgrade-cronjob
+spec:
+  schedule: {{ .Values.upgradeSchedule.cron | quote }}
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: upgrade
+              image: curlimages/curl:8.7.1
+              env:
+                - name: INTERNAL_API_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: tenant-console-secrets
+                      key: INTERNAL_API_SECRET
+              command:
+                - curl
+                - -sf
+                - --fail-with-body
+                - -X
+                - POST
+                - -H
+                - "Authorization: Bearer $(INTERNAL_API_SECRET)"
+                - http://tenant-console:80/api/internal/upgrade-all
+              resources:
+                requests:
+                  memory: "32Mi"
+                  cpu: "10m"
+                limits:
+                  memory: "64Mi"
+                  cpu: "100m"
+{{- end }}

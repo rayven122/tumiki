@@ -6,6 +6,7 @@ on:
     paths:
       - 'docker/keycloak-staging/**'
       - 'docker/keycloak/themes/**'
+      - 'docker/keycloak/install-themes.sh'
   workflow_dispatch:
 
 concurrency:
@@ -71,6 +72,9 @@ jobs:
 
       - name: 🔒 Restrict secrets file permissions
         run: chmod 600 keycloak.env
+
+      - name: 🎨 Build parent theme
+        run: bash docker/keycloak/install-themes.sh
 
       - name: 📤 Transfer files
         run: |

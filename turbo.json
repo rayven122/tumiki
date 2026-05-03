@@ -10,7 +10,8 @@
     "OIDC_CLIENT_SECRET",
     "OIDC_ISSUER",
     "OIDC_DESKTOP_CLIENT_ID",
-    "TENANT_DATABASE_URL"
+    "TENANT_DATABASE_URL",
+    "KEYCLOAK_ADMIN_URL"
   ],
   "tasks": {
     "build": {
