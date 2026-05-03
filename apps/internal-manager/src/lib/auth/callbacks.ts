@@ -181,6 +181,8 @@ export const jwtCallback = async ({
       token.sub,
       token.provider ?? "oidc",
       token.oidcSub ?? "",
+      // undefinedはIdPがgroup_rolesクレームを返さなかった状態を保持する。
+      // 後からIdPグループを付与した場合は、再ログインで最新クレームを取得する。
       token.tumiki.group_roles,
     );
 
