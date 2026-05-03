@@ -22,7 +22,7 @@ replicaCount: 2
 
 # Infisical 設定
 infisical:
-  hostAPI: https://app.infisical.com/api
+  hostAPI: https://secrets.rayven.cloud/api
   projectSlug: ""      # 必須: --set infisical.projectSlug=<SLUG> で指定
   environment: ""      # 必須: --set infisical.environment=<ENV> で指定（prod / dev 等）
   secretsPath: "/tumiki-cloud-api"

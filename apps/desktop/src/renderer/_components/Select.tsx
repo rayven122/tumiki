@@ -15,7 +15,7 @@ export const SelectTrigger = ({
   ...props
 }: TriggerProps): React.JSX.Element => (
   <SelectPrimitive.Trigger
-    className={`flex h-10 w-full items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] transition-colors outline-none hover:bg-[var(--bg-card-hover)] focus-visible:border-[var(--text-muted)] disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-[var(--text-subtle)] ${className}`}
+    className={`flex h-10 items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] transition-colors outline-none hover:bg-[var(--bg-card-hover)] focus-visible:border-[var(--text-muted)] disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-[var(--text-subtle)] ${className}`}
     {...props}
   >
     {children}

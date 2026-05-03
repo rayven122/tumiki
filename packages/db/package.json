@@ -43,9 +43,9 @@
   },
   "scripts": {
     "dev": "tsc --project tsconfig.build.json",
-    "build": "pnpm db:generate && tsc --project tsconfig.build.json",
+    "build": "tsc --project tsconfig.build.json",
     "clean": "git clean -xdf .cache .turbo node_modules dist build",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "pnpm db:generate && tsc --noEmit",
     "with-env": "infisical run --env=dev --",
     "with-env:prod": "infisical run --env=prod --",
     "with-env-test": "dotenv -e ../../.env.test --",
