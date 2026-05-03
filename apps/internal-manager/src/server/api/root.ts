@@ -4,7 +4,7 @@ import {
   publicProcedure,
 } from "@/server/api/trpc";
 import { groupsRouter } from "./routers/groups";
-import { scimTokenRouter } from "./routers/scim-token";
+import { scimDirectoryRouter } from "./routers/scim-directory";
 import { ssoRouter } from "./routers/sso";
 import { usersRouter } from "./routers/users";
 
@@ -18,7 +18,7 @@ export const appRouter = createTRPCRouter({
   health: publicProcedure.query(() => {
     return { status: "ok" };
   }),
-  scimToken: scimTokenRouter,
+  scimDirectory: scimDirectoryRouter,
   groups: groupsRouter,
   users: usersRouter,
   sso: ssoRouter,

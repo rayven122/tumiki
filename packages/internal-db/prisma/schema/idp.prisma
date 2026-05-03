@@ -150,16 +150,3 @@ enum SyncStatus {
   PARTIAL
 }
 
-/// @namespace Idp
-/// SCIM 2.0 Bearerトークン（管理画面で生成・ローテーション）
-/// 平文は生成時のみ表示し、DBにはSHA-256ハッシュのみ保存する
-model ScimToken {
-  id        String   @id @default(cuid())
-  /// SHA-256ハッシュ（平文は生成時のみ返却）
-  hash      String   @unique
-  /// 先頭12文字のヒント（UIでの識別用）
-  hint      String
-  createdAt DateTime @default(now())
-  createdBy String
-  user      User     @relation(fields: [createdBy], references: [id], onDelete: Cascade)
-}
