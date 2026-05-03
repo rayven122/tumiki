@@ -42,6 +42,24 @@ REQUIRED_VARS=(
 
 # TF_VAR_*にエクスポート
 export_tf_vars() {
+  if [ "${ENV:-}" = "local" ]; then
+    # ローカル検証は .env なしでも起動できるよう、開発専用の既定値を補完する。
+    KEYCLOAK_ADMIN_USERNAME="${KEYCLOAK_ADMIN_USERNAME:-admin}"
+    KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD:-admin123}"
+    KEYCLOAK_CLIENT_ID="${KEYCLOAK_CLIENT_ID:-tumiki-manager}"
+    KEYCLOAK_CLIENT_SECRET="${KEYCLOAK_CLIENT_SECRET:-tumiki-manager-secret}"
+    KEYCLOAK_INTERNAL_MANAGER_CLIENT_ID="${KEYCLOAK_INTERNAL_MANAGER_CLIENT_ID:-tumiki-internal-manager}"
+    KEYCLOAK_INTERNAL_MANAGER_CLIENT_SECRET="${KEYCLOAK_INTERNAL_MANAGER_CLIENT_SECRET:-tumiki-internal-manager-secret}"
+    KEYCLOAK_PROXY_CLIENT_SECRET="${KEYCLOAK_PROXY_CLIENT_SECRET:-tumiki-proxy-secret}"
+    KEYCLOAK_TEST_USER_PASSWORD="${KEYCLOAK_TEST_USER_PASSWORD:-admin123}"
+    SMTP_HOST="${SMTP_HOST:-localhost}"
+    SMTP_USER="${SMTP_USER:-dev-null}"
+    SMTP_PASS="${SMTP_PASS:-dev-null}"
+    FROM_EMAIL="${FROM_EMAIL:-noreply@tumiki.local}"
+    KEYCLOAK_LOGIN_THEME="${KEYCLOAK_LOGIN_THEME:-keycloak}"
+    KEYCLOAK_ACCOUNT_THEME="${KEYCLOAK_ACCOUNT_THEME:-keycloak}"
+  fi
+
   if ! check_required_vars "${REQUIRED_VARS[@]}"; then
     log_error ".envファイルを確認し、必要な環境変数を設定してください"
     exit 1
@@ -51,6 +69,8 @@ export_tf_vars() {
   export TF_VAR_keycloak_admin_password="${KEYCLOAK_ADMIN_PASSWORD}"
   export TF_VAR_manager_client_id="${KEYCLOAK_CLIENT_ID}"
   export TF_VAR_manager_client_secret="${KEYCLOAK_CLIENT_SECRET}"
+  export TF_VAR_internal_manager_client_id="${KEYCLOAK_INTERNAL_MANAGER_CLIENT_ID:-tumiki-internal-manager}"
+  export TF_VAR_internal_manager_client_secret="${KEYCLOAK_INTERNAL_MANAGER_CLIENT_SECRET:-tumiki-internal-manager-secret}"
   export TF_VAR_proxy_client_secret="${KEYCLOAK_PROXY_CLIENT_SECRET}"
   export TF_VAR_test_user_password="${KEYCLOAK_TEST_USER_PASSWORD}"
   export TF_VAR_smtp_host="${SMTP_HOST}"
@@ -61,13 +81,21 @@ export_tf_vars() {
   export TF_VAR_smtp_from_display_name="${FROM_NAME:-Tumiki}"
   export TF_VAR_google_client_id="${GOOGLE_CLIENT_ID:-}"
   export TF_VAR_google_client_secret="${GOOGLE_CLIENT_SECRET:-}"
+  export TF_VAR_login_theme="${KEYCLOAK_LOGIN_THEME:-tumiki}"
+  export TF_VAR_account_theme="${KEYCLOAK_ACCOUNT_THEME:-tumiki}"
 
   log_info "Terraform変数をエクスポートしました"
 }
 
 # cloud.tfを無効化/復元
-disable_cloud() { [ -f "$CLOUD_TF" ] && mv "$CLOUD_TF" "$CLOUD_TF_DISABLED"; }
-restore_cloud() { [ -f "$CLOUD_TF_DISABLED" ] && mv "$CLOUD_TF_DISABLED" "$CLOUD_TF"; }
+disable_cloud() {
+  [ -f "$CLOUD_TF" ] && mv "$CLOUD_TF" "$CLOUD_TF_DISABLED"
+  return 0
+}
+restore_cloud() {
+  [ -f "$CLOUD_TF_DISABLED" ] && mv "$CLOUD_TF_DISABLED" "$CLOUD_TF"
+  return 0
+}
 trap restore_cloud EXIT
 
 # 使用方法

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "PORT=3100 pnpm with-env next dev --turbopack",
+    "dev:keycloak": "infisical run --env=dev -- sh -c 'PORT=${PORT:-3100} OIDC_ISSUER=http://localhost:8888/realms/tumiki OIDC_CLIENT_ID=tumiki-internal-manager OIDC_CLIENT_SECRET=tumiki-internal-manager-secret INTERNAL_MANAGER_BOOTSTRAP_ADMIN_EMAIL=admin@tumiki.local NEXTAUTH_URL=http://localhost:${PORT:-3100} next dev --turbopack'",
     "build": "pnpm with-env next build --turbopack",
     "build:bare": "next build --webpack",
     "start": "PORT=3100 pnpm with-env next start",

@@ -30,7 +30,7 @@ resource "keycloak_realm" "tumiki" {
   sso_session_idle_timeout = "168h" # 7日
   sso_session_max_lifespan = "720h" # 30日
 
-  # テーマ設定（ログイン画面とアカウント画面にtumikiテーマを適用）
+  # テーマ設定（null の場合は Keycloak の既定テーマを使用）
   login_theme   = var.login_theme
   account_theme = var.account_theme
 

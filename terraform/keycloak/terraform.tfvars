@@ -24,6 +24,16 @@ manager_web_origins = [
   "https://manager.tumiki.cloud"
 ]
 
+# Internal Managerクライアント設定
+internal_manager_redirect_uris = [
+  "http://localhost:3100/api/auth/callback/oidc",
+  "http://localhost:3101/api/auth/callback/oidc"
+]
+internal_manager_web_origins = [
+  "http://localhost:3100",
+  "http://localhost:3101"
+]
+
 # MCP Proxyクライアント設定
 proxy_client_id = "tumiki-proxy"
 proxy_redirect_uris = [
@@ -36,6 +46,6 @@ test_user_email      = "admin@tumiki.local"
 test_user_first_name = "Admin"
 test_user_last_name  = "User"
 
-# テーマ設定（tumikiカスタムテーマを使用）
-login_theme   = "tumiki"
-account_theme = "tumiki"
+# テーマ設定（ローカルKeycloakは既定テーマを使用）
+login_theme   = null
+account_theme = null

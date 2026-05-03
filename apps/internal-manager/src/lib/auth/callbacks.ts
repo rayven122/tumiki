@@ -8,8 +8,8 @@ import { z } from "zod";
 
 // OIDCアクセストークンのペイロードスキーマ
 const tumikiIdpClaimsSchema = z.object({
-  group_roles: z.array(z.string()),
-  roles: z.array(z.string()),
+  group_roles: z.array(z.string()).optional(),
+  roles: z.array(z.string()).optional(),
 });
 
 const oidcJWTPayloadSchema = z.object({

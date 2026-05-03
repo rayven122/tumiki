@@ -46,6 +46,18 @@ variable "manager_client_secret" {
   sensitive   = true
 }
 
+variable "internal_manager_client_id" {
+  description = "Internal Manager クライアントID"
+  type        = string
+  default     = "tumiki-internal-manager"
+}
+
+variable "internal_manager_client_secret" {
+  description = "Internal Manager クライアントシークレット（環境変数 TF_VAR_internal_manager_client_secret で設定）"
+  type        = string
+  sensitive   = true
+}
+
 variable "proxy_client_id" {
   description = "MCP Proxy クライアントID"
   type        = string
@@ -78,6 +90,24 @@ variable "manager_web_origins" {
     "https://localhost:3000",
     "http://localhost:3001",
     "https://manager.tumiki.cloud"
+  ]
+}
+
+variable "internal_manager_redirect_uris" {
+  description = "Internal Manager リダイレクトURI一覧"
+  type        = list(string)
+  default = [
+    "http://localhost:3100/api/auth/callback/oidc",
+    "http://localhost:3101/api/auth/callback/oidc"
+  ]
+}
+
+variable "internal_manager_web_origins" {
+  description = "Internal Manager Web Origins一覧"
+  type        = list(string)
+  default = [
+    "http://localhost:3100",
+    "http://localhost:3101"
   ]
 }
 
@@ -115,13 +145,13 @@ variable "ssl_required" {
 variable "login_theme" {
   description = "ログイン画面テーマ"
   type        = string
-  default     = "tumiki"
+  default     = null
 }
 
 variable "account_theme" {
   description = "アカウント管理画面テーマ"
   type        = string
-  default     = "tumiki"
+  default     = null
 }
 
 # テストユーザー設定
