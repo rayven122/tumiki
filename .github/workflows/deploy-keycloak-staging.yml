@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - 'docker/keycloak-staging/**'
-      - 'docker/keycloak/themes/tumiki/**'
+      - 'docker/keycloak/themes/**'
   workflow_dispatch:
 
 concurrency:
@@ -76,16 +76,20 @@ jobs:
         run: |
           # 前回 cleanup が失敗していた場合に備えて既存 .env を削除（リカバリ）
           ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" \
-            "mkdir -p ~/keycloak/themes && rm -f ~/keycloak/.env"
+            "mkdir -p ~/keycloak && rm -f ~/keycloak/.env"
           scp -i ~/.ssh/id_ed25519 \
             docker/keycloak-staging/compose.yaml \
             "${SSH_USER}@${KEYCLOAK_HOST}:~/keycloak/compose.yaml"
-          scp -r -i ~/.ssh/id_ed25519 \
-            docker/keycloak/themes/tumiki \
-            "${SSH_USER}@${KEYCLOAK_HOST}:~/keycloak/themes/"
+          tar -czf - -C docker/keycloak/themes . | ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" \
+            'rm -rf ~/keycloak/themes.tmp && mkdir -p ~/keycloak/themes.tmp && tar -xzf - -C ~/keycloak/themes.tmp && rm -rf ~/keycloak/themes && mv ~/keycloak/themes.tmp ~/keycloak/themes'
           # install -m 600 でファイル作成と権限設定をアトミックに実施（scp + chmod のウィンドウを排除）
           ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" \
             'install -m 600 /dev/stdin ~/keycloak/.env' < keycloak.env
+
+      - name: 🧪 Validate transferred themes
+        run: |
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" \
+            'bash -s' < docker/keycloak-staging/validate-themes.sh
 
       - name: 🐳 Deploy Keycloak
         run: |
@@ -116,6 +120,11 @@ jobs:
             cd ~/keycloak && docker compose logs keycloak --tail=50
             exit 1
           HEALTHCHECK
+
+      - name: 🎨 Apply staging theme settings
+        run: |
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" \
+            'docker exec -i tumiki-keycloak bash -s' < docker/keycloak-staging/apply-theme-settings.sh
 
       - name: 🧹 Cleanup
         if: always()
