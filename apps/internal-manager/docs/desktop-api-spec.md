@@ -238,8 +238,7 @@ POST /api/desktop/v1/access-requests
 }
 ```
 
-`requestId` の形式は Manager 側の DB ID 形式に依存する。
-現行 internal-manager の Prisma ID に合わせ、Manager が返す `requestId` は CUID 形式を想定する。Desktop が生成する `clientRequestId` とは別物として扱う。
+`requestId` は Manager が発行する opaque string として扱う。Desktop は形式を解釈せず、表示・問い合わせ・状態同期の識別子としてのみ使う。
 
 対応するデータモデル候補:
 
@@ -428,6 +427,8 @@ Manager 側は `userId + clientRequestId` の unique 制約を持ち、重複送
   "occurredAt": "2026-05-03T10:00:00.000Z"
 }
 ```
+
+`errorCode` は MCP サーバーまたは HTTP transport が返した数値ステータスを保存する。Desktop API の標準エラー `error.code` とは別の値として扱う。
 
 ## エラー形式
 

@@ -10,6 +10,7 @@ export type VerifiedDesktopUser = {
 // Discovery結果は短時間キャッシュし、IdP設定変更時もプロセス再起動なしで追従する
 let cachedJwks: ReturnType<typeof createRemoteJWKSet> | null = null;
 let cachedJwksExpiresAt = 0;
+let jwksPromise: Promise<ReturnType<typeof createRemoteJWKSet>> | null = null;
 const JWKS_DISCOVERY_CACHE_TTL_MS = 10 * 60 * 1000;
 
 /**
@@ -18,23 +19,30 @@ const JWKS_DISCOVERY_CACHE_TTL_MS = 10 * 60 * 1000;
  */
 const getJwks = async () => {
   if (cachedJwks && Date.now() < cachedJwksExpiresAt) return cachedJwks;
+  if (jwksPromise) return jwksPromise;
 
-  const { OIDC_ISSUER } = getOidcEnv();
-  const discoveryUrl = `${OIDC_ISSUER.replace(/\/$/, "")}/.well-known/openid-configuration`;
+  jwksPromise = (async () => {
+    const { OIDC_ISSUER } = getOidcEnv();
+    const discoveryUrl = `${OIDC_ISSUER.replace(/\/$/, "")}/.well-known/openid-configuration`;
 
-  const res = await fetch(discoveryUrl);
-  if (!res.ok) {
-    throw new Error(`OIDCディスカバリ取得失敗: ${res.status}`);
-  }
+    const res = await fetch(discoveryUrl);
+    if (!res.ok) {
+      throw new Error(`OIDCディスカバリ取得失敗: ${res.status}`);
+    }
 
-  const config = (await res.json()) as { jwks_uri?: string };
-  if (!config.jwks_uri) {
-    throw new Error("OIDCディスカバリにjwks_uriが含まれていません");
-  }
+    const config = (await res.json()) as { jwks_uri?: string };
+    if (!config.jwks_uri) {
+      throw new Error("OIDCディスカバリにjwks_uriが含まれていません");
+    }
 
-  cachedJwks = createRemoteJWKSet(new URL(config.jwks_uri));
-  cachedJwksExpiresAt = Date.now() + JWKS_DISCOVERY_CACHE_TTL_MS;
-  return cachedJwks;
+    cachedJwks = createRemoteJWKSet(new URL(config.jwks_uri));
+    cachedJwksExpiresAt = Date.now() + JWKS_DISCOVERY_CACHE_TTL_MS;
+    return cachedJwks;
+  })().finally(() => {
+    jwksPromise = null;
+  });
+
+  return jwksPromise;
 };
 
 /**
@@ -60,7 +68,7 @@ export const verifyDesktopJwt = async (
 
   const sub = payload.sub;
   if (!sub) {
-    throw new Error("Invalid token: missing sub claim");
+    throw new Error("Unauthorized");
   }
 
   // ExternalIdentity経由でユーザーを特定（プロバイダー名はOIDCで固定）
@@ -70,7 +78,7 @@ export const verifyDesktopJwt = async (
   });
 
   if (!identity) {
-    throw new Error("User not found");
+    throw new Error("Unauthorized");
   }
 
   return { sub, userId: identity.userId };
