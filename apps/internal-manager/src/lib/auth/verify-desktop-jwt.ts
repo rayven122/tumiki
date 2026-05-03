@@ -12,6 +12,7 @@ let cachedJwks: ReturnType<typeof createRemoteJWKSet> | null = null;
 let cachedJwksExpiresAt = 0;
 let jwksPromise: Promise<ReturnType<typeof createRemoteJWKSet>> | null = null;
 const JWKS_DISCOVERY_CACHE_TTL_MS = 10 * 60 * 1000;
+const OIDC_DISCOVERY_TIMEOUT_MS = 5 * 1000;
 
 /**
  * OIDCディスカバリ経由でJWKS URIを取得してJWKSクライアントを生成
@@ -25,7 +26,14 @@ const getJwks = async () => {
     const { OIDC_ISSUER } = getOidcEnv();
     const discoveryUrl = `${OIDC_ISSUER.replace(/\/$/, "")}/.well-known/openid-configuration`;
 
-    const res = await fetch(discoveryUrl);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      OIDC_DISCOVERY_TIMEOUT_MS,
+    );
+    const res = await fetch(discoveryUrl, {
+      signal: controller.signal,
+    }).finally(() => clearTimeout(timeoutId));
     if (!res.ok) {
       throw new Error(`OIDCディスカバリ取得失敗: ${res.status}`);
     }
