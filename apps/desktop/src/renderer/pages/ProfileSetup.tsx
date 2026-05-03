@@ -24,6 +24,7 @@ export const ProfileSetup = (): JSX.Element => {
   const [isWaitingForCallback, setIsWaitingForCallback] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
+  const setupCancelledRef = useRef(false);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -55,14 +56,14 @@ export const ProfileSetup = (): JSX.Element => {
       });
 
     const cleanupSuccess = window.electronAPI.auth.onCallbackSuccess(() => {
-      if (!mountedRef.current) return;
+      if (!mountedRef.current || setupCancelledRef.current) return;
       setIsWaitingForCallback(false);
       setIsSubmitting(false);
       window.dispatchEvent(new Event(PROFILE_CHANGED_EVENT));
       navigate("/", { replace: true });
     });
     const cleanupError = window.electronAPI.auth.onCallbackError((message) => {
-      if (!mountedRef.current) return;
+      if (!mountedRef.current || setupCancelledRef.current) return;
       setIsWaitingForCallback(false);
       setIsSubmitting(false);
       setError(`ログインに失敗しました: ${message}`);
@@ -76,6 +77,7 @@ export const ProfileSetup = (): JSX.Element => {
   }, [navigate]);
 
   const selectPersonal = async (): Promise<void> => {
+    setupCancelledRef.current = false;
     setIsSubmitting(true);
     setError(null);
     try {
@@ -83,9 +85,11 @@ export const ProfileSetup = (): JSX.Element => {
       window.dispatchEvent(new Event(PROFILE_CHANGED_EVENT));
       navigate("/", { replace: true });
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "個人利用の設定に失敗しました",
-      );
+      if (mountedRef.current) {
+        setError(
+          err instanceof Error ? err.message : "個人利用の設定に失敗しました",
+        );
+      }
     } finally {
       if (mountedRef.current) setIsSubmitting(false);
     }
@@ -97,6 +101,7 @@ export const ProfileSetup = (): JSX.Element => {
     e.preventDefault();
     if (!managerUrl.trim()) return;
 
+    setupCancelledRef.current = false;
     setIsSubmitting(true);
     setError(null);
     try {
@@ -104,15 +109,18 @@ export const ProfileSetup = (): JSX.Element => {
       await window.electronAPI.auth.login();
       setIsWaitingForCallback(true);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "組織利用の設定に失敗しました",
-      );
-      setIsWaitingForCallback(false);
-      setIsSubmitting(false);
+      if (mountedRef.current) {
+        setError(
+          err instanceof Error ? err.message : "組織利用の設定に失敗しました",
+        );
+        setIsWaitingForCallback(false);
+        setIsSubmitting(false);
+      }
     }
   };
 
   const cancelOrganizationSetup = async (): Promise<void> => {
+    setupCancelledRef.current = true;
     try {
       await window.electronAPI.profile.cancelOrganizationSetup();
       if (mountedRef.current) {
