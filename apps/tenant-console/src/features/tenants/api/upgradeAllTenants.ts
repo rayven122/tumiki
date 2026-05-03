@@ -7,12 +7,7 @@ type UpgradeAllResult = {
   errors: { slug: string; message: string }[];
 };
 
-/**
- * ACTIVE 状態の全テナントを順次アップグレードする。
- *
- * 1件失敗しても残りのテナントの処理を継続し、
- * 最後にまとめた結果を返す。
- */
+// ACTIVE 状態の全テナントを順次アップグレードする（1件失敗しても継続）
 export const upgradeAllTenants = async (
   db: PrismaClient,
 ): Promise<UpgradeAllResult> => {

@@ -12,17 +12,7 @@ import type { UpgradeTenantInput } from "./schemas";
 
 const execFileAsync = promisify(execFile);
 
-/**
- * テナントの internal-manager イメージを helm upgrade で更新する。
- *
- * 1. DB からテナントを取得（NOT_FOUND チェック）
- * 2. PROVISIONING / DELETING / UPGRADING 中は CONFLICT エラー
- * 3. DB status を UPGRADING に更新
- * 4. helm upgrade --reuse-values --atomic でアップグレード実行
- * 5. kubectl rollout status で Pod 起動完了を待機
- * 6. DB status を ACTIVE に更新して返す
- * 7. 失敗時は DB status を ERROR に更新して TRPCError を throw
- */
+// テナントの internal-manager イメージを helm upgrade で更新する
 export const upgradeTenant = async (
   ctx: Context,
   input: UpgradeTenantInput,
