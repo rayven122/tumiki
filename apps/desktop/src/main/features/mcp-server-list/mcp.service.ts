@@ -15,12 +15,14 @@ import { encryptToken } from "../../utils/encryption";
 import { decryptCredentials } from "../../utils/credentials";
 import type {
   CreateFromCatalogInput,
+  CreateCustomServerInput,
   CreateVirtualServerInput,
 } from "./mcp.types";
 
 // IPC / テストから参照できるよう re-export
 export type {
   CreateFromCatalogInput,
+  CreateCustomServerInput,
   CreateVirtualServerInput,
 } from "./mcp.types";
 
@@ -155,6 +157,42 @@ export const createFromCatalog = async (
   logger.info(`MCP server created from catalog: ${uniqueName}`);
 
   // 登録直後にツール一覧を取得して保存（失敗しても登録自体は成功扱い）
+  await fetchAndStoreToolsForConnection(connection.id);
+
+  return { serverId: server.id, serverName: uniqueName };
+};
+
+/**
+ * カスタムURLでリモートMCPサーバーを登録（カタログ参照なし）
+ */
+export const createCustomServer = async (
+  input: CreateCustomServerInput,
+): Promise<{ serverId: number; serverName: string }> => {
+  const db = await getDb();
+  const uniqueName = await generateUniqueName(db, input.serverName);
+  const slug = await generateUniqueSlug(db, uniqueName);
+
+  const server = await mcpRepository.createServer(db, {
+    name: uniqueName,
+    slug,
+    description: "",
+  });
+
+  const connection = await mcpRepository.createConnection(db, {
+    name: uniqueName,
+    slug,
+    transportType: input.transportType,
+    command: null,
+    args: "[]",
+    url: input.url,
+    credentials: await encryptToken(JSON.stringify(input.credentials)),
+    authType: input.authType,
+    serverId: server.id,
+    catalogId: null,
+  });
+
+  logger.info(`Custom MCP server created: ${uniqueName}`);
+
   await fetchAndStoreToolsForConnection(connection.id);
 
   return { serverId: server.id, serverName: uniqueName };

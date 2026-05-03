@@ -6,6 +6,7 @@ import type {
   McpServerItem,
   McpServerDetailItem,
   CreateFromCatalogInput,
+  CreateCustomServerInput,
   CreateVirtualServerInput,
   UpdateServerInput,
   DeleteServerInput,
@@ -73,6 +74,10 @@ const api = {
       input: CreateFromCatalogInput,
     ): Promise<{ serverId: number; serverName: string }> =>
       ipcRenderer.invoke("mcp:createFromCatalog", input),
+    createCustomServer: (
+      input: CreateCustomServerInput,
+    ): Promise<{ serverId: number; serverName: string }> =>
+      ipcRenderer.invoke("mcp:createCustomServer", input),
     createVirtualServer: (
       input: CreateVirtualServerInput,
     ): Promise<{ serverId: number; serverName: string }> =>
