@@ -215,6 +215,7 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
             role="dialog"
             aria-modal="true"
             aria-labelledby="delete-dialog-title"
+            aria-describedby="delete-dialog-desc"
             ref={containerRef}
             className="bg-bg-card border-border-default mx-4 w-full max-w-md rounded-xl border p-6"
             onKeyDown={handleFocusTrapKeyDown}
@@ -226,7 +227,10 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
             >
               テナントを削除しますか？
             </h2>
-            <p className="text-text-secondary mb-4 text-sm">
+            <p
+              id="delete-dialog-desc"
+              className="text-text-secondary mb-4 text-sm"
+            >
               この操作は取り消せません。k8s リソースおよび Helm
               リリースが完全に削除されます。
             </p>

@@ -39,11 +39,17 @@ const InitialAdminPasswordModal = ({ email, password, onClose }: Props) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="initial-password-dialog-title"
         ref={containerRef}
         className="bg-bg-card border-border-default mx-4 w-full max-w-md rounded-xl border p-6 shadow-2xl"
         onKeyDown={handleFocusTrapKeyDown}
       >
-        <h2 className="text-text-primary mb-2 text-lg font-bold">
+        <h2
+          id="initial-password-dialog-title"
+          className="text-text-primary mb-2 text-lg font-bold"
+        >
           テナントを作成しました
         </h2>
         <p className="text-text-secondary mb-4 text-sm">

@@ -60,6 +60,11 @@
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border-default) transparent;
+  }
+
   ::selection {
     @apply bg-white/20 text-white;
   }
