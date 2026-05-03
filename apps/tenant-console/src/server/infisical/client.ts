@@ -117,7 +117,7 @@ export const createProject = async (params: {
 export const addIdentityToProject = async (params: {
   projectId: string;
   identityId: string;
-  /** Project Role の slug。デフォルトは developer (read-only) */
+  /** Project Role の slug */
   role?: string;
 }): Promise<void> => {
   const res = await apiFetch(
@@ -125,13 +125,15 @@ export const addIdentityToProject = async (params: {
     {
       method: "POST",
       body: JSON.stringify({
-        role: params.role ?? "developer",
+        role: params.role ?? "member",
       }),
     },
   );
 
   if (!res.ok) {
     const text = await res.text();
+    // 既にメンバーの場合は冪等として成功扱い
+    if (res.status === 400 && text.includes("already a member")) return;
     throw new Error(`addIdentityToProject failed: ${res.status} ${text}`);
   }
 };

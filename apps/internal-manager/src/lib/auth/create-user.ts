@@ -37,7 +37,10 @@ export const createUser = async (
   tx: PrismaTransactionClient,
   input: CreateUserInput,
 ): Promise<CreateUserOutput> => {
-  // ユーザーを作成
+  // 初回セットアップは1ユーザー限定の単一フロー前提（同時サインアップ非対応）。
+  const existingUserCount = await tx.user.count();
+  const role = existingUserCount === 0 ? Role.SYSTEM_ADMIN : Role.USER;
+
   const createdUser = await tx.user.create({
     data: {
       id: input.id,
@@ -45,17 +48,16 @@ export const createUser = async (
       email: input.email,
       emailVerified: input.emailVerified ?? null,
       image: input.image ?? null,
+      role,
     },
   });
 
-  // データベースからのemailを検証
   if (!createdUser.email) {
     throw new Error(
       "ユーザーは作成されましたが、データベースのメールアドレスがnullです。これは発生してはいけません。",
     );
   }
 
-  // 出力型に変換
   return {
     id: createdUser.id,
     email: createdUser.email,
