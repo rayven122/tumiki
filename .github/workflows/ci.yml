@@ -234,17 +234,15 @@ jobs:
 
       - name: 🚀 Start container
         if: needs.docker-smoke-changes.outputs[matrix.change_output] == 'true'
+        env:
+          MATRIX_ENV_FILE: ${{ matrix.env_file }}
         run: |
           # スモークテスト専用のダミーキー。実際の暗号化には使用しない。
           smoke_prisma_key="k1.aesgcm256.$(printf '12345678901234567890123456789012' | base64 | tr '+/' '-_' | tr -d '=')"
           smoke_env_file="$(mktemp)"
           trap 'rm -f "${smoke_env_file}"' EXIT
-          {
-            echo "PRISMA_FIELD_ENCRYPTION_KEY=${smoke_prisma_key}"
-            cat <<'EOF'
-          ${{ matrix.env_file }}
-          EOF
-          } > "${smoke_env_file}"
+          printf 'PRISMA_FIELD_ENCRYPTION_KEY=%s\n' "${smoke_prisma_key}" > "${smoke_env_file}"
+          printf '%s\n' "${MATRIX_ENV_FILE}" >> "${smoke_env_file}"
           docker run -d --name "${{ matrix.container }}" \
             -p "${{ matrix.host_port }}:${{ matrix.container_port }}" \
             --env-file "${smoke_env_file}" \
