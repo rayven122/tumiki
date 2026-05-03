@@ -8,7 +8,7 @@ THEMES_DIR="$SCRIPT_DIR/themes"
 KEYWIND_DIR="$THEMES_DIR/keywind"
 
 # keywindテーマが既に存在する場合はスキップ
-if [[ -d "$KEYWIND_DIR" && -f "$KEYWIND_DIR/login/dist/index.css" ]]; then
+if [[ -d "$KEYWIND_DIR" && -f "$KEYWIND_DIR/login/resources/dist/index.css" ]]; then
     echo "✓ keywindテーマは既にインストール済みです"
     exit 0
 fi
@@ -42,7 +42,7 @@ npx vite build 2>/dev/null || {
 mv "$TEMP_DIR/keywind-repo/theme/keywind" "$KEYWIND_DIR"
 
 # dist ディレクトリが存在しない場合は警告
-if [[ ! -d "$KEYWIND_DIR/login/dist" ]]; then
+if [[ ! -d "$KEYWIND_DIR/login/resources/dist" ]]; then
     echo "⚠ 警告: dist ディレクトリが生成されませんでした"
     echo "   tumikiテーマは動作しない可能性があります"
 else
