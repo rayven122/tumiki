@@ -34,7 +34,7 @@ export const getTumikiClaims = async (
   if (!user) return null;
 
   // ExternalIdentity の upsert（lastSyncedAt は @updatedAt で自動更新）
-  if (oidcSub) {
+  if (oidcSub !== "") {
     await db.externalIdentity.upsert({
       where: { provider_sub: { provider, sub: oidcSub } },
       create: { userId, provider, sub: oidcSub },
