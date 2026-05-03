@@ -4,7 +4,7 @@ set -euo pipefail
 themes_dir="${KEYCLOAK_THEMES_DIR:-${KEYCLOAK_DIR:-$HOME/keycloak}/themes}"
 
 required_theme_files=(
-  # Keep this list aligned with the files required by docker/keycloak/themes.
+# Keep this list aligned with install-themes.sh and docker/keycloak/themes.
   "tumiki/login/theme.properties"
   "tumiki/login/resources/css/tumiki.css"
   "keywind/login/theme.properties"

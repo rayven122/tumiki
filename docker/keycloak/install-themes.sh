@@ -50,8 +50,14 @@ npx vite build || {
 # ビルド済みテーマをコピー
 mv "$TEMP_DIR/keywind-repo/theme/keywind" "$KEYWIND_DIR"
 
-test -f "$KEYWIND_DIR/login/resources/dist/index.css"
-test -f "$KEYWIND_DIR/login/resources/dist/index.js"
+test -f "$KEYWIND_DIR/login/resources/dist/index.css" || {
+    echo "Missing: $KEYWIND_DIR/login/resources/dist/index.css" >&2
+    exit 1
+}
+test -f "$KEYWIND_DIR/login/resources/dist/index.js" || {
+    echo "Missing: $KEYWIND_DIR/login/resources/dist/index.js" >&2
+    exit 1
+}
 echo "✓ keywindテーマをインストールしました: $KEYWIND_DIR"
 
 echo "=== テーマインストール完了 ==="
