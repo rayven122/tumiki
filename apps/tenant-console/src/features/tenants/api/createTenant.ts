@@ -105,15 +105,19 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
       INTERNAL_DATABASE_URL: internalDatabaseUrl,
       NEXTAUTH_URL: nextAuthUrl,
     };
+    // KEYCLOAK の場合は Realm・クライアント・初期管理者ユーザーを一括作成する
+    let initialAdminPassword: string | undefined;
     if (input.oidcType === "KEYCLOAK") {
-      const { clientSecret } = await createTenantRealm({
+      const result = await createTenantRealm({
         slug: input.slug,
         domain,
+        initialAdminEmail: input.initialAdminEmail!,
       });
       keycloakRealmCreated = true;
+      initialAdminPassword = result.initialAdminPassword;
       secrets.OIDC_ISSUER = `https://auth.tumiki.cloud/realms/${input.slug}`;
       secrets.OIDC_CLIENT_ID = "internal-manager";
-      secrets.OIDC_CLIENT_SECRET = clientSecret;
+      secrets.OIDC_CLIENT_SECRET = result.clientSecret;
       secrets.OIDC_DESKTOP_CLIENT_ID = "internal-manager-desktop";
     } else if (input.oidcType === "CUSTOM") {
       if (input.oidcIssuer) secrets.OIDC_ISSUER = input.oidcIssuer;
@@ -256,10 +260,12 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
       rmSync(tmpDir, { recursive: true, force: true });
     }
 
-    return await ctx.db.tenant.update({
+    const updatedTenant = await ctx.db.tenant.update({
       where: { id: tenant.id },
       data: { status: "ACTIVE" },
     });
+    // 初期管理者パスワードが設定されている場合はレスポンスに含める
+    return { ...updatedTenant, initialAdminPassword };
   } catch (error) {
     console.error("[createTenant] provisioning failed:", error);
     const ignore = (_: unknown) => undefined;

@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { AuthTokenResult } from "../types/auth";
 import type { CatalogItem } from "../types/catalog";
+import type { ProfileState } from "../shared/types";
 import type {
   McpServerItem,
   McpServerDetailItem,
@@ -117,6 +118,18 @@ const api = {
     getUrl: (): Promise<string | null> => ipcRenderer.invoke("manager:getUrl"),
     connect: (url: string): Promise<void> =>
       ipcRenderer.invoke("manager:connect", url),
+  },
+
+  // プロファイル管理 API
+  profile: {
+    getState: (): Promise<ProfileState> =>
+      ipcRenderer.invoke("profile:getState"),
+    selectPersonal: (): Promise<ProfileState> =>
+      ipcRenderer.invoke("profile:selectPersonal"),
+    startOrganizationSetup: (): Promise<ProfileState> =>
+      ipcRenderer.invoke("profile:startOrganizationSetup"),
+    disconnectOrganization: (): Promise<ProfileState> =>
+      ipcRenderer.invoke("profile:disconnectOrganization"),
   },
 
   // 外部URLを既定ブラウザで開くシェル API

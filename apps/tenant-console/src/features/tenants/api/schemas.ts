@@ -15,6 +15,8 @@ export const createTenantInputSchema = z
     oidcClientId: z.string().optional(),
     oidcClientSecret: z.string().optional(),
     oidcDesktopClientId: z.string().optional(),
+    /** Keycloak 利用時の初期管理者メールアドレス */
+    initialAdminEmail: z.string().email().optional(),
     imageTag: z
       .string()
       .min(1)
@@ -52,6 +54,14 @@ export const createTenantInputSchema = z
           path: ["oidcDesktopClientId"],
         });
       }
+    }
+    // KEYCLOAK の場合は初期管理者メールアドレスが必須
+    if (data.oidcType === "KEYCLOAK" && !data.initialAdminEmail) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Keycloak 利用時は初期管理者メールアドレスが必要です",
+        path: ["initialAdminEmail"],
+      });
     }
   });
 
