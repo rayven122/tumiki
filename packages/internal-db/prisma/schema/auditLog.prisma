@@ -4,6 +4,15 @@
 model DesktopAuditLog {
   id String @id @default(cuid())
 
+  /// Desktopインストール単位の識別子（再送時の重複排除に使用）
+  /// 既存行を壊さないためnullable。APIでは新規受信時に必須。
+  /// APIで両フィールドを必須にしているため、NULLを含む重複キーは新規発生しない。
+  sourceInstallationId String?
+  /// DesktopローカルDBのAuditLog.id（sourceInstallationId内で一意）
+  /// 既存行を壊さないためnullable。APIでは新規受信時に必須。
+  /// APIで両フィールドを必須にしているため、NULLを含む重複キーは新規発生しない。
+  sourceAuditLogId     Int?
+
   /// 実行ユーザー
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -34,4 +43,5 @@ model DesktopAuditLog {
 
   @@index([userId, occurredAt])
   @@index([mcpServerId, occurredAt])
+  @@unique([sourceInstallationId, sourceAuditLogId])
 }

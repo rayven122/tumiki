@@ -24,6 +24,11 @@ import type { McpOAuthManager } from "./features/oauth/oauth.service";
 import { setupManagerIpc, fetchManagerOidcConfig } from "./ipc/manager";
 import { setupProfileIpc } from "./ipc/profile";
 import { setupShellIpc } from "./ipc/shell";
+import {
+  startAuditLogManagerSyncScheduler,
+  stopAuditLogManagerSyncScheduler,
+  syncPendingAuditLogsToManager,
+} from "./features/audit-log-manager-sync/audit-log-manager-sync.service";
 import { getAppStore } from "./shared/app-store";
 import { activateOrganizationProfile } from "./shared/profile-store";
 import { ServerStatus } from "@prisma/desktop-client";
@@ -67,8 +72,6 @@ if (isMcpProxyMode) {
       // 古い監査ログを自動削除（7日以上）— 失敗してもプロキシ起動は継続
       const { deleteOldAuditLogs, writeAuditLog } =
         await import("./features/audit-log/audit-log.writer");
-      const { syncAuditLogToManager } =
-        await import("./features/audit-log-manager-sync/audit-log-manager-sync.service");
       try {
         const deletedCount = await deleteOldAuditLogs();
         if (deletedCount > 0) {
@@ -82,6 +85,10 @@ if (isMcpProxyMode) {
           `[tumiki-mcp-proxy] 古い監査ログの削除に失敗しました（起動は継続します）: ${message}\n`,
         );
       }
+      startAuditLogManagerSyncScheduler();
+      powerMonitor.on("resume", () => {
+        void syncPendingAuditLogsToManager();
+      });
 
       // 有効なMCPサーバー設定 + 監査ログ用メタデータを取得
       const { getEnabledConfigsWithMeta } =
@@ -174,9 +181,7 @@ if (isMcpProxyMode) {
           piiPolicy: event.piiPolicy,
         } satisfies Prisma.AuditLogUncheckedCreateInput;
 
-        return writeAuditLog(auditLogInput).then(() => {
-          void syncAuditLogToManager(auditLogInput);
-        });
+        return writeAuditLog(auditLogInput);
       };
 
       const { join } = await import("path");
@@ -193,6 +198,7 @@ if (isMcpProxyMode) {
         onToolCall,
         onStatusChange,
         onShutdown: async () => {
+          await stopAuditLogManagerSyncScheduler();
           await resetAllServerStatus().catch(() => {});
           await closeDb();
         },
@@ -467,6 +473,7 @@ if (isMcpProxyMode) {
 
       // データベース初期化
       await initializeDb();
+      startAuditLogManagerSyncScheduler();
 
       // OAuthManager初期化: electron-store保存済みURLを優先、フォールバックで環境変数
       const savedManagerUrl = (await getAppStore()).get("managerUrl");
@@ -531,6 +538,7 @@ if (isMcpProxyMode) {
 
       // スリープ復帰時にトークンの有効期限を再チェック
       powerMonitor.on("resume", () => {
+        void syncPendingAuditLogsToManager();
         const manager = getOAuthManager();
         if (manager) {
           manager.initialize().catch((error) => {
@@ -575,7 +583,10 @@ if (isMcpProxyMode) {
     event.preventDefault();
     const oauthManager = getOAuthManager();
     oauthManager?.stopAutoRefresh();
-    (oauthManager?.waitForPendingRefresh() ?? Promise.resolve())
+    Promise.all([
+      stopAuditLogManagerSyncScheduler(),
+      oauthManager?.waitForPendingRefresh() ?? Promise.resolve(),
+    ])
       .then(() => closeDb())
       .then(() => {
         logger.info("Database connection closed successfully");

@@ -3,6 +3,7 @@ import type Store from "electron-store";
 import type { DesktopProfile, OrganizationProfile } from "../../shared/types";
 
 type AppStoreSchema = {
+  installationId?: string;
   managerUrl?: string;
   activeProfile?: DesktopProfile;
   organizationProfile?: OrganizationProfile;

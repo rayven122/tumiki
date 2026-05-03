@@ -1,4 +1,5 @@
 import { describe, test, expect, beforeEach, vi } from "vitest";
+import { AuditLogSyncStatus } from "@prisma/desktop-client";
 
 // モックの設定
 vi.mock("electron", () => ({
@@ -40,6 +41,10 @@ const createMockAuditLog = (
   detail: null,
   piiDetections: null,
   piiPolicy: null,
+  syncStatus: AuditLogSyncStatus.PENDING,
+  syncedAt: null,
+  retryCount: 0,
+  lastSyncTriedAt: null,
   createdAt: overrides.createdAt ?? new Date("2026-04-01T10:00:00.000Z"),
   serverId: 1,
   connectionName: "conn-1",
