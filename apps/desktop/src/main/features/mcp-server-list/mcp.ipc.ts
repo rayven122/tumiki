@@ -41,13 +41,26 @@ const createFromCatalogSchema = z.object({
   authType: z.enum(["NONE", "BEARER", "API_KEY", "OAUTH"]),
 }) satisfies z.ZodType<CreateFromCatalogInput>;
 
-const createCustomServerSchema = z.object({
-  serverName: z.string().min(1),
-  url: z.string().url({ message: "有効なURLを入力してください" }),
-  transportType: z.enum(["SSE", "STREAMABLE_HTTP"]),
-  authType: z.enum(["NONE", "API_KEY", "OAUTH"]),
-  credentials: z.record(z.string(), z.string()),
-}) satisfies z.ZodType<CreateCustomServerInput>;
+const createCustomServerSchema = z
+  .object({
+    serverName: z.string().min(1),
+    transportType: z.enum(["STDIO", "SSE", "STREAMABLE_HTTP"]),
+    authType: z.enum(["NONE", "API_KEY", "OAUTH"]),
+    credentials: z.record(z.string(), z.string()),
+    url: z.string().url({ message: "有効なURLを入力してください" }).optional(),
+    command: z.string().min(1).optional(),
+    args: z.string().optional(),
+  })
+  .refine(
+    (data) =>
+      data.transportType === "STDIO"
+        ? Boolean(data.command)
+        : Boolean(data.url),
+    {
+      message:
+        "STDIOの場合はコマンド、SSE/Streamable HTTPの場合はURLが必要です",
+    },
+  ) satisfies z.ZodType<CreateCustomServerInput>;
 
 const createVirtualServerSchema = z.object({
   name: z.string().min(1),

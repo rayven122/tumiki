@@ -71,15 +71,19 @@ export type ToggleServerInput = {
 };
 
 /**
- * カスタムURLでリモートMCPサーバーを登録する際の入力型（renderer → main）
- * カタログ参照なしで���ユーザーが自由にURLを指定して追加する
+ * カスタムMCPサーバーを登録する際の入力型（renderer → main）
+ * カタログ参照なしで、ユーザーが自由にURL or コマンドを指定して追加する
  */
 export type CreateCustomServerInput = {
   serverName: string;
-  url: string;
-  transportType: "SSE" | "STREAMABLE_HTTP";
+  transportType: "STDIO" | "SSE" | "STREAMABLE_HTTP";
   authType: "NONE" | "API_KEY" | "OAUTH";
   credentials: Record<string, string>;
+  // リモート（SSE / Streamable HTTP）用
+  url?: string;
+  // STDIO用
+  command?: string;
+  args?: string;
 };
 
 /**
