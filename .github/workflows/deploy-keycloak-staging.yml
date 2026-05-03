@@ -72,6 +72,9 @@ jobs:
       - name: 🔒 Restrict secrets file permissions
         run: chmod 600 keycloak.env
 
+      - name: 🎨 Build parent theme
+        run: docker/keycloak/install-themes.sh
+
       - name: 📤 Transfer files
         run: |
           # 前回 cleanup が失敗していた場合に備えて既存 .env を削除（リカバリ）

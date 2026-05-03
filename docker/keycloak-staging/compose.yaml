@@ -35,6 +35,7 @@ services:
       - "8080:8080"
     volumes:
       - ./themes/tumiki:/opt/keycloak/themes/tumiki:ro
+      - ./themes/keywind:/opt/keycloak/themes/keywind:ro
     depends_on:
       db:
         condition: service_healthy

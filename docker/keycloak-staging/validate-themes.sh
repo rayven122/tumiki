@@ -7,6 +7,9 @@ required_theme_files=(
   # Keep this list aligned with the files required by docker/keycloak/themes.
   "tumiki/login/theme.properties"
   "tumiki/login/resources/css/tumiki.css"
+  "keywind/login/theme.properties"
+  "keywind/login/resources/dist/index.css"
+  "keywind/login/resources/dist/index.js"
 )
 
 for theme_file in "${required_theme_files[@]}"; do
