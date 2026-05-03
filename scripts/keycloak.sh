@@ -54,7 +54,8 @@ export_tf_vars() {
         ;;
     esac
 
-    # ローカル検証は .env なしでも起動できるよう、開発専用の既定値を補完する。
+    # ローカル検証専用の既定値。本番・検証環境では使用しない。
+    # 上のlocalhostガードにより、非ローカルKeycloakへは適用させない。
     KEYCLOAK_ADMIN_USERNAME="${KEYCLOAK_ADMIN_USERNAME:-admin}"
     KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD:-admin123}"
     KEYCLOAK_CLIENT_ID="${KEYCLOAK_CLIENT_ID:-tumiki-manager}"
