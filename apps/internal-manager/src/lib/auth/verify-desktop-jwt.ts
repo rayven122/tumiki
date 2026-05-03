@@ -47,11 +47,12 @@ export const verifyDesktopJwt = async (
   }
 
   const token = authHeader.slice(7);
-  const { OIDC_ISSUER } = getOidcEnv();
+  const { OIDC_ISSUER, OIDC_CLIENT_ID } = getOidcEnv();
 
   const jwks = await getJwks();
   const { payload } = await jwtVerify(token, jwks, {
     issuer: OIDC_ISSUER,
+    audience: OIDC_CLIENT_ID,
   });
 
   const sub = payload.sub;
