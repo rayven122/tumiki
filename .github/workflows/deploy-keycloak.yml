@@ -160,7 +160,7 @@ jobs:
   deploy-production:
     name: 🔑 Deploy Keycloak Config to Production
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     if: |
       github.event_name == 'release' ||
       (github.event_name == 'workflow_dispatch' && inputs.environment == 'production')
@@ -175,6 +175,33 @@ jobs:
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: 🔎 Validate production SSH settings
+        env:
+          CF_ACCESS_CLIENT_ID_VALUE: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET_VALUE: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+        run: |
+          if [ -z "${SSH_HOST}" ]; then
+            echo "::error::GitHub production environment variable KC_PROD_TUNNEL_HOSTNAME is not set"
+            exit 1
+          fi
+          if [ -z "${SSH_USER}" ]; then
+            echo "::error::GitHub production environment variable KC_PROD_DEPLOY_USER is not set"
+            exit 1
+          fi
+          if [ -z "${DEPLOY_SSH_PRIVATE_KEY}" ]; then
+            echo "::error::GitHub production secret DEPLOY_SSH_PRIVATE_KEY is not set"
+            exit 1
+          fi
+          if [ -z "${CF_ACCESS_CLIENT_ID_VALUE}" ]; then
+            echo "::error::GitHub production secret CF_ACCESS_CLIENT_ID is not set"
+            exit 1
+          fi
+          if [ -z "${CF_ACCESS_CLIENT_SECRET_VALUE}" ]; then
+            echo "::error::GitHub production secret CF_ACCESS_CLIENT_SECRET is not set"
+            exit 1
+          fi
 
       - name: 🌐 Setup Cloudflare SSH
         uses: ./.github/actions/setup-cloudflare-ssh
@@ -204,11 +231,119 @@ jobs:
       - name: 🔒 Restrict secrets file permissions
         run: chmod 600 keycloak-tf.env
 
+      - name: 🎨 Build parent theme
+        run: bash docker/keycloak/install-themes.sh
+
+      - name: 📤 Transfer Keycloak files
+        run: |
+          # 前回 cleanup が失敗していた場合に備えて既存 .env を削除（リカバリ）
+          ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
+            'mkdir -p ~/keycloak/nginx && rm -f ~/keycloak/.env && \
+            if [ -f ~/keycloak/compose.yaml ]; then cp ~/keycloak/compose.yaml ~/keycloak/compose.yaml.previous; fi && \
+            if [ -f ~/keycloak/nginx/nginx.conf ]; then cp ~/keycloak/nginx/nginx.conf ~/keycloak/nginx/nginx.conf.previous; fi'
+          scp -i ~/.ssh/id_ed25519 \
+            docker/prod/compose.yaml \
+            "${SSH_USER}@${SSH_HOST}:~/keycloak/compose.yaml"
+          scp -i ~/.ssh/id_ed25519 \
+            docker/prod/nginx/nginx.conf \
+            "${SSH_USER}@${SSH_HOST}:~/keycloak/nginx/nginx.conf"
+          scp -i ~/.ssh/id_ed25519 \
+            docker/keycloak/base.yaml \
+            "${SSH_USER}@${SSH_HOST}:~/keycloak/base.yaml"
+          tar -czf - -C docker/keycloak/themes . | ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
+            'rm -rf ~/keycloak/themes.next && mkdir -p ~/keycloak/themes.next && tar -xzf - -C ~/keycloak/themes.next'
+          # install -m 600 でファイル作成と権限設定をアトミックに実施（scp + chmod のウィンドウを排除）
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
+            'install -m 600 /dev/stdin ~/keycloak/.env' < keycloak-tf.env
+
+      - name: 🧪 Validate transferred themes
+        run: |
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
+            'KEYCLOAK_THEMES_DIR=~/keycloak/themes.next bash -s' < docker/keycloak/validate-themes.sh
+
+      - name: 🐳 Deploy Keycloak
+        env:
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+        run: |
+          # dry_run 時は docker compose の構成確認と theme 検証までに留める
+          # ヒアドキュメントは quoted で runner 側変数の意図しない展開を防ぐ
+          # docker compose は同ディレクトリの .env を自動読み込みする
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -ls -- "${DRY_RUN}" << 'REMOTE_SCRIPT'
+            set -euo pipefail
+            set +o history
+            DRY_RUN="$1"
+            cd ~/keycloak
+            rm -rf themes.broken
+            if [ "${DRY_RUN}" = "true" ]; then
+              docker compose config --quiet
+              if [ -f compose.yaml.previous ]; then mv compose.yaml.previous compose.yaml; fi
+              if [ -f nginx/nginx.conf.previous ]; then mv nginx/nginx.conf.previous nginx/nginx.conf; fi
+              rm -f .env
+              echo "Dry run completed; transferred files were validated"
+              exit 0
+            fi
+            docker compose pull keycloak nginx
+            rm -rf themes.previous
+            if [ -d themes ]; then
+              mv themes themes.previous
+            fi
+            mv themes.next themes
+            # --remove-orphans: compose.yaml から削除されたサービスのコンテナを合わせてクリーンアップ
+            if ! docker compose up -d --force-recreate --remove-orphans keycloak nginx; then
+              echo "Deploy failed, rolling back configuration and themes..." >&2
+              if [ -f compose.yaml.previous ]; then mv compose.yaml.previous compose.yaml; fi
+              if [ -f nginx/nginx.conf.previous ]; then mv nginx/nginx.conf.previous nginx/nginx.conf; fi
+              mv themes themes.broken || true
+              if [ -d themes.previous ]; then
+                mv themes.previous themes
+                docker compose up -d --force-recreate --remove-orphans keycloak nginx || true
+              fi
+              rm -f .env
+              exit 1
+            fi
+            rm -rf themes.previous
+            rm -f compose.yaml.previous nginx/nginx.conf.previous
+            rm -f .env
+          REMOTE_SCRIPT
+
+      - name: ✅ Verify Keycloak health
+        if: ${{ !inputs.dry_run }}
+        run: |
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -l << 'HEALTHCHECK'
+            for i in $(seq 1 30); do
+              CONTAINER_ID=$(cd ~/keycloak && docker compose ps -q keycloak 2>/dev/null || true)
+              STATUS=$(if [ -n "${CONTAINER_ID}" ]; then docker inspect --format='{{.State.Health.Status}}' "${CONTAINER_ID}" 2>/dev/null || echo "unknown"; else echo "unknown"; fi)
+              if [ "${STATUS}" = "healthy" ]; then
+                echo "Keycloak is healthy"
+                exit 0
+              fi
+              echo "Waiting... ($i/30) Status: ${STATUS}" && sleep 10
+            done
+            echo "Timeout: Keycloakが起動しませんでした"
+            cd ~/keycloak && docker compose logs keycloak --tail=50
+            exit 1
+          HEALTHCHECK
+
+      - name: 🧰 Download Terraform CLI
+        env:
+          TERRAFORM_VERSION: 1.14.6
+        run: |
+          curl -fsSLo /tmp/terraform.zip \
+            "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
+          curl -fsSLo /tmp/terraform_SHA256SUMS \
+            "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_SHA256SUMS"
+          TERRAFORM_SHA256=$(grep " terraform_${TERRAFORM_VERSION}_linux_amd64.zip$" /tmp/terraform_SHA256SUMS | awk '{print $1}')
+          echo "${TERRAFORM_SHA256}  /tmp/terraform.zip" | sha256sum -c -
+          unzip -q /tmp/terraform.zip -d /tmp/terraform-bin
+          chmod +x /tmp/terraform-bin/terraform
+
       - name: 📤 Transfer Terraform files
         run: |
           # 前回 cleanup が失敗していた場合に備えて既存 .env を削除（リカバリ）
           ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
-            "mkdir -p ~/keycloak-tf && rm -f ~/keycloak-tf/.env"
+            "mkdir -p ~/keycloak-tf ~/bin && rm -f ~/keycloak-tf/.env"
+          scp -p -i ~/.ssh/id_ed25519 /tmp/terraform-bin/terraform \
+            "${SSH_USER}@${SSH_HOST}:~/bin/terraform"
           tar -czf - -C terraform/keycloak \
             --exclude='.terraform' --exclude='*.tfstate' --exclude='*.tfstate.*' \
             . | ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
@@ -228,6 +363,7 @@ jobs:
             set -euo pipefail
             set +o history
             DRY_RUN="$1"
+            export PATH="$HOME/bin:$PATH"
             cd ~/keycloak-tf
             set -a
             # shellcheck disable=SC1091
@@ -235,6 +371,19 @@ jobs:
             set +a
             terraform init -input=false
             terraform validate
+            if ! terraform state show keycloak_realm.tumiki >/dev/null 2>&1; then
+              KEYCLOAK_URL=$(grep -oP '^\s*keycloak_url\s*=\s*"\K[^"]+' terraform.tfvars.production)
+              if [ -z "${KEYCLOAK_URL}" ]; then
+                echo "keycloak_url が terraform.tfvars.production に見つかりません" >&2
+                exit 1
+              fi
+              if curl -fsS --max-time 10 "${KEYCLOAK_URL%/}/realms/tumiki" >/dev/null; then
+                # import 失敗時は apply を止める。継続すると既存 realm の重複作成に進む可能性がある。
+                terraform import -var-file=terraform.tfvars.production -input=false keycloak_realm.tumiki tumiki
+              else
+                echo "tumiki realm does not exist yet; terraform apply will create it"
+              fi
+            fi
             if [ "${DRY_RUN}" = "true" ]; then
               terraform plan -var-file=terraform.tfvars.production -input=false -no-color
             else
@@ -269,6 +418,6 @@ jobs:
           # デプロイ失敗時に VM 上に .env が残らないよう SSH 越しに確実に削除
           # SSH 鍵・設定を削除する前に実行する必要がある
           # 削除失敗時は warning を出して運用側で検知できるようにする（cleanup の失敗で job 自体は失敗扱いにしない）
-          ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=10 "${SSH_USER}@${SSH_HOST}" 'rm -f ~/keycloak-tf/.env' \
+          ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=10 "${SSH_USER}@${SSH_HOST}" 'rm -f ~/keycloak/.env ~/keycloak-tf/.env ~/bin/terraform' \
             || echo "::warning::VM上の .env 削除に失敗しました。手動確認が必要です"
-          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh keycloak-tf.env ~/.ssh/id_ed25519 ~/.ssh/config
+          rm -rf /tmp/cloudflared.deb /tmp/cf-proxy.sh /tmp/terraform.zip /tmp/terraform_SHA256SUMS /tmp/terraform-bin keycloak-tf.env ~/.ssh/id_ed25519 ~/.ssh/config

@@ -44,6 +44,10 @@ proxy_redirect_uris = [
 # セキュリティ設定
 ssl_required = "external"
 
+# テーマ設定
+login_theme   = "tumiki"
+account_theme = "keycloak.v3"
+
 # テストユーザー設定（動作確認・監視用アカウント）
 # test_user_passwordは環境変数TF_VAR_test_user_passwordで設定
 test_user_email      = "admin@tumiki.cloud"

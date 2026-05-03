@@ -7,6 +7,7 @@ on:
       - 'docker/keycloak-staging/**'
       - 'docker/keycloak/themes/**'
       - 'docker/keycloak/install-themes.sh'
+      - 'docker/keycloak/validate-themes.sh'
   workflow_dispatch:
 
 concurrency:
@@ -93,7 +94,7 @@ jobs:
       - name: 🧪 Validate transferred themes
         run: |
           ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" \
-            'KEYCLOAK_THEMES_DIR=~/keycloak/themes.next bash -s' < docker/keycloak-staging/validate-themes.sh
+            'KEYCLOAK_THEMES_DIR=~/keycloak/themes.next bash -s' < docker/keycloak/validate-themes.sh
 
       - name: 🐳 Deploy Keycloak
         run: |
