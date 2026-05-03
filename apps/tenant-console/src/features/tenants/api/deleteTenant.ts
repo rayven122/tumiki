@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { TRPCError } from "@trpc/server";
-import { HELM_BIN, KUBECTL_BIN, HELM_TIMEOUT_MS } from "./constants";
+import { HELM_BIN, HELM_INSTALL_TIMEOUT_MS, KUBECTL_BIN } from "./constants";
 import type { Context } from "@/server/api/trpc";
 import type { DeleteTenantInput } from "./schemas";
 
@@ -47,7 +47,7 @@ export const deleteTenant = async (ctx: Context, input: DeleteTenantInput) => {
     await execFileAsync(
       HELM_BIN,
       ["uninstall", tenant.slug, "-n", namespace, "--timeout", "5m"],
-      { timeout: HELM_TIMEOUT_MS },
+      { timeout: HELM_INSTALL_TIMEOUT_MS },
     );
 
     // helm uninstall 後も Namespace が残存するため kubectl で明示的に削除する
