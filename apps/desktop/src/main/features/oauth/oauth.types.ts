@@ -8,8 +8,8 @@ export type McpOAuthSession = {
   codeVerifier: string;
   /** MCPサーバーURL */
   serverUrl: string;
-  /** カタログ情報（MCP登録用） */
-  catalogId: number;
+  /** カタログ情報（MCP登録用、カスタムURLの場合はnull） */
+  catalogId: number | null;
   catalogName: string;
   description: string;
   transportType: McpConnection["transportType"];
@@ -36,7 +36,7 @@ export type McpOAuthTokenData = {
 
 /** OAuthフロー開始の入力型（renderer → main） */
 export type StartOAuthInput = {
-  catalogId: number;
+  catalogId?: number;
   catalogName: string;
   description: string;
   transportType: McpConnection["transportType"];

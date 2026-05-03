@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Search, Plus, ArrowLeft } from "lucide-react";
 import type { CatalogItem } from "../../types/catalog";
 import { AddMcpModal } from "../_components/AddMcpModal";
+import { AddRemoteMcpModal } from "../_components/AddRemoteMcpModal";
 import { toast } from "../_components/Toast";
 import { cardStyle } from "../utils/theme-styles";
 import { authTypeLabel } from "../../shared/catalog.helpers";
@@ -26,6 +27,7 @@ export const ToolCatalog = (): JSX.Element => {
     null,
   );
   const [dcrPrefill, setDcrPrefill] = useState(false);
+  const [showRemoteModal, setShowRemoteModal] = useState(false);
 
   // OAuth 直接フロー時のイベントリスナーがモーダル表示中の AddMcpModal と二重発火しないよう参照で最新状態を保持
   const modalOpenRef = useRef(false);
@@ -187,6 +189,20 @@ export const ToolCatalog = (): JSX.Element => {
             </span>
           </div>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            {/* カスタムMCPを��加カード */}
+            <button
+              type="button"
+              onClick={() => setShowRemoteModal(true)}
+              className="flex min-h-[180px] flex-col items-center justify-center rounded-xl border-2 border-dashed border-[var(--border)] p-4 transition-all hover:-translate-y-0.5 hover:border-[var(--text-muted)] hover:shadow-lg"
+            >
+              <Plus size={28} className="mb-2 text-[var(--text-subtle)]" />
+              <span className="text-sm font-medium text-[var(--text-secondary)]">
+                カスタムMCPを追加
+              </span>
+              <span className="mt-1 text-[10px] text-[var(--text-subtle)]">
+                URLを指定してリモートMCPを登録
+              </span>
+            </button>
             {filtered.map((item) => (
               <div
                 key={item.id}
@@ -237,11 +253,31 @@ export const ToolCatalog = (): JSX.Element => {
 
       {filtered.length === 0 && (
         <div className="py-12 text-center text-sm text-[var(--text-subtle)]">
-          条件に一致するツールが見つかりません
+          <p>条件に一致するツールが見つかりません</p>
+          <button
+            type="button"
+            onClick={() => setShowRemoteModal(true)}
+            className="mt-4 inline-flex items-center gap-1 rounded-md bg-[var(--text-primary)] px-4 py-2 text-sm font-medium text-[var(--bg-card)] transition hover:opacity-90"
+          >
+            <Plus size={14} />
+            カスタムMCPを追加
+          </button>
         </div>
       )}
 
-      {/* 追加モーダル */}
+      {/* リモートMCP追加モーダル */}
+      {showRemoteModal && (
+        <AddRemoteMcpModal
+          onClose={() => setShowRemoteModal(false)}
+          onSuccess={(serverName) => {
+            setShowRemoteModal(false);
+            toast.success(`${serverName}が正常に追加されました。`);
+            navigate("/tools");
+          }}
+        />
+      )}
+
+      {/* カタログからの追加モーダル */}
       {selectedCatalog && (
         <AddMcpModal
           catalog={selectedCatalog}
