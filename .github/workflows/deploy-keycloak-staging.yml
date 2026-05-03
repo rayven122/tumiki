@@ -75,7 +75,9 @@ jobs:
         run: chmod 600 keycloak.env
 
       - name: 🎨 Build parent theme
-        run: bash docker/keycloak/install-themes.sh
+        run: |
+          bash docker/keycloak/install-themes.sh
+          KEYCLOAK_THEMES_DIR=docker/keycloak/themes bash docker/keycloak/validate-themes.sh
 
       - name: 📤 Transfer files
         run: |
@@ -128,8 +130,11 @@ jobs:
       - name: ✅ Verify Keycloak health
         run: |
           ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" bash -l << 'HEALTHCHECK'
+            set -euo pipefail
             for i in $(seq 1 30); do
-              STATUS=$(docker inspect --format='{{.State.Health.Status}}' tumiki-keycloak 2>/dev/null || echo "unknown")
+              cd ~/keycloak
+              CONTAINER_ID=$(docker compose ps -q keycloak 2>/dev/null || true)
+              STATUS=$(if [ -n "${CONTAINER_ID}" ]; then docker inspect --format='{{.State.Health.Status}}' "${CONTAINER_ID}" 2>/dev/null || echo "unknown"; else echo "unknown"; fi)
               if [ "${STATUS}" = "healthy" ]; then
                 echo "Keycloak is healthy"
                 exit 0
