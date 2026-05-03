@@ -15,6 +15,7 @@ vi.mock("../../../shared/db");
 vi.mock("../../../shared/utils/logger");
 vi.mock("../mcp.repository");
 vi.mock("../../catalog/catalog.repository");
+vi.mock("../../mcp-proxy/mcp-proxy.service");
 vi.mock("../../../utils/encryption");
 vi.mock("../../../utils/credentials");
 // generateRandomSuffix のみモック（toSlug の本体は維持）
@@ -35,6 +36,7 @@ import * as mcpService from "../mcp.service";
 import { getDb } from "../../../shared/db";
 import * as mcpRepository from "../mcp.repository";
 import * as catalogRepository from "../../catalog/catalog.repository";
+import * as mcpProxyService from "../../mcp-proxy/mcp-proxy.service";
 import { encryptToken, decryptToken } from "../../../utils/encryption";
 import { decryptCredentials } from "../../../utils/credentials";
 
@@ -57,6 +59,10 @@ describe("mcp.service", () => {
     );
     // decryptCredentials: デフォルトでは入力をそのまま返す（平文扱い）
     vi.mocked(decryptCredentials).mockImplementation(async (v) => v);
+    // ツール取得はデフォルトで空配列（外部MCPに繋がず、登録ロジックのみ検証する）
+    vi.mocked(mcpProxyService.fetchToolsForConnection).mockResolvedValue([]);
+    // createTools はデフォルトで0件成功扱い
+    vi.mocked(mcpRepository.createTools).mockResolvedValue({ count: 0 });
   });
 
   describe("createFromCatalog", () => {
@@ -79,9 +85,9 @@ describe("mcp.service", () => {
       vi.mocked(mcpRepository.createServer).mockResolvedValue({
         id: 1,
       } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
-      vi.mocked(mcpRepository.createConnection).mockResolvedValue(
-        {} as Awaited<ReturnType<typeof mcpRepository.createConnection>>,
-      );
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 100,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
 
       const result = await mcpService.createFromCatalog(input);
 
@@ -115,9 +121,9 @@ describe("mcp.service", () => {
       vi.mocked(mcpRepository.createServer).mockResolvedValue({
         id: 2,
       } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
-      vi.mocked(mcpRepository.createConnection).mockResolvedValue(
-        {} as Awaited<ReturnType<typeof mcpRepository.createConnection>>,
-      );
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 100,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
 
       const result = await mcpService.createFromCatalog(input);
 
@@ -138,9 +144,9 @@ describe("mcp.service", () => {
       vi.mocked(mcpRepository.createServer).mockResolvedValue({
         id: 3,
       } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
-      vi.mocked(mcpRepository.createConnection).mockResolvedValue(
-        {} as Awaited<ReturnType<typeof mcpRepository.createConnection>>,
-      );
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 100,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
 
       const result = await mcpService.createFromCatalog(input);
 
@@ -159,9 +165,9 @@ describe("mcp.service", () => {
       vi.mocked(mcpRepository.createServer).mockResolvedValue({
         id: 4,
       } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
-      vi.mocked(mcpRepository.createConnection).mockResolvedValue(
-        {} as Awaited<ReturnType<typeof mcpRepository.createConnection>>,
-      );
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 100,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
 
       const result = await mcpService.createFromCatalog({
         ...input,
@@ -196,9 +202,9 @@ describe("mcp.service", () => {
       vi.mocked(mcpRepository.createServer).mockResolvedValue({
         id: 5,
       } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
-      vi.mocked(mcpRepository.createConnection).mockResolvedValue(
-        {} as Awaited<ReturnType<typeof mcpRepository.createConnection>>,
-      );
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 100,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
 
       await mcpService.createFromCatalog({
         ...input,
@@ -217,9 +223,9 @@ describe("mcp.service", () => {
       vi.mocked(mcpRepository.createServer).mockResolvedValue({
         id: 1,
       } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
-      vi.mocked(mcpRepository.createConnection).mockResolvedValue(
-        {} as Awaited<ReturnType<typeof mcpRepository.createConnection>>,
-      );
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 100,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
 
       await mcpService.createFromCatalog(input);
 
@@ -230,6 +236,87 @@ describe("mcp.service", () => {
           credentials: 'encrypted:{"API_KEY":"test-key"}',
         }),
       );
+    });
+
+    test("登録直後にツール一覧を取得し、McpToolテーブルに保存する", async () => {
+      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
+      vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
+      vi.mocked(mcpRepository.createServer).mockResolvedValue({
+        id: 1,
+      } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 100,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
+      vi.mocked(mcpProxyService.fetchToolsForConnection).mockResolvedValue([
+        {
+          name: "search",
+          description: "検索ツール",
+          inputSchema: {
+            type: "object",
+            properties: { q: { type: "string" } },
+          },
+        },
+        // descriptionが未定義のケース（McpToolInfo.description は省略可）
+        { name: "raw", inputSchema: {} },
+      ]);
+
+      await mcpService.createFromCatalog(input);
+
+      expect(mcpProxyService.fetchToolsForConnection).toHaveBeenCalledWith(100);
+      expect(mcpRepository.createTools).toHaveBeenCalledWith(mockDb, [
+        {
+          name: "search",
+          description: "検索ツール",
+          inputSchema: JSON.stringify({
+            type: "object",
+            properties: { q: { type: "string" } },
+          }),
+          connectionId: 100,
+        },
+        {
+          name: "raw",
+          description: "",
+          inputSchema: JSON.stringify({}),
+          connectionId: 100,
+        },
+      ]);
+    });
+
+    test("ツール取得が失敗してもサーバー登録は成功する（DBへの保存はスキップ）", async () => {
+      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
+      vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
+      vi.mocked(mcpRepository.createServer).mockResolvedValue({
+        id: 1,
+      } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 100,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
+      vi.mocked(mcpProxyService.fetchToolsForConnection).mockRejectedValue(
+        new Error("MCP接続に失敗"),
+      );
+
+      const result = await mcpService.createFromCatalog(input);
+
+      // 登録自体は成功（呼び出し元へエラーを伝播しない）
+      expect(result).toStrictEqual({ serverId: 1, serverName: "Test MCP" });
+      // ツール保存はスキップされる
+      expect(mcpRepository.createTools).not.toHaveBeenCalled();
+    });
+
+    test("ツール取得結果が0件の場合は createTools を呼ばない", async () => {
+      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
+      vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
+      vi.mocked(mcpRepository.createServer).mockResolvedValue({
+        id: 1,
+      } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 100,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
+      vi.mocked(mcpProxyService.fetchToolsForConnection).mockResolvedValue([]);
+
+      await mcpService.createFromCatalog(input);
+
+      expect(mcpRepository.createTools).not.toHaveBeenCalled();
     });
   });
 
@@ -288,9 +375,9 @@ describe("mcp.service", () => {
             authType: "BEARER",
           }),
         );
-      vi.mocked(mcpRepository.createConnection).mockResolvedValue(
-        {} as Awaited<ReturnType<typeof mcpRepository.createConnection>>,
-      );
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 100,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
 
       const result = await mcpService.createVirtualServer(baseInput);
 
@@ -354,9 +441,9 @@ describe("mcp.service", () => {
       vi.mocked(catalogRepository.findById).mockResolvedValue(
         buildCatalog({ id: 1, name: "GitHub" }),
       );
-      vi.mocked(mcpRepository.createConnection).mockResolvedValue(
-        {} as Awaited<ReturnType<typeof mcpRepository.createConnection>>,
-      );
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 100,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
 
       const maxConnections = Array.from({ length: 10 }, () => ({
         catalogId: 1,
@@ -417,9 +504,9 @@ describe("mcp.service", () => {
       vi.mocked(catalogRepository.findById)
         .mockResolvedValueOnce(buildCatalog({ id: 1, name: "GitHub" }))
         .mockResolvedValueOnce(null);
-      vi.mocked(mcpRepository.createConnection).mockResolvedValue(
-        {} as Awaited<ReturnType<typeof mcpRepository.createConnection>>,
-      );
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 100,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
 
       await expect(mcpService.createVirtualServer(baseInput)).rejects.toThrow(
         "カタログ(id=2)が見つかりません",
@@ -495,9 +582,9 @@ describe("mcp.service", () => {
       vi.mocked(catalogRepository.findById).mockResolvedValue(
         buildCatalog({ id: 1, name: "GitHub" }),
       );
-      vi.mocked(mcpRepository.createConnection).mockResolvedValue(
-        {} as Awaited<ReturnType<typeof mcpRepository.createConnection>>,
-      );
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 100,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
 
       await mcpService.createVirtualServer({
         ...baseInput,
@@ -532,9 +619,9 @@ describe("mcp.service", () => {
       vi.mocked(catalogRepository.findById).mockResolvedValue(
         buildCatalog({ id: 1 }),
       );
-      vi.mocked(mcpRepository.createConnection).mockResolvedValue(
-        {} as Awaited<ReturnType<typeof mcpRepository.createConnection>>,
-      );
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 100,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
 
       const result = await mcpService.createVirtualServer({
         ...baseInput,
@@ -559,9 +646,9 @@ describe("mcp.service", () => {
       vi.mocked(catalogRepository.findById).mockResolvedValue(
         buildCatalog({ id: 1 }),
       );
-      vi.mocked(mcpRepository.createConnection).mockResolvedValue(
-        {} as Awaited<ReturnType<typeof mcpRepository.createConnection>>,
-      );
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 100,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
 
       await mcpService.createVirtualServer({
         ...baseInput,
@@ -575,6 +662,75 @@ describe("mcp.service", () => {
       );
     });
 
+    test("仮想MCP登録後に各接続のツール一覧を並列取得して保存する", async () => {
+      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
+      vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
+      vi.mocked(mcpRepository.createServer).mockResolvedValue({
+        id: 10,
+      } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(catalogRepository.findById)
+        .mockResolvedValueOnce(buildCatalog({ id: 1, name: "GitHub" }))
+        .mockResolvedValueOnce(
+          buildCatalog({
+            id: 2,
+            name: "Slack",
+            command: null,
+            url: "https://slack.example.com/sse",
+            transportType: "SSE",
+            credentialKeys: '["SLACK_TOKEN"]',
+            authType: "BEARER",
+          }),
+        );
+      // 接続は順次作成されるため、IDが異なるレコードを返す
+      vi.mocked(mcpRepository.createConnection)
+        .mockResolvedValueOnce({ id: 201 } as Awaited<
+          ReturnType<typeof mcpRepository.createConnection>
+        >)
+        .mockResolvedValueOnce({ id: 202 } as Awaited<
+          ReturnType<typeof mcpRepository.createConnection>
+        >);
+      // 接続ごとに異なるツールセットが返るケースを想定
+      vi.mocked(mcpProxyService.fetchToolsForConnection).mockImplementation(
+        async (connectionId: number) => {
+          if (connectionId === 201) {
+            return [{ name: "gh-tool", description: "", inputSchema: {} }];
+          }
+          if (connectionId === 202) {
+            return [{ name: "slack-tool", description: "", inputSchema: {} }];
+          }
+          return [];
+        },
+      );
+
+      const result = await mcpService.createVirtualServer(baseInput);
+
+      expect(result).toStrictEqual({
+        serverId: 10,
+        serverName: "週次レポート",
+      });
+      // 各接続に対して1度ずつ呼ばれる
+      expect(mcpProxyService.fetchToolsForConnection).toHaveBeenCalledTimes(2);
+      expect(mcpProxyService.fetchToolsForConnection).toHaveBeenCalledWith(201);
+      expect(mcpProxyService.fetchToolsForConnection).toHaveBeenCalledWith(202);
+      // 各接続ごとに createTools が呼ばれる
+      expect(mcpRepository.createTools).toHaveBeenCalledWith(mockDb, [
+        {
+          name: "gh-tool",
+          description: "",
+          inputSchema: "{}",
+          connectionId: 201,
+        },
+      ]);
+      expect(mcpRepository.createTools).toHaveBeenCalledWith(mockDb, [
+        {
+          name: "slack-tool",
+          description: "",
+          inputSchema: "{}",
+          connectionId: 202,
+        },
+      ]);
+    });
+
     test("接続カタログ名が日本語のみの場合は接続slugに乱数フォールバックを採用する", async () => {
       vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
       vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
@@ -584,9 +740,9 @@ describe("mcp.service", () => {
       vi.mocked(catalogRepository.findById).mockResolvedValue(
         buildCatalog({ id: 1, name: "テスト用コネクタ" }),
       );
-      vi.mocked(mcpRepository.createConnection).mockResolvedValue(
-        {} as Awaited<ReturnType<typeof mcpRepository.createConnection>>,
-      );
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 100,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
 
       await mcpService.createVirtualServer({
         ...baseInput,

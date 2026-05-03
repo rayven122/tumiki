@@ -13,6 +13,16 @@ vi.mock("../../mcp-server-list/mcp.repository");
 vi.mock("../../../utils/encryption");
 vi.mock("../../../utils/credentials");
 vi.mock("../../oauth/oauth.refresh");
+// @tumiki/mcp-core-proxy の createMcpClient をモック化（実際のSDK Clientは生成しない）
+vi.mock("@tumiki/mcp-core-proxy", async () => {
+  const actual = await vi.importActual<typeof import("@tumiki/mcp-core-proxy")>(
+    "@tumiki/mcp-core-proxy",
+  );
+  return {
+    ...actual,
+    createMcpClient: vi.fn(),
+  };
+});
 // path-resolver は別ユニットでテスト済みのため、本テストでは恒等変換に固定して
 // service 側の組み立てロジックのみを検証する
 vi.mock("../../../runtime/path-resolver", () => ({
@@ -24,6 +34,7 @@ vi.mock("../../../runtime/path-resolver", () => ({
 
 // テスト対象のインポート（モックの後に行う）
 import * as mcpProxyService from "../mcp-proxy.service";
+import { createMcpClient } from "@tumiki/mcp-core-proxy";
 import { getDb } from "../../../shared/db";
 import * as mcpRepository from "../../mcp-server-list/mcp.repository";
 import { decryptToken } from "../../../utils/encryption";
@@ -403,6 +414,170 @@ describe("mcp-proxy.service", () => {
         "https://api.figma.com/sse",
         expect.objectContaining({ access_token: "expired" }),
       );
+    });
+  });
+
+  describe("fetchToolsForConnection", () => {
+    type ConnectionWithServer = NonNullable<
+      Awaited<ReturnType<typeof mcpRepository.findConnectionByIdWithServer>>
+    >;
+
+    const buildConnectionWithServer = (
+      overrides: Partial<ConnectionWithServer> = {},
+    ): ConnectionWithServer => ({
+      id: 100,
+      name: "Conn",
+      slug: "conn",
+      transportType: "STDIO",
+      command: "echo",
+      args: "[]",
+      url: null,
+      credentials: "{}",
+      authType: "NONE",
+      isEnabled: true,
+      displayOrder: 0,
+      serverId: 1,
+      catalogId: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      server: {
+        id: 1,
+        name: "Srv",
+        slug: "srv",
+        description: "",
+        serverStatus: "STOPPED",
+        isEnabled: true,
+        displayOrder: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      ...overrides,
+    });
+
+    /** SDK Client / Transport の最小モック */
+    const createMockClient = (overrides?: {
+      tools?: { name: string; description?: string; inputSchema: unknown }[];
+      connectError?: Error;
+      listError?: Error;
+    }) => {
+      const close = vi.fn().mockResolvedValue(undefined);
+      const connect = overrides?.connectError
+        ? vi.fn().mockRejectedValue(overrides.connectError)
+        : vi.fn().mockResolvedValue(undefined);
+      const listTools = overrides?.listError
+        ? vi.fn().mockRejectedValue(overrides.listError)
+        : vi.fn().mockResolvedValue({ tools: overrides?.tools ?? [] });
+      const transport = {} as never;
+      return {
+        client: {
+          connect,
+          listTools,
+          close,
+        } as unknown as Awaited<
+          ReturnType<typeof import("@tumiki/mcp-core-proxy").createMcpClient>
+        >["client"],
+        transport,
+        connect,
+        listTools,
+        close,
+      };
+    };
+
+    test("接続IDからツール一覧を取得して返す", async () => {
+      vi.mocked(mcpRepository.findConnectionByIdWithServer).mockResolvedValue(
+        buildConnectionWithServer({
+          name: "Notion",
+          slug: "notion",
+          transportType: "SSE",
+          command: null,
+          url: "https://notion.example.com/sse",
+          authType: "BEARER",
+          credentials: '{"token":"xyz"}',
+        }),
+      );
+      const mock = createMockClient({
+        tools: [
+          {
+            name: "search",
+            description: "検索",
+            inputSchema: { type: "object" },
+          },
+        ],
+      });
+      vi.mocked(createMcpClient).mockReturnValue({
+        client: mock.client,
+        transport: mock.transport,
+      });
+
+      const tools = await mcpProxyService.fetchToolsForConnection(100);
+
+      expect(tools).toStrictEqual([
+        {
+          name: "search",
+          description: "検索",
+          inputSchema: { type: "object" },
+        },
+      ]);
+      expect(mock.connect).toHaveBeenCalledTimes(1);
+      expect(mock.listTools).toHaveBeenCalledTimes(1);
+      // 取得後は必ず close が呼ばれる
+      expect(mock.close).toHaveBeenCalledTimes(1);
+    });
+
+    test("接続が存在しない場合はエラーを投げる", async () => {
+      vi.mocked(mcpRepository.findConnectionByIdWithServer).mockResolvedValue(
+        null,
+      );
+
+      await expect(
+        mcpProxyService.fetchToolsForConnection(999),
+      ).rejects.toThrow("接続(id=999)が見つかりません");
+      expect(createMcpClient).not.toHaveBeenCalled();
+    });
+
+    test("listTools失敗時もclient.close()が呼ばれる", async () => {
+      vi.mocked(mcpRepository.findConnectionByIdWithServer).mockResolvedValue(
+        buildConnectionWithServer(),
+      );
+      const mock = createMockClient({
+        listError: new Error("MCPサーバーがツールに対応していない"),
+      });
+      vi.mocked(createMcpClient).mockReturnValue({
+        client: mock.client,
+        transport: mock.transport,
+      });
+
+      await expect(
+        mcpProxyService.fetchToolsForConnection(100),
+      ).rejects.toThrow("MCPサーバーがツールに対応していない");
+
+      expect(mock.close).toHaveBeenCalledTimes(1);
+    });
+
+    test("タイムアウト経過時はエラーを投げ client.close() が呼ばれる", async () => {
+      // 実タイマーを使用（fake timer + Promise.race + 永遠ペンディングのconnect()
+      // という組み合わせで unhandled rejection が誤検知されるため）。
+      // タイムアウト値は5msに固定し、CI環境でも十分に決定論的に動作する。
+      vi.mocked(mcpRepository.findConnectionByIdWithServer).mockResolvedValue(
+        buildConnectionWithServer(),
+      );
+      const close = vi.fn().mockResolvedValue(undefined);
+      const connect = vi.fn().mockReturnValue(new Promise(() => undefined));
+      const listTools = vi.fn();
+      vi.mocked(createMcpClient).mockReturnValue({
+        client: {
+          connect,
+          listTools,
+          close,
+        } as unknown as Awaited<ReturnType<typeof createMcpClient>>["client"],
+        transport: {} as never,
+      });
+
+      await expect(
+        mcpProxyService.fetchToolsForConnection(100, { timeoutMs: 5 }),
+      ).rejects.toThrow(/タイムアウト/);
+
+      expect(close).toHaveBeenCalledTimes(1);
     });
   });
 });
