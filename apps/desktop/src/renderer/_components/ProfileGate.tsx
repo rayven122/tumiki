@@ -6,6 +6,7 @@ import type { ProfileState } from "../../shared/types";
 export const ProfileGate = (): JSX.Element => {
   const [profile, setProfile] = useState<ProfileState | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -13,10 +14,16 @@ export const ProfileGate = (): JSX.Element => {
       window.electronAPI.profile
         .getState()
         .then((state) => {
-          if (mounted) setProfile(state);
+          if (mounted) {
+            setError(null);
+            setProfile(state);
+          }
         })
         .catch(() => {
-          if (mounted) setProfile(null);
+          if (mounted) {
+            setError("プロファイル状態の取得に失敗しました");
+            setProfile(null);
+          }
         })
         .finally(() => {
           if (mounted) setLoading(false);
@@ -34,6 +41,14 @@ export const ProfileGate = (): JSX.Element => {
     return (
       <div className="flex h-screen items-center justify-center bg-[var(--bg-app)] text-sm text-[var(--text-muted)]">
         読み込み中...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[var(--bg-app)] text-sm text-red-400">
+        {error}
       </div>
     );
   }

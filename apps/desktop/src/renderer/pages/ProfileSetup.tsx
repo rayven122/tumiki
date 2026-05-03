@@ -100,6 +100,7 @@ export const ProfileSetup = (): JSX.Element => {
 
   const cancelOrganizationSetup = (): void => {
     void window.electronAPI.auth.cancelLogin();
+    void window.electronAPI.profile.cancelOrganizationSetup();
     setIsSubmitting(false);
     setIsWaitingForCallback(false);
     setError(null);

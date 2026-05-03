@@ -94,6 +94,26 @@ describe("setupProfileIpc", () => {
     );
   });
 
+  test("組織セットアップキャンセルで未確定の管理サーバーURLをクリアする", async () => {
+    const cancelAuthFlow = vi.fn();
+    const stopAutoRefresh = vi.fn();
+    mockGetOAuthManager.mockReturnValue({ cancelAuthFlow, stopAutoRefresh });
+    storeData.set("managerUrl", "https://manager.example.com");
+
+    const handler = mockIpcHandlers.get("profile:cancelOrganizationSetup");
+    const result = await handler!({} as IpcMainInvokeEvent);
+
+    expect(cancelAuthFlow).toHaveBeenCalled();
+    expect(stopAutoRefresh).toHaveBeenCalled();
+    expect(mockSetOAuthManager).toHaveBeenCalledWith(null);
+    expect(storeData.has("managerUrl")).toBe(false);
+    expect(result).toStrictEqual({
+      activeProfile: null,
+      organizationProfile: null,
+      hasCompletedInitialProfileSetup: false,
+    });
+  });
+
   test("組織切断で認証とプロファイル状態をクリアする", async () => {
     const cancelAuthFlow = vi.fn();
     const stopAutoRefresh = vi.fn();

@@ -13,6 +13,15 @@ export const setupProfileIpc = (): void => {
 
   ipcMain.handle("profile:selectPersonal", () => selectPersonalProfile());
 
+  ipcMain.handle("profile:cancelOrganizationSetup", async () => {
+    const manager = getOAuthManager();
+    manager?.cancelAuthFlow();
+    manager?.stopAutoRefresh();
+    setOAuthManager(null);
+
+    return clearOrganizationProfile();
+  });
+
   ipcMain.handle("profile:disconnectOrganization", async () => {
     try {
       const db = await getDb();
@@ -25,11 +34,22 @@ export const setupProfileIpc = (): void => {
       throw new Error("組織利用の停止に失敗しました", { cause: error });
     }
 
+    let profileState;
+    try {
+      profileState = await clearOrganizationProfile();
+    } catch (error) {
+      logger.error(
+        "Failed to clear organization profile after clearing auth tokens",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error("組織利用の停止に失敗しました", { cause: error });
+    }
+
     const manager = getOAuthManager();
     manager?.cancelAuthFlow();
     manager?.stopAutoRefresh();
     setOAuthManager(null);
 
-    return clearOrganizationProfile();
+    return profileState;
   });
 };

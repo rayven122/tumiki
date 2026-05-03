@@ -61,10 +61,10 @@ export const Sidebar = (): JSX.Element => {
     };
   }, [refreshProfile]);
 
-  const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
+  const toggleTheme = (): void => setTheme(theme === "dark" ? "light" : "dark");
   const isOrganization = profile?.activeProfile === "organization";
 
-  const renderLink = (item: NavItem) => {
+  const renderLink = (item: NavItem): JSX.Element => {
     const isActive =
       item.path === "/"
         ? location.pathname === "/"

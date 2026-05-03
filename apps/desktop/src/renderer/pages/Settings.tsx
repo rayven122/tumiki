@@ -83,13 +83,13 @@ export const SettingsPage = (): JSX.Element => {
   }, []);
 
   /** 通知トグル */
-  const toggleEmail = (id: string) => {
+  const toggleEmail = (id: string): void => {
     setEmailSettings((prev) =>
       prev.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s)),
     );
   };
 
-  const togglePortal = (id: string) => {
+  const togglePortal = (id: string): void => {
     setPortalSettings((prev) =>
       prev.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s)),
     );
@@ -277,7 +277,10 @@ export const SettingsPage = (): JSX.Element => {
       <SettingsForm />
 
       {/* 保存ボタン */}
-      <button className="rounded-lg bg-[var(--btn-primary-bg)] px-4 py-2 text-sm font-medium text-[var(--btn-primary-text)] transition-colors hover:opacity-90">
+      <button
+        type="button"
+        className="rounded-lg bg-[var(--btn-primary-bg)] px-4 py-2 text-sm font-medium text-[var(--btn-primary-text)] transition-colors hover:opacity-90"
+      >
         保存
       </button>
 
