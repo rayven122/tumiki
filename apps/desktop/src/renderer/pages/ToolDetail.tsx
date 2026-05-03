@@ -796,7 +796,6 @@ export const ToolDetail = (): JSX.Element => {
                         (log.clientName ?? "").toLowerCase().includes(q) ||
                         (log.detail ?? "").toLowerCase().includes(q),
                     );
-              const effectiveTotalPages = auditTotalPages;
               const goPage = (p: number): void => {
                 void loadAuditLogs(p);
               };
@@ -910,7 +909,7 @@ export const ToolDetail = (): JSX.Element => {
                   </div>
 
                   {/* ページネーション */}
-                  {effectiveTotalPages > 1 && (
+                  {auditTotalPages > 1 && (
                     <div className="flex items-center justify-center gap-1 pt-3">
                       <button
                         type="button"
@@ -920,14 +919,11 @@ export const ToolDetail = (): JSX.Element => {
                       >
                         &lt;
                       </button>
-                      {Array.from(
-                        { length: effectiveTotalPages },
-                        (_, i) => i + 1,
-                      )
+                      {Array.from({ length: auditTotalPages }, (_, i) => i + 1)
                         .filter(
                           (p) =>
                             p === 1 ||
-                            p === effectiveTotalPages ||
+                            p === auditTotalPages ||
                             Math.abs(p - auditPage) <= 2,
                         )
                         .reduce<(number | "ellipsis")[]>((acc, p, i, arr) => {
@@ -963,9 +959,7 @@ export const ToolDetail = (): JSX.Element => {
                       <button
                         type="button"
                         onClick={() => goPage(auditPage + 1)}
-                        disabled={
-                          auditPage >= effectiveTotalPages || auditLoading
-                        }
+                        disabled={auditPage >= auditTotalPages || auditLoading}
                         className="rounded-lg px-2 py-1 text-xs text-[var(--text-muted)] transition hover:opacity-80 disabled:opacity-30"
                       >
                         &gt;
