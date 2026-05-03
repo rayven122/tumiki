@@ -11,6 +11,7 @@ import {
   User,
 } from "lucide-react";
 import { themeAtom } from "../store/atoms";
+import { PROFILE_CHANGED_EVENT } from "../../shared/events";
 
 type View = "choice" | "organization";
 
@@ -55,7 +56,7 @@ export const ProfileSetup = (): JSX.Element => {
     const cleanupSuccess = window.electronAPI.auth.onCallbackSuccess(() => {
       setIsWaitingForCallback(false);
       setIsSubmitting(false);
-      window.dispatchEvent(new Event("profile:changed"));
+      window.dispatchEvent(new Event(PROFILE_CHANGED_EVENT));
       navigate("/", { replace: true });
     });
     const cleanupError = window.electronAPI.auth.onCallbackError((message) => {
@@ -76,7 +77,7 @@ export const ProfileSetup = (): JSX.Element => {
     setError(null);
     try {
       await window.electronAPI.profile.selectPersonal();
-      window.dispatchEvent(new Event("profile:changed"));
+      window.dispatchEvent(new Event(PROFILE_CHANGED_EVENT));
       navigate("/", { replace: true });
     } catch (err) {
       setError(
@@ -108,13 +109,18 @@ export const ProfileSetup = (): JSX.Element => {
     }
   };
 
-  const cancelOrganizationSetup = (): void => {
-    void window.electronAPI.auth.cancelLogin();
-    void window.electronAPI.profile.cancelOrganizationSetup();
-    setIsSubmitting(false);
-    setIsWaitingForCallback(false);
-    setError(null);
-    setView("choice");
+  const cancelOrganizationSetup = async (): Promise<void> => {
+    try {
+      await window.electronAPI.auth.cancelLogin();
+      await window.electronAPI.profile.cancelOrganizationSetup();
+    } catch (err) {
+      console.error("Failed to cancel organization setup", err);
+    } finally {
+      setIsSubmitting(false);
+      setIsWaitingForCallback(false);
+      setError(null);
+      setView("choice");
+    }
   };
 
   return (
@@ -188,7 +194,7 @@ export const ProfileSetup = (): JSX.Element => {
           >
             <button
               type="button"
-              onClick={cancelOrganizationSetup}
+              onClick={() => void cancelOrganizationSetup()}
               disabled={isSubmitting && !isWaitingForCallback}
               className="mb-5 flex items-center gap-2 text-sm text-[var(--text-muted)] transition hover:text-[var(--text-primary)] disabled:opacity-50"
             >

@@ -73,6 +73,7 @@ export const SettingsPage = (): JSX.Element => {
     useState<NotificationSetting[]>(PORTAL_NOTIFICATIONS);
   const [profile, setProfile] = useState<ProfileState | null>(null);
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [disconnectError, setDisconnectError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -96,6 +97,8 @@ export const SettingsPage = (): JSX.Element => {
   };
 
   const disconnectOrganization = async (): Promise<void> => {
+    if (isDisconnecting) return;
+    setIsDisconnecting(true);
     setDisconnectError(null);
     try {
       await window.electronAPI.profile.disconnectOrganization();
@@ -105,6 +108,8 @@ export const SettingsPage = (): JSX.Element => {
       setDisconnectError(
         err instanceof Error ? err.message : "組織利用の停止に失敗しました",
       );
+    } finally {
+      setIsDisconnecting(false);
     }
   };
 
@@ -289,8 +294,11 @@ export const SettingsPage = (): JSX.Element => {
         title="組織利用を停止"
         message="管理サーバー連携と認証トークンを削除します。停止後は初回設定から個人利用を再設定できます。"
         confirmLabel="停止"
+        confirmDisabled={isDisconnecting}
         onConfirm={() => void disconnectOrganization()}
-        onCancel={() => setShowDisconnectConfirm(false)}
+        onCancel={() => {
+          if (!isDisconnecting) setShowDisconnectConfirm(false);
+        }}
       />
     </div>
   );

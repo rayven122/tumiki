@@ -2,6 +2,7 @@ import type { JSX } from "react";
 import { useEffect, useState } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import type { ProfileState } from "../../shared/types";
+import { PROFILE_CHANGED_EVENT } from "../../shared/events";
 
 export const ProfileGate = (): JSX.Element => {
   const [profile, setProfile] = useState<ProfileState | null>(null);
@@ -30,10 +31,10 @@ export const ProfileGate = (): JSX.Element => {
         });
     };
     refreshProfile();
-    window.addEventListener("profile:changed", refreshProfile);
+    window.addEventListener(PROFILE_CHANGED_EVENT, refreshProfile);
     return () => {
       mounted = false;
-      window.removeEventListener("profile:changed", refreshProfile);
+      window.removeEventListener(PROFILE_CHANGED_EVENT, refreshProfile);
     };
   }, []);
 
@@ -54,7 +55,7 @@ export const ProfileGate = (): JSX.Element => {
           onClick={() => {
             setLoading(true);
             setError(null);
-            window.dispatchEvent(new Event("profile:changed"));
+            window.dispatchEvent(new Event(PROFILE_CHANGED_EVENT));
           }}
           className="rounded-lg border border-[var(--border)] px-4 py-2 text-[var(--text-secondary)] transition hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)]"
         >

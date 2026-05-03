@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { themeAtom, sidebarOpenAtom } from "../store/atoms";
 import type { ProfileState } from "../../shared/types";
+import { PROFILE_CHANGED_EVENT } from "../../shared/events";
 
 type NavItem = {
   path: string;
@@ -55,9 +56,9 @@ export const Sidebar = (): JSX.Element => {
   }, [refreshProfile]);
 
   useEffect(() => {
-    window.addEventListener("profile:changed", refreshProfile);
+    window.addEventListener(PROFILE_CHANGED_EVENT, refreshProfile);
     return () => {
-      window.removeEventListener("profile:changed", refreshProfile);
+      window.removeEventListener(PROFILE_CHANGED_EVENT, refreshProfile);
     };
   }, [refreshProfile]);
 
