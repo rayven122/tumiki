@@ -1,8 +1,22 @@
+import { TRPCError } from "@trpc/server";
 import { api } from "@/trpc/server";
 import PodMonitoringTable from "./_components/PodMonitoringTable";
 
 const MonitoringPage = async () => {
-  const initialData = await api.monitoring.pods();
+  const initialData = await api.monitoring.pods().catch((err: unknown) => {
+    if (err instanceof TRPCError && err.code === "UNAUTHORIZED") return null;
+    throw err;
+  });
+
+  if (!initialData) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="mx-auto max-w-5xl px-4 py-8">
+          <p className="text-red-600">認証が必要です</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
