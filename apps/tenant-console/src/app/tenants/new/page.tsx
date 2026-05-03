@@ -4,20 +4,107 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/trpc/react";
 
+/** テナント作成完了後に表示する初期管理者パスワードモーダルの Props */
+type InitialAdminPasswordModalProps = {
+  email: string;
+  password: string;
+  onClose: () => void;
+};
+
+/** 初期管理者パスワードを一度だけ表示するモーダル */
+const InitialAdminPasswordModal = ({
+  email,
+  password,
+  onClose,
+}: InitialAdminPasswordModalProps) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(password);
+    setCopied(true);
+    // 2秒後にコピー完了表示をリセット
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="mx-4 w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+        <h2 className="mb-2 text-lg font-bold text-gray-900">
+          テナントを作成しました
+        </h2>
+        <p className="mb-4 text-sm text-gray-600">
+          初期管理者アカウントが作成されました。このパスワードは一度しか表示されません。
+        </p>
+
+        <div className="mb-4 space-y-3">
+          <div>
+            <p className="text-xs font-medium text-gray-500">メールアドレス</p>
+            <p className="mt-1 rounded-md bg-gray-50 px-3 py-2 text-sm text-gray-900">
+              {email}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-xs font-medium text-gray-500">仮パスワード</p>
+            <div className="mt-1 flex items-center gap-2">
+              <p className="flex-1 rounded-md bg-gray-50 px-3 py-2 font-mono text-sm break-all text-gray-900">
+                {password}
+              </p>
+              <button
+                type="button"
+                onClick={handleCopy}
+                className="shrink-0 rounded-md bg-indigo-50 px-3 py-2 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+              >
+                {copied ? "コピー済み" : "コピー"}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <p className="mb-4 text-xs text-amber-600">
+          ※ 初回ログイン時にパスワードの変更が必要です。
+        </p>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+        >
+          閉じる
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const NewTenantPage = () => {
   const router = useRouter();
   const [slug, setSlug] = useState("");
   const [oidcType, setOidcType] = useState<"KEYCLOAK" | "CUSTOM">("KEYCLOAK");
+  const [initialAdminEmail, setInitialAdminEmail] = useState("");
   const [oidcIssuer, setOidcIssuer] = useState("");
   const [oidcClientId, setOidcClientId] = useState("");
   const [oidcClientSecret, setOidcClientSecret] = useState("");
   const [oidcDesktopClientId, setOidcDesktopClientId] = useState("");
   const [imageTag, setImageTag] = useState("main");
   const [error, setError] = useState<string | null>(null);
+  /** 初期管理者パスワードモーダルの表示制御 */
+  const [adminPasswordInfo, setAdminPasswordInfo] = useState<{
+    email: string;
+    password: string;
+  } | null>(null);
 
   const createTenant = api.tenant.create.useMutation({
-    onSuccess: () => {
-      router.push("/tenants");
+    onSuccess: (data) => {
+      // 初期管理者パスワードが返された場合はモーダルで表示する
+      if (data.initialAdminPassword) {
+        setAdminPasswordInfo({
+          email: initialAdminEmail,
+          password: data.initialAdminPassword,
+        });
+      } else {
+        router.push("/tenants");
+      }
     },
     onError: (err) => {
       setError(err.message);
@@ -31,6 +118,8 @@ const NewTenantPage = () => {
     createTenant.mutate({
       slug,
       oidcType,
+      initialAdminEmail:
+        oidcType === "KEYCLOAK" ? initialAdminEmail : undefined,
       oidcIssuer: oidcType === "CUSTOM" ? oidcIssuer : undefined,
       oidcClientId: oidcType === "CUSTOM" ? oidcClientId : undefined,
       oidcClientSecret: oidcType === "CUSTOM" ? oidcClientSecret : undefined,
@@ -42,6 +131,15 @@ const NewTenantPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* 初期管理者パスワードモーダル */}
+      {adminPasswordInfo && (
+        <InitialAdminPasswordModal
+          email={adminPasswordInfo.email}
+          password={adminPasswordInfo.password}
+          onClose={() => router.push("/tenants")}
+        />
+      )}
+
       <div className="mx-auto max-w-2xl px-4 py-8">
         <h1 className="mb-2 text-2xl font-bold text-gray-900">
           新規テナント作成
@@ -112,6 +210,30 @@ const NewTenantPage = () => {
               </label>
             </div>
           </div>
+
+          {/* Keycloak 選択時のみ初期管理者メールアドレスを表示 */}
+          {oidcType === "KEYCLOAK" && (
+            <div>
+              <label
+                htmlFor="initialAdminEmail"
+                className="block text-sm font-medium text-gray-700"
+              >
+                初期管理者メールアドレス <span className="text-red-500">*</span>
+              </label>
+              <p className="text-xs text-gray-500">
+                Keycloak に作成される初期管理者ユーザーのメールアドレス
+              </p>
+              <input
+                id="initialAdminEmail"
+                type="email"
+                value={initialAdminEmail}
+                onChange={(e) => setInitialAdminEmail(e.target.value)}
+                required
+                placeholder="admin@example.com"
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+              />
+            </div>
+          )}
 
           {oidcType === "CUSTOM" && (
             <div className="space-y-4 rounded-md border border-gray-200 p-4">

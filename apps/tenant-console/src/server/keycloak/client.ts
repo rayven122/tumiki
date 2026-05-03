@@ -1,4 +1,5 @@
 import "server-only";
+import { randomBytes } from "node:crypto";
 import { env } from "@/lib/env";
 
 /** Keycloak Admin REST API クライアント（fetch ベース） */
@@ -6,6 +7,7 @@ import { env } from "@/lib/env";
 type TokenResponse = { access_token: string; expires_in: number };
 type ClientRepresentation = { id: string };
 type SecretResponse = { value: string };
+type UserRepresentation = { id: string };
 
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
@@ -61,13 +63,15 @@ const apiFetch = async (
  * テナント用 Keycloak Realm を作成する。
  * - web クライアント（internal-manager）: confidential, redirect `https://{domain}/*`
  * - desktop クライアント（internal-manager-desktop）: public, PKCE S256, redirect `tumiki://auth/callback`
- * 戻り値: web クライアントの client secret
+ * - 初期管理者ユーザー: initialAdminEmail のユーザーを作成し仮パスワードを設定
+ * 戻り値: web クライアントの client secret と初期管理者の仮パスワード
  */
 export const createTenantRealm = async (params: {
   slug: string;
   domain: string;
-}): Promise<{ clientSecret: string }> => {
-  const { slug, domain } = params;
+  initialAdminEmail: string;
+}): Promise<{ clientSecret: string; initialAdminPassword: string }> => {
+  const { slug, domain, initialAdminEmail } = params;
 
   // Realm 作成
   const realmRes = await apiFetch("/admin/realms", {
@@ -157,7 +161,65 @@ export const createTenantRealm = async (params: {
     );
   }
 
-  return { clientSecret };
+  // 初期管理者ユーザーを作成する
+  // メールアドレスのローカルパート（@より前）をユーザー名として使用
+  const username = initialAdminEmail.split("@")[0] ?? initialAdminEmail;
+  const createUserRes = await apiFetch(`/admin/realms/${slug}/users`, {
+    method: "POST",
+    body: JSON.stringify({
+      username,
+      email: initialAdminEmail,
+      emailVerified: true,
+      enabled: true,
+      requiredActions: ["UPDATE_PASSWORD"],
+    }),
+  });
+  if (!createUserRes.ok) {
+    const text = await createUserRes.text();
+    throw new Error(
+      `createInitialAdminUser(${slug}) failed: ${createUserRes.status} ${text}`,
+    );
+  }
+
+  // 作成したユーザーの内部 ID を取得する
+  const getUsersRes = await apiFetch(
+    `/admin/realms/${slug}/users?email=${encodeURIComponent(initialAdminEmail)}`,
+  );
+  if (!getUsersRes.ok) {
+    const text = await getUsersRes.text();
+    throw new Error(
+      `getInitialAdminUserId(${slug}) failed: ${getUsersRes.status} ${text}`,
+    );
+  }
+  const users = (await getUsersRes.json()) as UserRepresentation[];
+  const userId = users[0]?.id;
+  if (!userId) {
+    throw new Error(
+      `Initial admin user not found in realm ${slug} after creation`,
+    );
+  }
+
+  // 仮パスワードを生成して設定する（base64url で英数字記号混じり16文字程度）
+  const initialAdminPassword = randomBytes(12).toString("base64url");
+  const resetPasswordRes = await apiFetch(
+    `/admin/realms/${slug}/users/${userId}/reset-password`,
+    {
+      method: "PUT",
+      body: JSON.stringify({
+        type: "password",
+        value: initialAdminPassword,
+        temporary: true,
+      }),
+    },
+  );
+  if (!resetPasswordRes.ok) {
+    const text = await resetPasswordRes.text();
+    throw new Error(
+      `resetInitialAdminPassword(${slug}) failed: ${resetPasswordRes.status} ${text}`,
+    );
+  }
+
+  return { clientSecret, initialAdminPassword };
 };
 
 /**
