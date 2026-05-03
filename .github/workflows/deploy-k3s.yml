@@ -1,0 +1,98 @@
+name: Deploy to k3s
+
+on:
+  workflow_run:
+    workflows: ["Docker Publish"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "デプロイするイメージタグ（省略時は sha-<short SHA>）"
+        required: false
+
+jobs:
+  deploy-tenant-console:
+    name: 🚀 Deploy tenant-console to k3s
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    timeout-minutes: 10
+
+    env:
+      SSH_HOST: ssh.tumiki.cloud
+      SSH_USER: deploy
+      K3S_HOST: 192.168.0.20
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Resolve image tag
+        id: tag
+        env:
+          INPUT_TAG: ${{ github.event.inputs.image_tag }}
+        run: |
+          if [ -n "${INPUT_TAG}" ]; then
+            echo "tag=${INPUT_TAG}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=sha-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install cloudflared
+        run: |
+          CLOUDFLARED_VERSION="2026.3.0"
+          EXPECTED_SHA256="00f2475bad5874e9a110c2f5b8d1ce8a1bf5b6280628886a68bdc4ee76fd376c"
+          curl -fsSL "https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-amd64.deb" -o /tmp/cloudflared.deb
+          echo "${EXPECTED_SHA256}  /tmp/cloudflared.deb" | sha256sum -c -
+          sudo dpkg -i /tmp/cloudflared.deb
+
+      - name: Setup SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.K3S_DEPLOY_SSH_PRIVATE_KEY }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+        run: |
+          mkdir -p ~/.ssh
+
+          printf '%s\n' "${SSH_PRIVATE_KEY}" > ~/.ssh/id_ed25519_deploy
+          chmod 600 ~/.ssh/id_ed25519_deploy
+
+          cat > /tmp/cf-proxy.sh << 'WRAPPER'
+          #!/bin/bash
+          exec cloudflared access ssh \
+            --service-token-id "${CF_ACCESS_CLIENT_ID}" \
+            --service-token-secret "${CF_ACCESS_CLIENT_SECRET}" \
+            --hostname "$@"
+          WRAPPER
+          chmod +x /tmp/cf-proxy.sh
+
+          cat >> ~/.ssh/config << CONFIG
+          Host ${SSH_HOST}
+            ProxyCommand /tmp/cf-proxy.sh %h
+            StrictHostKeyChecking accept-new
+
+          Host k3s-deploy
+            HostName ${K3S_HOST}
+            User ${SSH_USER}
+            ProxyJump ${SSH_USER}@${SSH_HOST}
+            IdentityFile ~/.ssh/id_ed25519_deploy
+            StrictHostKeyChecking accept-new
+          CONFIG
+
+      - name: Copy Helm chart to k3s node
+        run: |
+          scp -r infra/k3s/helm/tenant-console k3s-deploy:/opt/tumiki-charts/
+
+      - name: Deploy via Helm
+        env:
+          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          ssh k3s-deploy helm upgrade tenant-console /opt/tumiki-charts/tenant-console \
+            -n tenant-console \
+            --reuse-values \
+            --set "image.tag=${IMAGE_TAG}" \
+            --atomic \
+            --timeout 120s
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/id_ed25519_deploy
