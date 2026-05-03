@@ -65,7 +65,8 @@ export type KeycloakConfig = z.infer<typeof keycloakConfigSchema>;
  */
 const tokenResponseSchema = z.object({
   access_token: z.string().min(1),
-  refresh_token: z.string().min(1),
+  // jackson OIDC ブリッジは refresh_token を返さないため optional
+  refresh_token: z.string().optional(),
   id_token: z.string().optional(),
   expires_in: z.number().int().positive(),
   token_type: z.string().min(1),

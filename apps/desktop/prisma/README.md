@@ -11,7 +11,7 @@ erDiagram
 "AuthToken" {
   Int id PK
   String accessToken
-  String refreshToken
+  String refreshToken "nullable"
   String idToken "nullable"
   DateTime expiresAt
   DateTime createdAt
@@ -25,7 +25,7 @@ erDiagram
 **Properties**
   - `id`: 
   - `accessToken`: 暗号化されたアクセストークン
-  - `refreshToken`: 暗号化されたリフレッシュトークン
+  - `refreshToken`: 暗号化されたリフレッシュトークン（jackson OIDC IdP は返さないため nullable）
   - `idToken`: 暗号化されたIDトークン（OIDCログアウト用）
   - `expiresAt`: トークンの有効期限
   - `createdAt`: 
