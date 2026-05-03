@@ -108,6 +108,8 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
       if (input.oidcClientId) secrets.OIDC_CLIENT_ID = input.oidcClientId;
       if (input.oidcClientSecret)
         secrets.OIDC_CLIENT_SECRET = input.oidcClientSecret;
+      if (input.oidcDesktopClientId)
+        secrets.OIDC_DESKTOP_CLIENT_ID = input.oidcDesktopClientId;
     }
     await ensureFolder({
       projectId: project.projectId,

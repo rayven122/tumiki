@@ -17,6 +17,7 @@ export const createTenantInputSchema = z
     oidcIssuer: z.string().url().optional(),
     oidcClientId: z.string().optional(),
     oidcClientSecret: z.string().optional(),
+    oidcDesktopClientId: z.string().optional(),
     imageTag: z
       .string()
       .min(1)
@@ -45,6 +46,13 @@ export const createTenantInputSchema = z
           code: z.ZodIssueCode.custom,
           message: "CUSTOM OIDCにはClient Secretが必要です",
           path: ["oidcClientSecret"],
+        });
+      }
+      if (!data.oidcDesktopClientId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "CUSTOM OIDCにはDesktop Client IDが必要です",
+          path: ["oidcDesktopClientId"],
         });
       }
     }

@@ -1,5 +1,7 @@
 import { setupOidcSchema } from "~/lib/env";
 
+export const dynamic = "force-dynamic";
+
 const getEnvErrors = (): Record<string, string> => {
   const result = setupOidcSchema.safeParse({
     OIDC_ISSUER: process.env.OIDC_ISSUER,
