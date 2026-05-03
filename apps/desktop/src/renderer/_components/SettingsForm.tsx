@@ -23,7 +23,6 @@ export const SettingsForm = (): React.ReactElement => {
 
   return (
     <div className="space-y-6">
-      {/* アプリ設定セクション */}
       <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">
         <h3 className="mb-4 text-sm font-medium text-[var(--text-primary)]">
           アプリケーション設定

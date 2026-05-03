@@ -71,6 +71,18 @@ export type ToggleServerInput = {
 };
 
 /**
+ * カスタムURLでリモートMCPサーバーを登録する際の入力型（renderer → main）
+ * カタログ参照なしで���ユーザーが自由にURLを指定して追加する
+ */
+export type CreateCustomServerInput = {
+  serverName: string;
+  url: string;
+  transportType: "SSE" | "STREAMABLE_HTTP";
+  authType: "NONE" | "API_KEY" | "OAUTH";
+  credentials: Record<string, string>;
+};
+
+/**
  * 仮想MCP作成における1接続分の入力型
  * カタログIDとそのカタログに対する認証情報を持つ
  */

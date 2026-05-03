@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAtom } from "jotai";
 import {
@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { themeAtom, sidebarOpenAtom } from "../store/atoms";
 import type { ProfileState } from "../../shared/types";
+import { PROFILE_CHANGED_EVENT } from "../../shared/events";
 
 type NavItem = {
   path: string;
@@ -42,26 +43,33 @@ export const Sidebar = (): JSX.Element => {
   const [theme, setTheme] = useAtom(themeAtom);
   const [isOpen, setIsOpen] = useAtom(sidebarOpenAtom);
   const [profile, setProfile] = useState<ProfileState | null>(null);
+  const mountedRef = useRef(true);
 
-  useEffect(() => {
-    let mounted = true;
-    const refreshProfile = (): void => {
-      window.electronAPI.profile.getState().then((state) => {
-        if (mounted) setProfile(state);
+  const refreshProfile = useCallback((): void => {
+    window.electronAPI.profile
+      .getState()
+      .then((state) => {
+        if (mountedRef.current) setProfile(state);
+      })
+      .catch(() => {
+        if (mountedRef.current) setProfile(null);
       });
-    };
-    refreshProfile();
-    window.addEventListener("profile:changed", refreshProfile);
-    return () => {
-      mounted = false;
-      window.removeEventListener("profile:changed", refreshProfile);
-    };
   }, []);
 
-  const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
+  useEffect(() => {
+    mountedRef.current = true;
+    refreshProfile();
+    window.addEventListener(PROFILE_CHANGED_EVENT, refreshProfile);
+    return () => {
+      mountedRef.current = false;
+      window.removeEventListener(PROFILE_CHANGED_EVENT, refreshProfile);
+    };
+  }, [refreshProfile]);
+
+  const toggleTheme = (): void => setTheme(theme === "dark" ? "light" : "dark");
   const isOrganization = profile?.activeProfile === "organization";
 
-  const renderLink = (item: NavItem) => {
+  const renderLink = (item: NavItem): JSX.Element => {
     const isActive =
       item.path === "/"
         ? location.pathname === "/"

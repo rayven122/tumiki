@@ -1,5 +1,5 @@
 import type { FormEvent, JSX } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAtomValue } from "jotai";
 import {
@@ -11,6 +11,7 @@ import {
   User,
 } from "lucide-react";
 import { themeAtom } from "../store/atoms";
+import { PROFILE_CHANGED_EVENT } from "../../shared/events";
 
 type View = "choice" | "organization";
 
@@ -22,48 +23,75 @@ export const ProfileSetup = (): JSX.Element => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isWaitingForCallback, setIsWaitingForCallback] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
+  const setupCancelledRef = useRef(false);
 
   useEffect(() => {
-    window.electronAPI.profile.getState().then((state) => {
-      if (state.hasCompletedInitialProfileSetup && state.activeProfile) {
-        navigate("/", { replace: true });
-      }
-    });
-    window.electronAPI.manager.getUrl().then((url) => {
-      if (url) setManagerUrl(url);
-    });
+    mountedRef.current = true;
+    window.electronAPI.profile
+      .getState()
+      .then((state) => {
+        if (
+          mountedRef.current &&
+          state.hasCompletedInitialProfileSetup &&
+          state.activeProfile
+        ) {
+          navigate("/", { replace: true });
+        }
+      })
+      .catch(() => {
+        if (mountedRef.current) {
+          setError("プロファイル状態の取得に失敗しました");
+        }
+      });
+    window.electronAPI.manager
+      .getUrl()
+      .then((url) => {
+        if (mountedRef.current && url) setManagerUrl(url);
+      })
+      .catch(() => {
+        if (mountedRef.current) {
+          setManagerUrl("");
+        }
+      });
 
     const cleanupSuccess = window.electronAPI.auth.onCallbackSuccess(() => {
+      if (!mountedRef.current || setupCancelledRef.current) return;
       setIsWaitingForCallback(false);
       setIsSubmitting(false);
-      window.dispatchEvent(new Event("profile:changed"));
+      window.dispatchEvent(new Event(PROFILE_CHANGED_EVENT));
       navigate("/", { replace: true });
     });
-
     const cleanupError = window.electronAPI.auth.onCallbackError((message) => {
+      if (!mountedRef.current || setupCancelledRef.current) return;
       setIsWaitingForCallback(false);
       setIsSubmitting(false);
       setError(`ログインに失敗しました: ${message}`);
     });
 
     return () => {
+      mountedRef.current = false;
       cleanupSuccess();
       cleanupError();
     };
   }, [navigate]);
 
   const selectPersonal = async (): Promise<void> => {
+    setupCancelledRef.current = false;
     setIsSubmitting(true);
     setError(null);
     try {
       await window.electronAPI.profile.selectPersonal();
+      window.dispatchEvent(new Event(PROFILE_CHANGED_EVENT));
       navigate("/", { replace: true });
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "個人利用の設定に失敗しました",
-      );
+      if (mountedRef.current) {
+        setError(
+          err instanceof Error ? err.message : "個人利用の設定に失敗しました",
+        );
+      }
     } finally {
-      setIsSubmitting(false);
+      if (mountedRef.current) setIsSubmitting(false);
     }
   };
 
@@ -73,33 +101,46 @@ export const ProfileSetup = (): JSX.Element => {
     e.preventDefault();
     if (!managerUrl.trim()) return;
 
+    setupCancelledRef.current = false;
     setIsSubmitting(true);
     setError(null);
-    let waitingForCallback = false;
     try {
-      await window.electronAPI.profile.startOrganizationSetup();
       await window.electronAPI.manager.connect(managerUrl.trim());
       await window.electronAPI.auth.login();
-      waitingForCallback = true;
       setIsWaitingForCallback(true);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "組織利用の設定に失敗しました",
-      );
-      setIsWaitingForCallback(false);
-    } finally {
-      if (!waitingForCallback) {
+      if (mountedRef.current) {
+        setError(
+          err instanceof Error ? err.message : "組織利用の設定に失敗しました",
+        );
+        setIsWaitingForCallback(false);
         setIsSubmitting(false);
       }
     }
   };
 
-  const cancelOrganizationSetup = (): void => {
-    void window.electronAPI.auth.cancelLogin();
-    setIsSubmitting(false);
-    setIsWaitingForCallback(false);
-    setError(null);
-    setView("choice");
+  const cancelOrganizationSetup = async (): Promise<void> => {
+    setupCancelledRef.current = true;
+    try {
+      await window.electronAPI.profile.cancelOrganizationSetup();
+      if (mountedRef.current) {
+        setError(null);
+        setView("choice");
+      }
+    } catch (err) {
+      if (mountedRef.current) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "組織セットアップのキャンセルに失敗しました",
+        );
+      }
+    } finally {
+      if (mountedRef.current) {
+        setIsSubmitting(false);
+        setIsWaitingForCallback(false);
+      }
+    }
   };
 
   return (
@@ -149,7 +190,6 @@ export const ProfileSetup = (): JSX.Element => {
             <button
               type="button"
               onClick={() => setView("organization")}
-              disabled={isSubmitting}
               className="group rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 text-left transition hover:border-[var(--text-muted)] hover:bg-[var(--bg-card-hover)]"
             >
               <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-[var(--bg-active)] text-[var(--text-primary)]">
@@ -174,7 +214,7 @@ export const ProfileSetup = (): JSX.Element => {
           >
             <button
               type="button"
-              onClick={cancelOrganizationSetup}
+              onClick={() => void cancelOrganizationSetup()}
               disabled={isSubmitting && !isWaitingForCallback}
               className="mb-5 flex items-center gap-2 text-sm text-[var(--text-muted)] transition hover:text-[var(--text-primary)] disabled:opacity-50"
             >

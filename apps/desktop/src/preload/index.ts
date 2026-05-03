@@ -6,6 +6,7 @@ import type {
   McpServerItem,
   McpServerDetailItem,
   CreateFromCatalogInput,
+  CreateCustomServerInput,
   CreateVirtualServerInput,
   UpdateServerInput,
   DeleteServerInput,
@@ -73,6 +74,10 @@ const api = {
       input: CreateFromCatalogInput,
     ): Promise<{ serverId: number; serverName: string }> =>
       ipcRenderer.invoke("mcp:createFromCatalog", input),
+    createCustomServer: (
+      input: CreateCustomServerInput,
+    ): Promise<{ serverId: number; serverName: string }> =>
+      ipcRenderer.invoke("mcp:createCustomServer", input),
     createVirtualServer: (
       input: CreateVirtualServerInput,
     ): Promise<{ serverId: number; serverName: string }> =>
@@ -121,8 +126,8 @@ const api = {
       ipcRenderer.invoke("profile:getState"),
     selectPersonal: (): Promise<ProfileState> =>
       ipcRenderer.invoke("profile:selectPersonal"),
-    startOrganizationSetup: (): Promise<ProfileState> =>
-      ipcRenderer.invoke("profile:startOrganizationSetup"),
+    cancelOrganizationSetup: (): Promise<ProfileState> =>
+      ipcRenderer.invoke("profile:cancelOrganizationSetup"),
     disconnectOrganization: (): Promise<ProfileState> =>
       ipcRenderer.invoke("profile:disconnectOrganization"),
   },

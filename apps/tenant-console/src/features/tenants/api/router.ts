@@ -4,9 +4,12 @@ import {
   createTenantInputSchema,
   deleteTenantInputSchema,
   getTenantInputSchema,
+  upgradeTenantInputSchema,
 } from "./schemas";
 import { createTenant } from "./createTenant";
 import { deleteTenant } from "./deleteTenant";
+import { upgradeTenant } from "./upgradeTenant";
+import { upgradeAllTenants } from "./upgradeAllTenants";
 
 export const tenantRouter = createTRPCRouter({
   list: procedure.query(async ({ ctx }) => {
@@ -47,4 +50,8 @@ export const tenantRouter = createTRPCRouter({
   delete: procedure
     .input(deleteTenantInputSchema)
     .mutation(({ ctx, input }) => deleteTenant(ctx, input)),
+  upgrade: procedure
+    .input(upgradeTenantInputSchema)
+    .mutation(({ ctx, input }) => upgradeTenant(ctx, input)),
+  upgradeAll: procedure.mutation(({ ctx }) => upgradeAllTenants(ctx.db)),
 });
