@@ -1,14 +1,7 @@
 import { NextResponse } from "next/server";
 import { getOidcEnv } from "~/lib/env";
 
-/**
- * OIDC設定取得エンドポイント（認証不要）
- *
- * クライアントはこのエンドポイントでissuerと管理サーバー用clientIdを取得し、
- * OIDCディスカバリ経由で認証エンドポイントを動的取得する。
- * Desktopもこの値を使うため、OIDC_DESKTOP_CLIENT_IDは意図的に持たない。
- * 管理サーバーのURLだけ知っていれば認証を開始できる。
- */
+/** OIDC設定エンドポイント。Desktopも管理サーバーのclientIdを使うためOIDC_DESKTOP_CLIENT_IDは持たない。 */
 export const GET = () => {
   const env = getOidcEnv();
   return NextResponse.json({
