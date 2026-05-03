@@ -44,3 +44,8 @@ postgresql:
 # Ingress 設定（Cloudflare Tunnel が TLS を担うためクラスター内は HTTP）
 ingress:
   className: traefik
+
+# 深夜自動更新スケジュール
+upgradeSchedule:
+  enabled: false          # 本番適用時に true にする
+  cron: "0 18 * * *"      # JST 3:00 (UTC 18:00)

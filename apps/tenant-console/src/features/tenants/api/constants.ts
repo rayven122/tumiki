@@ -10,3 +10,6 @@ export const ROLLOUT_TIMEOUT_MS = 10 * 60 * 1000 + 30_000;
 
 /** helm uninstall のタイムアウト（Finalizer 付きリソースの削除待ちを考慮し helm --timeout 5m より長く設定） */
 export const HELM_UNINSTALL_TIMEOUT_MS = 5 * 60 * 1000 + 30_000;
+
+/** helm upgrade のタイムアウト（install と同程度） */
+export const HELM_UPGRADE_TIMEOUT_MS = 60_000;

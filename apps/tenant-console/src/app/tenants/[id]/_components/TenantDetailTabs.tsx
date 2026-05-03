@@ -22,12 +22,24 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
   const confirmInputRef = useRef<HTMLInputElement>(null);
   const [confirmSlug, setConfirmSlug] = useState("");
 
+  const [upgradeError, setUpgradeError] = useState<string | null>(null);
+
   const deleteTenant = api.tenant.delete.useMutation({
     onSuccess: () => {
       router.push("/tenants");
     },
     onError: (err) => {
       setDeleteError(err.message);
+    },
+  });
+
+  const upgradeTenant = api.tenant.upgrade.useMutation({
+    onSuccess: () => {
+      setUpgradeError(null);
+      router.refresh();
+    },
+    onError: (err) => {
+      setUpgradeError(err.message);
     },
   });
 
@@ -116,7 +128,9 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
                             ? "bg-red-100 text-red-800"
                             : tenant.status === "DELETING"
                               ? "bg-yellow-100 text-yellow-800"
-                              : "bg-gray-100 text-gray-800"
+                              : tenant.status === "UPGRADING"
+                                ? "bg-indigo-100 text-indigo-800"
+                                : "bg-gray-100 text-gray-800"
                       }`}
                     >
                       {tenant.status}
@@ -140,6 +154,29 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
                   </dd>
                 </div>
               </dl>
+            </div>
+
+            {/* イメージ更新 */}
+            <div className="mt-8 rounded-lg border border-indigo-200 bg-indigo-50 p-6">
+              <h3 className="mb-1 text-sm font-semibold text-indigo-800">
+                イメージ更新
+              </h3>
+              <p className="mb-4 text-sm text-indigo-700">
+                internal-manager を最新イメージにアップグレードします。
+              </p>
+              {upgradeError && (
+                <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">
+                  {upgradeError}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => upgradeTenant.mutate({ id: tenant.id })}
+                disabled={tenant.status !== "ACTIVE" || upgradeTenant.isPending}
+                className="min-h-[44px] rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {upgradeTenant.isPending ? "更新中..." : "今すぐ更新"}
+              </button>
             </div>
 
             {/* 危険ゾーン */}

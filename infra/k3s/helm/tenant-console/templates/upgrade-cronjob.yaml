@@ -1,0 +1,27 @@
+{{- if .Values.upgradeSchedule.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: tenant-console-upgrade
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "tenant-console.labels" . | nindent 4 }}
+    app.kubernetes.io/component: upgrade-cronjob
+spec:
+  schedule: {{ .Values.upgradeSchedule.cron | quote }}
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: upgrade
+              image: curlimages/curl:latest
+              command:
+                - curl
+                - -s
+                - -X
+                - POST
+                - http://tenant-console:80/api/internal/upgrade-all
+{{- end }}
