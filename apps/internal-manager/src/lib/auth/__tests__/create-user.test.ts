@@ -66,10 +66,8 @@ describe("createUser", () => {
     const result = await createUser(buildDb(), input);
     const createArgs = mockDb.user.create.mock.calls[0]?.[0];
 
-    expect(createArgs?.data).toMatchObject({
-      id: input.id,
-      role: Role.SYSTEM_ADMIN,
-    });
+    expect(createArgs?.data.id).toStrictEqual(input.id);
+    expect(createArgs?.data.role).toStrictEqual(Role.SYSTEM_ADMIN);
     expect(result.role).toBe(Role.SYSTEM_ADMIN);
   });
 
@@ -90,10 +88,8 @@ describe("createUser", () => {
     });
     const createArgs = mockDb.user.create.mock.calls[0]?.[0];
 
-    expect(createArgs?.data).toMatchObject({
-      id: "user-002",
-      role: Role.USER,
-    });
+    expect(createArgs?.data.id).toStrictEqual("user-002");
+    expect(createArgs?.data.role).toStrictEqual(Role.USER);
     expect(result.role).toBe(Role.USER);
   });
 

@@ -40,7 +40,6 @@ export const createUser = async (
   const existingUserCount = await tx.user.count();
   const role = existingUserCount === 0 ? Role.SYSTEM_ADMIN : Role.USER;
 
-  // ユーザーを作成
   const createdUser = await tx.user.create({
     data: {
       id: input.id,
@@ -52,14 +51,12 @@ export const createUser = async (
     },
   });
 
-  // データベースからのemailを検証
   if (!createdUser.email) {
     throw new Error(
       "ユーザーは作成されましたが、データベースのメールアドレスがnullです。これは発生してはいけません。",
     );
   }
 
-  // 出力型に変換
   return {
     id: createdUser.id,
     email: createdUser.email,

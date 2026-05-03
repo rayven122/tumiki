@@ -6,6 +6,7 @@ import { AdminSidebar } from "./_components/AdminSidebar";
 const AdminLayout = async ({ children }: { children: ReactNode }) => {
   const session = await auth();
   if (!session) redirect("/api/auth/signin?callbackUrl=/admin");
+  // 管理画面の存在を非管理者へ露出しないため、layout側では404にする。
   if (session.user.role !== "SYSTEM_ADMIN") notFound();
 
   return (

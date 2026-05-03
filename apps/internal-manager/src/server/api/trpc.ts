@@ -4,7 +4,7 @@ import { TRPCError, initTRPC } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
-import { db } from "@tumiki/internal-db/server";
+import { db, Role } from "@tumiki/internal-db/server";
 import { auth } from "~/auth";
 
 /**
@@ -145,7 +145,7 @@ export const protectedProcedure = t.procedure
  * SYSTEM_ADMIN のみアクセス可能な管理系 API で使用します。
  */
 export const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
-  if (ctx.session.user.role !== "SYSTEM_ADMIN") {
+  if (ctx.session.user.role !== Role.SYSTEM_ADMIN) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "SYSTEM_ADMINのみ操作できます",
@@ -164,3 +164,14 @@ export type Context = Awaited<ReturnType<typeof createTRPCContext>>;
 export type ProtectedContext = {
   session: NonNullable<Context["session"]>;
 } & Context;
+
+/**
+ * 管理者権限が保証されているコンテキスト型
+ */
+export type AdminContext = ProtectedContext & {
+  session: ProtectedContext["session"] & {
+    user: ProtectedContext["session"]["user"] & {
+      role: typeof Role.SYSTEM_ADMIN;
+    };
+  };
+};
