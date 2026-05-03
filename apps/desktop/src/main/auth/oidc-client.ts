@@ -40,9 +40,9 @@ export const resolveOidcEndpoints = async (
 };
 
 /**
- * Keycloak設定のスキーマ
+ * OIDCクライアント設定スキーマ
  */
-const keycloakConfigSchema = z.object({
+const oidcClientConfigSchema = z.object({
   issuer: z.string().url(),
   clientId: z.string().min(1),
   redirectUri: z.string().min(1),
@@ -56,16 +56,17 @@ const keycloakConfigSchema = z.object({
 });
 
 /**
- * Keycloak設定型
+ * OIDCクライアント設定型
  */
-export type KeycloakConfig = z.infer<typeof keycloakConfigSchema>;
+export type OidcClientConfig = z.infer<typeof oidcClientConfigSchema>;
 
 /**
  * トークンレスポンスのスキーマ
  */
 const tokenResponseSchema = z.object({
   access_token: z.string().min(1),
-  refresh_token: z.string().min(1),
+  // jackson OIDC ブリッジは refresh_token を返さないため optional
+  refresh_token: z.string().optional(),
   id_token: z.string().optional(),
   expires_in: z.number().int().positive(),
   token_type: z.string().min(1),
@@ -80,9 +81,9 @@ export type TokenResponse = z.infer<typeof tokenResponseSchema>;
 const FETCH_TIMEOUT_MS = 10_000;
 
 /**
- * KeycloakClient型
+ * OIDCクライアント型
  */
-export type KeycloakClient = {
+export type OidcClient = {
   generateAuthUrl: (params: { codeChallenge: string; state: string }) => string;
   exchangeCodeForToken: (params: {
     code: string;
@@ -93,12 +94,11 @@ export type KeycloakClient = {
 };
 
 /**
- * Keycloakクライアントを作成
+ * OIDCクライアントを作成（OAuth 2.0 + PKCE）
+ * Keycloak・jackson・Dex 等の OIDC プロバイダーに対応
  */
-export const createKeycloakClient = (
-  config: KeycloakConfig,
-): KeycloakClient => {
-  const validated = keycloakConfigSchema.parse(config);
+export const createOidcClient = (config: OidcClientConfig): OidcClient => {
+  const validated = oidcClientConfigSchema.parse(config);
   const normalizedIssuer = validated.issuer.replace(/\/$/, "");
 
   // Discovery で解決済みのエンドポイントがあればそちらを優先、なければ Keycloak 形式にフォールバック
@@ -125,6 +125,7 @@ export const createKeycloakClient = (
     authUrl.searchParams.set("client_id", validated.clientId);
     authUrl.searchParams.set("redirect_uri", validated.redirectUri);
     authUrl.searchParams.set("response_type", "code");
+    // jackson は offline_access を無視する（refresh_token を返さない）が、Keycloak 直接ログイン時のために送信を継続
     authUrl.searchParams.set("scope", "openid profile email offline_access");
     authUrl.searchParams.set("state", state);
     authUrl.searchParams.set("code_challenge", codeChallenge);
@@ -242,7 +243,7 @@ export const createKeycloakClient = (
   };
 
   /**
-   * Keycloakからログアウト
+   * OIDCプロバイダーからログアウト
    */
   const logout = async (params: {
     refreshToken: string;
@@ -276,11 +277,11 @@ export const createKeycloakClient = (
         return;
       }
 
-      logger.info("Successfully logged out from Keycloak");
+      logger.info("Successfully logged out from OIDC provider");
     } catch (error) {
       // ログアウトAPIへの通信失敗は警告のみ — ローカルクリーンアップは呼び出し元のfinallyブロックで実施
-      // Keycloak側のセッションは有効期限で自然失効するため、エラーを再スローしない
-      logger.warn("Keycloak logout request failed", {
+      // プロバイダー側のセッションは有効期限で自然失効するため、エラーを再スローしない
+      logger.warn("OIDC logout request failed", {
         error: error instanceof Error ? error.message : String(error),
       });
     }

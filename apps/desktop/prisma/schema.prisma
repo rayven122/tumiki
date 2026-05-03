@@ -57,8 +57,8 @@ model AuthToken {
   id           Int      @id @default(autoincrement())
   /// 暗号化されたアクセストークン
   accessToken  String
-  /// 暗号化されたリフレッシュトークン
-  refreshToken String
+  /// 暗号化されたリフレッシュトークン（jackson OIDC IdP は返さないため nullable）
+  refreshToken String?
   /// 暗号化されたIDトークン（OIDCログアウト用）
   idToken      String?
   /// トークンの有効期限
