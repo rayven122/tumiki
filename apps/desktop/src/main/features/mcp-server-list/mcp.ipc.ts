@@ -40,6 +40,7 @@ const createFromCatalogSchema = z.object({
   authType: z.enum(["NONE", "BEARER", "API_KEY", "OAUTH"]),
 }) satisfies z.ZodType<CreateFromCatalogInput>;
 
+// .refine()でZodEffectsになるためsatisfies制約は除外（型の整合性はCreateCustomServerInputを参照）
 const createCustomServerSchema = z
   .object({
     serverName: z.string().min(1),
@@ -97,7 +98,10 @@ export const setupMcpIpc = (): void => {
   // カスタムURLでリモートMCPサーバーを登録
   ipcMain.handle("mcp:createCustomServer", async (_, input: unknown) => {
     try {
-      const validated = createCustomServerSchema.parse(input);
+      // refineでSTDIO/リモートの条件バリデーション済みのため安全にキャスト
+      const validated = createCustomServerSchema.parse(
+        input,
+      ) as mcpService.CreateCustomServerInput;
       return await mcpService.createCustomServer(validated);
     } catch (error) {
       if (error instanceof z.ZodError) {

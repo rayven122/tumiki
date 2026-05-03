@@ -44,8 +44,9 @@ const parseArgsToJson = (input: string): string => {
   try {
     const parsed: unknown = JSON.parse(input);
     if (Array.isArray(parsed)) return input;
+    // 非配列のJSON（オブジェクト・数値等）はスペース区切りとして再解釈
   } catch {
-    // JSON配列でない場合はスペース区切りとして分割
+    // JSONパース失敗 → スペース区切りとして分割
   }
   return JSON.stringify(input.split(/\s+/).filter(Boolean));
 };
@@ -225,18 +226,26 @@ export const AddRemoteMcpModal = ({
 
     // NONE / API_KEY
     try {
-      const result = await window.electronAPI.mcp.createCustomServer({
-        serverName: serverName.trim(),
-        transportType,
-        authType: authMethod === "apikey" ? "API_KEY" : "NONE",
-        credentials: authMethod === "apikey" ? envVars : {},
-        ...(isStdio
-          ? {
-              command: command.trim(),
-              args: parseArgsToJson(args.trim()),
-            }
-          : { url: url.trim() }),
-      });
+      const authType =
+        authMethod === "apikey" ? ("API_KEY" as const) : ("NONE" as const);
+      const credentials = authMethod === "apikey" ? envVars : {};
+      const input = isStdio
+        ? {
+            serverName: serverName.trim(),
+            transportType: "STDIO" as const,
+            authType,
+            credentials,
+            command: command.trim(),
+            args: parseArgsToJson(args.trim()),
+          }
+        : {
+            serverName: serverName.trim(),
+            transportType,
+            authType,
+            credentials,
+            url: url.trim(),
+          };
+      const result = await window.electronAPI.mcp.createCustomServer(input);
       onSuccess(result.serverName);
     } catch (err) {
       const message =

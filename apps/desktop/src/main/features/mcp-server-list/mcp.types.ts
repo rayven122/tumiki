@@ -71,20 +71,36 @@ export type ToggleServerInput = {
 };
 
 /**
+ * STDIO通信のカスタムMCPサーバー入力型
+ * OAuthは不可（ローカルプロセスのため）
+ */
+type StdioCustomServerInput = {
+  serverName: string;
+  transportType: "STDIO";
+  authType: "NONE" | "API_KEY";
+  credentials: Record<string, string>;
+  command: string;
+  args?: string;
+};
+
+/**
+ * リモート通信（SSE / Streamable HTTP）のカスタムMCPサーバー入力型
+ */
+type RemoteCustomServerInput = {
+  serverName: string;
+  transportType: "SSE" | "STREAMABLE_HTTP";
+  authType: "NONE" | "API_KEY" | "OAUTH";
+  credentials: Record<string, string>;
+  url: string;
+};
+
+/**
  * カスタムMCPサーバーを登録する際の入力型（renderer → main）
  * カタログ参照なしで、ユーザーが自由にURL or コマンドを指定して追加する
  */
-export type CreateCustomServerInput = {
-  serverName: string;
-  transportType: "STDIO" | "SSE" | "STREAMABLE_HTTP";
-  authType: "NONE" | "API_KEY" | "OAUTH";
-  credentials: Record<string, string>;
-  // リモート（SSE / Streamable HTTP）用
-  url?: string;
-  // STDIO用
-  command?: string;
-  args?: string;
-};
+export type CreateCustomServerInput =
+  | StdioCustomServerInput
+  | RemoteCustomServerInput;
 
 /**
  * 仮想MCP作成における1接続分の入力型

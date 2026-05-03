@@ -178,13 +178,14 @@ export const createCustomServer = async (
     description: "",
   });
 
+  const isStdio = input.transportType === "STDIO";
   const connection = await mcpRepository.createConnection(db, {
     name: uniqueName,
     slug,
     transportType: input.transportType,
-    command: input.command ?? null,
-    args: input.args ?? "[]",
-    url: input.url ?? null,
+    command: isStdio ? input.command : null,
+    args: isStdio ? (input.args ?? "[]") : "[]",
+    url: isStdio ? null : input.url,
     credentials: await encryptToken(JSON.stringify(input.credentials)),
     authType: input.authType,
     serverId: server.id,
