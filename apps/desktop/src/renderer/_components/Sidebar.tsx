@@ -56,7 +56,7 @@ export const Sidebar = (): JSX.Element => {
       mounted = false;
       window.removeEventListener("profile:changed", refreshProfile);
     };
-  }, [location.pathname]);
+  }, []);
 
   const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
   const isOrganization = profile?.activeProfile === "organization";
