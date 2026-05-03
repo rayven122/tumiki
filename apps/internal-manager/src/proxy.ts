@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { Role } from "@tumiki/internal-db";
+import type { Role } from "@tumiki/internal-db";
 import { auth } from "~/auth";
 import { isOidcConfigured } from "~/lib/env";
+
+const systemAdminRole = "SYSTEM_ADMIN" satisfies Role;
 
 /** 認証ガード・OIDC未設定リダイレクト（Node.js ランタイムで動作） */
 export const proxy = async (req: NextRequest) => {
@@ -29,10 +31,7 @@ export const proxy = async (req: NextRequest) => {
     return NextResponse.redirect(signInUrl);
   }
 
-  if (
-    pathname.startsWith("/admin") &&
-    session.user.role !== Role.SYSTEM_ADMIN
-  ) {
+  if (pathname.startsWith("/admin") && session.user.role !== systemAdminRole) {
     return new NextResponse(null, { status: 404 });
   }
 };
