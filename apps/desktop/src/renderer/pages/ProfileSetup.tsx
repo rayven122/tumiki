@@ -1,4 +1,4 @@
-import type { JSX } from "react";
+import type { FormEvent, JSX } from "react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAtomValue } from "jotai";
@@ -20,6 +20,7 @@ export const ProfileSetup = (): JSX.Element => {
   const [view, setView] = useState<View>("choice");
   const [managerUrl, setManagerUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isWaitingForCallback, setIsWaitingForCallback] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -31,6 +32,24 @@ export const ProfileSetup = (): JSX.Element => {
     window.electronAPI.manager.getUrl().then((url) => {
       if (url) setManagerUrl(url);
     });
+
+    const cleanupSuccess = window.electronAPI.auth.onCallbackSuccess(() => {
+      setIsWaitingForCallback(false);
+      setIsSubmitting(false);
+      window.dispatchEvent(new Event("profile:changed"));
+      navigate("/", { replace: true });
+    });
+
+    const cleanupError = window.electronAPI.auth.onCallbackError((message) => {
+      setIsWaitingForCallback(false);
+      setIsSubmitting(false);
+      setError(`ログインに失敗しました: ${message}`);
+    });
+
+    return () => {
+      cleanupSuccess();
+      cleanupError();
+    };
   }, [navigate]);
 
   const selectPersonal = async (): Promise<void> => {
@@ -49,29 +68,36 @@ export const ProfileSetup = (): JSX.Element => {
   };
 
   const startOrganization = async (
-    e: React.FormEvent<HTMLFormElement>,
+    e: FormEvent<HTMLFormElement>,
   ): Promise<void> => {
     e.preventDefault();
     if (!managerUrl.trim()) return;
 
     setIsSubmitting(true);
     setError(null);
+    let waitingForCallback = false;
     try {
       await window.electronAPI.profile.startOrganizationSetup();
       await window.electronAPI.manager.connect(managerUrl.trim());
       await window.electronAPI.auth.login();
-      navigate("/", { replace: true });
+      waitingForCallback = true;
+      setIsWaitingForCallback(true);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "組織利用の設定に失敗しました",
       );
+      setIsWaitingForCallback(false);
     } finally {
-      setIsSubmitting(false);
+      if (!waitingForCallback) {
+        setIsSubmitting(false);
+      }
     }
   };
 
   const cancelOrganizationSetup = (): void => {
     void window.electronAPI.auth.cancelLogin();
+    setIsSubmitting(false);
+    setIsWaitingForCallback(false);
     setError(null);
     setView("choice");
   };
@@ -123,6 +149,7 @@ export const ProfileSetup = (): JSX.Element => {
             <button
               type="button"
               onClick={() => setView("organization")}
+              disabled={isSubmitting}
               className="group rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 text-left transition hover:border-[var(--text-muted)] hover:bg-[var(--bg-card-hover)]"
             >
               <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-[var(--bg-active)] text-[var(--text-primary)]">
@@ -148,7 +175,7 @@ export const ProfileSetup = (): JSX.Element => {
             <button
               type="button"
               onClick={cancelOrganizationSetup}
-              disabled={isSubmitting}
+              disabled={isSubmitting && !isWaitingForCallback}
               className="mb-5 flex items-center gap-2 text-sm text-[var(--text-muted)] transition hover:text-[var(--text-primary)] disabled:opacity-50"
             >
               <ArrowLeft size={15} />
@@ -192,7 +219,7 @@ export const ProfileSetup = (): JSX.Element => {
               {isSubmitting ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  接続中...
+                  {isWaitingForCallback ? "サインイン待機中..." : "接続中..."}
                 </>
               ) : (
                 "接続してサインイン"

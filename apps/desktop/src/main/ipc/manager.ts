@@ -1,7 +1,6 @@
 import { ipcMain } from "electron";
 import { z } from "zod";
 import { getAppStore } from "../shared/app-store";
-import { activateOrganizationProfile } from "../shared/profile-store";
 import * as logger from "../shared/utils/logger";
 
 const oidcConfigResponseSchema = z.object({
@@ -34,6 +33,9 @@ export const fetchManagerOidcConfig = async (
  * 管理サーバー連携IPC
  * - manager:getUrl  : 保存済みURL取得
  * - manager:connect : URL検証 → OIDC設定取得 → OAuthManager初期化 → URL保存
+ *
+ * 組織プロファイルの確定は認証コールバック成功後に行う。
+ * connect時点で確定すると、SSO完了前に初期設定ゲートを抜けてしまうため。
  */
 export const setupManagerIpc = (
   initOAuthManager: (
@@ -62,7 +64,6 @@ export const setupManagerIpc = (
 
     const store = await getAppStore();
     store.set("managerUrl", url);
-    await activateOrganizationProfile(url);
 
     logger.info("Manager URL connected", { url });
   });

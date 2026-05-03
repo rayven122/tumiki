@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { HashRouter, Routes, Route } from "react-router-dom";
+import { HashRouter, Navigate, Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
 import { Login } from "./pages/Login";
 import { Layout } from "./_components/Layout";
@@ -13,12 +13,6 @@ import { HistoryDetail } from "./pages/HistoryDetail";
 import { UpgradePlan } from "./pages/UpgradePlan";
 import { SettingsPage } from "./pages/Settings";
 import { Notifications } from "./pages/Notifications";
-import { AdminDashboard } from "./pages/admin/AdminDashboard";
-import { AdminHistory } from "./pages/admin/AdminHistory";
-import { AdminUsers } from "./pages/admin/AdminUsers";
-import { AdminRoles } from "./pages/admin/AdminRoles";
-import { AdminTools } from "./pages/admin/AdminTools";
-import { AdminApprovals } from "./pages/admin/AdminApprovals";
 import { ConnectorAuto } from "./pages/ConnectorAuto";
 import { ConnectorManual } from "./pages/ConnectorManual";
 import { AiIntegrations } from "./pages/AiIntegrations";
@@ -51,12 +45,7 @@ export const App = (): JSX.Element => {
               <Route path="ai-integrations" element={<AiIntegrations />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="notifications" element={<Notifications />} />
-              <Route path="admin" element={<AdminDashboard />} />
-              <Route path="admin/history" element={<AdminHistory />} />
-              <Route path="admin/users" element={<AdminUsers />} />
-              <Route path="admin/roles" element={<AdminRoles />} />
-              <Route path="admin/tools" element={<AdminTools />} />
-              <Route path="admin/approvals" element={<AdminApprovals />} />
+              <Route path="admin/*" element={<Navigate to="/" replace />} />
             </Route>
           </Route>
         </Routes>

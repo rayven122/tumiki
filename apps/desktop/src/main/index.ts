@@ -25,7 +25,9 @@ import { setupManagerIpc, fetchManagerOidcConfig } from "./ipc/manager";
 import { setupProfileIpc } from "./ipc/profile";
 import { setupShellIpc } from "./ipc/shell";
 import { getAppStore } from "./shared/app-store";
+import { activateOrganizationProfile } from "./shared/profile-store";
 import { ServerStatus } from "@prisma/desktop-client";
+import type { Prisma } from "@prisma/desktop-client";
 import * as logger from "./shared/utils/logger";
 import { ensureNodeShim } from "./runtime/path-resolver";
 
@@ -65,6 +67,8 @@ if (isMcpProxyMode) {
       // 古い監査ログを自動削除（7日以上）— 失敗してもプロキシ起動は継続
       const { deleteOldAuditLogs, writeAuditLog } =
         await import("./features/audit-log/audit-log.writer");
+      const { syncAuditLogToManager } =
+        await import("./features/audit-log/audit-log.sync");
       try {
         const deletedCount = await deleteOldAuditLogs();
         if (deletedCount > 0) {
@@ -142,7 +146,7 @@ if (isMcpProxyMode) {
         const inputBytes = safeByteLength(event.args);
         const outputBytes = safeByteLength(event.resultContent);
 
-        return writeAuditLog({
+        const auditLogInput = {
           toolName,
           method: "tools/call",
           transportType: connMeta.transportType,
@@ -168,6 +172,10 @@ if (isMcpProxyMode) {
               ) as import("@prisma/desktop-client").Prisma.InputJsonValue)
             : undefined,
           piiPolicy: event.piiPolicy,
+        } satisfies Prisma.AuditLogUncheckedCreateInput;
+
+        return writeAuditLog(auditLogInput).then(() => {
+          void syncAuditLogToManager(auditLogInput);
         });
       };
 
@@ -320,6 +328,11 @@ if (isMcpProxyMode) {
 
     try {
       await manager.handleAuthCallback(url);
+      const store = await getAppStore();
+      const managerUrl = store.get("managerUrl");
+      if (managerUrl) {
+        await activateOrganizationProfile(managerUrl);
+      }
       sendToWindow("auth:callbackSuccess");
       logger.info("Deep link auth callback handled successfully");
     } catch (error) {
