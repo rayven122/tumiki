@@ -137,7 +137,7 @@ export const jwtCallback = async ({
     token.email = oidcProfile.email ?? null;
     token.name = oidcProfile.name ?? null;
 
-    // group_rolesはOIDCプロバイダーのカスタムクレームから取得（未設定の場合は空配列）
+    // group_rolesはOIDCプロバイダーのカスタムクレーム（IdPによっては省略可能）
     const groupRoles = oidcProfile.tumiki?.group_roles;
     token.provider = account.provider;
 
