@@ -1,8 +1,8 @@
-import { createTRPCRouter, procedure } from "@/server/api/trpc";
+import { createTRPCRouter, operatorProcedure } from "@/server/api/trpc";
 import { getPodStatuses } from "./getPodStatuses";
 
 export const monitoringRouter = createTRPCRouter({
-  pods: procedure.query(async ({ ctx }) => {
+  pods: operatorProcedure.query(async ({ ctx }) => {
     const tenants = await ctx.db.tenant.findMany({
       select: { id: true, slug: true, status: true },
       orderBy: { createdAt: "desc" },
