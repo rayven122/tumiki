@@ -67,14 +67,18 @@ jobs:
 
           cat >> ~/.ssh/config << CONFIG
           Host ${SSH_HOST}
+            User ${SSH_USER}
             ProxyCommand /tmp/cf-proxy.sh %h
+            IdentityFile ~/.ssh/id_ed25519_deploy
+            IdentitiesOnly yes
             StrictHostKeyChecking accept-new
 
           Host k3s-deploy
             HostName ${K3S_HOST}
             User ${SSH_USER}
-            ProxyJump ${SSH_USER}@${SSH_HOST}
+            ProxyJump ${SSH_HOST}
             IdentityFile ~/.ssh/id_ed25519_deploy
+            IdentitiesOnly yes
             StrictHostKeyChecking accept-new
           CONFIG
 
