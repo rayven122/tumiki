@@ -5,10 +5,11 @@ import { GroupSource, SyncStatus, SyncTrigger } from "@tumiki/internal-db";
 /// SCIM経由で同期されたユーザー/グループの provider 識別子
 export const SCIM_PROVIDER = "scim" as const;
 
+// 注: first_name はオプショナル属性のため判定に含めない（Okta等で省略される場合あり）
 const isUser = (
   data: DirectorySyncEvent["data"],
 ): data is Extract<DirectorySyncEvent["data"], { email: string }> =>
-  "email" in data && "first_name" in data;
+  "email" in data;
 
 const isGroup = (
   data: DirectorySyncEvent["data"],
@@ -72,9 +73,20 @@ export const handleDirectorySyncEvent = async (
 
       case "user.updated": {
         if (!isUser(data)) break;
-        await db.user.update({
+        // 過去に user.created がエラーで失敗していた場合に備えて upsert を使用
+        // （update のみだと P2025 RecordNotFound で同期が永続的に失敗し続ける）
+        await db.user.upsert({
           where: { id: data.id },
-          data: {
+          create: {
+            id: data.id,
+            email: data.email || null,
+            name: buildDisplayName(data.first_name, data.last_name),
+            isActive: data.active,
+            externalIdentities: {
+              create: { provider: SCIM_PROVIDER, sub: data.id },
+            },
+          },
+          update: {
             email: data.email || null,
             name: buildDisplayName(data.first_name, data.last_name),
             isActive: data.active,
@@ -184,16 +196,22 @@ export const handleDirectorySyncEvent = async (
     console.error("[scim:event-handler]", type, detail);
   }
 
-  await db.idpSyncLog.create({
-    data: {
-      groupId,
-      trigger: SyncTrigger.SCIM,
-      status,
-      added,
-      removed,
-      errors: status === SyncStatus.FAILED ? 1 : 0,
-      detail,
-      completedAt: new Date(),
-    },
-  });
+  // ログ書き込み失敗で event-handler が throw すると IdP に 500 が返って再試行される
+  // → 重複プロビジョニングを防ぐためログ書き込みは別途 try-catch で吸収する
+  try {
+    await db.idpSyncLog.create({
+      data: {
+        groupId,
+        trigger: SyncTrigger.SCIM,
+        status,
+        added,
+        removed,
+        errors: status === SyncStatus.FAILED ? 1 : 0,
+        detail,
+        completedAt: new Date(),
+      },
+    });
+  } catch (logErr) {
+    console.error("[scim:event-handler] idpSyncLog write failed:", logErr);
+  }
 };

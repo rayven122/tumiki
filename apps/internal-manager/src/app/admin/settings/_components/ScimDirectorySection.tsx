@@ -61,6 +61,9 @@ const ScimDirectorySection = () => {
     onSuccess: () => void utils.scimDirectory.list.invalidate(),
   });
 
+  const errorMessage =
+    createMutation.error?.message ?? deleteMutation.error?.message ?? null;
+
   const handleCopy = (text: string, kind: "endpoint" | "secret") => {
     void navigator.clipboard.writeText(text);
     setCopied(kind);
@@ -70,6 +73,16 @@ const ScimDirectorySection = () => {
 
   return (
     <div className="space-y-3">
+      {/* ミューテーションエラー表示 */}
+      {errorMessage && (
+        <div
+          role="alert"
+          className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-400"
+        >
+          エラー: {errorMessage}
+        </div>
+      )}
+
       {/* 新規作成済み Directory のインライン表示（一度だけ） */}
       {created && (
         <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3">

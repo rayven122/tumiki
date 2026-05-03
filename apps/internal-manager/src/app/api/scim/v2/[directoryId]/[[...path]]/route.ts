@@ -46,7 +46,18 @@ const scimResponse = (data: unknown, status: number) =>
 
 const handler = async (req: NextRequest, { params }: RouteContext) => {
   const ensured = await ensureJackson();
-  if (!ensured.ok) return ensured.response;
+  if (!ensured.ok) {
+    // SAML/OIDC ルートと共用される ensureJackson のレスポンスは SCIM 形式ではない
+    // SCIM 2.0 (RFC 7644) フォーマットでラップし直す
+    return scimResponse(
+      {
+        schemas: ["urn:ietf:params:scim:api:messages:2.0:Error"],
+        status: "503",
+        detail: "SCIM service is unavailable",
+      },
+      503,
+    );
+  }
 
   const { directoryId, path = [] } = await params;
   const [resourceType, resourceId] = path;
