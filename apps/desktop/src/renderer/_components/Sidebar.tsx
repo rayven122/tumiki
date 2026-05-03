@@ -16,6 +16,9 @@ import {
   Plug,
   Building2,
   User,
+  Users,
+  Shield,
+  ClipboardCheck,
 } from "lucide-react";
 import { themeAtom, sidebarOpenAtom } from "../store/atoms";
 import type { ProfileState } from "../../shared/types";
@@ -37,6 +40,19 @@ const subNav: NavItem[] = [
   { path: "/settings", label: "設定", icon: <Settings size={18} /> },
 ];
 
+const adminNav: NavItem[] = [
+  { path: "/admin", label: "管理", icon: <Building2 size={18} /> },
+  { path: "/admin/users", label: "ユーザー", icon: <Users size={18} /> },
+  { path: "/admin/roles", label: "ロール", icon: <Shield size={18} /> },
+  { path: "/admin/tools", label: "ツール", icon: <Wrench size={18} /> },
+  {
+    path: "/admin/approvals",
+    label: "承認",
+    icon: <ClipboardCheck size={18} />,
+  },
+  { path: "/admin/history", label: "監査ログ", icon: <History size={18} /> },
+];
+
 export const Sidebar = (): JSX.Element => {
   const location = useLocation();
   const [theme, setTheme] = useAtom(themeAtom);
@@ -56,7 +72,7 @@ export const Sidebar = (): JSX.Element => {
       mounted = false;
       window.removeEventListener("profile:changed", refreshProfile);
     };
-  }, []);
+  }, [location.pathname]);
 
   const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
   const isOrganization = profile?.activeProfile === "organization";
@@ -192,6 +208,17 @@ export const Sidebar = (): JSX.Element => {
             icon: <Plug size={18} />,
           })}
         </div>
+
+        {isOrganization && (
+          <div className="mt-2 space-y-0.5 border-t border-t-[var(--border)] pt-2">
+            {isOpen && (
+              <div className="px-3 pt-1 pb-1 text-[10px] font-medium tracking-wider text-[var(--text-subtle)] uppercase">
+                組織管理
+              </div>
+            )}
+            {adminNav.map(renderLink)}
+          </div>
+        )}
 
         {/* 下部: 設定 + テーマ切替 */}
         <div className="mt-auto space-y-0.5 border-t border-t-[var(--border)] pt-3">

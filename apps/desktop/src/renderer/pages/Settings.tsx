@@ -69,6 +69,10 @@ export const SettingsPage = (): JSX.Element => {
     window.electronAPI.profile.getState().then(setProfile);
   }, []);
 
+  const refreshProfile = (): void => {
+    window.electronAPI.profile.getState().then(setProfile);
+  };
+
   /** 通知トグル */
   const toggleEmail = (id: string) => {
     setEmailSettings((prev) =>
@@ -261,7 +265,7 @@ export const SettingsPage = (): JSX.Element => {
         />
       </div>
 
-      <SettingsForm />
+      <SettingsForm onManagerConnected={refreshProfile} />
 
       {/* 保存ボタン */}
       <button className="rounded-lg bg-[var(--btn-primary-bg)] px-4 py-2 text-sm font-medium text-[var(--btn-primary-text)] transition-colors hover:opacity-90">

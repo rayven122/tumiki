@@ -57,7 +57,7 @@ describe("setupManagerIpc", () => {
     setupManagerIpc(initOAuthManager);
   });
 
-  test("URL検証とOIDC設定取得後にOAuthManagerを初期化しURLを保存する", async () => {
+  test("URL検証とOIDC設定取得後に組織プロファイルを保存する", async () => {
     const handler = mockIpcHandlers.get("manager:connect");
 
     await handler!({} as IpcMainInvokeEvent, "https://manager.example.com");
@@ -72,9 +72,11 @@ describe("setupManagerIpc", () => {
       "desktop-client",
     );
     expect(storeData.get("managerUrl")).toBe("https://manager.example.com");
-    expect(storeData.get("activeProfile")).toBeUndefined();
-    expect(storeData.get("organizationProfile")).toBeUndefined();
-    expect(storeData.get("hasCompletedInitialProfileSetup")).toBeUndefined();
+    expect(storeData.get("activeProfile")).toBe("organization");
+    expect(storeData.get("organizationProfile")).toMatchObject({
+      managerUrl: "https://manager.example.com",
+    });
+    expect(storeData.get("hasCompletedInitialProfileSetup")).toBe(true);
   });
 
   test("接続失敗時はプロファイル状態を確定しない", async () => {
