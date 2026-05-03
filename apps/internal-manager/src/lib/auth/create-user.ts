@@ -44,6 +44,21 @@ const isBootstrapAdminEmail = (email: string): boolean => {
   );
 };
 
+const resolveRole = async (
+  tx: PrismaTransactionClient,
+  existingUserCount: number,
+  email: string,
+): Promise<Role> => {
+  if (existingUserCount === 0) return Role.SYSTEM_ADMIN;
+  if (!isBootstrapAdminEmail(email)) return Role.USER;
+
+  const existingSystemAdminCount = await tx.user.count({
+    where: { role: Role.SYSTEM_ADMIN },
+  });
+
+  return existingSystemAdminCount === 0 ? Role.SYSTEM_ADMIN : Role.USER;
+};
+
 /**
  * ユーザーを作成（Registry用簡素版）
  *
@@ -55,10 +70,7 @@ export const createUser = async (
 ): Promise<CreateUserOutput> => {
   // 初回セットアップは1ユーザー限定の単一フロー前提（同時サインアップ非対応）。
   const existingUserCount = await tx.user.count();
-  const role =
-    existingUserCount === 0 || isBootstrapAdminEmail(input.email)
-      ? Role.SYSTEM_ADMIN
-      : Role.USER;
+  const role = await resolveRole(tx, existingUserCount, input.email);
 
   const createdUser = await tx.user.create({
     data: {

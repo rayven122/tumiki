@@ -12,12 +12,12 @@ Keycloak は `http://localhost:8888` で起動します。
 
 ## 環境変数（internal-manager）
 
-`pnpm setup:dev` は Keycloak に internal-manager 用 OIDC client を作成します。ローカルで手動設定する場合は以下を使用してください。
+`pnpm setup:dev` は Keycloak に internal-manager 用 OIDC client を作成します。ローカルで手動設定する場合は以下を使用してください。`OIDC_CLIENT_SECRET` は `KEYCLOAK_INTERNAL_MANAGER_CLIENT_SECRET` と同じ値を設定します。
 
 ```env
 OIDC_ISSUER=http://localhost:8888/realms/tumiki
 OIDC_CLIENT_ID=tumiki-internal-manager
-OIDC_CLIENT_SECRET=tumiki-internal-manager-secret
+OIDC_CLIENT_SECRET=<KEYCLOAK_INTERNAL_MANAGER_CLIENT_SECRET>
 INTERNAL_MANAGER_BOOTSTRAP_ADMIN_EMAIL=admin@tumiki.local
 ```
 
@@ -36,11 +36,13 @@ PORT=3101 pnpm dev:keycloak
 
 ## テストアカウント
 
-| メールアドレス | パスワード | 用途 |
-|---|---|---|
-| admin@tumiki.local | admin123 | 管理者テストユーザー |
+| メールアドレス     | パスワード | 用途                 |
+| ------------------ | ---------- | -------------------- |
+| admin@tumiki.local | admin123   | 管理者テストユーザー |
 
-internal-manager 側では、空の DB に最初にログインしたユーザーが `SYSTEM_ADMIN` として作成されます。`dev:keycloak` では `INTERNAL_MANAGER_BOOTSTRAP_ADMIN_EMAIL=admin@tumiki.local` を設定するため、既存 DB に Dex 由来のユーザーが残っていても Keycloak の検証ユーザーを `SYSTEM_ADMIN` として作成できます。
+internal-manager 側では、空の DB に最初にログインしたユーザーが `SYSTEM_ADMIN` として作成されます。`dev:keycloak` では `INTERNAL_MANAGER_BOOTSTRAP_ADMIN_EMAIL=admin@tumiki.local` を設定するため、既存 DB に Dex 由来のユーザーが残っていても、`SYSTEM_ADMIN` がまだ存在しない場合に限り Keycloak の検証ユーザーを `SYSTEM_ADMIN` として作成できます。
+
+`INTERNAL_MANAGER_BOOTSTRAP_ADMIN_EMAIL` はローカル検証用です。`development` / `test` かつ `SYSTEM_ADMIN` がまだ存在しない場合だけ昇格に使われます。Keycloak 検証後、継続利用しない環境では削除してください。
 
 ## SCIM の検証
 

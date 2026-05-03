@@ -24,7 +24,7 @@ manager_web_origins = [
   "https://manager.tumiki.cloud"
 ]
 
-# Internal Managerクライアント設定
+# Internal Managerクライアント設定（ローカル検証専用。本番デプロイ時はURIを追加すること）
 internal_manager_redirect_uris = [
   "http://localhost:3100/api/auth/callback/oidc",
   "http://localhost:3101/api/auth/callback/oidc"
