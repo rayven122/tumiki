@@ -15,12 +15,13 @@ export const setupProfileIpc = (): void => {
   ipcMain.handle("profile:selectPersonal", () => selectPersonalProfile());
 
   ipcMain.handle("profile:cancelOrganizationSetup", async () => {
+    const profileState = await clearOrganizationProfile();
     const manager = getOAuthManager();
     manager?.cancelAuthFlow();
     manager?.stopAutoRefresh();
     setOAuthManager(null);
 
-    return clearOrganizationProfile();
+    return profileState;
   });
 
   ipcMain.handle("profile:disconnectOrganization", async () => {

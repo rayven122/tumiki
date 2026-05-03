@@ -116,6 +116,27 @@ describe("setupProfileIpc", () => {
     });
   });
 
+  test("組織セットアップキャンセル時にプロファイルクリアが失敗した場合はOAuthManagerを停止しない", async () => {
+    const cancelAuthFlow = vi.fn();
+    const stopAutoRefresh = vi.fn();
+    mockGetOAuthManager.mockReturnValue({ cancelAuthFlow, stopAutoRefresh });
+    mockStoreDelete.mockImplementationOnce(() => {
+      throw new Error("store error");
+    });
+    storeData.set("managerUrl", "https://manager.example.com");
+
+    const handler = mockIpcHandlers.get("profile:cancelOrganizationSetup");
+
+    await expect(handler!({} as IpcMainInvokeEvent)).rejects.toThrow(
+      "store error",
+    );
+
+    expect(cancelAuthFlow).not.toHaveBeenCalled();
+    expect(stopAutoRefresh).not.toHaveBeenCalled();
+    expect(mockSetOAuthManager).not.toHaveBeenCalled();
+    expect(storeData.get("managerUrl")).toBe("https://manager.example.com");
+  });
+
   test("組織切断で認証とプロファイル状態をクリアする", async () => {
     const cancelAuthFlow = vi.fn();
     const stopAutoRefresh = vi.fn();
