@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-const MonitoringPage = async () => {
+const MonitoringPage = () => {
   redirect("/tenants");
 };
 

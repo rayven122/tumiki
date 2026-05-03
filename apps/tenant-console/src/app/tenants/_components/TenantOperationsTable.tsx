@@ -112,7 +112,7 @@ const TenantOperationsTable = ({ tenants, initialPodRows }: Props) => {
             type="button"
             onClick={refreshPods}
             disabled={podQuery.isFetching || initialPodRows === null}
-            className="border-border-default text-text-secondary flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-40"
+            className="border-border-default text-text-secondary flex min-h-[44px] items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-40"
           >
             <RefreshCw
               size={13}
@@ -122,7 +122,7 @@ const TenantOperationsTable = ({ tenants, initialPodRows }: Props) => {
           </button>
           <Link
             href="/tenants/new"
-            className="bg-btn-primary-bg text-btn-primary-text flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
+            className="bg-btn-primary-bg text-btn-primary-text flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
           >
             <Plus size={13} />
             新規テナント
@@ -190,7 +190,7 @@ const TenantOperationsTable = ({ tenants, initialPodRows }: Props) => {
                       type="button"
                       aria-label={`${tenant.slug} の Pod 詳細を${isExpanded ? "閉じる" : "開く"}`}
                       onClick={() => setExpanded(isExpanded ? null : tenant.id)}
-                      className="text-text-muted hover:bg-bg-active hover:text-text-primary rounded p-1 transition-colors"
+                      className="text-text-muted hover:bg-bg-active hover:text-text-primary flex min-h-[44px] min-w-[44px] items-center justify-center rounded transition-colors"
                     >
                       {isExpanded ? (
                         <ChevronDown size={14} />
@@ -228,7 +228,7 @@ const TenantOperationsTable = ({ tenants, initialPodRows }: Props) => {
                     <span className="text-right">
                       <Link
                         href={`/tenants/${tenant.id}`}
-                        className="text-text-secondary hover:bg-bg-active hover:text-text-primary rounded px-2 py-1 text-[11px] transition-colors"
+                        className="text-text-secondary hover:bg-bg-active hover:text-text-primary inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded px-2 py-1 text-[11px] transition-colors"
                       >
                         詳細
                       </Link>

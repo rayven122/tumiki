@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useFocusTrap } from "@/app/_components/useFocusTrap";
 
 type Props = {
   email: string;
@@ -12,6 +13,8 @@ const InitialAdminPasswordModal = ({ email, password, onClose }: Props) => {
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState<string | null>(null);
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { containerRef, handleFocusTrapKeyDown } =
+    useFocusTrap<HTMLDivElement>();
 
   useEffect(() => {
     return () => {
@@ -35,7 +38,11 @@ const InitialAdminPasswordModal = ({ email, password, onClose }: Props) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-      <div className="bg-bg-card border-border-default mx-4 w-full max-w-md rounded-xl border p-6 shadow-2xl">
+      <div
+        ref={containerRef}
+        className="bg-bg-card border-border-default mx-4 w-full max-w-md rounded-xl border p-6 shadow-2xl"
+        onKeyDown={handleFocusTrapKeyDown}
+      >
         <h2 className="text-text-primary mb-2 text-lg font-bold">
           テナントを作成しました
         </h2>
@@ -62,7 +69,7 @@ const InitialAdminPasswordModal = ({ email, password, onClose }: Props) => {
               <button
                 type="button"
                 onClick={() => void handleCopy()}
-                className="border-border-default text-text-secondary shrink-0 rounded-lg border px-3 py-2 text-xs font-medium transition-opacity hover:opacity-80"
+                className="border-border-default text-text-secondary min-h-[44px] shrink-0 rounded-lg border px-3 py-2 text-xs font-medium transition-opacity hover:opacity-80"
               >
                 {copied ? "コピー済み" : "コピー"}
               </button>
@@ -82,7 +89,7 @@ const InitialAdminPasswordModal = ({ email, password, onClose }: Props) => {
         <button
           type="button"
           onClick={onClose}
-          className="bg-btn-primary-bg text-btn-primary-text w-full rounded-lg px-4 py-2 text-sm font-medium transition-opacity hover:opacity-80"
+          className="bg-btn-primary-bg text-btn-primary-text min-h-[44px] w-full rounded-lg px-4 py-2 text-sm font-medium transition-opacity hover:opacity-80"
         >
           閉じる
         </button>

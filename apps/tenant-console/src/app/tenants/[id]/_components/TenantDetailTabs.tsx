@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { api, type RouterOutputs } from "@/trpc/react";
+import { useFocusTrap } from "@/app/_components/useFocusTrap";
 import { tenantStatusBadgeClass } from "@/app/tenants/_components/tenantStyles";
 import TenantLicenseTab from "./TenantLicenseTab";
 
@@ -21,6 +22,8 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const confirmInputRef = useRef<HTMLInputElement>(null);
+  const { containerRef, handleFocusTrapKeyDown } =
+    useFocusTrap<HTMLDivElement>();
   const [confirmSlug, setConfirmSlug] = useState("");
 
   const [upgradeError, setUpgradeError] = useState<string | null>(null);
@@ -76,7 +79,7 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
           <button
             type="button"
             onClick={() => setActiveTab("overview")}
-            className={`border-b-2 px-3 py-2 text-xs font-medium ${
+            className={`min-h-[44px] border-b-2 px-3 py-2 text-xs font-medium ${
               activeTab === "overview"
                 ? "border-text-primary text-text-primary"
                 : "text-text-muted hover:text-text-secondary border-transparent"
@@ -87,7 +90,7 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
           <button
             type="button"
             onClick={() => setActiveTab("licenses")}
-            className={`border-b-2 px-3 py-2 text-xs font-medium ${
+            className={`min-h-[44px] border-b-2 px-3 py-2 text-xs font-medium ${
               activeTab === "licenses"
                 ? "border-text-primary text-text-primary"
                 : "text-text-muted hover:text-text-secondary border-transparent"
@@ -164,7 +167,7 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
                 type="button"
                 onClick={() => upgradeTenant.mutate({ id: tenant.id })}
                 disabled={tenant.status !== "ACTIVE" || upgradeTenant.isPending}
-                className="bg-btn-primary-bg text-btn-primary-text rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
+                className="bg-btn-primary-bg text-btn-primary-text min-h-[44px] rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
               >
                 {upgradeTenant.isPending ? "更新中..." : "今すぐ更新"}
               </button>
@@ -186,7 +189,7 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
                   tenant.status === "DELETING" ||
                   tenant.status === "UPGRADING"
                 }
-                className="bg-badge-error-text rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-50"
+                className="bg-badge-error-text min-h-[44px] rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-50"
               >
                 テナントを削除
               </button>
@@ -212,7 +215,9 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
             role="dialog"
             aria-modal="true"
             aria-labelledby="delete-dialog-title"
+            ref={containerRef}
             className="bg-bg-card border-border-default mx-4 w-full max-w-md rounded-xl border p-6"
+            onKeyDown={handleFocusTrapKeyDown}
             onClick={(e) => e.stopPropagation()}
           >
             <h2
@@ -250,7 +255,7 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
                 type="button"
                 onClick={handleDeleteClose}
                 disabled={deleteTenant.isPending}
-                className="border-border-default text-text-secondary rounded-lg border px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
+                className="border-border-default text-text-secondary min-h-[44px] rounded-lg border px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
               >
                 キャンセル
               </button>
@@ -258,7 +263,7 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
                 type="button"
                 onClick={() => deleteTenant.mutate({ id: tenant.id })}
                 disabled={deleteTenant.isPending || confirmSlug !== tenant.slug}
-                className="bg-badge-error-text rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-50"
+                className="bg-badge-error-text min-h-[44px] rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-50"
               >
                 {deleteTenant.isPending ? "削除中..." : "削除する"}
               </button>

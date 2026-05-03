@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/trpc/react";
+import { useFocusTrap } from "@/app/_components/useFocusTrap";
 import {
   AVAILABLE_FEATURES,
   type AvailableFeature,
@@ -30,6 +31,8 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
   const [plan, setPlan] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const { containerRef, handleFocusTrapKeyDown } =
+    useFocusTrap<HTMLDivElement>();
 
   const utils = api.useUtils();
   const issueLicense = api.license.issue.useMutation({
@@ -138,7 +141,7 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
       <button
         type="button"
         onClick={handleOpen}
-        className="bg-btn-primary-bg text-btn-primary-text rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
+        className="bg-btn-primary-bg text-btn-primary-text min-h-[44px] rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
       >
         ライセンス発行
       </button>
@@ -153,7 +156,9 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
             aria-modal="true"
             aria-labelledby="issue-dialog-title"
             aria-describedby={issuedToken ? "issue-complete-desc" : undefined}
+            ref={containerRef}
             className="bg-bg-card border-border-default mx-4 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border p-6 shadow-2xl"
+            onKeyDown={handleFocusTrapKeyDown}
             onClick={(e) => e.stopPropagation()}
           >
             {issuedToken ? (
@@ -187,14 +192,14 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                   <button
                     type="button"
                     onClick={() => void handleCopyToken()}
-                    className="border-border-default text-text-secondary rounded-lg border px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
+                    className="border-border-default text-text-secondary min-h-[44px] rounded-lg border px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
                   >
                     {copied ? "コピー済み ✓" : "コピー"}
                   </button>
                   <button
                     type="button"
                     onClick={handleClose}
-                    className="bg-btn-primary-bg text-btn-primary-text rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
+                    className="bg-btn-primary-bg text-btn-primary-text min-h-[44px] rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
                   >
                     閉じる
                   </button>
@@ -215,7 +220,7 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                       種別 <span className="text-badge-error-text">*</span>
                     </label>
                     <div className="mt-2 flex gap-4">
-                      <label className="flex min-h-[36px] items-center">
+                      <label className="flex min-h-[44px] items-center">
                         <input
                           type="radio"
                           value="PERSONAL"
@@ -227,7 +232,7 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                           PERSONAL
                         </span>
                       </label>
-                      <label className="flex min-h-[36px] items-center">
+                      <label className="flex min-h-[44px] items-center">
                         <input
                           type="radio"
                           value="TENANT"
@@ -286,7 +291,7 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                     {AVAILABLE_FEATURES.map((feature) => (
                       <label
                         key={feature}
-                        className="flex min-h-[36px] items-center"
+                        className="flex min-h-[44px] items-center"
                       >
                         <input
                           type="checkbox"
@@ -370,14 +375,14 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                     type="button"
                     onClick={handleClose}
                     disabled={issueLicense.isPending}
-                    className="border-border-default text-text-secondary rounded-lg border px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
+                    className="border-border-default text-text-secondary min-h-[44px] rounded-lg border px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
                   >
                     キャンセル
                   </button>
                   <button
                     type="submit"
                     disabled={issueLicense.isPending || features.length === 0}
-                    className="bg-btn-primary-bg text-btn-primary-text rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
+                    className="bg-btn-primary-bg text-btn-primary-text min-h-[44px] rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
                   >
                     {issueLicense.isPending ? "発行中..." : "発行"}
                   </button>

@@ -18,8 +18,9 @@ const readStoredTheme = (): Theme | null => {
 };
 
 const persistTheme = (theme: Theme) => {
+  const secure = window.location.protocol === "https:" ? "; secure" : "";
   window.localStorage.setItem(THEME_STORAGE_KEY, theme);
-  document.cookie = `${THEME_STORAGE_KEY}=${theme}; path=/; max-age=${COOKIE_MAX_AGE_SECONDS}; samesite=lax`;
+  document.cookie = `${THEME_STORAGE_KEY}=${theme}; path=/; max-age=${COOKIE_MAX_AGE_SECONDS}; samesite=lax${secure}`;
 };
 
 type Props = {

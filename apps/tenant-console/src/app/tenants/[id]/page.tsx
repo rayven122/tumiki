@@ -26,7 +26,7 @@ const TenantDetailPage = async ({ params }: Props) => {
       <div className="flex flex-wrap items-center gap-4">
         <Link
           href="/tenants"
-          className="text-text-muted hover:bg-bg-active hover:text-text-primary rounded-lg px-2 py-1 text-xs transition-colors"
+          className="text-text-muted hover:bg-bg-active hover:text-text-primary inline-flex min-h-[44px] items-center rounded-lg px-2 py-1 text-xs transition-colors"
         >
           ← テナント一覧
         </Link>

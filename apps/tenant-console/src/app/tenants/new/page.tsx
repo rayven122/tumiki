@@ -113,7 +113,7 @@ const NewTenantPage = () => {
               OIDCタイプ <span className="text-badge-error-text">*</span>
             </label>
             <div className="mt-2 space-y-2">
-              <label className="flex items-center">
+              <label className="flex min-h-[44px] items-center">
                 <input
                   type="radio"
                   value="KEYCLOAK"
@@ -125,7 +125,7 @@ const NewTenantPage = () => {
                   Keycloak (自動連携) - auth.tumiki.cloud
                 </span>
               </label>
-              <label className="flex items-center">
+              <label className="flex min-h-[44px] items-center">
                 <input
                   type="radio"
                   value="CUSTOM"
@@ -275,14 +275,14 @@ const NewTenantPage = () => {
             <button
               type="button"
               onClick={() => router.push("/tenants")}
-              className="border-border-default text-text-secondary rounded-lg border px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
+              className="border-border-default text-text-secondary min-h-[44px] rounded-lg border px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
             >
               キャンセル
             </button>
             <button
               type="submit"
               disabled={createTenant.isPending}
-              className="bg-btn-primary-bg text-btn-primary-text rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
+              className="bg-btn-primary-bg text-btn-primary-text min-h-[44px] rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
             >
               {createTenant.isPending ? "作成中..." : "作成"}
             </button>

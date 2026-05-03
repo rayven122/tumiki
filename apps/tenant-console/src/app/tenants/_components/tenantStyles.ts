@@ -1,9 +1,6 @@
-type TenantStatus =
-  | "PROVISIONING"
-  | "ACTIVE"
-  | "ERROR"
-  | "DELETING"
-  | "UPGRADING";
+import type { RouterOutputs } from "@/trpc/react";
+
+type TenantStatus = RouterOutputs["tenant"]["list"][number]["status"];
 
 export const tenantStatusBadgeClass = (status: TenantStatus) => {
   if (status === "ACTIVE") return "bg-badge-success-bg text-badge-success-text";

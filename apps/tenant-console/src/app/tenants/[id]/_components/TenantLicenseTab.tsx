@@ -87,7 +87,7 @@ const TenantLicenseTab = ({ tenantId, tenantSlug, initialData }: Props) => {
                       <button
                         type="button"
                         onClick={() => setRevokeTarget(item)}
-                        className="text-badge-error-text hover:bg-badge-error-bg rounded px-2 py-1 text-[11px] transition-colors"
+                        className="text-badge-error-text hover:bg-badge-error-bg inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded px-2 py-1 text-[11px] transition-colors"
                       >
                         失効
                       </button>
@@ -109,7 +109,7 @@ const TenantLicenseTab = ({ tenantId, tenantSlug, initialData }: Props) => {
                 type="button"
                 onClick={handleLoadMore}
                 disabled={isFetchingNextPage}
-                className="border-border-default text-text-secondary rounded-lg border px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
+                className="border-border-default text-text-secondary min-h-[44px] rounded-lg border px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
               >
                 {isFetchingNextPage ? "読み込み中..." : "さらに読み込む"}
               </button>

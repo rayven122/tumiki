@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/trpc/react";
+import { useFocusTrap } from "@/app/_components/useFocusTrap";
 
 type Props = {
   licenseId: string;
@@ -18,6 +19,8 @@ const RevokeConfirmDialog = ({
 }: Props) => {
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const { containerRef, handleFocusTrapKeyDown } =
+    useFocusTrap<HTMLDivElement>();
 
   const utils = api.useUtils();
   const revokeLicense = api.license.revoke.useMutation({
@@ -46,10 +49,10 @@ const RevokeConfirmDialog = ({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [handleClose]);
 
-  const handleRevoke = () => {
+  const handleRevoke = useCallback(() => {
     setError(null);
     revokeLicense.mutate({ id: licenseId, reason: reason || undefined });
-  };
+  }, [licenseId, reason, revokeLicense]);
 
   return (
     <div
@@ -61,7 +64,9 @@ const RevokeConfirmDialog = ({
         aria-modal="true"
         aria-labelledby="revoke-dialog-title"
         aria-describedby="revoke-dialog-desc"
+        ref={containerRef}
         className="bg-bg-card border-border-default mx-4 w-full max-w-lg rounded-xl border p-6 shadow-2xl"
+        onKeyDown={handleFocusTrapKeyDown}
         onClick={(e) => e.stopPropagation()}
       >
         <h2
@@ -104,7 +109,7 @@ const RevokeConfirmDialog = ({
             type="button"
             onClick={handleClose}
             disabled={revokeLicense.isPending}
-            className="border-border-default text-text-secondary rounded-lg border px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
+            className="border-border-default text-text-secondary min-h-[44px] rounded-lg border px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
           >
             キャンセル
           </button>
@@ -112,7 +117,7 @@ const RevokeConfirmDialog = ({
             type="button"
             onClick={handleRevoke}
             disabled={revokeLicense.isPending}
-            className="bg-badge-error-text rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-50"
+            className="bg-badge-error-text min-h-[44px] rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-50"
           >
             {revokeLicense.isPending ? "失効処理中..." : "失効する"}
           </button>
