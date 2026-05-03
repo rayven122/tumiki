@@ -66,9 +66,9 @@ if (isMcpProxyMode) {
 
       // 古い監査ログを自動削除（7日以上）— 失敗してもプロキシ起動は継続
       const { deleteOldAuditLogs, writeAuditLog } =
-        await import("./features/mcp-audit-log/mcp-audit-log.writer");
+        await import("./features/audit-log/audit-log.writer");
       const { syncAuditLogToManager } =
-        await import("./features/manager-audit-log-sync/manager-audit-log-sync.service");
+        await import("./features/audit-log-manager-sync/audit-log-manager-sync.service");
       try {
         const deletedCount = await deleteOldAuditLogs();
         if (deletedCount > 0) {
