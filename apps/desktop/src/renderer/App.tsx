@@ -1,7 +1,6 @@
 import type { JSX } from "react";
 import { HashRouter, Navigate, Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
-import { Login } from "./pages/Login";
 import { Layout } from "./_components/Layout";
 import { ProfileGate } from "./_components/ProfileGate";
 import { Dashboard } from "./pages/Dashboard";
@@ -24,7 +23,10 @@ export const App = (): JSX.Element => {
       <Toaster position="top-center" duration={3000} />
       <HashRouter>
         <Routes>
-          <Route path="/login" element={<Login />} />
+          <Route
+            path="/login"
+            element={<Navigate to="/profile-setup" replace />}
+          />
           <Route path="/profile-setup" element={<ProfileSetup />} />
           <Route element={<ProfileGate />}>
             <Route path="/" element={<Layout />}>

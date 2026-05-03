@@ -1,4 +1,4 @@
-import { type JSX, useEffect, useState } from "react";
+import { type JSX, useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CURRENT_USER,
@@ -10,16 +10,23 @@ import type { NotificationSetting } from "../data/mock";
 import { SettingsForm } from "../_components/SettingsForm";
 import { ConfirmDialog } from "../_components/ConfirmDialog";
 import type { ProfileState } from "../../shared/types";
+import { PROFILE_CHANGED_EVENT } from "../../shared/events";
 
 /** トグルスイッチ（CSS変数ベース） */
 const Toggle = ({
   enabled,
+  label,
   onToggle,
 }: {
   enabled: boolean;
+  label: string;
   onToggle: () => void;
 }): JSX.Element => (
   <button
+    type="button"
+    role="switch"
+    aria-checked={enabled}
+    aria-label={label}
     onClick={onToggle}
     className={`relative h-5 w-9 rounded-full transition-colors ${enabled ? "bg-[var(--badge-success-text)]" : "bg-[var(--text-subtle)]"}`}
   >
@@ -47,7 +54,11 @@ const NotificationSection = ({
           <span className="text-sm text-[var(--text-secondary)]">
             {item.label}
           </span>
-          <Toggle enabled={item.enabled} onToggle={() => onToggle(item.id)} />
+          <Toggle
+            enabled={item.enabled}
+            label={item.label}
+            onToggle={() => onToggle(item.id)}
+          />
         </div>
       ))}
     </div>
@@ -63,35 +74,63 @@ export const SettingsPage = (): JSX.Element => {
     useState<NotificationSetting[]>(PORTAL_NOTIFICATIONS);
   const [profile, setProfile] = useState<ProfileState | null>(null);
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [disconnectError, setDisconnectError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
 
-  useEffect(() => {
-    window.electronAPI.profile.getState().then(setProfile);
+  const refreshProfile = useCallback((): void => {
+    window.electronAPI.profile
+      .getState()
+      .then((state) => {
+        if (mountedRef.current) setProfile(state);
+      })
+      .catch(() => {
+        if (mountedRef.current) setProfile(null);
+      });
   }, []);
 
+  useEffect(() => {
+    mountedRef.current = true;
+    refreshProfile();
+    window.addEventListener(PROFILE_CHANGED_EVENT, refreshProfile);
+    return () => {
+      mountedRef.current = false;
+      window.removeEventListener(PROFILE_CHANGED_EVENT, refreshProfile);
+    };
+  }, [refreshProfile]);
+
   /** 通知トグル */
-  const toggleEmail = (id: string) => {
+  const toggleEmail = (id: string): void => {
     setEmailSettings((prev) =>
       prev.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s)),
     );
   };
 
-  const togglePortal = (id: string) => {
+  const togglePortal = (id: string): void => {
     setPortalSettings((prev) =>
       prev.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s)),
     );
   };
 
   const disconnectOrganization = async (): Promise<void> => {
+    if (isDisconnecting) return;
+    setIsDisconnecting(true);
     setDisconnectError(null);
     try {
       await window.electronAPI.profile.disconnectOrganization();
-      setShowDisconnectConfirm(false);
-      navigate("/profile-setup", { replace: true });
+      if (mountedRef.current) {
+        setShowDisconnectConfirm(false);
+        window.dispatchEvent(new Event(PROFILE_CHANGED_EVENT));
+        navigate("/profile-setup", { replace: true });
+      }
     } catch (err) {
-      setDisconnectError(
-        err instanceof Error ? err.message : "組織利用の停止に失敗しました",
-      );
+      if (mountedRef.current) {
+        setDisconnectError(
+          err instanceof Error ? err.message : "組織利用の停止に失敗しました",
+        );
+      }
+    } finally {
+      if (mountedRef.current) setIsDisconnecting(false);
     }
   };
 
@@ -264,7 +303,10 @@ export const SettingsPage = (): JSX.Element => {
       <SettingsForm />
 
       {/* 保存ボタン */}
-      <button className="rounded-lg bg-[var(--btn-primary-bg)] px-4 py-2 text-sm font-medium text-[var(--btn-primary-text)] transition-colors hover:opacity-90">
+      <button
+        type="button"
+        className="rounded-lg bg-[var(--btn-primary-bg)] px-4 py-2 text-sm font-medium text-[var(--btn-primary-text)] transition-colors hover:opacity-90"
+      >
         保存
       </button>
 
@@ -273,8 +315,11 @@ export const SettingsPage = (): JSX.Element => {
         title="組織利用を停止"
         message="管理サーバー連携と認証トークンを削除します。停止後は初回設定から個人利用を再設定できます。"
         confirmLabel="停止"
+        confirmDisabled={isDisconnecting}
         onConfirm={() => void disconnectOrganization()}
-        onCancel={() => setShowDisconnectConfirm(false)}
+        onCancel={() => {
+          if (!isDisconnecting) setShowDisconnectConfirm(false);
+        }}
       />
     </div>
   );
