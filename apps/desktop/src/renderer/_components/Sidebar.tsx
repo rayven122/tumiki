@@ -1,4 +1,5 @@
 import type { JSX } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAtom } from "jotai";
 import {
@@ -13,8 +14,11 @@ import {
   PanelLeft,
   Sparkles,
   Plug,
+  Building2,
+  User,
 } from "lucide-react";
 import { themeAtom, sidebarOpenAtom } from "../store/atoms";
+import type { ProfileState } from "../../shared/types";
 
 type NavItem = {
   path: string;
@@ -37,8 +41,25 @@ export const Sidebar = (): JSX.Element => {
   const location = useLocation();
   const [theme, setTheme] = useAtom(themeAtom);
   const [isOpen, setIsOpen] = useAtom(sidebarOpenAtom);
+  const [profile, setProfile] = useState<ProfileState | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const refreshProfile = (): void => {
+      window.electronAPI.profile.getState().then((state) => {
+        if (mounted) setProfile(state);
+      });
+    };
+    refreshProfile();
+    window.addEventListener("profile:changed", refreshProfile);
+    return () => {
+      mounted = false;
+      window.removeEventListener("profile:changed", refreshProfile);
+    };
+  }, []);
 
   const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
+  const isOrganization = profile?.activeProfile === "organization";
 
   const renderLink = (item: NavItem) => {
     const isActive =
@@ -92,6 +113,38 @@ export const Sidebar = (): JSX.Element => {
             <PanelLeftClose size={16} />
           </button>
         )}
+      </div>
+
+      {/* プロファイル */}
+      <div className="mb-3 px-2">
+        <div
+          className={`flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-2.5 py-2 ${
+            isOpen ? "" : "justify-center"
+          }`}
+          title={
+            isOrganization
+              ? `組織利用: ${profile?.organizationProfile?.managerUrl ?? ""}`
+              : "個人利用"
+          }
+        >
+          {isOrganization ? (
+            <Building2 size={16} className="text-[var(--badge-info-text)]" />
+          ) : (
+            <User size={16} className="text-[var(--badge-success-text)]" />
+          )}
+          {isOpen && (
+            <div className="min-w-0">
+              <div className="text-xs font-medium text-[var(--text-primary)]">
+                {isOrganization ? "組織利用" : "個人利用"}
+              </div>
+              <div className="truncate text-[10px] text-[var(--text-subtle)]">
+                {isOrganization
+                  ? profile?.organizationProfile?.managerUrl
+                  : "ローカルプロファイル"}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* 収納時の展開ボタン */}

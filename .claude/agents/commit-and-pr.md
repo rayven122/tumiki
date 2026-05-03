@@ -14,12 +14,16 @@ color: blue
 
 ```bash
 git status --short
+git diff --stat
+git diff --name-status
 git diff --cached --stat
 git diff --cached --name-status
 git branch --show-current
 git log --oneline -3
 gh pr list --head $(git branch --show-current) --json number,title,state --jq '.[0] // empty'
 ```
+
+未ステージ差分とステージ済み差分を両方確認する。無関係な変更が混在している場合は、`git add -A` を使わず、対象ファイルを明示して stage する。
 
 ### 2. ブランチ検証
 
@@ -65,7 +69,9 @@ git push -u origin <branch>
 #### 既存PRがある場合 → 自動更新
 
 ```bash
-gh pr edit --body "<updated body>"
+tmp=$(mktemp)
+# PR本文Markdownを$tmpに書き込む
+gh pr edit --body-file "$tmp"
 ```
 
 #### 既存PRがない場合 → 新規作成
@@ -73,16 +79,30 @@ gh pr edit --body "<updated body>"
 PRテンプレート（`.github/pull_request_template.md`）に従ってPR作成：
 
 ```bash
-gh pr create --draft --title "<title>" --body "<body>" --assignee @me
+tmp=$(mktemp)
+# PR本文Markdownを$tmpに書き込む
+gh pr create --draft --title "<title>" --body-file "$tmp" --assignee @me
 ```
 
-### 6. 結果報告
+### 6. PR作成後チェック
+
+`.claude/skills/check-pr/SKILL.md` に従って、作成/更新したPRのCIとレビューコメントを確認する:
+
+```bash
+gh pr checks <PR番号> --repo rayven122/tumiki
+gh pr view <PR番号> --repo rayven122/tumiki --json reviews,comments
+```
+
+CIがpendingの場合は60秒待って再確認する。失敗がある場合は失敗ジョブを特定し、必要なら `gh run view <run-id> --log-failed` でログを確認する。
+
+### 7. 結果報告
 
 以下を報告：
 
 - コミットハッシュ
 - PR URL
 - 作成/更新の区別
+- PRチェック結果（CI pending/pass/fail、重要なレビューコメント）
 
 ## 絶対条件（必ず守ること）
 
@@ -161,5 +181,7 @@ Fixes #[issue number]
 5. **ドラフトPR**: 新規作成時は常に`--draft`で作成
 6. **アサイン**: 自分をアサイン（`--assignee @me`）
 7. **既存PR自動更新**: 既存PRがあれば確認なしで更新
+8. **本文は一時ファイル経由**: `--body` に長文Markdownを直接渡さず、必ず `--body-file` を使う
+9. **作成後チェック**: PR作成/更新後は `check-pr` スキル相当のCI・レビュー確認まで行う
 
 あなたの目標は、品質の高いPRを素早く作成し、レビュープロセスを円滑にすることです。
