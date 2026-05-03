@@ -39,7 +39,8 @@ jobs:
     env:
       CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
       CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
-      SSH_HOST: ${{ vars.KEYCLOAK_TUNNEL_HOSTNAME }}
+      STAGING_SSH_HOST: stg-ssh.tumiki.cloud
+      KEYCLOAK_HOST: 10.11.0.15
       SSH_USER: ${{ vars.KEYCLOAK_DEPLOY_USER }}
 
     steps:
@@ -49,11 +50,20 @@ jobs:
       - name: 🌐 Setup Cloudflare SSH
         uses: ./.github/actions/setup-cloudflare-ssh
         with:
-          ssh-host: ${{ env.SSH_HOST }}
+          ssh-host: ${{ env.STAGING_SSH_HOST }}
           cf-access-client-id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           cf-access-client-secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
-          # DEPLOY_SSH_PRIVATE_KEY は GitHub environment ごとに異なる値を設定
-          ssh-private-key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          ssh-private-key: ${{ secrets.KEYCLOAK_DEPLOY_SSH_PRIVATE_KEY }}
+
+      - name: 🔧 Configure ProxyJump for Keycloak VM
+        run: |
+          # staging-deploy ユーザーで staging VM を踏み台に Keycloak VM へ ProxyJump
+          # staging-deploy は sudo・docker 権限なし（ProxyJump 踏み台専用）
+          cat >> ~/.ssh/config << CONFIG
+          Host ${KEYCLOAK_HOST}
+            ProxyJump staging-deploy@${STAGING_SSH_HOST}
+            StrictHostKeyChecking accept-new
+          CONFIG
 
       - name: 🔐 Fetch secrets from Infisical
         uses: Infisical/secrets-action@77ab1f4ccd183a543cb5b42435fbd181189f4995 # v1.0.16
@@ -74,17 +84,32 @@ jobs:
       - name: 🔒 Restrict secrets file permissions
         run: chmod 600 keycloak-tf.env
 
+      - name: 🧰 Download Terraform CLI
+        env:
+          TERRAFORM_VERSION: 1.14.6
+        run: |
+          curl -fsSLo /tmp/terraform.zip \
+            "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
+          curl -fsSLo /tmp/terraform_SHA256SUMS \
+            "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_SHA256SUMS"
+          TERRAFORM_SHA256=$(grep " terraform_${TERRAFORM_VERSION}_linux_amd64.zip$" /tmp/terraform_SHA256SUMS | awk '{print $1}')
+          echo "${TERRAFORM_SHA256}  /tmp/terraform.zip" | sha256sum -c -
+          unzip -q /tmp/terraform.zip -d /tmp/terraform-bin
+          chmod +x /tmp/terraform-bin/terraform
+
       - name: 📤 Transfer Terraform files
         run: |
           # 前回 cleanup が失敗していた場合に備えて既存 .env を削除（リカバリ）
-          ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
-            "mkdir -p ~/keycloak-tf && rm -f ~/keycloak-tf/.env"
+          ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" \
+            "mkdir -p ~/keycloak-tf ~/bin && rm -f ~/keycloak-tf/.env"
+          scp -p -i ~/.ssh/id_ed25519 /tmp/terraform-bin/terraform \
+            "${SSH_USER}@${KEYCLOAK_HOST}:~/bin/terraform"
           tar -czf - -C terraform/keycloak \
             --exclude='.terraform' --exclude='*.tfstate' --exclude='*.tfstate.*' \
-            . | ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
+            . | ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" \
             "tar -xzf - -C ~/keycloak-tf"
           # install -m 600 でファイル作成と権限設定をアトミックに実施（scp + chmod のウィンドウを排除）
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" \
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" \
             'install -m 600 /dev/stdin ~/keycloak-tf/.env' < keycloak-tf.env
 
       - name: 🏗️ Terraform Apply (staging)
@@ -94,10 +119,11 @@ jobs:
           # DRY_RUN はシェルインジェクション防止のため bash 引数として渡し $1 でエスケープ
           # ヒアドキュメントは quoted で runner 側変数の意図しない展開を防ぐ
           # .env を source して terraform に TF_VAR_* 等を渡す
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -ls -- "${DRY_RUN}" << 'REMOTE_SCRIPT'
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" bash -ls -- "${DRY_RUN}" << 'REMOTE_SCRIPT'
             set -euo pipefail
             set +o history
             DRY_RUN="$1"
+            export PATH="$HOME/bin:$PATH"
             cd ~/keycloak-tf
             set -a
             # shellcheck disable=SC1091
@@ -105,6 +131,14 @@ jobs:
             set +a
             terraform init -input=false
             terraform validate
+            if ! terraform state show keycloak_realm.tumiki >/dev/null 2>&1; then
+              KEYCLOAK_URL=$(grep -oP '^\s*keycloak_url\s*=\s*"\K[^"]+' terraform.tfvars.staging)
+              if curl -fsS --max-time 10 "${KEYCLOAK_URL%/}/realms/tumiki" >/dev/null; then
+                terraform import -var-file=terraform.tfvars.staging -input=false keycloak_realm.tumiki tumiki
+              else
+                echo "tumiki realm does not exist yet; terraform apply will create it"
+              fi
+            fi
             if [ "${DRY_RUN}" = "true" ]; then
               terraform plan -var-file=terraform.tfvars.staging -input=false -no-color
             else
@@ -119,9 +153,9 @@ jobs:
           # デプロイ失敗時に VM 上に .env が残らないよう SSH 越しに確実に削除
           # SSH 鍵・設定を削除する前に実行する必要がある
           # 削除失敗時は warning を出して運用側で検知できるようにする（cleanup の失敗で job 自体は失敗扱いにしない）
-          ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=10 "${SSH_USER}@${SSH_HOST}" 'rm -f ~/keycloak-tf/.env' \
+          ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=10 "${SSH_USER}@${KEYCLOAK_HOST}" 'rm -f ~/keycloak-tf/.env ~/bin/terraform' \
             || echo "::warning::VM上の .env 削除に失敗しました。手動確認が必要です"
-          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh keycloak-tf.env ~/.ssh/id_ed25519 ~/.ssh/config
+          rm -rf /tmp/cloudflared.deb /tmp/cf-proxy.sh /tmp/terraform.zip /tmp/terraform_SHA256SUMS /tmp/terraform-bin keycloak-tf.env ~/.ssh/id_ed25519 ~/.ssh/config
 
   deploy-production:
     name: 🔑 Deploy Keycloak Config to Production

@@ -56,6 +56,7 @@ const apiFetch = async (
 };
 
 type CreateProjectResponse = { project: { id: string; slug: string } };
+type ListProjectsResponse = { workspaces: { id: string; slug: string }[] };
 
 /**
  * シークレットを格納するフォルダを作成する。
@@ -77,8 +78,14 @@ export const ensureFolder = async (params: {
       name,
     }),
   });
-  if (!res.ok && res.status !== 409) {
+  if (!res.ok) {
     const text = await res.text();
+    // 既存フォルダ（409 or 400 "already exists"）は冪等として無視する
+    if (
+      res.status === 409 ||
+      (res.status === 400 && text.includes("already exists"))
+    )
+      return;
     throw new Error(`ensureFolder failed: ${res.status} ${text}`);
   }
 };
@@ -103,6 +110,18 @@ export const createProject = async (params: {
 
   if (!res.ok) {
     const text = await res.text();
+    // スラッグが既存の場合は既存プロジェクトを取得して冪等に動作する
+    if (res.status === 400 && text.includes("already exists")) {
+      const listRes = await apiFetch(
+        `/api/v1/workspace?organizationId=${env.INFISICAL_ORG_ID}`,
+      );
+      if (!listRes.ok)
+        throw new Error(`createProject failed: ${res.status} ${text}`);
+      const list = (await listRes.json()) as ListProjectsResponse;
+      const existing = list.workspaces.find((w) => w.slug === params.slug);
+      if (existing)
+        return { projectId: existing.id, projectSlug: existing.slug };
+    }
     throw new Error(`createProject failed: ${res.status} ${text}`);
   }
 
@@ -117,7 +136,7 @@ export const createProject = async (params: {
 export const addIdentityToProject = async (params: {
   projectId: string;
   identityId: string;
-  /** Project Role の slug。デフォルトは developer (read-only) */
+  /** Project Role の slug */
   role?: string;
 }): Promise<void> => {
   const res = await apiFetch(
@@ -125,13 +144,15 @@ export const addIdentityToProject = async (params: {
     {
       method: "POST",
       body: JSON.stringify({
-        role: params.role ?? "developer",
+        role: params.role ?? "member",
       }),
     },
   );
 
   if (!res.ok) {
     const text = await res.text();
+    // 既にメンバーの場合は冪等として成功扱い
+    if (res.status === 400 && text.includes("already a member")) return;
     throw new Error(`addIdentityToProject failed: ${res.status} ${text}`);
   }
 };

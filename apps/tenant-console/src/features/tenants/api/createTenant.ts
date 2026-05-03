@@ -96,7 +96,7 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
     await addIdentityToProject({
       projectId: project.projectId,
       identityId: env.INFISICAL_OPERATOR_IDENTITY_ID,
-      role: "developer",
+      role: "member",
     });
 
     const secrets: Record<string, string> = {

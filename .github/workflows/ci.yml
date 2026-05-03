@@ -95,66 +95,195 @@ jobs:
       - name: 🧪 Run tests
         run: pnpm test
 
-  docker-smoke-test:
-    name: 🐳 Docker Smoke Test
+  docker-smoke-changes:
+    name: 🐳 Docker Smoke Changes
     runs-on: ubuntu-latest
+    outputs:
+      manager: ${{ steps.filter.outputs.manager }}
+      mcp_proxy: ${{ steps.filter.outputs.mcp_proxy }}
+      internal_manager: ${{ steps.filter.outputs.internal_manager }}
     steps:
       - name: 📥 Checkout branch
         uses: actions/checkout@v6
 
-      - name: 🔨 Build manager image
-        run: docker build -f apps/manager/Dockerfile -t tumiki-manager .
+      - name: 🔎 Detect Docker smoke changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            manager:
+              - '.dockerignore'
+              - '.env.example'
+              - '.github/workflows/ci.yml'
+              - '.npmrc'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+              - 'patches/**'
+              - 'tooling/**'
+              - 'apps/manager/**'
+              - 'packages/db/**'
+              - 'packages/keycloak/**'
+              - 'packages/mailer/**'
+              - 'packages/oauth-token-manager/**'
+              - 'packages/slack/**'
+              - 'packages/license/**'
+              - 'packages/prompts/**'
+              - 'packages/shared/**'
+              - 'packages/ui/**'
+            mcp_proxy:
+              - '.dockerignore'
+              - '.github/workflows/ci.yml'
+              - '.npmrc'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+              - 'patches/**'
+              - 'tooling/**'
+              - 'apps/mcp-proxy/**'
+              - 'packages/db/**'
+              - 'packages/license/**'
+              - 'packages/mcp-core-proxy/**'
+              - 'packages/oauth-token-manager/**'
+              - 'packages/prompts/**'
+              - 'packages/shared/**'
+              - 'packages/slack/**'
+            internal_manager:
+              - '.dockerignore'
+              - '.env.example'
+              - '.github/workflows/ci.yml'
+              - '.npmrc'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+              - 'patches/**'
+              - 'tooling/**'
+              - 'apps/internal-manager/**'
+              - 'packages/db/**'
+              - 'packages/internal-db/**'
+              - 'packages/keycloak/**'
+              - 'packages/ui/**'
 
-      - name: 🔨 Build mcp-proxy image
-        run: docker build -f apps/mcp-proxy/Dockerfile -t tumiki-mcp-proxy .
+  docker-smoke-images:
+    name: 🐳 Docker Smoke Image (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    needs: docker-smoke-changes
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: manager
+            change_output: manager
+            image: tumiki-manager
+            dockerfile: apps/manager/Dockerfile
+            container: manager
+            host_port: 8080
+            container_port: 8080
+            health_path: /api/health
+            env_file: |
+              KEYCLOAK_CLIENT_ID=test
+              KEYCLOAK_CLIENT_SECRET=test
+              KEYCLOAK_ISSUER=https://dummy.keycloak.local/realms/tumiki
+              DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
+          - app: mcp-proxy
+            change_output: mcp_proxy
+            image: tumiki-mcp-proxy
+            dockerfile: apps/mcp-proxy/Dockerfile
+            container: mcp-proxy
+            host_port: 8081
+            container_port: 8080
+            health_path: /health
+            env_file: |
+              DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
+          - app: internal-manager
+            change_output: internal_manager
+            image: tumiki-internal-manager
+            dockerfile: apps/internal-manager/Dockerfile
+            container: internal-manager
+            host_port: 3100
+            container_port: 3100
+            health_path: /api/health
+            env_file: |
+              OIDC_CLIENT_ID=test
+              OIDC_CLIENT_SECRET=test
+              OIDC_ISSUER=https://dummy.oidc.local
+              AUTH_SECRET=dummy-auth-secret-for-smoke-test
+              DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
+    steps:
+      - name: 📥 Checkout branch
+        if: needs.docker-smoke-changes.outputs[matrix.change_output] == 'true'
+        uses: actions/checkout@v6
 
-      - name: 🔨 Build internal-manager image
-        run: docker build -f apps/internal-manager/Dockerfile -t tumiki-internal-manager .
+      - name: 🧱 Setup Docker Buildx
+        if: needs.docker-smoke-changes.outputs[matrix.change_output] == 'true'
+        uses: docker/setup-buildx-action@v3
 
-      - name: 🚀 Start containers
+      - name: 🔨 Build image
+        if: needs.docker-smoke-changes.outputs[matrix.change_output] == 'true'
         run: |
-          docker run -d --name manager -p 8080:8080 \
-            -e KEYCLOAK_CLIENT_ID=test \
-            -e KEYCLOAK_CLIENT_SECRET=test \
-            -e KEYCLOAK_ISSUER=https://dummy.keycloak.local/realms/tumiki \
-            -e DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder \
-            -e PRISMA_FIELD_ENCRYPTION_KEY=k1.aesgcm256.kG588VHXtTCncg2y9KmbXqyssLulxqUjrSn9_TXFu2U= \
-            tumiki-manager
-          docker run -d --name mcp-proxy -p 8081:8080 \
-            -e DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder \
-            -e PRISMA_FIELD_ENCRYPTION_KEY=k1.aesgcm256.kG588VHXtTCncg2y9KmbXqyssLulxqUjrSn9_TXFu2U= \
-            tumiki-mcp-proxy
-          docker run -d --name internal-manager -p 3100:3100 \
-            -e OIDC_CLIENT_ID=test \
-            -e OIDC_CLIENT_SECRET=test \
-            -e OIDC_ISSUER=https://dummy.oidc.local \
-            -e AUTH_SECRET=dummy-auth-secret-for-smoke-test \
-            -e DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder \
-            -e PRISMA_FIELD_ENCRYPTION_KEY=k1.aesgcm256.kG588VHXtTCncg2y9KmbXqyssLulxqUjrSn9_TXFu2U= \
-            tumiki-internal-manager
+          docker buildx build \
+            --load \
+            --cache-from type=gha,scope=docker-smoke-${{ matrix.app }} \
+            --cache-to type=gha,mode=max,scope=docker-smoke-${{ matrix.app }} \
+            -f "${{ matrix.dockerfile }}" \
+            -t "${{ matrix.image }}" \
+            .
 
-      - name: ✅ Wait and verify health endpoints
+      - name: 🚀 Start container
+        if: needs.docker-smoke-changes.outputs[matrix.change_output] == 'true'
+        env:
+          MATRIX_ENV_FILE: ${{ matrix.env_file }}
+        run: |
+          # スモークテスト専用のダミーキー。実際の暗号化には使用しない。
+          smoke_prisma_key="k1.aesgcm256.$(printf '12345678901234567890123456789012' | base64 | tr '+/' '-_' | tr -d '=')"
+          smoke_env_file="$(mktemp)"
+          trap 'rm -f "${smoke_env_file}"' EXIT
+          printf 'PRISMA_FIELD_ENCRYPTION_KEY=%s\n' "${smoke_prisma_key}" > "${smoke_env_file}"
+          printf '%s\n' "${MATRIX_ENV_FILE}" >> "${smoke_env_file}"
+          docker run -d --name "${{ matrix.container }}" \
+            -p "${{ matrix.host_port }}:${{ matrix.container_port }}" \
+            --env-file "${smoke_env_file}" \
+            "${{ matrix.image }}"
+
+      - name: ✅ Wait and verify health endpoint
+        if: needs.docker-smoke-changes.outputs[matrix.change_output] == 'true'
         run: |
           for i in $(seq 1 30); do
-            if curl -sf http://localhost:8080/api/health > /dev/null 2>&1 && \
-               curl -sf http://localhost:8081/health > /dev/null 2>&1 && \
-               curl -sf http://localhost:3100/api/health > /dev/null 2>&1; then
-              echo "=== Manager ==="
-              curl -sf http://localhost:8080/api/health | jq .
-              echo "=== MCP Proxy ==="
-              curl -sf http://localhost:8081/health | jq .
-              echo "=== Internal Manager ==="
-              curl -sf http://localhost:3100/api/health | jq .
+            if curl -sf "http://localhost:${{ matrix.host_port }}${{ matrix.health_path }}" > /dev/null 2>&1; then
+              curl -sf "http://localhost:${{ matrix.host_port }}${{ matrix.health_path }}" | jq .
               exit 0
             fi
             echo "Waiting... ($i/30)"
             sleep 2
           done
-          echo "Timeout waiting for containers"
-          docker logs manager
-          docker logs mcp-proxy
-          docker logs internal-manager
+          echo "Timeout waiting for ${{ matrix.container }}"
+          docker logs "${{ matrix.container }}"
           exit 1
+
+      - name: ⏭️ Skip unchanged image
+        if: needs.docker-smoke-changes.outputs[matrix.change_output] != 'true'
+        run: echo "No Docker smoke relevant changes for ${{ matrix.app }}."
+
+      - name: 🧹 Cleanup container
+        if: always() && needs.docker-smoke-changes.outputs[matrix.change_output] == 'true'
+        run: docker rm -f "${{ matrix.container }}" || true
+
+  docker-smoke-test:
+    name: 🐳 Docker Smoke Test
+    runs-on: ubuntu-latest
+    needs: docker-smoke-images
+    if: always()
+    steps:
+      - name: ✅ Verify smoke image jobs
+        run: |
+          if [ "${{ needs.docker-smoke-images.result }}" != "success" ]; then
+            echo "Docker smoke image jobs finished with: ${{ needs.docker-smoke-images.result }}"
+            exit 1
+          fi
+          echo "All Docker smoke image jobs passed."
 
   desktop-migration-check:
     name: 🗄️ Desktop Migration Check
