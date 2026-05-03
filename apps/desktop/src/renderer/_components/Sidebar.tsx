@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAtom } from "jotai";
 import {
@@ -43,16 +43,24 @@ export const Sidebar = (): JSX.Element => {
   const [theme, setTheme] = useAtom(themeAtom);
   const [isOpen, setIsOpen] = useAtom(sidebarOpenAtom);
   const [profile, setProfile] = useState<ProfileState | null>(null);
+  const mountedRef = useRef(true);
 
   const refreshProfile = useCallback((): void => {
     window.electronAPI.profile
       .getState()
-      .then(setProfile)
-      .catch(() => setProfile(null));
+      .then((state) => {
+        if (mountedRef.current) setProfile(state);
+      })
+      .catch(() => {
+        if (mountedRef.current) setProfile(null);
+      });
   }, []);
 
   useEffect(() => {
     refreshProfile();
+    return () => {
+      mountedRef.current = false;
+    };
   }, [refreshProfile]);
 
   useEffect(() => {
