@@ -72,9 +72,12 @@ describe("setupProfileIpc", () => {
   });
 
   test("個人利用選択で個人プロファイルを保存する", async () => {
+    storeData.set("managerUrl", "https://manager.example.com");
+
     const handler = mockIpcHandlers.get("profile:selectPersonal");
     const result = await handler!({} as IpcMainInvokeEvent);
 
+    expect(storeData.has("managerUrl")).toBe(false);
     expect(result).toStrictEqual({
       activeProfile: "personal",
       organizationProfile: null,
@@ -111,5 +114,31 @@ describe("setupProfileIpc", () => {
       organizationProfile: null,
       hasCompletedInitialProfileSetup: false,
     });
+  });
+
+  test("組織切断時にDB削除が失敗した場合は状態を変更しない", async () => {
+    const cancelAuthFlow = vi.fn();
+    const stopAutoRefresh = vi.fn();
+    mockGetOAuthManager.mockReturnValue({ cancelAuthFlow, stopAutoRefresh });
+    mockDbAuthToken.deleteMany.mockRejectedValue(new Error("DB error"));
+    await activateOrganizationProfile("https://manager.example.com");
+    storeData.set("managerUrl", "https://manager.example.com");
+
+    const handler = mockIpcHandlers.get("profile:disconnectOrganization");
+
+    await expect(handler!({} as IpcMainInvokeEvent)).rejects.toThrow(
+      "組織利用の停止に失敗しました",
+    );
+
+    expect(cancelAuthFlow).not.toHaveBeenCalled();
+    expect(stopAutoRefresh).not.toHaveBeenCalled();
+    expect(mockSetOAuthManager).not.toHaveBeenCalled();
+    expect(storeData.get("managerUrl")).toBe("https://manager.example.com");
+    expect(storeData.get("activeProfile")).toBe("organization");
+    expect(storeData.get("organizationProfile")).toStrictEqual({
+      managerUrl: "https://manager.example.com",
+      connectedAt: expect.any(String) as string,
+    });
+    expect(storeData.get("hasCompletedInitialProfileSetup")).toBe(true);
   });
 });

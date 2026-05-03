@@ -14,9 +14,12 @@ export const Login = (): JSX.Element => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    window.electronAPI.manager.getUrl().then((url) => {
-      if (url) setManagerUrl(url);
-    });
+    window.electronAPI.manager
+      .getUrl()
+      .then((url) => {
+        if (url) setManagerUrl(url);
+      })
+      .catch(() => setManagerUrl(""));
   }, []);
 
   const handleSsoSubmit = async (e: React.FormEvent): Promise<void> => {

@@ -18,6 +18,7 @@ export const selectPersonalProfile = async (): Promise<ProfileState> => {
   }
   store.set("activeProfile", "personal");
   store.set("hasCompletedInitialProfileSetup", true);
+  store.delete("managerUrl");
   store.delete("organizationProfile");
   return getProfileState();
 };

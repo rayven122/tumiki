@@ -1,7 +1,6 @@
 import { ipcMain } from "electron";
 import { z } from "zod";
 import { getAppStore } from "../shared/app-store";
-import { activateOrganizationProfile } from "../shared/profile-store";
 import * as logger from "../shared/utils/logger";
 
 const oidcConfigResponseSchema = z.object({
@@ -65,7 +64,6 @@ export const setupManagerIpc = (
 
     const store = await getAppStore();
     store.set("managerUrl", url);
-    await activateOrganizationProfile(url);
 
     logger.info("Manager URL connected", { url });
   });

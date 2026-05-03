@@ -13,14 +13,7 @@ export const setupProfileIpc = (): void => {
 
   ipcMain.handle("profile:selectPersonal", () => selectPersonalProfile());
 
-  ipcMain.handle("profile:startOrganizationSetup", () => getProfileState());
-
   ipcMain.handle("profile:disconnectOrganization", async () => {
-    const manager = getOAuthManager();
-    manager?.cancelAuthFlow();
-    manager?.stopAutoRefresh();
-    setOAuthManager(null);
-
     try {
       const db = await getDb();
       await db.authToken.deleteMany({});
@@ -31,6 +24,11 @@ export const setupProfileIpc = (): void => {
       );
       throw new Error("組織利用の停止に失敗しました", { cause: error });
     }
+
+    const manager = getOAuthManager();
+    manager?.cancelAuthFlow();
+    manager?.stopAutoRefresh();
+    setOAuthManager(null);
 
     return clearOrganizationProfile();
   });

@@ -126,8 +126,6 @@ const api = {
       ipcRenderer.invoke("profile:getState"),
     selectPersonal: (): Promise<ProfileState> =>
       ipcRenderer.invoke("profile:selectPersonal"),
-    startOrganizationSetup: (): Promise<ProfileState> =>
-      ipcRenderer.invoke("profile:startOrganizationSetup"),
     disconnectOrganization: (): Promise<ProfileState> =>
       ipcRenderer.invoke("profile:disconnectOrganization"),
   },

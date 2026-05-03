@@ -1,27 +1,34 @@
 import type { JSX } from "react";
 import { useEffect, useState } from "react";
-import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { Navigate, Outlet } from "react-router-dom";
 import type { ProfileState } from "../../shared/types";
 
 export const ProfileGate = (): JSX.Element => {
-  const location = useLocation();
   const [profile, setProfile] = useState<ProfileState | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
-    window.electronAPI.profile
-      .getState()
-      .then((state) => {
-        if (mounted) setProfile(state);
-      })
-      .finally(() => {
-        if (mounted) setLoading(false);
-      });
+    const refreshProfile = (): void => {
+      window.electronAPI.profile
+        .getState()
+        .then((state) => {
+          if (mounted) setProfile(state);
+        })
+        .catch(() => {
+          if (mounted) setProfile(null);
+        })
+        .finally(() => {
+          if (mounted) setLoading(false);
+        });
+    };
+    refreshProfile();
+    window.addEventListener("profile:changed", refreshProfile);
     return () => {
       mounted = false;
+      window.removeEventListener("profile:changed", refreshProfile);
     };
-  }, [location.pathname]);
+  }, []);
 
   if (loading) {
     return (

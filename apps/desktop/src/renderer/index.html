@@ -71,12 +71,6 @@
                 organizationProfile: null,
                 hasCompletedInitialProfileSetup: true,
               }),
-            startOrganizationSetup: () =>
-              Promise.resolve({
-                activeProfile: null,
-                organizationProfile: null,
-                hasCompletedInitialProfileSetup: false,
-              }),
             disconnectOrganization: () => {
               _savedUrl = null;
               return Promise.resolve({
