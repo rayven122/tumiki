@@ -383,7 +383,6 @@ export const createOAuthManager = (
       if (token) {
         try {
           if (!token.refreshToken) {
-            // refresh_token なし（jackson OIDC）はローカルクリーンアップのみ
             logger.info(
               "No refresh token, skipping Keycloak server-side logout",
             );
@@ -499,11 +498,18 @@ export const createOAuthManager = (
         return;
       }
 
-      // 有効なトークンがある場合、自動リフレッシュを開始
+      // 有効なトークンがある場合、refresh_token があれば自動リフレッシュを開始
+      // jackson OIDC は refresh_token を返さないため null の場合はスキップ
       const expiresIn = Math.floor(
         (token.expiresAt.getTime() - Date.now()) / 1000,
       );
-      startAutoRefresh(expiresIn);
+      if (token.refreshToken) {
+        startAutoRefresh(expiresIn);
+      } else {
+        logger.info(
+          "No refresh token (jackson OIDC). Token will expire naturally without auto-refresh.",
+        );
+      }
 
       logger.info("OAuth manager initialized with existing token");
     } catch (error) {
