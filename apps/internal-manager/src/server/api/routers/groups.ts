@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
+import { adminProcedure, createTRPCRouter } from "@/server/api/trpc";
 
 export const groupsRouter = createTRPCRouter({
   /** グループ一覧をメンバーシップカウント付きで取得 */
-  list: protectedProcedure.query(async ({ ctx }) => {
+  list: adminProcedure.query(async ({ ctx }) => {
     return ctx.db.group.findMany({
       select: {
         id: true,
@@ -36,7 +36,7 @@ export const groupsRouter = createTRPCRouter({
   }),
 
   /** 特定グループのメンバー一覧を取得 */
-  getMembers: protectedProcedure
+  getMembers: adminProcedure
     .input(z.object({ groupId: z.string() }))
     .query(async ({ ctx, input }) => {
       return ctx.db.userGroupMembership.findMany({
@@ -57,7 +57,7 @@ export const groupsRouter = createTRPCRouter({
     }),
 
   /** 特定グループの同期ログ（最新20件）を取得 */
-  getSyncLogs: protectedProcedure
+  getSyncLogs: adminProcedure
     .input(z.object({ groupId: z.string() }))
     .query(async ({ ctx, input }) => {
       return ctx.db.idpSyncLog.findMany({

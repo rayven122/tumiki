@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
+import { adminProcedure, createTRPCRouter } from "@/server/api/trpc";
 
 export const usersRouter = createTRPCRouter({
   /** ユーザー一覧（ロール・ステータス・名前検索対応） */
-  list: protectedProcedure
+  list: adminProcedure
     .input(
       z.object({
         search: z.string().optional(),

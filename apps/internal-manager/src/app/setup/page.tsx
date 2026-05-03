@@ -5,7 +5,6 @@ const getEnvErrors = (): Record<string, string> => {
     OIDC_ISSUER: process.env.OIDC_ISSUER,
     OIDC_CLIENT_ID: process.env.OIDC_CLIENT_ID,
     OIDC_CLIENT_SECRET: process.env.OIDC_CLIENT_SECRET,
-    OIDC_DESKTOP_CLIENT_ID: process.env.OIDC_DESKTOP_CLIENT_ID,
   });
 
   if (result.success) return {};
@@ -22,7 +21,6 @@ const SetupPage = () => {
     { key: "OIDC_ISSUER", label: "Issuer URL" },
     { key: "OIDC_CLIENT_ID", label: "Client ID（管理サーバー用）" },
     { key: "OIDC_CLIENT_SECRET", label: "Client Secret（管理サーバー用）" },
-    { key: "OIDC_DESKTOP_CLIENT_ID", label: "Client ID（Desktop / PKCE用）" },
   ];
 
   return (

@@ -32,10 +32,6 @@ const SsoConfigSection = () => {
         label="Client ID（管理サーバー用）"
         value={data?.clientId ?? null}
       />
-      <Field
-        label="Client ID（Desktop / PKCE用）"
-        value={data?.desktopClientId ?? null}
-      />
       <p className="text-text-muted text-[10px]">
         変更するには環境変数を更新して再起動してください
       </p>
