@@ -22,20 +22,23 @@ const TenantDetailPage = async ({ params }: Props) => {
   if (!tenant) notFound();
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="mx-auto max-w-5xl px-4 py-8">
-        <div className="mb-6 flex items-center gap-4">
-          <Link
-            href="/tenants"
-            className="text-sm text-indigo-600 hover:text-indigo-800"
-          >
-            ← テナント一覧
-          </Link>
-          <h1 className="text-2xl font-bold text-gray-900">{tenant.slug}</h1>
+    <div className="space-y-4 p-6">
+      <div className="flex flex-wrap items-center gap-4">
+        <Link
+          href="/tenants"
+          className="text-text-muted hover:bg-bg-active hover:text-text-primary rounded-lg px-2 py-1 text-xs transition-colors"
+        >
+          ← テナント一覧
+        </Link>
+        <div>
+          <h1 className="text-text-primary text-lg font-semibold">
+            {tenant.slug}
+          </h1>
+          <p className="text-text-secondary mt-1 text-xs">{tenant.domain}</p>
         </div>
-
-        <TenantDetailTabs tenant={tenant} initialLicenses={licenses} />
       </div>
+
+      <TenantDetailTabs tenant={tenant} initialLicenses={licenses} />
     </div>
   );
 };

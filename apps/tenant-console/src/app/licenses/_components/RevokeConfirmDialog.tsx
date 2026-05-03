@@ -55,7 +55,7 @@ const RevokeConfirmDialog = ({
   return (
     // オーバーレイクリックで閉じる
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
       onClick={handleClose}
     >
       <div
@@ -63,25 +63,25 @@ const RevokeConfirmDialog = ({
         aria-modal="true"
         aria-labelledby="revoke-dialog-title"
         aria-describedby="revoke-dialog-desc"
-        className="mx-4 w-full max-w-lg rounded-lg bg-white p-6"
+        className="bg-bg-card border-border-default mx-4 w-full max-w-lg rounded-xl border p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h2
           id="revoke-dialog-title"
-          className="mb-4 text-lg font-semibold text-gray-900"
+          className="text-text-primary mb-4 text-lg font-semibold"
         >
           ライセンスの失効確認
         </h2>
-        <p id="revoke-dialog-desc" className="mb-4 text-sm text-gray-700">
+        <p id="revoke-dialog-desc" className="text-text-secondary mb-4 text-sm">
           ライセンス{" "}
-          <span className="font-medium text-gray-900">{subject}</span>{" "}
+          <span className="text-text-primary font-medium">{subject}</span>{" "}
           を失効させますか？この操作は取り消せません。
         </p>
 
         <div className="mb-4">
           <label
             htmlFor="revokeReason"
-            className="block text-sm font-medium text-gray-700"
+            className="text-text-secondary block text-sm font-medium"
           >
             理由（任意）
           </label>
@@ -91,12 +91,12 @@ const RevokeConfirmDialog = ({
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="失効理由を入力（任意）"
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+            className="bg-bg-input border-border-default text-text-primary placeholder:text-text-subtle mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-white/20"
           />
         </div>
 
         {error && (
-          <div className="mb-4 rounded-md bg-red-50 p-4 text-sm text-red-700">
+          <div className="bg-badge-error-bg text-badge-error-text mb-4 rounded-lg p-4 text-sm">
             {error}
           </div>
         )}
@@ -106,7 +106,7 @@ const RevokeConfirmDialog = ({
             type="button"
             onClick={handleClose}
             disabled={revokeLicense.isPending}
-            className="min-h-[44px] rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="border-border-default text-text-secondary rounded-lg border px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
           >
             キャンセル
           </button>
@@ -114,7 +114,7 @@ const RevokeConfirmDialog = ({
             type="button"
             onClick={handleRevoke}
             disabled={revokeLicense.isPending}
-            className="min-h-[44px] rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+            className="bg-badge-error-text rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-50"
           >
             {revokeLicense.isPending ? "失効処理中..." : "失効する"}
           </button>

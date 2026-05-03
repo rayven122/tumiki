@@ -142,7 +142,7 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
       <button
         type="button"
         onClick={handleOpen}
-        className="min-h-[44px] rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none"
+        className="bg-btn-primary-bg text-btn-primary-text rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
       >
         ライセンス発行
       </button>
@@ -150,7 +150,7 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
       {/* モーダル部分のみ isOpen で制御。オーバーレイクリックで閉じる */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
           onClick={handleClose}
         >
           <div
@@ -158,7 +158,7 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
             aria-modal="true"
             aria-labelledby="issue-dialog-title"
             aria-describedby={issuedToken ? "issue-complete-desc" : undefined}
-            className="mx-4 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-6"
+            className="bg-bg-card border-border-default mx-4 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* 発行完了画面 */}
@@ -166,26 +166,26 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
               <div>
                 <h2
                   id="issue-dialog-title"
-                  className="mb-4 text-lg font-semibold text-gray-900"
+                  className="text-text-primary mb-4 text-lg font-semibold"
                 >
                   ライセンス発行完了
                 </h2>
                 <div
                   id="issue-complete-desc"
-                  className="mb-4 rounded-md bg-amber-50 p-4 text-sm text-amber-700"
+                  className="bg-badge-warn-bg text-badge-warn-text mb-4 rounded-lg p-4 text-sm"
                 >
                   このトークンは再表示できません。必ずコピーしてください。
                 </div>
                 <div className="mb-4">
-                  <p className="mb-1 text-sm font-medium text-gray-700">
+                  <p className="text-text-secondary mb-1 text-sm font-medium">
                     ライセンストークン
                   </p>
-                  <div className="rounded bg-gray-100 p-3 font-mono text-sm break-all text-gray-900">
+                  <div className="bg-bg-input border-border-default text-text-primary rounded-lg border p-3 font-mono text-sm break-all">
                     {issuedToken}
                   </div>
                 </div>
                 {error && (
-                  <div className="mb-4 rounded-md bg-red-50 p-4 text-sm text-red-700">
+                  <div className="bg-badge-error-bg text-badge-error-text mb-4 rounded-lg p-4 text-sm">
                     {error}
                   </div>
                 )}
@@ -193,14 +193,14 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                   <button
                     type="button"
                     onClick={() => void handleCopyToken()}
-                    className="min-h-[44px] rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    className="border-border-default text-text-secondary rounded-lg border px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
                   >
                     {copied ? "コピー済み ✓" : "コピー"}
                   </button>
                   <button
                     type="button"
                     onClick={handleClose}
-                    className="min-h-[44px] rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                    className="bg-btn-primary-bg text-btn-primary-text rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
                   >
                     閉じる
                   </button>
@@ -211,7 +211,7 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
               <form onSubmit={handleSubmit}>
                 <h2
                   id="issue-dialog-title"
-                  className="mb-4 text-lg font-semibold text-gray-900"
+                  className="text-text-primary mb-4 text-lg font-semibold"
                 >
                   ライセンス発行
                 </h2>
@@ -219,11 +219,11 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                 {/* 種別（テナント固定の場合は非表示） */}
                 {!defaultTenantId && (
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700">
-                      種別 <span className="text-red-500">*</span>
+                    <label className="text-text-secondary block text-sm font-medium">
+                      種別 <span className="text-badge-error-text">*</span>
                     </label>
                     <div className="mt-2 flex gap-4">
-                      <label className="flex min-h-[44px] items-center">
+                      <label className="flex min-h-[36px] items-center">
                         <input
                           type="radio"
                           value="PERSONAL"
@@ -231,9 +231,11 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                           onChange={() => setLicenseType("PERSONAL")}
                           className="mr-2"
                         />
-                        <span className="text-sm text-gray-700">PERSONAL</span>
+                        <span className="text-text-secondary text-sm">
+                          PERSONAL
+                        </span>
                       </label>
-                      <label className="flex min-h-[44px] items-center">
+                      <label className="flex min-h-[36px] items-center">
                         <input
                           type="radio"
                           value="TENANT"
@@ -241,7 +243,9 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                           onChange={() => setLicenseType("TENANT")}
                           className="mr-2"
                         />
-                        <span className="text-sm text-gray-700">TENANT</span>
+                        <span className="text-text-secondary text-sm">
+                          TENANT
+                        </span>
                       </label>
                     </div>
                   </div>
@@ -251,9 +255,9 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                 <div className="mb-4">
                   <label
                     htmlFor="subject"
-                    className="block text-sm font-medium text-gray-700"
+                    className="text-text-secondary block text-sm font-medium"
                   >
-                    Subject <span className="text-red-500">*</span>
+                    Subject <span className="text-badge-error-text">*</span>
                   </label>
                   {licenseType === "PERSONAL" ? (
                     <input
@@ -263,7 +267,7 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                       onChange={(e) => setSubject(e.target.value)}
                       required
                       placeholder="user@example.com"
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                      className="bg-bg-input border-border-default text-text-primary placeholder:text-text-subtle mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-white/20"
                     />
                   ) : (
                     <select
@@ -271,7 +275,7 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                       value={tenantId}
                       onChange={(e) => handleTenantSelect(e.target.value)}
                       required
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                      className="bg-bg-input border-border-default text-text-primary mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-white/20"
                     >
                       <option value="">テナントを選択</option>
                       {tenants.map((t) => (
@@ -285,14 +289,14 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
 
                 {/* Features */}
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Features <span className="text-red-500">*</span>
+                  <label className="text-text-secondary block text-sm font-medium">
+                    Features <span className="text-badge-error-text">*</span>
                   </label>
                   <div className="mt-2 space-y-2">
                     {AVAILABLE_FEATURES.map((feature) => (
                       <label
                         key={feature}
-                        className="flex min-h-[44px] items-center"
+                        className="flex min-h-[36px] items-center"
                       >
                         <input
                           type="checkbox"
@@ -300,12 +304,14 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                           onChange={() => handleFeatureToggle(feature)}
                           className="mr-2"
                         />
-                        <span className="text-sm text-gray-700">{feature}</span>
+                        <span className="text-text-secondary text-sm">
+                          {feature}
+                        </span>
                       </label>
                     ))}
                   </div>
                   {features.length === 0 && (
-                    <p className="mt-1 text-xs text-gray-500">
+                    <p className="text-text-muted mt-1 text-xs">
                       1つ以上選択してください
                     </p>
                   )}
@@ -315,9 +321,10 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                 <div className="mb-4">
                   <label
                     htmlFor="ttlDays"
-                    className="block text-sm font-medium text-gray-700"
+                    className="text-text-secondary block text-sm font-medium"
                   >
-                    有効期限（日数） <span className="text-red-500">*</span>
+                    有効期限（日数）{" "}
+                    <span className="text-badge-error-text">*</span>
                   </label>
                   <input
                     id="ttlDays"
@@ -327,7 +334,7 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                     min={1}
                     max={730}
                     required
-                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                    className="bg-bg-input border-border-default text-text-primary mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-white/20"
                   />
                 </div>
 
@@ -335,7 +342,7 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                 <div className="mb-4">
                   <label
                     htmlFor="plan"
-                    className="block text-sm font-medium text-gray-700"
+                    className="text-text-secondary block text-sm font-medium"
                   >
                     プラン（任意）
                   </label>
@@ -344,7 +351,7 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                     type="text"
                     value={plan}
                     onChange={(e) => setPlan(e.target.value)}
-                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                    className="bg-bg-input border-border-default text-text-primary mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-white/20"
                   />
                 </div>
 
@@ -352,7 +359,7 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                 <div className="mb-4">
                   <label
                     htmlFor="notes"
-                    className="block text-sm font-medium text-gray-700"
+                    className="text-text-secondary block text-sm font-medium"
                   >
                     メモ（任意）
                   </label>
@@ -361,12 +368,12 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                     rows={3}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                    className="bg-bg-input border-border-default text-text-primary mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-white/20"
                   />
                 </div>
 
                 {error && (
-                  <div className="mb-4 rounded-md bg-red-50 p-4 text-sm text-red-700">
+                  <div className="bg-badge-error-bg text-badge-error-text mb-4 rounded-lg p-4 text-sm">
                     {error}
                   </div>
                 )}
@@ -376,14 +383,14 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                     type="button"
                     onClick={handleClose}
                     disabled={issueLicense.isPending}
-                    className="min-h-[44px] rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    className="border-border-default text-text-secondary rounded-lg border px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
                   >
                     キャンセル
                   </button>
                   <button
                     type="submit"
                     disabled={issueLicense.isPending || features.length === 0}
-                    className="min-h-[44px] rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                    className="bg-btn-primary-bg text-btn-primary-text rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
                   >
                     {issueLicense.isPending ? "発行中..." : "発行"}
                   </button>

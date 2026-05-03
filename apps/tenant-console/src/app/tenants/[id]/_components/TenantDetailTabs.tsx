@@ -68,15 +68,15 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
   return (
     <div>
       {/* タブナビゲーション */}
-      <div className="border-b border-gray-200">
+      <div className="border-b-border-default border-b">
         <nav className="-mb-px flex gap-4">
           <button
             type="button"
             onClick={() => setActiveTab("overview")}
-            className={`min-h-[44px] border-b-2 px-4 py-2 text-sm font-medium ${
+            className={`border-b-2 px-3 py-2 text-xs font-medium ${
               activeTab === "overview"
-                ? "border-indigo-500 text-indigo-600"
-                : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                ? "border-text-primary text-text-primary"
+                : "text-text-muted hover:text-text-secondary border-transparent"
             }`}
           >
             概要
@@ -84,10 +84,10 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
           <button
             type="button"
             onClick={() => setActiveTab("licenses")}
-            className={`min-h-[44px] border-b-2 px-4 py-2 text-sm font-medium ${
+            className={`border-b-2 px-3 py-2 text-xs font-medium ${
               activeTab === "licenses"
-                ? "border-indigo-500 text-indigo-600"
-                : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                ? "border-text-primary text-text-primary"
+                : "text-text-muted hover:text-text-secondary border-transparent"
             }`}
           >
             ライセンス
@@ -99,57 +99,57 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
       <div className="mt-6">
         {activeTab === "overview" && (
           <div>
-            <div className="overflow-hidden rounded-lg bg-white shadow">
-              <dl className="divide-y divide-gray-200">
-                <div className="px-6 py-4 sm:grid sm:grid-cols-3 sm:gap-4">
-                  <dt className="text-sm font-medium text-gray-500">Slug</dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+            <div className="bg-bg-card border-border-default overflow-hidden rounded-xl border">
+              <dl className="divide-border-subtle divide-y">
+                <div className="px-5 py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+                  <dt className="text-text-muted text-xs font-medium">Slug</dt>
+                  <dd className="text-text-primary mt-1 font-mono text-sm sm:col-span-2 sm:mt-0">
                     {tenant.slug}
                   </dd>
                 </div>
-                <div className="px-6 py-4 sm:grid sm:grid-cols-3 sm:gap-4">
-                  <dt className="text-sm font-medium text-gray-500">
+                <div className="px-5 py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+                  <dt className="text-text-muted text-xs font-medium">
                     ドメイン
                   </dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+                  <dd className="text-text-secondary mt-1 text-sm sm:col-span-2 sm:mt-0">
                     {tenant.domain}
                   </dd>
                 </div>
-                <div className="px-6 py-4 sm:grid sm:grid-cols-3 sm:gap-4">
-                  <dt className="text-sm font-medium text-gray-500">
+                <div className="px-5 py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+                  <dt className="text-text-muted text-xs font-medium">
                     ステータス
                   </dt>
                   <dd className="mt-1 sm:col-span-2 sm:mt-0">
                     <span
                       className={`inline-flex rounded-full px-2 text-xs leading-5 font-semibold ${
                         tenant.status === "ACTIVE"
-                          ? "bg-green-100 text-green-800"
+                          ? "bg-badge-success-bg text-badge-success-text"
                           : tenant.status === "ERROR"
-                            ? "bg-red-100 text-red-800"
+                            ? "bg-badge-error-bg text-badge-error-text"
                             : tenant.status === "DELETING"
-                              ? "bg-yellow-100 text-yellow-800"
+                              ? "bg-badge-warn-bg text-badge-warn-text"
                               : tenant.status === "UPGRADING"
-                                ? "bg-indigo-100 text-indigo-800"
-                                : "bg-gray-100 text-gray-800"
+                                ? "bg-badge-warn-bg text-badge-warn-text"
+                                : "bg-bg-active text-text-muted"
                       }`}
                     >
                       {tenant.status}
                     </span>
                   </dd>
                 </div>
-                <div className="px-6 py-4 sm:grid sm:grid-cols-3 sm:gap-4">
-                  <dt className="text-sm font-medium text-gray-500">
+                <div className="px-5 py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+                  <dt className="text-text-muted text-xs font-medium">
                     OIDC種別
                   </dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+                  <dd className="text-text-secondary mt-1 font-mono text-sm sm:col-span-2 sm:mt-0">
                     {tenant.oidcType}
                   </dd>
                 </div>
-                <div className="px-6 py-4 sm:grid sm:grid-cols-3 sm:gap-4">
-                  <dt className="text-sm font-medium text-gray-500">
+                <div className="px-5 py-3 sm:grid sm:grid-cols-3 sm:gap-4">
+                  <dt className="text-text-muted text-xs font-medium">
                     作成日時
                   </dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+                  <dd className="text-text-secondary mt-1 font-mono text-sm sm:col-span-2 sm:mt-0">
                     {tenant.createdAt.toLocaleString("ja-JP")}
                   </dd>
                 </div>
@@ -157,15 +157,15 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
             </div>
 
             {/* イメージ更新 */}
-            <div className="mt-8 rounded-lg border border-indigo-200 bg-indigo-50 p-6">
-              <h3 className="mb-1 text-sm font-semibold text-indigo-800">
+            <div className="border-border-default bg-bg-card mt-8 rounded-xl border p-5">
+              <h3 className="text-text-primary mb-1 text-sm font-semibold">
                 イメージ更新
               </h3>
-              <p className="mb-4 text-sm text-indigo-700">
+              <p className="text-text-secondary mb-4 text-sm">
                 internal-manager を最新イメージにアップグレードします。
               </p>
               {upgradeError && (
-                <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">
+                <div className="bg-badge-error-bg text-badge-error-text mb-4 rounded-lg p-3 text-sm">
                   {upgradeError}
                 </div>
               )}
@@ -173,18 +173,18 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
                 type="button"
                 onClick={() => upgradeTenant.mutate({ id: tenant.id })}
                 disabled={tenant.status !== "ACTIVE" || upgradeTenant.isPending}
-                className="min-h-[44px] rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                className="bg-btn-primary-bg text-btn-primary-text rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
               >
                 {upgradeTenant.isPending ? "更新中..." : "今すぐ更新"}
               </button>
             </div>
 
             {/* 危険ゾーン */}
-            <div className="mt-8 rounded-lg border border-red-200 bg-red-50 p-6">
-              <h3 className="mb-1 text-sm font-semibold text-red-800">
+            <div className="bg-badge-error-bg border-border-default mt-8 rounded-xl border p-5">
+              <h3 className="text-badge-error-text mb-1 text-sm font-semibold">
                 危険ゾーン
               </h3>
-              <p className="mb-4 text-sm text-red-700">
+              <p className="text-text-secondary mb-4 text-sm">
                 テナントを削除すると、k8s リソース・Helm
                 リリースが削除されます。この操作は取り消せません。
               </p>
@@ -196,7 +196,7 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
                   tenant.status === "DELETING" ||
                   tenant.status === "UPGRADING"
                 }
-                className="min-h-[44px] rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                className="bg-badge-error-text rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-50"
               >
                 テナントを削除
               </button>
@@ -216,29 +216,29 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
       {/* テナント削除確認ダイアログ */}
       {showDeleteDialog && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
           onClick={handleDeleteClose}
         >
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="delete-dialog-title"
-            className="mx-4 w-full max-w-md rounded-lg bg-white p-6"
+            className="bg-bg-card border-border-default mx-4 w-full max-w-md rounded-xl border p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <h2
               id="delete-dialog-title"
-              className="mb-2 text-lg font-semibold text-gray-900"
+              className="text-text-primary mb-2 text-lg font-semibold"
             >
               テナントを削除しますか？
             </h2>
-            <p className="mb-4 text-sm text-gray-600">
+            <p className="text-text-secondary mb-4 text-sm">
               この操作は取り消せません。k8s リソースおよび Helm
               リリースが完全に削除されます。
             </p>
-            <p className="mb-2 text-sm font-medium text-gray-700">
+            <p className="text-text-secondary mb-2 text-sm font-medium">
               確認のため{" "}
-              <span className="font-mono font-bold text-red-600">
+              <span className="text-badge-error-text font-mono font-bold">
                 {tenant.slug}
               </span>{" "}
               と入力してください
@@ -249,10 +249,10 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
               value={confirmSlug}
               onChange={(e) => setConfirmSlug(e.target.value)}
               placeholder={tenant.slug}
-              className="mb-4 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none"
+              className="bg-bg-input border-border-default text-text-primary placeholder:text-text-subtle mb-4 block w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-white/20"
             />
             {deleteError && (
-              <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">
+              <div className="bg-badge-error-bg text-badge-error-text mb-4 rounded-lg p-3 text-sm">
                 {deleteError}
               </div>
             )}
@@ -261,7 +261,7 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
                 type="button"
                 onClick={handleDeleteClose}
                 disabled={deleteTenant.isPending}
-                className="min-h-[44px] rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                className="border-border-default text-text-secondary rounded-lg border px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
               >
                 キャンセル
               </button>
@@ -269,7 +269,7 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
                 type="button"
                 onClick={() => deleteTenant.mutate({ id: tenant.id })}
                 disabled={deleteTenant.isPending || confirmSlug !== tenant.slug}
-                className="min-h-[44px] rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                className="bg-badge-error-text rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-50"
               >
                 {deleteTenant.isPending ? "削除中..." : "削除する"}
               </button>
