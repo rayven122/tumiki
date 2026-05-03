@@ -6,6 +6,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 THEMES_DIR="$SCRIPT_DIR/themes"
 KEYWIND_DIR="$THEMES_DIR/keywind"
+# Infisical Secret Scan が固定コミット SHA を generic API key と誤検知するため分割する。
 KEYWIND_COMMIT_PARTS=(
     "bdf966fdae"
     "0071ccd46d"
@@ -14,7 +15,7 @@ KEYWIND_COMMIT_PARTS=(
 )
 
 # keywindテーマが既に存在する場合はスキップ
-if [[ -d "$KEYWIND_DIR" && -f "$KEYWIND_DIR/login/resources/dist/index.css" ]]; then
+if [[ -d "$KEYWIND_DIR" && -f "$KEYWIND_DIR/login/resources/dist/index.css" && -f "$KEYWIND_DIR/login/resources/dist/index.js" ]]; then
     echo "✓ keywindテーマは既にインストール済みです"
     exit 0
 fi
@@ -27,7 +28,7 @@ trap 'rm -rf "$TEMP_DIR"' EXIT
 
 # keywindテーマをダウンロード
 echo "keywindテーマをダウンロード中..."
-git clone --quiet https://github.com/lukin/keywind.git "$TEMP_DIR/keywind-repo"
+git clone --filter=blob:none --no-checkout --quiet https://github.com/lukin/keywind.git "$TEMP_DIR/keywind-repo"
 cd "$TEMP_DIR/keywind-repo"
 git checkout --quiet "$(printf "%s" "${KEYWIND_COMMIT_PARTS[@]}")"
 
@@ -49,12 +50,8 @@ npx vite build || {
 # ビルド済みテーマをコピー
 mv "$TEMP_DIR/keywind-repo/theme/keywind" "$KEYWIND_DIR"
 
-# dist ディレクトリが存在しない場合は警告
-if [[ ! -d "$KEYWIND_DIR/login/resources/dist" ]]; then
-    echo "⚠ 警告: dist ディレクトリが生成されませんでした"
-    echo "   tumikiテーマは動作しない可能性があります"
-else
-    echo "✓ keywindテーマをインストールしました: $KEYWIND_DIR"
-fi
+test -f "$KEYWIND_DIR/login/resources/dist/index.css"
+test -f "$KEYWIND_DIR/login/resources/dist/index.js"
+echo "✓ keywindテーマをインストールしました: $KEYWIND_DIR"
 
 echo "=== テーマインストール完了 ==="
