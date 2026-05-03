@@ -183,11 +183,11 @@ jobs:
             host_port: 8080
             container_port: 8080
             health_path: /api/health
-            env_args: >-
-              -e KEYCLOAK_CLIENT_ID=test
-              -e KEYCLOAK_CLIENT_SECRET=test
-              -e KEYCLOAK_ISSUER=https://dummy.keycloak.local/realms/tumiki
-              -e DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
+            env_file: |
+              KEYCLOAK_CLIENT_ID=test
+              KEYCLOAK_CLIENT_SECRET=test
+              KEYCLOAK_ISSUER=https://dummy.keycloak.local/realms/tumiki
+              DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
           - app: mcp-proxy
             change_output: mcp_proxy
             image: tumiki-mcp-proxy
@@ -196,8 +196,8 @@ jobs:
             host_port: 8081
             container_port: 8080
             health_path: /health
-            env_args: >-
-              -e DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
+            env_file: |
+              DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
           - app: internal-manager
             change_output: internal_manager
             image: tumiki-internal-manager
@@ -206,14 +206,15 @@ jobs:
             host_port: 3100
             container_port: 3100
             health_path: /api/health
-            env_args: >-
-              -e OIDC_CLIENT_ID=test
-              -e OIDC_CLIENT_SECRET=test
-              -e OIDC_ISSUER=https://dummy.oidc.local
-              -e AUTH_SECRET=dummy-auth-secret-for-smoke-test
-              -e DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
+            env_file: |
+              OIDC_CLIENT_ID=test
+              OIDC_CLIENT_SECRET=test
+              OIDC_ISSUER=https://dummy.oidc.local
+              AUTH_SECRET=dummy-auth-secret-for-smoke-test
+              DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
     steps:
       - name: 📥 Checkout branch
+        if: needs.docker-smoke-changes.outputs[matrix.change_output] == 'true'
         uses: actions/checkout@v6
 
       - name: 🧱 Setup Docker Buildx
@@ -234,11 +235,19 @@ jobs:
       - name: 🚀 Start container
         if: needs.docker-smoke-changes.outputs[matrix.change_output] == 'true'
         run: |
+          # スモークテスト専用のダミーキー。実際の暗号化には使用しない。
           smoke_prisma_key="k1.aesgcm256.$(printf '12345678901234567890123456789012' | base64 | tr '+/' '-_' | tr -d '=')"
+          smoke_env_file="$(mktemp)"
+          trap 'rm -f "${smoke_env_file}"' EXIT
+          {
+            echo "PRISMA_FIELD_ENCRYPTION_KEY=${smoke_prisma_key}"
+            cat <<'EOF'
+          ${{ matrix.env_file }}
+          EOF
+          } > "${smoke_env_file}"
           docker run -d --name "${{ matrix.container }}" \
             -p "${{ matrix.host_port }}:${{ matrix.container_port }}" \
-            -e PRISMA_FIELD_ENCRYPTION_KEY="${smoke_prisma_key}" \
-            ${{ matrix.env_args }} \
+            --env-file "${smoke_env_file}" \
             "${{ matrix.image }}"
 
       - name: ✅ Wait and verify health endpoint
@@ -261,7 +270,7 @@ jobs:
         run: echo "No Docker smoke relevant changes for ${{ matrix.app }}."
 
       - name: 🧹 Cleanup container
-        if: always()
+        if: always() && needs.docker-smoke-changes.outputs[matrix.change_output] == 'true'
         run: docker rm -f "${{ matrix.container }}" || true
 
   docker-smoke-test:
