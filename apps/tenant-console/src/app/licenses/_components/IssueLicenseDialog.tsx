@@ -80,18 +80,18 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
     };
   }, []);
 
-  const handleFeatureToggle = (feature: AvailableFeature) => {
+  const handleFeatureToggle = useCallback((feature: AvailableFeature) => {
     setFeatures((prev) =>
       prev.includes(feature)
         ? prev.filter((f) => f !== feature)
         : [...prev, feature],
     );
-  };
+  }, []);
 
-  const handleTenantSelect = (id: string) => {
+  const handleTenantSelect = useCallback((id: string) => {
     setTenantId(id);
     setSubject(id);
-  };
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

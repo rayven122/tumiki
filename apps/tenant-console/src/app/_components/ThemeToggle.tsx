@@ -35,7 +35,7 @@ const ThemeToggle = ({ collapsed, initialTheme }: Props) => {
     const resolvedTheme = storedTheme ?? initialTheme;
     setTheme(resolvedTheme);
     applyTheme(resolvedTheme);
-    persistTheme(resolvedTheme);
+    if (!storedTheme) persistTheme(resolvedTheme);
   }, [initialTheme]);
 
   const nextTheme = theme === "dark" ? "light" : "dark";

@@ -1,4 +1,11 @@
-export const tenantStatusBadgeClass = (status: string) => {
+type TenantStatus =
+  | "PROVISIONING"
+  | "ACTIVE"
+  | "ERROR"
+  | "DELETING"
+  | "UPGRADING";
+
+export const tenantStatusBadgeClass = (status: TenantStatus) => {
   if (status === "ACTIVE") return "bg-badge-success-bg text-badge-success-text";
   if (status === "ERROR") return "bg-badge-error-bg text-badge-error-text";
   if (status === "DELETING" || status === "UPGRADING")
