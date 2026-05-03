@@ -47,27 +47,27 @@ export const getTumikiClaims = async (
   let removed = 0;
   let syncStatus: SyncStatus = SyncStatus.SUCCESS;
 
+  if (groupRoles === undefined) {
+    await db.idpSyncLog.create({
+      data: {
+        trigger: SyncTrigger.JIT,
+        status: syncStatus,
+        added,
+        removed,
+        completedAt: new Date(),
+      },
+    });
+
+    return {
+      org_slugs: [],
+      org_id: null,
+      org_slug: null,
+      roles: [user.role],
+      group_roles: undefined,
+    };
+  }
+
   try {
-    if (groupRoles === undefined) {
-      await db.idpSyncLog.create({
-        data: {
-          trigger: SyncTrigger.JIT,
-          status: syncStatus,
-          added,
-          removed,
-          completedAt: new Date(),
-        },
-      });
-
-      return {
-        org_slugs: [],
-        org_id: null,
-        org_slug: null,
-        roles: [user.role],
-        group_roles: undefined,
-      };
-    }
-
     // DB に登録済みの IDP グループのうち、今回のクレームに含まれるものを取得
     const idpGroups =
       groupRoles.length > 0

@@ -21,7 +21,7 @@ OIDC_CLIENT_SECRET=<KEYCLOAK_INTERNAL_MANAGER_CLIENT_SECRET>
 INTERNAL_MANAGER_BOOTSTRAP_ADMIN_EMAIL=admin@tumiki.local
 ```
 
-Infisical の `dev` 環境に別の OIDC 設定が入っている場合でも、ローカル Keycloak で起動するには以下を使います。
+Infisical の `dev` 環境に別の OIDC 設定が入っている場合でも、ローカル Keycloak で起動するには以下を使います。`dev:keycloak` は `KEYCLOAK_INTERNAL_MANAGER_CLIENT_SECRET` を `OIDC_CLIENT_SECRET` として渡します。
 
 ```bash
 cd apps/internal-manager
