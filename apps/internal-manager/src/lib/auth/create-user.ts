@@ -28,6 +28,37 @@ export const createUserOutputSchema = z.object({
 
 export type CreateUserOutput = z.infer<typeof createUserOutputSchema>;
 
+const normalizeEmail = (email: string) => email.trim().toLowerCase();
+
+const bootstrapAllowedEnvs = new Set(["development", "test"]);
+
+const isBootstrapAdminEmail = (email: string): boolean => {
+  if (!bootstrapAllowedEnvs.has(process.env.NODE_ENV ?? "")) return false;
+
+  const bootstrapAdminEmail =
+    process.env.INTERNAL_MANAGER_BOOTSTRAP_ADMIN_EMAIL;
+
+  return (
+    typeof bootstrapAdminEmail === "string" &&
+    normalizeEmail(bootstrapAdminEmail) === normalizeEmail(email)
+  );
+};
+
+const resolveRole = async (
+  tx: PrismaTransactionClient,
+  existingUserCount: number,
+  email: string,
+): Promise<Role> => {
+  if (existingUserCount === 0) return Role.SYSTEM_ADMIN;
+  if (!isBootstrapAdminEmail(email)) return Role.USER;
+
+  const existingSystemAdminCount = await tx.user.count({
+    where: { role: Role.SYSTEM_ADMIN },
+  });
+
+  return existingSystemAdminCount === 0 ? Role.SYSTEM_ADMIN : Role.USER;
+};
+
 /**
  * ユーザーを作成（Registry用簡素版）
  *
@@ -39,7 +70,7 @@ export const createUser = async (
 ): Promise<CreateUserOutput> => {
   // 初回セットアップは1ユーザー限定の単一フロー前提（同時サインアップ非対応）。
   const existingUserCount = await tx.user.count();
-  const role = existingUserCount === 0 ? Role.SYSTEM_ADMIN : Role.USER;
+  const role = await resolveRole(tx, existingUserCount, input.email);
 
   const createdUser = await tx.user.create({
     data: {

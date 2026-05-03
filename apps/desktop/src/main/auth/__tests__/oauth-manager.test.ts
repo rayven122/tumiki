@@ -162,6 +162,41 @@ describe("OAuthManager", () => {
       expect(mockDbAuthToken.create).toHaveBeenCalled();
     });
 
+    test("refresh tokenが返らないOIDCレスポンスでもトークンを保存する", async () => {
+      const tokenResponse = {
+        access_token: "access-token",
+        expires_in: 300,
+        token_type: "Bearer",
+      };
+      mockExchangeCodeForToken.mockResolvedValue(tokenResponse);
+      mockDbAuthToken.create.mockResolvedValue({
+        id: 1,
+        createdAt: new Date(),
+      });
+      mockDbAuthToken.deleteMany.mockResolvedValue({ count: 0 });
+
+      const manager = createTestOAuthManager();
+      await manager.startAuthFlow();
+
+      const authUrlCallArgs = mockGenerateAuthUrl.mock.calls[0]?.[0] as
+        | { state: string }
+        | undefined;
+      const state = authUrlCallArgs?.state ?? "";
+
+      await manager.handleAuthCallback(
+        `tumiki://auth/callback?code=auth-code&state=${state}`,
+      );
+
+      expect(mockDbAuthToken.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          accessToken: "encrypted:access-token",
+          refreshToken: null,
+          idToken: null,
+        }),
+      });
+      expect(mockRefreshToken).not.toHaveBeenCalled();
+    });
+
     test("OAuthエラーレスポンスの場合はエラーをスローする", async () => {
       const manager = createTestOAuthManager();
       await manager.startAuthFlow();
