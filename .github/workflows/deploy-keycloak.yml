@@ -84,11 +84,26 @@ jobs:
       - name: 🔒 Restrict secrets file permissions
         run: chmod 600 keycloak-tf.env
 
+      - name: 🧰 Download Terraform CLI
+        env:
+          TERRAFORM_VERSION: 1.14.6
+        run: |
+          curl -fsSLo /tmp/terraform.zip \
+            "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
+          curl -fsSLo /tmp/terraform_SHA256SUMS \
+            "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_SHA256SUMS"
+          TERRAFORM_SHA256=$(grep " terraform_${TERRAFORM_VERSION}_linux_amd64.zip$" /tmp/terraform_SHA256SUMS | awk '{print $1}')
+          echo "${TERRAFORM_SHA256}  /tmp/terraform.zip" | sha256sum -c -
+          unzip -q /tmp/terraform.zip -d /tmp/terraform-bin
+          chmod +x /tmp/terraform-bin/terraform
+
       - name: 📤 Transfer Terraform files
         run: |
           # 前回 cleanup が失敗していた場合に備えて既存 .env を削除（リカバリ）
           ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" \
-            "mkdir -p ~/keycloak-tf && rm -f ~/keycloak-tf/.env"
+            "mkdir -p ~/keycloak-tf ~/bin && rm -f ~/keycloak-tf/.env"
+          scp -p -i ~/.ssh/id_ed25519 /tmp/terraform-bin/terraform \
+            "${SSH_USER}@${KEYCLOAK_HOST}:~/bin/terraform"
           tar -czf - -C terraform/keycloak \
             --exclude='.terraform' --exclude='*.tfstate' --exclude='*.tfstate.*' \
             . | ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" \
@@ -108,6 +123,7 @@ jobs:
             set -euo pipefail
             set +o history
             DRY_RUN="$1"
+            export PATH="$HOME/bin:$PATH"
             cd ~/keycloak-tf
             set -a
             # shellcheck disable=SC1091
@@ -129,9 +145,9 @@ jobs:
           # デプロイ失敗時に VM 上に .env が残らないよう SSH 越しに確実に削除
           # SSH 鍵・設定を削除する前に実行する必要がある
           # 削除失敗時は warning を出して運用側で検知できるようにする（cleanup の失敗で job 自体は失敗扱いにしない）
-          ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=10 "${SSH_USER}@${KEYCLOAK_HOST}" 'rm -f ~/keycloak-tf/.env' \
+          ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=10 "${SSH_USER}@${KEYCLOAK_HOST}" 'rm -f ~/keycloak-tf/.env ~/bin/terraform' \
             || echo "::warning::VM上の .env 削除に失敗しました。手動確認が必要です"
-          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh keycloak-tf.env ~/.ssh/id_ed25519 ~/.ssh/config
+          rm -rf /tmp/cloudflared.deb /tmp/cf-proxy.sh /tmp/terraform.zip /tmp/terraform_SHA256SUMS /tmp/terraform-bin keycloak-tf.env ~/.ssh/id_ed25519 ~/.ssh/config
 
   deploy-production:
     name: 🔑 Deploy Keycloak Config to Production
