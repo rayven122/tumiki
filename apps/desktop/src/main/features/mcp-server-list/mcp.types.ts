@@ -25,6 +25,8 @@ export type McpConnectionItem = Omit<
   createdAt: string;
   updatedAt: string;
   catalog: Pick<McpCatalog, "id" | "name" | "description" | "iconPath"> | null;
+  /** この接続が提供するツールの件数（一覧画面のサマリ表示用） */
+  toolCount: number;
 };
 
 /**

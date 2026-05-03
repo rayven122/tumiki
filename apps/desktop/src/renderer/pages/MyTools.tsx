@@ -241,9 +241,7 @@ const ServerCard = ({
         {/* ツール数 + ステータス */}
         <div className="flex items-center justify-between">
           <span className="font-mono text-[9px] text-[var(--text-subtle)]">
-            {server.toolCount > 0
-              ? `${server.toolCount} tools`
-              : `${server.connections.length} 接続`}
+            {`${String(server.toolCount)} tools`}
           </span>
           <span className="rounded bg-[var(--bg-card-hover)] px-1.5 py-0.5 text-[8px] font-medium text-[var(--text-muted)]">
             {status.label}

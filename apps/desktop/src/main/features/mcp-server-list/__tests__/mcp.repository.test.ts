@@ -119,6 +119,32 @@ describe("mcp.repository（実DB）", () => {
       expect(result[0]!.connections[0]!.name).toBe("Test Connection");
     });
 
+    test("各接続に _count.tools が付与される（一覧画面のサマリ用）", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+      const connection = await mcpRepository.createConnection(
+        db,
+        buildConnectionData(server.id),
+      );
+      await mcpRepository.createTools(db, [
+        {
+          name: "tool-a",
+          description: "",
+          inputSchema: "{}",
+          connectionId: connection.id,
+        },
+        {
+          name: "tool-b",
+          description: "",
+          inputSchema: "{}",
+          connectionId: connection.id,
+        },
+      ]);
+
+      const result = await mcpRepository.findAllWithConnections(db);
+
+      expect(result[0]!.connections[0]!._count.tools).toBe(2);
+    });
+
     test("作成日時の降順で取得する", async () => {
       await mcpRepository.createServer(db, {
         ...serverData,
