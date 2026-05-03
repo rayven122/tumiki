@@ -10,6 +10,7 @@ import {
   DISCOVERY_ERROR_CODE,
   extractOAuthErrorCode,
 } from "../../shared/oauth/discovery-error-codes";
+import { parseArgsToJson } from "../../shared/parse-args";
 import {
   Select,
   SelectTrigger,
@@ -36,19 +37,6 @@ const TRANSPORT_LABEL: Record<TransportType, string> = {
   STDIO: "STDIO",
   STREAMABLE_HTTP: "Streamable HTTP",
   SSE: "SSE",
-};
-
-/** 引数文字列をJSON配列に変換（既にJSON配列ならそのまま、スペース区切りなら分割） */
-const parseArgsToJson = (input: string): string => {
-  if (!input) return "[]";
-  try {
-    const parsed: unknown = JSON.parse(input);
-    if (Array.isArray(parsed)) return input;
-    // 非配列のJSON（オブジェクト・数値等）はスペース区切りとして再解釈
-  } catch {
-    // JSONパース失敗 → スペース区切りとして分割
-  }
-  return JSON.stringify(input.split(/\s+/).filter(Boolean));
 };
 
 export const AddRemoteMcpModal = ({
