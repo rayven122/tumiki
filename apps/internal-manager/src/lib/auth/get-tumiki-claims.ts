@@ -54,6 +54,7 @@ export const getTumikiClaims = async (
         status: syncStatus,
         added,
         removed,
+        detail: "Skipped because the OIDC group_roles claim was not returned.",
         completedAt: new Date(),
       },
     });

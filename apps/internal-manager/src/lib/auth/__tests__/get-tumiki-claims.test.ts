@@ -128,6 +128,8 @@ describe("getTumikiClaims", () => {
           status: SyncStatus.SUCCESS,
           added: 0,
           removed: 0,
+          detail:
+            "Skipped because the OIDC group_roles claim was not returned.",
         }),
       });
     });
