@@ -3,6 +3,7 @@ import { z } from "zod";
 import * as mcpService from "./mcp.service";
 import type {
   CreateFromCatalogInput,
+  CreateCustomServerInput,
   CreateVirtualServerInput,
   UpdateServerInput,
   DeleteServerInput,
@@ -40,6 +41,14 @@ const createFromCatalogSchema = z.object({
   authType: z.enum(["NONE", "BEARER", "API_KEY", "OAUTH"]),
 }) satisfies z.ZodType<CreateFromCatalogInput>;
 
+const createCustomServerSchema = z.object({
+  serverName: z.string().min(1),
+  url: z.string().url({ message: "有効なURLを入力してください" }),
+  transportType: z.enum(["SSE", "STREAMABLE_HTTP"]),
+  authType: z.enum(["NONE", "API_KEY", "OAUTH"]),
+  credentials: z.record(z.string(), z.string()),
+}) satisfies z.ZodType<CreateCustomServerInput>;
+
 const createVirtualServerSchema = z.object({
   name: z.string().min(1),
   description: z.string(),
@@ -70,6 +79,28 @@ export const setupMcpIpc = (): void => {
         error instanceof Error ? error : { error },
       );
       throw new Error(`MCPサーバーの登録に失敗しました: ${message}`);
+    }
+  });
+
+  // カスタムURLでリモートMCPサーバーを登録
+  ipcMain.handle("mcp:createCustomServer", async (_, input: unknown) => {
+    try {
+      const validated = createCustomServerSchema.parse(input);
+      return await mcpService.createCustomServer(validated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const firstIssue = error.issues[0];
+        const field = firstIssue?.path.join(".") ?? "入力";
+        throw new Error(
+          `入力内容に問題があります: ${field} - ${firstIssue?.message ?? "不正な値"}`,
+        );
+      }
+      const message = error instanceof Error ? error.message : "不明なエラー";
+      logger.error(
+        "Failed to create custom MCP server",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error(`カスタムMCPサーバーの登録に失敗しました: ${message}`);
     }
   });
 

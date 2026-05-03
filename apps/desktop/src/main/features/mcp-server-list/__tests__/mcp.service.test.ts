@@ -1,6 +1,7 @@
 import { describe, test, expect, beforeEach, vi } from "vitest";
 import type {
   CreateFromCatalogInput,
+  CreateCustomServerInput,
   CreateVirtualServerInput,
 } from "../mcp.types";
 
@@ -317,6 +318,196 @@ describe("mcp.service", () => {
       await mcpService.createFromCatalog(input);
 
       expect(mcpRepository.createTools).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("createCustomServer", () => {
+    const input: CreateCustomServerInput = {
+      serverName: "My Remote MCP",
+      url: "https://mcp.example.com/stream",
+      transportType: "STREAMABLE_HTTP",
+      authType: "NONE",
+      credentials: {},
+    };
+
+    test("カスタムURLでサーバーが作成される（NONE認証、STREAMABLE_HTTP）", async () => {
+      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
+      vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
+      vi.mocked(mcpRepository.createServer).mockResolvedValue({
+        id: 1,
+      } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 100,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
+
+      const result = await mcpService.createCustomServer(input);
+
+      expect(result).toStrictEqual({
+        serverId: 1,
+        serverName: "My Remote MCP",
+      });
+      expect(mcpRepository.createServer).toHaveBeenCalledWith(mockDb, {
+        name: "My Remote MCP",
+        slug: "my-remote-mcp",
+        description: "",
+      });
+      expect(mcpRepository.createConnection).toHaveBeenCalledWith(mockDb, {
+        name: "My Remote MCP",
+        slug: "my-remote-mcp",
+        transportType: "STREAMABLE_HTTP",
+        command: null,
+        args: "[]",
+        url: "https://mcp.example.com/stream",
+        credentials: `encrypted:${JSON.stringify({})}`,
+        authType: "NONE",
+        serverId: 1,
+        catalogId: null,
+      });
+    });
+
+    test("APIキー認証でサーバーが作成される", async () => {
+      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
+      vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
+      vi.mocked(mcpRepository.createServer).mockResolvedValue({
+        id: 2,
+      } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 101,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
+
+      const apiKeyInput: CreateCustomServerInput = {
+        ...input,
+        authType: "API_KEY",
+        credentials: { API_KEY: "sk-12345" },
+      };
+
+      const result = await mcpService.createCustomServer(apiKeyInput);
+
+      expect(result).toStrictEqual({
+        serverId: 2,
+        serverName: "My Remote MCP",
+      });
+      expect(encryptToken).toHaveBeenCalledWith(
+        JSON.stringify({ API_KEY: "sk-12345" }),
+      );
+      expect(mcpRepository.createConnection).toHaveBeenCalledWith(
+        mockDb,
+        expect.objectContaining({
+          authType: "API_KEY",
+          credentials: `encrypted:${JSON.stringify({ API_KEY: "sk-12345" })}`,
+        }),
+      );
+    });
+
+    test("OAuth認証でサーバーが作成される", async () => {
+      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
+      vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
+      vi.mocked(mcpRepository.createServer).mockResolvedValue({
+        id: 3,
+      } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 102,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
+
+      const oauthInput: CreateCustomServerInput = {
+        ...input,
+        authType: "OAUTH",
+        credentials: { access_token: "oauth-token-abc" },
+      };
+
+      const result = await mcpService.createCustomServer(oauthInput);
+
+      expect(result).toStrictEqual({
+        serverId: 3,
+        serverName: "My Remote MCP",
+      });
+      expect(mcpRepository.createConnection).toHaveBeenCalledWith(
+        mockDb,
+        expect.objectContaining({
+          authType: "OAUTH",
+          credentials: `encrypted:${JSON.stringify({ access_token: "oauth-token-abc" })}`,
+        }),
+      );
+    });
+
+    test("重複名の場合サフィックスが付与される", async () => {
+      vi.mocked(mcpRepository.findServerByName)
+        .mockResolvedValueOnce({
+          id: 99,
+        } as Awaited<ReturnType<typeof mcpRepository.findServerByName>>)
+        .mockResolvedValueOnce(null);
+      vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
+      vi.mocked(mcpRepository.createServer).mockResolvedValue({
+        id: 4,
+      } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 103,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
+
+      const result = await mcpService.createCustomServer(input);
+
+      expect(result).toStrictEqual({
+        serverId: 4,
+        serverName: "My Remote MCP 2",
+      });
+      expect(mcpRepository.createServer).toHaveBeenCalledWith(
+        mockDb,
+        expect.objectContaining({
+          name: "My Remote MCP 2",
+          slug: "my-remote-mcp-2",
+        }),
+      );
+      expect(mcpRepository.createConnection).toHaveBeenCalledWith(
+        mockDb,
+        expect.objectContaining({
+          name: "My Remote MCP 2",
+          slug: "my-remote-mcp-2",
+        }),
+      );
+    });
+
+    test("ツール取得失敗してもサーバー登録は成功する", async () => {
+      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
+      vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
+      vi.mocked(mcpRepository.createServer).mockResolvedValue({
+        id: 5,
+      } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 104,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
+      vi.mocked(mcpProxyService.fetchToolsForConnection).mockRejectedValue(
+        new Error("MCP接続に失敗"),
+      );
+
+      const result = await mcpService.createCustomServer(input);
+
+      expect(result).toStrictEqual({
+        serverId: 5,
+        serverName: "My Remote MCP",
+      });
+      expect(mcpRepository.createTools).not.toHaveBeenCalled();
+    });
+
+    test("catalogIdがnullで作成される", async () => {
+      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
+      vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
+      vi.mocked(mcpRepository.createServer).mockResolvedValue({
+        id: 6,
+      } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 105,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
+
+      await mcpService.createCustomServer(input);
+
+      expect(mcpRepository.createConnection).toHaveBeenCalledWith(
+        mockDb,
+        expect.objectContaining({
+          catalogId: null,
+          command: null,
+          args: "[]",
+        }),
+      );
     });
   });
 

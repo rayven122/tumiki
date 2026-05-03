@@ -14,14 +14,14 @@ import type { TumikiClaims } from "./types";
  * @param userId Auth.js が生成する内部ユーザーID（User.id）
  * @param provider OIDCプロバイダーID（例: "oidc", "keycloak"）
  * @param oidcSub OIDCトークンのsub claim（ExternalIdentity管理用）
- * @param groupRoles OIDCトークンのグループクレーム（Group.externalIdと対応）
+ * @param groupRoles OIDCトークンのグループクレーム（undefinedの場合は同期をスキップ）
  */
 export const getTumikiClaims = async (
   db: PrismaTransactionClient,
   userId: string,
   provider: string,
   oidcSub: string,
-  groupRoles: string[] | undefined = [],
+  groupRoles: string[] | undefined,
 ): Promise<TumikiClaims | null> => {
   const user = await db.user
     .update({
@@ -34,7 +34,7 @@ export const getTumikiClaims = async (
   if (!user) return null;
 
   // ExternalIdentity の upsert（lastSyncedAt は @updatedAt で自動更新）
-  if (oidcSub) {
+  if (oidcSub !== "") {
     await db.externalIdentity.upsert({
       where: { provider_sub: { provider, sub: oidcSub } },
       create: { userId, provider, sub: oidcSub },
@@ -46,6 +46,27 @@ export const getTumikiClaims = async (
   let added = 0;
   let removed = 0;
   let syncStatus: SyncStatus = SyncStatus.SUCCESS;
+
+  if (groupRoles === undefined) {
+    await db.idpSyncLog.create({
+      data: {
+        trigger: SyncTrigger.JIT,
+        status: syncStatus,
+        added,
+        removed,
+        detail: "Skipped because the OIDC group_roles claim was not returned.",
+        completedAt: new Date(),
+      },
+    });
+
+    return {
+      org_slugs: [],
+      org_id: null,
+      org_slug: null,
+      roles: [user.role],
+      group_roles: undefined,
+    };
+  }
 
   try {
     // DB に登録済みの IDP グループのうち、今回のクレームに含まれるものを取得
