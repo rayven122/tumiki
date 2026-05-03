@@ -12,15 +12,8 @@ locals {
     "roles",
   ]
 
-  # Manager クライアント用デフォルトスコープ
-  manager_default_scopes = concat(local.base_scopes, [
-    "profile",
-    "email",
-    keycloak_openid_client_scope.tumiki_claims.name,
-  ])
-
-  # Internal Manager クライアント用デフォルトスコープ
-  internal_manager_default_scopes = concat(local.base_scopes, [
+  # 認証アプリ共通のデフォルトスコープ
+  authenticated_app_default_scopes = concat(local.base_scopes, [
     "profile",
     "email",
     keycloak_openid_client_scope.tumiki_claims.name,
@@ -29,13 +22,6 @@ locals {
   # Proxy クライアント用デフォルトスコープ
   proxy_default_scopes = concat(local.base_scopes, [
     keycloak_openid_client_scope.mcp_access.name,
-    keycloak_openid_client_scope.tumiki_claims.name,
-  ])
-
-  # Desktop クライアント用デフォルトスコープ
-  desktop_default_scopes = concat(local.base_scopes, [
-    "profile",
-    "email",
     keycloak_openid_client_scope.tumiki_claims.name,
   ])
 
@@ -81,7 +67,7 @@ resource "keycloak_openid_client" "manager" {
 resource "keycloak_openid_client_default_scopes" "manager_default_scopes" {
   realm_id       = keycloak_realm.tumiki.id
   client_id      = keycloak_openid_client.manager.id
-  default_scopes = local.manager_default_scopes
+  default_scopes = local.authenticated_app_default_scopes
 }
 
 # =============================================================================
@@ -120,7 +106,7 @@ resource "keycloak_openid_client" "internal_manager" {
 resource "keycloak_openid_client_default_scopes" "internal_manager_default_scopes" {
   realm_id       = keycloak_realm.tumiki.id
   client_id      = keycloak_openid_client.internal_manager.id
-  default_scopes = local.internal_manager_default_scopes
+  default_scopes = local.authenticated_app_default_scopes
 }
 
 # =============================================================================
@@ -220,5 +206,5 @@ resource "keycloak_openid_client" "desktop" {
 resource "keycloak_openid_client_default_scopes" "desktop_default_scopes" {
   realm_id       = keycloak_realm.tumiki.id
   client_id      = keycloak_openid_client.desktop.id
-  default_scopes = local.desktop_default_scopes
+  default_scopes = local.authenticated_app_default_scopes
 }
