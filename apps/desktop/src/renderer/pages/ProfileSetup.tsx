@@ -87,7 +87,7 @@ export const ProfileSetup = (): JSX.Element => {
         err instanceof Error ? err.message : "個人利用の設定に失敗しました",
       );
     } finally {
-      setIsSubmitting(false);
+      if (mountedRef.current) setIsSubmitting(false);
     }
   };
 
