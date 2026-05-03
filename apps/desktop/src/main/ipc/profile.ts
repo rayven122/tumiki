@@ -9,6 +9,13 @@ import { getOAuthManager, setOAuthManager } from "../auth/manager-registry";
 import * as logger from "../shared/utils/logger";
 import type { ProfileState } from "../../shared/types";
 
+const stopOAuthManager = (): void => {
+  const manager = getOAuthManager();
+  manager?.cancelAuthFlow();
+  manager?.stopAutoRefresh();
+  setOAuthManager(null);
+};
+
 export const setupProfileIpc = (): void => {
   ipcMain.handle("profile:getState", () => getProfileState());
 
@@ -28,10 +35,7 @@ export const setupProfileIpc = (): void => {
       });
     }
 
-    const manager = getOAuthManager();
-    manager?.cancelAuthFlow();
-    manager?.stopAutoRefresh();
-    setOAuthManager(null);
+    stopOAuthManager();
 
     return profileState;
   });
@@ -48,10 +52,7 @@ export const setupProfileIpc = (): void => {
       throw new Error("組織利用の停止に失敗しました", { cause: error });
     }
 
-    const manager = getOAuthManager();
-    manager?.cancelAuthFlow();
-    manager?.stopAutoRefresh();
-    setOAuthManager(null);
+    stopOAuthManager();
 
     try {
       const db = await getDb();

@@ -114,7 +114,6 @@ export const ProfileSetup = (): JSX.Element => {
     try {
       await window.electronAPI.profile.cancelOrganizationSetup();
     } catch (err) {
-      console.error("組織セットアップのキャンセルに失敗しました", err);
       cancelError =
         err instanceof Error
           ? err.message
