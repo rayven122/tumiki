@@ -40,6 +40,7 @@ export type CreateMcpToolInput = {
 
 /**
  * MCPサーバーを接続情報付きで全件取得
+ * 接続ごとのツール数は `_count.tools` で取得し、ツール本体はロードしない（一覧表示の負荷削減）
  */
 export const findAllWithConnections = async (db: DbClient) => {
   return db.mcpServer.findMany({
@@ -48,6 +49,9 @@ export const findAllWithConnections = async (db: DbClient) => {
         include: {
           catalog: {
             select: { id: true, name: true, description: true, iconPath: true },
+          },
+          _count: {
+            select: { tools: true },
           },
         },
       },

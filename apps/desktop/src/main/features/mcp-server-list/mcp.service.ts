@@ -287,6 +287,7 @@ export const createVirtualServer = async (
 
 /**
  * 登録済みMCPサーバー一覧を取得
+ * 接続ごとに Prisma の `_count.tools` を平坦化した `toolCount` を付与する
  */
 export const getAllServers = async () => {
   const db = await getDb();
@@ -295,12 +296,16 @@ export const getAllServers = async () => {
     servers.map(async (server) => ({
       ...server,
       connections: await Promise.all(
-        server.connections.map(async (conn) => ({
-          ...conn,
-          credentials: conn.credentials
-            ? await decryptCredentials(conn.credentials)
-            : conn.credentials,
-        })),
+        server.connections.map(async (conn) => {
+          const { _count, ...rest } = conn;
+          return {
+            ...rest,
+            credentials: conn.credentials
+              ? await decryptCredentials(conn.credentials)
+              : conn.credentials,
+            toolCount: _count.tools,
+          };
+        }),
       ),
     })),
   );

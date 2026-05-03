@@ -767,7 +767,7 @@ describe("mcp.service", () => {
   });
 
   describe("getAllServers", () => {
-    test("全サーバーを取得する", async () => {
+    test("全サーバーを取得する（接続なし）", async () => {
       const mockServers = [
         { id: 1, name: "Server A", connections: [] },
         { id: 2, name: "Server B", connections: [] },
@@ -790,8 +790,16 @@ describe("mcp.service", () => {
           id: 1,
           name: "Server A",
           connections: [
-            { id: 1, credentials: "safe:encrypted-data" },
-            { id: 2, credentials: "fallback:encrypted-data" },
+            {
+              id: 1,
+              credentials: "safe:encrypted-data",
+              _count: { tools: 0 },
+            },
+            {
+              id: 2,
+              credentials: "fallback:encrypted-data",
+              _count: { tools: 0 },
+            },
           ],
         },
       ];
@@ -821,7 +829,9 @@ describe("mcp.service", () => {
         {
           id: 1,
           name: "Server A",
-          connections: [{ id: 1, credentials: plainCredentials }],
+          connections: [
+            { id: 1, credentials: plainCredentials, _count: { tools: 0 } },
+          ],
         },
       ];
       vi.mocked(mcpRepository.findAllWithConnections).mockResolvedValue(
@@ -834,6 +844,31 @@ describe("mcp.service", () => {
       const result = await mcpService.getAllServers();
 
       expect(result[0]?.connections[0]?.credentials).toBe(plainCredentials);
+    });
+
+    test("Prisma の _count.tools を toolCount に平坦化する（_count は除去される）", async () => {
+      const mockServers = [
+        {
+          id: 1,
+          name: "Server A",
+          connections: [
+            { id: 10, credentials: "{}", _count: { tools: 3 } },
+            { id: 11, credentials: "{}", _count: { tools: 0 } },
+          ],
+        },
+      ];
+      vi.mocked(mcpRepository.findAllWithConnections).mockResolvedValue(
+        mockServers as unknown as Awaited<
+          ReturnType<typeof mcpRepository.findAllWithConnections>
+        >,
+      );
+
+      const result = await mcpService.getAllServers();
+
+      expect(result[0]?.connections[0]?.toolCount).toBe(3);
+      expect(result[0]?.connections[1]?.toolCount).toBe(0);
+      // _count は IPC 通信用の整形時に除去される
+      expect(result[0]?.connections[0]).not.toHaveProperty("_count");
     });
   });
 

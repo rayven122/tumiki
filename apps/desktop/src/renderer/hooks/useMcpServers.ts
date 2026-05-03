@@ -7,7 +7,7 @@ const POLLING_INTERVAL_MS = 5000;
 
 /** サーバー情報（DB状態ベース） */
 export type McpServerWithRuntime = McpServerItem & {
-  /** ツール数（接続数で代用） */
+  /** サーバー全体のツール総数（全接続のtoolCount合算） */
   toolCount: number;
 };
 
@@ -23,7 +23,10 @@ export const useMcpServers = () => {
       setServers(
         dbServers.map((server) => ({
           ...server,
-          toolCount: server.connections.length,
+          toolCount: server.connections.reduce(
+            (sum, conn) => sum + conn.toolCount,
+            0,
+          ),
         })),
       );
     } catch (error) {
