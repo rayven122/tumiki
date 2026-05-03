@@ -65,7 +65,6 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
     resetForm();
   }, [resetForm]);
 
-  // Escape キーでダイアログを閉じる
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -75,7 +74,6 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, handleClose]);
 
-  // コピータイマーのクリーンアップ
   useEffect(() => {
     return () => {
       if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
@@ -90,7 +88,6 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
     );
   };
 
-  // TENANT タイプでテナント選択時に subject と tenantId を同値にセット
   const handleTenantSelect = (id: string) => {
     setTenantId(id);
     setSubject(id);
@@ -138,7 +135,6 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
 
   return (
     <>
-      {/* トリガーボタンは常に表示（isOpen に関わらず） */}
       <button
         type="button"
         onClick={handleOpen}
@@ -147,7 +143,6 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
         ライセンス発行
       </button>
 
-      {/* モーダル部分のみ isOpen で制御。オーバーレイクリックで閉じる */}
       {isOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
@@ -161,7 +156,6 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
             className="bg-bg-card border-border-default mx-4 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* 発行完了画面 */}
             {issuedToken ? (
               <div>
                 <h2
@@ -207,7 +201,6 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                 </div>
               </div>
             ) : (
-              /* 発行フォーム */
               <form onSubmit={handleSubmit}>
                 <h2
                   id="issue-dialog-title"
@@ -216,7 +209,6 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                   ライセンス発行
                 </h2>
 
-                {/* 種別（テナント固定の場合は非表示） */}
                 {!defaultTenantId && (
                   <div className="mb-4">
                     <label className="text-text-secondary block text-sm font-medium">
@@ -251,7 +243,6 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                   </div>
                 )}
 
-                {/* Subject */}
                 <div className="mb-4">
                   <label
                     htmlFor="subject"
@@ -267,7 +258,7 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                       onChange={(e) => setSubject(e.target.value)}
                       required
                       placeholder="user@example.com"
-                      className="bg-bg-input border-border-default text-text-primary placeholder:text-text-subtle mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-white/20"
+                      className="bg-bg-input border-border-default text-text-primary placeholder:text-text-subtle focus:border-border-focus mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none"
                     />
                   ) : (
                     <select
@@ -275,7 +266,7 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                       value={tenantId}
                       onChange={(e) => handleTenantSelect(e.target.value)}
                       required
-                      className="bg-bg-input border-border-default text-text-primary mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-white/20"
+                      className="bg-bg-input border-border-default text-text-primary focus:border-border-focus mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none"
                     >
                       <option value="">テナントを選択</option>
                       {tenants.map((t) => (
@@ -287,7 +278,6 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                   )}
                 </div>
 
-                {/* Features */}
                 <div className="mb-4">
                   <label className="text-text-secondary block text-sm font-medium">
                     Features <span className="text-badge-error-text">*</span>
@@ -317,7 +307,6 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                   )}
                 </div>
 
-                {/* 有効期限（日数） */}
                 <div className="mb-4">
                   <label
                     htmlFor="ttlDays"
@@ -334,11 +323,10 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                     min={1}
                     max={730}
                     required
-                    className="bg-bg-input border-border-default text-text-primary mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-white/20"
+                    className="bg-bg-input border-border-default text-text-primary focus:border-border-focus mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none"
                   />
                 </div>
 
-                {/* プラン */}
                 <div className="mb-4">
                   <label
                     htmlFor="plan"
@@ -351,11 +339,10 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                     type="text"
                     value={plan}
                     onChange={(e) => setPlan(e.target.value)}
-                    className="bg-bg-input border-border-default text-text-primary mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-white/20"
+                    className="bg-bg-input border-border-default text-text-primary focus:border-border-focus mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none"
                   />
                 </div>
 
-                {/* メモ */}
                 <div className="mb-4">
                   <label
                     htmlFor="notes"
@@ -368,7 +355,7 @@ const IssueLicenseDialog = ({ tenants, defaultTenantId }: Props) => {
                     rows={3}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    className="bg-bg-input border-border-default text-text-primary mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-white/20"
+                    className="bg-bg-input border-border-default text-text-primary focus:border-border-focus mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none"
                   />
                 </div>
 

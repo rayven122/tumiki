@@ -10,6 +10,7 @@
   --color-bg-active: rgba(255, 255, 255, 0.08);
   --color-bg-input: rgba(255, 255, 255, 0.03);
   --color-border-default: rgba(255, 255, 255, 0.08);
+  --color-border-focus: rgba(255, 255, 255, 0.2);
   --color-border-subtle: rgba(255, 255, 255, 0.03);
   --color-text-primary: #ffffff;
   --color-text-secondary: #a1a1aa;
@@ -35,6 +36,7 @@
   --color-bg-active: rgba(0, 0, 0, 0.06);
   --color-bg-input: rgba(0, 0, 0, 0.02);
   --color-border-default: #e5e7eb;
+  --color-border-focus: rgba(0, 0, 0, 0.3);
   --color-border-subtle: #f3f4f6;
   --color-text-primary: #111827;
   --color-text-secondary: #4b5563;

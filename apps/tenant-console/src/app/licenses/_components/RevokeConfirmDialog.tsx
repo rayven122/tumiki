@@ -38,7 +38,6 @@ const RevokeConfirmDialog = ({
     onClose();
   }, [onClose]);
 
-  // Escape キーでダイアログを閉じる
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") handleClose();
@@ -53,7 +52,6 @@ const RevokeConfirmDialog = ({
   };
 
   return (
-    // オーバーレイクリックで閉じる
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
       onClick={handleClose}
@@ -91,7 +89,7 @@ const RevokeConfirmDialog = ({
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="失効理由を入力（任意）"
-            className="bg-bg-input border-border-default text-text-primary placeholder:text-text-subtle mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-white/20"
+            className="bg-bg-input border-border-default text-text-primary placeholder:text-text-subtle focus:border-border-focus mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none"
           />
         </div>
 

@@ -11,6 +11,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { api, type RouterOutputs } from "@/trpc/react";
+import { tenantStatusBadgeClass } from "./tenantStyles";
 
 type Tenant = RouterOutputs["tenant"]["list"][number];
 type PodRows = RouterOutputs["monitoring"]["pods"];
@@ -19,14 +20,6 @@ type PodRow = PodRows[number];
 type Props = {
   tenants: Tenant[];
   initialPodRows: PodRows | null;
-};
-
-const statusBadgeClass = (status: string) => {
-  if (status === "ACTIVE") return "bg-badge-success-bg text-badge-success-text";
-  if (status === "ERROR") return "bg-badge-error-bg text-badge-error-text";
-  if (status === "DELETING" || status === "UPGRADING")
-    return "bg-badge-warn-bg text-badge-warn-text";
-  return "bg-bg-active text-text-muted";
 };
 
 const phaseBadgeClass = (phase: string, ready: boolean) => {
@@ -212,7 +205,7 @@ const TenantOperationsTable = ({ tenants, initialPodRows }: Props) => {
                       {tenant.domain}
                     </span>
                     <span
-                      className={`w-fit rounded-full px-2 py-0.5 text-[10px] font-medium ${statusBadgeClass(tenant.status)}`}
+                      className={`w-fit rounded-full px-2 py-0.5 text-[10px] font-medium ${tenantStatusBadgeClass(tenant.status)}`}
                     >
                       {tenant.status}
                     </span>

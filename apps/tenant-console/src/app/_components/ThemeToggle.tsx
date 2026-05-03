@@ -5,7 +5,7 @@ import { Moon, Sun } from "lucide-react";
 
 export type Theme = "dark" | "light";
 
-const STORAGE_KEY = "tenant-console-theme";
+export const THEME_STORAGE_KEY = "tenant-console-theme";
 const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
 const applyTheme = (theme: Theme) => {
@@ -13,22 +13,21 @@ const applyTheme = (theme: Theme) => {
 };
 
 const readStoredTheme = (): Theme | null => {
-  const stored = window.localStorage.getItem(STORAGE_KEY);
+  const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
   return stored === "light" || stored === "dark" ? stored : null;
 };
 
 const persistTheme = (theme: Theme) => {
-  window.localStorage.setItem(STORAGE_KEY, theme);
-  document.cookie = `${STORAGE_KEY}=${theme}; path=/; max-age=${COOKIE_MAX_AGE_SECONDS}; samesite=lax`;
+  window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+  document.cookie = `${THEME_STORAGE_KEY}=${theme}; path=/; max-age=${COOKIE_MAX_AGE_SECONDS}; samesite=lax`;
 };
 
-const ThemeToggle = ({
-  collapsed,
-  initialTheme,
-}: {
+type Props = {
   collapsed: boolean;
   initialTheme: Theme;
-}) => {
+};
+
+const ThemeToggle = ({ collapsed, initialTheme }: Props) => {
   const [theme, setTheme] = useState<Theme>(initialTheme);
 
   useEffect(() => {

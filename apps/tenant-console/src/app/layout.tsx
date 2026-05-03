@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import "./globals.css";
 import { TRPCReactProvider } from "@/trpc/react";
-import type { Theme } from "./_components/ThemeToggle";
+import { THEME_STORAGE_KEY, type Theme } from "./_components/ThemeToggle";
 import TenantConsoleSidebar from "./_components/TenantConsoleSidebar";
 
 export const metadata: Metadata = {
@@ -15,9 +15,7 @@ const RootLayout = async ({
 }: Readonly<{ children: React.ReactNode }>) => {
   const cookieStore = await cookies();
   const initialTheme: Theme =
-    cookieStore.get("tenant-console-theme")?.value === "light"
-      ? "light"
-      : "dark";
+    cookieStore.get(THEME_STORAGE_KEY)?.value === "light" ? "light" : "dark";
 
   return (
     <html lang="ja" data-theme={initialTheme}>

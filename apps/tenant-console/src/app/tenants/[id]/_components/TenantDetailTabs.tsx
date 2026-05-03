@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { api, type RouterOutputs } from "@/trpc/react";
+import { tenantStatusBadgeClass } from "@/app/tenants/_components/tenantStyles";
 import TenantLicenseTab from "./TenantLicenseTab";
 
 type Tenant = RouterOutputs["tenant"]["get"];
@@ -70,7 +71,6 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
 
   return (
     <div>
-      {/* タブナビゲーション */}
       <div className="border-b-border-default border-b">
         <nav className="-mb-px flex gap-4">
           <button
@@ -98,7 +98,6 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
         </nav>
       </div>
 
-      {/* タブコンテンツ */}
       <div className="mt-6">
         {activeTab === "overview" && (
           <div>
@@ -124,17 +123,7 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
                   </dt>
                   <dd className="mt-1 sm:col-span-2 sm:mt-0">
                     <span
-                      className={`inline-flex rounded-full px-2 text-xs leading-5 font-semibold ${
-                        tenant.status === "ACTIVE"
-                          ? "bg-badge-success-bg text-badge-success-text"
-                          : tenant.status === "ERROR"
-                            ? "bg-badge-error-bg text-badge-error-text"
-                            : tenant.status === "DELETING"
-                              ? "bg-badge-warn-bg text-badge-warn-text"
-                              : tenant.status === "UPGRADING"
-                                ? "bg-badge-warn-bg text-badge-warn-text"
-                                : "bg-bg-active text-text-muted"
-                      }`}
+                      className={`inline-flex rounded-full px-2 text-xs leading-5 font-semibold ${tenantStatusBadgeClass(tenant.status)}`}
                     >
                       {tenant.status}
                     </span>
@@ -159,7 +148,6 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
               </dl>
             </div>
 
-            {/* イメージ更新 */}
             <div className="border-border-default bg-bg-card mt-8 rounded-xl border p-5">
               <h3 className="text-text-primary mb-1 text-sm font-semibold">
                 イメージ更新
@@ -182,7 +170,6 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
               </button>
             </div>
 
-            {/* 危険ゾーン */}
             <div className="bg-badge-error-bg border-border-default mt-8 rounded-xl border p-5">
               <h3 className="text-badge-error-text mb-1 text-sm font-semibold">
                 危険ゾーン
@@ -216,7 +203,6 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
         )}
       </div>
 
-      {/* テナント削除確認ダイアログ */}
       {showDeleteDialog && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
@@ -252,7 +238,7 @@ const TenantDetailTabs = ({ tenant, initialLicenses }: Props) => {
               value={confirmSlug}
               onChange={(e) => setConfirmSlug(e.target.value)}
               placeholder={tenant.slug}
-              className="bg-bg-input border-border-default text-text-primary placeholder:text-text-subtle mb-4 block w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-white/20"
+              className="bg-bg-input border-border-default text-text-primary placeholder:text-text-subtle focus:border-border-focus mb-4 block w-full rounded-lg border px-3 py-2 text-sm outline-none"
             />
             {deleteError && (
               <div className="bg-badge-error-bg text-badge-error-text mb-4 rounded-lg p-3 text-sm">

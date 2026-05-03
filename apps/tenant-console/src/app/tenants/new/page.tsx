@@ -4,14 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/trpc/react";
 
-/** テナント作成完了後に表示する初期管理者パスワードモーダルの Props */
 type InitialAdminPasswordModalProps = {
   email: string;
   password: string;
   onClose: () => void;
 };
 
-/** 初期管理者パスワードを一度だけ表示するモーダル */
 const InitialAdminPasswordModal = ({
   email,
   password,
@@ -110,7 +108,6 @@ const NewTenantPage = () => {
   const [oidcDesktopClientId, setOidcDesktopClientId] = useState("");
   const [imageTag, setImageTag] = useState("main");
   const [error, setError] = useState<string | null>(null);
-  /** 初期管理者パスワードモーダルの表示制御 */
   const [adminPasswordInfo, setAdminPasswordInfo] = useState<{
     email: string;
     password: string;
@@ -118,7 +115,6 @@ const NewTenantPage = () => {
 
   const createTenant = api.tenant.create.useMutation({
     onSuccess: (data) => {
-      // 初期管理者パスワードが返された場合はモーダルで表示する
       if (data.initialAdminPassword) {
         setAdminPasswordInfo({
           email: initialAdminEmail,
@@ -153,7 +149,6 @@ const NewTenantPage = () => {
 
   return (
     <div className="p-6">
-      {/* 初期管理者パスワードモーダル */}
       {adminPasswordInfo && (
         <InitialAdminPasswordModal
           email={adminPasswordInfo.email}
@@ -195,7 +190,7 @@ const NewTenantPage = () => {
               maxLength={50}
               required
               placeholder="company-a"
-              className="bg-bg-input border-border-default text-text-primary placeholder:text-text-subtle mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-white/20"
+              className="bg-bg-input border-border-default text-text-primary placeholder:text-text-subtle focus:border-border-focus mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none"
             />
             {slug && (
               <p className="text-text-muted mt-1 text-xs">
@@ -237,7 +232,6 @@ const NewTenantPage = () => {
             </div>
           </div>
 
-          {/* Keycloak 選択時のみ初期管理者メールアドレスを表示 */}
           {oidcType === "KEYCLOAK" && (
             <div>
               <label
@@ -257,7 +251,7 @@ const NewTenantPage = () => {
                 onChange={(e) => setInitialAdminEmail(e.target.value)}
                 required
                 placeholder="admin@example.com"
-                className="bg-bg-input border-border-default text-text-primary placeholder:text-text-subtle mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-white/20"
+                className="bg-bg-input border-border-default text-text-primary placeholder:text-text-subtle focus:border-border-focus mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none"
               />
             </div>
           )}
@@ -281,7 +275,7 @@ const NewTenantPage = () => {
                   onChange={(e) => setOidcIssuer(e.target.value)}
                   required
                   placeholder="https://accounts.example.com"
-                  className="bg-bg-card border-border-default text-text-primary placeholder:text-text-subtle mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-white/20"
+                  className="bg-bg-card border-border-default text-text-primary placeholder:text-text-subtle focus:border-border-focus mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none"
                 />
               </div>
               <div>
@@ -298,7 +292,7 @@ const NewTenantPage = () => {
                   onChange={(e) => setOidcClientId(e.target.value)}
                   required
                   autoComplete="off"
-                  className="bg-bg-card border-border-default text-text-primary mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-white/20"
+                  className="bg-bg-card border-border-default text-text-primary focus:border-border-focus mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none"
                 />
               </div>
               <div>
@@ -315,7 +309,7 @@ const NewTenantPage = () => {
                   onChange={(e) => setOidcClientSecret(e.target.value)}
                   required
                   autoComplete="new-password"
-                  className="bg-bg-card border-border-default text-text-primary mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-white/20"
+                  className="bg-bg-card border-border-default text-text-primary focus:border-border-focus mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none"
                 />
               </div>
               <div>
@@ -336,7 +330,7 @@ const NewTenantPage = () => {
                   onChange={(e) => setOidcDesktopClientId(e.target.value)}
                   required
                   autoComplete="off"
-                  className="bg-bg-card border-border-default text-text-primary mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-white/20"
+                  className="bg-bg-card border-border-default text-text-primary focus:border-border-focus mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none"
                 />
               </div>
             </div>
@@ -356,7 +350,7 @@ const NewTenantPage = () => {
               onChange={(e) => setImageTag(e.target.value)}
               pattern="[a-zA-Z0-9._-]+"
               maxLength={128}
-              className="bg-bg-input border-border-default text-text-primary mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-white/20"
+              className="bg-bg-input border-border-default text-text-primary focus:border-border-focus mt-1 block w-full rounded-lg border px-3 py-2 text-sm outline-none"
             />
             <p className="text-text-muted mt-1 text-xs">
               通常 main を使用。特定バージョンを指定したい場合のみ変更

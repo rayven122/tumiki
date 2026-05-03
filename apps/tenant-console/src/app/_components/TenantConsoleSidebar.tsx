@@ -20,13 +20,17 @@ const NAV_ITEMS = [
 const isActivePath = (pathname: string, path: string) =>
   pathname === path || pathname.startsWith(`${path}/`);
 
-const TenantConsoleSidebar = ({ initialTheme }: { initialTheme: Theme }) => {
+type Props = {
+  initialTheme: Theme;
+};
+
+const TenantConsoleSidebar = ({ initialTheme }: Props) => {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
 
   return (
     <aside
-      className={`bg-bg-app border-r-border-default flex min-h-screen shrink-0 flex-col border-r py-3 transition-all duration-200 ${collapsed ? "w-14" : "w-[220px]"}`}
+      className={`bg-bg-app border-r-border-default flex h-full shrink-0 flex-col border-r py-3 transition-all duration-200 ${collapsed ? "w-14" : "w-[220px]"}`}
     >
       <div className="border-b-border-default flex items-center justify-between border-b px-3 pb-3">
         {!collapsed && (
