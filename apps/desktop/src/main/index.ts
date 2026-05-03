@@ -22,6 +22,7 @@ import { setupOAuthIpc } from "./features/oauth/oauth.ipc";
 import { isMcpOAuthCallback } from "./features/oauth/oauth.protocol";
 import type { McpOAuthManager } from "./features/oauth/oauth.service";
 import { setupManagerIpc, fetchManagerOidcConfig } from "./ipc/manager";
+import { setupProfileIpc } from "./ipc/profile";
 import { setupShellIpc } from "./ipc/shell";
 import { getAppStore } from "./shared/app-store";
 import { ServerStatus } from "@prisma/desktop-client";
@@ -503,6 +504,7 @@ if (isMcpProxyMode) {
       setupOAuthIpc(mcpOAuthManager);
 
       // IPC ハンドラー登録
+      setupProfileIpc();
       setupManagerIpc(initOAuthManagerFromUrl);
       setupAuthIpc();
       setupCatalogIpc();

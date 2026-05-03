@@ -34,7 +34,13 @@ const useTimeouts = () => {
   return useMemo(() => ({ set, clear, clearAll }), [set, clear, clearAll]);
 };
 
-export const SettingsForm = (): React.ReactElement => {
+type SettingsFormProps = {
+  onManagerConnected?: () => void;
+};
+
+export const SettingsForm = ({
+  onManagerConnected,
+}: SettingsFormProps): React.ReactElement => {
   const [config, setConfig] = useAtom(appConfigAtom);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -62,6 +68,8 @@ export const SettingsForm = (): React.ReactElement => {
     try {
       await window.electronAPI.manager.connect(managerUrl.trim());
       setConnectSuccess("管理サーバーに接続しました");
+      onManagerConnected?.();
+      window.dispatchEvent(new Event("profile:changed"));
       timeouts.set("connectSuccess", () => setConnectSuccess(null), 3000);
     } catch (err) {
       setConnectError(

@@ -53,6 +53,39 @@
                 });
             },
           },
+          profile: {
+            getState: () =>
+              Promise.resolve({
+                activeProfile: _savedUrl ? "organization" : null,
+                organizationProfile: _savedUrl
+                  ? {
+                      managerUrl: _savedUrl,
+                      connectedAt: new Date().toISOString(),
+                    }
+                  : null,
+                hasCompletedInitialProfileSetup: Boolean(_savedUrl),
+              }),
+            selectPersonal: () =>
+              Promise.resolve({
+                activeProfile: "personal",
+                organizationProfile: null,
+                hasCompletedInitialProfileSetup: true,
+              }),
+            startOrganizationSetup: () =>
+              Promise.resolve({
+                activeProfile: null,
+                organizationProfile: null,
+                hasCompletedInitialProfileSetup: false,
+              }),
+            disconnectOrganization: () => {
+              _savedUrl = null;
+              return Promise.resolve({
+                activeProfile: null,
+                organizationProfile: null,
+                hasCompletedInitialProfileSetup: false,
+              });
+            },
+          },
           catalog: { getAll: () => Promise.resolve([]) },
           mcp: {
             getAll: () => Promise.resolve([]),
@@ -87,6 +120,9 @@
             cancelAuth: () => Promise.resolve(),
             onOAuthSuccess: () => () => {},
             onOAuthError: () => () => {},
+          },
+          shell: {
+            openExternal: () => Promise.resolve(),
           },
         };
         console.log("[dev-mock] window.electronAPI が注入されました");

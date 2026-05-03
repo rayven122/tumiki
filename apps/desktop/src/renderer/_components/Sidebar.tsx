@@ -1,4 +1,5 @@
 import type { JSX } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAtom } from "jotai";
 import {
@@ -13,8 +14,14 @@ import {
   PanelLeft,
   Sparkles,
   Plug,
+  Building2,
+  User,
+  Users,
+  Shield,
+  ClipboardCheck,
 } from "lucide-react";
 import { themeAtom, sidebarOpenAtom } from "../store/atoms";
+import type { ProfileState } from "../../shared/types";
 
 type NavItem = {
   path: string;
@@ -33,12 +40,42 @@ const subNav: NavItem[] = [
   { path: "/settings", label: "設定", icon: <Settings size={18} /> },
 ];
 
+const adminNav: NavItem[] = [
+  { path: "/admin", label: "管理", icon: <Building2 size={18} /> },
+  { path: "/admin/users", label: "ユーザー", icon: <Users size={18} /> },
+  { path: "/admin/roles", label: "ロール", icon: <Shield size={18} /> },
+  { path: "/admin/tools", label: "ツール", icon: <Wrench size={18} /> },
+  {
+    path: "/admin/approvals",
+    label: "承認",
+    icon: <ClipboardCheck size={18} />,
+  },
+  { path: "/admin/history", label: "監査ログ", icon: <History size={18} /> },
+];
+
 export const Sidebar = (): JSX.Element => {
   const location = useLocation();
   const [theme, setTheme] = useAtom(themeAtom);
   const [isOpen, setIsOpen] = useAtom(sidebarOpenAtom);
+  const [profile, setProfile] = useState<ProfileState | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const refreshProfile = (): void => {
+      window.electronAPI.profile.getState().then((state) => {
+        if (mounted) setProfile(state);
+      });
+    };
+    refreshProfile();
+    window.addEventListener("profile:changed", refreshProfile);
+    return () => {
+      mounted = false;
+      window.removeEventListener("profile:changed", refreshProfile);
+    };
+  }, [location.pathname]);
 
   const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
+  const isOrganization = profile?.activeProfile === "organization";
 
   const renderLink = (item: NavItem) => {
     const isActive =
@@ -94,6 +131,38 @@ export const Sidebar = (): JSX.Element => {
         )}
       </div>
 
+      {/* プロファイル */}
+      <div className="mb-3 px-2">
+        <div
+          className={`flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-2.5 py-2 ${
+            isOpen ? "" : "justify-center"
+          }`}
+          title={
+            isOrganization
+              ? `組織利用: ${profile?.organizationProfile?.managerUrl ?? ""}`
+              : "個人利用"
+          }
+        >
+          {isOrganization ? (
+            <Building2 size={16} className="text-[var(--badge-info-text)]" />
+          ) : (
+            <User size={16} className="text-[var(--badge-success-text)]" />
+          )}
+          {isOpen && (
+            <div className="min-w-0">
+              <div className="text-xs font-medium text-[var(--text-primary)]">
+                {isOrganization ? "組織利用" : "個人利用"}
+              </div>
+              <div className="truncate text-[10px] text-[var(--text-subtle)]">
+                {isOrganization
+                  ? profile?.organizationProfile?.managerUrl
+                  : "ローカルプロファイル"}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* 収納時の展開ボタン */}
       {!isOpen && (
         <div className="mb-2 px-3">
@@ -139,6 +208,17 @@ export const Sidebar = (): JSX.Element => {
             icon: <Plug size={18} />,
           })}
         </div>
+
+        {isOrganization && (
+          <div className="mt-2 space-y-0.5 border-t border-t-[var(--border)] pt-2">
+            {isOpen && (
+              <div className="px-3 pt-1 pb-1 text-[10px] font-medium tracking-wider text-[var(--text-subtle)] uppercase">
+                組織管理
+              </div>
+            )}
+            {adminNav.map(renderLink)}
+          </div>
+        )}
 
         {/* 下部: 設定 + テーマ切替 */}
         <div className="mt-auto space-y-0.5 border-t border-t-[var(--border)] pt-3">
