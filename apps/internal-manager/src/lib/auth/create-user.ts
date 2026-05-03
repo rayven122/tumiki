@@ -31,6 +31,8 @@ export type CreateUserOutput = z.infer<typeof createUserOutputSchema>;
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
 const isBootstrapAdminEmail = (email: string): boolean => {
+  if (process.env.NODE_ENV === "production") return false;
+
   const bootstrapAdminEmail =
     process.env.INTERNAL_MANAGER_BOOTSTRAP_ADMIN_EMAIL;
 

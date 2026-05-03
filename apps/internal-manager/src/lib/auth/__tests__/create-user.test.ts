@@ -142,6 +142,30 @@ describe("createUser", () => {
     expect(result.role).toStrictEqual(Role.USER);
   });
 
+  test("productionではbootstrap管理者メールに一致してもUSERとして作成する", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("INTERNAL_MANAGER_BOOTSTRAP_ADMIN_EMAIL", "admin@example.com");
+    mockDb.user.count.mockResolvedValue(1);
+    mockDb.user.create.mockResolvedValue(
+      buildCreatedUser({
+        id: "user-prod",
+        email: "admin@example.com",
+        role: Role.USER,
+      }),
+    );
+
+    const result = await createUser(buildDb(), {
+      ...input,
+      id: "user-prod",
+      email: "admin@example.com",
+    });
+    const createArgs = mockDb.user.create.mock.calls[0]?.[0];
+    if (!createArgs) throw new Error("user.createが呼び出されませんでした");
+
+    expect(createArgs.data.role).toStrictEqual(Role.USER);
+    expect(result.role).toStrictEqual(Role.USER);
+  });
+
   test("emailがnullの場合にエラーをスローする", async () => {
     mockDb.user.count.mockResolvedValue(0);
     mockDb.user.create.mockResolvedValue(
