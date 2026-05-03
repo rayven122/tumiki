@@ -14,14 +14,14 @@ import type { TumikiClaims } from "./types";
  * @param userId Auth.js が生成する内部ユーザーID（User.id）
  * @param provider OIDCプロバイダーID（例: "oidc", "keycloak"）
  * @param oidcSub OIDCトークンのsub claim（ExternalIdentity管理用）
- * @param groupRoles OIDCトークンのグループクレーム（Group.externalIdと対応）
+ * @param groupRoles OIDCトークンのグループクレーム（undefinedの場合は同期をスキップ）
  */
 export const getTumikiClaims = async (
   db: PrismaTransactionClient,
   userId: string,
   provider: string,
   oidcSub: string,
-  groupRoles: string[] | undefined = [],
+  groupRoles: string[] | undefined,
 ): Promise<TumikiClaims | null> => {
   const user = await db.user
     .update({
@@ -48,6 +48,26 @@ export const getTumikiClaims = async (
   let syncStatus: SyncStatus = SyncStatus.SUCCESS;
 
   try {
+    if (groupRoles === undefined) {
+      await db.idpSyncLog.create({
+        data: {
+          trigger: SyncTrigger.JIT,
+          status: syncStatus,
+          added,
+          removed,
+          completedAt: new Date(),
+        },
+      });
+
+      return {
+        org_slugs: [],
+        org_id: null,
+        org_slug: null,
+        roles: [user.role],
+        group_roles: undefined,
+      };
+    }
+
     // DB に登録済みの IDP グループのうち、今回のクレームに含まれるものを取得
     const idpGroups =
       groupRoles.length > 0

@@ -145,12 +145,14 @@ variable "ssl_required" {
 variable "login_theme" {
   description = "ログイン画面テーマ"
   type        = string
+  nullable    = false
   default     = "tumiki"
 }
 
 variable "account_theme" {
   description = "アカウント管理画面テーマ"
   type        = string
+  nullable    = false
   default     = "tumiki"
 }
 
