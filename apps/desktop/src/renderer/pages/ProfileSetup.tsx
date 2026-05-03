@@ -24,23 +24,32 @@ export const ProfileSetup = (): JSX.Element => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let mounted = true;
     window.electronAPI.profile
       .getState()
       .then((state) => {
-        if (state.hasCompletedInitialProfileSetup && state.activeProfile) {
+        if (
+          mounted &&
+          state.hasCompletedInitialProfileSetup &&
+          state.activeProfile
+        ) {
           navigate("/", { replace: true });
         }
       })
       .catch(() => {
-        setError("プロファイル状態の取得に失敗しました");
+        if (mounted) {
+          setError("プロファイル状態の取得に失敗しました");
+        }
       });
     window.electronAPI.manager
       .getUrl()
       .then((url) => {
-        if (url) setManagerUrl(url);
+        if (mounted && url) setManagerUrl(url);
       })
       .catch(() => {
-        setManagerUrl("");
+        if (mounted) {
+          setManagerUrl("");
+        }
       });
 
     const cleanupSuccess = window.electronAPI.auth.onCallbackSuccess(() => {
@@ -56,6 +65,7 @@ export const ProfileSetup = (): JSX.Element => {
     });
 
     return () => {
+      mounted = false;
       cleanupSuccess();
       cleanupError();
     };

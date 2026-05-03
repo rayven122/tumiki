@@ -47,8 +47,19 @@ export const ProfileGate = (): JSX.Element => {
 
   if (error) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[var(--bg-app)] text-sm text-red-400">
-        {error}
+      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-[var(--bg-app)] text-sm">
+        <p className="text-red-400">{error}</p>
+        <button
+          type="button"
+          onClick={() => {
+            setLoading(true);
+            setError(null);
+            window.dispatchEvent(new Event("profile:changed"));
+          }}
+          className="rounded-lg border border-[var(--border)] px-4 py-2 text-[var(--text-secondary)] transition hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)]"
+        >
+          再試行
+        </button>
       </div>
     );
   }

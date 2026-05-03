@@ -52,7 +52,7 @@ export const Sidebar = (): JSX.Element => {
 
   useEffect(() => {
     refreshProfile();
-  }, [location.pathname, refreshProfile]);
+  }, [refreshProfile]);
 
   useEffect(() => {
     window.addEventListener("profile:changed", refreshProfile);

@@ -7,6 +7,7 @@ const mockIpcHandlers = new Map<
 >();
 
 const storeData = vi.hoisted(() => new Map<string, unknown>());
+const mockStoreDelete = vi.hoisted(() => vi.fn());
 const mockDbAuthToken = vi.hoisted(() => ({
   deleteMany: vi.fn(),
 }));
@@ -32,7 +33,7 @@ vi.mock("../../shared/app-store", () => ({
     Promise.resolve({
       get: (key: string) => storeData.get(key),
       set: (key: string, value: unknown) => storeData.set(key, value),
-      delete: (key: string) => storeData.delete(key),
+      delete: (key: string) => mockStoreDelete(key),
     }),
 }));
 
@@ -55,6 +56,7 @@ describe("setupProfileIpc", () => {
     mockIpcHandlers.clear();
     storeData.clear();
     vi.clearAllMocks();
+    mockStoreDelete.mockImplementation((key: string) => storeData.delete(key));
     mockDbAuthToken.deleteMany.mockResolvedValue({ count: 1 });
     mockGetOAuthManager.mockReturnValue(null);
     setupProfileIpc();
@@ -160,5 +162,27 @@ describe("setupProfileIpc", () => {
       connectedAt: expect.any(String) as string,
     });
     expect(storeData.get("hasCompletedInitialProfileSetup")).toBe(true);
+  });
+
+  test("組織切断時にプロファイルクリアが失敗してもOAuthManagerを停止する", async () => {
+    const cancelAuthFlow = vi.fn();
+    const stopAutoRefresh = vi.fn();
+    mockGetOAuthManager.mockReturnValue({ cancelAuthFlow, stopAutoRefresh });
+    mockStoreDelete.mockImplementationOnce(() => {
+      throw new Error("store error");
+    });
+    await activateOrganizationProfile("https://manager.example.com");
+    storeData.set("managerUrl", "https://manager.example.com");
+
+    const handler = mockIpcHandlers.get("profile:disconnectOrganization");
+
+    await expect(handler!({} as IpcMainInvokeEvent)).rejects.toThrow(
+      "組織利用の停止に失敗しました",
+    );
+
+    expect(mockDbAuthToken.deleteMany).toHaveBeenCalledWith({});
+    expect(cancelAuthFlow).toHaveBeenCalled();
+    expect(stopAutoRefresh).toHaveBeenCalled();
+    expect(mockSetOAuthManager).toHaveBeenCalledWith(null);
   });
 });
