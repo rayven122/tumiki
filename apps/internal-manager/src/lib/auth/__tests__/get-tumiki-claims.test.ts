@@ -10,8 +10,8 @@ const buildDb = (overrides: Partial<typeof mockDb> = {}) =>
 
 const mockUser = { id: "user-sub-001", role: "USER" as const };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const fn = () => vi.fn<any>();
+const fn = <TArgs extends unknown[] = [], TReturn = unknown>() =>
+  vi.fn<(...args: TArgs) => TReturn>();
 
 const mockDb = {
   user: {
