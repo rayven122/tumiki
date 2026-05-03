@@ -3,7 +3,6 @@ import { z } from "zod";
 import * as mcpService from "./mcp.service";
 import type {
   CreateFromCatalogInput,
-  CreateCustomServerInput,
   CreateVirtualServerInput,
   UpdateServerInput,
   DeleteServerInput,
@@ -41,13 +40,27 @@ const createFromCatalogSchema = z.object({
   authType: z.enum(["NONE", "BEARER", "API_KEY", "OAUTH"]),
 }) satisfies z.ZodType<CreateFromCatalogInput>;
 
-const createCustomServerSchema = z.object({
-  serverName: z.string().min(1),
-  url: z.string().url({ message: "有効なURLを入力してください" }),
-  transportType: z.enum(["SSE", "STREAMABLE_HTTP"]),
-  authType: z.enum(["NONE", "API_KEY", "OAUTH"]),
-  credentials: z.record(z.string(), z.string()),
-}) satisfies z.ZodType<CreateCustomServerInput>;
+// .refine()でZodEffectsになるためsatisfies制約は除外（型の整合性はCreateCustomServerInputを参照）
+const createCustomServerSchema = z
+  .object({
+    serverName: z.string().min(1),
+    transportType: z.enum(["STDIO", "SSE", "STREAMABLE_HTTP"]),
+    authType: z.enum(["NONE", "API_KEY", "OAUTH"]),
+    credentials: z.record(z.string(), z.string()),
+    url: z.string().url({ message: "有効なURLを入力してください" }).optional(),
+    command: z.string().min(1).optional(),
+    args: z.string().optional(),
+  })
+  .refine(
+    (data) =>
+      data.transportType === "STDIO"
+        ? Boolean(data.command)
+        : Boolean(data.url),
+    {
+      message:
+        "STDIOの場合はコマンド、SSE/Streamable HTTPの場合はURLが必要です",
+    },
+  );
 
 const createVirtualServerSchema = z.object({
   name: z.string().min(1),
@@ -85,7 +98,10 @@ export const setupMcpIpc = (): void => {
   // カスタムURLでリモートMCPサーバーを登録
   ipcMain.handle("mcp:createCustomServer", async (_, input: unknown) => {
     try {
-      const validated = createCustomServerSchema.parse(input);
+      // refineでSTDIO/リモートの条件バリデーション済みのため安全にキャスト
+      const validated = createCustomServerSchema.parse(
+        input,
+      ) as mcpService.CreateCustomServerInput;
       return await mcpService.createCustomServer(validated);
     } catch (error) {
       if (error instanceof z.ZodError) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import ScimTokenSection from "./_components/ScimTokenSection";
+import ScimDirectorySection from "./_components/ScimDirectorySection";
 import SsoConfigSection from "./_components/SsoConfigSection";
 
 /* ===== システム設定画面 ===== */
@@ -140,8 +140,8 @@ const AdminSettingsPage = () => {
         </h2>
         <div className="space-y-4">
           <SsoConfigSection />
-          {/* SCIMトークン */}
-          <ScimTokenSection />
+          {/* SCIM Directory（Jackson Directory Sync） */}
+          <ScimDirectorySection />
         </div>
       </div>
 

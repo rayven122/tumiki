@@ -55,6 +55,8 @@ const buildJacksonOption = (): JacksonOption => {
     samlPath: "/api/saml/acs",
     // OIDC Connection のコールバック URL（顧客 OIDC IdP からのコールバックを受ける）
     oidcPath: "/api/oauth/oidc",
+    // SCIM Directory のベースパス（Directory ごとに /api/scim/v2/<directoryId> として発行される）
+    scimPath: "/api/scim/v2",
     // OIDC IdP として動作（アプリ向けに OIDC を提供）
     idpEnabled: true,
     db: {

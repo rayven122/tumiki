@@ -4,18 +4,24 @@ on:
   workflow_run:
     workflows: ["Docker Publish"]
     types: [completed]
-    branches: [main]
   workflow_dispatch:
     inputs:
       image_tag:
-        description: "デプロイするイメージタグ（省略時は sha-<short SHA>）"
-        required: false
+        description: "デプロイするイメージタグ（例: 1.0.0, sha-abc1234）"
+        required: true
 
 jobs:
   deploy-tenant-console:
     name: 🚀 Deploy tenant-console to k3s
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    # 起動条件:
+    #   - 手動実行 (workflow_dispatch): 任意のタグでデプロイ
+    #   - リリースタグ (v*) で Docker Publish が成功した場合のみ自動デプロイ
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       startsWith(github.event.workflow_run.head_branch, 'v'))
     timeout-minutes: 10
 
     env:
@@ -27,16 +33,25 @@ jobs:
 
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          # workflow_run の場合はトリガー元の SHA を、それ以外は現在の ref を取得
+          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
 
       - name: Resolve image tag
         id: tag
         env:
           INPUT_TAG: ${{ github.event.inputs.image_tag }}
+          # 例: "v1.0.0" のタグ名（workflow_run 時のみセットされる）
+          HEAD_REF: ${{ github.event.workflow_run.head_branch }}
         run: |
           if [ -n "${INPUT_TAG}" ]; then
             echo "tag=${INPUT_TAG}" >> "$GITHUB_OUTPUT"
+          elif [[ "${HEAD_REF}" =~ ^v[0-9] ]]; then
+            # docker-publish.yml の type=semver,pattern={{version}} は v プレフィックスを除去するため
+            echo "tag=${HEAD_REF#v}" >> "$GITHUB_OUTPUT"
           else
-            echo "tag=sha-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+            echo "::error::Could not resolve image tag (HEAD_REF=${HEAD_REF})"
+            exit 1
           fi
 
       - name: Install cloudflared
@@ -67,14 +82,18 @@ jobs:
 
           cat >> ~/.ssh/config << CONFIG
           Host ${SSH_HOST}
+            User ${SSH_USER}
             ProxyCommand /tmp/cf-proxy.sh %h
+            IdentityFile ~/.ssh/id_ed25519_deploy
+            IdentitiesOnly yes
             StrictHostKeyChecking accept-new
 
           Host k3s-deploy
             HostName ${K3S_HOST}
             User ${SSH_USER}
-            ProxyJump ${SSH_USER}@${SSH_HOST}
+            ProxyJump ${SSH_HOST}
             IdentityFile ~/.ssh/id_ed25519_deploy
+            IdentitiesOnly yes
             StrictHostKeyChecking accept-new
           CONFIG
 
