@@ -153,7 +153,7 @@ variable "account_theme" {
   description = "アカウント管理画面テーマ"
   type        = string
   nullable    = false
-  default     = "tumiki"
+  default     = "keycloak.v3"
 }
 
 # テストユーザー設定

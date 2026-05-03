@@ -24,13 +24,14 @@ realm_display_name = "Tumiki Platform"
 
 # Manager Appクライアント設定
 # 本番環境のリダイレクトURI
+# Vercel preview URL の team scope（rayven-38d708d3）は Vercel Project URL から確認して更新する。
 manager_redirect_uris = [
   "https://www.tumiki.cloud/*",
-  "https://tumiki-*.vercel.app/*"
+  "https://tumiki-*-rayven-38d708d3.vercel.app/*"
 ]
 manager_web_origins = [
   "https://www.tumiki.cloud",
-  "https://tumiki-*.vercel.app"
+  "https://tumiki-*-rayven-38d708d3.vercel.app"
 ]
 
 # MCP Proxyクライアント設定
@@ -43,6 +44,10 @@ proxy_redirect_uris = [
 
 # セキュリティ設定
 ssl_required = "external"
+
+# テーマ設定
+login_theme   = "tumiki"
+account_theme = "keycloak.v3"
 
 # テストユーザー設定（動作確認・監視用アカウント）
 # test_user_passwordは環境変数TF_VAR_test_user_passwordで設定
