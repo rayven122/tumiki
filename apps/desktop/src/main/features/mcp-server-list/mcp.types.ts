@@ -78,7 +78,7 @@ export type CreateCustomServerInput = {
   serverName: string;
   url: string;
   transportType: "SSE" | "STREAMABLE_HTTP";
-  authType: "NONE" | "API_KEY";
+  authType: "NONE" | "API_KEY" | "OAUTH";
   credentials: Record<string, string>;
 };
 

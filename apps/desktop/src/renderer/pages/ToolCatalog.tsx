@@ -8,7 +8,10 @@ import { AddRemoteMcpModal } from "../_components/AddRemoteMcpModal";
 import { toast } from "../_components/Toast";
 import { cardStyle } from "../utils/theme-styles";
 import { authTypeLabel } from "../../shared/catalog.helpers";
-import { DISCOVERY_ERROR_CODE } from "../../shared/oauth/discovery-error-codes";
+import {
+  DISCOVERY_ERROR_CODE,
+  extractOAuthErrorCode,
+} from "../../shared/oauth/discovery-error-codes";
 
 /** 認証種別バッジスタイル */
 const authBadgeClass: Record<CatalogItem["authType"], string> = {
@@ -29,11 +32,11 @@ export const ToolCatalog = (): JSX.Element => {
   const [dcrPrefill, setDcrPrefill] = useState(false);
   const [showRemoteModal, setShowRemoteModal] = useState(false);
 
-  // OAuth 直接フロー時のイベントリスナーがモーダル表示中の AddMcpModal と二重発火しないよう参照で最新状態を保持
+  // OAuth 直接フロー時のイベントリスナーがモーダル表示中の AddMcpModal / AddRemoteMcpModal と二重発火しないよう参照で最新状態を保持
   const modalOpenRef = useRef(false);
   useEffect(() => {
-    modalOpenRef.current = selectedCatalog !== null;
-  }, [selectedCatalog]);
+    modalOpenRef.current = selectedCatalog !== null || showRemoteModal;
+  }, [selectedCatalog, showRemoteModal]);
 
   useEffect(() => {
     window.electronAPI.catalog
@@ -108,17 +111,12 @@ export const ToolCatalog = (): JSX.Element => {
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "OAuth認証の開始に失敗しました";
-      const codeMatch = message.match(/\[(\w+)]\s/);
-      const code = codeMatch?.[1];
-      // DCR 非対応サーバー: モーダルを開いて Client ID/Secret 手動入力
+      const { code, displayMessage } = extractOAuthErrorCode(message);
       if (code === DISCOVERY_ERROR_CODE.DCR_NOT_SUPPORTED) {
         setDcrPrefill(true);
         setSelectedCatalog(item);
         return;
       }
-      const displayMessage = codeMatch
-        ? message.slice((codeMatch.index ?? 0) + codeMatch[0].length)
-        : message;
       toast.error(displayMessage);
     }
   };

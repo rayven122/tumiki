@@ -6,7 +6,10 @@ import {
   FALLBACK_SLUG_PLACEHOLDER,
   SLUG_FALLBACK_PREFIX,
 } from "../../shared/mcp.constants";
-import { DISCOVERY_ERROR_CODE } from "../../shared/oauth/discovery-error-codes";
+import {
+  DISCOVERY_ERROR_CODE,
+  extractOAuthErrorCode,
+} from "../../shared/oauth/discovery-error-codes";
 import {
   Select,
   SelectTrigger,
@@ -166,11 +169,7 @@ export const AddRemoteMcpModal = ({
       } catch (err) {
         const message =
           err instanceof Error ? err.message : "OAuth認証の開始に失敗しました";
-        const codeMatch = message.match(/\[(\w+)]\s/);
-        const code = codeMatch?.[1];
-        const displayMessage = codeMatch
-          ? message.slice((codeMatch.index ?? 0) + codeMatch[0].length)
-          : message;
+        const { code, displayMessage } = extractOAuthErrorCode(message);
         if (code === DISCOVERY_ERROR_CODE.DCR_NOT_SUPPORTED) {
           setNeedsManualOAuthClient(true);
           setError(null);
@@ -427,6 +426,9 @@ export const AddRemoteMcpModal = ({
                 type="text"
                 value={newEnvKey}
                 onChange={(e) => setNewEnvKey(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAddEnvVar();
+                }}
                 placeholder="キー名 (例: Authorization)"
                 disabled={loading}
                 className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg-input)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-subtle)] disabled:opacity-50"
@@ -436,6 +438,9 @@ export const AddRemoteMcpModal = ({
                 autoComplete="new-password"
                 value={newEnvValue}
                 onChange={(e) => setNewEnvValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAddEnvVar();
+                }}
                 placeholder="値"
                 disabled={loading}
                 className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg-input)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-subtle)] disabled:opacity-50"

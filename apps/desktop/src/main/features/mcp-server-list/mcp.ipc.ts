@@ -45,7 +45,7 @@ const createCustomServerSchema = z.object({
   serverName: z.string().min(1),
   url: z.string().url(),
   transportType: z.enum(["SSE", "STREAMABLE_HTTP"]),
-  authType: z.enum(["NONE", "API_KEY"]),
+  authType: z.enum(["NONE", "API_KEY", "OAUTH"]),
   credentials: z.record(z.string(), z.string()),
 }) satisfies z.ZodType<CreateCustomServerInput>;
 
@@ -88,6 +88,13 @@ export const setupMcpIpc = (): void => {
       const validated = createCustomServerSchema.parse(input);
       return await mcpService.createCustomServer(validated);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        const firstIssue = error.issues[0];
+        const field = firstIssue?.path.join(".") ?? "入力";
+        throw new Error(
+          `入力内容に問題があります: ${field} - ${firstIssue?.message ?? "不正な値"}`,
+        );
+      }
       const message = error instanceof Error ? error.message : "不明なエラー";
       logger.error(
         "Failed to create custom MCP server",

@@ -15,7 +15,7 @@ export type McpOAuthSession = {
   transportType: McpConnection["transportType"];
   command: string | null;
   args: string;
-  url: string | null;
+  url: string;
   /** DCR非対応サーバー用: ユーザーが手動入力したOAuthクライアントID */
   oauthClientId?: string;
   /** DCR非対応サーバー用: ユーザーが手動入力したOAuthクライアントシークレット */

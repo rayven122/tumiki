@@ -332,12 +332,12 @@ export const createMcpOAuthManager = (): McpOAuthManager => {
           })
         : await createCustomServer({
             serverName: session.catalogName,
-            url: session.url ?? session.serverUrl,
+            url: session.url,
             transportType:
               session.transportType === "STDIO"
                 ? "STREAMABLE_HTTP"
                 : session.transportType,
-            authType: "NONE",
+            authType: "OAUTH",
             credentials,
           });
 
