@@ -31,11 +31,19 @@ const getJwks = async () => {
       () => controller.abort(),
       OIDC_DISCOVERY_TIMEOUT_MS,
     );
-    const res = await fetch(discoveryUrl, {
-      signal: controller.signal,
-    }).finally(() => clearTimeout(timeoutId));
+    let res: Response;
+    try {
+      res = await fetch(discoveryUrl, {
+        signal: controller.signal,
+      });
+    } catch {
+      throw new Error("OIDCディスカバリ取得失敗");
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
     if (!res.ok) {
-      throw new Error(`OIDCディスカバリ取得失敗: ${res.status}`);
+      throw new Error("OIDCディスカバリ取得失敗");
     }
 
     const config = (await res.json()) as { jwks_uri?: string };

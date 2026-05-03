@@ -134,7 +134,7 @@ GET /api/desktop/v1/session
 | `features`      | Desktop で有効にする機能フラグ   |
 | `policyVersion` | 後続の差分同期・キャッシュ無効化 |
 
-`policyVersion` は opaque string として扱う。Manager 側はポリシー更新時刻と内部バージョンカウンタから生成し、Desktop は値を比較せず、次回 `GET /api/desktop/v1/policy-sync?since=...` にそのまま渡す。例: `<ISO8601-timestamp>-<counter>`。
+`policyVersion` は opaque string として扱う。Desktop は値を比較・分解せず、次回 `GET /api/desktop/v1/policy-sync?since=...` にそのまま渡す。例: `pol_v1_opaque_token`。
 
 理由:
 
