@@ -3,7 +3,6 @@ import { z } from "zod";
 import * as mcpService from "./mcp.service";
 import type {
   CreateFromCatalogInput,
-  CreateCustomServerInput,
   CreateVirtualServerInput,
   UpdateServerInput,
   DeleteServerInput,
@@ -60,7 +59,7 @@ const createCustomServerSchema = z
       message:
         "STDIOの場合はコマンド、SSE/Streamable HTTPの場合はURLが必要です",
     },
-  ) satisfies z.ZodType<CreateCustomServerInput>;
+  );
 
 const createVirtualServerSchema = z.object({
   name: z.string().min(1),
