@@ -10,6 +10,7 @@ import {
   DISCOVERY_ERROR_CODE,
   extractOAuthErrorCode,
 } from "../../shared/oauth/discovery-error-codes";
+import { parseArgsToJson } from "../../shared/parse-args";
 import {
   Select,
   SelectTrigger,
@@ -19,7 +20,7 @@ import {
 } from "./Select";
 
 type AuthMethod = "oauth" | "apikey" | "none";
-type TransportType = "SSE" | "STREAMABLE_HTTP";
+type TransportType = "STDIO" | "SSE" | "STREAMABLE_HTTP";
 
 type AddRemoteMcpModalProps = {
   onClose: () => void;
@@ -33,6 +34,7 @@ const AUTH_METHOD_LABEL: Record<AuthMethod, string> = {
 };
 
 const TRANSPORT_LABEL: Record<TransportType, string> = {
+  STDIO: "STDIO",
   STREAMABLE_HTTP: "Streamable HTTP",
   SSE: "SSE",
 };
@@ -43,9 +45,13 @@ export const AddRemoteMcpModal = ({
 }: AddRemoteMcpModalProps): JSX.Element => {
   const [serverName, setServerName] = useState("");
   const [url, setUrl] = useState("");
+  const [command, setCommand] = useState("");
+  const [args, setArgs] = useState("");
   const [transportType, setTransportType] =
     useState<TransportType>("STREAMABLE_HTTP");
   const [authMethod, setAuthMethod] = useState<AuthMethod>("oauth");
+
+  const isStdio = transportType === "STDIO";
 
   // OAuth
   const [oauthClientId, setOauthClientId] = useState("");
@@ -128,7 +134,12 @@ export const AddRemoteMcpModal = ({
   };
 
   const isFormValid = useMemo(() => {
-    if (!serverName.trim() || !url.trim()) return false;
+    if (!serverName.trim()) return false;
+    if (isStdio) {
+      if (!command.trim()) return false;
+    } else {
+      if (!url.trim()) return false;
+    }
     if (authMethod === "apikey" && Object.keys(envVars).length === 0)
       return false;
     if (
@@ -141,6 +152,8 @@ export const AddRemoteMcpModal = ({
   }, [
     serverName,
     url,
+    command,
+    isStdio,
     authMethod,
     envVars,
     needsManualOAuthClient,
@@ -152,7 +165,11 @@ export const AddRemoteMcpModal = ({
       setError("サーバー名を入力してください");
       return;
     }
-    if (!url.trim()) {
+    if (isStdio && !command.trim()) {
+      setError("コマンドを入力してください");
+      return;
+    }
+    if (!isStdio && !url.trim()) {
       setError("URLを入力してください");
       return;
     }
@@ -197,13 +214,26 @@ export const AddRemoteMcpModal = ({
 
     // NONE / API_KEY
     try {
-      const result = await window.electronAPI.mcp.createCustomServer({
-        serverName: serverName.trim(),
-        url: url.trim(),
-        transportType,
-        authType: authMethod === "apikey" ? "API_KEY" : "NONE",
-        credentials: authMethod === "apikey" ? envVars : {},
-      });
+      const authType =
+        authMethod === "apikey" ? ("API_KEY" as const) : ("NONE" as const);
+      const credentials = authMethod === "apikey" ? envVars : {};
+      const input = isStdio
+        ? {
+            serverName: serverName.trim(),
+            transportType: "STDIO" as const,
+            authType,
+            credentials,
+            command: command.trim(),
+            args: parseArgsToJson(args.trim()),
+          }
+        : {
+            serverName: serverName.trim(),
+            transportType,
+            authType,
+            credentials,
+            url: url.trim(),
+          };
+      const result = await window.electronAPI.mcp.createCustomServer(input);
       onSuccess(result.serverName);
     } catch (err) {
       const message =
@@ -236,7 +266,7 @@ export const AddRemoteMcpModal = ({
             id="remote-mcp-modal-title"
             className="text-xl font-bold text-[var(--text-primary)]"
           >
-            リモートMCPサーバーの追加
+            カスタムMCPサーバーの追加
           </h2>
           <button
             type="button"
@@ -248,7 +278,7 @@ export const AddRemoteMcpModal = ({
         </div>
 
         <p className="mb-6 text-sm text-[var(--text-muted)]">
-          URLからMCPサーバーを追加します。サーバー情報を入力してください。
+          MCPサーバーを追加します。サーバー情報を入力してください。
         </p>
 
         {/* サーバー名 */}
@@ -317,20 +347,56 @@ export const AddRemoteMcpModal = ({
           </div>
         </div>
 
-        {/* URL */}
-        <div className="mb-6">
-          <label className="mb-2 block text-sm font-medium text-[var(--text-primary)]">
-            サーバーURL<span className="text-[var(--badge-error-text)]">*</span>
-          </label>
-          <input
-            type="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="例: https://example.com/mcp"
-            disabled={loading}
-            className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-input)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-subtle)] disabled:opacity-50"
-          />
-        </div>
+        {/* URL（リモート時）/ コマンド+引数（STDIO時） */}
+        {isStdio ? (
+          <div className="mb-6 space-y-4">
+            <div>
+              <label className="mb-2 block text-sm font-medium text-[var(--text-primary)]">
+                コマンド
+                <span className="text-[var(--badge-error-text)]">*</span>
+              </label>
+              <input
+                type="text"
+                value={command}
+                onChange={(e) => setCommand(e.target.value)}
+                placeholder="例: npx, node, python"
+                disabled={loading}
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-input)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-subtle)] disabled:opacity-50"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-[var(--text-primary)]">
+                引数
+              </label>
+              <input
+                type="text"
+                value={args}
+                onChange={(e) => setArgs(e.target.value)}
+                placeholder="例: -y @modelcontextprotocol/server-filesystem /path/to/dir"
+                disabled={loading}
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-input)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-subtle)] disabled:opacity-50"
+              />
+              <p className="mt-1.5 text-xs text-[var(--text-muted)]">
+                スペース区切りで引数を入力してください（JSON配列形式も可）
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="mb-6">
+            <label className="mb-2 block text-sm font-medium text-[var(--text-primary)]">
+              サーバーURL
+              <span className="text-[var(--badge-error-text)]">*</span>
+            </label>
+            <input
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="例: https://example.com/mcp"
+              disabled={loading}
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-input)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-subtle)] disabled:opacity-50"
+            />
+          </div>
+        )}
 
         {/* 認証タイプ + 通信方式 */}
         <div className="mb-6 grid grid-cols-2 gap-4">
@@ -352,7 +418,7 @@ export const AddRemoteMcpModal = ({
                 <SelectValue>{AUTH_METHOD_LABEL[authMethod]}</SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="oauth">OAuth認証</SelectItem>
+                {!isStdio && <SelectItem value="oauth">OAuth認証</SelectItem>}
                 <SelectItem value="apikey">APIキー認証</SelectItem>
                 <SelectItem value="none">認証なし</SelectItem>
               </SelectContent>
@@ -364,7 +430,15 @@ export const AddRemoteMcpModal = ({
             </label>
             <Select
               value={transportType}
-              onValueChange={(v) => setTransportType(v as TransportType)}
+              onValueChange={(v) => {
+                const newType = v as TransportType;
+                setTransportType(newType);
+                // STDIOではOAuth不可なので認証なしに切り替え
+                if (newType === "STDIO" && authMethod === "oauth") {
+                  setAuthMethod("none");
+                }
+                setError(null);
+              }}
               disabled={loading}
             >
               <SelectTrigger className="w-full">
@@ -373,6 +447,7 @@ export const AddRemoteMcpModal = ({
               <SelectContent>
                 <SelectItem value="STREAMABLE_HTTP">Streamable HTTP</SelectItem>
                 <SelectItem value="SSE">SSE</SelectItem>
+                <SelectItem value="STDIO">STDIO</SelectItem>
               </SelectContent>
             </Select>
           </div>
