@@ -64,12 +64,6 @@ const AUDIT_LOG_LIMIT = 20;
 const FEATURE_SETTINGS_KEY = (serverId: number): string =>
   `tumiki:server:${serverId}:features`;
 
-/** サンプル表示用: リクエスト/レスポンスプレビューを持つ拡張ログ型 */
-type DisplayAuditLog = AuditLogItem & {
-  requestPreview?: string;
-  responsePreview?: string;
-};
-
 /** 提供ツール表示用の拡張型（connectionName を含む） */
 type DisplayTool = McpToolItem & { connectionName: string };
 
@@ -187,196 +181,6 @@ const SAMPLE_TOOLS: DisplayTool[] = [
     updatedAt: SAMPLE_TIMESTAMP,
     connectionName: "sample",
   },
-];
-
-/** 操作履歴のサンプルデータ（auditLogs が空のときの表示用） */
-const SAMPLE_AUDIT_LOGS: DisplayAuditLog[] = [
-  {
-    id: -1,
-    toolName: "push_text_message",
-    method: "tools/call",
-    transportType: "STREAMABLE_HTTP",
-    durationMs: 123,
-    inputBytes: 256,
-    outputBytes: 512,
-    isSuccess: true,
-    errorCode: null,
-    errorSummary: null,
-    detail: "to=U12345...",
-    createdAt: new Date(Date.now() - 1000 * 60 * 2).toISOString(),
-    serverId: 0,
-    connectionName: null,
-    clientName: "Claude Desktop",
-    clientVersion: "0.12.3",
-    piiDetections: null,
-    piiPolicy: null,
-    requestPreview: `{"to":"U1234567890abc","text":"お知らせです。"}`,
-    responsePreview: `{"success":true,"messageId":"msg_01HX..."}`,
-  },
-  {
-    id: -2,
-    toolName: "broadcast_flex_message",
-    method: "tools/call",
-    transportType: "STREAMABLE_HTTP",
-    durationMs: 412,
-    inputBytes: 1024,
-    outputBytes: 256,
-    isSuccess: true,
-    errorCode: null,
-    errorSummary: null,
-    detail: null,
-    createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-    serverId: 0,
-    connectionName: null,
-    clientName: "Cursor",
-    clientVersion: "0.42.0",
-    piiDetections: null,
-    piiPolicy: null,
-    requestPreview: `{"altText":"今週のお知らせ","contents":{"type":"bubble",...}}`,
-    responsePreview: `{"success":true,"recipientCount":1245}`,
-  },
-  {
-    id: -3,
-    toolName: "get_profile",
-    method: "tools/call",
-    transportType: "STREAMABLE_HTTP",
-    durationMs: 89,
-    inputBytes: 64,
-    outputBytes: 384,
-    isSuccess: true,
-    errorCode: null,
-    errorSummary: null,
-    detail: "userId=U987...",
-    createdAt: new Date(Date.now() - 1000 * 60 * 32).toISOString(),
-    serverId: 0,
-    connectionName: null,
-    clientName: "Claude Code",
-    clientVersion: "1.2.0",
-    piiDetections: null,
-    piiPolicy: null,
-    requestPreview: `{"userId":"U987654321xyz"}`,
-    responsePreview: `{"displayName":"Tumiki User","pictureUrl":"https://..."}`,
-  },
-  {
-    id: -4,
-    toolName: "delete_rich_menu",
-    method: "tools/call",
-    transportType: "STREAMABLE_HTTP",
-    durationMs: 240,
-    inputBytes: 128,
-    outputBytes: 64,
-    isSuccess: false,
-    errorCode: -32603,
-    errorSummary: "Rich menu not found",
-    detail: null,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-    serverId: 0,
-    connectionName: null,
-    clientName: "Claude Desktop",
-    clientVersion: "0.12.3",
-    piiDetections: null,
-    piiPolicy: null,
-    requestPreview: `{"richMenuId":"richmenu-abc123"}`,
-    responsePreview: `{"error":{"code":-32603,"message":"Rich menu not found"}}`,
-  },
-  {
-    id: -5,
-    toolName: "tools/list",
-    method: "tools/list",
-    transportType: "STREAMABLE_HTTP",
-    durationMs: 45,
-    inputBytes: 0,
-    outputBytes: 2048,
-    isSuccess: true,
-    errorCode: null,
-    errorSummary: null,
-    detail: null,
-    createdAt: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
-    serverId: 0,
-    connectionName: null,
-    clientName: "Cursor",
-    clientVersion: "0.42.0",
-    piiDetections: null,
-    piiPolicy: null,
-    requestPreview: `{}`,
-    responsePreview: `{"tools":[{"name":"push_text_message",...},...]}`,
-  },
-  {
-    id: -6,
-    toolName: "get_message_quota",
-    method: "tools/call",
-    transportType: "STREAMABLE_HTTP",
-    durationMs: 156,
-    inputBytes: 32,
-    outputBytes: 192,
-    isSuccess: true,
-    errorCode: null,
-    errorSummary: null,
-    detail: null,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
-    serverId: 0,
-    connectionName: null,
-    clientName: "Windsurf",
-    clientVersion: "1.0.5",
-    piiDetections: null,
-    piiPolicy: null,
-    requestPreview: `{}`,
-    responsePreview: `{"totalLimit":500000,"used":12453,"remaining":487547}`,
-  },
-  ...Array.from({ length: 24 }, (_, i): DisplayAuditLog => {
-    const clients = [
-      "Claude Desktop",
-      "Cursor",
-      "Claude Code",
-      "Windsurf",
-      "Cline",
-      "VS Code",
-      "Zed",
-      "Continue",
-    ] as const;
-    const tools = [
-      "search_documents",
-      "read_file",
-      "list_directory",
-      "execute_query",
-      "create_issue",
-      "send_notification",
-      "get_message_quota",
-      "push_text_message",
-      "broadcast_text_message",
-      "tools/list",
-    ] as const;
-    const client = clients[i % clients.length] ?? clients[0];
-    const toolName = tools[i % tools.length] ?? tools[0];
-    const success = i % 7 !== 0;
-    const minutesAgo = 60 * 4 + i * 37;
-    const inputBytes = 64 + ((i * 53) % 1024);
-    const outputBytes = 128 + ((i * 91) % 2048);
-    return {
-      id: -100 - i,
-      toolName,
-      method: toolName.includes("/") ? toolName : "tools/call",
-      transportType: "STREAMABLE_HTTP",
-      durationMs: 40 + ((i * 31) % 520),
-      inputBytes,
-      outputBytes,
-      isSuccess: success,
-      errorCode: success ? null : -32000,
-      errorSummary: success ? null : "Simulated timeout",
-      detail: success ? null : "upstream timed out",
-      createdAt: new Date(Date.now() - 1000 * 60 * minutesAgo).toISOString(),
-      serverId: 0,
-      connectionName: null,
-      clientName: client,
-      clientVersion: "0.0.0",
-      piiDetections: null,
-      piiPolicy: null,
-      requestPreview: `{"index":${i},"tool":"${toolName}"}`,
-      responsePreview: success
-        ? `{"success":true,"bytes":${outputBytes}}`
-        : `{"error":{"code":-32000,"message":"Simulated timeout"}}`,
-    };
-  }),
 ];
 
 type FeatureSettings = {
@@ -624,8 +428,8 @@ export const ToolDetail = (): JSX.Element => {
       </Link>
 
       {/* 2カラムレイアウト: メインコンテンツ + 右サイドバー（接続先AI） 高さ合わせ、両側スクロール可 */}
-      <div className="mt-4 flex max-h-[calc(100vh-10rem)] items-stretch gap-4">
-        <div className="flex min-w-0 flex-1 flex-col gap-4">
+      <div className="mt-4 flex max-h-[calc(100vh-10rem)] min-h-0 items-stretch gap-4">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
           {/* ヘッダーカード: サーバー概要 + 基本情報 + 機能設定 + 3点リーダー */}
           <div className="rounded-xl p-5" style={cardStyle}>
             {/* 上段: アイコン + 名前 + ステータス + 統計 + 3点リーダー */}
@@ -809,7 +613,7 @@ export const ToolDetail = (): JSX.Element => {
 
           {/* 提供ツールカード */}
           <div
-            className="flex flex-1 flex-col rounded-xl p-4"
+            className="flex min-h-0 flex-1 flex-col rounded-xl p-4"
             style={cardStyle}
           >
             <div className="mb-2 flex items-center justify-between">
@@ -981,49 +785,25 @@ export const ToolDetail = (): JSX.Element => {
         ) : (
           <div className="space-y-2">
             {(() => {
-              const isSample = auditLogs.length === 0;
-              const baseLogs: DisplayAuditLog[] = isSample
-                ? SAMPLE_AUDIT_LOGS
-                : auditLogs;
+              // 自由文フィルタはクライアント側で適用（ページング・件数は API 側）
               const q = logQuery.trim().toLowerCase();
-              const filteredLogs =
+              const displayLogs =
                 q === ""
-                  ? baseLogs
-                  : baseLogs.filter(
+                  ? auditLogs
+                  : auditLogs.filter(
                       (log) =>
                         log.toolName.toLowerCase().includes(q) ||
                         (log.clientName ?? "").toLowerCase().includes(q) ||
-                        (log.detail ?? "").toLowerCase().includes(q) ||
-                        (log.requestPreview ?? "").toLowerCase().includes(q) ||
-                        (log.responsePreview ?? "").toLowerCase().includes(q),
+                        (log.detail ?? "").toLowerCase().includes(q),
                     );
-              // サンプル時はクライアント側でページング、実データ時は API 側でページング済み
-              const displayLogs = isSample
-                ? filteredLogs.slice(
-                    (auditPage - 1) * AUDIT_LOG_LIMIT,
-                    auditPage * AUDIT_LOG_LIMIT,
-                  )
-                : filteredLogs;
-              const effectiveTotalPages = isSample
-                ? Math.max(1, Math.ceil(filteredLogs.length / AUDIT_LOG_LIMIT))
-                : auditTotalPages;
+              const effectiveTotalPages = auditTotalPages;
               const goPage = (p: number): void => {
-                if (isSample) {
-                  setAuditPage(p);
-                } else {
-                  void loadAuditLogs(p);
-                }
+                void loadAuditLogs(p);
               };
               const formatBytes = (n: number): string =>
                 n >= 1024 ? `${(n / 1024).toFixed(1)} KB` : `${n} B`;
               return (
                 <>
-                  {isSample && filteredLogs.length > 0 && (
-                    <div className="mb-2 text-[10px] text-[var(--text-subtle)]">
-                      {filteredLogs.length.toLocaleString()}件 （{auditPage} /{" "}
-                      {effectiveTotalPages} ページ）
-                    </div>
-                  )}
                   <div className="overflow-x-auto rounded-lg border border-[var(--border-subtle)]">
                     <table className="w-full text-xs">
                       <thead className="bg-[var(--bg-card-hover)]">
@@ -1059,11 +839,8 @@ export const ToolDetail = (): JSX.Element => {
                               log.isSuccess ? "success" : "error",
                             );
                             const isLast = idx === displayLogs.length - 1;
-                            const requestText =
-                              log.requestPreview ?? formatBytes(log.inputBytes);
-                            const responseText =
-                              log.responsePreview ??
-                              formatBytes(log.outputBytes);
+                            const requestText = formatBytes(log.inputBytes);
+                            const responseText = formatBytes(log.outputBytes);
                             return (
                               <tr
                                 key={log.id}
