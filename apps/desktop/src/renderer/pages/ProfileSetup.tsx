@@ -66,6 +66,7 @@ export const ProfileSetup = (): JSX.Element => {
     setError(null);
     try {
       await window.electronAPI.profile.selectPersonal();
+      window.dispatchEvent(new Event("profile:changed"));
       navigate("/", { replace: true });
     } catch (err) {
       setError(
@@ -82,23 +83,18 @@ export const ProfileSetup = (): JSX.Element => {
     e.preventDefault();
     if (!managerUrl.trim()) return;
 
-    let waitingForCallback = false;
     setIsSubmitting(true);
     setError(null);
     try {
       await window.electronAPI.manager.connect(managerUrl.trim());
       await window.electronAPI.auth.login();
-      waitingForCallback = true;
       setIsWaitingForCallback(true);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "組織利用の設定に失敗しました",
       );
       setIsWaitingForCallback(false);
-    } finally {
-      if (!waitingForCallback) {
-        setIsSubmitting(false);
-      }
+      setIsSubmitting(false);
     }
   };
 

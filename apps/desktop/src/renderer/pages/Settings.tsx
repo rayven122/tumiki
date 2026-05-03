@@ -14,12 +14,18 @@ import type { ProfileState } from "../../shared/types";
 /** トグルスイッチ（CSS変数ベース） */
 const Toggle = ({
   enabled,
+  label,
   onToggle,
 }: {
   enabled: boolean;
+  label: string;
   onToggle: () => void;
 }): JSX.Element => (
   <button
+    type="button"
+    role="switch"
+    aria-checked={enabled}
+    aria-label={label}
     onClick={onToggle}
     className={`relative h-5 w-9 rounded-full transition-colors ${enabled ? "bg-[var(--badge-success-text)]" : "bg-[var(--text-subtle)]"}`}
   >
@@ -47,7 +53,11 @@ const NotificationSection = ({
           <span className="text-sm text-[var(--text-secondary)]">
             {item.label}
           </span>
-          <Toggle enabled={item.enabled} onToggle={() => onToggle(item.id)} />
+          <Toggle
+            enabled={item.enabled}
+            label={item.label}
+            onToggle={() => onToggle(item.id)}
+          />
         </div>
       ))}
     </div>

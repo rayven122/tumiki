@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAtom } from "jotai";
 import {
@@ -43,25 +43,23 @@ export const Sidebar = (): JSX.Element => {
   const [isOpen, setIsOpen] = useAtom(sidebarOpenAtom);
   const [profile, setProfile] = useState<ProfileState | null>(null);
 
+  const refreshProfile = useCallback((): void => {
+    window.electronAPI.profile
+      .getState()
+      .then(setProfile)
+      .catch(() => setProfile(null));
+  }, []);
+
   useEffect(() => {
-    let mounted = true;
-    const refreshProfile = (): void => {
-      window.electronAPI.profile
-        .getState()
-        .then((state) => {
-          if (mounted) setProfile(state);
-        })
-        .catch(() => {
-          if (mounted) setProfile(null);
-        });
-    };
     refreshProfile();
+  }, [location.pathname, refreshProfile]);
+
+  useEffect(() => {
     window.addEventListener("profile:changed", refreshProfile);
     return () => {
-      mounted = false;
       window.removeEventListener("profile:changed", refreshProfile);
     };
-  }, [location.pathname]);
+  }, [refreshProfile]);
 
   const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
   const isOrganization = profile?.activeProfile === "organization";
