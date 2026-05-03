@@ -6,6 +6,7 @@ import { getOidcEnv } from "~/lib/env";
  *
  * クライアントはこのエンドポイントでissuerと管理サーバー用clientIdを取得し、
  * OIDCディスカバリ経由で認証エンドポイントを動的取得する。
+ * Desktopもこの値を使うため、OIDC_DESKTOP_CLIENT_IDは意図的に持たない。
  * 管理サーバーのURLだけ知っていれば認証を開始できる。
  */
 export const GET = () => {

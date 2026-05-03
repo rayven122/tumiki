@@ -152,6 +152,7 @@ export const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
     });
   }
 
+  // 直前のロールチェックでSYSTEM_ADMINが保証済みのため安全なキャスト。
   return next({
     ctx: ctx as AdminContext,
   });
