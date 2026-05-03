@@ -132,7 +132,7 @@ jobs:
             terraform init -input=false
             terraform validate
             if ! terraform state show keycloak_realm.tumiki >/dev/null 2>&1; then
-              KEYCLOAK_URL=$(awk -F= '/^[[:space:]]*keycloak_url[[:space:]]*=/{gsub(/[ "]/, "", $2); print $2}' terraform.tfvars.staging)
+              KEYCLOAK_URL=$(grep -oP '^\s*keycloak_url\s*=\s*"\K[^"]+' terraform.tfvars.staging)
               if curl -fsS --max-time 10 "${KEYCLOAK_URL%/}/realms/tumiki" >/dev/null; then
                 terraform import -var-file=terraform.tfvars.staging -input=false keycloak_realm.tumiki tumiki
               else
