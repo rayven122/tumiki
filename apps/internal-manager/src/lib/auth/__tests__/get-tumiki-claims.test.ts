@@ -10,8 +10,8 @@ const buildDb = (overrides: Partial<typeof mockDb> = {}) =>
 
 const mockUser = { id: "user-sub-001", role: "USER" as const };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const fn = () => vi.fn<any>();
+const fn = <TArgs extends unknown[] = [], TReturn = unknown>() =>
+  vi.fn<(...args: TArgs) => TReturn>();
 
 const mockDb = {
   user: {
@@ -94,6 +94,44 @@ describe("getTumikiClaims", () => {
 
       expect(mockDb.userGroupMembership.createMany).not.toHaveBeenCalled();
       expect(mockDb.userGroupMembership.deleteMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("グループクレームが未設定の場合", () => {
+    test("IDPメンバーシップ同期をスキップして既存所属を削除しない", async () => {
+      mockDb.userGroupMembership.findMany.mockResolvedValue([
+        { id: "mem-1", groupId: "group-a" },
+      ]);
+
+      const result = await getTumikiClaims(
+        buildDb(),
+        mockUser.id,
+        "oidc",
+        mockUser.id,
+        undefined,
+      );
+
+      expect(result).toStrictEqual({
+        org_slugs: [],
+        org_id: null,
+        org_slug: null,
+        roles: [mockUser.role],
+        group_roles: undefined,
+      });
+      expect(mockDb.group.findMany).not.toHaveBeenCalled();
+      expect(mockDb.userGroupMembership.findMany).not.toHaveBeenCalled();
+      expect(mockDb.userGroupMembership.createMany).not.toHaveBeenCalled();
+      expect(mockDb.userGroupMembership.deleteMany).not.toHaveBeenCalled();
+      expect(mockDb.idpSyncLog.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          trigger: SyncTrigger.JIT,
+          status: SyncStatus.SUCCESS,
+          added: 0,
+          removed: 0,
+          detail:
+            "Skipped because the OIDC group_roles claim was not returned.",
+        }),
+      });
     });
   });
 

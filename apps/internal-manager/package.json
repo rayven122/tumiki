@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "PORT=3100 pnpm with-env next dev --turbopack",
+    "dev:keycloak": "infisical run --env=dev -- sh -c ': \"${KEYCLOAK_INTERNAL_MANAGER_CLIENT_SECRET:?KEYCLOAK_INTERNAL_MANAGER_CLIENT_SECRET is required for local Keycloak. Set it in Infisical dev or the shell.}\"; PORT=${PORT:-3100} OIDC_ISSUER=http://localhost:8888/realms/tumiki OIDC_CLIENT_ID=tumiki-internal-manager OIDC_CLIENT_SECRET=${KEYCLOAK_INTERNAL_MANAGER_CLIENT_SECRET} INTERNAL_MANAGER_BOOTSTRAP_ADMIN_EMAIL=${INTERNAL_MANAGER_BOOTSTRAP_ADMIN_EMAIL:-admin@tumiki.local} NEXTAUTH_URL=http://localhost:${PORT:-3100} next dev --turbopack'",
     "build": "pnpm with-env next build --turbopack",
     "build:bare": "next build --webpack",
     "start": "PORT=3100 pnpm with-env next start",
