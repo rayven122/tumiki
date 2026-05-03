@@ -128,7 +128,7 @@ describe("setupProfileIpc", () => {
     const handler = mockIpcHandlers.get("profile:cancelOrganizationSetup");
 
     await expect(handler!({} as IpcMainInvokeEvent)).rejects.toThrow(
-      "store error",
+      "組織利用セットアップのキャンセルに失敗しました",
     );
 
     expect(cancelAuthFlow).not.toHaveBeenCalled();

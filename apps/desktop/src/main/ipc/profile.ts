@@ -15,7 +15,19 @@ export const setupProfileIpc = (): void => {
   ipcMain.handle("profile:selectPersonal", () => selectPersonalProfile());
 
   ipcMain.handle("profile:cancelOrganizationSetup", async () => {
-    const profileState = await clearOrganizationProfile();
+    let profileState: ProfileState;
+    try {
+      profileState = await clearOrganizationProfile();
+    } catch (error) {
+      logger.error(
+        "Failed to clear organization profile while cancelling organization setup",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error("組織利用セットアップのキャンセルに失敗しました", {
+        cause: error,
+      });
+    }
+
     const manager = getOAuthManager();
     manager?.cancelAuthFlow();
     manager?.stopAutoRefresh();
