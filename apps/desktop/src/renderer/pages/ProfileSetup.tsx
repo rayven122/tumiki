@@ -112,7 +112,6 @@ export const ProfileSetup = (): JSX.Element => {
   const cancelOrganizationSetup = async (): Promise<void> => {
     let cancelError: string | null = null;
     try {
-      await window.electronAPI.auth.cancelLogin();
       await window.electronAPI.profile.cancelOrganizationSetup();
     } catch (err) {
       console.error("組織セットアップのキャンセルに失敗しました", err);
