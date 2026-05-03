@@ -78,8 +78,14 @@ export const ensureFolder = async (params: {
       name,
     }),
   });
-  if (!res.ok && res.status !== 409) {
+  if (!res.ok) {
     const text = await res.text();
+    // 既存フォルダ（409 or 400 "already exists"）は冪等として無視する
+    if (
+      res.status === 409 ||
+      (res.status === 400 && text.includes("already exists"))
+    )
+      return;
     throw new Error(`ensureFolder failed: ${res.status} ${text}`);
   }
 };
