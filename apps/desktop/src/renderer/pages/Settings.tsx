@@ -1,4 +1,4 @@
-import { type JSX, useEffect, useState } from "react";
+import { type JSX, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CURRENT_USER,
@@ -10,6 +10,7 @@ import type { NotificationSetting } from "../data/mock";
 import { SettingsForm } from "../_components/SettingsForm";
 import { ConfirmDialog } from "../_components/ConfirmDialog";
 import type { ProfileState } from "../../shared/types";
+import { PROFILE_CHANGED_EVENT } from "../../shared/events";
 
 /** トグルスイッチ（CSS変数ベース） */
 const Toggle = ({
@@ -75,12 +76,20 @@ export const SettingsPage = (): JSX.Element => {
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [disconnectError, setDisconnectError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
     window.electronAPI.profile
       .getState()
-      .then(setProfile)
-      .catch(() => setProfile(null));
+      .then((state) => {
+        if (mountedRef.current) setProfile(state);
+      })
+      .catch(() => {
+        if (mountedRef.current) setProfile(null);
+      });
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   /** 通知トグル */
@@ -102,14 +111,17 @@ export const SettingsPage = (): JSX.Element => {
     setDisconnectError(null);
     try {
       await window.electronAPI.profile.disconnectOrganization();
-      setShowDisconnectConfirm(false);
+      if (mountedRef.current) setShowDisconnectConfirm(false);
+      window.dispatchEvent(new Event(PROFILE_CHANGED_EVENT));
       navigate("/profile-setup", { replace: true });
     } catch (err) {
-      setDisconnectError(
-        err instanceof Error ? err.message : "組織利用の停止に失敗しました",
-      );
+      if (mountedRef.current) {
+        setDisconnectError(
+          err instanceof Error ? err.message : "組織利用の停止に失敗しました",
+        );
+      }
     } finally {
-      setIsDisconnecting(false);
+      if (mountedRef.current) setIsDisconnecting(false);
     }
   };
 
