@@ -131,6 +131,10 @@ jobs:
             set +a
             terraform init -input=false
             terraform validate
+            if ! terraform state show keycloak_realm.tumiki >/dev/null 2>&1; then
+              terraform import -var-file=terraform.tfvars.staging -input=false keycloak_realm.tumiki tumiki \
+                || echo "Existing tumiki realm was not imported; terraform apply will create it if needed"
+            fi
             if [ "${DRY_RUN}" = "true" ]; then
               terraform plan -var-file=terraform.tfvars.staging -input=false -no-color
             else
