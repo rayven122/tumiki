@@ -62,7 +62,8 @@ const buildJacksonOption = (): JacksonOption => {
       type: "postgres",
       url: dbUrl,
       encryptionKey,
-      ttl: 300,
+      // 内部管理ツールのため 7日間に設定（refresh_token なしでも再ログイン不要）
+      ttl: 60 * 60 * 24 * 7,
     },
     // OIDC IdP の ID Token 署名鍵
     openid: {

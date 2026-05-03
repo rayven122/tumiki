@@ -15,7 +15,12 @@ import {
   ensureFolder,
   upsertSecrets,
 } from "@/server/infisical/client";
-import { HELM_BIN, HELM_TIMEOUT_MS, KUBECTL_BIN } from "./constants";
+import {
+  HELM_BIN,
+  HELM_INSTALL_TIMEOUT_MS,
+  KUBECTL_BIN,
+  ROLLOUT_TIMEOUT_MS,
+} from "./constants";
 import type { CreateTenantInput } from "./schemas";
 
 const execFileAsync = promisify(execFile);
@@ -214,10 +219,25 @@ export const createTenant = async (ctx: Context, input: CreateTenantInput) => {
         `image.tag=${input.imageTag}`,
         "-f",
         valuesFile,
-        "--timeout",
-        "5m",
+        // --wait を使わず Pod 起動待ちは kubectl rollout status で行う
       ];
-      await execFileAsync(HELM_BIN, helmArgs, { timeout: HELM_TIMEOUT_MS });
+      await execFileAsync(HELM_BIN, helmArgs, {
+        timeout: HELM_INSTALL_TIMEOUT_MS,
+      });
+
+      // Deployment が Ready になるまで待機（InitContainer の DB マイグレーション完了を含む）
+      await execFileAsync(
+        KUBECTL_BIN,
+        [
+          "rollout",
+          "status",
+          "deployment/internal-manager",
+          "-n",
+          namespace,
+          "--timeout=10m",
+        ],
+        { timeout: ROLLOUT_TIMEOUT_MS },
+      );
     } finally {
       rmSync(tmpDir, { recursive: true, force: true });
     }
