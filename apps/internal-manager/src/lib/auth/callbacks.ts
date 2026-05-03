@@ -8,8 +8,9 @@ import { z } from "zod";
 
 // OIDCアクセストークンのペイロードスキーマ
 const tumikiIdpClaimsSchema = z.object({
-  group_roles: z.array(z.string()),
-  roles: z.array(z.string()),
+  group_roles: z.array(z.string()).optional(),
+  // Keycloakのrealm rolesマッパー用。現時点の認可判定はgroup_rolesを使用する。
+  roles: z.array(z.string()).optional(),
 });
 
 const oidcJWTPayloadSchema = z.object({
@@ -137,7 +138,7 @@ export const jwtCallback = async ({
     token.email = oidcProfile.email ?? null;
     token.name = oidcProfile.name ?? null;
 
-    // group_rolesはOIDCプロバイダーのカスタムクレームから取得（未設定の場合は空配列）
+    // group_rolesはOIDCプロバイダーのカスタムクレーム（IdPによっては省略可能）
     const groupRoles = oidcProfile.tumiki?.group_roles;
     token.provider = account.provider;
 
@@ -180,6 +181,8 @@ export const jwtCallback = async ({
       token.sub,
       token.provider ?? "oidc",
       token.oidcSub ?? "",
+      // undefinedはIdPがgroup_rolesクレームを返さなかった状態を保持する。
+      // 後からIdPグループを付与した場合は、再ログインで最新クレームを取得する。
       token.tumiki.group_roles,
     );
 
