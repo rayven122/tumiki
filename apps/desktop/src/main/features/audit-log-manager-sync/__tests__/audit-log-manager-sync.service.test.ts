@@ -132,6 +132,10 @@ describe("audit-log-manager-sync.service", () => {
         logs: [
           {
             mcpServerId: "3",
+            connectionName: "main",
+            clientName: undefined,
+            clientVersion: undefined,
+            transportType: "STDIO",
             sourceAuditLogId: 10,
             sourceInstallationId: "installation-001",
             toolName: "list_repos",

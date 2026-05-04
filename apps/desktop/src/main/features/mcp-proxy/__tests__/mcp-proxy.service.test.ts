@@ -98,6 +98,7 @@ describe("mcp-proxy.service", () => {
         catalogId: null,
         createdAt: new Date(),
         updatedAt: new Date(),
+        tools: [],
         server: buildServer(serverOverrides ?? {}),
         ...rest,
       };

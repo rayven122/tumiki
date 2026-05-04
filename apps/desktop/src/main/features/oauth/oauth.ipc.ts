@@ -13,6 +13,31 @@ const StartOAuthInputSchema = z.object({
   command: z.string().nullable(),
   args: z.string(),
   url: z.url(),
+  managerCatalog: z
+    .object({
+      catalogId: z.string().min(1),
+      status: z.enum(["available", "request_required", "disabled"]),
+      permissions: z.object({
+        read: z.boolean(),
+        write: z.boolean(),
+        execute: z.boolean(),
+      }),
+      connectionTemplate: z.object({
+        transportType: z.enum(["STDIO", "SSE", "STREAMABLE_HTTP"]),
+        command: z.string().nullable(),
+        args: z.array(z.string()),
+        url: z.string().nullable(),
+        authType: z.enum(["NONE", "BEARER", "API_KEY", "OAUTH"]),
+        credentialKeys: z.array(z.string()),
+      }),
+      tools: z.array(
+        z.object({
+          name: z.string().min(1),
+          allowed: z.boolean(),
+        }),
+      ),
+    })
+    .optional(),
   oauthClientId: z.string().min(1).optional(),
   oauthClientSecret: z.string().min(1).optional(),
 });

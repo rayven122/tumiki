@@ -3,7 +3,13 @@ import {
   createTRPCRouter,
   publicProcedure,
 } from "@/server/api/trpc";
+import { auditLogsRouter } from "./routers/audit-logs";
+import { dashboardRouter } from "./routers/dashboard";
 import { groupsRouter } from "./routers/groups";
+import { desktopApiSettingsRouter } from "./routers/desktop-api-settings";
+import { mcpCatalogRouter } from "./routers/mcp-catalog";
+import { mcpPoliciesRouter } from "./routers/mcp-policies";
+import { orgUnitsRouter } from "./routers/org-units";
 import { scimDirectoryRouter } from "./routers/scim-directory";
 import { ssoRouter } from "./routers/sso";
 import { usersRouter } from "./routers/users";
@@ -18,8 +24,14 @@ export const appRouter = createTRPCRouter({
   health: publicProcedure.query(() => {
     return { status: "ok" };
   }),
+  auditLogs: auditLogsRouter,
+  dashboard: dashboardRouter,
   scimDirectory: scimDirectoryRouter,
+  desktopApiSettings: desktopApiSettingsRouter,
   groups: groupsRouter,
+  mcpCatalog: mcpCatalogRouter,
+  mcpPolicies: mcpPoliciesRouter,
+  orgUnits: orgUnitsRouter,
   users: usersRouter,
   sso: ssoRouter,
 });

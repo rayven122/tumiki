@@ -49,12 +49,12 @@ model McpServerRequestLog {
   piiMaskingMode PiiMaskingMode @default(DISABLED)
 
   /// リクエストPII検出件数
-  piiDetectedRequestCount Int?
+  piiDetectedRequestCount  Int?
   /// レスポンスPII検出件数
   piiDetectedResponseCount Int?
   /// 検出されたInfoType名の配列（リクエスト+レスポンス、重複なし）
   /// 例: ["EMAIL_ADDRESS", "PHONE_NUMBER", "CREDIT_CARD_NUMBER"]
-  piiDetectedInfoTypes String[]
+  piiDetectedInfoTypes     String[]
 
   /// TOON変換メトリクス
   /// TOON変換が有効だったかどうか

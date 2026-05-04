@@ -40,7 +40,6 @@ import {
   McpServerSchema,
   McpServerTemplateInstanceSchema,
   McpServerTemplateSchema,
-  McpToolSchema,
 } from "@tumiki/db/zod";
 
 // APIキー認証MCPサーバー作成用の入力スキーマ
@@ -59,7 +58,7 @@ export const CreateApiKeyMcpServerInputV2 = z
         "スラッグは小文字英数字とハイフンのみ使用可能です",
       ),
     description: z.string().optional(),
-    authType: z.enum(["NONE", "API_KEY"]),
+    authType: z.enum(["NONE", "BEARER", "API_KEY"]),
   })
   .refine((data) => data.mcpServerTemplateId ?? data.customUrl, {
     message: "mcpServerTemplateId または customUrl のいずれかが必要です",
@@ -150,6 +149,17 @@ const CreatedBySchema = z
   })
   .nullable();
 
+const McpToolListItemSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  inputSchema: z.unknown(),
+  mcpServerTemplateId: z.string().nullable(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+  isEnabled: z.boolean(),
+});
+
 // MCPサーバー一覧取得用の出力スキーマ
 export const FindMcpServersOutputV2 = z.array(
   McpServerSchema.extend({
@@ -157,11 +167,7 @@ export const FindMcpServersOutputV2 = z.array(
     templateInstances: z.array(
       McpServerTemplateInstanceSchema.extend({
         mcpServerTemplate: McpServerTemplateSchema,
-        tools: z.array(
-          McpToolSchema.extend({
-            isEnabled: z.boolean(),
-          }),
-        ),
+        tools: z.array(McpToolListItemSchema),
         // 現在のユーザーのOAuth認証状態（null: OAuthが不要、true: 認証済み、false: 未認証）
         isOAuthAuthenticated: z.boolean().nullable(),
         // OAuthトークンの有効期限（null: OAuthが不要または未認証）

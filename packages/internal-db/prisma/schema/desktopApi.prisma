@@ -1,0 +1,19 @@
+/**
+ * @namespace DesktopApi
+ * Desktop クライアントへ配布する組織プロファイル・機能フラグ設定
+ */
+
+model DesktopApiSettings {
+  id String @id @default("default")
+
+  organizationName String?
+  organizationSlug String?
+
+  catalogEnabled        Boolean @default(false)
+  accessRequestsEnabled Boolean @default(false)
+  policySyncEnabled     Boolean @default(false)
+  auditLogSyncEnabled   Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

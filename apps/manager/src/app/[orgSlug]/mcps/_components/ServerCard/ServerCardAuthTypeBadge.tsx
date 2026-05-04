@@ -19,6 +19,12 @@ const getAuthTypeDisplay = (authType: AuthType) => {
         color: "text-blue-800",
         bgColor: "bg-blue-100",
       };
+    case "BEARER":
+      return {
+        type: "Bearer",
+        color: "text-amber-800",
+        bgColor: "bg-amber-100",
+      };
     case "NONE":
     default:
       return {

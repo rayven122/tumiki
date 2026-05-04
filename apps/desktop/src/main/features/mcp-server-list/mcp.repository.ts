@@ -36,6 +36,7 @@ export type CreateMcpToolInput = {
   description: string;
   inputSchema: string;
   connectionId: number;
+  isAllowed?: boolean;
 };
 
 /**
@@ -124,7 +125,12 @@ export const findEnabledConnections = async (db: DbClient) => {
       isEnabled: true,
       server: { isEnabled: true },
     },
-    include: { server: true },
+    include: {
+      server: true,
+      tools: {
+        select: { name: true, isAllowed: true },
+      },
+    },
     orderBy: { displayOrder: "asc" },
   });
 };
@@ -141,7 +147,12 @@ export const findEnabledConnectionsBySlug = async (
       isEnabled: true,
       server: { isEnabled: true, slug: serverSlug },
     },
-    include: { server: true },
+    include: {
+      server: true,
+      tools: {
+        select: { name: true, isAllowed: true },
+      },
+    },
     orderBy: { displayOrder: "asc" },
   });
 };
