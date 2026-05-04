@@ -6,11 +6,14 @@ import {
   getPolicyContextForUser,
 } from "~/server/mcp-policy/effective-permissions";
 
+const POLICY_MATRIX_ORG_UNIT_LIMIT = 1000;
+
 export const mcpPoliciesRouter = createTRPCRouter({
   getMatrix: adminProcedure.query(async ({ ctx }) => {
     const [orgUnits, catalogs] = await Promise.all([
       ctx.db.orgUnit.findMany({
         orderBy: [{ path: "asc" }, { name: "asc" }],
+        take: POLICY_MATRIX_ORG_UNIT_LIMIT,
       }),
       ctx.db.mcpCatalog.findMany({
         where: { deletedAt: null },

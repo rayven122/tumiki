@@ -189,7 +189,7 @@ describe("GET /api/desktop/v1/catalogs", () => {
     const response = await GET(buildRequest("?limit=1"));
     const body = (await response.json()) as { nextCursor: string | null };
 
-    expect(body.nextCursor).toEqual(expect.any(String));
+    expect(body.nextCursor).toStrictEqual(expect.any(String));
   });
 
   test("cursor指定時は名前とIDのkeyset条件で次ページを取得する", async () => {

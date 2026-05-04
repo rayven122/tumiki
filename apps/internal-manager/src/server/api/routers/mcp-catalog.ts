@@ -18,6 +18,8 @@ const jsonRecordSchema = z.record(z.string(), z.unknown());
 const toInputJson = (value: Record<string, unknown>): Prisma.InputJsonValue =>
   value as Prisma.InputJsonValue;
 
+const MCP_CATALOG_LIST_LIMIT = 200;
+
 export const mcpCatalogRouter = createTRPCRouter({
   list: adminProcedure.query(async ({ ctx }) => {
     return ctx.db.mcpCatalog.findMany({
@@ -29,7 +31,7 @@ export const mcpCatalogRouter = createTRPCRouter({
         },
       },
       orderBy: [{ name: "asc" }, { id: "asc" }],
-      take: 200,
+      take: MCP_CATALOG_LIST_LIMIT,
     });
   }),
 

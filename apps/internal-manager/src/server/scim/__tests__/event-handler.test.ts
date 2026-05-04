@@ -75,6 +75,13 @@ const mockDb = {
     >(),
   },
   userOrgUnitMembership: {
+    updateMany:
+      vi.fn<
+        (args: {
+          where: Record<string, unknown>;
+          data: Record<string, unknown>;
+        }) => Promise<{ count: number }>
+      >(),
     upsert: vi.fn<
       (args: {
         where: {
@@ -190,6 +197,7 @@ beforeEach(() => {
   mockDb.userGroupMembership.upsert.mockResolvedValue({ id: "mem-001" });
   mockDb.userGroupMembership.deleteMany.mockResolvedValue({ count: 1 });
   mockDb.orgUnit.upsert.mockResolvedValue({ id: "org-001" });
+  mockDb.userOrgUnitMembership.updateMany.mockResolvedValue({ count: 1 });
   mockDb.userOrgUnitMembership.upsert.mockResolvedValue({ id: "uom-001" });
   mockDb.idpSyncLog.create.mockResolvedValue({ id: "log-001" });
 });
@@ -296,6 +304,14 @@ describe("handleDirectorySyncEvent", () => {
       expect(orgUnitArgs.create.lastSyncedAt).toBeInstanceOf(Date);
       expect(orgUnitArgs.update.name).toStrictEqual("Product Engineering");
       expect(orgUnitArgs.update.lastSyncedAt).toBeInstanceOf(Date);
+      expect(mockDb.userOrgUnitMembership.updateMany).toHaveBeenCalledWith({
+        where: {
+          userId: "user-001",
+          isPrimary: true,
+          orgUnitId: { not: "org-001" },
+        },
+        data: { isPrimary: false },
+      });
       expect(mockDb.userOrgUnitMembership.upsert).toHaveBeenCalledWith({
         where: {
           userId_orgUnitId: { userId: "user-001", orgUnitId: "org-001" },

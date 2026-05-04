@@ -37,20 +37,22 @@ type SyncLog = RouterOutputs["groups"]["getSyncLogs"][number];
 
 /* ===== グループカラー（IDから決定論的に導出） ===== */
 
-const PRESET_COLORS = [
-  "#a78bfa",
-  "#34d399",
-  "#fbbf24",
-  "#f87171",
-  "#60a5fa",
-  "#fb923c",
-  "#4ade80",
-  "#f472b6",
+const PRESET_COLOR_CLASSES = [
+  "bg-[#a78bfa]",
+  "bg-[#34d399]",
+  "bg-[#fbbf24]",
+  "bg-[#f87171]",
+  "bg-[#60a5fa]",
+  "bg-[#fb923c]",
+  "bg-[#4ade80]",
+  "bg-[#f472b6]",
 ];
 
-const getGroupColor = (id: string): string => {
-  const index = id.charCodeAt(0) % PRESET_COLORS.length;
-  return PRESET_COLORS[index] ?? PRESET_COLORS[0] ?? "#a78bfa";
+const getGroupColorClass = (id: string): string => {
+  const index = id.charCodeAt(0) % PRESET_COLOR_CLASSES.length;
+  return (
+    PRESET_COLOR_CLASSES[index] ?? PRESET_COLOR_CLASSES[0] ?? "bg-[#a78bfa]"
+  );
 };
 
 /* ===== 同期ステータスのスタイル ===== */
@@ -375,7 +377,7 @@ const AdminGroupsPage = () => {
           {filteredGroups.map((group) => {
             const syncStatusKey = getSyncStatusKey(group);
             const syncCfg = SYNC_STATUS_CONFIG[syncStatusKey];
-            const color = getGroupColor(group.id);
+            const colorClass = getGroupColorClass(group.id);
             const isSelected = selectedGroupId === group.id;
             return (
               <button
@@ -387,8 +389,7 @@ const AdminGroupsPage = () => {
                 <div className="mb-1.5 flex items-center gap-2">
                   {/* グループカラードット */}
                   <span
-                    className="h-2.5 w-2.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: color }}
+                    className={`h-2.5 w-2.5 shrink-0 rounded-full ${colorClass}`}
                   />
                   <span className="text-text-primary flex-1 truncate text-xs font-medium">
                     {group.name}
@@ -438,8 +439,7 @@ const AdminGroupsPage = () => {
             <div className="border-b-border-default border-b px-6 py-4">
               <div className="flex items-center gap-3">
                 <span
-                  className="h-3.5 w-3.5 rounded-full"
-                  style={{ backgroundColor: getGroupColor(selectedGroup.id) }}
+                  className={`h-3.5 w-3.5 rounded-full ${getGroupColorClass(selectedGroup.id)}`}
                 />
                 <h1 className="text-text-primary text-base font-semibold">
                   {selectedGroup.name}

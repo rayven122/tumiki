@@ -94,6 +94,15 @@ const syncPrimaryOrgUnitMembership = async (
     },
   });
 
+  await tx.userOrgUnitMembership.updateMany({
+    where: {
+      userId,
+      isPrimary: true,
+      orgUnitId: { not: orgUnit.id },
+    },
+    data: { isPrimary: false },
+  });
+
   await tx.userOrgUnitMembership.upsert({
     where: {
       userId_orgUnitId: {

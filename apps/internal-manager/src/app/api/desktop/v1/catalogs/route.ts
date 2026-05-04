@@ -75,9 +75,6 @@ const decodeCursor = (cursor: string): CatalogCursor | null => {
   }
 };
 
-const mapAuthType = (authType: string | undefined) =>
-  authType === "API_KEY" ? "API_KEY" : authType;
-
 const toCatalogItem = (
   catalog: CatalogRow,
   permissions: Permissions,
@@ -101,7 +98,7 @@ const toCatalogItem = (
     status,
     permissions,
     transportType: catalog.transportType,
-    authType: mapAuthType(catalog.authType) ?? "NONE",
+    authType: catalog.authType ?? "NONE",
     requiredCredentialKeys: catalog.credentialKeys,
     tools: catalog.tools.map((tool) => ({
       name: tool.name,

@@ -6,6 +6,8 @@ import { adminProcedure, createTRPCRouter } from "@/server/api/trpc";
 const buildPath = (parentPath: string | null, id: string) =>
   parentPath ? `${parentPath}/${id}` : `/${id}`;
 
+const ORG_UNIT_TREE_LIMIT = 1000;
+
 export const orgUnitsRouter = createTRPCRouter({
   tree: adminProcedure.query(async ({ ctx }) => {
     return ctx.db.orgUnit.findMany({
@@ -27,6 +29,7 @@ export const orgUnitsRouter = createTRPCRouter({
         },
       },
       orderBy: [{ path: "asc" }, { name: "asc" }],
+      take: ORG_UNIT_TREE_LIMIT,
     });
   }),
 
