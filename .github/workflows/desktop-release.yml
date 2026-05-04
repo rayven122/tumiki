@@ -87,10 +87,82 @@ jobs:
             apps/desktop/out/*.zip
           retention-days: 7
 
+  # Windows用ビルド (DEV-1598)
+  build-windows:
+    name: 🪟 Windows ビルド
+    runs-on: windows-latest
+    env:
+      # macOS ジョブと同じくビルド時にバイナリへ埋め込まれる
+      KEYCLOAK_ISSUER: ${{ secrets.KEYCLOAK_ISSUER }}
+      KEYCLOAK_DESKTOP_CLIENT_ID: ${{ secrets.KEYCLOAK_DESKTOP_CLIENT_ID }}
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: ✅ Validate tag format
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        shell: bash
+        run: |
+          if [[ ! "$INPUT_TAG" =~ ^desktop-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid tag format: $INPUT_TAG (expected: desktop-vX.Y.Z)"
+            exit 1
+          fi
+
+      - name: ⚙️ Setup pnpm
+        uses: pnpm/action-setup@02f6c237bd2518259fed6c71566509edfb3f2b74 # v4
+        with:
+          version: 10.11.0
+
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: 📦 Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: 🔧 Build database package
+        run: pnpm --filter @tumiki/db build
+
+      - name: 🔧 Generate Prisma client for desktop
+        shell: bash
+        run: |
+          cd apps/desktop
+          pnpm db:generate
+
+      - name: 🔨 Build Electron app
+        shell: bash
+        run: |
+          cd apps/desktop
+          pnpm build
+
+      - name: 📦 Package for Windows (x64 + arm64)
+        shell: bash
+        run: |
+          cd apps/desktop
+          pnpm build:release
+        env:
+          # 将来的にコード署名を有効化する場合:
+          # EV Code Signing 証明書が必要です（CSC_LINK は .pfx を base64 化したもの）
+          # CSC_LINK: ${{ secrets.WINDOWS_CERTIFICATE }}
+          # CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📤 Upload artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-builds
+          path: |
+            apps/desktop/out/*.exe
+          retention-days: 7
+
   # GitHub Releaseの作成
   create-release:
     name: 📢 GitHub Release 作成
-    needs: [build-macos]
+    needs: [build-macos, build-windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -105,6 +177,12 @@ jobs:
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: macos-builds
+          path: artifacts/
+
+      - name: 📥 Download Windows artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: windows-builds
           path: artifacts/
 
       - name: 📋 Extract version from tag
@@ -135,22 +213,34 @@ jobs:
           - Apple Silicon (M1/M2/M3): `Tumiki-${{ steps.version.outputs.version }}-arm64.dmg`
           - ZIP版（両アーキテクチャ対応）: `Tumiki-${{ steps.version.outputs.version }}-mac.zip`
 
+          **Windows:**
+          - Windows 10/11 (x64): `Tumiki-Setup-${{ steps.version.outputs.version }}-x64.exe`
+          - Windows on ARM: `Tumiki-Setup-${{ steps.version.outputs.version }}-arm64.exe`
+
           ### インストール方法
 
+          **macOS:**
           1. お使いのMacに対応したDMGファイルをダウンロード
           2. DMGファイルを開き、TumikiをApplicationsフォルダにドラッグ
           3. 初回起動時にセキュリティ警告が表示された場合:
              - システム設定 > プライバシーとセキュリティ > 「このまま開く」をクリック
 
+          **Windows:**
+          1. お使いのアーキテクチャに対応したインストーラ (.exe) をダウンロード
+          2. インストーラを実行（SmartScreen の警告が出た場合は「詳細情報」→「実行」）
+          3. インストール先を選択（既定はユーザーフォルダ配下）
+          4. スタートメニューから Tumiki を起動
+
           ### システム要件
 
-          - macOS 11.0 (Big Sur) 以降
-          - Intel または Apple Silicon プロセッサ
+          - macOS 11.0 (Big Sur) 以降 / Windows 10 以降
+          - Intel / Apple Silicon / x64 / ARM64 プロセッサ
 
           ### 注意事項
 
           - このバージョンは署名・公証されていません
-          - 将来のバージョンでApple公証に対応予定です
+          - macOS: 将来のバージョンで Apple 公証に対応予定です
+          - Windows: SmartScreen 警告は EV Code Signing 証明書導入で解消予定です
 
           ---
 
@@ -175,6 +265,7 @@ jobs:
           files: |
             artifacts/**/*.dmg
             artifacts/**/*.zip
+            artifacts/**/*.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
