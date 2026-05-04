@@ -2,6 +2,7 @@ import jackson, {
   type JacksonOption,
   type SAMLJackson,
 } from "@boxyhq/saml-jackson";
+import { handleDirectorySyncEvent } from "~/server/scim/event-handler";
 
 /**
  * @boxyhq/saml-jackson 初期化モジュール
@@ -11,10 +12,16 @@ import jackson, {
  * - OIDC Connection として顧客 OIDC IdP を federate
  * - OIDC IdP として アプリ（Auth.js）に統一フォーマットで認証結果を提供
  * - SCIM Server として顧客 IdP からの user/group 同期を受信
+ * - Google Workspace の Directory API から OAuth 経由で定期 pull 同期
  *
  * 設計: 認証・プロビジョニング統合設計
  * @see https://docs.rayven.cloud/doc/phase-2-15ARZRLaxD
  */
+
+// Google Workspace Directory Sync の OAuth エンドポイントパス
+// Jackson が `dsync.providers.google.authorizePath/callbackPath` 設定経由で内部的に参照する
+const GOOGLE_DSYNC_AUTHORIZE_PATH = "/api/scim/oauth/google/authorize";
+const GOOGLE_DSYNC_CALLBACK_PATH = "/api/scim/oauth/google/callback";
 
 let jacksonInstance: SAMLJackson | null = null;
 let initPromise: Promise<SAMLJackson> | null = null;
@@ -85,6 +92,24 @@ const buildJacksonOption = (): JacksonOption => {
       info: (msg, err) => console.info("[jackson]", msg, err ?? ""),
       warn: (msg, err) => console.warn("[jackson]", msg, err ?? ""),
       error: (msg, err) => console.error("[jackson]", msg, err ?? ""),
+    },
+    // Directory Sync 全体の callback（Google Workspace 等の non-SCIM provider が発火）
+    // SCIM 経由のイベントは requests.handle() の callback 引数で別途渡す
+    dsync: {
+      callback: handleDirectorySyncEvent,
+      ...(process.env.GOOGLE_DIRECTORY_CLIENT_ID &&
+      process.env.GOOGLE_DIRECTORY_CLIENT_SECRET
+        ? {
+            providers: {
+              google: {
+                clientId: process.env.GOOGLE_DIRECTORY_CLIENT_ID,
+                clientSecret: process.env.GOOGLE_DIRECTORY_CLIENT_SECRET,
+                authorizePath: GOOGLE_DSYNC_AUTHORIZE_PATH,
+                callbackPath: GOOGLE_DSYNC_CALLBACK_PATH,
+              },
+            },
+          }
+        : {}),
     },
   };
 };
