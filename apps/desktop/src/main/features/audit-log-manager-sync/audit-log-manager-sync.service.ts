@@ -29,6 +29,10 @@ const toInteger = (value: number | null | undefined, fallback = 0): number => {
 type RemoteAuditLogEntry = {
   sourceAuditLogId: number;
   mcpServerId: string;
+  connectionName?: string;
+  clientName?: string;
+  clientVersion?: string;
+  transportType?: string;
   toolName: string;
   method: string;
   httpStatus: number;
@@ -43,6 +47,22 @@ type RemoteAuditLogEntry = {
 const buildRemoteLog = (log: AuditLog): RemoteAuditLogEntry => ({
   sourceAuditLogId: log.id,
   mcpServerId: String(log.serverId),
+  connectionName:
+    log.connectionName === null || log.connectionName === undefined
+      ? undefined
+      : String(log.connectionName).slice(0, 255),
+  clientName:
+    log.clientName === null || log.clientName === undefined
+      ? undefined
+      : String(log.clientName).slice(0, 100),
+  clientVersion:
+    log.clientVersion === null || log.clientVersion === undefined
+      ? undefined
+      : String(log.clientVersion).slice(0, 50),
+  transportType:
+    log.transportType === null || log.transportType === undefined
+      ? undefined
+      : String(log.transportType).slice(0, 32),
   toolName: String(log.toolName).slice(0, 255),
   method: String(log.method).slice(0, 64),
   httpStatus: log.isSuccess === false ? 500 : 200,

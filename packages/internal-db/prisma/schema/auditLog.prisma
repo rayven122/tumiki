@@ -18,14 +18,22 @@ model DesktopAuditLog {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   /// 対象MCPサーバーID（packages/dbのMcpServer.idと対応）
-  mcpServerId String
+  mcpServerId    String
+  /// Desktop側の接続表示名（接続削除後もログで識別できるように保存）
+  connectionName String? @db.VarChar(255)
+  /// 呼び出し元AIクライアント名
+  clientName     String? @db.VarChar(100)
+  /// 呼び出し元AIクライアントバージョン
+  clientVersion  String? @db.VarChar(50)
+  /// Desktop側で記録したトランスポートタイプ
+  transportType  String? @db.VarChar(32)
 
   /// 実行されたツール名
-  toolName String @db.VarChar(255)
+  toolName    String @db.VarChar(255)
   /// MCPメソッド（例: "tools/call"）
-  method   String @db.VarChar(64)
+  method      String @db.VarChar(64)
   /// HTTPステータスコード
-  httpStatus Int @db.SmallInt
+  httpStatus  Int    @db.SmallInt
   /// 実行時間（ミリ秒）
   durationMs  Int
   /// 入力データサイズ（バイト）
@@ -41,7 +49,9 @@ model DesktopAuditLog {
   occurredAt DateTime
   createdAt  DateTime @default(now())
 
+  @@unique([sourceInstallationId, sourceAuditLogId])
   @@index([userId, occurredAt])
   @@index([mcpServerId, occurredAt])
-  @@unique([sourceInstallationId, sourceAuditLogId])
+  @@index([clientName, occurredAt])
+  @@index([connectionName, occurredAt])
 }
