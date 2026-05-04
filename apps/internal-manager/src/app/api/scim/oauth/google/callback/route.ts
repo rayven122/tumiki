@@ -1,7 +1,11 @@
-import { NextResponse, type NextRequest } from "next/server";
-import { auth } from "~/auth";
-import { ensureJackson } from "~/server/jackson/route-helpers";
+import { type NextRequest } from "next/server";
 import { Role } from "@tumiki/internal-db";
+import { auth } from "~/auth";
+import {
+  ensureJackson,
+  redirectToSettingsWithError,
+  redirectToSettingsWithSuccess,
+} from "~/server/jackson/route-helpers";
 
 /**
  * Google Workspace Directory Sync OAuth コールバック
@@ -21,22 +25,12 @@ import { Role } from "@tumiki/internal-db";
  *   （/admin/settings に scim_error クエリ付きでリダイレクト）
  */
 
-const SETTINGS_PATH = "/admin/settings";
-
-const redirectWithError = (req: NextRequest, code: string) =>
-  NextResponse.redirect(
-    new URL(
-      `${SETTINGS_PATH}?scim_error=${encodeURIComponent(code)}`,
-      req.nextUrl.origin,
-    ),
-  );
-
 export const GET = async (req: NextRequest) => {
   // CSRF 対策: SYSTEM_ADMIN として認証されたセッションを要求
   const session = await auth();
   if (!session?.user || session.user.role !== Role.SYSTEM_ADMIN) {
     console.warn("[google-callback] unauthenticated callback access");
-    return redirectWithError(req, "unauthorized");
+    return redirectToSettingsWithError(req, "unauthorized");
   }
 
   const ensured = await ensureJackson();
@@ -49,12 +43,12 @@ export const GET = async (req: NextRequest) => {
 
   if (oauthError) {
     console.warn("[google-callback] oauth error from google:", oauthError);
-    return redirectWithError(req, "oauth_denied");
+    return redirectToSettingsWithError(req, "oauth_denied");
   }
 
   if (!code || !state) {
     console.warn("[google-callback] missing code or state");
-    return redirectWithError(req, "invalid_request");
+    return redirectToSettingsWithError(req, "invalid_request");
   }
 
   // state は Jackson が JSON.stringify({ directoryId }) で生成するため parse して取り出す
@@ -71,7 +65,7 @@ export const GET = async (req: NextRequest) => {
     directoryId = (parsed as { directoryId: string }).directoryId;
   } catch (e) {
     console.warn("[google-callback] invalid state format:", e);
-    return redirectWithError(req, "invalid_state");
+    return redirectToSettingsWithError(req, "invalid_state");
   }
 
   const { directorySyncController } = ensured.jackson;
@@ -82,7 +76,7 @@ export const GET = async (req: NextRequest) => {
   });
   if (tokenRes.error || !tokenRes.data) {
     console.error("[google-callback] token exchange failed:", tokenRes.error);
-    return redirectWithError(req, "token_exchange_failed");
+    return redirectToSettingsWithError(req, "token_exchange_failed");
   }
 
   // Jackson の setToken は refreshToken 必須（無いと 400 エラー）。
@@ -92,7 +86,7 @@ export const GET = async (req: NextRequest) => {
     console.warn(
       "[google-callback] refresh_token missing on re-authorization; ask user to revoke previous consent first",
     );
-    return redirectWithError(req, "refresh_token_missing");
+    return redirectToSettingsWithError(req, "refresh_token_missing");
   }
 
   const setRes = await directorySyncController.google.setToken({
@@ -102,14 +96,8 @@ export const GET = async (req: NextRequest) => {
   });
   if (setRes.error) {
     console.error("[google-callback] token persist failed:", setRes.error);
-    return redirectWithError(req, "token_persist_failed");
+    return redirectToSettingsWithError(req, "token_persist_failed");
   }
 
-  // 認可完了 → 設定画面へ戻す
-  return NextResponse.redirect(
-    new URL(
-      `${SETTINGS_PATH}?scim_success=google_authorized`,
-      req.nextUrl.origin,
-    ),
-  );
+  return redirectToSettingsWithSuccess(req, "google_authorized");
 };

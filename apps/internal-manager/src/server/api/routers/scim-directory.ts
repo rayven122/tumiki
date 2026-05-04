@@ -35,6 +35,16 @@ const normalizeDirectoryType = (raw: string): DirectoryType => {
   return parsed.success ? parsed.data : "generic-scim-v2";
 };
 
+// type ごとのデフォルト Directory 名（UI で名前未指定時に使用）
+const DEFAULT_DIRECTORY_NAMES: Record<DirectoryType, string> = {
+  google: "Google Workspace",
+  "okta-scim-v2": "Okta",
+  "azure-scim-v2": "Entra ID",
+  "onelogin-scim-v2": "OneLogin",
+  "jumpcloud-scim-v2": "JumpCloud",
+  "generic-scim-v2": "SCIM Directory",
+};
+
 const ensureJackson = async () => {
   if (!isJacksonConfigured()) {
     throw new TRPCError({
@@ -98,7 +108,8 @@ export const scimDirectoryRouter = createTRPCRouter({
   create: adminProcedure
     .input(
       z.object({
-        name: z.string().min(1).max(100),
+        // 名前未指定時は type 別のデフォルト名を使う
+        name: z.string().max(100).optional(),
         type: directoryTypeSchema.default("generic-scim-v2"),
       }),
     )
@@ -112,10 +123,16 @@ export const scimDirectoryRouter = createTRPCRouter({
         });
       }
 
+      const trimmedName = input.name?.trim() ?? "";
+      const name =
+        trimmedName.length > 0
+          ? trimmedName
+          : DEFAULT_DIRECTORY_NAMES[input.type];
+
       const jackson = await ensureJackson();
       const { data, error } =
         await jackson.directorySyncController.directories.create({
-          name: input.name,
+          name,
           tenant: TENANT,
           product: PRODUCT,
           type: input.type,

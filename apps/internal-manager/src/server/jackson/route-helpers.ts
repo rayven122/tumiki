@@ -1,5 +1,31 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { getJackson, isJacksonConfigured } from "./index";
+
+/// SCIM 設定画面へリダイレクトするときのパス（authorize/callback で共有）
+const SETTINGS_PATH = "/admin/settings";
+
+/**
+ * SCIM OAuth ハンドラからエラーコード付きで設定画面へリダイレクトする
+ * authorize / callback で共通利用する
+ */
+export const redirectToSettingsWithError = (req: NextRequest, code: string) =>
+  NextResponse.redirect(
+    new URL(
+      `${SETTINGS_PATH}?scim_error=${encodeURIComponent(code)}`,
+      req.nextUrl.origin,
+    ),
+  );
+
+/**
+ * SCIM OAuth ハンドラから成功通知付きで設定画面へリダイレクトする
+ */
+export const redirectToSettingsWithSuccess = (req: NextRequest, code: string) =>
+  NextResponse.redirect(
+    new URL(
+      `${SETTINGS_PATH}?scim_success=${encodeURIComponent(code)}`,
+      req.nextUrl.origin,
+    ),
+  );
 
 /**
  * jackson が未設定なら 503 を返し、設定済みならインスタンスを返す
