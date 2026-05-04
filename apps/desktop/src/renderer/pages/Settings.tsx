@@ -13,6 +13,7 @@ import { ConfirmDialog } from "../_components/ConfirmDialog";
 import type { ProfileState } from "../../shared/types";
 import { PROFILE_CHANGED_EVENT } from "../../shared/events";
 import type { DesktopSession } from "../../main/types";
+import { formatElectronIpcErrorMessage } from "../utils/errorHandling";
 
 /** トグルスイッチ（CSS変数ベース） */
 const Toggle = ({
@@ -67,18 +68,6 @@ const NotificationSection = ({
   </div>
 );
 
-const formatSessionError = (error: unknown): string => {
-  const message =
-    error instanceof Error
-      ? error.message
-      : "Desktopセッションの取得に失敗しました";
-  const normalized = message.replace(
-    /^Error invoking remote method '[^']+': Error: /,
-    "",
-  );
-  return normalized;
-};
-
 const RELOGIN_TIMEOUT_MS = 120_000;
 
 export const SettingsPage = (): JSX.Element => {
@@ -113,7 +102,12 @@ export const SettingsPage = (): JSX.Element => {
       .catch((err) => {
         if (mountedRef.current) {
           setDesktopSession(null);
-          setSessionError(formatSessionError(err));
+          setSessionError(
+            formatElectronIpcErrorMessage(
+              err,
+              "Desktopセッションの取得に失敗しました",
+            ),
+          );
         }
       })
       .finally(() => {
@@ -206,7 +200,12 @@ export const SettingsPage = (): JSX.Element => {
       clearReloginTimeout();
       setIsWaitingForRelogin(false);
       setIsReloginStarting(false);
-      setReloginError(`再ログインに失敗しました: ${message}`);
+      setReloginError(
+        `再ログインに失敗しました: ${formatElectronIpcErrorMessage(
+          new Error(message),
+          message,
+        )}`,
+      );
     });
     return () => {
       mountedRef.current = false;

@@ -8,6 +8,14 @@ export type ErrorWithStatus = {
   cause?: unknown;
 };
 
+export const formatElectronIpcErrorMessage = (
+  error: unknown,
+  fallbackMessage: string,
+): string => {
+  const message = error instanceof Error ? error.message : fallbackMessage;
+  return message.replace(/^Error invoking remote method '[^']+': Error: /, "");
+};
+
 /**
  * エラー分類
  */
