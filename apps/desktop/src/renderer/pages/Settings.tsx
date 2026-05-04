@@ -84,6 +84,8 @@ const formatSessionError = (error: unknown): string => {
   return normalized;
 };
 
+const RELOGIN_TIMEOUT_MS = 120_000;
+
 // 設定ページ
 export const SettingsPage = (): JSX.Element => {
   const navigate = useNavigate();
@@ -104,6 +106,7 @@ export const SettingsPage = (): JSX.Element => {
   const [isWaitingForRelogin, setIsWaitingForRelogin] = useState(false);
   const [reloginError, setReloginError] = useState<string | null>(null);
   const mountedRef = useRef(true);
+  const reloginTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refreshDesktopSession = useCallback((): void => {
     setSessionLoading(true);
@@ -143,6 +146,13 @@ export const SettingsPage = (): JSX.Element => {
       });
   }, [refreshDesktopSession]);
 
+  const clearReloginTimeout = useCallback((): void => {
+    if (reloginTimeoutRef.current) {
+      clearTimeout(reloginTimeoutRef.current);
+      reloginTimeoutRef.current = null;
+    }
+  }, []);
+
   const startRelogin = async (): Promise<void> => {
     if (isReloginStarting || isWaitingForRelogin) return;
 
@@ -155,12 +165,24 @@ export const SettingsPage = (): JSX.Element => {
     setIsReloginStarting(true);
     setReloginError(null);
     setSessionError(null);
+    clearReloginTimeout();
     try {
       await window.electronAPI.manager.connect(managerUrl);
       await window.electronAPI.auth.login();
-      if (mountedRef.current) setIsWaitingForRelogin(true);
+      if (mountedRef.current) {
+        setIsWaitingForRelogin(true);
+        reloginTimeoutRef.current = setTimeout(() => {
+          if (!mountedRef.current) return;
+          setIsWaitingForRelogin(false);
+          setReloginError(
+            "再ログインがタイムアウトしました。もう一度実行してください。",
+          );
+          reloginTimeoutRef.current = null;
+        }, RELOGIN_TIMEOUT_MS);
+      }
     } catch (err) {
       if (mountedRef.current) {
+        clearReloginTimeout();
         setReloginError(
           err instanceof Error ? err.message : "再ログインの開始に失敗しました",
         );
@@ -177,6 +199,7 @@ export const SettingsPage = (): JSX.Element => {
     window.addEventListener(PROFILE_CHANGED_EVENT, refreshProfile);
     const cleanupSuccess = window.electronAPI.auth.onCallbackSuccess(() => {
       if (!mountedRef.current) return;
+      clearReloginTimeout();
       setIsWaitingForRelogin(false);
       setIsReloginStarting(false);
       setReloginError(null);
@@ -185,6 +208,7 @@ export const SettingsPage = (): JSX.Element => {
     });
     const cleanupError = window.electronAPI.auth.onCallbackError((message) => {
       if (!mountedRef.current) return;
+      clearReloginTimeout();
       setIsWaitingForRelogin(false);
       setIsReloginStarting(false);
       setReloginError(`再ログインに失敗しました: ${message}`);
@@ -192,10 +216,11 @@ export const SettingsPage = (): JSX.Element => {
     return () => {
       mountedRef.current = false;
       window.removeEventListener(PROFILE_CHANGED_EVENT, refreshProfile);
+      clearReloginTimeout();
       cleanupSuccess();
       cleanupError();
     };
-  }, [refreshProfile]);
+  }, [clearReloginTimeout, refreshProfile]);
 
   /** 通知トグル */
   const toggleEmail = (id: string): void => {
@@ -313,7 +338,7 @@ export const SettingsPage = (): JSX.Element => {
                 type="button"
                 onClick={() => void startRelogin()}
                 disabled={isReloginStarting || isWaitingForRelogin}
-                className="flex items-center gap-2 rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-medium text-[var(--text-secondary)] transition hover:bg-[var(--bg-card-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-11 items-center gap-2 rounded-lg border border-[var(--border)] px-4 text-sm font-medium text-[var(--text-secondary)] transition hover:bg-[var(--bg-card-hover)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isReloginStarting || isWaitingForRelogin ? (
                   <Loader2 size={15} className="animate-spin" />
@@ -325,7 +350,7 @@ export const SettingsPage = (): JSX.Element => {
               <button
                 type="button"
                 onClick={() => setShowDisconnectConfirm(true)}
-                className="rounded-lg border border-red-500/30 px-4 py-2 text-sm font-medium text-red-400 transition hover:bg-red-500/10"
+                className="h-11 rounded-lg border border-red-500/30 px-4 text-sm font-medium text-red-400 transition hover:bg-red-500/10"
               >
                 組織利用を停止
               </button>
@@ -334,9 +359,14 @@ export const SettingsPage = (): JSX.Element => {
               </p>
             </div>
 
-            {(disconnectError || reloginError) && (
+            {disconnectError && (
               <p className="rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">
-                {disconnectError ?? reloginError}
+                組織利用の停止に失敗しました: {disconnectError}
+              </p>
+            )}
+            {reloginError && (
+              <p className="rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">
+                {reloginError}
               </p>
             )}
 
@@ -399,7 +429,7 @@ export const SettingsPage = (): JSX.Element => {
                     </div>
                     <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-active)] p-3">
                       <div className="mb-2 text-xs text-[var(--text-muted)]">
-                        policyVersion
+                        ポリシーバージョン
                       </div>
                       <p className="truncate font-mono text-[11px] text-[var(--text-secondary)]">
                         {desktopSession.policyVersion}
