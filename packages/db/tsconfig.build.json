@@ -15,6 +15,6 @@
     "**/*.test.ts",
     "**/*.spec.ts",
     "src/__tests__/**/*",
-    "src/testing/setup.ts"
+    "src/testing/**/*"
   ]
 }
