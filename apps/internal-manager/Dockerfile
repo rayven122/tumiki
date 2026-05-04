@@ -27,6 +27,8 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY patches ./patches
 COPY .npmrc ./
 COPY tooling ./tooling
+# postinstall (root) が node 経由で参照するため特定ファイルのみコピー
+COPY scripts/install-keycloak-themes.mjs ./scripts/install-keycloak-themes.mjs
 COPY packages/db ./packages/db
 COPY packages/internal-db ./packages/internal-db
 COPY packages/keycloak ./packages/keycloak

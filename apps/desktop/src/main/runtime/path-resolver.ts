@@ -65,11 +65,30 @@ const getShimDir = (): string => {
 };
 
 /**
- * Windows用の実行ファイル拡張子を付与する。
- * 現状サポートはmacOSのみだが、将来のWindows対応を見据えて抽象化しておく。
+ * Windows プラットフォームでのランタイム別実行ファイル拡張子。
+ *
+ * - node: Electron-as-Node の shim を `.cmd` で生成する（`ensureNodeShim()` 参照）
+ * - npm / npx: Node.js Windows 配布物が `.cmd` ラッパとして配布されている
+ *   （`scripts/download-runtimes.mjs` の `installNode()` で bin/ に配置）
+ * - uv / uvx: Astral 公式が単体 `.exe` バイナリで配布
  */
-const withExeSuffix = (name: string): string =>
-  process.platform === "win32" ? `${name}.exe` : name;
+const WINDOWS_RUNTIME_EXT: Record<KnownRuntime, ".cmd" | ".exe"> = {
+  node: ".cmd",
+  npm: ".cmd",
+  npx: ".cmd",
+  uv: ".exe",
+  uvx: ".exe",
+};
+
+/**
+ * 実行ホストに合わせて拡張子を付与する。
+ * - Windows: `WINDOWS_RUNTIME_EXT` の通り（.cmd / .exe）
+ * - POSIX:   拡張子なし
+ */
+const appendPlatformExt = (runtime: KnownRuntime): string =>
+  process.platform === "win32"
+    ? `${runtime}${WINDOWS_RUNTIME_EXT[runtime]}`
+    : runtime;
 
 /**
  * 既知ランタイムを実パスに解決する。
@@ -78,10 +97,10 @@ const withExeSuffix = (name: string): string =>
  */
 const resolveKnownRuntime = (runtime: string): string | null => {
   if (isShimRuntime(runtime)) {
-    return path.join(getShimDir(), withExeSuffix(runtime));
+    return path.join(getShimDir(), appendPlatformExt(runtime));
   }
   if (isBundledBinRuntime(runtime)) {
-    return path.join(getBundledBinDir(), withExeSuffix(runtime));
+    return path.join(getBundledBinDir(), appendPlatformExt(runtime));
   }
   return null;
 };
@@ -147,6 +166,38 @@ export const buildChildEnv = (
 };
 
 /**
+ * POSIX 用 sh shim の内容を生成する。
+ * `sh` の単一引用符内エスケープを使い、execPath に `'` が含まれても安全に展開する。
+ */
+const buildPosixShim = (electronPath: string): string => {
+  const escaped = `'${electronPath.replace(/'/g, `'\\''`)}'`;
+  return `#!/bin/sh\nELECTRON_RUN_AS_NODE=1 exec ${escaped} "$@"\n`;
+};
+
+/**
+ * Windows 用 .cmd shim の内容を生成する。
+ *
+ * - CRLF 改行: cmd.exe は LF のみのバッチファイルでも動作するが、
+ *   標準慣習・テキストエディタでの可読性のため CRLF に揃える
+ * - `setlocal`: ELECTRON_RUN_AS_NODE が呼び出し元プロセスに漏れないようにする
+ * - `%*` で引数を素通し: cmd.exe が引用符付き引数を保つため追加処理は不要
+ *
+ * execPath に `"` が含まれる極端なケースを想定し、内部の `"` を `""` に倍化して
+ * バッチ内の引用符として正しく解釈させる。さらに `%` は cmd.exe で変数展開の
+ * メタ文字として扱われるため、`%%` に倍化して意図しない展開を防ぐ。
+ */
+const buildWindowsShim = (electronPath: string): string => {
+  const escaped = electronPath.replace(/"/g, '""').replace(/%/g, "%%");
+  return [
+    "@echo off",
+    "setlocal",
+    "set ELECTRON_RUN_AS_NODE=1",
+    `"${escaped}" %*`,
+    "",
+  ].join("\r\n");
+};
+
+/**
  * Node shim をユーザーデータ領域に生成する（冪等）。
  *
  * Electron 同梱の Node ランタイムを使うため、`ELECTRON_RUN_AS_NODE=1` を設定して
@@ -154,21 +205,22 @@ export const buildChildEnv = (
  *
  * アプリ起動時に1度呼ぶことを想定。`process.execPath` が変わった場合（アプリ更新等）
  * は内容差分を見て上書きする。
+ *
+ * プラットフォーム別の差分:
+ * - POSIX:   `node`     - `#!/bin/sh` + `exec` で Electron を起動（実行権限 0o755）
+ * - Windows: `node.cmd` - cmd バッチで `set ELECTRON_RUN_AS_NODE=1` + Electron 起動
+ *            （NTFS は POSIX 実行権限を持たないため chmod 不要）
  */
 export const ensureNodeShim = (): void => {
-  if (process.platform === "win32") {
-    // TODO(DEV-1597 後続): Windows 用 .cmd shim 対応
-    return;
-  }
-
   const shimDir = getShimDir();
   mkdirSync(shimDir, { recursive: true });
 
-  const shimPath = path.join(shimDir, "node");
   const electronPath = process.execPath;
-  // sh の単一引用符でエスケープ。電子パスに ' が含まれる極端なケースに対応。
-  const escaped = `'${electronPath.replace(/'/g, `'\\''`)}'`;
-  const content = `#!/bin/sh\nELECTRON_RUN_AS_NODE=1 exec ${escaped} "$@"\n`;
+  const isWindows = process.platform === "win32";
+  const shimPath = path.join(shimDir, isWindows ? "node.cmd" : "node");
+  const content = isWindows
+    ? buildWindowsShim(electronPath)
+    : buildPosixShim(electronPath);
 
   // 既存 shim と内容が同一ならスキップ（書き込み回数とinode変更を最小化）
   try {
@@ -178,5 +230,5 @@ export const ensureNodeShim = (): void => {
   }
 
   writeFileSync(shimPath, content, { encoding: "utf8" });
-  chmodSync(shimPath, 0o755);
+  if (!isWindows) chmodSync(shimPath, 0o755);
 };
