@@ -1,5 +1,6 @@
 import { lookup } from "node:dns/promises";
 
+const DNS_LOOKUP_TIMEOUT_MS = 3_000;
 const localEndpointHosts = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 
 const normalizeIpv6Hostname = (hostname: string): string =>
@@ -7,9 +8,46 @@ const normalizeIpv6Hostname = (hostname: string): string =>
     ? hostname.slice(1, -1).toLowerCase()
     : hostname.toLowerCase();
 
+const isPrivateMappedIpv4Address = (value: string): boolean => {
+  if (value.includes(".")) return isPrivateIpv4Address(value);
+
+  const [high, low] = value.split(":");
+  if (!high || !low) return false;
+  const highValue = Number.parseInt(high, 16);
+  const lowValue = Number.parseInt(low, 16);
+  if (
+    !Number.isInteger(highValue) ||
+    !Number.isInteger(lowValue) ||
+    highValue < 0 ||
+    highValue > 0xffff ||
+    lowValue < 0 ||
+    lowValue > 0xffff
+  ) {
+    return false;
+  }
+
+  const ipv4Value = highValue * 0x10000 + lowValue;
+  const mappedIpv4Address = [
+    (ipv4Value >>> 24) & 0xff,
+    (ipv4Value >>> 16) & 0xff,
+    (ipv4Value >>> 8) & 0xff,
+    ipv4Value & 0xff,
+  ].join(".");
+  return isPrivateIpv4Address(mappedIpv4Address);
+};
+
 const isPrivateIpv6Address = (hostname: string): boolean => {
   const normalizedHostname = normalizeIpv6Hostname(hostname);
   if (!normalizedHostname.includes(":")) return false;
+
+  const mappedIpv4Address = normalizedHostname.startsWith("::ffff:")
+    ? normalizedHostname.slice("::ffff:".length)
+    : normalizedHostname.startsWith("0:0:0:0:0:ffff:")
+      ? normalizedHostname.slice("0:0:0:0:0:ffff:".length)
+      : null;
+  if (mappedIpv4Address && isPrivateMappedIpv4Address(mappedIpv4Address)) {
+    return true;
+  }
 
   return (
     normalizedHostname === "::1" ||
@@ -54,6 +92,23 @@ const isLocalHostname = (hostname: string): boolean =>
 const isPrivateIpAddress = (hostname: string): boolean =>
   isPrivateIpv4Address(hostname) || isPrivateIpv6Address(hostname);
 
+const lookupWithTimeout = async (hostname: string) => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      lookup(hostname, { all: true }),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error("DNS lookup timed out")),
+          DNS_LOOKUP_TIMEOUT_MS,
+        );
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+};
+
 export const isHttpUrl = (value: string): boolean => {
   try {
     const protocol = new URL(value).protocol;
@@ -81,12 +136,18 @@ export const isResolvedLocalOrPublicHttpUrl = async (
 
   const hostname = new URL(value).hostname;
   if (isLocalHostname(hostname)) return true;
-  if (hostname.includes(":") || /^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
-    return true;
+  // isLocalOrPublicHttpUrlで既に検証済みだが、直接IPは念のため再検証する。
+  if (hostname.includes(":")) {
+    return !isPrivateIpv6Address(hostname);
+  }
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+    return !isPrivateIpv4Address(hostname);
   }
 
   try {
-    const addresses = await lookup(hostname, { all: true });
+    // DNS解決後チェックはDNSリバインディングを完全には防げないため、
+    // 本番環境ではegress制限との二重防御を前提にする。
+    const addresses = await lookupWithTimeout(hostname);
     return addresses.every((address) => !isPrivateIpAddress(address.address));
   } catch {
     return false;
