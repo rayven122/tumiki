@@ -1,189 +1,307 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown, ChevronRight, Plus } from "lucide-react";
-import { ROLE_DEFINITIONS } from "../_components/mock-data";
+import { useMemo, useState } from "react";
+import { Check, Minus, Search, X } from "lucide-react";
+import { api } from "~/trpc/react";
+
+// @tumiki/internal-db を client で import すると Prisma の node: モジュールが混入するため、文字列定数として再定義する。
+const PolicyEffect = { ALLOW: "ALLOW", DENY: "DENY" } as const;
+
+type PolicyEffectValue =
+  | (typeof PolicyEffect)[keyof typeof PolicyEffect]
+  | null;
 
 const AdminRolesPage = () => {
-  const [expanded, setExpanded] = useState<string | null>("r1");
-  const [permissions, setPermissions] = useState(() => {
-    const map: Record<string, boolean> = {};
-    for (const role of ROLE_DEFINITIONS) {
-      for (const svc of role.services) {
-        for (const tool of svc.tools) {
-          map[`${role.id}-${svc.service}-${tool.name}`] = tool.enabled;
-        }
-      }
-    }
-    return map;
-  });
+  const [search, setSearch] = useState("");
+  const [selectedOrgUnitId, setSelectedOrgUnitId] = useState<string | null>(
+    null,
+  );
 
-  const toggle = (key: string) =>
-    setPermissions((prev) => ({ ...prev, [key]: !prev[key] }));
+  const utils = api.useUtils();
+  const policyMatrixQuery = api.mcpPolicies.getMatrix.useQuery({
+    orgUnitId: selectedOrgUnitId,
+  });
+  const updateToolPermission = api.mcpPolicies.updateToolPermission.useMutation(
+    {
+      onSuccess: () => utils.mcpPolicies.getMatrix.invalidate(),
+    },
+  );
+
+  const orgUnits = policyMatrixQuery.data?.orgUnits ?? [];
+  const catalogs = policyMatrixQuery.data?.catalogs ?? [];
+  const selectedOrgUnit =
+    orgUnits.find((unit) => unit.id === selectedOrgUnitId) ?? null;
+  const selectedPermissionByTool = useMemo(
+    () =>
+      new Map(
+        catalogs.flatMap((catalog) =>
+          catalog.tools.flatMap((tool) =>
+            tool.orgUnitPermissions.map(
+              (permission) => [tool.id, permission.effect] as const,
+            ),
+          ),
+        ),
+      ),
+    [catalogs],
+  );
+  const filteredOrgUnits = orgUnits.filter(
+    (unit) =>
+      search === "" ||
+      unit.name.includes(search) ||
+      unit.path.includes(search) ||
+      unit.externalId.includes(search),
+  );
+  const toolCount = catalogs.reduce(
+    (count, catalog) => count + catalog.tools.length,
+    0,
+  );
+
+  const setEffect = (
+    catalogId: string,
+    toolId: string,
+    effect: PolicyEffectValue,
+  ) => {
+    if (selectedOrgUnit === null || updateToolPermission.isPending) return;
+    if ((selectedPermissionByTool.get(toolId) ?? null) === effect) return;
+    updateToolPermission.mutate({
+      orgUnitId: selectedOrgUnit.id,
+      catalogId,
+      toolId,
+      effect,
+    });
+  };
 
   return (
-    <div className="space-y-4 p-6">
-      {/* ヘッダー */}
-      <div className="flex items-center justify-between">
-        <div>
+    <div className="flex h-full min-h-screen">
+      <aside className="border-r-border-default flex w-[320px] shrink-0 flex-col border-r">
+        <div className="border-b-border-default border-b px-5 py-4">
           <h1 className="text-text-primary text-lg font-semibold">
             ロール管理
           </h1>
           <p className="text-text-secondary mt-1 text-xs">
-            ロール別のツールアクセス権限を設定
+            部署別のMCPツール利用権限を設定
           </p>
         </div>
-        <button
-          type="button"
-          className="bg-btn-primary-bg text-btn-primary-text flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
-        >
-          <Plus size={13} />
-          ロール追加
-        </button>
-      </div>
 
-      {/* ロール一覧 */}
-      <div className="space-y-2">
-        {ROLE_DEFINITIONS.map((role) => {
-          const isOpen = expanded === role.id;
-          return (
-            <div
-              key={role.id}
-              className="bg-bg-card border-border-default overflow-hidden rounded-xl border"
-            >
-              {/* ロールヘッダー */}
-              <button
-                type="button"
-                className="flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-white/[0.02]"
-                onClick={() => setExpanded(isOpen ? null : role.id)}
-              >
-                <span
-                  className="h-2.5 w-2.5 rounded-full"
-                  style={{ backgroundColor: role.color }}
-                />
-                <span className="text-text-primary font-medium">
-                  {role.name}
-                </span>
-                <span className="text-text-muted text-xs">
-                  {role.description}
-                </span>
-                <span className="bg-bg-active text-text-muted ml-2 rounded-full px-2 py-0.5 text-[10px]">
-                  {role.userCount}名
-                </span>
-                <span className="text-text-muted ml-auto">
-                  {isOpen ? (
-                    <ChevronDown size={14} />
-                  ) : (
-                    <ChevronRight size={14} />
-                  )}
-                </span>
-              </button>
+        <div className="border-b-border-default border-b px-4 py-3">
+          <div className="relative">
+            <Search
+              size={12}
+              className="text-text-muted absolute top-1/2 left-2.5 -translate-y-1/2"
+            />
+            <input
+              type="text"
+              placeholder="部署を検索"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="bg-bg-active border-border-default text-text-secondary w-full rounded-lg border py-1.5 pr-3 pl-7 text-xs outline-none"
+            />
+          </div>
+        </div>
 
-              {/* 権限マトリクス */}
-              {isOpen && (
-                <div className="border-t-border-default border-t">
-                  <div className="grid grid-cols-1 gap-3 p-5 sm:grid-cols-2 lg:grid-cols-4">
-                    {role.services.map((svc) => {
-                      const allEnabled = svc.tools.every(
-                        (t) =>
-                          permissions[`${role.id}-${svc.service}-${t.name}`],
-                      );
-                      const someEnabled = svc.tools.some(
-                        (t) =>
-                          permissions[`${role.id}-${svc.service}-${t.name}`],
-                      );
-                      return (
-                        <div
-                          key={svc.service}
-                          className="bg-bg-app border-border-subtle rounded-lg border p-3"
-                        >
-                          {/* サービスヘッダー */}
-                          <div className="mb-2.5 flex items-center gap-2">
-                            <span
-                              className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-[8px] font-bold text-white"
-                              style={{ backgroundColor: svc.color }}
-                            >
-                              {svc.service.slice(0, 2).toUpperCase()}
-                            </span>
-                            <span className="text-text-secondary text-xs font-medium">
-                              {svc.service}
-                            </span>
-                            {/* サービス全体トグル */}
-                            <button
-                              type="button"
-                              role="switch"
-                              aria-checked={allEnabled}
-                              aria-label={`${svc.service} の全ツールを${allEnabled ? "無効化" : "有効化"}`}
-                              onClick={() => {
-                                const newVal = !allEnabled;
-                                setPermissions((prev) => {
-                                  const next = { ...prev };
-                                  for (const t of svc.tools)
-                                    next[
-                                      `${role.id}-${svc.service}-${t.name}`
-                                    ] = newVal;
-                                  return next;
-                                });
-                              }}
-                              className={`ml-auto h-4 w-7 rounded-full transition-colors ${allEnabled ? "bg-badge-success-bg" : someEnabled ? "bg-badge-warn-bg" : "bg-bg-active"}`}
-                            >
-                              <span
-                                className={`block h-3 w-3 translate-x-0.5 rounded-full transition-transform ${allEnabled ? "bg-badge-success-text" : someEnabled ? "bg-badge-warn-text" : "bg-text-subtle"}`}
-                                style={{
-                                  transform: allEnabled
-                                    ? "translateX(14px)"
-                                    : "translateX(2px)",
-                                }}
-                              />
-                            </button>
-                          </div>
-
-                          {/* ツール一覧 */}
-                          <div className="space-y-1.5">
-                            {svc.tools.map((tool) => {
-                              const key = `${role.id}-${svc.service}-${tool.name}`;
-                              const enabled = permissions[key] ?? false;
-                              return (
-                                <div
-                                  key={tool.name}
-                                  className="flex items-center justify-between"
-                                >
-                                  <span
-                                    className={`font-mono text-[10px] ${enabled ? "text-text-secondary" : "text-text-subtle"}`}
-                                  >
-                                    {tool.name}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    role="switch"
-                                    aria-checked={enabled}
-                                    aria-label={`${tool.name} を${enabled ? "無効化" : "有効化"}`}
-                                    onClick={() => toggle(key)}
-                                    className={`h-3.5 w-6 rounded-full transition-colors ${enabled ? "bg-badge-success-bg" : "bg-bg-active"}`}
-                                  >
-                                    <span
-                                      className={`block h-2.5 w-2.5 rounded-full transition-transform ${enabled ? "bg-badge-success-text" : "bg-text-subtle"}`}
-                                      style={{
-                                        transform: enabled
-                                          ? "translateX(12px)"
-                                          : "translateX(1px)",
-                                      }}
-                                    />
-                                  </button>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+        <div className="flex-1 overflow-y-auto py-1">
+          {policyMatrixQuery.isLoading && (
+            <div className="text-text-muted px-4 py-6 text-center text-xs">
+              読み込み中...
             </div>
-          );
-        })}
-      </div>
+          )}
+          {policyMatrixQuery.isError && (
+            <div className="px-4 py-6 text-center text-xs text-red-300">
+              データの取得に失敗しました
+            </div>
+          )}
+          {!policyMatrixQuery.isLoading &&
+            !policyMatrixQuery.isError &&
+            orgUnits.length === 0 && (
+              <div className="text-text-muted px-4 py-6 text-center text-xs">
+                SCIM部署がまだ同期されていません
+              </div>
+            )}
+          {!policyMatrixQuery.isLoading &&
+            !policyMatrixQuery.isError &&
+            orgUnits.length > 0 &&
+            filteredOrgUnits.length === 0 && (
+              <div className="text-text-muted px-4 py-6 text-center text-xs">
+                該当する部署がありません
+              </div>
+            )}
+          {filteredOrgUnits.map((orgUnit) => {
+            const isSelected = selectedOrgUnit?.id === orgUnit.id;
+            return (
+              <button
+                key={orgUnit.id}
+                type="button"
+                onClick={() => setSelectedOrgUnitId(orgUnit.id)}
+                className={`border-b-border-subtle min-h-[44px] w-full border-b px-4 py-3 text-left text-xs transition-colors hover:bg-white/[0.02] ${
+                  isSelected ? "bg-bg-active" : ""
+                }`}
+              >
+                <div className="text-text-primary font-medium">
+                  {orgUnit.name}
+                </div>
+                <div className="text-text-muted mt-1 truncate font-mono text-[10px]">
+                  {orgUnit.path}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </aside>
+
+      <main className="flex flex-1 flex-col">
+        <div className="border-b-border-default border-b px-6 py-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-text-primary text-base font-semibold">
+                {selectedOrgUnit?.name ?? "部署を選択"}
+              </h2>
+              <p className="text-text-secondary mt-1 text-xs">
+                {selectedOrgUnit?.path ??
+                  "部署を選択するとMCPツール権限を編集できます"}
+              </p>
+            </div>
+            <div className="text-text-muted text-right text-[11px]">
+              <div>{orgUnits.length} 部署</div>
+              <div>{toolCount} ツール</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6">
+          {updateToolPermission.error && (
+            <div className="mb-4 rounded-lg bg-red-500/10 px-4 py-3 text-xs text-red-300">
+              {updateToolPermission.error.message}
+            </div>
+          )}
+
+          {selectedOrgUnit === null ? (
+            <div className="text-text-muted flex h-full items-center justify-center text-sm">
+              部署を選択してください
+            </div>
+          ) : catalogs.length === 0 ? (
+            <div className="text-text-muted flex h-full items-center justify-center text-sm">
+              MCPカタログがまだ登録されていません
+            </div>
+          ) : (
+            <div className="bg-bg-card border-border-default overflow-hidden rounded-xl border">
+              <div className="border-b-border-default flex items-center justify-between border-b px-4 py-3">
+                <h3 className="text-text-primary text-xs font-semibold">
+                  MCPツール権限
+                </h3>
+                <span className="text-text-subtle text-[10px]">
+                  ALLOW / DENY / 未設定
+                </span>
+              </div>
+              <div className="divide-y divide-[var(--color-border-subtle)]">
+                {catalogs.map((catalog) => (
+                  <section key={catalog.id} className="p-4">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <div>
+                        <h4 className="text-text-primary text-xs font-semibold">
+                          {catalog.name}
+                        </h4>
+                        {catalog.description && (
+                          <p className="text-text-muted mt-1 text-[10px]">
+                            {catalog.description}
+                          </p>
+                        )}
+                      </div>
+                      <span className="text-text-subtle shrink-0 font-mono text-[10px]">
+                        {catalog.tools.length} tools
+                      </span>
+                    </div>
+                    {catalog.tools.length === 0 ? (
+                      <div className="text-text-muted py-3 text-xs">
+                        ツールが登録されていません
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {catalog.tools.map((tool) => {
+                          const effect =
+                            selectedPermissionByTool.get(tool.id) ?? null;
+                          const isPending = updateToolPermission.isPending;
+                          return (
+                            <div
+                              key={tool.id}
+                              className="grid grid-cols-[1fr_154px] items-center gap-3"
+                            >
+                              <div className="min-w-0">
+                                <div className="text-text-secondary truncate font-mono text-xs">
+                                  {tool.name}
+                                </div>
+                                {tool.description && (
+                                  <div className="text-text-muted mt-0.5 truncate text-[10px]">
+                                    {tool.description}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex justify-end gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setEffect(
+                                      catalog.id,
+                                      tool.id,
+                                      PolicyEffect.ALLOW,
+                                    )
+                                  }
+                                  disabled={isPending}
+                                  className={`flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md p-1.5 disabled:opacity-40 ${
+                                    effect === PolicyEffect.ALLOW
+                                      ? "bg-emerald-500/20 text-emerald-300"
+                                      : "bg-bg-active text-text-muted"
+                                  }`}
+                                  title="許可"
+                                >
+                                  <Check size={13} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setEffect(
+                                      catalog.id,
+                                      tool.id,
+                                      PolicyEffect.DENY,
+                                    )
+                                  }
+                                  disabled={isPending}
+                                  className={`flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md p-1.5 disabled:opacity-40 ${
+                                    effect === PolicyEffect.DENY
+                                      ? "bg-red-500/20 text-red-300"
+                                      : "bg-bg-active text-text-muted"
+                                  }`}
+                                  title="拒否"
+                                >
+                                  <X size={13} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setEffect(catalog.id, tool.id, null)
+                                  }
+                                  disabled={isPending}
+                                  className={`flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md p-1.5 disabled:opacity-40 ${
+                                    effect === null
+                                      ? "bg-bg-active text-text-secondary"
+                                      : "bg-bg-active text-text-muted"
+                                  }`}
+                                  title="未設定"
+                                >
+                                  <Minus size={13} />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </section>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
     </div>
   );
 };
