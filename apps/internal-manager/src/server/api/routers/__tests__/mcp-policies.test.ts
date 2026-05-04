@@ -1,4 +1,3 @@
-import { TRPCError } from "@trpc/server";
 import type { Session } from "next-auth";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
@@ -6,6 +5,7 @@ import { PolicyEffect, Role } from "@tumiki/internal-db";
 import type { Context } from "../../trpc";
 import type * as TrpcModule from "../../trpc";
 import { mcpPoliciesRouter } from "../mcp-policies";
+import { expectTrpcErrorCode } from "./test-helpers";
 
 vi.mock("server-only", () => ({}));
 vi.mock("~/auth", () => ({
@@ -28,27 +28,6 @@ const buildSession = (): Session => ({
   },
   expires: new Date(Date.now() + 60_000).toISOString(),
 });
-
-const expectTrpcErrorCode = async (
-  promise: Promise<unknown>,
-  code: TRPCError["code"],
-) => {
-  let error: unknown;
-  try {
-    await promise;
-  } catch (caught) {
-    error = caught;
-  }
-
-  if (error === undefined) {
-    throw new Error("TRPCErrorが発生しませんでした");
-  }
-  expect(error instanceof TRPCError).toStrictEqual(true);
-  if (!(error instanceof TRPCError)) {
-    throw new Error("TRPCErrorではないエラーが発生しました");
-  }
-  expect(error.code).toStrictEqual(code);
-};
 
 const buildCaller = (db: Context["db"]) =>
   mcpPoliciesRouter.createCaller({
@@ -101,12 +80,37 @@ describe("mcpPoliciesRouter", () => {
       mcpCatalogTool: {
         findUnique: vi.fn().mockResolvedValue({ catalogId: "catalog-other" }),
       },
+      orgUnit: { findUnique: vi.fn().mockResolvedValue({ id: "org-001" }) },
       orgUnitToolPermission: { upsert, deleteMany },
     } as unknown as Context["db"]);
 
     await expectTrpcErrorCode(
       caller.updateToolPermission({
         orgUnitId: "org-001",
+        catalogId: "catalog-001",
+        toolId: "tool-001",
+        effect: PolicyEffect.ALLOW,
+      }),
+      "BAD_REQUEST",
+    );
+    expect(upsert).not.toHaveBeenCalled();
+    expect(deleteMany).not.toHaveBeenCalled();
+  });
+
+  test("updateToolPermissionは存在しないorgUnitIdをBAD_REQUESTにする", async () => {
+    const upsert = vi.fn();
+    const deleteMany = vi.fn();
+    const caller = buildCaller({
+      mcpCatalogTool: {
+        findUnique: vi.fn().mockResolvedValue({ catalogId: "catalog-001" }),
+      },
+      orgUnit: { findUnique: vi.fn().mockResolvedValue(null) },
+      orgUnitToolPermission: { upsert, deleteMany },
+    } as unknown as Context["db"]);
+
+    await expectTrpcErrorCode(
+      caller.updateToolPermission({
+        orgUnitId: "org-missing",
         catalogId: "catalog-001",
         toolId: "tool-001",
         effect: PolicyEffect.ALLOW,

@@ -1,4 +1,3 @@
-import { TRPCError } from "@trpc/server";
 import type { Session } from "next-auth";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
@@ -11,6 +10,7 @@ import {
 import type { Context } from "../../trpc";
 import type * as TrpcModule from "../../trpc";
 import { mcpCatalogRouter } from "../mcp-catalog";
+import { expectTrpcErrorCode } from "./test-helpers";
 
 vi.mock("server-only", () => ({}));
 vi.mock("~/auth", () => ({
@@ -33,27 +33,6 @@ const buildSession = (): Session => ({
   },
   expires: new Date(Date.now() + 60_000).toISOString(),
 });
-
-const expectTrpcErrorCode = async (
-  promise: Promise<unknown>,
-  code: TRPCError["code"],
-) => {
-  let error: unknown;
-  try {
-    await promise;
-  } catch (caught) {
-    error = caught;
-  }
-
-  if (error === undefined) {
-    throw new Error("TRPCErrorが発生しませんでした");
-  }
-  expect(error instanceof TRPCError).toStrictEqual(true);
-  if (!(error instanceof TRPCError)) {
-    throw new Error("TRPCErrorではないエラーが発生しました");
-  }
-  expect(error.code).toStrictEqual(code);
-};
 
 const buildCaller = (db: Context["db"]) =>
   mcpCatalogRouter.createCaller({

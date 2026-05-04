@@ -345,4 +345,23 @@ describe("GET /api/desktop/v1/session", () => {
     });
     expect(response.status).toStrictEqual(401);
   });
+
+  test("DBエラー時はJSONの500レスポンスを返す", async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    mockFindUnique.mockRejectedValue(new Error("DB error"));
+
+    const response = await GET(buildRequest());
+
+    await expect(response.json()).resolves.toStrictEqual({
+      error: "Internal Server Error",
+    });
+    expect(response.status).toStrictEqual(500);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "Failed to fetch desktop session",
+      expect.any(Error),
+    );
+    consoleErrorSpy.mockRestore();
+  });
 });

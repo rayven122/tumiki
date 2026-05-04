@@ -46,10 +46,22 @@ export const mcpPoliciesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const tool = await ctx.db.mcpCatalogTool.findUnique({
-        where: { id: input.toolId },
-        select: { catalogId: true },
-      });
+      const [tool, orgUnit] = await Promise.all([
+        ctx.db.mcpCatalogTool.findUnique({
+          where: { id: input.toolId },
+          select: { catalogId: true },
+        }),
+        ctx.db.orgUnit.findUnique({
+          where: { id: input.orgUnitId },
+          select: { id: true },
+        }),
+      ]);
+      if (!orgUnit) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "部署が見つかりません",
+        });
+      }
       if (!tool || tool.catalogId !== input.catalogId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -82,7 +94,6 @@ export const mcpPoliciesRouter = createTRPCRouter({
           effect,
         },
         update: {
-          catalogId: input.catalogId,
           effect,
         },
       });

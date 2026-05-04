@@ -9,6 +9,8 @@ import {
 import { verifyDesktopJwt } from "~/lib/auth/verify-desktop-jwt";
 import { buildPolicyVersion } from "~/server/mcp-policy/effective-permissions";
 
+const POLICY_VERSION_CATALOG_LIMIT = 500;
+
 export const GET = async (request: NextRequest) => {
   let verifiedUser: Awaited<ReturnType<typeof verifyDesktopJwt>>;
   try {
@@ -117,6 +119,7 @@ export const GET = async (request: NextRequest) => {
           },
         },
         orderBy: [{ slug: "asc" }, { id: "asc" }],
+        take: POLICY_VERSION_CATALOG_LIMIT,
       }),
       db.desktopApiSettings.findUnique({
         where: { id: DESKTOP_API_SETTINGS_ID },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Check,
   Minus,
@@ -301,14 +301,20 @@ const AdminGroupsPage = () => {
     orgUnits.find((unit) => unit.id === selectedOrgUnitId) ??
     orgUnits[0] ??
     null;
-  const selectedOrgUnitPermissionByTool = new Map(
-    catalogs.flatMap((catalog) =>
-      catalog.tools.flatMap((tool) =>
-        tool.orgUnitPermissions
-          .filter((permission) => permission.orgUnitId === selectedOrgUnit?.id)
-          .map((permission) => [tool.id, permission.effect] as const),
+  const selectedOrgUnitPermissionByTool = useMemo(
+    () =>
+      new Map(
+        catalogs.flatMap((catalog) =>
+          catalog.tools.flatMap((tool) =>
+            tool.orgUnitPermissions
+              .filter(
+                (permission) => permission.orgUnitId === selectedOrgUnit?.id,
+              )
+              .map((permission) => [tool.id, permission.effect] as const),
+          ),
+        ),
       ),
-    ),
+    [catalogs, selectedOrgUnit?.id],
   );
 
   /* グループ一覧フィルタリング */
@@ -346,7 +352,8 @@ const AdminGroupsPage = () => {
           </span>
           <button
             type="button"
-            className="bg-btn-primary-bg text-btn-primary-text flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-opacity hover:opacity-80"
+            disabled
+            className="bg-btn-primary-bg text-btn-primary-text flex cursor-not-allowed items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-medium opacity-50"
           >
             <Plus size={11} />
             追加
@@ -488,7 +495,8 @@ const AdminGroupsPage = () => {
                     </span>
                     <button
                       type="button"
-                      className="bg-btn-primary-bg text-btn-primary-text flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
+                      disabled
+                      className="bg-btn-primary-bg text-btn-primary-text flex cursor-not-allowed items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium opacity-50"
                     >
                       <UserPlus size={12} />
                       メンバー追加

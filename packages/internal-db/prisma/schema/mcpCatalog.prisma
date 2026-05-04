@@ -96,6 +96,7 @@ model McpCatalogTool {
 model OrgUnit {
   id           String        @id @default(cuid())
   name         String
+  /// SCIM/GROUP では外部識別子、MANUAL では作成API側で生成する安定識別子を入れる想定。
   externalId   String?
   source       OrgUnitSource @default(SCIM)
   path         String
@@ -136,6 +137,7 @@ model OrgUnitToolPermission {
   id        String       @id @default(cuid())
   orgUnitId String
   orgUnit   OrgUnit      @relation(fields: [orgUnitId], references: [id], onDelete: Cascade)
+  /// 権限マトリクス取得時のcatalog単位絞り込み用に非正規化して保持する。
   catalogId String
   catalog   McpCatalog   @relation(fields: [catalogId], references: [id], onDelete: Cascade)
   toolId    String

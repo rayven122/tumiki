@@ -79,6 +79,7 @@ const AdminToolsPage = () => {
   const handleDeleteCatalog = () => {
     if (!selectedCatalog || deleteCatalog.isPending) return;
     if (!window.confirm(`${selectedCatalog.name} を削除しますか？`)) return;
+    setSelectedCatalogId(null);
     deleteCatalog.mutate({ id: selectedCatalog.id });
   };
 
