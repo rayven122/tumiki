@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
-import { db as internalDb } from "@tumiki/internal-db/server";
+import { McpCatalogStatus, type PolicyEffect } from "@tumiki/internal-db";
+import { db } from "@tumiki/internal-db/server";
 import { verifyDesktopJwt } from "~/lib/auth/verify-desktop-jwt";
+import {
+  evaluateCatalogPermissions,
+  getPolicyContextForUser,
+} from "~/server/mcp-policy/effective-permissions";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
@@ -26,89 +31,30 @@ type Permissions = {
 type CatalogStatus = "available" | "request_required" | "disabled";
 type CatalogCursor = z.infer<typeof cursorSchema>;
 
-type PermissionRow = {
-  mcpServerId: string;
-  read: boolean;
-  write: boolean;
-  execute: boolean;
-};
-
 type ToolPreview = {
-  id?: string;
+  id: string;
   name: string;
-  description: string;
-  isAllowed?: boolean;
-  reviewStatus?: string;
+  description: string | null;
+  orgUnitPermissions: {
+    orgUnitId: string;
+    effect: PolicyEffect;
+    updatedAt: Date;
+  }[];
+  updatedAt: Date;
 };
 
 type CatalogRow = {
   id: string;
   slug: string;
   name: string;
-  description: string;
+  description: string | null;
   iconPath: string | null;
-  serverStatus: string;
+  status: McpCatalogStatus;
+  transportType: string;
   authType: string;
-  connections?: {
-    id: string;
-    isEnabled: boolean;
-    transportType: string;
-    command: string | null;
-    args: string[];
-    url: string | null;
-    credentialKeys: string[];
-    authType: string;
-    catalog: {
-      transportType: string;
-      command: string | null;
-      args: string[];
-      url: string | null;
-      credentialKeys: string[];
-      authType: string;
-    } | null;
-    tools: ToolPreview[];
-  }[];
-  templateInstances: {
-    isEnabled: boolean;
-    allowedTools: ToolPreview[];
-    mcpServerTemplate: {
-      transportType: string;
-      authType: string;
-      command: string | null;
-      args: string[];
-      url: string | null;
-      envVarKeys: string[];
-      mcpTools: ToolPreview[];
-    };
-  }[];
-};
-
-type ToolPermissionContext = {
-  userPermissions: Map<string, boolean>;
-  groupPermissions: Map<string, boolean[]>;
-};
-
-const emptyPermissions = (): Permissions => ({
-  read: false,
-  write: false,
-  execute: false,
-});
-
-const getCatalogDb = async () => {
-  const { db } = await import("@tumiki/db/server");
-  return db;
-};
-
-const mergePermission = (
-  map: Map<string, Permissions>,
-  permission: PermissionRow,
-) => {
-  const current = map.get(permission.mcpServerId) ?? emptyPermissions();
-  map.set(permission.mcpServerId, {
-    read: current.read || permission.read,
-    write: current.write || permission.write,
-    execute: current.execute || permission.execute,
-  });
+  credentialKeys: string[];
+  updatedAt: Date;
+  tools: ToolPreview[];
 };
 
 const hasAnyPermission = (permissions: Permissions) =>
@@ -129,201 +75,38 @@ const decodeCursor = (cursor: string): CatalogCursor | null => {
   }
 };
 
-const mapTransportType = (transportType: string | undefined) =>
-  transportType === "STREAMABLE_HTTPS" ? "STREAMABLE_HTTP" : transportType;
-
-const mapAuthType = (authType: string | undefined) =>
-  authType === "API_KEY" ? "API_KEY" : authType;
-
-const getEffectivePermissions = async (userId: string) => {
-  const now = new Date();
-  const user = await internalDb.user.findUnique({
-    where: { id: userId },
-    select: {
-      groupMemberships: {
-        select: {
-          groupId: true,
-          group: {
-            select: {
-              permissions: {
-                select: {
-                  mcpServerId: true,
-                  read: true,
-                  write: true,
-                  execute: true,
-                },
-              },
-            },
-          },
-        },
-      },
-      individualPermissions: {
-        where: {
-          status: "APPROVED",
-          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-        },
-        select: {
-          mcpServerId: true,
-        },
-      },
-      mcpToolPermissions: {
-        where: {
-          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-        },
-        select: {
-          mcpToolId: true,
-          canUse: true,
-        },
-      },
-    },
-  });
-
-  if (!user) {
-    throw new Error("Unauthorized");
-  }
-
-  const permissionMap = new Map<string, Permissions>();
-  for (const membership of user.groupMemberships) {
-    for (const permission of membership.group.permissions) {
-      mergePermission(permissionMap, permission);
-    }
-  }
-  for (const permission of user.individualPermissions) {
-    mergePermission(permissionMap, {
-      mcpServerId: permission.mcpServerId,
-      read: true,
-      write: true,
-      execute: true,
-    });
-  }
-
-  const groupIds = user.groupMemberships.map(
-    (membership) => membership.groupId,
-  );
-  const groupToolPermissions =
-    groupIds.length === 0
-      ? []
-      : await internalDb.groupMcpToolPermission.findMany({
-          where: { groupId: { in: groupIds } },
-          select: {
-            mcpToolId: true,
-            canUse: true,
-          },
-        });
-
-  const toolPermissionContext: ToolPermissionContext = {
-    userPermissions: new Map(
-      user.mcpToolPermissions.map((permission) => [
-        permission.mcpToolId,
-        permission.canUse,
-      ]),
-    ),
-    groupPermissions: new Map(),
-  };
-
-  for (const permission of groupToolPermissions) {
-    const current =
-      toolPermissionContext.groupPermissions.get(permission.mcpToolId) ?? [];
-    current.push(permission.canUse);
-    toolPermissionContext.groupPermissions.set(permission.mcpToolId, current);
-  }
-
-  return { permissionMap, toolPermissionContext };
-};
-
-const canUseTool = (
-  tool: ToolPreview,
-  toolPermissionContext: ToolPermissionContext,
-) => {
-  if (!tool.id) return true;
-  if (!tool.isAllowed) return false;
-  const userPermission = toolPermissionContext.userPermissions.get(tool.id);
-  if (userPermission !== undefined) return userPermission;
-  return (
-    toolPermissionContext.groupPermissions.get(tool.id)?.some(Boolean) ?? false
-  );
-};
-
 const toCatalogItem = (
   catalog: CatalogRow,
   permissions: Permissions,
-  toolPermissionContext: ToolPermissionContext,
+  toolPermissions: Map<
+    string,
+    { allowed: boolean; deniedReason: string | null }
+  >,
 ) => {
-  const firstConnection = catalog.connections?.[0];
-  const firstInstance = catalog.templateInstances[0];
-  const template = firstInstance?.mcpServerTemplate;
-  const connectionCatalog = firstConnection?.catalog;
-  const tools = firstConnection
-    ? firstConnection.tools
-    : (firstInstance?.allowedTools.length ?? 0) !== 0
-      ? (firstInstance?.allowedTools ?? [])
-      : (template?.mcpTools ?? []);
-  const hasUsableTool =
-    !firstConnection ||
-    tools.some((tool) => canUseTool(tool, toolPermissionContext));
   const status: CatalogStatus =
-    catalog.serverStatus !== "RUNNING" || !hasUsableTool
+    catalog.status !== McpCatalogStatus.ACTIVE
       ? "disabled"
       : hasAnyPermission(permissions)
         ? "available"
         : "request_required";
 
-  const transportType =
-    mapTransportType(
-      firstConnection?.transportType ??
-        connectionCatalog?.transportType ??
-        template?.transportType,
-    ) ?? "STDIO";
-  const authType =
-    mapAuthType(
-      firstConnection?.authType ??
-        connectionCatalog?.authType ??
-        template?.authType ??
-        catalog.authType,
-    ) ?? "NONE";
-  const credentialKeys =
-    firstConnection?.credentialKeys ??
-    connectionCatalog?.credentialKeys ??
-    template?.envVarKeys ??
-    [];
-
   return {
     id: catalog.slug,
     name: catalog.name,
-    description: catalog.description,
+    description: catalog.description ?? "",
     iconUrl: catalog.iconPath,
     status,
     permissions,
-    transportType,
-    authType,
-    requiredCredentialKeys: credentialKeys,
-    connectionTemplate: {
-      transportType,
-      command:
-        firstConnection?.command ??
-        connectionCatalog?.command ??
-        template?.command ??
-        null,
-      args:
-        firstConnection?.args ??
-        connectionCatalog?.args ??
-        template?.args ??
-        [],
-      url:
-        firstConnection?.url ?? connectionCatalog?.url ?? template?.url ?? null,
-      authType,
-      credentialKeys,
-    },
-    tools: tools.map((tool) => ({
-      id: tool.id,
+    transportType: catalog.transportType,
+    authType: catalog.authType,
+    requiredCredentialKeys: catalog.credentialKeys,
+    tools: catalog.tools.slice(0, TOOL_PREVIEW_LIMIT).map((tool) => ({
       name: tool.name,
-      description: tool.description,
+      description: tool.description ?? "",
       allowed:
         status === "available" &&
-        permissions.execute &&
-        (firstConnection?.isEnabled ?? firstInstance?.isEnabled ?? true) &&
-        canUseTool(tool, toolPermissionContext),
-      reviewStatus: tool.reviewStatus,
+        (toolPermissions.get(tool.id)?.allowed ?? false),
+      deniedReason: toolPermissions.get(tool.id)?.deniedReason ?? null,
     })),
   };
 };
@@ -354,125 +137,88 @@ export const GET = async (request: NextRequest) => {
     return NextResponse.json({ error: "Invalid cursor" }, { status: 400 });
   }
 
-  let permissionMap: Map<string, Permissions>;
-  let toolPermissionContext: ToolPermissionContext;
+  let policyContext: Awaited<ReturnType<typeof getPolicyContextForUser>>;
   try {
-    const effectivePermissions = await getEffectivePermissions(
-      verifiedUser.userId,
+    policyContext = await getPolicyContextForUser(verifiedUser.userId);
+  } catch (error) {
+    console.error("Failed to fetch desktop MCP policy context", error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
     );
-    permissionMap = effectivePermissions.permissionMap;
-    toolPermissionContext = effectivePermissions.toolPermissionContext;
-  } catch {
+  }
+  const policyUser = policyContext.user;
+  if (!policyUser?.isActive) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const catalogDb = await getCatalogDb();
-  const catalogs = await catalogDb.mcpServer.findMany({
-    where: {
-      deletedAt: null,
-      ...(decodedCursor
-        ? {
-            OR: [
-              { name: { gt: decodedCursor.name } },
-              { name: decodedCursor.name, id: { gt: decodedCursor.id } },
-            ],
-          }
-        : {}),
-    },
-    orderBy: [{ name: "asc" }, { id: "asc" }],
-    take: parsedQuery.data.limit + 1,
-    select: {
-      id: true,
-      slug: true,
-      name: true,
-      description: true,
-      iconPath: true,
-      serverStatus: true,
-      authType: true,
-      connections: {
-        orderBy: [{ displayOrder: "asc" }, { id: "asc" }],
-        take: 1,
-        select: {
-          id: true,
-          isEnabled: true,
-          transportType: true,
-          command: true,
-          args: true,
-          url: true,
-          credentialKeys: true,
-          authType: true,
-          catalog: {
-            select: {
-              transportType: true,
-              command: true,
-              args: true,
-              url: true,
-              credentialKeys: true,
-              authType: true,
-            },
-          },
-          tools: {
-            orderBy: { name: "asc" },
-            take: TOOL_PREVIEW_LIMIT,
-            select: {
-              id: true,
-              name: true,
-              description: true,
-              isAllowed: true,
-              reviewStatus: true,
-            },
-          },
-        },
+  let catalogs: CatalogRow[];
+  try {
+    catalogs = await db.mcpCatalog.findMany({
+      where: {
+        deletedAt: null,
+        ...(decodedCursor
+          ? {
+              OR: [
+                { name: { gt: decodedCursor.name } },
+                { name: decodedCursor.name, id: { gt: decodedCursor.id } },
+              ],
+            }
+          : {}),
       },
-      templateInstances: {
-        orderBy: [{ displayOrder: "asc" }, { id: "asc" }],
-        take: 1,
-        select: {
-          isEnabled: true,
-          allowedTools: {
-            orderBy: { name: "asc" },
-            take: TOOL_PREVIEW_LIMIT,
-            select: {
-              name: true,
-              description: true,
-            },
-          },
-          mcpServerTemplate: {
-            select: {
-              transportType: true,
-              authType: true,
-              command: true,
-              args: true,
-              url: true,
-              envVarKeys: true,
-              mcpTools: {
-                orderBy: { name: "asc" },
-                take: TOOL_PREVIEW_LIMIT,
-                select: {
-                  id: true,
-                  name: true,
-                  description: true,
-                },
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+      take: parsedQuery.data.limit + 1,
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        description: true,
+        iconPath: true,
+        status: true,
+        transportType: true,
+        authType: true,
+        credentialKeys: true,
+        updatedAt: true,
+        tools: {
+          where: { deletedAt: null },
+          orderBy: { name: "asc" },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            updatedAt: true,
+            orgUnitPermissions: {
+              select: {
+                orgUnitId: true,
+                effect: true,
+                updatedAt: true,
               },
             },
           },
         },
       },
-    },
-  });
+    });
+  } catch (error) {
+    console.error("Failed to fetch desktop MCP catalogs", error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
+  }
 
   const pageItems = catalogs.slice(0, parsedQuery.data.limit);
   const hasNextPage = catalogs.length > parsedQuery.data.limit;
   const lastPageItem = pageItems.at(-1);
 
   return NextResponse.json({
-    items: pageItems.map((catalog) =>
-      toCatalogItem(
+    items: pageItems.map((catalog) => {
+      const effective = evaluateCatalogPermissions(
+        policyUser,
         catalog,
-        permissionMap.get(catalog.id) ?? emptyPermissions(),
-        toolPermissionContext,
-      ),
-    ),
+        policyContext.orgUnits,
+      );
+      return toCatalogItem(catalog, effective.permissions, effective.tools);
+    }),
     nextCursor:
       hasNextPage && lastPageItem
         ? encodeCursor({ id: lastPageItem.id, name: lastPageItem.name })

@@ -1,6 +1,12 @@
 import type { DirectorySyncEvent } from "@boxyhq/saml-jackson";
 import { db } from "@tumiki/internal-db/server";
-import { GroupSource, SyncStatus, SyncTrigger } from "@tumiki/internal-db";
+import {
+  GroupSource,
+  OrgUnitSource,
+  type PrismaTransactionClient,
+  SyncStatus,
+  SyncTrigger,
+} from "@tumiki/internal-db";
 
 // SCIM経由で同期されたユーザー/グループの provider 識別子
 export const SCIM_PROVIDER = "scim" as const;
@@ -26,27 +32,128 @@ const buildDisplayName = (firstName?: string, lastName?: string) => {
   return parts.length > 0 ? parts.join(" ") : null;
 };
 
+const ENTERPRISE_USER_SCHEMA =
+  "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User";
+
+type EnterpriseUserAttributes = {
+  department: string | null;
+  managerValue: string | null;
+  managerDisplayName: string | null;
+};
+
+const asRecord = (value: unknown): Record<string, unknown> =>
+  value !== null && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : {};
+
+const stringOrNull = (value: unknown): string | null =>
+  typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+
+const extractEnterpriseUserAttributes = (
+  data: DirectorySyncEvent["data"],
+): EnterpriseUserAttributes => {
+  const root = asRecord(data);
+  const extension = asRecord(root[ENTERPRISE_USER_SCHEMA]);
+  const manager = asRecord(root.manager ?? extension.manager);
+
+  return {
+    department: stringOrNull(root.department ?? extension.department),
+    managerValue: stringOrNull(manager.value),
+    managerDisplayName: stringOrNull(manager.displayName),
+  };
+};
+
+const normalizeExternalId = (name: string) =>
+  `department:${encodeURIComponent(name.trim().toLowerCase())}`;
+
+const syncPrimaryOrgUnitMembership = async (
+  tx: PrismaTransactionClient,
+  userId: string,
+  attributes: EnterpriseUserAttributes,
+) => {
+  if (!attributes.department) return;
+
+  const externalId = normalizeExternalId(attributes.department);
+  const orgUnit = await tx.orgUnit.upsert({
+    where: {
+      source_externalId: {
+        source: OrgUnitSource.SCIM,
+        externalId,
+      },
+    },
+    create: {
+      name: attributes.department,
+      externalId,
+      source: OrgUnitSource.SCIM,
+      // SCIM EnterpriseUser.department だけでは親子関係を判断できないため、初期作成はルート直下に置く。
+      path: `/${externalId}`,
+      lastSyncedAt: new Date(),
+    },
+    update: {
+      name: attributes.department,
+      lastSyncedAt: new Date(),
+    },
+  });
+
+  await tx.userOrgUnitMembership.updateMany({
+    where: {
+      userId,
+      isPrimary: true,
+      orgUnitId: { not: orgUnit.id },
+    },
+    data: { isPrimary: false },
+  });
+
+  await tx.userOrgUnitMembership.upsert({
+    where: {
+      userId_orgUnitId: {
+        userId,
+        orgUnitId: orgUnit.id,
+      },
+    },
+    create: {
+      userId,
+      orgUnitId: orgUnit.id,
+      isPrimary: true,
+    },
+    update: {
+      isPrimary: true,
+    },
+  });
+};
+
 // user.created と user.updated の両方で使う upsert ロジック
 // （update のみだと P2025、create のみだと P2002 が出るため両イベントで同じ実装を共有）
 type ScimUserData = Extract<DirectorySyncEvent["data"], { email: string }>;
-const upsertScimUser = (data: ScimUserData) =>
-  db.user.upsert({
-    where: { id: data.id },
-    create: {
-      id: data.id,
-      email: data.email || null,
-      name: buildDisplayName(data.first_name, data.last_name),
-      isActive: data.active,
-      externalIdentities: {
-        create: { provider: SCIM_PROVIDER, sub: data.id },
+const upsertScimUser = async (data: ScimUserData) => {
+  const enterpriseAttributes = extractEnterpriseUserAttributes(data);
+  await db.$transaction(async (tx) => {
+    await tx.user.upsert({
+      where: { id: data.id },
+      create: {
+        id: data.id,
+        email: data.email || null,
+        name: buildDisplayName(data.first_name, data.last_name),
+        isActive: data.active,
+        scimDepartment: enterpriseAttributes.department,
+        scimManagerValue: enterpriseAttributes.managerValue,
+        scimManagerDisplayName: enterpriseAttributes.managerDisplayName,
+        externalIdentities: {
+          create: { provider: SCIM_PROVIDER, sub: data.id },
+        },
       },
-    },
-    update: {
-      email: data.email || null,
-      name: buildDisplayName(data.first_name, data.last_name),
-      isActive: data.active,
-    },
+      update: {
+        email: data.email || null,
+        name: buildDisplayName(data.first_name, data.last_name),
+        isActive: data.active,
+        scimDepartment: enterpriseAttributes.department,
+        scimManagerValue: enterpriseAttributes.managerValue,
+        scimManagerDisplayName: enterpriseAttributes.managerDisplayName,
+      },
+    });
+    await syncPrimaryOrgUnitMembership(tx, data.id, enterpriseAttributes);
   });
+};
 
 /**
  * Jackson Directory Sync の eventCallback
@@ -90,9 +197,15 @@ export const handleDirectorySyncEvent = async (
         // ソフト削除（履歴・権限追跡のため物理削除しない）
         // user.created が過去に失敗していた場合に P2025 を出さないよう updateMany を使用
         // （0件マッチでも { count: 0 } を返すため冪等）
-        const del = await db.user.updateMany({
-          where: { id: data.id },
-          data: { isActive: false },
+        const del = await db.$transaction(async (tx) => {
+          const result = await tx.user.updateMany({
+            where: { id: data.id },
+            data: { isActive: false },
+          });
+          await tx.userOrgUnitMembership.deleteMany({
+            where: { userId: data.id },
+          });
+          return result;
         });
         removed = del.count;
         break;
