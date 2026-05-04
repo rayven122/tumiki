@@ -205,10 +205,7 @@ export const SettingsPage = (): JSX.Element => {
       setIsWaitingForRelogin(false);
       setIsReloginStarting(false);
       setReloginError(
-        `再ログインに失敗しました: ${formatElectronIpcErrorMessage(
-          message,
-          "再ログインに失敗しました",
-        )}`,
+        formatElectronIpcErrorMessage(message, "再ログインに失敗しました"),
       );
     });
     return () => {
@@ -246,7 +243,7 @@ export const SettingsPage = (): JSX.Element => {
       }
     } catch (err) {
       if (mountedRef.current) {
-        setDisconnectError(err instanceof Error ? err.message : "不明なエラー");
+        setDisconnectError(formatElectronIpcErrorMessage(err, "不明なエラー"));
       }
     } finally {
       if (mountedRef.current) setIsDisconnecting(false);

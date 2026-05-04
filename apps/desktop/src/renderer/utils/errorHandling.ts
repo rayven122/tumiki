@@ -18,7 +18,10 @@ export const formatElectronIpcErrorMessage = (
       : typeof error === "string"
         ? error
         : fallbackMessage;
-  return message.replace(/^Error invoking remote method '[^']+': Error: /, "");
+  return message.replace(
+    /^Error invoking remote method '[^']+': [A-Za-z]*Error: /,
+    "",
+  );
 };
 
 /**

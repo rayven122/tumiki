@@ -24,6 +24,17 @@ describe("formatElectronIpcErrorMessage", () => {
     ).toStrictEqual("管理サーバーからの応答フォーマットが不正です");
   });
 
+  test("Error以外のIPCエラー種別でもプレフィックスを除去する", () => {
+    expect(
+      formatElectronIpcErrorMessage(
+        new Error(
+          "Error invoking remote method 'auth:login': TypeError: 認証開始に失敗しました",
+        ),
+        "Desktopセッションの取得に失敗しました",
+      ),
+    ).toStrictEqual("認証開始に失敗しました");
+  });
+
   test("文字列のElectron IPCエラープレフィックスを除去する", () => {
     expect(
       formatElectronIpcErrorMessage(
