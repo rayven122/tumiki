@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import {
+  ApprovalStatus,
   PolicyEffect,
   type PrismaTransactionClient,
 } from "@tumiki/internal-db";
@@ -221,7 +222,7 @@ export const getPolicyContextForUser = async (
         },
         individualPermissions: {
           where: {
-            status: "APPROVED",
+            status: ApprovalStatus.APPROVED,
             OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
           },
           select: {

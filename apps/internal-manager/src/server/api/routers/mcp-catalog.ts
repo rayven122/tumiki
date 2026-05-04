@@ -140,7 +140,12 @@ export const mcpCatalogRouter = createTRPCRouter({
                 .default(McpToolRiskLevel.MEDIUM),
             }),
           )
-          .max(500),
+          .max(500)
+          .refine(
+            (tools) =>
+              new Set(tools.map((tool) => tool.name)).size === tools.length,
+            { message: "ツール名が重複しています" },
+          ),
       }),
     )
     .mutation(async ({ ctx, input }) => {

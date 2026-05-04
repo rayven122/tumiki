@@ -50,6 +50,11 @@ const AdminToolsPage = () => {
     () => catalogs.find((catalog) => catalog.id === selectedCatalogId) ?? null,
     [catalogs, selectedCatalogId],
   );
+  const mutationError =
+    createCatalog.error ??
+    updateCatalog.error ??
+    deleteCatalog.error ??
+    refreshTools.error;
 
   const handleCreate = () => {
     createCatalog.mutate({
@@ -169,11 +174,16 @@ const AdminToolsPage = () => {
             type="button"
             onClick={handleCreate}
             disabled={!name || !slug || createCatalog.isPending}
-            className="bg-btn-primary-bg text-btn-primary-text flex w-full items-center justify-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium disabled:opacity-40"
+            className="bg-btn-primary-bg text-btn-primary-text flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium disabled:opacity-40"
           >
             <Plus size={13} />
             追加
           </button>
+          {mutationError && (
+            <div className="rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-300">
+              {mutationError.message}
+            </div>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -187,7 +197,7 @@ const AdminToolsPage = () => {
               key={catalog.id}
               type="button"
               onClick={() => setSelectedCatalogId(catalog.id)}
-              className={`border-border-default bg-bg-card w-full rounded-lg border p-3 text-left transition-colors hover:bg-white/[0.03] ${
+              className={`border-border-default bg-bg-card min-h-[44px] w-full rounded-lg border p-3 text-left transition-colors hover:bg-white/[0.03] ${
                 selectedCatalogId === catalog.id
                   ? "ring-text-primary ring-1"
                   : ""
@@ -241,7 +251,7 @@ const AdminToolsPage = () => {
                   type="button"
                   onClick={() => handleToggleStatus(selectedCatalog)}
                   disabled={updateCatalog.isPending}
-                  className="bg-bg-active text-text-secondary flex items-center gap-1.5 rounded-md px-3 py-2 text-xs disabled:opacity-40"
+                  className="bg-bg-active text-text-secondary flex min-h-[44px] items-center gap-1.5 rounded-md px-3 py-2 text-xs disabled:opacity-40"
                 >
                   <Settings size={13} />
                   {selectedCatalog.status === "ACTIVE" ? "無効化" : "有効化"}
@@ -250,7 +260,7 @@ const AdminToolsPage = () => {
                   type="button"
                   onClick={() => setDeleteConfirmOpen(true)}
                   disabled={deleteCatalog.isPending}
-                  className="flex items-center gap-1.5 rounded-md bg-red-500/15 px-3 py-2 text-xs text-red-300 disabled:opacity-40"
+                  className="flex min-h-[44px] items-center gap-1.5 rounded-md bg-red-500/15 px-3 py-2 text-xs text-red-300 disabled:opacity-40"
                 >
                   <Trash2 size={13} />
                   削除
@@ -267,7 +277,7 @@ const AdminToolsPage = () => {
                   type="button"
                   onClick={handleRefreshTools}
                   disabled={refreshTools.isPending}
-                  className="bg-btn-primary-bg text-btn-primary-text flex items-center gap-1.5 rounded-md px-3 py-2 text-xs disabled:opacity-40"
+                  className="bg-btn-primary-bg text-btn-primary-text flex min-h-[44px] items-center gap-1.5 rounded-md px-3 py-2 text-xs disabled:opacity-40"
                 >
                   <RefreshCw size={13} />
                   保存
@@ -338,7 +348,7 @@ const AdminToolsPage = () => {
               <button
                 type="button"
                 onClick={() => setDeleteConfirmOpen(false)}
-                className="bg-bg-active text-text-secondary rounded-md px-3 py-2 text-xs"
+                className="bg-bg-active text-text-secondary min-h-[44px] rounded-md px-3 py-2 text-xs"
               >
                 キャンセル
               </button>
@@ -346,7 +356,7 @@ const AdminToolsPage = () => {
                 type="button"
                 onClick={handleDeleteCatalog}
                 disabled={deleteCatalog.isPending}
-                className="rounded-md bg-red-500/20 px-3 py-2 text-xs font-medium text-red-200 disabled:opacity-40"
+                className="min-h-[44px] rounded-md bg-red-500/20 px-3 py-2 text-xs font-medium text-red-200 disabled:opacity-40"
               >
                 削除
               </button>

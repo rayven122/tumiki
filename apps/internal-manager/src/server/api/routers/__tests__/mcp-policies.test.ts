@@ -36,6 +36,13 @@ const buildCaller = (db: Context["db"]) =>
     session: buildSession(),
   });
 
+const buildTransactionCaller = (tx: unknown) =>
+  buildCaller({
+    $transaction: vi.fn((callback: (tx: unknown) => Promise<unknown>) =>
+      callback(tx),
+    ),
+  } as unknown as Context["db"]);
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -76,13 +83,13 @@ describe("mcpPoliciesRouter", () => {
   test("updateToolPermissionはtoolIdとcatalogIdの不整合をBAD_REQUESTにする", async () => {
     const upsert = vi.fn();
     const deleteMany = vi.fn();
-    const caller = buildCaller({
+    const caller = buildTransactionCaller({
       mcpCatalogTool: {
         findFirst: vi.fn().mockResolvedValue({ catalogId: "catalog-other" }),
       },
       orgUnit: { findUnique: vi.fn().mockResolvedValue({ id: "org-001" }) },
       orgUnitToolPermission: { upsert, deleteMany },
-    } as unknown as Context["db"]);
+    });
 
     await expectTrpcErrorCode(
       caller.updateToolPermission({
@@ -100,13 +107,13 @@ describe("mcpPoliciesRouter", () => {
   test("updateToolPermissionは存在しないorgUnitIdをBAD_REQUESTにする", async () => {
     const upsert = vi.fn();
     const deleteMany = vi.fn();
-    const caller = buildCaller({
+    const caller = buildTransactionCaller({
       mcpCatalogTool: {
         findFirst: vi.fn().mockResolvedValue({ catalogId: "catalog-001" }),
       },
       orgUnit: { findUnique: vi.fn().mockResolvedValue(null) },
       orgUnitToolPermission: { upsert, deleteMany },
-    } as unknown as Context["db"]);
+    });
 
     await expectTrpcErrorCode(
       caller.updateToolPermission({

@@ -46,58 +46,60 @@ export const mcpPoliciesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const [tool, orgUnit] = await Promise.all([
-        ctx.db.mcpCatalogTool.findFirst({
-          where: { id: input.toolId, deletedAt: null },
-          select: { catalogId: true },
-        }),
-        ctx.db.orgUnit.findUnique({
-          where: { id: input.orgUnitId },
-          select: { id: true },
-        }),
-      ]);
-      if (!orgUnit) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "部署が見つかりません",
-        });
-      }
-      if (!tool || tool.catalogId !== input.catalogId) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "ツールが指定カタログに属していません",
-        });
-      }
+      return ctx.db.$transaction(async (tx) => {
+        const [tool, orgUnit] = await Promise.all([
+          tx.mcpCatalogTool.findFirst({
+            where: { id: input.toolId, deletedAt: null },
+            select: { catalogId: true },
+          }),
+          tx.orgUnit.findUnique({
+            where: { id: input.orgUnitId },
+            select: { id: true },
+          }),
+        ]);
+        if (!orgUnit) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "部署が見つかりません",
+          });
+        }
+        if (!tool || tool.catalogId !== input.catalogId) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "ツールが指定カタログに属していません",
+          });
+        }
 
-      if (input.effect === null) {
-        await ctx.db.orgUnitToolPermission.deleteMany({
+        if (input.effect === null) {
+          await tx.orgUnitToolPermission.deleteMany({
+            where: {
+              orgUnitId: input.orgUnitId,
+              toolId: input.toolId,
+            },
+          });
+          return { ok: true };
+        }
+        const effect = input.effect;
+
+        await tx.orgUnitToolPermission.upsert({
           where: {
+            orgUnitId_toolId: {
+              orgUnitId: input.orgUnitId,
+              toolId: input.toolId,
+            },
+          },
+          create: {
             orgUnitId: input.orgUnitId,
+            catalogId: input.catalogId,
             toolId: input.toolId,
+            effect,
+          },
+          update: {
+            effect,
           },
         });
         return { ok: true };
-      }
-      const effect = input.effect;
-
-      await ctx.db.orgUnitToolPermission.upsert({
-        where: {
-          orgUnitId_toolId: {
-            orgUnitId: input.orgUnitId,
-            toolId: input.toolId,
-          },
-        },
-        create: {
-          orgUnitId: input.orgUnitId,
-          catalogId: input.catalogId,
-          toolId: input.toolId,
-          effect,
-        },
-        update: {
-          effect,
-        },
       });
-      return { ok: true };
     }),
 
   getEffectivePermissions: adminProcedure

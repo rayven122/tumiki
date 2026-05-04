@@ -165,7 +165,7 @@ const IdpTab = ({ group, idpGroupMap, onIdpGroupChange }: IdpTabProps) => {
           <button
             type="button"
             disabled
-            className="bg-btn-primary-bg text-btn-primary-text cursor-not-allowed rounded-lg px-3 py-2 text-xs font-medium opacity-50"
+            className="bg-btn-primary-bg text-btn-primary-text min-h-[44px] cursor-not-allowed rounded-lg px-3 py-2 text-xs font-medium opacity-50"
           >
             保存
           </button>
@@ -181,7 +181,7 @@ const IdpTab = ({ group, idpGroupMap, onIdpGroupChange }: IdpTabProps) => {
           <button
             type="button"
             disabled
-            className="bg-bg-active text-text-secondary flex cursor-not-allowed items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium opacity-50"
+            className="bg-bg-active text-text-secondary flex min-h-[44px] cursor-not-allowed items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium opacity-50"
           >
             <RefreshCw size={11} />
             手動同期
@@ -353,7 +353,7 @@ const AdminGroupsPage = () => {
           <button
             type="button"
             disabled
-            className="bg-btn-primary-bg text-btn-primary-text flex cursor-not-allowed items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-medium opacity-50"
+            className="bg-btn-primary-bg text-btn-primary-text flex min-h-[44px] cursor-not-allowed items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-medium opacity-50"
           >
             <Plus size={11} />
             追加
@@ -394,7 +394,7 @@ const AdminGroupsPage = () => {
                 key={group.id}
                 type="button"
                 onClick={() => handleSelectGroup(group)}
-                className={`border-b-border-subtle w-full border-b px-4 py-3 text-left transition-colors hover:bg-white/[0.02] ${isSelected ? "bg-bg-active" : ""}`}
+                className={`border-b-border-subtle min-h-[44px] w-full border-b px-4 py-3 text-left transition-colors hover:bg-white/[0.02] ${isSelected ? "bg-bg-active" : ""}`}
               >
                 <div className="mb-1.5 flex items-center gap-2">
                   {/* グループカラードット */}
@@ -473,7 +473,7 @@ const AdminGroupsPage = () => {
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className={`border-b-2 px-4 py-2.5 text-xs transition-colors ${
+                  className={`min-h-[44px] border-b-2 px-4 py-2.5 text-xs transition-colors ${
                     activeTab === tab.id
                       ? "border-text-primary text-text-primary font-medium"
                       : "text-text-secondary hover:text-text-primary border-transparent"
@@ -496,7 +496,7 @@ const AdminGroupsPage = () => {
                     <button
                       type="button"
                       disabled
-                      className="bg-btn-primary-bg text-btn-primary-text flex cursor-not-allowed items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium opacity-50"
+                      className="bg-btn-primary-bg text-btn-primary-text flex min-h-[44px] cursor-not-allowed items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium opacity-50"
                     >
                       <UserPlus size={12} />
                       メンバー追加
@@ -565,7 +565,7 @@ const AdminGroupsPage = () => {
                         key={orgUnit.id}
                         type="button"
                         onClick={() => setSelectedOrgUnitId(orgUnit.id)}
-                        className={`border-b-border-subtle w-full border-b px-4 py-3 text-left text-xs transition-colors hover:bg-white/[0.02] ${
+                        className={`border-b-border-subtle min-h-[44px] w-full border-b px-4 py-3 text-left text-xs transition-colors hover:bg-white/[0.02] ${
                           selectedOrgUnit?.id === orgUnit.id
                             ? "bg-bg-active"
                             : ""
@@ -633,7 +633,7 @@ const AdminGroupsPage = () => {
                                         onClick={() =>
                                           setEffect(PolicyEffect.ALLOW)
                                         }
-                                        className={`rounded-md p-1.5 ${
+                                        className={`flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md p-1.5 ${
                                           effect === "ALLOW"
                                             ? "bg-emerald-500/20 text-emerald-300"
                                             : "bg-bg-active text-text-muted"
@@ -647,7 +647,7 @@ const AdminGroupsPage = () => {
                                         onClick={() =>
                                           setEffect(PolicyEffect.DENY)
                                         }
-                                        className={`rounded-md p-1.5 ${
+                                        className={`flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md p-1.5 ${
                                           effect === "DENY"
                                             ? "bg-red-500/20 text-red-300"
                                             : "bg-bg-active text-text-muted"
@@ -659,7 +659,7 @@ const AdminGroupsPage = () => {
                                       <button
                                         type="button"
                                         onClick={() => setEffect(null)}
-                                        className={`rounded-md p-1.5 ${
+                                        className={`flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md p-1.5 ${
                                           effect === null
                                             ? "bg-bg-active text-text-secondary"
                                             : "bg-bg-active text-text-muted"

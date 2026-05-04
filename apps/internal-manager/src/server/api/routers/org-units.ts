@@ -94,14 +94,7 @@ export const orgUnitsRouter = createTRPCRouter({
           });
         }
 
-        const newPath = buildPath(
-          parent?.path ?? null,
-          current.externalId ?? current.id,
-        );
-        const descendants = await tx.orgUnit.findMany({
-          where: { path: { startsWith: `${current.path}/` } },
-          select: { id: true, path: true },
-        });
+        const newPath = buildPath(parent?.path ?? null, current.externalId);
 
         const updated = await tx.orgUnit.update({
           where: { id: current.id },
@@ -111,16 +104,13 @@ export const orgUnitsRouter = createTRPCRouter({
           },
         });
 
-        await Promise.all(
-          descendants.map((descendant) =>
-            tx.orgUnit.update({
-              where: { id: descendant.id },
-              data: {
-                path: `${newPath}${descendant.path.slice(current.path.length)}`,
-              },
-            }),
-          ),
-        );
+        await tx.$executeRaw`
+          UPDATE "OrgUnit"
+          SET
+            "path" = ${newPath} || substring("path" from ${current.path.length + 1}),
+            "updatedAt" = NOW()
+          WHERE "path" LIKE ${`${current.path}/%`}
+        `;
 
         return updated;
       });

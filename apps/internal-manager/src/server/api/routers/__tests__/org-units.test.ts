@@ -51,9 +51,10 @@ describe("orgUnitsRouter", () => {
   test("updateParentは親と子孫のpathを更新する", async () => {
     const update = vi
       .fn()
-      .mockResolvedValueOnce({ id: "child", path: "/parent/department:child" })
-      .mockResolvedValueOnce({ id: "grandchild", path: "/parent/child/grand" });
+      .mockResolvedValueOnce({ id: "child", path: "/parent/department:child" });
+    const executeRaw = vi.fn().mockResolvedValue(1);
     const tx = {
+      $executeRaw: executeRaw,
       orgUnit: {
         findUniqueOrThrow: vi.fn().mockResolvedValue({
           id: "child",
@@ -64,9 +65,6 @@ describe("orgUnitsRouter", () => {
           id: "parent",
           path: "/parent",
         }),
-        findMany: vi
-          .fn()
-          .mockResolvedValue([{ id: "grandchild", path: "/child/grand" }]),
         update,
       },
     };
@@ -79,24 +77,22 @@ describe("orgUnitsRouter", () => {
       where: { id: "child" },
       data: { parentId: "parent", path: "/parent/department:child" },
     });
-    expect(update).toHaveBeenNthCalledWith(2, {
-      where: { id: "grandchild" },
-      data: { path: "/parent/department:child/grand" },
-    });
+    expect(executeRaw).toHaveBeenCalledTimes(1);
   });
 
   test("updateParentはルートへ移動できる", async () => {
     const update = vi
       .fn()
       .mockResolvedValue({ id: "child", path: "/manual:child" });
+    const executeRaw = vi.fn().mockResolvedValue(0);
     const tx = {
+      $executeRaw: executeRaw,
       orgUnit: {
         findUniqueOrThrow: vi.fn().mockResolvedValue({
           id: "child",
           externalId: "manual:child",
           path: "/parent/child",
         }),
-        findMany: vi.fn().mockResolvedValue([]),
         update,
       },
     };
@@ -109,6 +105,7 @@ describe("orgUnitsRouter", () => {
       where: { id: "child" },
       data: { parentId: null, path: "/manual:child" },
     });
+    expect(executeRaw).toHaveBeenCalledTimes(1);
   });
 
   test("updateParentは自分自身への移動をBAD_REQUESTにする", async () => {

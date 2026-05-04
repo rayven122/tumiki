@@ -98,7 +98,7 @@ const toCatalogItem = (
     status,
     permissions,
     transportType: catalog.transportType,
-    authType: catalog.authType ?? "NONE",
+    authType: catalog.authType,
     requiredCredentialKeys: catalog.credentialKeys,
     tools: catalog.tools.slice(0, TOOL_PREVIEW_LIMIT).map((tool) => ({
       name: tool.name,

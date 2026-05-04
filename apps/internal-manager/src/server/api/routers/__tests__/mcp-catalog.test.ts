@@ -5,6 +5,7 @@ import {
   McpCatalogAuthType,
   McpCatalogStatus,
   McpCatalogTransportType,
+  McpToolRiskLevel,
   Role,
 } from "@tumiki/internal-db";
 import type { Context } from "../../trpc";
@@ -131,5 +132,34 @@ describe("mcpCatalogRouter", () => {
       "NOT_FOUND",
     );
     expect(updateMany).not.toHaveBeenCalled();
+  });
+
+  test("refreshToolsは重複ツール名をBAD_REQUESTにする", async () => {
+    const transaction = vi.fn();
+    const caller = buildCaller({
+      $transaction: transaction,
+    } as unknown as Context["db"]);
+
+    await expectTrpcErrorCode(
+      caller.refreshTools({
+        catalogId: "catalog-001",
+        tools: [
+          {
+            name: "list_repos",
+            inputSchema: {},
+            defaultAllowed: false,
+            riskLevel: McpToolRiskLevel.MEDIUM,
+          },
+          {
+            name: "list_repos",
+            inputSchema: {},
+            defaultAllowed: false,
+            riskLevel: McpToolRiskLevel.MEDIUM,
+          },
+        ],
+      }),
+      "BAD_REQUEST",
+    );
+    expect(transaction).not.toHaveBeenCalled();
   });
 });
