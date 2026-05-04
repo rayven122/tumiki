@@ -56,15 +56,17 @@ describe("orgUnitsRouter", () => {
     const tx = {
       $executeRaw: executeRaw,
       orgUnit: {
-        findUniqueOrThrow: vi.fn().mockResolvedValue({
-          id: "child",
-          externalId: "department:child",
-          path: "/child",
-        }),
-        findUnique: vi.fn().mockResolvedValue({
-          id: "parent",
-          path: "/parent",
-        }),
+        findUnique: vi
+          .fn()
+          .mockResolvedValueOnce({
+            id: "child",
+            externalId: "department:child",
+            path: "/child",
+          })
+          .mockResolvedValueOnce({
+            id: "parent",
+            path: "/parent",
+          }),
         update,
       },
     };
@@ -88,7 +90,7 @@ describe("orgUnitsRouter", () => {
     const tx = {
       $executeRaw: executeRaw,
       orgUnit: {
-        findUniqueOrThrow: vi.fn().mockResolvedValue({
+        findUnique: vi.fn().mockResolvedValue({
           id: "child",
           externalId: "manual:child",
           path: "/parent/child",
@@ -120,15 +122,17 @@ describe("orgUnitsRouter", () => {
   test("updateParentは子孫配下への移動をBAD_REQUESTにする", async () => {
     const tx = {
       orgUnit: {
-        findUniqueOrThrow: vi.fn().mockResolvedValue({
-          id: "parent",
-          externalId: "manual:parent",
-          path: "/parent",
-        }),
-        findUnique: vi.fn().mockResolvedValue({
-          id: "child",
-          path: "/parent/child",
-        }),
+        findUnique: vi
+          .fn()
+          .mockResolvedValueOnce({
+            id: "parent",
+            externalId: "manual:parent",
+            path: "/parent",
+          })
+          .mockResolvedValueOnce({
+            id: "child",
+            path: "/parent/child",
+          }),
       },
     };
     const caller = buildTransactionCaller(tx);
@@ -142,18 +146,34 @@ describe("orgUnitsRouter", () => {
   test("updateParentは存在しない親をBAD_REQUESTにする", async () => {
     const tx = {
       orgUnit: {
-        findUniqueOrThrow: vi.fn().mockResolvedValue({
-          id: "child",
-          externalId: "manual:child",
-          path: "/child",
-        }),
-        findUnique: vi.fn().mockResolvedValue(null),
+        findUnique: vi
+          .fn()
+          .mockResolvedValueOnce({
+            id: "child",
+            externalId: "manual:child",
+            path: "/child",
+          })
+          .mockResolvedValueOnce(null),
       },
     };
     const caller = buildTransactionCaller(tx);
 
     await expectTrpcErrorCode(
       caller.updateParent({ orgUnitId: "child", parentId: "missing" }),
+      "BAD_REQUEST",
+    );
+  });
+
+  test("updateParentは存在しない部署をBAD_REQUESTにする", async () => {
+    const tx = {
+      orgUnit: {
+        findUnique: vi.fn().mockResolvedValue(null),
+      },
+    };
+    const caller = buildTransactionCaller(tx);
+
+    await expectTrpcErrorCode(
+      caller.updateParent({ orgUnitId: "missing", parentId: null }),
       "BAD_REQUEST",
     );
   });

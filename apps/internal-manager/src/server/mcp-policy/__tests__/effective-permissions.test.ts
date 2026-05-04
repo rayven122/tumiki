@@ -138,6 +138,36 @@ describe("evaluateCatalogPermissions", () => {
     expect(result.permissions.execute).toStrictEqual(true);
   });
 
+  test("部署DENYはグループALLOWより優先される", () => {
+    const result = evaluateCatalogPermissions(
+      buildUser({
+        groupMemberships: [
+          {
+            group: {
+              permissions: [
+                {
+                  mcpServerId: "catalog-001",
+                  read: true,
+                  write: false,
+                  execute: true,
+                },
+              ],
+            },
+          },
+        ],
+      }),
+      buildCatalog([
+        { orgUnitId: "child", effect: PolicyEffect.DENY, updatedAt: now },
+      ]),
+      orgUnits,
+    );
+
+    expect(result.tools.get("tool-001")).toStrictEqual({
+      allowed: false,
+      deniedReason: "org_unit_denied",
+    });
+  });
+
   test("部署階層が循環していても所属部署収集で停止する", () => {
     const result = evaluateCatalogPermissions(
       buildUser(),

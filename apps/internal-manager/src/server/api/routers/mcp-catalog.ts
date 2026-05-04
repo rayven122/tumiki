@@ -5,8 +5,8 @@ import {
   McpCatalogStatus,
   McpCatalogTransportType,
   McpToolRiskLevel,
+  Prisma,
 } from "@tumiki/internal-db";
-import type { Prisma } from "@tumiki/internal-db";
 import { adminProcedure, createTRPCRouter } from "@/server/api/trpc";
 
 const slugSchema = z
@@ -20,6 +20,7 @@ const toInputJson = (value: Record<string, unknown>): Prisma.InputJsonValue =>
   value as Prisma.InputJsonValue;
 
 const MCP_CATALOG_LIST_LIMIT = 200;
+const TOOL_UPSERT_CHUNK_SIZE = 50;
 
 export const mcpCatalogRouter = createTRPCRouter({
   list: adminProcedure.query(async ({ ctx }) => {
@@ -54,16 +55,29 @@ export const mcpCatalogRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.mcpCatalog.create({
-        data: {
-          ...input,
-          description: input.description ?? null,
-          iconPath: input.iconPath ?? null,
-          configTemplate: toInputJson(input.configTemplate),
-          createdBy: ctx.session.user.id,
-        },
-        include: { tools: true },
-      });
+      try {
+        return await ctx.db.mcpCatalog.create({
+          data: {
+            ...input,
+            description: input.description ?? null,
+            iconPath: input.iconPath ?? null,
+            configTemplate: toInputJson(input.configTemplate),
+            createdBy: ctx.session.user.id,
+          },
+          include: { tools: true },
+        });
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === "P2002"
+        ) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "このslugは既に使用されています",
+          });
+        }
+        throw error;
+      }
     }),
 
   update: adminProcedure
@@ -170,33 +184,35 @@ export const mcpCatalogRouter = createTRPCRouter({
           },
           data: { deletedAt: new Date() },
         });
-        await Promise.all(
-          input.tools.map((tool) =>
-            tx.mcpCatalogTool.upsert({
-              where: {
-                catalogId_name: {
+        for (let i = 0; i < input.tools.length; i += TOOL_UPSERT_CHUNK_SIZE) {
+          await Promise.all(
+            input.tools.slice(i, i + TOOL_UPSERT_CHUNK_SIZE).map((tool) =>
+              tx.mcpCatalogTool.upsert({
+                where: {
+                  catalogId_name: {
+                    catalogId: input.catalogId,
+                    name: tool.name,
+                  },
+                },
+                create: {
                   catalogId: input.catalogId,
                   name: tool.name,
+                  description: tool.description ?? null,
+                  inputSchema: toInputJson(tool.inputSchema),
+                  defaultAllowed: tool.defaultAllowed,
+                  riskLevel: tool.riskLevel,
                 },
-              },
-              create: {
-                catalogId: input.catalogId,
-                name: tool.name,
-                description: tool.description ?? null,
-                inputSchema: toInputJson(tool.inputSchema),
-                defaultAllowed: tool.defaultAllowed,
-                riskLevel: tool.riskLevel,
-              },
-              update: {
-                description: tool.description ?? null,
-                inputSchema: toInputJson(tool.inputSchema),
-                defaultAllowed: tool.defaultAllowed,
-                riskLevel: tool.riskLevel,
-                deletedAt: null,
-              },
-            }),
-          ),
-        );
+                update: {
+                  description: tool.description ?? null,
+                  inputSchema: toInputJson(tool.inputSchema),
+                  defaultAllowed: tool.defaultAllowed,
+                  riskLevel: tool.riskLevel,
+                  deletedAt: null,
+                },
+              }),
+            ),
+          );
+        }
         return tx.mcpCatalog.findUniqueOrThrow({
           where: { id: input.catalogId },
           include: { tools: { where: { deletedAt: null } } },

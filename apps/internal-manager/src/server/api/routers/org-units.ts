@@ -4,6 +4,8 @@ import { adminProcedure, createTRPCRouter } from "@/server/api/trpc";
 
 const buildPath = (parentPath: string | null, segment: string) =>
   parentPath ? `${parentPath}/${segment}` : `/${segment}`;
+const escapeLikePattern = (value: string) =>
+  value.replace(/[\\%_]/g, (match) => `\\${match}`);
 
 const ORG_UNIT_TREE_LIMIT = 1000;
 
@@ -70,10 +72,16 @@ export const orgUnitsRouter = createTRPCRouter({
       }
 
       return ctx.db.$transaction(async (tx) => {
-        const current = await tx.orgUnit.findUniqueOrThrow({
+        const current = await tx.orgUnit.findUnique({
           where: { id: input.orgUnitId },
           select: { id: true, externalId: true, path: true },
         });
+        if (!current) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "部署が見つかりません",
+          });
+        }
         const parent = input.parentId
           ? await tx.orgUnit.findUnique({
               where: { id: input.parentId },
@@ -109,7 +117,7 @@ export const orgUnitsRouter = createTRPCRouter({
           SET
             "path" = ${newPath} || substring("path" from ${current.path.length + 1}),
             "updatedAt" = NOW()
-          WHERE "path" LIKE ${`${current.path}/%`}
+          WHERE "path" LIKE ${`${escapeLikePattern(current.path)}/%`} ESCAPE ${"\\"}
         `;
 
         return updated;

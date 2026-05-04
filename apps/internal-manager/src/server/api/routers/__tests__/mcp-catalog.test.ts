@@ -6,6 +6,7 @@ import {
   McpCatalogStatus,
   McpCatalogTransportType,
   McpToolRiskLevel,
+  Prisma,
   Role,
 } from "@tumiki/internal-db";
 import type { Context } from "../../trpc";
@@ -63,6 +64,28 @@ describe("mcpCatalogRouter", () => {
       "BAD_REQUEST",
     );
     expect(create).not.toHaveBeenCalled();
+  });
+
+  test("createはslug重複をCONFLICTにする", async () => {
+    const create = vi.fn().mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
+        code: "P2002",
+        clientVersion: "test",
+      }),
+    );
+    const caller = buildCaller({
+      mcpCatalog: { create },
+    } as unknown as Context["db"]);
+
+    await expectTrpcErrorCode(
+      caller.create({
+        slug: "github",
+        name: "GitHub",
+        configTemplate: {},
+        credentialKeys: [],
+      }),
+      "CONFLICT",
+    );
   });
 
   test("updateは存在しないカタログをNOT_FOUNDにする", async () => {
