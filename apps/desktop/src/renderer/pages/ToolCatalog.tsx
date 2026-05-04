@@ -112,7 +112,7 @@ export const ToolCatalog = (): JSX.Element => {
     // 認証なしは直接コネクタへ追加
     if (template.authType === "NONE") {
       try {
-        const result = await window.electronAPI.mcp.createFromManagerCatalog({
+        const result = await window.electronAPI.catalog.add({
           catalogId: item.id,
           serverName: item.name,
           description: item.description,
@@ -217,11 +217,9 @@ export const ToolCatalog = (): JSX.Element => {
       <div className="flex h-full items-center justify-center p-6">
         <div className="max-w-md rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 text-center shadow-[var(--shadow-card)]">
           <h1 className="text-base font-semibold text-[var(--text-primary)]">
-            管理サーバーのカタログ取得に失敗しました
+            カタログの取得に失敗しました
           </h1>
-          <p className="mt-2 text-sm text-[var(--text-muted)]">
-            管理サーバーへの接続状態、ログイン状態、ネットワークを確認してください。
-          </p>
+          <p className="mt-2 text-sm text-[var(--text-muted)]">{loadError}</p>
           <button
             type="button"
             onClick={loadCatalogs}

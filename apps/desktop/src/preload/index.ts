@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { AuthTokenResult } from "../types/auth";
 import type { CatalogItem, LocalCatalogItem } from "../types/catalog";
+import type { AddFromCatalogInput } from "../main/features/catalog/catalog.types";
 import type { ProfileState } from "../shared/types";
 import type {
   McpServerItem,
@@ -70,6 +71,10 @@ const api = {
     getAll: (): Promise<CatalogItem[]> => ipcRenderer.invoke("catalog:getAll"),
     getLocalAll: (): Promise<LocalCatalogItem[]> =>
       ipcRenderer.invoke("catalog:getLocalAll"),
+    add: (
+      input: AddFromCatalogInput,
+    ): Promise<{ serverId: number; serverName: string }> =>
+      ipcRenderer.invoke("catalog:add", input),
   },
 
   // MCP管理 API

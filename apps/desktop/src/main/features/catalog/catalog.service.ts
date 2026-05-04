@@ -2,7 +2,14 @@ import { z } from "zod";
 import type { CatalogItem } from "../../../types/catalog";
 import { getDb } from "../../shared/db";
 import { requestManagerApi } from "../../shared/manager-api-client";
+import { resolveByProfile } from "../../shared/profile-dispatch";
+import {
+  createFromCatalog,
+  createFromManagerCatalog,
+} from "../mcp-server-list/mcp.service";
 import * as catalogRepository from "./catalog.repository";
+import { toCatalogItem } from "./catalog.mapper";
+import type { AddFromCatalogInput } from "./catalog.types";
 
 const CATALOG_PAGE_LIMIT = 200;
 
@@ -45,9 +52,9 @@ const catalogListResponseSchema = z.object({
 });
 
 /**
- * Manager APIからすべてのカタログを取得
+ * Manager APIからすべてのカタログを取得（組織利用モード用）
  */
-export const getAllCatalogs = async (): Promise<CatalogItem[]> => {
+const fetchFromManagerApi = async (): Promise<CatalogItem[]> => {
   const items: CatalogItem[] = [];
   let cursor: string | null = null;
 
@@ -74,6 +81,57 @@ export const getAllCatalogs = async (): Promise<CatalogItem[]> => {
 
   return items;
 };
+
+/**
+ * プロファイルモードに応じてカタログ一覧を取得する。
+ * - 個人利用: ローカルSQLiteのシードデータから取得
+ * - 組織利用: Manager APIから取得
+ */
+export const getAllCatalogs = async (): Promise<CatalogItem[]> =>
+  resolveByProfile({
+    personal: async () => {
+      const db = await getDb();
+      const locals = await catalogRepository.findAll(db);
+      return locals.map(toCatalogItem);
+    },
+    organization: fetchFromManagerApi,
+  });
+
+/**
+ * カタログからMCPサーバーを追加する。
+ * renderer は統一された入力型を渡すだけで、モード別の登録APIの違いを意識しない。
+ * - 個人利用: createFromCatalog（ローカルカタログID紐付き）
+ * - 組織利用: createFromManagerCatalog（Manager APIカタログ経由）
+ */
+export const addFromCatalog = async (
+  input: AddFromCatalogInput,
+): Promise<{ serverId: number; serverName: string }> =>
+  resolveByProfile({
+    personal: () =>
+      createFromCatalog({
+        catalogId: Number(input.catalogId),
+        catalogName: input.serverName,
+        description: input.description,
+        transportType: input.connectionTemplate.transportType,
+        command: input.connectionTemplate.command,
+        args: JSON.stringify(input.connectionTemplate.args),
+        url: input.connectionTemplate.url,
+        credentialKeys: input.connectionTemplate.credentialKeys,
+        credentials: input.credentials,
+        authType: input.connectionTemplate.authType,
+      }),
+    organization: () =>
+      createFromManagerCatalog({
+        catalogId: input.catalogId,
+        serverName: input.serverName,
+        description: input.description,
+        status: input.status,
+        permissions: input.permissions,
+        connectionTemplate: input.connectionTemplate,
+        tools: input.tools,
+        credentials: input.credentials,
+      }),
+  });
 
 /**
  * ローカルSQLite上のカタログを取得
