@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 
 const mockFindCatalogs = vi.hoisted(() => vi.fn());
 const mockFindUser = vi.hoisted(() => vi.fn());
+const mockFindGroupToolPermissions = vi.hoisted(() => vi.fn());
 const mockVerifyDesktopJwt = vi.hoisted(() => vi.fn());
 
 vi.mock("@tumiki/db/server", () => ({
@@ -17,6 +18,9 @@ vi.mock("@tumiki/internal-db/server", () => ({
   db: {
     user: {
       findUnique: mockFindUser,
+    },
+    groupMcpToolPermission: {
+      findMany: mockFindGroupToolPermissions,
     },
   },
 }));
@@ -49,6 +53,9 @@ const buildCatalog = (overrides: Record<string, unknown> = {}) => ({
       mcpServerTemplate: {
         transportType: "STREAMABLE_HTTPS",
         authType: "OAUTH",
+        command: null,
+        args: [],
+        url: "https://api.githubcopilot.com/mcp/",
         envVarKeys: ["GITHUB_TOKEN"],
         mcpTools: [
           { name: "list_repos", description: "List repositories" },
@@ -67,6 +74,7 @@ describe("GET /api/desktop/v1/catalogs", () => {
     mockFindUser.mockResolvedValue({
       groupMemberships: [
         {
+          groupId: "group-admin",
           group: {
             permissions: [
               {
@@ -80,7 +88,9 @@ describe("GET /api/desktop/v1/catalogs", () => {
         },
       ],
       individualPermissions: [],
+      mcpToolPermissions: [],
     });
+    mockFindGroupToolPermissions.mockResolvedValue([]);
     mockFindCatalogs.mockResolvedValue([buildCatalog()]);
   });
 
@@ -99,6 +109,14 @@ describe("GET /api/desktop/v1/catalogs", () => {
           transportType: "STREAMABLE_HTTP",
           authType: "OAUTH",
           requiredCredentialKeys: ["GITHUB_TOKEN"],
+          connectionTemplate: {
+            transportType: "STREAMABLE_HTTP",
+            command: null,
+            args: [],
+            url: "https://api.githubcopilot.com/mcp/",
+            authType: "OAUTH",
+            credentialKeys: ["GITHUB_TOKEN"],
+          },
           tools: [
             {
               name: "list_repos",
@@ -114,10 +132,32 @@ describe("GET /api/desktop/v1/catalogs", () => {
     expect(mockVerifyDesktopJwt).toHaveBeenCalledWith("Bearer access-token");
   });
 
+  test("connectionTemplateにcredential値を含めず、キーだけを返す", async () => {
+    const response = await GET(buildRequest());
+    const body = (await response.json()) as {
+      items: [
+        {
+          connectionTemplate: { credentialKeys: string[] };
+          requiredCredentialKeys: string[];
+        },
+      ];
+    };
+
+    expect(body.items[0].connectionTemplate.credentialKeys).toStrictEqual([
+      "GITHUB_TOKEN",
+    ]);
+    expect(body.items[0].requiredCredentialKeys).toStrictEqual([
+      "GITHUB_TOKEN",
+    ]);
+    expect(JSON.stringify(body)).not.toContain("access-token");
+    expect(JSON.stringify(body)).not.toContain("secret");
+  });
+
   test("権限がないカタログは申請必要として返す", async () => {
     mockFindUser.mockResolvedValue({
       groupMemberships: [],
       individualPermissions: [],
+      mcpToolPermissions: [],
     });
 
     const response = await GET(buildRequest());
@@ -142,6 +182,110 @@ describe("GET /api/desktop/v1/catalogs", () => {
     const body = (await response.json()) as { items: [{ status: string }] };
 
     expect(body.items[0].status).toStrictEqual("disabled");
+  });
+
+  test("McpConnection/McpToolのallowlist権限を反映する", async () => {
+    mockFindCatalogs.mockResolvedValue([
+      buildCatalog({
+        templateInstances: [],
+        connections: [
+          {
+            id: "conn-github",
+            isEnabled: true,
+            transportType: "STREAMABLE_HTTP",
+            command: null,
+            args: [],
+            url: "https://api.githubcopilot.com/mcp/",
+            credentialKeys: ["GITHUB_TOKEN"],
+            authType: "BEARER",
+            catalog: null,
+            tools: [
+              {
+                id: "tool-list-repos",
+                name: "list_repos",
+                description: "List repositories",
+                isAllowed: true,
+                reviewStatus: "APPROVED",
+              },
+            ],
+          },
+        ],
+      }),
+    ]);
+    mockFindGroupToolPermissions.mockResolvedValue([
+      { mcpToolId: "tool-list-repos", canUse: true },
+    ]);
+
+    const response = await GET(buildRequest());
+    const body = (await response.json()) as {
+      items: [{ status: string; tools: [{ id: string; allowed: boolean }] }];
+    };
+
+    expect(body.items[0].status).toStrictEqual("available");
+    expect(body.items[0].tools[0]).toMatchObject({
+      id: "tool-list-repos",
+      allowed: true,
+    });
+  });
+
+  test("ユーザー個別ツール権限はグループ権限より優先される", async () => {
+    mockFindUser.mockResolvedValue({
+      groupMemberships: [
+        {
+          groupId: "group-admin",
+          group: {
+            permissions: [
+              {
+                mcpServerId: "server-github",
+                read: true,
+                write: false,
+                execute: true,
+              },
+            ],
+          },
+        },
+      ],
+      individualPermissions: [],
+      mcpToolPermissions: [{ mcpToolId: "tool-list-repos", canUse: false }],
+    });
+    mockFindCatalogs.mockResolvedValue([
+      buildCatalog({
+        templateInstances: [],
+        connections: [
+          {
+            id: "conn-github",
+            isEnabled: true,
+            transportType: "STREAMABLE_HTTP",
+            command: null,
+            args: [],
+            url: "https://api.githubcopilot.com/mcp/",
+            credentialKeys: ["GITHUB_TOKEN"],
+            authType: "BEARER",
+            catalog: null,
+            tools: [
+              {
+                id: "tool-list-repos",
+                name: "list_repos",
+                description: "List repositories",
+                isAllowed: true,
+                reviewStatus: "APPROVED",
+              },
+            ],
+          },
+        ],
+      }),
+    ]);
+    mockFindGroupToolPermissions.mockResolvedValue([
+      { mcpToolId: "tool-list-repos", canUse: true },
+    ]);
+
+    const response = await GET(buildRequest());
+    const body = (await response.json()) as {
+      items: [{ status: string; tools: [{ allowed: boolean }] }];
+    };
+
+    expect(body.items[0].status).toStrictEqual("disabled");
+    expect(body.items[0].tools[0].allowed).toBe(false);
   });
 
   test("limitを検証し、最大件数を超える場合は400を返す", async () => {

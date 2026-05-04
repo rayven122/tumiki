@@ -1,6 +1,7 @@
 import { describe, test, expect, beforeEach, vi } from "vitest";
 import type {
   CreateFromCatalogInput,
+  CreateFromManagerCatalogInput,
   CreateCustomServerInput,
   CreateVirtualServerInput,
 } from "../mcp.types";
@@ -318,6 +319,65 @@ describe("mcp.service", () => {
       await mcpService.createFromCatalog(input);
 
       expect(mcpRepository.createTools).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("createFromManagerCatalog", () => {
+    const input: CreateFromManagerCatalogInput = {
+      catalogId: "github",
+      serverName: "GitHub",
+      description: "GitHub MCP",
+      status: "available",
+      permissions: { read: true, write: false, execute: true },
+      connectionTemplate: {
+        transportType: "STREAMABLE_HTTP",
+        command: null,
+        args: [],
+        url: "https://api.githubcopilot.com/mcp/",
+        authType: "BEARER",
+        credentialKeys: ["GITHUB_TOKEN"],
+      },
+      tools: [{ name: "list_repos", allowed: true }],
+      credentials: { GITHUB_TOKEN: "test-token" },
+    };
+
+    test("ManagerカタログからcatalogId nullの接続を作成する", async () => {
+      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
+      vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
+      vi.mocked(mcpRepository.createServer).mockResolvedValue({
+        id: 10,
+      } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 101,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
+
+      const result = await mcpService.createFromManagerCatalog(input);
+
+      expect(result).toStrictEqual({ serverId: 10, serverName: "GitHub" });
+      expect(mcpRepository.createConnection).toHaveBeenCalledWith(mockDb, {
+        name: "GitHub",
+        slug: "github",
+        transportType: "STREAMABLE_HTTP",
+        command: null,
+        args: "[]",
+        url: "https://api.githubcopilot.com/mcp/",
+        credentials: `encrypted:${JSON.stringify({ GITHUB_TOKEN: "test-token" })}`,
+        authType: "BEARER",
+        serverId: 10,
+        catalogId: null,
+      });
+    });
+
+    test("availableかつexecute権限がない場合は作成しない", async () => {
+      await expect(
+        mcpService.createFromManagerCatalog({
+          ...input,
+          permissions: { read: true, write: false, execute: false },
+        }),
+      ).rejects.toThrow("このカタログは追加できません");
+
+      expect(mcpRepository.createServer).not.toHaveBeenCalled();
+      expect(mcpRepository.createConnection).not.toHaveBeenCalled();
     });
   });
 

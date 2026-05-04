@@ -7,6 +7,7 @@ export type {
   McpServerItem,
   McpConnectionItem,
   CreateFromCatalogInput,
+  CreateFromManagerCatalogInput,
   CreateCustomServerInput,
   CreateVirtualServerInput,
   VirtualServerConnectionInput,

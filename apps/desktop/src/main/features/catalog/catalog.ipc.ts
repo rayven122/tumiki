@@ -18,4 +18,16 @@ export const setupCatalogIpc = (): void => {
       throw new Error("カタログ一覧の取得に失敗しました");
     }
   });
+
+  ipcMain.handle("catalog:getLocalAll", async () => {
+    try {
+      return await catalogService.getAllLocalCatalogs();
+    } catch (error) {
+      logger.error(
+        "Failed to get local catalog list",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error("ローカルカタログ一覧の取得に失敗しました");
+    }
+  });
 };

@@ -78,11 +78,12 @@ export const connectToMcpServer = async (
         });
       }
 
+      case "STREAMABLE_HTTP":
       case "STREAMABLE_HTTPS": {
         const url = mcpServerTemplate.url;
         if (!url) {
           throw new Error(
-            `STREAMABLE_HTTPS transport requires URL for template ${name}`,
+            `${transportType} transport requires URL for template ${name}`,
           );
         }
 

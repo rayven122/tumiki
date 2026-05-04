@@ -37,12 +37,15 @@ model Organization {
   mcpConfigs         McpConfig[]
   /// 組織に関連するMCPサーバー
   mcpServers         McpServer[]
+  /// 組織に関連するMCPカタログ
+  mcpCatalogs        McpCatalog[]
   /// 組織限定公開のMCPサーバーテンプレート
   mcpServerTemplates McpServerTemplate[]
 
   /// OAuth関連
   mcpOAuthClients McpOAuthClient[]
   mcpOAuthTokens  McpOAuthToken[]
+  oauthClients    OAuthClient[]
 
   /// フィードバック
   feedbacks Feedback[]
@@ -103,7 +106,7 @@ model OrganizationInvitation {
   roles         String[] @default(["Member"])
 
   /// 招待の有効期限
-  expires   DateTime
+  expires DateTime
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -117,7 +120,7 @@ model OrganizationInvitation {
 model OrganizationRole {
   /// 組織slug（URLで使用される識別子）
   organizationSlug String
-  organization     Organization                  @relation(fields: [organizationSlug], references: [slug], onDelete: Cascade)
+  organization     Organization @relation(fields: [organizationSlug], references: [slug], onDelete: Cascade)
   /// ロールslug（例: data-engineer）
   slug             String
   /// ロール名（表示用）
@@ -125,15 +128,15 @@ model OrganizationRole {
   /// ロールの説明
   description      String?
   /// デフォルトロールか（新メンバーに自動付与）
-  isDefault        Boolean                       @default(false)
+  isDefault        Boolean      @default(false)
 
   /// 全MCPサーバーに適用するデフォルト権限
-  defaultRead      Boolean                       @default(false)
-  defaultWrite     Boolean                       @default(false)
-  defaultExecute   Boolean                       @default(false)
+  defaultRead    Boolean @default(false)
+  defaultWrite   Boolean @default(false)
+  defaultExecute Boolean @default(false)
 
   /// 特定サーバーへの権限設定
-  mcpPermissions   McpPermission[]
+  mcpPermissions McpPermission[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -144,7 +147,7 @@ model OrganizationRole {
 /// 特定MCPサーバーへの権限設定（参照整合性あり）
 /// @namespace Organization
 model McpPermission {
-  id               String           @id @default(cuid())
+  id String @id @default(cuid())
 
   /// 親のロール
   organizationSlug String
@@ -152,13 +155,13 @@ model McpPermission {
   role             OrganizationRole @relation(fields: [organizationSlug, roleSlug], references: [organizationSlug, slug], onDelete: Cascade)
 
   /// 対象MCPサーバー（削除時に自動削除）
-  mcpServerId      String
-  mcpServer        McpServer        @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
+  mcpServerId String
+  mcpServer   McpServer @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
 
   /// 権限（trueで権限付与）
-  read             Boolean          @default(false)
-  write            Boolean          @default(false)
-  execute          Boolean          @default(false)
+  read    Boolean @default(false)
+  write   Boolean @default(false)
+  execute Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

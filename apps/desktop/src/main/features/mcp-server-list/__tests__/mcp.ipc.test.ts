@@ -279,6 +279,49 @@ describe("setupMcpIpc", () => {
     });
   });
 
+  describe("mcp:createFromManagerCatalog", () => {
+    const validInput = {
+      catalogId: "github",
+      serverName: "GitHub",
+      description: "GitHub MCP",
+      status: "available" as const,
+      permissions: { read: true, write: false, execute: true },
+      connectionTemplate: {
+        transportType: "STREAMABLE_HTTP" as const,
+        command: null,
+        args: [],
+        url: "https://api.githubcopilot.com/mcp/",
+        authType: "BEARER" as const,
+        credentialKeys: ["GITHUB_TOKEN"],
+      },
+      tools: [{ name: "list_repos", allowed: true }],
+      credentials: { GITHUB_TOKEN: "token" },
+    };
+
+    test("有効な入力でManagerカタログからサーバーを作成する", async () => {
+      const mockResult = { serverId: 1, serverName: "GitHub" };
+      vi.mocked(mcpService.createFromManagerCatalog).mockResolvedValue(
+        mockResult,
+      );
+      const handler = mockIpcHandlers.get("mcp:createFromManagerCatalog");
+
+      const result = await handler!({} as IpcMainInvokeEvent, validInput);
+
+      expect(result).toStrictEqual(mockResult);
+      expect(mcpService.createFromManagerCatalog).toHaveBeenCalledWith(
+        validInput,
+      );
+    });
+
+    test("catalogIdが空の場合はエラーになる", async () => {
+      const handler = mockIpcHandlers.get("mcp:createFromManagerCatalog");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, { ...validInput, catalogId: "" }),
+      ).rejects.toThrow("MCPサーバーの登録に失敗しました");
+    });
+  });
+
   describe("mcp:createVirtualServer", () => {
     const validInput = {
       name: "週次レポート",
@@ -373,6 +416,7 @@ describe("setupMcpIpc", () => {
   describe("ハンドラー登録", () => {
     test("全てのIPCハンドラーが登録される", () => {
       expect(mockIpcHandlers.has("mcp:createFromCatalog")).toBe(true);
+      expect(mockIpcHandlers.has("mcp:createFromManagerCatalog")).toBe(true);
       expect(mockIpcHandlers.has("mcp:createVirtualServer")).toBe(true);
       expect(mockIpcHandlers.has("mcp:getAll")).toBe(true);
       expect(mockIpcHandlers.has("mcp:updateServer")).toBe(true);

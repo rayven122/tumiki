@@ -3,6 +3,11 @@ import type {
   McpConnection,
   McpCatalog,
 } from "@prisma/desktop-client";
+import type {
+  CatalogConnectionTemplate,
+  CatalogPermissions,
+  CatalogStatus,
+} from "../../../types/catalog";
 
 /**
  * MCPサーバー情報型（IPC通信用）
@@ -47,6 +52,24 @@ export type CreateFromCatalogInput = {
 };
 
 /**
+ * Manager APIカタログからMCP登録する際の入力型（renderer → main）
+ * ローカルMcpCatalogとは紐づけず、作成されるMcpConnection.catalogIdはnullにする。
+ */
+export type CreateFromManagerCatalogInput = {
+  catalogId: string;
+  serverName: string;
+  description: string;
+  status: CatalogStatus;
+  permissions: CatalogPermissions;
+  connectionTemplate: CatalogConnectionTemplate;
+  tools: Array<{
+    name: string;
+    allowed: boolean;
+  }>;
+  credentials: Record<string, string>;
+};
+
+/**
  * MCPサーバー更新の入力型（renderer → main）
  */
 export type UpdateServerInput = {
@@ -77,7 +100,7 @@ export type ToggleServerInput = {
 type StdioCustomServerInput = {
   serverName: string;
   transportType: "STDIO";
-  authType: "NONE" | "API_KEY";
+  authType: "NONE" | "BEARER" | "API_KEY";
   credentials: Record<string, string>;
   command: string;
   args?: string;
@@ -89,7 +112,7 @@ type StdioCustomServerInput = {
 type RemoteCustomServerInput = {
   serverName: string;
   transportType: "SSE" | "STREAMABLE_HTTP";
-  authType: "NONE" | "API_KEY" | "OAUTH";
+  authType: "NONE" | "BEARER" | "API_KEY" | "OAUTH";
   credentials: Record<string, string>;
   url: string;
 };

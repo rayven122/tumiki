@@ -43,6 +43,7 @@ model User {
   updatedAt DateTime @updatedAt
 
   /// MCP関連
+  mcpCatalogs        McpCatalog[]        @relation("McpCatalogCreatedBy")
   mcpServerTemplates McpServerTemplate[]
   mcpServers         McpServer[]         @relation("McpServerCreatedBy")
   mcpConfigs         McpConfig[]
