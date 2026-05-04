@@ -1,13 +1,18 @@
 import type { McpCatalog } from "@prisma/desktop-client";
+import { z } from "zod";
 import type { CatalogItem } from "../../../types/catalog";
+
+const stringArraySchema = z.array(z.string());
 
 /**
  * ローカルSQLiteの McpCatalog レコードを renderer が期待する CatalogItem 型に変換する。
  * 個人利用モードでは権限・ステータスの概念がないため、すべて利用可能として扱う。
  */
 export const toCatalogItem = (local: McpCatalog): CatalogItem => {
-  const args: string[] = JSON.parse(local.args) as string[];
-  const credentialKeys: string[] = JSON.parse(local.credentialKeys) as string[];
+  const args = stringArraySchema.parse(JSON.parse(local.args));
+  const credentialKeys = stringArraySchema.parse(
+    JSON.parse(local.credentialKeys),
+  );
 
   return {
     id: String(local.id),

@@ -69,6 +69,7 @@ export const ToolCatalog = (): JSX.Element => {
     clientSecret: string | null;
   } | null>(null);
   const [showRemoteModal, setShowRemoteModal] = useState(false);
+  const [addingCatalogId, setAddingCatalogId] = useState<string | null>(null);
   const [isOrganization, setIsOrganization] = useState(false);
 
   // OAuth 直接フロー時のイベントリスナーがモーダル表示中の AddMcpModal / AddRemoteMcpModal と二重発火しないよう参照で最新状態を保持
@@ -121,96 +122,101 @@ export const ToolCatalog = (): JSX.Element => {
   }, [navigate]);
 
   const handleAddClick = async (item: CatalogItem): Promise<void> => {
-    if (!canAddCatalog(item)) return;
-    const template = item.connectionTemplate;
-    // 認証なしは直接コネクタへ追加
-    if (template.authType === "NONE") {
-      try {
-        const result = isOrganization
-          ? await window.electronAPI.mcp.createFromManagerCatalog({
-              catalogId: item.id,
-              serverName: item.name,
-              description: item.description,
-              status: item.status,
-              permissions: item.permissions,
-              connectionTemplate: template,
-              tools: item.tools.map((tool) => ({
-                name: tool.name,
-                allowed: tool.allowed,
-              })),
-              credentials: {},
-            })
-          : await window.electronAPI.mcp.createFromCatalog({
-              catalogId: Number(item.id),
-              catalogName: item.name,
-              description: item.description,
-              transportType: template.transportType,
-              command: template.command,
-              args: JSON.stringify(template.args),
-              url: template.url,
-              credentialKeys: template.credentialKeys,
-              credentials: {},
-              authType: template.authType,
-            });
-        toast.success(`${result.serverName}が正常に追加されました。`);
-        navigate("/tools");
-      } catch {
-        toast.error("MCPサーバーの登録に失敗しました");
-      }
-      return;
-    }
-    // API Key / Bearer はモーダルで入力
-    if (template.authType !== "OAUTH") {
-      setDcrPrefill(false);
-      setSelectedCatalog(item);
-      return;
-    }
-    if (!template.url) {
-      toast.error("このカタログには認証先URLが設定されていません");
-      return;
-    }
-    // 手動入力済みクライアントのキャッシュがあればプリフィルしてモーダル表示
-    const cachedClient = await window.electronAPI.oauth.findManualOAuthClient(
-      template.url,
-    );
-    if (cachedClient) {
-      setCachedOAuthClient(cachedClient);
-      setDcrPrefill(true);
-      setSelectedCatalog(item);
-      return;
-    }
-
-    // OAuth は認証ページへ直接リダイレクト
+    if (!canAddCatalog(item) || addingCatalogId) return;
+    setAddingCatalogId(item.id);
     try {
-      await window.electronAPI.oauth.startAuth({
-        catalogName: item.name,
-        description: item.description,
-        transportType: template.transportType,
-        command: template.command,
-        args: JSON.stringify(template.args),
-        url: template.url,
-        managerCatalog: {
-          catalogId: item.id,
-          status: item.status,
-          permissions: item.permissions,
-          connectionTemplate: template,
-          tools: item.tools.map((tool) => ({
-            name: tool.name,
-            allowed: tool.allowed,
-          })),
-        },
-      });
-      toast.success(`${item.name}の認証をブラウザで開始しました。`);
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "OAuth認証の開始に失敗しました";
-      const { code, displayMessage } = extractOAuthErrorCode(message);
-      if (code === DISCOVERY_ERROR_CODE.DCR_NOT_SUPPORTED) {
+      const template = item.connectionTemplate;
+      // 認証なしは直接コネクタへ追加
+      if (template.authType === "NONE") {
+        try {
+          const result = isOrganization
+            ? await window.electronAPI.mcp.createFromManagerCatalog({
+                catalogId: item.id,
+                serverName: item.name,
+                description: item.description,
+                status: item.status,
+                permissions: item.permissions,
+                connectionTemplate: template,
+                tools: item.tools.map((tool) => ({
+                  name: tool.name,
+                  allowed: tool.allowed,
+                })),
+                credentials: {},
+              })
+            : await window.electronAPI.mcp.createFromCatalog({
+                catalogId: Number(item.id),
+                catalogName: item.name,
+                description: item.description,
+                transportType: template.transportType,
+                command: template.command,
+                args: JSON.stringify(template.args),
+                url: template.url,
+                credentialKeys: template.credentialKeys,
+                credentials: {},
+                authType: template.authType,
+              });
+          toast.success(`${result.serverName}が正常に追加されました。`);
+          navigate("/tools");
+        } catch {
+          toast.error("MCPサーバーの登録に失敗しました");
+        }
+        return;
+      }
+      // API Key / Bearer はモーダルで入力
+      if (template.authType !== "OAUTH") {
+        setDcrPrefill(false);
+        setSelectedCatalog(item);
+        return;
+      }
+      if (!template.url) {
+        toast.error("このカタログには認証先URLが設定されていません");
+        return;
+      }
+      // 手動入力済みクライアントのキャッシュがあればプリフィルしてモーダル表示
+      const cachedClient = await window.electronAPI.oauth.findManualOAuthClient(
+        template.url,
+      );
+      if (cachedClient) {
+        setCachedOAuthClient(cachedClient);
         setDcrPrefill(true);
         setSelectedCatalog(item);
         return;
       }
-      toast.error(displayMessage);
+
+      // OAuth は認証ページへ直接リダイレクト
+      try {
+        await window.electronAPI.oauth.startAuth({
+          catalogName: item.name,
+          description: item.description,
+          transportType: template.transportType,
+          command: template.command,
+          args: JSON.stringify(template.args),
+          url: template.url,
+          managerCatalog: {
+            catalogId: item.id,
+            status: item.status,
+            permissions: item.permissions,
+            connectionTemplate: template,
+            tools: item.tools.map((tool) => ({
+              name: tool.name,
+              allowed: tool.allowed,
+            })),
+          },
+        });
+        toast.success(`${item.name}の認証をブラウザで開始しました。`);
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "OAuth認証の開始に失敗しました";
+        const { code, displayMessage } = extractOAuthErrorCode(message);
+        if (code === DISCOVERY_ERROR_CODE.DCR_NOT_SUPPORTED) {
+          setDcrPrefill(true);
+          setSelectedCatalog(item);
+          return;
+        }
+        toast.error(displayMessage);
+      }
+    } finally {
+      setAddingCatalogId(null);
     }
   };
 
@@ -413,7 +419,10 @@ export const ToolCatalog = (): JSX.Element => {
                   <button
                     type="button"
                     onClick={() => void handleAddClick(item)}
-                    disabled={!addable}
+                    disabled={
+                      !addable ||
+                      (addingCatalogId !== null && addingCatalogId !== item.id)
+                    }
                     className="mt-auto flex w-full items-center justify-center gap-1 rounded-md bg-[var(--text-primary)] py-1.5 text-[10px] font-medium text-[var(--bg-card)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {addable && <Plus size={10} />}
