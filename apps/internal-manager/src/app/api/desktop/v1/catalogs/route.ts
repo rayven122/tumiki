@@ -193,7 +193,8 @@ export const GET = async (request: NextRequest) => {
         },
       },
     });
-  } catch {
+  } catch (error) {
+    console.error("Failed to fetch desktop MCP catalogs", error);
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 },

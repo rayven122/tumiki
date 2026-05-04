@@ -4,12 +4,16 @@ import type { NextRequest } from "next/server";
 import { ApprovalStatus, GroupSource, Role } from "@tumiki/internal-db";
 
 const mockFindUnique = vi.hoisted(() => vi.fn());
+const mockMcpCatalogFindMany = vi.hoisted(() => vi.fn());
 const mockVerifyDesktopJwt = vi.hoisted(() => vi.fn());
 
 vi.mock("@tumiki/internal-db/server", () => ({
   db: {
     user: {
       findUnique: mockFindUnique,
+    },
+    mcpCatalog: {
+      findMany: mockMcpCatalogFindMany,
     },
   },
 }));
@@ -45,6 +49,9 @@ type FindUniqueArgs = {
 const userUpdatedAt = new Date("2026-05-03T10:00:00.000Z");
 const groupUpdatedAt = new Date("2026-05-03T10:05:00.000Z");
 const orgUnitUpdatedAt = new Date("2026-05-03T10:06:00.000Z");
+const catalogUpdatedAt = new Date("2026-05-03T10:07:00.000Z");
+const toolUpdatedAt = new Date("2026-05-03T10:08:00.000Z");
+const orgUnitPermissionUpdatedAt = new Date("2026-05-03T10:09:00.000Z");
 const membershipCreatedAt = new Date("2026-05-03T10:01:00.000Z");
 const membershipUpdatedAt = new Date("2026-05-03T10:02:00.000Z");
 const activeUser = {
@@ -152,6 +159,30 @@ const expectedOrgUnits = [
   },
 ];
 
+const expectedPolicyCatalogs = [
+  {
+    id: "catalog-001",
+    slug: "github",
+    status: "ACTIVE",
+    updatedAt: catalogUpdatedAt,
+    tools: [
+      {
+        id: "tool-001",
+        name: "search_repositories",
+        defaultAllowed: false,
+        updatedAt: toolUpdatedAt,
+        orgUnitPermissions: [
+          {
+            orgUnitId: "org-001",
+            effect: "ALLOW",
+            updatedAt: orgUnitPermissionUpdatedAt,
+          },
+        ],
+      },
+    ],
+  },
+];
+
 const expectedPolicyVersion = `pol_v1_${createHash("sha256")
   .update(
     JSON.stringify({
@@ -162,6 +193,7 @@ const expectedPolicyVersion = `pol_v1_${createHash("sha256")
       },
       groups: expectedGroups,
       orgUnits: expectedOrgUnits,
+      catalogs: expectedPolicyCatalogs,
       permissions: expectedPermissions,
     }),
   )
@@ -176,6 +208,7 @@ describe("GET /api/desktop/v1/session", () => {
       userId: "user-001",
     });
     mockFindUnique.mockResolvedValue(activeUser);
+    mockMcpCatalogFindMany.mockResolvedValue(expectedPolicyCatalogs);
   });
 
   test("Desktopセッション情報を認証ユーザーに紐づけて返す", async () => {
@@ -234,6 +267,7 @@ describe("GET /api/desktop/v1/session", () => {
     });
     expect(response.status).toStrictEqual(401);
     expect(mockFindUnique).not.toHaveBeenCalled();
+    expect(mockMcpCatalogFindMany).not.toHaveBeenCalled();
   });
 
   test("ユーザーが存在しない場合は401を返す", async () => {

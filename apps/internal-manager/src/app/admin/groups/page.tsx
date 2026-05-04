@@ -22,9 +22,13 @@ const SyncStatus = {
   PARTIAL: "PARTIAL",
 } as const;
 const SyncTrigger = { JIT: "JIT", SCIM: "SCIM", MANUAL: "MANUAL" } as const;
+const PolicyEffect = { ALLOW: "ALLOW", DENY: "DENY" } as const;
 
 type SyncStatusValue = (typeof SyncStatus)[keyof typeof SyncStatus];
 type SyncTriggerValue = (typeof SyncTrigger)[keyof typeof SyncTrigger];
+type PolicyEffectValue =
+  | (typeof PolicyEffect)[keyof typeof PolicyEffect]
+  | null;
 
 /* ===== 型定義 ===== */
 
@@ -110,7 +114,6 @@ const getSyncStatusKey = (group: GroupListItem): SyncStatusKey => {
 /* ===== タブ定義 ===== */
 
 type GroupTab = "members" | "tools" | "idp";
-type PolicyEffectValue = "ALLOW" | "DENY" | null;
 
 /* ===== 日時フォーマット ===== */
 
@@ -616,7 +619,9 @@ const AdminGroupsPage = () => {
                                     <div className="flex justify-end gap-1">
                                       <button
                                         type="button"
-                                        onClick={() => setEffect("ALLOW")}
+                                        onClick={() =>
+                                          setEffect(PolicyEffect.ALLOW)
+                                        }
                                         className={`rounded-md p-1.5 ${
                                           effect === "ALLOW"
                                             ? "bg-emerald-500/20 text-emerald-300"
@@ -628,7 +633,9 @@ const AdminGroupsPage = () => {
                                       </button>
                                       <button
                                         type="button"
-                                        onClick={() => setEffect("DENY")}
+                                        onClick={() =>
+                                          setEffect(PolicyEffect.DENY)
+                                        }
                                         className={`rounded-md p-1.5 ${
                                           effect === "DENY"
                                             ? "bg-red-500/20 text-red-300"

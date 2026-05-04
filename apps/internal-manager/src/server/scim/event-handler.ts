@@ -3,6 +3,7 @@ import { db } from "@tumiki/internal-db/server";
 import {
   GroupSource,
   OrgUnitSource,
+  type PrismaTransactionClient,
   SyncStatus,
   SyncTrigger,
 } from "@tumiki/internal-db";
@@ -66,13 +67,14 @@ const normalizeExternalId = (name: string) =>
   `department:${name.trim().toLowerCase().replace(/\s+/g, "-")}`;
 
 const syncPrimaryOrgUnitMembership = async (
+  tx: PrismaTransactionClient,
   userId: string,
   attributes: EnterpriseUserAttributes,
 ) => {
   if (!attributes.department) return;
 
   const externalId = normalizeExternalId(attributes.department);
-  const orgUnit = await db.orgUnit.upsert({
+  const orgUnit = await tx.orgUnit.upsert({
     where: {
       source_externalId: {
         source: OrgUnitSource.SCIM,
@@ -92,7 +94,7 @@ const syncPrimaryOrgUnitMembership = async (
     },
   });
 
-  await db.userOrgUnitMembership.upsert({
+  await tx.userOrgUnitMembership.upsert({
     where: {
       userId_orgUnitId: {
         userId,
@@ -115,30 +117,32 @@ const syncPrimaryOrgUnitMembership = async (
 type ScimUserData = Extract<DirectorySyncEvent["data"], { email: string }>;
 const upsertScimUser = async (data: ScimUserData) => {
   const enterpriseAttributes = extractEnterpriseUserAttributes(data);
-  await db.user.upsert({
-    where: { id: data.id },
-    create: {
-      id: data.id,
-      email: data.email || null,
-      name: buildDisplayName(data.first_name, data.last_name),
-      isActive: data.active,
-      scimDepartment: enterpriseAttributes.department,
-      scimManagerValue: enterpriseAttributes.managerValue,
-      scimManagerDisplayName: enterpriseAttributes.managerDisplayName,
-      externalIdentities: {
-        create: { provider: SCIM_PROVIDER, sub: data.id },
+  await db.$transaction(async (tx) => {
+    await tx.user.upsert({
+      where: { id: data.id },
+      create: {
+        id: data.id,
+        email: data.email || null,
+        name: buildDisplayName(data.first_name, data.last_name),
+        isActive: data.active,
+        scimDepartment: enterpriseAttributes.department,
+        scimManagerValue: enterpriseAttributes.managerValue,
+        scimManagerDisplayName: enterpriseAttributes.managerDisplayName,
+        externalIdentities: {
+          create: { provider: SCIM_PROVIDER, sub: data.id },
+        },
       },
-    },
-    update: {
-      email: data.email || null,
-      name: buildDisplayName(data.first_name, data.last_name),
-      isActive: data.active,
-      scimDepartment: enterpriseAttributes.department,
-      scimManagerValue: enterpriseAttributes.managerValue,
-      scimManagerDisplayName: enterpriseAttributes.managerDisplayName,
-    },
+      update: {
+        email: data.email || null,
+        name: buildDisplayName(data.first_name, data.last_name),
+        isActive: data.active,
+        scimDepartment: enterpriseAttributes.department,
+        scimManagerValue: enterpriseAttributes.managerValue,
+        scimManagerDisplayName: enterpriseAttributes.managerDisplayName,
+      },
+    });
+    await syncPrimaryOrgUnitMembership(tx, data.id, enterpriseAttributes);
   });
-  await syncPrimaryOrgUnitMembership(data.id, enterpriseAttributes);
 };
 
 /**

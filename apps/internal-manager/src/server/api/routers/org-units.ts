@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { OrgUnitSource } from "@tumiki/internal-db";
 import { adminProcedure, createTRPCRouter } from "@/server/api/trpc";
 
@@ -60,23 +61,64 @@ export const orgUnitsRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       if (input.orgUnitId === input.parentId) {
-        throw new Error("部署を自分自身の配下には移動できません");
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "部署を自分自身の配下には移動できません",
+        });
       }
 
-      const parent = input.parentId
-        ? await ctx.db.orgUnit.findUnique({
-            where: { id: input.parentId },
-            select: { path: true },
-          })
-        : null;
+      return ctx.db.$transaction(async (tx) => {
+        const current = await tx.orgUnit.findUniqueOrThrow({
+          where: { id: input.orgUnitId },
+          select: { id: true, path: true },
+        });
+        const parent = input.parentId
+          ? await tx.orgUnit.findUnique({
+              where: { id: input.parentId },
+              select: { id: true, path: true },
+            })
+          : null;
 
-      return ctx.db.orgUnit.update({
-        where: { id: input.orgUnitId },
-        data: {
-          parentId: input.parentId,
-          source: OrgUnitSource.MANUAL,
-          path: buildPath(parent?.path ?? null, input.orgUnitId),
-        },
+        if (input.parentId && !parent) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "移動先の部署が見つかりません",
+          });
+        }
+        if (parent?.path.startsWith(`${current.path}/`)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "部署を自身の子孫配下には移動できません",
+          });
+        }
+
+        const newPath = buildPath(parent?.path ?? null, current.id);
+        const descendants = await tx.orgUnit.findMany({
+          where: { path: { startsWith: `${current.path}/` } },
+          select: { id: true, path: true },
+        });
+
+        const updated = await tx.orgUnit.update({
+          where: { id: current.id },
+          data: {
+            parentId: input.parentId,
+            source: OrgUnitSource.MANUAL,
+            path: newPath,
+          },
+        });
+
+        await Promise.all(
+          descendants.map((descendant) =>
+            tx.orgUnit.update({
+              where: { id: descendant.id },
+              data: {
+                path: `${newPath}${descendant.path.slice(current.path.length)}`,
+              },
+            }),
+          ),
+        );
+
+        return updated;
       });
     }),
 });

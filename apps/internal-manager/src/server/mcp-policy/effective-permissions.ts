@@ -1,5 +1,8 @@
 import { createHash } from "node:crypto";
-import { PolicyEffect } from "@tumiki/internal-db";
+import {
+  PolicyEffect,
+  type PrismaTransactionClient,
+} from "@tumiki/internal-db";
 import { db } from "@tumiki/internal-db/server";
 
 export type PermissionBits = {
@@ -11,6 +14,11 @@ export type PermissionBits = {
 export type EffectiveToolPermission = {
   allowed: boolean;
   deniedReason: string | null;
+};
+
+export type EffectiveCatalogPermissions = {
+  permissions: PermissionBits;
+  tools: Map<string, EffectiveToolPermission>;
 };
 
 export type PolicyUser = {
@@ -83,6 +91,7 @@ const collectOrgUnitIds = (
 const hasIndividualAllow = (user: PolicyUser, catalog: CatalogPolicyInput) =>
   user.individualPermissions.some(
     (permission) =>
+      // IndividualPermission.mcpServerId は旧McpServer ID/slug互換のため両方を許容する。
       permission.mcpServerId === catalog.id ||
       permission.mcpServerId === catalog.slug,
   );
@@ -112,7 +121,7 @@ export const evaluateCatalogPermissions = (
   user: PolicyUser,
   catalog: CatalogPolicyInput,
   allOrgUnits: { id: string; parentId: string | null }[],
-) => {
+): EffectiveCatalogPermissions => {
   const orgUnitIds = collectOrgUnitIds(user.orgUnitMemberships, allOrgUnits);
   const individualAllow = hasIndividualAllow(user, catalog);
   const fallbackGroupBits = getFallbackGroupBits(user, catalog);
@@ -156,6 +165,7 @@ export const evaluateCatalogPermissions = (
   return {
     permissions: {
       read: tools.some(([, permission]) => permission.allowed),
+      // v1 はツール実行可否のみを扱うため、書き込み権限は常に無効にする。
       write: false,
       execute: tools.some(([, permission]) => permission.allowed),
     },
@@ -169,10 +179,13 @@ export const buildPolicyVersion = (policyState: unknown): string =>
     .digest("base64url")
     .slice(0, 32)}`;
 
-export const getPolicyContextForUser = async (userId: string) => {
+export const getPolicyContextForUser = async (
+  userId: string,
+  client: PrismaTransactionClient = db,
+) => {
   const now = new Date();
   const [user, orgUnits] = await Promise.all([
-    db.user.findUnique({
+    client.user.findUnique({
       where: { id: userId },
       select: {
         id: true,
@@ -213,7 +226,7 @@ export const getPolicyContextForUser = async (userId: string) => {
         },
       },
     }),
-    db.orgUnit.findMany({
+    client.orgUnit.findMany({
       select: { id: true, parentId: true, updatedAt: true },
     }),
   ]);

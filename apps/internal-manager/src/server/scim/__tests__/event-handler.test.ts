@@ -38,7 +38,10 @@ type IdpSyncLogCreateArgs = {
   };
 };
 
+const mockTransaction = vi.fn();
+
 const mockDb = {
+  $transaction: mockTransaction,
   user: {
     upsert: vi.fn<(args: UpsertArgs) => Promise<{ id: string }>>(),
     updateMany: vi.fn<(args: UpdateManyArgs) => Promise<{ count: number }>>(),
@@ -174,6 +177,9 @@ const findIdpSyncLogData = () => getFirstCallArg(mockDb.idpSyncLog.create).data;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockTransaction.mockImplementation(
+    <T>(callback: (tx: unknown) => Promise<T>) => callback(mockDb),
+  );
   // デフォルトで全 DB 操作は成功扱い
   mockDb.user.upsert.mockResolvedValue({ id: "user-001" });
   mockDb.user.updateMany.mockResolvedValue({ count: 1 });
@@ -193,6 +199,7 @@ describe("handleDirectorySyncEvent", () => {
     test("Userとexternal identityをupsertし、IdpSyncLogにadded=1で記録する", async () => {
       await handleDirectorySyncEvent(buildUserEvent("user.created"));
 
+      expect(mockDb.$transaction).toHaveBeenCalledTimes(1);
       expect(mockDb.user.upsert).toHaveBeenCalledTimes(1);
       const args = getFirstCallArg(mockDb.user.upsert);
       expect(args.where).toStrictEqual({ id: "user-001" });
@@ -300,6 +307,7 @@ describe("handleDirectorySyncEvent", () => {
         },
         update: { isPrimary: true },
       });
+      expect(mockDb.$transaction).toHaveBeenCalledTimes(1);
     });
   });
 

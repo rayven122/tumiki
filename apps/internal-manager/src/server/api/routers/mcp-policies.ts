@@ -76,7 +76,7 @@ export const mcpPoliciesRouter = createTRPCRouter({
     .input(z.object({ userId: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       const [{ user, orgUnits }, catalogs] = await Promise.all([
-        getPolicyContextForUser(input.userId),
+        getPolicyContextForUser(input.userId, ctx.db),
         ctx.db.mcpCatalog.findMany({
           where: { deletedAt: null },
           include: {
