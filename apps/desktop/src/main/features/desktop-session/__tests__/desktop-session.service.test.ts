@@ -50,13 +50,13 @@ describe("desktop-session.service", () => {
     await expect(getDesktopSession()).resolves.toBeNull();
   });
 
-  test("401の場合は再サインインが必要なエラーを返す", async () => {
+  test("401の場合は再ログインが必要なエラーを返す", async () => {
     vi.mocked(requestManagerApi).mockResolvedValue(
       new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 }),
     );
 
     await expect(getDesktopSession()).rejects.toThrow(
-      "管理サーバーへのサインインが必要です",
+      "管理サーバーへの再ログインが必要です",
     );
   });
 

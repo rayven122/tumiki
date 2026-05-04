@@ -1,6 +1,6 @@
 import { type JSX, useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Building2, RefreshCw, ShieldCheck, Users2 } from "lucide-react";
+import { Building2, Loader2, LogIn, ShieldCheck, Users2 } from "lucide-react";
 import {
   CURRENT_USER,
   TOOLS,
@@ -67,6 +67,23 @@ const NotificationSection = ({
   </div>
 );
 
+const formatSessionError = (error: unknown): string => {
+  const message =
+    error instanceof Error
+      ? error.message
+      : "Desktopセッションの取得に失敗しました";
+  const normalized = message.replace(
+    /^Error invoking remote method '[^']+': Error: /,
+    "",
+  );
+
+  if (normalized.includes("サインインが必要")) {
+    return "管理サーバーへの再ログインが必要です";
+  }
+
+  return normalized;
+};
+
 // 設定ページ
 export const SettingsPage = (): JSX.Element => {
   const navigate = useNavigate();
@@ -83,6 +100,9 @@ export const SettingsPage = (): JSX.Element => {
   );
   const [sessionLoading, setSessionLoading] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
+  const [isReloginStarting, setIsReloginStarting] = useState(false);
+  const [isWaitingForRelogin, setIsWaitingForRelogin] = useState(false);
+  const [reloginError, setReloginError] = useState<string | null>(null);
   const mountedRef = useRef(true);
 
   const refreshDesktopSession = useCallback((): void => {
@@ -96,11 +116,7 @@ export const SettingsPage = (): JSX.Element => {
       .catch((err) => {
         if (mountedRef.current) {
           setDesktopSession(null);
-          setSessionError(
-            err instanceof Error
-              ? err.message
-              : "Desktopセッションの取得に失敗しました",
-          );
+          setSessionError(formatSessionError(err));
         }
       })
       .finally(() => {
@@ -127,13 +143,57 @@ export const SettingsPage = (): JSX.Element => {
       });
   }, [refreshDesktopSession]);
 
+  const startRelogin = async (): Promise<void> => {
+    if (isReloginStarting || isWaitingForRelogin) return;
+
+    const managerUrl = profile?.organizationProfile?.managerUrl;
+    if (!managerUrl) {
+      setReloginError("管理サーバーURLが設定されていません");
+      return;
+    }
+
+    setIsReloginStarting(true);
+    setReloginError(null);
+    setSessionError(null);
+    try {
+      await window.electronAPI.manager.connect(managerUrl);
+      await window.electronAPI.auth.login();
+      if (mountedRef.current) setIsWaitingForRelogin(true);
+    } catch (err) {
+      if (mountedRef.current) {
+        setReloginError(
+          err instanceof Error ? err.message : "再ログインの開始に失敗しました",
+        );
+        setIsWaitingForRelogin(false);
+      }
+    } finally {
+      if (mountedRef.current) setIsReloginStarting(false);
+    }
+  };
+
   useEffect(() => {
     mountedRef.current = true;
     refreshProfile();
     window.addEventListener(PROFILE_CHANGED_EVENT, refreshProfile);
+    const cleanupSuccess = window.electronAPI.auth.onCallbackSuccess(() => {
+      if (!mountedRef.current) return;
+      setIsWaitingForRelogin(false);
+      setIsReloginStarting(false);
+      setReloginError(null);
+      setSessionError(null);
+      refreshProfile();
+    });
+    const cleanupError = window.electronAPI.auth.onCallbackError((message) => {
+      if (!mountedRef.current) return;
+      setIsWaitingForRelogin(false);
+      setIsReloginStarting(false);
+      setReloginError(`再ログインに失敗しました: ${message}`);
+    });
     return () => {
       mountedRef.current = false;
       window.removeEventListener(PROFILE_CHANGED_EVENT, refreshProfile);
+      cleanupSuccess();
+      cleanupError();
     };
   }, [refreshProfile]);
 
@@ -228,8 +288,8 @@ export const SettingsPage = (): JSX.Element => {
         </div>
 
         {profile?.activeProfile === "organization" ? (
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-active)] p-4">
-            <div className="grid gap-3 text-sm md:grid-cols-2">
+          <>
+            <div className="grid gap-4 border-t border-[var(--border)] pt-4 text-sm md:grid-cols-2">
               <div>
                 <p className="text-xs text-[var(--text-muted)]">管理サーバー</p>
                 <p className="mt-1 break-all text-[var(--text-secondary)]">
@@ -247,207 +307,214 @@ export const SettingsPage = (): JSX.Element => {
                 </p>
               </div>
             </div>
-            <p className="mt-3 text-xs leading-5 text-[var(--text-muted)]">
-              組織利用が有効な間は、個人利用には切り替えられません。
-            </p>
-            {disconnectError && (
-              <p className="mt-3 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">
-                {disconnectError}
+
+            <div className="flex flex-wrap items-center gap-3 border-t border-[var(--border)] pt-4">
+              <button
+                type="button"
+                onClick={() => void startRelogin()}
+                disabled={isReloginStarting || isWaitingForRelogin}
+                className="flex items-center gap-2 rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-medium text-[var(--text-secondary)] transition hover:bg-[var(--bg-card-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isReloginStarting || isWaitingForRelogin ? (
+                  <Loader2 size={15} className="animate-spin" />
+                ) : (
+                  <LogIn size={15} />
+                )}
+                {isWaitingForRelogin ? "ログイン待機中..." : "再ログイン"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowDisconnectConfirm(true)}
+                className="rounded-lg border border-red-500/30 px-4 py-2 text-sm font-medium text-red-400 transition hover:bg-red-500/10"
+              >
+                組織利用を停止
+              </button>
+              <p className="text-xs leading-5 text-[var(--text-muted)]">
+                組織利用が有効な間は、個人利用には切り替えられません。
+              </p>
+            </div>
+
+            {(disconnectError || reloginError) && (
+              <p className="rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">
+                {disconnectError ?? reloginError}
               </p>
             )}
-            <button
-              type="button"
-              onClick={() => setShowDisconnectConfirm(true)}
-              className="mt-4 rounded-lg border border-red-500/30 px-4 py-2 text-sm font-medium text-red-400 transition hover:bg-red-500/10"
-            >
-              組織利用を停止
-            </button>
-          </div>
+
+            <div className="space-y-4 border-t border-[var(--border)] pt-4">
+              <div>
+                <h3 className="text-sm font-medium text-[var(--text-primary)]">
+                  組織セッション
+                </h3>
+                <p className="mt-1 text-xs text-[var(--text-muted)]">
+                  管理サーバーから取得したユーザー情報・権限・機能フラグ
+                </p>
+              </div>
+
+              {sessionError && (
+                <p className="rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">
+                  {sessionError}
+                </p>
+              )}
+
+              {!sessionError && !desktopSession && (
+                <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-active)] p-4 text-sm text-[var(--text-muted)]">
+                  {sessionLoading
+                    ? "管理サーバーから取得しています..."
+                    : "組織セッションはまだ取得されていません。"}
+                </div>
+              )}
+
+              {desktopSession && (
+                <>
+                  <div className="grid gap-3 md:grid-cols-4">
+                    <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-active)] p-3">
+                      <div className="mb-2 flex items-center gap-2 text-xs text-[var(--text-muted)]">
+                        <Building2 size={14} />
+                        組織
+                      </div>
+                      <p className="truncate text-sm font-medium text-[var(--text-primary)]">
+                        {desktopSession.organization.name ?? "未設定"}
+                      </p>
+                      <p className="mt-1 truncate text-[10px] text-[var(--text-subtle)]">
+                        {desktopSession.organization.slug ?? "-"}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-active)] p-3">
+                      <div className="mb-2 flex items-center gap-2 text-xs text-[var(--text-muted)]">
+                        <Users2 size={14} />
+                        グループ
+                      </div>
+                      <p className="text-lg font-semibold text-[var(--text-primary)]">
+                        {desktopSession.groups.length}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-active)] p-3">
+                      <div className="mb-2 flex items-center gap-2 text-xs text-[var(--text-muted)]">
+                        <ShieldCheck size={14} />
+                        権限
+                      </div>
+                      <p className="text-lg font-semibold text-[var(--text-primary)]">
+                        {desktopSession.permissions.length}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-active)] p-3">
+                      <div className="mb-2 text-xs text-[var(--text-muted)]">
+                        policyVersion
+                      </div>
+                      <p className="truncate font-mono text-[11px] text-[var(--text-secondary)]">
+                        {desktopSession.policyVersion}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <div className="rounded-lg border border-[var(--border)] p-4">
+                      <h3 className="text-xs font-medium text-[var(--text-muted)]">
+                        ユーザー
+                      </h3>
+                      <div className="mt-3 grid gap-3 text-sm md:grid-cols-2">
+                        <div>
+                          <p className="text-xs text-[var(--text-subtle)]">
+                            氏名
+                          </p>
+                          <p className="mt-1 text-[var(--text-secondary)]">
+                            {desktopSession.user.name ?? "-"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-[var(--text-subtle)]">
+                            メール
+                          </p>
+                          <p className="mt-1 truncate text-[var(--text-secondary)]">
+                            {desktopSession.user.email ?? "-"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-[var(--text-subtle)]">
+                            role
+                          </p>
+                          <p className="mt-1 text-[var(--text-secondary)]">
+                            {desktopSession.user.role}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-[var(--text-subtle)]">
+                            sub
+                          </p>
+                          <p className="mt-1 truncate font-mono text-[11px] text-[var(--text-secondary)]">
+                            {desktopSession.user.sub}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg border border-[var(--border)] p-4">
+                      <h3 className="text-xs font-medium text-[var(--text-muted)]">
+                        機能フラグ
+                      </h3>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        {Object.entries(desktopSession.features).map(
+                          ([key, enabled]) => (
+                            <div
+                              key={key}
+                              className="flex items-center justify-between rounded-lg bg-[var(--bg-active)] px-3 py-2"
+                            >
+                              <span className="text-xs text-[var(--text-secondary)]">
+                                {key}
+                              </span>
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                                  enabled
+                                    ? "bg-[var(--badge-success-bg)] text-[var(--badge-success-text)]"
+                                    : "bg-[var(--bg-card-hover)] text-[var(--text-subtle)]"
+                                }`}
+                              >
+                                {enabled ? "ON" : "OFF"}
+                              </span>
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {desktopSession.groups.length > 0 && (
+                    <div className="rounded-lg border border-[var(--border)] p-4">
+                      <h3 className="text-xs font-medium text-[var(--text-muted)]">
+                        所属グループ
+                      </h3>
+                      <div className="mt-3 grid gap-2 md:grid-cols-2">
+                        {desktopSession.groups.map((group) => (
+                          <div
+                            key={group.id}
+                            className="rounded-lg bg-[var(--bg-active)] px-3 py-2"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="truncate text-sm text-[var(--text-secondary)]">
+                                {group.name}
+                              </p>
+                              <span className="rounded-full bg-[var(--bg-card-hover)] px-2 py-0.5 text-[10px] text-[var(--text-subtle)]">
+                                {group.source}
+                              </span>
+                            </div>
+                            <p className="mt-1 truncate text-[10px] text-[var(--text-subtle)]">
+                              {group.provider ?? group.membershipSource}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </>
         ) : (
           <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-active)] p-4 text-sm text-[var(--text-muted)]">
             個人利用プロファイルで動作しています。組織利用へ変更する場合は、初回設定から管理サーバーへ接続してください。
           </div>
         )}
       </div>
-
-      {profile?.activeProfile === "organization" && (
-        <div className="space-y-5 rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-sm font-medium text-[var(--text-primary)]">
-                組織セッション
-              </h2>
-              <p className="mt-1 text-xs text-[var(--text-muted)]">
-                管理サーバーから取得したユーザー情報・権限・機能フラグ
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={refreshDesktopSession}
-              disabled={sessionLoading}
-              className="flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--text-secondary)] transition hover:bg-[var(--bg-card-hover)] disabled:opacity-50"
-            >
-              <RefreshCw
-                size={13}
-                className={sessionLoading ? "animate-spin" : ""}
-              />
-              再取得
-            </button>
-          </div>
-
-          {sessionError && (
-            <p className="rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">
-              {sessionError}
-            </p>
-          )}
-
-          {!sessionError && !desktopSession && (
-            <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-active)] p-4 text-sm text-[var(--text-muted)]">
-              {sessionLoading
-                ? "管理サーバーから取得しています..."
-                : "Desktopセッションはまだ取得されていません。"}
-            </div>
-          )}
-
-          {desktopSession && (
-            <>
-              <div className="grid gap-3 md:grid-cols-4">
-                <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-active)] p-3">
-                  <div className="mb-2 flex items-center gap-2 text-xs text-[var(--text-muted)]">
-                    <Building2 size={14} />
-                    組織
-                  </div>
-                  <p className="truncate text-sm font-medium text-[var(--text-primary)]">
-                    {desktopSession.organization.name ?? "未設定"}
-                  </p>
-                  <p className="mt-1 truncate text-[10px] text-[var(--text-subtle)]">
-                    {desktopSession.organization.slug ?? "-"}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-active)] p-3">
-                  <div className="mb-2 flex items-center gap-2 text-xs text-[var(--text-muted)]">
-                    <Users2 size={14} />
-                    グループ
-                  </div>
-                  <p className="text-lg font-semibold text-[var(--text-primary)]">
-                    {desktopSession.groups.length}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-active)] p-3">
-                  <div className="mb-2 flex items-center gap-2 text-xs text-[var(--text-muted)]">
-                    <ShieldCheck size={14} />
-                    権限
-                  </div>
-                  <p className="text-lg font-semibold text-[var(--text-primary)]">
-                    {desktopSession.permissions.length}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-active)] p-3">
-                  <div className="mb-2 text-xs text-[var(--text-muted)]">
-                    policyVersion
-                  </div>
-                  <p className="truncate font-mono text-[11px] text-[var(--text-secondary)]">
-                    {desktopSession.policyVersion}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid gap-4 lg:grid-cols-2">
-                <div className="rounded-lg border border-[var(--border)] p-4">
-                  <h3 className="text-xs font-medium text-[var(--text-muted)]">
-                    ユーザー
-                  </h3>
-                  <div className="mt-3 grid gap-3 text-sm md:grid-cols-2">
-                    <div>
-                      <p className="text-xs text-[var(--text-subtle)]">氏名</p>
-                      <p className="mt-1 text-[var(--text-secondary)]">
-                        {desktopSession.user.name ?? "-"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-[var(--text-subtle)]">
-                        メール
-                      </p>
-                      <p className="mt-1 truncate text-[var(--text-secondary)]">
-                        {desktopSession.user.email ?? "-"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-[var(--text-subtle)]">role</p>
-                      <p className="mt-1 text-[var(--text-secondary)]">
-                        {desktopSession.user.role}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-[var(--text-subtle)]">sub</p>
-                      <p className="mt-1 truncate font-mono text-[11px] text-[var(--text-secondary)]">
-                        {desktopSession.user.sub}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-lg border border-[var(--border)] p-4">
-                  <h3 className="text-xs font-medium text-[var(--text-muted)]">
-                    機能フラグ
-                  </h3>
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    {Object.entries(desktopSession.features).map(
-                      ([key, enabled]) => (
-                        <div
-                          key={key}
-                          className="flex items-center justify-between rounded-lg bg-[var(--bg-active)] px-3 py-2"
-                        >
-                          <span className="text-xs text-[var(--text-secondary)]">
-                            {key}
-                          </span>
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                              enabled
-                                ? "bg-[var(--badge-success-bg)] text-[var(--badge-success-text)]"
-                                : "bg-[var(--bg-card-hover)] text-[var(--text-subtle)]"
-                            }`}
-                          >
-                            {enabled ? "ON" : "OFF"}
-                          </span>
-                        </div>
-                      ),
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {desktopSession.groups.length > 0 && (
-                <div className="rounded-lg border border-[var(--border)] p-4">
-                  <h3 className="text-xs font-medium text-[var(--text-muted)]">
-                    所属グループ
-                  </h3>
-                  <div className="mt-3 grid gap-2 md:grid-cols-2">
-                    {desktopSession.groups.map((group) => (
-                      <div
-                        key={group.id}
-                        className="rounded-lg bg-[var(--bg-active)] px-3 py-2"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="truncate text-sm text-[var(--text-secondary)]">
-                            {group.name}
-                          </p>
-                          <span className="rounded-full bg-[var(--bg-card-hover)] px-2 py-0.5 text-[10px] text-[var(--text-subtle)]">
-                            {group.source}
-                          </span>
-                        </div>
-                        <p className="mt-1 truncate text-[10px] text-[var(--text-subtle)]">
-                          {group.provider ?? group.membershipSource}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
 
       {/* プロフィール */}
       <div className="space-y-5 rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">

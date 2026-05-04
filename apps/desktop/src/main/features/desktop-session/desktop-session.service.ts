@@ -55,7 +55,7 @@ export const getDesktopSession = async () => {
   if (!response) return null;
 
   if (response.status === 401) {
-    throw new Error("管理サーバーへのサインインが必要です");
+    throw new Error("管理サーバーへの再ログインが必要です");
   }
   if (!response.ok) {
     throw new Error(
