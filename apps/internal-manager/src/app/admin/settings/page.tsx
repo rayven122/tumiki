@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { DesktopApiSettingsSection } from "./_components/DesktopApiSettingsSection";
 import ScimDirectorySection from "./_components/ScimDirectorySection";
 import SsoConfigSection from "./_components/SsoConfigSection";
 
@@ -144,6 +145,8 @@ const AdminSettingsPage = () => {
           <ScimDirectorySection />
         </div>
       </div>
+
+      <DesktopApiSettingsSection />
 
       {/* 3. セキュリティ */}
       <SectionCard title="セキュリティ">

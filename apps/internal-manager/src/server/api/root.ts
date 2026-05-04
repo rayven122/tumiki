@@ -4,6 +4,7 @@ import {
   publicProcedure,
 } from "@/server/api/trpc";
 import { groupsRouter } from "./routers/groups";
+import { desktopApiSettingsRouter } from "./routers/desktop-api-settings";
 import { scimDirectoryRouter } from "./routers/scim-directory";
 import { ssoRouter } from "./routers/sso";
 import { usersRouter } from "./routers/users";
@@ -19,6 +20,7 @@ export const appRouter = createTRPCRouter({
     return { status: "ok" };
   }),
   scimDirectory: scimDirectoryRouter,
+  desktopApiSettings: desktopApiSettingsRouter,
   groups: groupsRouter,
   users: usersRouter,
   sso: ssoRouter,

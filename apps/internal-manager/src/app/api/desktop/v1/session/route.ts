@@ -5,6 +5,8 @@ import { ApprovalStatus } from "@tumiki/internal-db";
 import { db } from "@tumiki/internal-db/server";
 import { verifyDesktopJwt } from "~/lib/auth/verify-desktop-jwt";
 
+const SETTINGS_ID = "default";
+
 const buildPolicyVersion = (policyState: unknown): string =>
   `pol_v1_${createHash("sha256")
     .update(JSON.stringify(policyState))
@@ -76,6 +78,19 @@ export const GET = async (request: NextRequest) => {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const settings = await db.desktopApiSettings.findUnique({
+    where: { id: SETTINGS_ID },
+    select: {
+      organizationName: true,
+      organizationSlug: true,
+      catalogEnabled: true,
+      accessRequestsEnabled: true,
+      policySyncEnabled: true,
+      auditLogSyncEnabled: true,
+      updatedAt: true,
+    },
+  });
+
   const groups = user.groupMemberships.map((membership) => ({
     id: membership.group.id,
     name: membership.group.name,
@@ -117,6 +132,15 @@ export const GET = async (request: NextRequest) => {
       role: user.role,
       updatedAt: user.updatedAt.toISOString(),
     },
+    settings: {
+      organizationName: settings?.organizationName ?? null,
+      organizationSlug: settings?.organizationSlug ?? null,
+      catalogEnabled: settings?.catalogEnabled ?? false,
+      accessRequestsEnabled: settings?.accessRequestsEnabled ?? false,
+      policySyncEnabled: settings?.policySyncEnabled ?? false,
+      auditLogSyncEnabled: settings?.auditLogSyncEnabled ?? true,
+      updatedAt: settings?.updatedAt.toISOString() ?? null,
+    },
     groups,
     permissions: [...groupPermissions, ...individualPermissions],
   });
@@ -131,16 +155,16 @@ export const GET = async (request: NextRequest) => {
     },
     organization: {
       id: null,
-      slug: null,
-      name: null,
+      slug: settings?.organizationSlug ?? null,
+      name: settings?.organizationName ?? null,
     },
     groups,
     permissions: [...groupPermissions, ...individualPermissions],
     features: {
-      catalog: false,
-      accessRequests: false,
-      policySync: false,
-      auditLogSync: true,
+      catalog: settings?.catalogEnabled ?? false,
+      accessRequests: settings?.accessRequestsEnabled ?? false,
+      policySync: settings?.policySyncEnabled ?? false,
+      auditLogSync: settings?.auditLogSyncEnabled ?? true,
     },
     policyVersion,
   });
