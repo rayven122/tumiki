@@ -1,6 +1,6 @@
 import type { FormEvent, JSX } from "react";
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAtomValue } from "jotai";
 import {
   ArrowLeft,
@@ -15,10 +15,22 @@ import { PROFILE_CHANGED_EVENT } from "../../shared/events";
 
 type View = "choice" | "organization";
 
+const getManagerUrlProtocol = (value: string): string | null => {
+  try {
+    return new URL(value.trim()).protocol;
+  } catch {
+    return null;
+  }
+};
+
 export const ProfileSetup = (): JSX.Element => {
   const theme = useAtomValue(themeAtom);
   const navigate = useNavigate();
-  const [view, setView] = useState<View>("choice");
+  const [searchParams] = useSearchParams();
+  const isOrganizationChange = searchParams.get("mode") === "organization";
+  const [view, setView] = useState<View>(
+    isOrganizationChange ? "organization" : "choice",
+  );
   const [managerUrl, setManagerUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isWaitingForCallback, setIsWaitingForCallback] = useState(false);
@@ -31,11 +43,16 @@ export const ProfileSetup = (): JSX.Element => {
     window.electronAPI.profile
       .getState()
       .then((state) => {
-        if (
-          mountedRef.current &&
-          state.hasCompletedInitialProfileSetup &&
-          state.activeProfile
-        ) {
+        if (!mountedRef.current) return;
+        if (isOrganizationChange) {
+          if (state.activeProfile === "organization") {
+            navigate("/settings", { replace: true });
+            return;
+          }
+          setView("organization");
+          return;
+        }
+        if (state.hasCompletedInitialProfileSetup && state.activeProfile) {
           navigate("/", { replace: true });
         }
       })
@@ -74,7 +91,7 @@ export const ProfileSetup = (): JSX.Element => {
       cleanupSuccess();
       cleanupError();
     };
-  }, [navigate]);
+  }, [isOrganizationChange, navigate]);
 
   const selectPersonal = async (): Promise<void> => {
     setupCancelledRef.current = false;
@@ -99,13 +116,22 @@ export const ProfileSetup = (): JSX.Element => {
     e: FormEvent<HTMLFormElement>,
   ): Promise<void> => {
     e.preventDefault();
-    if (!managerUrl.trim()) return;
+    const normalizedManagerUrl = managerUrl.trim();
+    if (!normalizedManagerUrl) return;
+
+    const protocol = getManagerUrlProtocol(normalizedManagerUrl);
+    if (protocol !== "https:" && protocol !== "http:") {
+      setError(
+        "管理サーバー URL は http:// または https:// で入力してください",
+      );
+      return;
+    }
 
     setupCancelledRef.current = false;
     setIsSubmitting(true);
     setError(null);
     try {
-      await window.electronAPI.manager.connect(managerUrl.trim());
+      await window.electronAPI.manager.connect(normalizedManagerUrl);
       await window.electronAPI.auth.login();
       setIsWaitingForCallback(true);
     } catch (err) {
@@ -119,8 +145,24 @@ export const ProfileSetup = (): JSX.Element => {
     }
   };
 
+  const managerUrlProtocol = getManagerUrlProtocol(managerUrl);
+  const shouldWarnHttp = managerUrlProtocol === "http:";
+
   const cancelOrganizationSetup = async (): Promise<void> => {
     setupCancelledRef.current = true;
+    if (isOrganizationChange) {
+      try {
+        await window.electronAPI.auth.cancelLogin();
+      } finally {
+        if (mountedRef.current) {
+          setIsSubmitting(false);
+          setIsWaitingForCallback(false);
+          navigate("/settings", { replace: true });
+        }
+      }
+      return;
+    }
+
     try {
       await window.electronAPI.profile.cancelOrganizationSetup();
       if (mountedRef.current) {
@@ -149,11 +191,7 @@ export const ProfileSetup = (): JSX.Element => {
     >
       <div className="w-full max-w-3xl">
         <div className="mb-8 flex items-center justify-center gap-3">
-          <img
-            src="/rayven_white.png"
-            alt="RAYVEN"
-            className={`h-9 w-9 ${theme === "light" ? "invert" : ""}`}
-          />
+          <img src="/tumiki-logo.svg" alt="TUMIKI" className="h-9 w-9" />
           <div>
             <h1 className="text-xl font-semibold text-[var(--text-primary)]">
               TUMIKI Desktop
@@ -210,6 +248,7 @@ export const ProfileSetup = (): JSX.Element => {
         ) : (
           <form
             onSubmit={(e) => void startOrganization(e)}
+            noValidate
             className="mx-auto max-w-md rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6"
           >
             <button
@@ -244,6 +283,13 @@ export const ProfileSetup = (): JSX.Element => {
               disabled={isSubmitting}
               className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-input)] px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-subtle)] focus:ring-2 focus:ring-[var(--btn-primary-bg)] focus:outline-none disabled:opacity-50"
             />
+
+            {shouldWarnHttp && (
+              <p className="mt-3 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-600">
+                HTTP 接続は通信内容が暗号化されません。ローカル検証以外では
+                HTTPS の管理サーバー URL を使用してください。
+              </p>
+            )}
 
             {error && (
               <p className="mt-3 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">

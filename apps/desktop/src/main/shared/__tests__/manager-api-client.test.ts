@@ -86,6 +86,29 @@ describe("manager-api-client", () => {
     );
   });
 
+  test("idTokenが保存されている場合もManager APIのBearerにはaccessTokenを優先する", async () => {
+    storeData.set("managerUrl", "https://manager.example.com/");
+    mockFindFirst.mockResolvedValue({
+      id: 1,
+      accessToken: "encrypted:access-token",
+      refreshToken: null,
+      idToken: "encrypted:id-token",
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      createdAt: new Date("2026-05-03T09:00:00.000Z"),
+      updatedAt: new Date("2026-05-03T09:00:00.000Z"),
+    });
+    vi.mocked(decryptToken).mockResolvedValueOnce("access-token");
+
+    const result = await requestManagerApi("/api/internal/example");
+
+    expect(result?.ok).toBe(true);
+    expect(decryptToken).toHaveBeenCalledWith("encrypted:access-token");
+    const [, init] = vi.mocked(fetch).mock.calls[0] ?? [];
+    expect(new Headers(init?.headers).get("Authorization")).toBe(
+      "Bearer access-token",
+    );
+  });
+
   test("期限切れトークンは削除してリクエストしない", async () => {
     storeData.set("managerUrl", "https://manager.example.com");
     mockFindFirst.mockResolvedValue({

@@ -1,8 +1,14 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import {
   DEFAULT_DESKTOP_API_SETTINGS_RECORD,
   DESKTOP_API_SETTINGS_ID,
 } from "@/lib/desktop-api-settings/constants";
+import {
+  isHttpUrl,
+  isLocalOrPublicHttpUrl,
+  isResolvedLocalOrPublicHttpUrl,
+} from "@/lib/url-safety";
 import { adminProcedure, createTRPCRouter } from "@/server/api/trpc";
 
 const settingsInputSchema = z.object({
@@ -12,22 +18,18 @@ const settingsInputSchema = z.object({
     .max(120)
     .transform((value) => (value === "" ? null : value))
     .nullable(),
-  organizationSlug: z
+  organizationLogoUrl: z
     .string()
     .trim()
-    .max(80)
-    .refine(
-      (value) => value === "" || /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(value),
-      {
-        message: "slugは小文字英数字とハイフンで指定してください",
-      },
-    )
+    .max(1_000)
+    .refine((value) => value === "" || isHttpUrl(value), {
+      message: "ロゴURLは http:// または https:// で始まる必要があります",
+    })
+    .refine((value) => value === "" || isLocalOrPublicHttpUrl(value), {
+      message: "ロゴURLに内部ネットワークアドレスは指定できません",
+    })
     .transform((value) => (value === "" ? null : value))
     .nullable(),
-  catalogEnabled: z.boolean(),
-  accessRequestsEnabled: z.boolean(),
-  policySyncEnabled: z.boolean(),
-  auditLogSyncEnabled: z.boolean(),
 });
 
 export const desktopApiSettingsRouter = createTRPCRouter({
@@ -42,13 +44,20 @@ export const desktopApiSettingsRouter = createTRPCRouter({
   update: adminProcedure
     .input(settingsInputSchema)
     .mutation(async ({ ctx, input }) => {
+      if (
+        input.organizationLogoUrl &&
+        !(await isResolvedLocalOrPublicHttpUrl(input.organizationLogoUrl))
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "ロゴURLの名前解決先に内部ネットワークアドレスは指定できません",
+        });
+      }
+
       const data = {
         organizationName: input.organizationName,
-        organizationSlug: input.organizationSlug,
-        catalogEnabled: input.catalogEnabled,
-        accessRequestsEnabled: input.accessRequestsEnabled,
-        policySyncEnabled: input.policySyncEnabled,
-        auditLogSyncEnabled: input.auditLogSyncEnabled,
+        organizationLogoUrl: input.organizationLogoUrl,
       };
 
       return ctx.db.desktopApiSettings.upsert({

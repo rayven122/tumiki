@@ -8,6 +8,7 @@ type FindFirstArgs = {
 
 const issuer = "https://idp.example.com/realms/tumiki";
 const clientId = "tumiki-internal";
+const desktopClientId = "tumiki-desktop";
 const jwksUri = `${issuer}/protocol/openid-connect/certs`;
 const mockJwks = vi.fn() as unknown as ReturnType<typeof createRemoteJWKSet>;
 const mockCreateRemoteJWKSet = vi.fn<typeof createRemoteJWKSet>();
@@ -25,6 +26,7 @@ const loadModule = async () => {
     getOidcEnv: () => ({
       OIDC_ISSUER: issuer,
       OIDC_CLIENT_ID: clientId,
+      OIDC_DESKTOP_CLIENT_ID: desktopClientId,
     }),
   }));
   vi.doMock("@tumiki/internal-db/server", () => ({
@@ -52,7 +54,7 @@ beforeEach(() => {
 
   mockCreateRemoteJWKSet.mockReturnValue(mockJwks);
   mockJwtVerify.mockResolvedValue({
-    payload: { sub: "oidc-sub" },
+    payload: { sub: "oidc-sub", aud: desktopClientId },
     protectedHeader: { alg: "RS256" },
     key: new Uint8Array(),
   });
@@ -77,7 +79,7 @@ describe("verifyDesktopJwt", () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  test("OIDC_CLIENT_IDをaudienceとしてJWTを検証する", async () => {
+  test("Desktop client IDをaudienceとしてJWTを検証する", async () => {
     const { verifyDesktopJwt } = await loadModule();
 
     const result = await verifyDesktopJwt("Bearer token-001");
@@ -85,29 +87,66 @@ describe("verifyDesktopJwt", () => {
     expect(result).toStrictEqual({ sub: "oidc-sub", userId: "user-001" });
     expect(mockJwtVerify).toHaveBeenCalledWith("token-001", mockJwks, {
       issuer,
-      audience: clientId,
+      audience: desktopClientId,
     });
   });
 
-  test("subクレームがない場合はUnauthorizedエラーを返す", async () => {
+  test("Keycloak access tokenのazpがDesktop client IDなら許可する", async () => {
+    mockJwtVerify
+      .mockRejectedValueOnce({
+        code: "ERR_JWT_CLAIM_VALIDATION_FAILED",
+        claim: "aud",
+      })
+      .mockResolvedValueOnce({
+        payload: { sub: "oidc-sub", aud: "account", azp: desktopClientId },
+        protectedHeader: { alg: "RS256" },
+        key: new Uint8Array(),
+      });
+    const { verifyDesktopJwt } = await loadModule();
+
+    const result = await verifyDesktopJwt("Bearer token-001");
+
+    expect(result).toStrictEqual({ sub: "oidc-sub", userId: "user-001" });
+    expect(mockJwtVerify).toHaveBeenCalledTimes(2);
+  });
+
+  test("audienceとazpがDesktop client IDに一致しない場合はエラーを返す", async () => {
+    mockJwtVerify
+      .mockRejectedValueOnce({
+        code: "ERR_JWT_CLAIM_VALIDATION_FAILED",
+        claim: "aud",
+      })
+      .mockResolvedValueOnce({
+        payload: { sub: "oidc-sub", aud: "account", azp: "other-client" },
+        protectedHeader: { alg: "RS256" },
+        key: new Uint8Array(),
+      });
+    const { verifyDesktopJwt } = await loadModule();
+
+    await expect(verifyDesktopJwt("Bearer token-001")).rejects.toThrow(
+      "Invalid desktop token client",
+    );
+  });
+
+  test("subクレームがない場合はエラーを返す", async () => {
     mockJwtVerify.mockResolvedValueOnce({
-      payload: {},
+      payload: { aud: desktopClientId },
       protectedHeader: { alg: "RS256" },
       key: new Uint8Array(),
     });
     const { verifyDesktopJwt } = await loadModule();
 
     await expect(verifyDesktopJwt("Bearer token-001")).rejects.toThrow(
-      "Unauthorized",
+      "Missing token subject",
     );
   });
 
-  test("ExternalIdentityが見つからない場合はUnauthorizedエラーを返す", async () => {
+  test("ExternalIdentityが見つからない場合はエラーを返す", async () => {
     mockFindFirst.mockResolvedValueOnce(null);
     const { verifyDesktopJwt } = await loadModule();
 
     await expect(verifyDesktopJwt("Bearer token-001")).rejects.toThrow(
-      "Unauthorized",
+      "External identity not found",
     );
   });
 

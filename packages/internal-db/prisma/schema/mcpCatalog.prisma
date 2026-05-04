@@ -134,12 +134,12 @@ model UserOrgUnitMembership {
 
 /// @namespace McpCatalog
 model OrgUnitToolPermission {
-  id        String       @id @default(cuid())
+  id        String         @id @default(cuid())
   orgUnitId String
-  orgUnit   OrgUnit      @relation(fields: [orgUnitId], references: [id], onDelete: Cascade)
+  orgUnit   OrgUnit        @relation(fields: [orgUnitId], references: [id], onDelete: Cascade)
   /// 権限マトリクス取得時のcatalog単位絞り込み用に非正規化して保持する。
   catalogId String
-  catalog   McpCatalog   @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  catalog   McpCatalog     @relation(fields: [catalogId], references: [id], onDelete: Cascade)
   toolId    String
   tool      McpCatalogTool @relation(fields: [toolId], references: [id], onDelete: Cascade)
   effect    PolicyEffect

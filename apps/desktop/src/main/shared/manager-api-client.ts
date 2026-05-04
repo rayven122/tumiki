@@ -51,11 +51,13 @@ export const requestManagerApi = async (
   const token = await findValidAccessToken();
   if (!token) return null;
 
-  const accessToken = await decryptToken(token.accessToken);
-  if (!accessToken) return null;
+  // accessToken を優先し、プロバイダーが発行しない場合だけ idToken を使う。
+  const encryptedBearerToken = token.accessToken ?? token.idToken;
+  const bearerToken = await decryptToken(encryptedBearerToken);
+  if (!bearerToken) return null;
 
   const headers = new Headers(options.headers);
-  headers.set("Authorization", `Bearer ${accessToken}`);
+  headers.set("Authorization", `Bearer ${bearerToken}`);
 
   return fetch(url, {
     ...options,

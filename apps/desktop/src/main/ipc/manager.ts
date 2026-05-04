@@ -54,9 +54,14 @@ export const setupManagerIpc = (
       throw new Error("URLは文字列で指定してください");
     }
     try {
-      new URL(url);
+      const parsedUrl = new URL(url);
+      if (parsedUrl.protocol !== "https:" && parsedUrl.protocol !== "http:") {
+        throw new Error("unsupported protocol");
+      }
     } catch {
-      throw new Error("無効なURLです");
+      throw new Error(
+        "管理サーバーURLはhttp://またはhttps://で指定してください",
+      );
     }
 
     const config = await fetchManagerOidcConfig(url);
