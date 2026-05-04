@@ -165,31 +165,33 @@ export const mcpCatalogRouter = createTRPCRouter({
           },
           data: { deletedAt: new Date() },
         });
-        for (const tool of input.tools) {
-          await tx.mcpCatalogTool.upsert({
-            where: {
-              catalogId_name: {
+        await Promise.all(
+          input.tools.map((tool) =>
+            tx.mcpCatalogTool.upsert({
+              where: {
+                catalogId_name: {
+                  catalogId: input.catalogId,
+                  name: tool.name,
+                },
+              },
+              create: {
                 catalogId: input.catalogId,
                 name: tool.name,
+                description: tool.description ?? null,
+                inputSchema: toInputJson(tool.inputSchema),
+                defaultAllowed: tool.defaultAllowed,
+                riskLevel: tool.riskLevel,
               },
-            },
-            create: {
-              catalogId: input.catalogId,
-              name: tool.name,
-              description: tool.description ?? null,
-              inputSchema: toInputJson(tool.inputSchema),
-              defaultAllowed: tool.defaultAllowed,
-              riskLevel: tool.riskLevel,
-            },
-            update: {
-              description: tool.description ?? null,
-              inputSchema: toInputJson(tool.inputSchema),
-              defaultAllowed: tool.defaultAllowed,
-              riskLevel: tool.riskLevel,
-              deletedAt: null,
-            },
-          });
-        }
+              update: {
+                description: tool.description ?? null,
+                inputSchema: toInputJson(tool.inputSchema),
+                defaultAllowed: tool.defaultAllowed,
+                riskLevel: tool.riskLevel,
+                deletedAt: null,
+              },
+            }),
+          ),
+        );
         return tx.mcpCatalog.findUniqueOrThrow({
           where: { id: input.catalogId },
           include: { tools: { where: { deletedAt: null } } },

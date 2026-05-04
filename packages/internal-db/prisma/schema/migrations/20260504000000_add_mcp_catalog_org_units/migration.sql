@@ -61,7 +61,7 @@ CREATE TABLE "McpCatalogTool" (
 CREATE TABLE "OrgUnit" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "externalId" TEXT,
+    "externalId" TEXT NOT NULL,
     "source" "OrgUnitSource" NOT NULL DEFAULT 'SCIM',
     "path" TEXT NOT NULL,
     "parentId" TEXT,

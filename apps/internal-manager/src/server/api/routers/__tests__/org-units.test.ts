@@ -86,12 +86,14 @@ describe("orgUnitsRouter", () => {
   });
 
   test("updateParentはルートへ移動できる", async () => {
-    const update = vi.fn().mockResolvedValue({ id: "child", path: "/child" });
+    const update = vi
+      .fn()
+      .mockResolvedValue({ id: "child", path: "/manual:child" });
     const tx = {
       orgUnit: {
         findUniqueOrThrow: vi.fn().mockResolvedValue({
           id: "child",
-          externalId: null,
+          externalId: "manual:child",
           path: "/parent/child",
         }),
         findMany: vi.fn().mockResolvedValue([]),
@@ -102,10 +104,10 @@ describe("orgUnitsRouter", () => {
 
     await expect(
       caller.updateParent({ orgUnitId: "child", parentId: null }),
-    ).resolves.toStrictEqual({ id: "child", path: "/child" });
+    ).resolves.toStrictEqual({ id: "child", path: "/manual:child" });
     expect(update).toHaveBeenCalledWith({
       where: { id: "child" },
-      data: { parentId: null, path: "/child" },
+      data: { parentId: null, path: "/manual:child" },
     });
   });
 
@@ -123,7 +125,7 @@ describe("orgUnitsRouter", () => {
       orgUnit: {
         findUniqueOrThrow: vi.fn().mockResolvedValue({
           id: "parent",
-          externalId: null,
+          externalId: "manual:parent",
           path: "/parent",
         }),
         findUnique: vi.fn().mockResolvedValue({
@@ -145,7 +147,7 @@ describe("orgUnitsRouter", () => {
       orgUnit: {
         findUniqueOrThrow: vi.fn().mockResolvedValue({
           id: "child",
-          externalId: null,
+          externalId: "manual:child",
           path: "/child",
         }),
         findUnique: vi.fn().mockResolvedValue(null),

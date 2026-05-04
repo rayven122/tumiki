@@ -197,9 +197,15 @@ export const handleDirectorySyncEvent = async (
         // ソフト削除（履歴・権限追跡のため物理削除しない）
         // user.created が過去に失敗していた場合に P2025 を出さないよう updateMany を使用
         // （0件マッチでも { count: 0 } を返すため冪等）
-        const del = await db.user.updateMany({
-          where: { id: data.id },
-          data: { isActive: false },
+        const del = await db.$transaction(async (tx) => {
+          const result = await tx.user.updateMany({
+            where: { id: data.id },
+            data: { isActive: false },
+          });
+          await tx.userOrgUnitMembership.deleteMany({
+            where: { userId: data.id },
+          });
+          return result;
         });
         removed = del.count;
         break;

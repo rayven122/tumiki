@@ -75,6 +75,10 @@ const mockDb = {
     >(),
   },
   userOrgUnitMembership: {
+    deleteMany:
+      vi.fn<
+        (args: { where: Record<string, unknown> }) => Promise<{ count: number }>
+      >(),
     updateMany:
       vi.fn<
         (args: {
@@ -197,6 +201,7 @@ beforeEach(() => {
   mockDb.userGroupMembership.upsert.mockResolvedValue({ id: "mem-001" });
   mockDb.userGroupMembership.deleteMany.mockResolvedValue({ count: 1 });
   mockDb.orgUnit.upsert.mockResolvedValue({ id: "org-001" });
+  mockDb.userOrgUnitMembership.deleteMany.mockResolvedValue({ count: 1 });
   mockDb.userOrgUnitMembership.updateMany.mockResolvedValue({ count: 1 });
   mockDb.userOrgUnitMembership.upsert.mockResolvedValue({ id: "uom-001" });
   mockDb.idpSyncLog.create.mockResolvedValue({ id: "log-001" });
@@ -381,6 +386,9 @@ describe("handleDirectorySyncEvent", () => {
       expect(mockDb.user.updateMany).toHaveBeenCalledWith({
         where: { id: "user-001" },
         data: { isActive: false },
+      });
+      expect(mockDb.userOrgUnitMembership.deleteMany).toHaveBeenCalledWith({
+        where: { userId: "user-001" },
       });
 
       const log = findIdpSyncLogData();

@@ -96,8 +96,8 @@ model McpCatalogTool {
 model OrgUnit {
   id           String        @id @default(cuid())
   name         String
-  /// SCIM/GROUP では外部識別子、MANUAL では作成API側で生成する安定識別子を入れる想定。
-  externalId   String?
+  /// SCIM/GROUP では外部識別子、MANUAL では作成API側で生成する安定識別子を入れる。
+  externalId   String
   source       OrgUnitSource @default(SCIM)
   path         String
   parentId     String?

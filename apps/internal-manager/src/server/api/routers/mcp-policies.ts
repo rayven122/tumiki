@@ -47,8 +47,8 @@ export const mcpPoliciesRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const [tool, orgUnit] = await Promise.all([
-        ctx.db.mcpCatalogTool.findUnique({
-          where: { id: input.toolId },
+        ctx.db.mcpCatalogTool.findFirst({
+          where: { id: input.toolId, deletedAt: null },
           select: { catalogId: true },
         }),
         ctx.db.orgUnit.findUnique({

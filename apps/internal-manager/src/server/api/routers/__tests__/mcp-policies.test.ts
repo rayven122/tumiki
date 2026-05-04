@@ -78,7 +78,7 @@ describe("mcpPoliciesRouter", () => {
     const deleteMany = vi.fn();
     const caller = buildCaller({
       mcpCatalogTool: {
-        findUnique: vi.fn().mockResolvedValue({ catalogId: "catalog-other" }),
+        findFirst: vi.fn().mockResolvedValue({ catalogId: "catalog-other" }),
       },
       orgUnit: { findUnique: vi.fn().mockResolvedValue({ id: "org-001" }) },
       orgUnitToolPermission: { upsert, deleteMany },
@@ -102,7 +102,7 @@ describe("mcpPoliciesRouter", () => {
     const deleteMany = vi.fn();
     const caller = buildCaller({
       mcpCatalogTool: {
-        findUnique: vi.fn().mockResolvedValue({ catalogId: "catalog-001" }),
+        findFirst: vi.fn().mockResolvedValue({ catalogId: "catalog-001" }),
       },
       orgUnit: { findUnique: vi.fn().mockResolvedValue(null) },
       orgUnitToolPermission: { upsert, deleteMany },

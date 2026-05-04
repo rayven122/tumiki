@@ -43,6 +43,7 @@ const AdminToolsPage = () => {
     null,
   );
   const [toolNames, setToolNames] = useState("");
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const catalogs = catalogsQuery.data ?? [];
   const selectedCatalog = useMemo(
@@ -63,6 +64,7 @@ const AdminToolsPage = () => {
   };
 
   const handleToggleStatus = (catalog: (typeof catalogs)[number]) => {
+    if (updateCatalog.isPending) return;
     updateCatalog.mutate({
       id: catalog.id,
       name: catalog.name,
@@ -78,7 +80,7 @@ const AdminToolsPage = () => {
 
   const handleDeleteCatalog = () => {
     if (!selectedCatalog || deleteCatalog.isPending) return;
-    if (!window.confirm(`${selectedCatalog.name} を削除しますか？`)) return;
+    setDeleteConfirmOpen(false);
     setSelectedCatalogId(null);
     deleteCatalog.mutate({ id: selectedCatalog.id });
   };
@@ -238,16 +240,17 @@ const AdminToolsPage = () => {
                 <button
                   type="button"
                   onClick={() => handleToggleStatus(selectedCatalog)}
-                  className="bg-bg-active text-text-secondary flex items-center gap-1.5 rounded-md px-3 py-2 text-xs"
+                  disabled={updateCatalog.isPending}
+                  className="bg-bg-active text-text-secondary flex items-center gap-1.5 rounded-md px-3 py-2 text-xs disabled:opacity-40"
                 >
                   <Settings size={13} />
                   {selectedCatalog.status === "ACTIVE" ? "無効化" : "有効化"}
                 </button>
                 <button
                   type="button"
-                  onClick={handleDeleteCatalog}
+                  onClick={() => setDeleteConfirmOpen(true)}
                   disabled={deleteCatalog.isPending}
-                  className="flex items-center gap-1.5 rounded-md bg-red-500/15 px-3 py-2 text-xs text-red-300"
+                  className="flex items-center gap-1.5 rounded-md bg-red-500/15 px-3 py-2 text-xs text-red-300 disabled:opacity-40"
                 >
                   <Trash2 size={13} />
                   削除
@@ -315,6 +318,42 @@ const AdminToolsPage = () => {
           </div>
         )}
       </main>
+      {deleteConfirmOpen && selectedCatalog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="bg-bg-card border-border-default w-full max-w-sm rounded-lg border p-4 shadow-xl">
+            <div className="flex items-start gap-3">
+              <div className="rounded-md bg-red-500/15 p-2 text-red-300">
+                <Trash2 size={16} />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-text-primary text-sm font-semibold">
+                  MCPカタログを削除
+                </h3>
+                <p className="text-text-secondary mt-2 text-xs leading-5">
+                  {selectedCatalog.name} を削除しますか？
+                </p>
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmOpen(false)}
+                className="bg-bg-active text-text-secondary rounded-md px-3 py-2 text-xs"
+              >
+                キャンセル
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteCatalog}
+                disabled={deleteCatalog.isPending}
+                className="rounded-md bg-red-500/20 px-3 py-2 text-xs font-medium text-red-200 disabled:opacity-40"
+              >
+                削除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
