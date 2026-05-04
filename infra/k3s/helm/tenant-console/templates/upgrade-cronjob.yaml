@@ -1,4 +1,4 @@
-{{- if .Values.upgradeSchedule.enabled }}
+{{- if and .Values.upgradeSchedule .Values.upgradeSchedule.enabled }}
 apiVersion: batch/v1
 kind: CronJob
 metadata:
