@@ -254,6 +254,9 @@ importers:
       '@trpc/server':
         specifier: 11.12.0
         version: 11.12.0(typescript@5.9.3)
+      '@tumiki/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@tumiki/internal-db':
         specifier: workspace:*
         version: link:../../packages/internal-db
