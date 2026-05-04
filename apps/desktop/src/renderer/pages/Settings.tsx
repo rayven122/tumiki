@@ -243,9 +243,7 @@ export const SettingsPage = (): JSX.Element => {
       }
     } catch (err) {
       if (mountedRef.current) {
-        setDisconnectError(
-          err instanceof Error ? err.message : "不明なエラー",
-        );
+        setDisconnectError(err instanceof Error ? err.message : "不明なエラー");
       }
     } finally {
       if (mountedRef.current) setIsDisconnecting(false);
