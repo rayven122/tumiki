@@ -28,7 +28,18 @@ describe("formatElectronIpcErrorMessage", () => {
     expect(
       formatElectronIpcErrorMessage(
         new Error(
-          "Error invoking remote method 'auth:login': TypeError: 認証開始に失敗しました",
+          "Error invoking remote method 'auth:login': TypeError: 型エラーです",
+        ),
+        "Desktopセッションの取得に失敗しました",
+      ),
+    ).toStrictEqual("型エラーです");
+  });
+
+  test("Errorで終わらないIPC例外種別でもプレフィックスを除去する", () => {
+    expect(
+      formatElectronIpcErrorMessage(
+        new Error(
+          "Error invoking remote method 'auth:login': DOMException: 認証開始に失敗しました",
         ),
         "Desktopセッションの取得に失敗しました",
       ),
