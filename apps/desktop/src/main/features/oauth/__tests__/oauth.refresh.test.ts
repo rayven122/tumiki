@@ -131,6 +131,7 @@ describe("oauth.refresh", () => {
           authorization_endpoint: "https://www.figma.com/oauth",
           token_endpoint: "https://www.figma.com/api/oauth/token",
         }),
+        isDcr: true,
       });
 
       const newExpiresAt = Math.floor(Date.now() / 1000) + 3600;
@@ -182,6 +183,7 @@ describe("oauth.refresh", () => {
           authorization_endpoint: "https://www.figma.com/oauth",
           token_endpoint: "https://www.figma.com/api/oauth/token",
         }),
+        isDcr: true,
       });
 
       vi.mocked(refreshAccessToken).mockRejectedValue(
@@ -208,6 +210,7 @@ describe("oauth.refresh", () => {
         clientSecret: null,
         tokenEndpointAuthMethod: "none",
         authServerMetadata: "{}",
+        isDcr: true,
       });
 
       const result = await refreshOAuthTokenIfNeeded(1, serverUrl, credentials);
