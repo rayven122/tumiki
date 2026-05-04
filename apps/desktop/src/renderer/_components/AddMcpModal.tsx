@@ -210,7 +210,7 @@ export const AddMcpModal = ({
     }
 
     try {
-      const result = await window.electronAPI.mcp.createFromManagerCatalog({
+      const result = await window.electronAPI.catalog.add({
         catalogId: catalog.id,
         serverName,
         description: catalog.description,
