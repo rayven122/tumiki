@@ -45,6 +45,8 @@ const GOOGLE_CALLBACK_ERROR_LABELS: Record<string, string> = {
   invalid_request: "認可リクエストに必要なパラメータが不足しています",
   invalid_state: "認可フローの状態が不正です",
   token_exchange_failed: "Google からのトークン取得に失敗しました",
+  refresh_token_missing:
+    "リフレッシュトークンが取得できませんでした。Google アカウントの「サードパーティアプリのアクセス」で本アプリの認可を取り消してから再度認可してください",
   token_persist_failed: "トークンの保存に失敗しました",
 };
 
@@ -128,7 +130,8 @@ const ScimDirectorySection = () => {
           className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-400"
         >
           Google 認可エラー:{" "}
-          {GOOGLE_CALLBACK_ERROR_LABELS[callbackError] ?? callbackError}
+          {GOOGLE_CALLBACK_ERROR_LABELS[callbackError] ??
+            "不明なエラーが発生しました"}
         </div>
       )}
       {/* ミューテーションエラー表示 */}

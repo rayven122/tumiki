@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import ScimDirectorySection from "./_components/ScimDirectorySection";
 import SsoConfigSection from "./_components/SsoConfigSection";
 
@@ -141,7 +141,10 @@ const AdminSettingsPage = () => {
         <div className="space-y-4">
           <SsoConfigSection />
           {/* SCIM Directory（Jackson Directory Sync） */}
-          <ScimDirectorySection />
+          {/* useSearchParams を含むため Suspense でラップ（Next.js App Router 要件） */}
+          <Suspense fallback={null}>
+            <ScimDirectorySection />
+          </Suspense>
         </div>
       </div>
 

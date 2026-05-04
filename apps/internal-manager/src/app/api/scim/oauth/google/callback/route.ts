@@ -85,6 +85,16 @@ export const GET = async (req: NextRequest) => {
     return redirectWithError(req, "token_exchange_failed");
   }
 
+  // Jackson の setToken は refreshToken 必須（無いと 400 エラー）。
+  // 再認可時に Google が refresh_token を返さないケース（既存承認のリセット未済等）
+  // があるため、ここで先に検出して分かりやすいエラーコードで返却する。
+  if (!tokenRes.data.refresh_token) {
+    console.warn(
+      "[google-callback] refresh_token missing on re-authorization; ask user to revoke previous consent first",
+    );
+    return redirectWithError(req, "refresh_token_missing");
+  }
+
   const setRes = await directorySyncController.google.setToken({
     directoryId,
     accessToken: tokenRes.data.access_token,

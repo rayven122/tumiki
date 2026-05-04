@@ -28,6 +28,13 @@ const isGoogleConfigured = () =>
   !!process.env.GOOGLE_DIRECTORY_CLIENT_ID &&
   !!process.env.GOOGLE_DIRECTORY_CLIENT_SECRET;
 
+// Jackson が返す type を schema で検証して安全な DirectoryType に正規化
+// （Jackson のバージョンアップで未知 type が混入した場合のフォールバック）
+const normalizeDirectoryType = (raw: string): DirectoryType => {
+  const parsed = directoryTypeSchema.safeParse(raw);
+  return parsed.success ? parsed.data : "generic-scim-v2";
+};
+
 const ensureJackson = async () => {
   if (!isJacksonConfigured()) {
     throw new TRPCError({
@@ -71,17 +78,20 @@ export const scimDirectoryRouter = createTRPCRouter({
         message: "Directory 一覧の取得に失敗しました",
       });
     }
-    return (data ?? []).map((d) => ({
-      id: d.id,
-      name: d.name,
-      type: d.type,
-      deactivated: d.deactivated ?? false,
-      // google タイプは SCIM endpoint を持たない（pull 型）
-      scimEndpoint: d.type === "google" ? null : buildScimEndpoint(d.scim),
-      // google は OAuth 認可済みかどうか
-      googleAuthorized:
-        d.type === "google" ? !!d.google_refresh_token : undefined,
-    }));
+    return (data ?? []).map((d) => {
+      const type = normalizeDirectoryType(d.type);
+      return {
+        id: d.id,
+        name: d.name,
+        type,
+        deactivated: d.deactivated ?? false,
+        // google タイプは SCIM endpoint を持たない（pull 型）
+        scimEndpoint: type === "google" ? null : buildScimEndpoint(d.scim),
+        // google は OAuth 認可済みかどうか
+        googleAuthorized:
+          type === "google" ? !!d.google_refresh_token : undefined,
+      };
+    });
   }),
 
   /** SCIM Directory を作成し、初回のみ Bearer Secret を返却 */
@@ -117,12 +127,13 @@ export const scimDirectoryRouter = createTRPCRouter({
           message: "Directory の作成に失敗しました",
         });
       }
+      const type = normalizeDirectoryType(data.type);
       // google は SCIM Secret なし（OAuth フローへ遷移する用の URL を返す）
-      if (data.type === "google") {
+      if (type === "google") {
         return {
           id: data.id,
           name: data.name,
-          type: data.type as DirectoryType,
+          type,
           scimEndpoint: null,
           scimSecret: null,
           googleAuthorizationUrl: data.google_authorization_url ?? null,
@@ -132,7 +143,7 @@ export const scimDirectoryRouter = createTRPCRouter({
       return {
         id: data.id,
         name: data.name,
-        type: data.type as DirectoryType,
+        type,
         scimEndpoint: buildScimEndpoint(data.scim),
         scimSecret: data.scim.secret,
         googleAuthorizationUrl: null,
