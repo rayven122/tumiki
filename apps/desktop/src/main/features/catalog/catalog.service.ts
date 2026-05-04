@@ -107,9 +107,13 @@ export const addFromCatalog = async (
   input: AddFromCatalogInput,
 ): Promise<{ serverId: number; serverName: string }> =>
   resolveByProfile({
-    personal: () =>
-      createFromCatalog({
-        catalogId: Number(input.catalogId),
+    personal: () => {
+      const catalogId = Number(input.catalogId);
+      if (Number.isNaN(catalogId)) {
+        throw new Error("カタログIDが不正です");
+      }
+      return createFromCatalog({
+        catalogId,
         catalogName: input.serverName,
         description: input.description,
         transportType: input.connectionTemplate.transportType,
@@ -119,7 +123,8 @@ export const addFromCatalog = async (
         credentialKeys: input.connectionTemplate.credentialKeys,
         credentials: input.credentials,
         authType: input.connectionTemplate.authType,
-      }),
+      });
+    },
     organization: () =>
       createFromManagerCatalog({
         catalogId: input.catalogId,

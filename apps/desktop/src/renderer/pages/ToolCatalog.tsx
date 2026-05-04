@@ -78,9 +78,13 @@ export const ToolCatalog = (): JSX.Element => {
     window.electronAPI.catalog
       .getAll()
       .then(setCatalogs)
-      .catch(() => {
+      .catch((err: unknown) => {
         setCatalogs([]);
-        setLoadError("管理サーバーのカタログ取得に失敗しました");
+        setLoadError(
+          err instanceof Error
+            ? err.message
+            : "カタログ一覧の取得に失敗しました",
+        );
       })
       .finally(() => setLoading(false));
   }, []);
