@@ -20,6 +20,7 @@ export type UpsertOAuthClientInput = {
   clientSecret: string | null;
   tokenEndpointAuthMethod: string;
   authServerMetadata: string;
+  isDcr: boolean;
 };
 
 /** 復号化済みOAuthClient */
@@ -31,6 +32,7 @@ export type DecryptedOAuthClient = {
   clientSecret: string | null;
   tokenEndpointAuthMethod: string;
   authServerMetadata: string;
+  isDcr: boolean;
 };
 
 const toDecryptedClient = async (
@@ -49,6 +51,7 @@ const toDecryptedClient = async (
     clientSecret,
     tokenEndpointAuthMethod: row.tokenEndpointAuthMethod,
     authServerMetadata: row.authServerMetadata,
+    isDcr: row.isDcr,
   };
 };
 
@@ -61,6 +64,7 @@ const buildEncryptedRowPayload = async (
   clientSecret: string | null;
   tokenEndpointAuthMethod: string;
   authServerMetadata: string;
+  isDcr: boolean;
 }> => {
   return {
     issuer: input.issuer,
@@ -70,6 +74,7 @@ const buildEncryptedRowPayload = async (
       : null,
     tokenEndpointAuthMethod: input.tokenEndpointAuthMethod,
     authServerMetadata: input.authServerMetadata,
+    isDcr: input.isDcr,
   };
 };
 
@@ -124,4 +129,24 @@ export const deleteByServerUrl = async (
   serverUrl: string,
 ): Promise<void> => {
   await db.oAuthClient.deleteMany({ where: { serverUrl } });
+};
+
+/**
+ * 手動入力（isDcr: false）のOAuthClientをserverUrlで検索し、復号化済みクレデンシャルを返す
+ */
+export const findManualClientByServerUrl = async (
+  db: PrismaClient,
+  serverUrl: string,
+): Promise<{ clientId: string; clientSecret: string | null } | null> => {
+  const record = await db.oAuthClient.findFirst({
+    where: { serverUrl, isDcr: false },
+  });
+  if (!record) return null;
+
+  const clientId = await decryptToken(record.clientId);
+  const clientSecret = record.clientSecret
+    ? await decryptToken(record.clientSecret)
+    : null;
+
+  return { clientId, clientSecret };
 };

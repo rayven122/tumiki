@@ -203,6 +203,14 @@ export const AddRemoteMcpModal = ({
         if (code === DISCOVERY_ERROR_CODE.DCR_NOT_SUPPORTED) {
           setNeedsManualOAuthClient(true);
           setError(null);
+          // キャッシュ済み手動入力クライアントがあればプリフィル
+          const cached = await window.electronAPI.oauth.findManualOAuthClient(
+            url.trim(),
+          );
+          if (cached) {
+            setOauthClientId(cached.clientId);
+            setOauthClientSecret(cached.clientSecret ?? "");
+          }
         } else {
           setNeedsManualOAuthClient(false);
           setError(displayMessage);

@@ -222,6 +222,8 @@ model OAuthClient {
   tokenEndpointAuthMethod String   @default("none")
   /// Authorization Server Metadata（JSON文字列）
   authServerMetadata      String
+  /// DCRで自動登録されたクライアントかどうか（falseの場合はユーザー手動入力）
+  isDcr                   Boolean  @default(true)
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 }

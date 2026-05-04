@@ -37,12 +37,21 @@ import type {
   McpOAuthTokenData,
 } from "./oauth.types";
 
+/** 手動入力済みOAuthクライアント情報 */
+export type ManualOAuthClient = {
+  clientId: string;
+  clientSecret: string | null;
+};
+
 /** MCP OAuthマネージャー型 */
 export type McpOAuthManager = {
   startAuthFlow: (input: StartOAuthInput) => Promise<void>;
   handleCallback: (url: string) => Promise<OAuthResult>;
   cancelAuthFlow: () => void;
   getActiveSession: () => McpOAuthSession | null;
+  findManualOAuthClient: (
+    serverUrl: string,
+  ) => Promise<ManualOAuthClient | null>;
 };
 
 type OAuthClientBundle = {
@@ -79,6 +88,13 @@ const loadCachedOAuthClientBundle = async (
   const cached = await oauthRepository.findByServerUrl(db, serverUrl);
   if (!cached) return null;
 
+  if (!cached.isDcr) {
+    logger.info("Skipping non-DCR cached client, requires manual input", {
+      serverUrl,
+    });
+    return null;
+  }
+
   logger.info("DCR cache hit, reusing OAuth client", { serverUrl });
   const parsed: unknown = JSON.parse(cached.authServerMetadata);
 
@@ -104,6 +120,7 @@ type ClientCredentials = {
   clientId: string;
   clientSecret: string | null;
   tokenEndpointAuthMethod: string;
+  isDcr: boolean;
 };
 
 const resolveClientCredentials = async (
@@ -125,6 +142,7 @@ const resolveClientCredentials = async (
         typeof registration.token_endpoint_auth_method === "string"
           ? registration.token_endpoint_auth_method
           : "none",
+      isDcr: true,
     };
   }
 
@@ -137,6 +155,7 @@ const resolveClientCredentials = async (
       clientId: fallbackClientId,
       clientSecret,
       tokenEndpointAuthMethod: clientSecret ? "client_secret_post" : "none",
+      isDcr: false,
     };
   }
 
@@ -155,7 +174,7 @@ const discoverPersistAndBundle = async (
   logger.info("DCR cache miss, performing discovery", { serverUrl });
   const metadata = await discoverOAuthMetadata(serverUrl);
 
-  const { clientId, clientSecret, tokenEndpointAuthMethod } =
+  const { clientId, clientSecret, tokenEndpointAuthMethod, isDcr } =
     await resolveClientCredentials(
       metadata,
       serverUrl,
@@ -170,6 +189,7 @@ const discoverPersistAndBundle = async (
     clientSecret,
     tokenEndpointAuthMethod,
     authServerMetadata: JSON.stringify(metadata),
+    isDcr,
   });
 
   return {
@@ -378,5 +398,18 @@ export const createMcpOAuthManager = (): McpOAuthManager => {
 
   const getActiveSession = (): McpOAuthSession | null => currentSession;
 
-  return { startAuthFlow, handleCallback, cancelAuthFlow, getActiveSession };
+  const findManualOAuthClient = async (
+    serverUrl: string,
+  ): Promise<ManualOAuthClient | null> => {
+    const db = await getDb();
+    return oauthRepository.findManualClientByServerUrl(db, serverUrl);
+  };
+
+  return {
+    startAuthFlow,
+    handleCallback,
+    cancelAuthFlow,
+    getActiveSession,
+    findManualOAuthClient,
+  };
 };

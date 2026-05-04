@@ -157,6 +157,10 @@ const api = {
     startAuth: (input: StartOAuthInput): Promise<void> =>
       ipcRenderer.invoke("oauth:startAuth", input),
     cancelAuth: (): Promise<void> => ipcRenderer.invoke("oauth:cancelAuth"),
+    findManualOAuthClient: (
+      serverUrl: string,
+    ): Promise<{ clientId: string; clientSecret: string | null } | null> =>
+      ipcRenderer.invoke("oauth:findManualOAuthClient", serverUrl),
     onOAuthSuccess: (callback: (result: OAuthResult) => void): (() => void) => {
       const listener = (
         _event: Electron.IpcRendererEvent,

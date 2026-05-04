@@ -64,6 +64,10 @@ export const ToolCatalog = (): JSX.Element => {
     null,
   );
   const [dcrPrefill, setDcrPrefill] = useState(false);
+  const [cachedOAuthClient, setCachedOAuthClient] = useState<{
+    clientId: string;
+    clientSecret: string | null;
+  } | null>(null);
   const [showRemoteModal, setShowRemoteModal] = useState(false);
 
   // OAuth 直接フロー時のイベントリスナーがモーダル表示中の AddMcpModal / AddRemoteMcpModal と二重発火しないよう参照で最新状態を保持
@@ -142,6 +146,17 @@ export const ToolCatalog = (): JSX.Element => {
       toast.error("このカタログには認証先URLが設定されていません");
       return;
     }
+    // 手動入力済みクライアントのキャッシュがあればプリフィルしてモーダル表示
+    const cachedClient = await window.electronAPI.oauth.findManualOAuthClient(
+      template.url,
+    );
+    if (cachedClient) {
+      setCachedOAuthClient(cachedClient);
+      setDcrPrefill(true);
+      setSelectedCatalog(item);
+      return;
+    }
+
     // OAuth は認証ページへ直接リダイレクト
     try {
       await window.electronAPI.oauth.startAuth({
@@ -421,13 +436,19 @@ export const ToolCatalog = (): JSX.Element => {
         <AddMcpModal
           catalog={selectedCatalog}
           initialNeedsManualOAuthClient={dcrPrefill}
+          initialOAuthClientId={cachedOAuthClient?.clientId}
+          initialOAuthClientSecret={
+            cachedOAuthClient?.clientSecret ?? undefined
+          }
           onClose={() => {
             setSelectedCatalog(null);
             setDcrPrefill(false);
+            setCachedOAuthClient(null);
           }}
           onSuccess={(serverName) => {
             setSelectedCatalog(null);
             setDcrPrefill(false);
+            setCachedOAuthClient(null);
             toast.success(`${serverName}が正常に追加されました。`);
             navigate("/tools");
           }}

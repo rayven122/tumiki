@@ -95,4 +95,12 @@ export const setupOAuthIpc = (manager: McpOAuthManager): void => {
   ipcMain.handle("oauth:cancelAuth", () => {
     manager.cancelAuthFlow();
   });
+
+  // 手動入力済みOAuthクライアントの検索
+  ipcMain.handle(
+    "oauth:findManualOAuthClient",
+    async (_, serverUrl: string) => {
+      return manager.findManualOAuthClient(serverUrl);
+    },
+  );
 };
