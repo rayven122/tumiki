@@ -28,4 +28,11 @@ if (probe.error || probe.status === null) {
 const result = spawnSync("bash", ["docker/keycloak/install-themes.sh"], {
   stdio: "inherit",
 });
+if (result.error) {
+  console.error(
+    "keycloak theme install の実行に失敗しました:",
+    result.error.message,
+  );
+  process.exit(1);
+}
 process.exit(result.status ?? 1);
