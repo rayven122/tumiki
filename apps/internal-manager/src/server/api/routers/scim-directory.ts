@@ -7,17 +7,26 @@ import {
   resolveExternalUrl,
 } from "~/server/jackson";
 
-// Jackson が対応する SCIM プロバイダ種別
+// Jackson が対応する Directory プロバイダ種別
+// "google" は SCIM ではなく Jackson の Google Workspace OAuth 同期
 const directoryTypeSchema = z.enum([
   "azure-scim-v2",
   "okta-scim-v2",
   "onelogin-scim-v2",
   "jumpcloud-scim-v2",
   "generic-scim-v2",
+  "google",
 ]);
+
+type DirectoryType = z.infer<typeof directoryTypeSchema>;
 
 const TENANT = "default";
 const PRODUCT = "internal-manager";
+
+// Google Workspace OAuth Client が設定されているか
+const isGoogleConfigured = () =>
+  !!process.env.GOOGLE_DIRECTORY_CLIENT_ID &&
+  !!process.env.GOOGLE_DIRECTORY_CLIENT_SECRET;
 
 const ensureJackson = async () => {
   if (!isJacksonConfigured()) {
@@ -65,7 +74,11 @@ export const scimDirectoryRouter = createTRPCRouter({
       name: d.name,
       type: d.type,
       deactivated: d.deactivated ?? false,
-      scimEndpoint: buildScimEndpoint(d.scim),
+      // google タイプは SCIM endpoint を持たない（pull 型）
+      scimEndpoint: d.type === "google" ? null : buildScimEndpoint(d.scim),
+      // google は OAuth 認可済みかどうか
+      googleAuthorized:
+        d.type === "google" ? !!d.google_refresh_token : undefined,
     }));
   }),
 
@@ -78,6 +91,15 @@ export const scimDirectoryRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
+      // google タイプは GOOGLE_DIRECTORY_CLIENT_ID/SECRET が必要
+      if (input.type === "google" && !isGoogleConfigured()) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "Google Directory OAuth が未設定です（GOOGLE_DIRECTORY_CLIENT_ID/SECRET）",
+        });
+      }
+
       const jackson = await ensureJackson();
       const { data, error } =
         await jackson.directorySyncController.directories.create({
@@ -92,13 +114,50 @@ export const scimDirectoryRouter = createTRPCRouter({
           message: error?.message ?? "Directory の作成に失敗しました",
         });
       }
+      // google は SCIM Secret なし（OAuth フローへ遷移する用の URL を返す）
+      if (data.type === "google") {
+        return {
+          id: data.id,
+          name: data.name,
+          type: data.type as DirectoryType,
+          scimEndpoint: null,
+          scimSecret: null,
+          googleAuthorizationUrl: data.google_authorization_url ?? null,
+        };
+      }
       // 平文の SCIM Secret はこのレスポンスでのみ返却
       return {
         id: data.id,
         name: data.name,
+        type: data.type as DirectoryType,
         scimEndpoint: buildScimEndpoint(data.scim),
         scimSecret: data.scim.secret,
+        googleAuthorizationUrl: null,
       };
+    }),
+
+  /** Google Workspace OAuth 認可URLを再取得（再認可時など） */
+  getGoogleAuthorizationUrl: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ input }) => {
+      if (!isGoogleConfigured()) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Google Directory OAuth が未設定です",
+        });
+      }
+      const jackson = await ensureJackson();
+      const { data, error } =
+        await jackson.directorySyncController.google.generateAuthorizationUrl({
+          directoryId: input.id,
+        });
+      if (error || !data) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: error?.message ?? "認可URLの生成に失敗しました",
+        });
+      }
+      return { authorizationUrl: data.authorizationUrl };
     }),
 
   /** SCIM Directory を削除 */

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Copy, Plus, Trash2, X } from "lucide-react";
+import { Copy, KeyRound, Plus, Trash2, X } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,14 +24,17 @@ const directoryTypeOptions = [
   { value: "okta-scim-v2", label: "Okta" },
   { value: "onelogin-scim-v2", label: "OneLogin" },
   { value: "jumpcloud-scim-v2", label: "JumpCloud" },
+  { value: "google", label: "Google Workspace (OAuth)" },
 ] as const;
 
 type DirectoryType = (typeof directoryTypeOptions)[number]["value"];
 
 type NewlyCreated = {
   name: string;
-  scimEndpoint: string;
-  scimSecret: string;
+  type: DirectoryType;
+  scimEndpoint: string | null;
+  scimSecret: string | null;
+  googleAuthorizationUrl: string | null;
 };
 
 /** SCIM Directory 管理セクション（Jackson Directory Sync） */
@@ -49,11 +52,17 @@ const ScimDirectorySection = () => {
     onSuccess: (data) => {
       setCreated({
         name: data.name,
+        type: data.type,
         scimEndpoint: data.scimEndpoint,
         scimSecret: data.scimSecret,
+        googleAuthorizationUrl: data.googleAuthorizationUrl,
       });
       setNewName("");
       void utils.scimDirectory.list.invalidate();
+      // Google タイプの場合は自動で OAuth 同意画面へ遷移
+      if (data.type === "google" && data.googleAuthorizationUrl) {
+        window.location.href = data.googleAuthorizationUrl;
+      }
     },
   });
 
@@ -61,8 +70,20 @@ const ScimDirectorySection = () => {
     onSuccess: () => void utils.scimDirectory.list.invalidate(),
   });
 
+  const reauthMutation =
+    api.scimDirectory.getGoogleAuthorizationUrl.useMutation({
+      onSuccess: (data) => {
+        if (data.authorizationUrl) {
+          window.location.href = data.authorizationUrl;
+        }
+      },
+    });
+
   const errorMessage =
-    createMutation.error?.message ?? deleteMutation.error?.message ?? null;
+    createMutation.error?.message ??
+    deleteMutation.error?.message ??
+    reauthMutation.error?.message ??
+    null;
 
   const handleCopy = (text: string, kind: "endpoint" | "secret") => {
     void navigator.clipboard.writeText(text);
@@ -99,55 +120,70 @@ const ScimDirectorySection = () => {
               <X size={14} />
             </button>
           </div>
-          <p className="text-text-muted mb-2 text-[11px]">
-            SCIM Secret はこの画面でしか表示されません。今すぐコピーして IdP の
-            SCIM 設定に登録してください。
-          </p>
+          {created.type === "google" ? (
+            <p className="text-text-muted text-[11px]">
+              Google
+              の同意画面に遷移します。承認後、自動的にユーザー/グループの同期が始まります。
+            </p>
+          ) : (
+            <>
+              <p className="text-text-muted mb-2 text-[11px]">
+                SCIM Secret はこの画面でしか表示されません。今すぐコピーして IdP
+                の SCIM 設定に登録してください。
+              </p>
 
-          <div className="space-y-2">
-            <div>
-              <label className="text-text-secondary mb-1 block text-[11px]">
-                SCIM Endpoint URL
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={created.scimEndpoint}
-                  readOnly
-                  className={`${inputCls} flex-1 font-mono`}
-                />
-                <button
-                  type="button"
-                  onClick={() => handleCopy(created.scimEndpoint, "endpoint")}
-                  className="bg-bg-active text-text-secondary flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs hover:opacity-80"
-                >
-                  <Copy size={12} />
-                  {copied === "endpoint" ? "コピー済み" : "コピー"}
-                </button>
+              <div className="space-y-2">
+                <div>
+                  <label className="text-text-secondary mb-1 block text-[11px]">
+                    SCIM Endpoint URL
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={created.scimEndpoint ?? ""}
+                      readOnly
+                      className={`${inputCls} flex-1 font-mono`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        created.scimEndpoint &&
+                        handleCopy(created.scimEndpoint, "endpoint")
+                      }
+                      className="bg-bg-active text-text-secondary flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs hover:opacity-80"
+                    >
+                      <Copy size={12} />
+                      {copied === "endpoint" ? "コピー済み" : "コピー"}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-text-secondary mb-1 block text-[11px]">
+                    Bearer Token (Secret)
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={created.scimSecret ?? ""}
+                      readOnly
+                      className={`${inputCls} flex-1 font-mono`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        created.scimSecret &&
+                        handleCopy(created.scimSecret, "secret")
+                      }
+                      className="bg-bg-active text-text-secondary flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs hover:opacity-80"
+                    >
+                      <Copy size={12} />
+                      {copied === "secret" ? "コピー済み" : "コピー"}
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div>
-              <label className="text-text-secondary mb-1 block text-[11px]">
-                Bearer Token (Secret)
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={created.scimSecret}
-                  readOnly
-                  className={`${inputCls} flex-1 font-mono`}
-                />
-                <button
-                  type="button"
-                  onClick={() => handleCopy(created.scimSecret, "secret")}
-                  className="bg-bg-active text-text-secondary flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs hover:opacity-80"
-                >
-                  <Copy size={12} />
-                  {copied === "secret" ? "コピー済み" : "コピー"}
-                </button>
-              </div>
-            </div>
-          </div>
+            </>
+          )}
         </div>
       )}
 
@@ -179,14 +215,34 @@ const ScimDirectorySection = () => {
                         無効
                       </span>
                     )}
+                    {d.type === "google" && d.googleAuthorized === false && (
+                      <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-400">
+                        未認可
+                      </span>
+                    )}
                   </div>
                   <div className="text-text-muted font-mono text-[10px] break-all">
-                    {d.scimEndpoint}
+                    {d.scimEndpoint ??
+                      (d.type === "google"
+                        ? "OAuth pull 同期 (Google Workspace Directory)"
+                        : "—")}
                   </div>
                 </div>
                 <span className="text-text-muted rounded-full bg-white/5 px-2 py-0.5 text-[10px]">
                   {d.type}
                 </span>
+                {d.type === "google" && (
+                  <button
+                    type="button"
+                    onClick={() => reauthMutation.mutate({ id: d.id })}
+                    disabled={reauthMutation.isPending}
+                    aria-label="Google OAuth 再認可"
+                    title="再認可"
+                    className="text-text-muted hover:text-text-primary disabled:opacity-50"
+                  >
+                    <KeyRound size={14} />
+                  </button>
+                )}
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <button
