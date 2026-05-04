@@ -237,6 +237,20 @@ const fetchUvChecksum = async (archiveUrl) => {
 };
 
 /**
+ * Windows 上で tar コマンドを呼ぶときは `C:\Windows\System32\tar.exe`
+ * （Win10+ 同梱の bsdtar / libarchive）を絶対パスで指定する。
+ *
+ * windows-latest ランナーには Git for Windows 同梱の GNU tar も入っており、
+ * PATH 解決によってはこちらが先に拾われる。GNU tar は `C:\foo\bar.tar.gz`
+ * の `C:` を host:path のリモート指定として解釈し
+ * `tar (child): Cannot connect to C: resolve failed` で落ちるため、
+ * 必ず bsdtar を呼ぶよう絶対パス指定で固定する（bsdtar は Windows パスを
+ * 正しく扱い、tar.gz と zip の両方に対応）。
+ */
+const tarBinary = () =>
+  process.platform === "win32" ? "C:\\Windows\\System32\\tar.exe" : "tar";
+
+/**
  * tar.gz / zip を抽出する。
  * libarchive (macOS/Linux/Win10+ 標準 tar) は zip を自動検出するが、
  * GNU tar は zip 非対応なので Linux 上は unzip を併用する。
@@ -249,7 +263,11 @@ const extractArchive = async (archivePath, destDir, archive) => {
   } else {
     // tar.gz / macOS の zip 共通: tar に任せる
     const flags = archive === "zip" ? ["-xf"] : ["-xzf"];
-    await runCommand("tar", [...flags, archivePath, "-C", destDir], "tar");
+    await runCommand(
+      tarBinary(),
+      [...flags, archivePath, "-C", destDir],
+      "tar",
+    );
   }
 };
 
