@@ -52,4 +52,13 @@ describe("formatElectronIpcErrorMessage", () => {
       ),
     ).toStrictEqual("Desktopセッションの取得に失敗しました");
   });
+
+  test("空メッセージのErrorはフォールバックメッセージを返す", () => {
+    expect(
+      formatElectronIpcErrorMessage(
+        new Error(""),
+        "Desktopセッションの取得に失敗しました",
+      ),
+    ).toStrictEqual("Desktopセッションの取得に失敗しました");
+  });
 });

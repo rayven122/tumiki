@@ -90,6 +90,7 @@ export const SettingsPage = (): JSX.Element => {
   const [reloginError, setReloginError] = useState<string | null>(null);
   const mountedRef = useRef(true);
   const reloginTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isWaitingForReloginRef = useRef(false);
 
   const refreshDesktopSession = useCallback((): void => {
     setSessionLoading(true);
@@ -141,6 +142,11 @@ export const SettingsPage = (): JSX.Element => {
     }
   }, []);
 
+  const setReloginWaiting = useCallback((waiting: boolean): void => {
+    isWaitingForReloginRef.current = waiting;
+    setIsWaitingForRelogin(waiting);
+  }, []);
+
   const startRelogin = useCallback(async (): Promise<void> => {
     if (isReloginStarting || isWaitingForRelogin) return;
 
@@ -158,10 +164,10 @@ export const SettingsPage = (): JSX.Element => {
       // 保存済みURLでOIDC設定を再読み込みしてからOAuthフローを開始する。
       await window.electronAPI.manager.connect(managerUrl);
       if (!mountedRef.current) return;
-      setIsWaitingForRelogin(true);
+      setReloginWaiting(true);
       reloginTimeoutRef.current = setTimeout(() => {
         if (!mountedRef.current) return;
-        setIsWaitingForRelogin(false);
+        setReloginWaiting(false);
         setReloginError(
           "再ログインがタイムアウトしました。もう一度実行してください。",
         );
@@ -174,7 +180,7 @@ export const SettingsPage = (): JSX.Element => {
         setReloginError(
           formatElectronIpcErrorMessage(err, "再ログインの開始に失敗しました"),
         );
-        setIsWaitingForRelogin(false);
+        setReloginWaiting(false);
       }
     } finally {
       if (mountedRef.current) setIsReloginStarting(false);
@@ -184,6 +190,7 @@ export const SettingsPage = (): JSX.Element => {
     isReloginStarting,
     isWaitingForRelogin,
     profile?.organizationProfile?.managerUrl,
+    setReloginWaiting,
   ]);
 
   useEffect(() => {
@@ -191,18 +198,18 @@ export const SettingsPage = (): JSX.Element => {
     refreshProfile();
     window.addEventListener(PROFILE_CHANGED_EVENT, refreshProfile);
     const cleanupSuccess = window.electronAPI.auth.onCallbackSuccess(() => {
-      if (!mountedRef.current) return;
+      if (!mountedRef.current || !isWaitingForReloginRef.current) return;
       clearReloginTimeout();
-      setIsWaitingForRelogin(false);
+      setReloginWaiting(false);
       setIsReloginStarting(false);
       setReloginError(null);
       setSessionError(null);
       refreshProfile();
     });
     const cleanupError = window.electronAPI.auth.onCallbackError((message) => {
-      if (!mountedRef.current) return;
+      if (!mountedRef.current || !isWaitingForReloginRef.current) return;
       clearReloginTimeout();
-      setIsWaitingForRelogin(false);
+      setReloginWaiting(false);
       setIsReloginStarting(false);
       setReloginError(
         formatElectronIpcErrorMessage(message, "再ログインに失敗しました"),
@@ -215,7 +222,7 @@ export const SettingsPage = (): JSX.Element => {
       cleanupSuccess();
       cleanupError();
     };
-  }, [clearReloginTimeout, refreshProfile]);
+  }, [clearReloginTimeout, refreshProfile, setReloginWaiting]);
 
   /** 通知トグル */
   const toggleEmail = (id: string): void => {
