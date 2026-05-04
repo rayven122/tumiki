@@ -76,11 +76,6 @@ const formatSessionError = (error: unknown): string => {
     /^Error invoking remote method '[^']+': Error: /,
     "",
   );
-
-  if (normalized.includes("サインインが必要")) {
-    return "管理サーバーへの再ログインが必要です";
-  }
-
   return normalized;
 };
 
@@ -167,6 +162,7 @@ export const SettingsPage = (): JSX.Element => {
     setSessionError(null);
     clearReloginTimeout();
     try {
+      // 保存済みURLでOIDC設定を再読み込みしてからOAuthフローを開始する。
       await window.electronAPI.manager.connect(managerUrl);
       await window.electronAPI.auth.login();
       if (mountedRef.current) {
@@ -345,7 +341,11 @@ export const SettingsPage = (): JSX.Element => {
                 ) : (
                   <LogIn size={15} />
                 )}
-                {isWaitingForRelogin ? "ログイン待機中..." : "再ログイン"}
+                {isReloginStarting
+                  ? "接続中..."
+                  : isWaitingForRelogin
+                    ? "ログイン待機中..."
+                    : "再ログイン"}
               </button>
               <button
                 type="button"
