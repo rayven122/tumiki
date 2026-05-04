@@ -78,6 +78,22 @@ describe("mcpPoliciesRouter", () => {
     );
   });
 
+  test("getEffectivePermissionsはカタログクエリに上限を設定する", async () => {
+    const findCatalogs = vi.fn().mockResolvedValue([]);
+    const caller = buildCaller({
+      user: { findUnique: vi.fn().mockResolvedValue(null) },
+      orgUnit: { findMany: vi.fn().mockResolvedValue([]) },
+      mcpCatalog: { findMany: findCatalogs },
+    } as unknown as Context["db"]);
+
+    await expect(
+      caller.getEffectivePermissions({ userId: "user-001" }),
+    ).resolves.toBeNull();
+    expect(findCatalogs).toHaveBeenCalledWith(
+      expect.objectContaining({ take: 200 }),
+    );
+  });
+
   test("updateToolPermissionはtoolIdとcatalogIdの不整合をBAD_REQUESTにする", async () => {
     const upsert = vi.fn();
     const deleteMany = vi.fn();

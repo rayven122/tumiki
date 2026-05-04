@@ -290,16 +290,16 @@ describe("handleDirectorySyncEvent", () => {
       expect(orgUnitArgs.where).toStrictEqual({
         source_externalId: {
           source: OrgUnitSource.SCIM,
-          externalId: "department:product-engineering",
+          externalId: "department:product%20engineering",
         },
       });
       expect(orgUnitArgs.create.name).toStrictEqual("Product Engineering");
       expect(orgUnitArgs.create.externalId).toStrictEqual(
-        "department:product-engineering",
+        "department:product%20engineering",
       );
       expect(orgUnitArgs.create.source).toStrictEqual(OrgUnitSource.SCIM);
       expect(orgUnitArgs.create.path).toStrictEqual(
-        "/department:product-engineering",
+        "/department:product%20engineering",
       );
       expect(orgUnitArgs.create.lastSyncedAt).toBeInstanceOf(Date);
       expect(orgUnitArgs.update.name).toStrictEqual("Product Engineering");

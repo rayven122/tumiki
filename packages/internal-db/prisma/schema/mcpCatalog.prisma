@@ -34,6 +34,7 @@ enum McpToolRiskLevel {
 /// @namespace McpCatalog
 enum OrgUnitSource {
   SCIM
+  /// SCIM department がない IdP 向けに、SCIM Group から部署候補を作る将来拡張用。
   GROUP
   MANUAL
 }

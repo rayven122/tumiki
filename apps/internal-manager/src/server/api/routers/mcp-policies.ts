@@ -102,6 +102,7 @@ export const mcpPoliciesRouter = createTRPCRouter({
               include: { orgUnitPermissions: true },
             },
           },
+          take: POLICY_MATRIX_CATALOG_LIMIT,
         }),
       ]);
       if (!user) return null;

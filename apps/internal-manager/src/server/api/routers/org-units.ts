@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { OrgUnitSource } from "@tumiki/internal-db";
 import { adminProcedure, createTRPCRouter } from "@/server/api/trpc";
 
 const buildPath = (parentPath: string | null, segment: string) =>
@@ -108,7 +107,6 @@ export const orgUnitsRouter = createTRPCRouter({
           where: { id: current.id },
           data: {
             parentId: input.parentId,
-            source: OrgUnitSource.MANUAL,
             path: newPath,
           },
         });
