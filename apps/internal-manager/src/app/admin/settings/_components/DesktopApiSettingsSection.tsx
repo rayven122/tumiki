@@ -109,8 +109,8 @@ export const DesktopApiSettingsSection = (): JSX.Element => {
   const save = (): void => {
     setSavedMessage(null);
     updateMutation.mutate({
-      organizationName: form.organizationName.trim() || null,
-      organizationSlug: form.organizationSlug.trim() || null,
+      organizationName: form.organizationName,
+      organizationSlug: form.organizationSlug,
       catalogEnabled: form.catalogEnabled,
       accessRequestsEnabled: form.accessRequestsEnabled,
       policySyncEnabled: form.policySyncEnabled,

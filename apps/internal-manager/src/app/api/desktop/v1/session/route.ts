@@ -119,6 +119,7 @@ export const GET = async (request: NextRequest) => {
     (permission) => ({
       source: "INDIVIDUAL" as const,
       mcpServerId: permission.mcpServerId,
+      // ApprovalRequest承認は対象MCPサーバーへの全操作権限付与として扱う。
       read: true,
       write: true,
       execute: true,

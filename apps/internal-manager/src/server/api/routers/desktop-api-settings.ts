@@ -6,14 +6,23 @@ import {
 import { adminProcedure, createTRPCRouter } from "@/server/api/trpc";
 
 const settingsInputSchema = z.object({
-  organizationName: z.string().trim().max(120).nullable(),
+  organizationName: z
+    .string()
+    .trim()
+    .max(120)
+    .transform((value) => (value === "" ? null : value))
+    .nullable(),
   organizationSlug: z
     .string()
     .trim()
-    .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/, {
-      message: "slugは小文字英数字とハイフンで指定してください",
-    })
     .max(80)
+    .refine(
+      (value) => value === "" || /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(value),
+      {
+        message: "slugは小文字英数字とハイフンで指定してください",
+      },
+    )
+    .transform((value) => (value === "" ? null : value))
     .nullable(),
   catalogEnabled: z.boolean(),
   accessRequestsEnabled: z.boolean(),
@@ -33,23 +42,24 @@ export const desktopApiSettingsRouter = createTRPCRouter({
   update: adminProcedure
     .input(settingsInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const organizationName =
-        input.organizationName === "" ? null : input.organizationName;
-      const organizationSlug =
-        input.organizationSlug === "" ? null : input.organizationSlug;
-
       return ctx.db.desktopApiSettings.upsert({
         where: { id: DESKTOP_API_SETTINGS_ID },
         create: {
           id: DESKTOP_API_SETTINGS_ID,
-          ...input,
-          organizationName,
-          organizationSlug,
+          organizationName: input.organizationName,
+          organizationSlug: input.organizationSlug,
+          catalogEnabled: input.catalogEnabled,
+          accessRequestsEnabled: input.accessRequestsEnabled,
+          policySyncEnabled: input.policySyncEnabled,
+          auditLogSyncEnabled: input.auditLogSyncEnabled,
         },
         update: {
-          ...input,
-          organizationName,
-          organizationSlug,
+          organizationName: input.organizationName,
+          organizationSlug: input.organizationSlug,
+          catalogEnabled: input.catalogEnabled,
+          accessRequestsEnabled: input.accessRequestsEnabled,
+          policySyncEnabled: input.policySyncEnabled,
+          auditLogSyncEnabled: input.auditLogSyncEnabled,
         },
       });
     }),
