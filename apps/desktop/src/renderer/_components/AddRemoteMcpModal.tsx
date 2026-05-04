@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { X, Info, ChevronDown, Trash2 } from "lucide-react";
 import { toSlug } from "../../shared/mcp.slug";
 import {
@@ -43,6 +43,13 @@ export const AddRemoteMcpModal = ({
   onClose,
   onSuccess,
 }: AddRemoteMcpModalProps): JSX.Element => {
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   const [serverName, setServerName] = useState("");
   const [url, setUrl] = useState("");
   const [command, setCommand] = useState("");
@@ -203,6 +210,14 @@ export const AddRemoteMcpModal = ({
         if (code === DISCOVERY_ERROR_CODE.DCR_NOT_SUPPORTED) {
           setNeedsManualOAuthClient(true);
           setError(null);
+          // キャッシュ済み手動入力クライアントがあればプリフィル
+          const cached = await window.electronAPI.oauth.findManualOAuthClient(
+            url.trim(),
+          );
+          if (cached && mountedRef.current) {
+            setOauthClientId(cached.clientId);
+            setOauthClientSecret(cached.clientSecret ?? "");
+          }
         } else {
           setNeedsManualOAuthClient(false);
           setError(displayMessage);

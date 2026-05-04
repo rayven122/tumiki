@@ -127,6 +127,7 @@ describe("oauth.service", () => {
         clientSecret: "cached-secret",
         tokenEndpointAuthMethod: "client_secret_post",
         authServerMetadata: JSON.stringify(mockMetadata),
+        isDcr: true,
       });
 
       const manager = createMcpOAuthManager();
@@ -149,6 +150,7 @@ describe("oauth.service", () => {
         clientSecret: "cached-secret",
         tokenEndpointAuthMethod: "client_secret_post",
         authServerMetadata: "{}",
+        isDcr: true,
       });
 
       vi.mocked(discoverOAuthMetadata).mockResolvedValueOnce(mockMetadata);
@@ -187,6 +189,7 @@ describe("oauth.service", () => {
         clientSecret: "cached-secret",
         tokenEndpointAuthMethod: "client_secret_post",
         authServerMetadata: JSON.stringify(metadataWithoutAuthz),
+        isDcr: true,
       });
 
       vi.mocked(discoverOAuthMetadata).mockResolvedValueOnce(mockMetadata);
@@ -275,6 +278,7 @@ describe("oauth.service", () => {
         clientSecret: "test-secret",
         tokenEndpointAuthMethod: "client_secret_post",
         authServerMetadata: JSON.stringify(mockMetadata),
+        isDcr: true,
       });
 
       const manager = createMcpOAuthManager();
@@ -344,6 +348,7 @@ describe("oauth.service", () => {
         clientSecret: "test-secret",
         tokenEndpointAuthMethod: "client_secret_post",
         authServerMetadata: JSON.stringify(mockMetadata),
+        isDcr: true,
       });
 
       const manager = createMcpOAuthManager();
@@ -370,6 +375,7 @@ describe("oauth.service", () => {
         clientSecret: "test-secret",
         tokenEndpointAuthMethod: "client_secret_post",
         authServerMetadata: JSON.stringify(mockMetadata),
+        isDcr: true,
       });
 
       const manager = createMcpOAuthManager();
@@ -404,6 +410,7 @@ describe("oauth.service", () => {
         clientSecret: "test-secret",
         tokenEndpointAuthMethod: "client_secret_post",
         authServerMetadata: JSON.stringify(mockMetadata),
+        isDcr: true,
       });
 
       const manager = createMcpOAuthManager();
@@ -412,6 +419,40 @@ describe("oauth.service", () => {
 
       manager.cancelAuthFlow();
       expect(manager.getActiveSession()).toBeNull();
+    });
+  });
+
+  describe("findManualOAuthClient", () => {
+    test("キャッシュあり時に復号化済みクレデンシャルを返す", async () => {
+      vi.mocked(
+        oauthRepository.findManualClientByServerUrl,
+      ).mockResolvedValueOnce({
+        clientId: "id",
+        clientSecret: "secret",
+      });
+
+      const manager = createMcpOAuthManager();
+      const result = await manager.findManualOAuthClient("https://example.com");
+
+      expect(result).toStrictEqual({
+        clientId: "id",
+        clientSecret: "secret",
+      });
+      expect(oauthRepository.findManualClientByServerUrl).toHaveBeenCalledWith(
+        mockDb,
+        "https://example.com",
+      );
+    });
+
+    test("キャッシュなし時にnullを返す", async () => {
+      vi.mocked(
+        oauthRepository.findManualClientByServerUrl,
+      ).mockResolvedValueOnce(null);
+
+      const manager = createMcpOAuthManager();
+      const result = await manager.findManualOAuthClient("https://unknown.com");
+
+      expect(result).toStrictEqual(null);
     });
   });
 });

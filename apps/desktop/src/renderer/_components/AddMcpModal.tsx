@@ -11,14 +11,23 @@ import {
   FALLBACK_SLUG_PLACEHOLDER,
   SLUG_FALLBACK_PREFIX,
 } from "../../shared/mcp.constants";
-import { DISCOVERY_ERROR_CODE } from "../../shared/oauth/discovery-error-codes";
+import {
+  DISCOVERY_ERROR_CODE,
+  extractOAuthErrorCode,
+} from "../../shared/oauth/discovery-error-codes";
 
 type AddMcpModalProps = {
   catalog: CatalogItem;
+  /** 組織利用モードかどうか。追加時のAPI呼び分けに使用 */
+  isOrganization: boolean;
   onClose: () => void;
   onSuccess: (serverName: string) => void;
   /** DCR 非対応が事前検出済みの場合、OAuth クライアント設定を初期表示で開く */
   initialNeedsManualOAuthClient?: boolean;
+  /** キャッシュ済み手動入力クライアントIDのプリフィル値 */
+  initialOAuthClientId?: string;
+  /** キャッシュ済み手動入力クライアントシークレットのプリフィル値 */
+  initialOAuthClientSecret?: string;
 };
 
 /** 認証タイプの表示ラベル（カタログ指定をそのまま見せる） */
@@ -38,9 +47,12 @@ const TRANSPORT_LABEL: Record<CatalogItem["transportType"], string> = {
 
 export const AddMcpModal = ({
   catalog,
+  isOrganization,
   onClose,
   onSuccess,
   initialNeedsManualOAuthClient = false,
+  initialOAuthClientId,
+  initialOAuthClientSecret,
 }: AddMcpModalProps): JSX.Element => {
   const template = catalog.connectionTemplate;
   const credentialKeys: string[] = template.credentialKeys;
@@ -53,8 +65,12 @@ export const AddMcpModal = ({
   const [showOAuthSettings, setShowOAuthSettings] = useState(
     initialNeedsManualOAuthClient,
   );
-  const [oauthClientId, setOauthClientId] = useState("");
-  const [oauthClientSecret, setOauthClientSecret] = useState("");
+  const [oauthClientId, setOauthClientId] = useState(
+    initialOAuthClientId ?? "",
+  );
+  const [oauthClientSecret, setOauthClientSecret] = useState(
+    initialOAuthClientSecret ?? "",
+  );
   /** DCR非対応サーバー用: client_id/secret 手動入力が必要なフラグ */
   const [needsManualOAuthClient, setNeedsManualOAuthClient] = useState(
     initialNeedsManualOAuthClient,
@@ -192,11 +208,7 @@ export const AddMcpModal = ({
       } catch (err) {
         const message =
           err instanceof Error ? err.message : "OAuth認証の開始に失敗しました";
-        const codeMatch = message.match(/\[(\w+)]\s/);
-        const code = codeMatch?.[1];
-        const displayMessage = codeMatch
-          ? message.slice((codeMatch.index ?? 0) + codeMatch[0].length)
-          : message;
+        const { code, displayMessage } = extractOAuthErrorCode(message);
         if (code === DISCOVERY_ERROR_CODE.DCR_NOT_SUPPORTED) {
           setNeedsManualOAuthClient(true);
           setError(null);
@@ -210,23 +222,36 @@ export const AddMcpModal = ({
     }
 
     try {
-      const result = await window.electronAPI.mcp.createFromManagerCatalog({
-        catalogId: catalog.id,
-        serverName,
-        description: catalog.description,
-        status: catalog.status,
-        permissions: catalog.permissions,
-        connectionTemplate: {
-          ...template,
-          args: resolvedArgs,
-          url: isOutline ? customUrl : template.url,
-        },
-        tools: catalog.tools.map((tool) => ({
-          name: tool.name,
-          allowed: tool.allowed,
-        })),
-        credentials,
-      });
+      const result = isOrganization
+        ? await window.electronAPI.mcp.createFromManagerCatalog({
+            catalogId: catalog.id,
+            serverName,
+            description: catalog.description,
+            status: catalog.status,
+            permissions: catalog.permissions,
+            connectionTemplate: {
+              ...template,
+              args: resolvedArgs,
+              url: isOutline ? customUrl : template.url,
+            },
+            tools: catalog.tools.map((tool) => ({
+              name: tool.name,
+              allowed: tool.allowed,
+            })),
+            credentials,
+          })
+        : await window.electronAPI.mcp.createFromCatalog({
+            catalogId: Number(catalog.id),
+            catalogName: serverName,
+            description: catalog.description,
+            transportType: template.transportType,
+            command: template.command,
+            args: JSON.stringify(resolvedArgs),
+            url: isOutline ? customUrl : template.url,
+            credentialKeys: template.credentialKeys,
+            credentials,
+            authType: template.authType,
+          });
       onSuccess(result.serverName);
     } catch {
       setError("MCPサーバーの登録に失敗しました");

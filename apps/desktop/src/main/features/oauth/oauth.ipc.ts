@@ -95,4 +95,21 @@ export const setupOAuthIpc = (manager: McpOAuthManager): void => {
   ipcMain.handle("oauth:cancelAuth", () => {
     manager.cancelAuthFlow();
   });
+
+  // 手動入力済みOAuthクライアントの検索
+  ipcMain.handle(
+    "oauth:findManualOAuthClient",
+    async (_, serverUrl: unknown) => {
+      try {
+        const parsed = z.string().url().parse(serverUrl);
+        return await manager.findManualOAuthClient(parsed);
+      } catch (error) {
+        logger.error(
+          "Failed to find manual OAuth client",
+          error instanceof Error ? error : { error },
+        );
+        throw new Error("手動入力済みOAuthクライアントの検索に失敗しました");
+      }
+    },
+  );
 };
