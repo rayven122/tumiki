@@ -12,7 +12,12 @@ export const formatElectronIpcErrorMessage = (
   error: unknown,
   fallbackMessage: string,
 ): string => {
-  const message = error instanceof Error ? error.message : fallbackMessage;
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : fallbackMessage;
   return message.replace(/^Error invoking remote method '[^']+': Error: /, "");
 };
 

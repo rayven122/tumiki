@@ -157,23 +157,22 @@ export const SettingsPage = (): JSX.Element => {
     try {
       // 保存済みURLでOIDC設定を再読み込みしてからOAuthフローを開始する。
       await window.electronAPI.manager.connect(managerUrl);
+      if (!mountedRef.current) return;
+      setIsWaitingForRelogin(true);
+      reloginTimeoutRef.current = setTimeout(() => {
+        if (!mountedRef.current) return;
+        setIsWaitingForRelogin(false);
+        setReloginError(
+          "再ログインがタイムアウトしました。もう一度実行してください。",
+        );
+        reloginTimeoutRef.current = null;
+      }, RELOGIN_TIMEOUT_MS);
       await window.electronAPI.auth.login();
-      if (mountedRef.current) {
-        setIsWaitingForRelogin(true);
-        reloginTimeoutRef.current = setTimeout(() => {
-          if (!mountedRef.current) return;
-          setIsWaitingForRelogin(false);
-          setReloginError(
-            "再ログインがタイムアウトしました。もう一度実行してください。",
-          );
-          reloginTimeoutRef.current = null;
-        }, RELOGIN_TIMEOUT_MS);
-      }
     } catch (err) {
       if (mountedRef.current) {
         clearReloginTimeout();
         setReloginError(
-          err instanceof Error ? err.message : "再ログインの開始に失敗しました",
+          formatElectronIpcErrorMessage(err, "再ログインの開始に失敗しました"),
         );
         setIsWaitingForRelogin(false);
       }
@@ -208,7 +207,7 @@ export const SettingsPage = (): JSX.Element => {
       setReloginError(
         `再ログインに失敗しました: ${formatElectronIpcErrorMessage(
           message,
-          message,
+          "再ログインに失敗しました",
         )}`,
       );
     });

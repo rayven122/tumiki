@@ -24,10 +24,19 @@ describe("formatElectronIpcErrorMessage", () => {
     ).toStrictEqual("管理サーバーからの応答フォーマットが不正です");
   });
 
-  test("Errorではない値はフォールバックメッセージを返す", () => {
+  test("文字列のElectron IPCエラープレフィックスを除去する", () => {
     expect(
       formatElectronIpcErrorMessage(
-        "unexpected",
+        "Error invoking remote method 'auth:login': Error: 認証開始に失敗しました",
+        "Desktopセッションの取得に失敗しました",
+      ),
+    ).toStrictEqual("認証開始に失敗しました");
+  });
+
+  test("Errorでも文字列でもない値はフォールバックメッセージを返す", () => {
+    expect(
+      formatElectronIpcErrorMessage(
+        { message: "unexpected" },
         "Desktopセッションの取得に失敗しました",
       ),
     ).toStrictEqual("Desktopセッションの取得に失敗しました");
