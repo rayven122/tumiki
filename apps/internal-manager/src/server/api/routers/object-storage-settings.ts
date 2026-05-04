@@ -31,10 +31,13 @@ const settingsInputSchema = z.object({
     }),
   region: optionalString(100),
   bucket: optionalString(120),
-  publicBaseUrl: optionalString(500).refine(
-    (value) => value === null || /^https?:\/\//.test(value),
-    { message: "公開URL は http:// または https:// で入力してください" },
-  ),
+  publicBaseUrl: optionalString(500)
+    .refine((value) => value === null || isHttpUrl(value), {
+      message: "公開URL は http:// または https:// で入力してください",
+    })
+    .refine((value) => value === null || isLocalOrPublicHttpUrl(value), {
+      message: "公開URL に内部ネットワークアドレスは指定できません",
+    }),
   accessKeyId: optionalString(200),
   secretAccessKey: z
     .string()
