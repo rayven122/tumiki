@@ -260,8 +260,9 @@ const ScimDirectorySection = () => {
                         Directory「{d.name}」を削除しますか？
                       </AlertDialogTitle>
                       <AlertDialogDescription>
-                        IdP 側の SCIM 設定も無効化してください。Tumiki
-                        側の同期済みユーザー/グループは残ります。
+                        {d.type === "google"
+                          ? "Google Cloud Console の OAuth 設定も無効化してください。Tumiki 側の同期済みユーザー/グループは残ります。"
+                          : "IdP 側の SCIM 設定も無効化してください。Tumiki 側の同期済みユーザー/グループは残ります。"}
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
