@@ -316,7 +316,7 @@ export const ToolCatalog = (): JSX.Element => {
             </span>
           </div>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-            {/* カスタムMCPを��加カード */}
+            {/* カスタムMCPを追加カード */}
             <button
               type="button"
               onClick={() => setShowRemoteModal(true)}
