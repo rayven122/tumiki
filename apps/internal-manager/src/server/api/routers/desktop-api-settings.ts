@@ -1,14 +1,13 @@
 import { z } from "zod";
+import { DESKTOP_API_SETTINGS_ID } from "@/lib/desktop-api-settings/constants";
 import { adminProcedure, createTRPCRouter } from "@/server/api/trpc";
-
-const SETTINGS_ID = "default";
 
 const settingsInputSchema = z.object({
   organizationName: z.string().trim().max(120).nullable(),
   organizationSlug: z
     .string()
     .trim()
-    .regex(/^[a-z0-9][a-z0-9-]*$/, {
+    .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/, {
       message: "slugは小文字英数字とハイフンで指定してください",
     })
     .max(80)
@@ -20,7 +19,7 @@ const settingsInputSchema = z.object({
 });
 
 export const defaultDesktopApiSettings = {
-  id: SETTINGS_ID,
+  id: DESKTOP_API_SETTINGS_ID,
   organizationName: null,
   organizationSlug: null,
   catalogEnabled: false,
@@ -32,7 +31,7 @@ export const defaultDesktopApiSettings = {
 export const desktopApiSettingsRouter = createTRPCRouter({
   get: adminProcedure.query(async ({ ctx }) => {
     const settings = await ctx.db.desktopApiSettings.findUnique({
-      where: { id: SETTINGS_ID },
+      where: { id: DESKTOP_API_SETTINGS_ID },
     });
 
     return settings ?? defaultDesktopApiSettings;
@@ -47,9 +46,9 @@ export const desktopApiSettingsRouter = createTRPCRouter({
         input.organizationSlug === "" ? null : input.organizationSlug;
 
       return ctx.db.desktopApiSettings.upsert({
-        where: { id: SETTINGS_ID },
+        where: { id: DESKTOP_API_SETTINGS_ID },
         create: {
-          id: SETTINGS_ID,
+          id: DESKTOP_API_SETTINGS_ID,
           ...input,
           organizationName,
           organizationSlug,

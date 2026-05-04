@@ -49,7 +49,6 @@ type FindUniqueArgs = {
 const userUpdatedAt = new Date("2026-05-03T10:00:00.000Z");
 const groupUpdatedAt = new Date("2026-05-03T10:05:00.000Z");
 const membershipCreatedAt = new Date("2026-05-03T10:01:00.000Z");
-const settingsUpdatedAt = new Date("2026-05-03T11:00:00.000Z");
 const activeUser = {
   id: "user-001",
   name: "Ada Lovelace",
@@ -141,7 +140,6 @@ const expectedPolicyVersion = `pol_v1_${createHash("sha256")
         accessRequestsEnabled: true,
         policySyncEnabled: false,
         auditLogSyncEnabled: true,
-        updatedAt: settingsUpdatedAt.toISOString(),
       },
       groups: expectedGroups,
       permissions: expectedPermissions,
@@ -165,7 +163,6 @@ describe("GET /api/desktop/v1/session", () => {
       accessRequestsEnabled: true,
       policySyncEnabled: false,
       auditLogSyncEnabled: true,
-      updatedAt: settingsUpdatedAt,
     });
   });
 
@@ -221,7 +218,6 @@ describe("GET /api/desktop/v1/session", () => {
         accessRequestsEnabled: true,
         policySyncEnabled: true,
         auditLogSyncEnabled: true,
-        updatedAt: true,
       },
     });
   });

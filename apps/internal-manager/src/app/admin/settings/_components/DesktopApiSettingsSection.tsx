@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import type { JSX, ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 
 const inputCls =
@@ -46,13 +47,7 @@ const Toggle = ({
   </div>
 );
 
-const Field = ({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) => (
+const Field = ({ label, children }: { label: string; children: ReactNode }) => (
   <div>
     <label className="text-text-secondary mb-1 block text-[11px]">
       {label}
@@ -61,16 +56,13 @@ const Field = ({
   </div>
 );
 
-export const DesktopApiSettingsSection = () => {
+export const DesktopApiSettingsSection = (): JSX.Element => {
   const utils = api.useUtils();
   const settingsQuery = api.desktopApiSettings.get.useQuery();
-  const updateMutation = api.desktopApiSettings.update.useMutation({
-    onSuccess: async () => {
-      await utils.desktopApiSettings.get.invalidate();
-      setSavedMessage("保存しました");
-    },
-  });
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
+  const savedMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const [form, setForm] = useState<SettingsFormState>({
     organizationName: "",
     organizationSlug: "",
@@ -79,6 +71,27 @@ export const DesktopApiSettingsSection = () => {
     policySyncEnabled: false,
     auditLogSyncEnabled: true,
   });
+  const updateMutation = api.desktopApiSettings.update.useMutation({
+    onSuccess: async () => {
+      await utils.desktopApiSettings.get.invalidate();
+      if (savedMessageTimerRef.current) {
+        clearTimeout(savedMessageTimerRef.current);
+      }
+      setSavedMessage("保存しました");
+      savedMessageTimerRef.current = setTimeout(() => {
+        setSavedMessage(null);
+        savedMessageTimerRef.current = null;
+      }, 3000);
+    },
+  });
+
+  useEffect(() => {
+    return () => {
+      if (savedMessageTimerRef.current) {
+        clearTimeout(savedMessageTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const data = settingsQuery.data;

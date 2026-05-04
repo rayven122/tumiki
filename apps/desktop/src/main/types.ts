@@ -50,7 +50,7 @@ export type {
   DashboardResult,
 } from "./features/dashboard/dashboard.types";
 
-// Desktop Session feature
+// Desktop セッション機能
 export type {
   DesktopSession,
   DesktopSessionFeatures,

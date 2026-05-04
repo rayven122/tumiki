@@ -3,9 +3,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { ApprovalStatus } from "@tumiki/internal-db";
 import { db } from "@tumiki/internal-db/server";
+import { DESKTOP_API_SETTINGS_ID } from "~/lib/desktop-api-settings/constants";
 import { verifyDesktopJwt } from "~/lib/auth/verify-desktop-jwt";
-
-const SETTINGS_ID = "default";
 
 const buildPolicyVersion = (policyState: unknown): string =>
   `pol_v1_${createHash("sha256")
@@ -79,7 +78,7 @@ export const GET = async (request: NextRequest) => {
   }
 
   const settings = await db.desktopApiSettings.findUnique({
-    where: { id: SETTINGS_ID },
+    where: { id: DESKTOP_API_SETTINGS_ID },
     select: {
       organizationName: true,
       organizationSlug: true,
@@ -87,7 +86,6 @@ export const GET = async (request: NextRequest) => {
       accessRequestsEnabled: true,
       policySyncEnabled: true,
       auditLogSyncEnabled: true,
-      updatedAt: true,
     },
   });
 
@@ -139,7 +137,6 @@ export const GET = async (request: NextRequest) => {
       accessRequestsEnabled: settings?.accessRequestsEnabled ?? false,
       policySyncEnabled: settings?.policySyncEnabled ?? false,
       auditLogSyncEnabled: settings?.auditLogSyncEnabled ?? true,
-      updatedAt: settings?.updatedAt.toISOString() ?? null,
     },
     groups,
     permissions: [...groupPermissions, ...individualPermissions],

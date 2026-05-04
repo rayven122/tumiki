@@ -59,4 +59,16 @@ describe("desktop-session.service", () => {
       "管理サーバーへのサインインが必要です",
     );
   });
+
+  test("サーバーエラーの場合はステータス付きエラーを返す", async () => {
+    vi.mocked(requestManagerApi).mockResolvedValue(
+      new Response(JSON.stringify({ error: "Internal Server Error" }), {
+        status: 500,
+      }),
+    );
+
+    await expect(getDesktopSession()).rejects.toThrow(
+      "Desktopセッションの取得に失敗しました（500）",
+    );
+  });
 });
