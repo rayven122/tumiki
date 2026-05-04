@@ -276,8 +276,6 @@ describe("handleDirectorySyncEvent", () => {
 
   describe("group.created", () => {
     test("Groupをsource=IDP, provider=scimでupsertする", async () => {
-      mockDb.group.upsert.mockResolvedValue({ id: "group-001" });
-
       await handleDirectorySyncEvent(buildGroupEvent("group.created"));
 
       const args = getFirstCallArg(mockDb.group.upsert);
@@ -293,13 +291,14 @@ describe("handleDirectorySyncEvent", () => {
 
       const log = findIdpSyncLogData();
       expect(log.groupId).toStrictEqual("group-001");
+      expect(log.status).toStrictEqual(SyncStatus.SUCCESS);
+      expect(log.added).toStrictEqual(0);
+      expect(log.removed).toStrictEqual(0);
     });
   });
 
   describe("group.updated", () => {
     test("nameとlastSyncedAtを更新する（group.created失敗後の永続失敗を防ぐ）", async () => {
-      mockDb.group.upsert.mockResolvedValue({ id: "group-001" });
-
       await handleDirectorySyncEvent(
         buildGroupEvent("group.updated", { name: "Engineers Renamed" }),
       );
@@ -314,6 +313,9 @@ describe("handleDirectorySyncEvent", () => {
 
       const log = findIdpSyncLogData();
       expect(log.groupId).toStrictEqual("group-001");
+      expect(log.status).toStrictEqual(SyncStatus.SUCCESS);
+      expect(log.added).toStrictEqual(0);
+      expect(log.removed).toStrictEqual(0);
     });
   });
 
@@ -379,14 +381,14 @@ describe("handleDirectorySyncEvent", () => {
 
       const log = findIdpSyncLogData();
       expect(log.groupId).toStrictEqual("group-001");
+      expect(log.status).toStrictEqual(SyncStatus.SUCCESS);
       expect(log.added).toStrictEqual(1);
+      expect(log.removed).toStrictEqual(0);
     });
   });
 
   describe("group.user_removed", () => {
     test("UserGroupMembershipをdeleteManyで削除し、removedにcountを記録する", async () => {
-      mockDb.userGroupMembership.deleteMany.mockResolvedValue({ count: 1 });
-
       await handleDirectorySyncEvent(
         buildUserWithGroupEvent("group.user_removed"),
       );
@@ -398,6 +400,8 @@ describe("handleDirectorySyncEvent", () => {
 
       const log = findIdpSyncLogData();
       expect(log.groupId).toStrictEqual("group-001");
+      expect(log.status).toStrictEqual(SyncStatus.SUCCESS);
+      expect(log.added).toStrictEqual(0);
       expect(log.removed).toStrictEqual(1);
     });
 
