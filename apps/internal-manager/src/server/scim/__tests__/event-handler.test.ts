@@ -339,7 +339,7 @@ describe("handleDirectorySyncEvent", () => {
       expect(log.removed).toStrictEqual(3);
     });
 
-    test("既存しないGroupの場合はdeleteを呼ばずSUCCESSとして処理する", async () => {
+    test("存在しないGroupの場合はdeleteを呼ばずSUCCESSとして処理する", async () => {
       mockDb.group.findUnique.mockResolvedValue(null);
 
       await handleDirectorySyncEvent(buildGroupEvent("group.deleted"));
@@ -527,9 +527,11 @@ describe("handleDirectorySyncEvent", () => {
     });
   });
 
+  // tooling/vitest/src/setup.ts で global.console.error は vi.fn() に差し替え済み、
+  // beforeEach の vi.clearAllMocks() で呼び出し履歴もクリアされるため、
+  // 個別テスト側で spyOn / mockRestore する必要はない
   describe("エラーハンドリング", () => {
     test("DB操作失敗時はthrowせずIdpSyncLogにstatus=FAILED, errors=1を記録する", async () => {
-      const consoleSpy = vi.spyOn(console, "error").mockImplementation(vi.fn());
       mockDb.user.upsert.mockRejectedValue(new Error("connection refused"));
 
       await expect(
@@ -541,17 +543,14 @@ describe("handleDirectorySyncEvent", () => {
       expect(log.errors).toStrictEqual(1);
       expect(log.added).toStrictEqual(0);
       expect(log.detail).toStrictEqual("connection refused");
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         "[scim:event-handler]",
         "user.created",
         "connection refused",
       );
-
-      consoleSpy.mockRestore();
     });
 
     test("非Errorをthrowした場合はString化してdetailに記録する", async () => {
-      const consoleSpy = vi.spyOn(console, "error").mockImplementation(vi.fn());
       mockDb.user.upsert.mockRejectedValue("plain string error");
 
       await handleDirectorySyncEvent(buildUserEvent("user.created"));
@@ -559,24 +558,19 @@ describe("handleDirectorySyncEvent", () => {
       const log = findIdpSyncLogData();
       expect(log.detail).toStrictEqual("plain string error");
       expect(log.status).toStrictEqual(SyncStatus.FAILED);
-
-      consoleSpy.mockRestore();
     });
 
     test("idpSyncLog.create失敗時はthrowせずconsole.errorのみ（IdP側の再試行ループを防ぐ）", async () => {
-      const consoleSpy = vi.spyOn(console, "error").mockImplementation(vi.fn());
       mockDb.idpSyncLog.create.mockRejectedValue(new Error("log write failed"));
 
       await expect(
         handleDirectorySyncEvent(buildUserEvent("user.created")),
       ).resolves.toBeUndefined();
 
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         "[scim:event-handler] idpSyncLog write failed:",
         expect.any(Error),
       );
-
-      consoleSpy.mockRestore();
     });
   });
 
