@@ -3,6 +3,10 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { ApprovalStatus } from "@tumiki/internal-db";
 import { db } from "@tumiki/internal-db/server";
+import {
+  DESKTOP_API_SETTINGS_DEFAULTS,
+  DESKTOP_API_SETTINGS_ID,
+} from "~/lib/desktop-api-settings/constants";
 import { verifyDesktopJwt } from "~/lib/auth/verify-desktop-jwt";
 
 const buildPolicyVersion = (policyState: unknown): string =>
@@ -76,6 +80,19 @@ export const GET = async (request: NextRequest) => {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const settings = await db.desktopApiSettings.findUnique({
+    where: { id: DESKTOP_API_SETTINGS_ID },
+    select: {
+      organizationName: true,
+      organizationSlug: true,
+      catalogEnabled: true,
+      accessRequestsEnabled: true,
+      policySyncEnabled: true,
+      auditLogSyncEnabled: true,
+    },
+  });
+  const desktopApiSettings = settings ?? DESKTOP_API_SETTINGS_DEFAULTS;
+
   const groups = user.groupMemberships.map((membership) => ({
     id: membership.group.id,
     name: membership.group.name,
@@ -102,6 +119,7 @@ export const GET = async (request: NextRequest) => {
     (permission) => ({
       source: "INDIVIDUAL" as const,
       mcpServerId: permission.mcpServerId,
+      // ApprovalRequest承認は対象MCPサーバーへの全操作権限付与として扱う。
       read: true,
       write: true,
       execute: true,
@@ -117,6 +135,14 @@ export const GET = async (request: NextRequest) => {
       role: user.role,
       updatedAt: user.updatedAt.toISOString(),
     },
+    settings: {
+      organizationName: desktopApiSettings.organizationName,
+      organizationSlug: desktopApiSettings.organizationSlug,
+      catalogEnabled: desktopApiSettings.catalogEnabled,
+      accessRequestsEnabled: desktopApiSettings.accessRequestsEnabled,
+      policySyncEnabled: desktopApiSettings.policySyncEnabled,
+      auditLogSyncEnabled: desktopApiSettings.auditLogSyncEnabled,
+    },
     groups,
     permissions: [...groupPermissions, ...individualPermissions],
   });
@@ -131,16 +157,16 @@ export const GET = async (request: NextRequest) => {
     },
     organization: {
       id: null,
-      slug: null,
-      name: null,
+      slug: desktopApiSettings.organizationSlug,
+      name: desktopApiSettings.organizationName,
     },
     groups,
     permissions: [...groupPermissions, ...individualPermissions],
     features: {
-      catalog: false,
-      accessRequests: false,
-      policySync: false,
-      auditLogSync: true,
+      catalog: desktopApiSettings.catalogEnabled,
+      accessRequests: desktopApiSettings.accessRequestsEnabled,
+      policySync: desktopApiSettings.policySyncEnabled,
+      auditLogSync: desktopApiSettings.auditLogSyncEnabled,
     },
     policyVersion,
   });

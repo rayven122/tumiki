@@ -18,6 +18,7 @@ import type {
   AuditLogListResult,
   DashboardInput,
   DashboardResult,
+  DesktopSession,
 } from "../main/types";
 
 // Electron APIを安全に公開
@@ -118,6 +119,12 @@ const api = {
     getUrl: (): Promise<string | null> => ipcRenderer.invoke("manager:getUrl"),
     connect: (url: string): Promise<void> =>
       ipcRenderer.invoke("manager:connect", url),
+  },
+
+  // Desktopセッション API
+  desktopSession: {
+    get: (): Promise<DesktopSession | null> =>
+      ipcRenderer.invoke("desktopSession:get"),
   },
 
   // プロファイル管理 API

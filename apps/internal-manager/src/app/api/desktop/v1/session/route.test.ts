@@ -4,12 +4,16 @@ import type { NextRequest } from "next/server";
 import { ApprovalStatus, GroupSource, Role } from "@tumiki/internal-db";
 
 const mockFindUnique = vi.hoisted(() => vi.fn());
+const mockFindSettings = vi.hoisted(() => vi.fn());
 const mockVerifyDesktopJwt = vi.hoisted(() => vi.fn());
 
 vi.mock("@tumiki/internal-db/server", () => ({
   db: {
     user: {
       findUnique: mockFindUnique,
+    },
+    desktopApiSettings: {
+      findUnique: mockFindSettings,
     },
   },
 }));
@@ -129,6 +133,14 @@ const expectedPolicyVersion = `pol_v1_${createHash("sha256")
         role: Role.USER,
         updatedAt: userUpdatedAt.toISOString(),
       },
+      settings: {
+        organizationName: "Rayven",
+        organizationSlug: "rayven",
+        catalogEnabled: true,
+        accessRequestsEnabled: true,
+        policySyncEnabled: false,
+        auditLogSyncEnabled: true,
+      },
       groups: expectedGroups,
       permissions: expectedPermissions,
     }),
@@ -144,6 +156,14 @@ describe("GET /api/desktop/v1/session", () => {
       userId: "user-001",
     });
     mockFindUnique.mockResolvedValue(activeUser);
+    mockFindSettings.mockResolvedValue({
+      organizationName: "Rayven",
+      organizationSlug: "rayven",
+      catalogEnabled: true,
+      accessRequestsEnabled: true,
+      policySyncEnabled: false,
+      auditLogSyncEnabled: true,
+    });
   });
 
   test("Desktopセッション情報を認証ユーザーに紐づけて返す", async () => {
@@ -159,14 +179,14 @@ describe("GET /api/desktop/v1/session", () => {
       },
       organization: {
         id: null,
-        slug: null,
-        name: null,
+        slug: "rayven",
+        name: "Rayven",
       },
       groups: expectedGroups,
       permissions: expectedPermissions,
       features: {
-        catalog: false,
-        accessRequests: false,
+        catalog: true,
+        accessRequests: true,
         policySync: false,
         auditLogSync: true,
       },
@@ -189,6 +209,40 @@ describe("GET /api/desktop/v1/session", () => {
     expect(
       findUniqueArgs?.select.individualPermissions.where.OR[1].expiresAt.gt,
     ).toBeInstanceOf(Date);
+    expect(mockFindSettings).toHaveBeenCalledWith({
+      where: { id: "default" },
+      select: {
+        organizationName: true,
+        organizationSlug: true,
+        catalogEnabled: true,
+        accessRequestsEnabled: true,
+        policySyncEnabled: true,
+        auditLogSyncEnabled: true,
+      },
+    });
+  });
+
+  test("Desktop API設定が未作成の場合はデフォルト値を返す", async () => {
+    mockFindSettings.mockResolvedValue(null);
+
+    const response = await GET(buildRequest());
+    const body = (await response.json()) as {
+      organization: { name: string | null; slug: string | null };
+      features: Record<string, boolean>;
+    };
+
+    expect(response.status).toStrictEqual(200);
+    expect(body.organization).toStrictEqual({
+      id: null,
+      name: null,
+      slug: null,
+    });
+    expect(body.features).toStrictEqual({
+      catalog: false,
+      accessRequests: false,
+      policySync: false,
+      auditLogSync: true,
+    });
   });
 
   test("認証に失敗した場合は401を返す", async () => {

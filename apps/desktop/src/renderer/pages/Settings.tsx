@@ -1,5 +1,6 @@
 import { type JSX, useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Building2, RefreshCw, ShieldCheck, Users2 } from "lucide-react";
 import {
   CURRENT_USER,
   TOOLS,
@@ -11,6 +12,7 @@ import { SettingsForm } from "../_components/SettingsForm";
 import { ConfirmDialog } from "../_components/ConfirmDialog";
 import type { ProfileState } from "../../shared/types";
 import { PROFILE_CHANGED_EVENT } from "../../shared/events";
+import type { DesktopSession } from "../../main/types";
 
 /** トグルスイッチ（CSS変数ベース） */
 const Toggle = ({
@@ -76,18 +78,54 @@ export const SettingsPage = (): JSX.Element => {
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [disconnectError, setDisconnectError] = useState<string | null>(null);
+  const [desktopSession, setDesktopSession] = useState<DesktopSession | null>(
+    null,
+  );
+  const [sessionLoading, setSessionLoading] = useState(false);
+  const [sessionError, setSessionError] = useState<string | null>(null);
   const mountedRef = useRef(true);
+
+  const refreshDesktopSession = useCallback((): void => {
+    setSessionLoading(true);
+    setSessionError(null);
+    window.electronAPI.desktopSession
+      .get()
+      .then((session) => {
+        if (mountedRef.current) setDesktopSession(session);
+      })
+      .catch((err) => {
+        if (mountedRef.current) {
+          setDesktopSession(null);
+          setSessionError(
+            err instanceof Error
+              ? err.message
+              : "Desktopセッションの取得に失敗しました",
+          );
+        }
+      })
+      .finally(() => {
+        if (mountedRef.current) setSessionLoading(false);
+      });
+  }, []);
 
   const refreshProfile = useCallback((): void => {
     window.electronAPI.profile
       .getState()
       .then((state) => {
-        if (mountedRef.current) setProfile(state);
+        if (mountedRef.current) {
+          setProfile(state);
+          if (state.activeProfile === "organization") {
+            refreshDesktopSession();
+          } else {
+            setDesktopSession(null);
+            setSessionError(null);
+          }
+        }
       })
       .catch(() => {
         if (mountedRef.current) setProfile(null);
       });
-  }, []);
+  }, [refreshDesktopSession]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -135,8 +173,8 @@ export const SettingsPage = (): JSX.Element => {
   };
 
   // 権限サマリー
-  const approvedTools = TOOLS.filter((t) => t.approved);
-  const permissionCounts = approvedTools.reduce(
+  const mockApprovedTools = TOOLS.filter((t) => t.approved);
+  const mockPermissionCounts = mockApprovedTools.reduce(
     (acc, tool) => {
       for (const perm of tool.permissions) {
         acc[perm] = (acc[perm] ?? 0) + 1;
@@ -145,6 +183,21 @@ export const SettingsPage = (): JSX.Element => {
     },
     {} as Record<string, number>,
   );
+  const sessionPermissionCounts = desktopSession?.permissions.reduce(
+    (acc, permission) => {
+      if (permission.read) acc.read = (acc.read ?? 0) + 1;
+      if (permission.write) acc.write = (acc.write ?? 0) + 1;
+      if (permission.execute) acc.execute = (acc.execute ?? 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
+  const approvedToolCount = desktopSession
+    ? new Set(
+        desktopSession.permissions.map((permission) => permission.mcpServerId),
+      ).size
+    : mockApprovedTools.length;
+  const permissionCounts = sessionPermissionCounts ?? mockPermissionCounts;
 
   return (
     <div className="space-y-4 p-6">
@@ -217,6 +270,185 @@ export const SettingsPage = (): JSX.Element => {
         )}
       </div>
 
+      {profile?.activeProfile === "organization" && (
+        <div className="space-y-5 rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-sm font-medium text-[var(--text-primary)]">
+                組織セッション
+              </h2>
+              <p className="mt-1 text-xs text-[var(--text-muted)]">
+                管理サーバーから取得したユーザー情報・権限・機能フラグ
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={refreshDesktopSession}
+              disabled={sessionLoading}
+              className="flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--text-secondary)] transition hover:bg-[var(--bg-card-hover)] disabled:opacity-50"
+            >
+              <RefreshCw
+                size={13}
+                className={sessionLoading ? "animate-spin" : ""}
+              />
+              再取得
+            </button>
+          </div>
+
+          {sessionError && (
+            <p className="rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">
+              {sessionError}
+            </p>
+          )}
+
+          {!sessionError && !desktopSession && (
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-active)] p-4 text-sm text-[var(--text-muted)]">
+              {sessionLoading
+                ? "管理サーバーから取得しています..."
+                : "Desktopセッションはまだ取得されていません。"}
+            </div>
+          )}
+
+          {desktopSession && (
+            <>
+              <div className="grid gap-3 md:grid-cols-4">
+                <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-active)] p-3">
+                  <div className="mb-2 flex items-center gap-2 text-xs text-[var(--text-muted)]">
+                    <Building2 size={14} />
+                    組織
+                  </div>
+                  <p className="truncate text-sm font-medium text-[var(--text-primary)]">
+                    {desktopSession.organization.name ?? "未設定"}
+                  </p>
+                  <p className="mt-1 truncate text-[10px] text-[var(--text-subtle)]">
+                    {desktopSession.organization.slug ?? "-"}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-active)] p-3">
+                  <div className="mb-2 flex items-center gap-2 text-xs text-[var(--text-muted)]">
+                    <Users2 size={14} />
+                    グループ
+                  </div>
+                  <p className="text-lg font-semibold text-[var(--text-primary)]">
+                    {desktopSession.groups.length}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-active)] p-3">
+                  <div className="mb-2 flex items-center gap-2 text-xs text-[var(--text-muted)]">
+                    <ShieldCheck size={14} />
+                    権限
+                  </div>
+                  <p className="text-lg font-semibold text-[var(--text-primary)]">
+                    {desktopSession.permissions.length}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-active)] p-3">
+                  <div className="mb-2 text-xs text-[var(--text-muted)]">
+                    policyVersion
+                  </div>
+                  <p className="truncate font-mono text-[11px] text-[var(--text-secondary)]">
+                    {desktopSession.policyVersion}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="rounded-lg border border-[var(--border)] p-4">
+                  <h3 className="text-xs font-medium text-[var(--text-muted)]">
+                    ユーザー
+                  </h3>
+                  <div className="mt-3 grid gap-3 text-sm md:grid-cols-2">
+                    <div>
+                      <p className="text-xs text-[var(--text-subtle)]">氏名</p>
+                      <p className="mt-1 text-[var(--text-secondary)]">
+                        {desktopSession.user.name ?? "-"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-[var(--text-subtle)]">
+                        メール
+                      </p>
+                      <p className="mt-1 truncate text-[var(--text-secondary)]">
+                        {desktopSession.user.email ?? "-"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-[var(--text-subtle)]">role</p>
+                      <p className="mt-1 text-[var(--text-secondary)]">
+                        {desktopSession.user.role}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-[var(--text-subtle)]">sub</p>
+                      <p className="mt-1 truncate font-mono text-[11px] text-[var(--text-secondary)]">
+                        {desktopSession.user.sub}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-[var(--border)] p-4">
+                  <h3 className="text-xs font-medium text-[var(--text-muted)]">
+                    機能フラグ
+                  </h3>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    {Object.entries(desktopSession.features).map(
+                      ([key, enabled]) => (
+                        <div
+                          key={key}
+                          className="flex items-center justify-between rounded-lg bg-[var(--bg-active)] px-3 py-2"
+                        >
+                          <span className="text-xs text-[var(--text-secondary)]">
+                            {key}
+                          </span>
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                              enabled
+                                ? "bg-[var(--badge-success-bg)] text-[var(--badge-success-text)]"
+                                : "bg-[var(--bg-card-hover)] text-[var(--text-subtle)]"
+                            }`}
+                          >
+                            {enabled ? "ON" : "OFF"}
+                          </span>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {desktopSession.groups.length > 0 && (
+                <div className="rounded-lg border border-[var(--border)] p-4">
+                  <h3 className="text-xs font-medium text-[var(--text-muted)]">
+                    所属グループ
+                  </h3>
+                  <div className="mt-3 grid gap-2 md:grid-cols-2">
+                    {desktopSession.groups.map((group) => (
+                      <div
+                        key={group.id}
+                        className="rounded-lg bg-[var(--bg-active)] px-3 py-2"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="truncate text-sm text-[var(--text-secondary)]">
+                            {group.name}
+                          </p>
+                          <span className="rounded-full bg-[var(--bg-card-hover)] px-2 py-0.5 text-[10px] text-[var(--text-subtle)]">
+                            {group.source}
+                          </span>
+                        </div>
+                        <p className="mt-1 truncate text-[10px] text-[var(--text-subtle)]">
+                          {group.provider ?? group.membershipSource}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
       {/* プロフィール */}
       <div className="space-y-5 rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">
         <h2 className="text-sm font-medium text-[var(--text-primary)]">
@@ -264,7 +496,7 @@ export const SettingsPage = (): JSX.Element => {
             <div className="rounded-lg border border-[var(--border)] px-4 py-2.5">
               <p className="text-xs text-[var(--text-muted)]">承認済みツール</p>
               <p className="text-lg font-semibold text-[var(--text-primary)]">
-                {approvedTools.length}
+                {approvedToolCount}
               </p>
             </div>
             {Object.entries(permissionCounts).map(([perm, count]) => (
