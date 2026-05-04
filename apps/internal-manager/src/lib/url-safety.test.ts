@@ -33,6 +33,15 @@ test("内部IPv6アドレスは拒否する", () => {
   expect(isLocalOrPublicHttpUrl("http://[fc00::1]")).toStrictEqual(false);
   expect(isLocalOrPublicHttpUrl("http://[fd00::1]")).toStrictEqual(false);
   expect(isLocalOrPublicHttpUrl("http://[fe80::1]")).toStrictEqual(false);
+  expect(isLocalOrPublicHttpUrl("http://[::ffff:192.168.1.1]")).toStrictEqual(
+    false,
+  );
+  expect(isLocalOrPublicHttpUrl("http://[::ffff:c0a8:101]")).toStrictEqual(
+    false,
+  );
+  expect(
+    isLocalOrPublicHttpUrl("http://[0:0:0:0:0:ffff:c0a8:101]"),
+  ).toStrictEqual(false);
 });
 
 test("公開HTTP URLは許可する", () => {
@@ -47,5 +56,8 @@ test("DNS解決後に内部IPを指すURLは拒否する", async () => {
   ).resolves.toStrictEqual(true);
   await expect(
     isResolvedLocalOrPublicHttpUrl("http://10.0.0.1"),
+  ).resolves.toStrictEqual(false);
+  await expect(
+    isResolvedLocalOrPublicHttpUrl("http://[::ffff:192.168.1.1]"),
   ).resolves.toStrictEqual(false);
 });
