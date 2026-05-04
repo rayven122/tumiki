@@ -1,4 +1,5 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
+import { z } from "zod";
 import { getOidcEnv } from "~/lib/env";
 import { db } from "@tumiki/internal-db/server";
 
@@ -13,6 +14,17 @@ let cachedJwksExpiresAt = 0;
 let jwksPromise: Promise<ReturnType<typeof createRemoteJWKSet>> | null = null;
 const JWKS_DISCOVERY_CACHE_TTL_MS = 10 * 60 * 1000;
 const OIDC_DISCOVERY_TIMEOUT_MS = 5 * 1000;
+const discoverySchema = z.object({
+  jwks_uri: z.string().url(),
+});
+
+const isAudienceValidationError = (error: unknown): boolean =>
+  typeof error === "object" &&
+  error !== null &&
+  "code" in error &&
+  error.code === "ERR_JWT_CLAIM_VALIDATION_FAILED" &&
+  "claim" in error &&
+  error.claim === "aud";
 
 // OIDCディスカバリ経由でJWKS URIを取得してJWKSクライアントを生成
 const getJwks = async () => {
@@ -43,12 +55,12 @@ const getJwks = async () => {
       throw new Error("OIDCディスカバリ取得失敗");
     }
 
-    const config = (await res.json()) as unknown as { jwks_uri?: string };
-    if (!config.jwks_uri) {
+    const config = discoverySchema.safeParse(await res.json());
+    if (!config.success) {
       throw new Error("OIDCディスカバリにjwks_uriが含まれていません");
     }
 
-    cachedJwks = createRemoteJWKSet(new URL(config.jwks_uri));
+    cachedJwks = createRemoteJWKSet(new URL(config.data.jwks_uri));
     cachedJwksExpiresAt = Date.now() + JWKS_DISCOVERY_CACHE_TTL_MS;
     return cachedJwks;
   })().finally(() => {
@@ -67,17 +79,29 @@ export const verifyDesktopJwt = async (
   }
 
   const token = authHeader.slice(7);
-  const { OIDC_ISSUER, OIDC_CLIENT_ID } = getOidcEnv();
+  const { OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_DESKTOP_CLIENT_ID } = getOidcEnv();
 
+  const expectedClientId = OIDC_DESKTOP_CLIENT_ID ?? OIDC_CLIENT_ID;
   const jwks = await getJwks();
   const { payload } = await jwtVerify(token, jwks, {
     issuer: OIDC_ISSUER,
-    audience: OIDC_CLIENT_ID,
+    audience: expectedClientId,
+  }).catch(async (error: unknown) => {
+    if (!isAudienceValidationError(error)) throw error;
+    // Keycloakのaccess tokenはaudがaccount等の内部リソースになるため、
+    // issuer検証後にIdPが付与するazpでDesktopクライアントを確認する。
+    const result = await jwtVerify(token, jwks, {
+      issuer: OIDC_ISSUER,
+    });
+    if (result.payload.azp !== expectedClientId) {
+      throw new Error("Invalid desktop token client");
+    }
+    return result;
   });
 
   const sub = payload.sub;
   if (!sub) {
-    throw new Error("Unauthorized");
+    throw new Error("Missing token subject");
   }
 
   // ExternalIdentity経由でユーザーを特定（プロバイダー名はOIDCで固定）
@@ -87,7 +111,7 @@ export const verifyDesktopJwt = async (
   });
 
   if (!identity) {
-    throw new Error("Unauthorized");
+    throw new Error("External identity not found");
   }
 
   return { sub, userId: identity.userId };

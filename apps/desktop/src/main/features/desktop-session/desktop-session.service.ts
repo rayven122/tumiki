@@ -11,8 +11,9 @@ export const desktopSessionSchema = z.object({
   }),
   organization: z.object({
     id: z.string().nullable(),
-    slug: z.string().nullable(),
+    slug: z.string().nullable().default(null),
     name: z.string().nullable(),
+    logoUrl: z.string().nullable().default(null),
   }),
   groups: z.array(
     z.object({
@@ -23,6 +24,18 @@ export const desktopSessionSchema = z.object({
       provider: z.string().nullable(),
       externalId: z.string().nullable(),
       membershipSource: z.string(),
+      lastSyncedAt: z.string().nullable(),
+    }),
+  ),
+  orgUnits: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      externalId: z.string().nullable(),
+      source: z.string(),
+      path: z.string().nullable(),
+      parentId: z.string().nullable(),
+      isPrimary: z.boolean(),
       lastSyncedAt: z.string().nullable(),
     }),
   ),
