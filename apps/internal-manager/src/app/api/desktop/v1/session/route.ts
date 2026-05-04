@@ -3,7 +3,10 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { ApprovalStatus } from "@tumiki/internal-db";
 import { db } from "@tumiki/internal-db/server";
-import { DESKTOP_API_SETTINGS_ID } from "~/lib/desktop-api-settings/constants";
+import {
+  DESKTOP_API_SETTINGS_DEFAULTS,
+  DESKTOP_API_SETTINGS_ID,
+} from "~/lib/desktop-api-settings/constants";
 import { verifyDesktopJwt } from "~/lib/auth/verify-desktop-jwt";
 
 const buildPolicyVersion = (policyState: unknown): string =>
@@ -88,6 +91,7 @@ export const GET = async (request: NextRequest) => {
       auditLogSyncEnabled: true,
     },
   });
+  const desktopApiSettings = settings ?? DESKTOP_API_SETTINGS_DEFAULTS;
 
   const groups = user.groupMemberships.map((membership) => ({
     id: membership.group.id,
@@ -131,12 +135,12 @@ export const GET = async (request: NextRequest) => {
       updatedAt: user.updatedAt.toISOString(),
     },
     settings: {
-      organizationName: settings?.organizationName ?? null,
-      organizationSlug: settings?.organizationSlug ?? null,
-      catalogEnabled: settings?.catalogEnabled ?? false,
-      accessRequestsEnabled: settings?.accessRequestsEnabled ?? false,
-      policySyncEnabled: settings?.policySyncEnabled ?? false,
-      auditLogSyncEnabled: settings?.auditLogSyncEnabled ?? true,
+      organizationName: desktopApiSettings.organizationName,
+      organizationSlug: desktopApiSettings.organizationSlug,
+      catalogEnabled: desktopApiSettings.catalogEnabled,
+      accessRequestsEnabled: desktopApiSettings.accessRequestsEnabled,
+      policySyncEnabled: desktopApiSettings.policySyncEnabled,
+      auditLogSyncEnabled: desktopApiSettings.auditLogSyncEnabled,
     },
     groups,
     permissions: [...groupPermissions, ...individualPermissions],
@@ -152,16 +156,16 @@ export const GET = async (request: NextRequest) => {
     },
     organization: {
       id: null,
-      slug: settings?.organizationSlug ?? null,
-      name: settings?.organizationName ?? null,
+      slug: desktopApiSettings.organizationSlug,
+      name: desktopApiSettings.organizationName,
     },
     groups,
     permissions: [...groupPermissions, ...individualPermissions],
     features: {
-      catalog: settings?.catalogEnabled ?? false,
-      accessRequests: settings?.accessRequestsEnabled ?? false,
-      policySync: settings?.policySyncEnabled ?? false,
-      auditLogSync: settings?.auditLogSyncEnabled ?? true,
+      catalog: desktopApiSettings.catalogEnabled,
+      accessRequests: desktopApiSettings.accessRequestsEnabled,
+      policySync: desktopApiSettings.policySyncEnabled,
+      auditLogSync: desktopApiSettings.auditLogSyncEnabled,
     },
     policyVersion,
   });

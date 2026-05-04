@@ -132,6 +132,11 @@ export const DesktopApiSettingsSection = (): JSX.Element => {
         {settingsQuery.isLoading && (
           <span className="text-text-muted text-[10px]">読み込み中</span>
         )}
+        {settingsQuery.error && (
+          <span className="text-xs text-red-400">
+            設定の読み込みに失敗しました
+          </span>
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -215,7 +220,7 @@ export const DesktopApiSettingsSection = (): JSX.Element => {
         <button
           type="button"
           onClick={save}
-          disabled={updateMutation.isPending}
+          disabled={updateMutation.isPending || Boolean(settingsQuery.error)}
           className="bg-btn-primary-bg text-btn-primary-text rounded-lg px-4 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {updateMutation.isPending ? "保存中..." : "保存"}

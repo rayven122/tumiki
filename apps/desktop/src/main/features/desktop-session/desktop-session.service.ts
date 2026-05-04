@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { requestManagerApi } from "../../shared/manager-api-client";
 
-const desktopSessionSchema = z.object({
+export const desktopSessionSchema = z.object({
   user: z.object({
     id: z.string(),
     sub: z.string(),
@@ -64,5 +64,9 @@ export const getDesktopSession = async () => {
   }
 
   const data: unknown = await response.json();
-  return desktopSessionSchema.parse(data);
+  const result = desktopSessionSchema.safeParse(data);
+  if (!result.success) {
+    throw new Error("管理サーバーからの応答フォーマットが不正です");
+  }
+  return result.data;
 };

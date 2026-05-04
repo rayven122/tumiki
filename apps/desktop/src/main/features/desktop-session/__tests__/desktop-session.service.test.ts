@@ -71,4 +71,14 @@ describe("desktop-session.service", () => {
       "Desktopセッションの取得に失敗しました（500）",
     );
   });
+
+  test("応答フォーマットが不正な場合は利用者向けエラーを返す", async () => {
+    vi.mocked(requestManagerApi).mockResolvedValue(
+      new Response(JSON.stringify({ invalid: true }), { status: 200 }),
+    );
+
+    await expect(getDesktopSession()).rejects.toThrow(
+      "管理サーバーからの応答フォーマットが不正です",
+    );
+  });
 });

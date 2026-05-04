@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { DESKTOP_API_SETTINGS_ID } from "@/lib/desktop-api-settings/constants";
+import {
+  DEFAULT_DESKTOP_API_SETTINGS,
+  DESKTOP_API_SETTINGS_ID,
+} from "@/lib/desktop-api-settings/constants";
 import { adminProcedure, createTRPCRouter } from "@/server/api/trpc";
 
 const settingsInputSchema = z.object({
@@ -18,23 +21,13 @@ const settingsInputSchema = z.object({
   auditLogSyncEnabled: z.boolean(),
 });
 
-export const defaultDesktopApiSettings = {
-  id: DESKTOP_API_SETTINGS_ID,
-  organizationName: null,
-  organizationSlug: null,
-  catalogEnabled: false,
-  accessRequestsEnabled: false,
-  policySyncEnabled: false,
-  auditLogSyncEnabled: true,
-};
-
 export const desktopApiSettingsRouter = createTRPCRouter({
   get: adminProcedure.query(async ({ ctx }) => {
     const settings = await ctx.db.desktopApiSettings.findUnique({
       where: { id: DESKTOP_API_SETTINGS_ID },
     });
 
-    return settings ?? defaultDesktopApiSettings;
+    return settings ?? DEFAULT_DESKTOP_API_SETTINGS;
   }),
 
   update: adminProcedure
