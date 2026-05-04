@@ -125,12 +125,16 @@ GET /api/desktop/v1/session
 
 認証: 必須
 
+パス名は `session` のままとする。ここで返すのは Auth.js の cookie セッションではなく、Desktop がログイン後に必要なユーザー文脈を初期取得するための Desktop セッションであり、`profile` よりも権限・グループ・機能フラグを含む用途に合うため。
+
 返すべき情報:
 
 | フィールド      | 用途                             |
 | --------------- | -------------------------------- |
 | `user`          | Desktop の表示名、メール、role   |
+| `organization`  | 組織プロファイル                 |
 | `groups`        | 所属グループと同期元             |
+| `permissions`   | グループ・個別承認由来の権限     |
 | `features`      | Desktop で有効にする機能フラグ   |
 | `policyVersion` | 後続の差分同期・キャッシュ無効化 |
 
