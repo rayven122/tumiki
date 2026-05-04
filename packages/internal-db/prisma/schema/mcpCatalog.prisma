@@ -1,0 +1,150 @@
+/**
+ * @namespace McpCatalog
+ * internal-manager が管理する社内 MCP カタログとツール単位ポリシー
+ */
+
+/// @namespace McpCatalog
+enum McpCatalogTransportType {
+  STDIO
+  SSE
+  STREAMABLE_HTTP
+}
+
+/// @namespace McpCatalog
+enum McpCatalogAuthType {
+  NONE
+  API_KEY
+  BEARER
+  OAUTH
+}
+
+/// @namespace McpCatalog
+enum McpCatalogStatus {
+  ACTIVE
+  DISABLED
+}
+
+/// @namespace McpCatalog
+enum McpToolRiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+/// @namespace McpCatalog
+enum OrgUnitSource {
+  SCIM
+  GROUP
+  MANUAL
+}
+
+/// @namespace McpCatalog
+enum PolicyEffect {
+  ALLOW
+  DENY
+}
+
+/// @namespace McpCatalog
+model McpCatalog {
+  id             String                  @id @default(cuid())
+  slug           String                  @unique
+  name           String
+  description    String?
+  transportType  McpCatalogTransportType @default(STDIO)
+  authType       McpCatalogAuthType      @default(NONE)
+  status         McpCatalogStatus        @default(ACTIVE)
+  iconPath       String?
+  configTemplate Json                    @default("{}")
+  credentialKeys String[]                @default([])
+  createdBy      String?
+  creator        User?                   @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+
+  tools              McpCatalogTool[]
+  orgUnitPermissions OrgUnitToolPermission[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([deletedAt])
+  @@index([status])
+}
+
+/// @namespace McpCatalog
+model McpCatalogTool {
+  id             String           @id @default(cuid())
+  catalogId      String
+  catalog        McpCatalog       @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  name           String
+  description    String?
+  inputSchema    Json             @default("{}")
+  defaultAllowed Boolean          @default(false)
+  riskLevel      McpToolRiskLevel @default(MEDIUM)
+
+  orgUnitPermissions OrgUnitToolPermission[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([catalogId, name])
+  @@index([deletedAt])
+}
+
+/// @namespace McpCatalog
+model OrgUnit {
+  id           String        @id @default(cuid())
+  name         String
+  externalId   String?
+  source       OrgUnitSource @default(SCIM)
+  path         String
+  parentId     String?
+  parent       OrgUnit?      @relation("OrgUnitHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children     OrgUnit[]     @relation("OrgUnitHierarchy")
+  lastSyncedAt DateTime?
+
+  memberships UserOrgUnitMembership[]
+  permissions OrgUnitToolPermission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([source, externalId])
+  @@index([parentId])
+  @@index([path])
+}
+
+/// @namespace McpCatalog
+model UserOrgUnitMembership {
+  id        String  @id @default(cuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orgUnitId String
+  orgUnit   OrgUnit @relation(fields: [orgUnitId], references: [id], onDelete: Cascade)
+  isPrimary Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, orgUnitId])
+  @@index([orgUnitId])
+}
+
+/// @namespace McpCatalog
+model OrgUnitToolPermission {
+  id        String       @id @default(cuid())
+  orgUnitId String
+  orgUnit   OrgUnit      @relation(fields: [orgUnitId], references: [id], onDelete: Cascade)
+  catalogId String
+  catalog   McpCatalog   @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  toolId    String
+  tool      McpCatalogTool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  effect    PolicyEffect
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([orgUnitId, toolId])
+  @@index([catalogId])
+  @@index([effect])
+}

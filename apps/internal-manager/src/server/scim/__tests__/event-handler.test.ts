@@ -1,7 +1,12 @@
 import type { DirectorySyncEvent } from "@boxyhq/saml-jackson";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { GroupSource, SyncStatus, SyncTrigger } from "@tumiki/internal-db";
+import {
+  GroupSource,
+  OrgUnitSource,
+  SyncStatus,
+  SyncTrigger,
+} from "@tumiki/internal-db";
 
 // event-handler が呼び出すPrisma操作を最小限の型でスパイする
 type UpsertArgs = {
@@ -55,6 +60,28 @@ const mockDb = {
         (args: { where: Record<string, unknown> }) => Promise<{ count: number }>
       >(),
   },
+  orgUnit: {
+    upsert: vi.fn<
+      (args: {
+        where: {
+          source_externalId: { source: OrgUnitSource; externalId: string };
+        };
+        create: Record<string, unknown>;
+        update: Record<string, unknown>;
+      }) => Promise<{ id: string }>
+    >(),
+  },
+  userOrgUnitMembership: {
+    upsert: vi.fn<
+      (args: {
+        where: {
+          userId_orgUnitId: { userId: string; orgUnitId: string };
+        };
+        create: Record<string, unknown>;
+        update: Record<string, unknown>;
+      }) => Promise<{ id: string }>
+    >(),
+  },
   idpSyncLog: {
     create: vi.fn<(args: IdpSyncLogCreateArgs) => Promise<{ id: string }>>(),
   },
@@ -82,6 +109,8 @@ const buildUserEvent = (
     first_name: string;
     last_name: string;
     active: boolean;
+    department: string;
+    manager: { value: string; displayName: string };
   }> = {},
 ): DirectorySyncEvent => ({
   ...baseEnvelope,
@@ -154,6 +183,8 @@ beforeEach(() => {
   mockDb.group.updateMany.mockResolvedValue({ count: 1 });
   mockDb.userGroupMembership.upsert.mockResolvedValue({ id: "mem-001" });
   mockDb.userGroupMembership.deleteMany.mockResolvedValue({ count: 1 });
+  mockDb.orgUnit.upsert.mockResolvedValue({ id: "org-001" });
+  mockDb.userOrgUnitMembership.upsert.mockResolvedValue({ id: "uom-001" });
   mockDb.idpSyncLog.create.mockResolvedValue({ id: "log-001" });
 });
 
@@ -170,6 +201,9 @@ describe("handleDirectorySyncEvent", () => {
         email: "alice@example.com",
         name: "Alice Anderson",
         isActive: true,
+        scimDepartment: null,
+        scimManagerValue: null,
+        scimManagerDisplayName: null,
         externalIdentities: {
           create: { provider: SCIM_PROVIDER, sub: "user-001" },
         },
@@ -178,6 +212,9 @@ describe("handleDirectorySyncEvent", () => {
         email: "alice@example.com",
         name: "Alice Anderson",
         isActive: true,
+        scimDepartment: null,
+        scimManagerValue: null,
+        scimManagerDisplayName: null,
       });
 
       const log = findIdpSyncLogData();
@@ -217,6 +254,53 @@ describe("handleDirectorySyncEvent", () => {
       expect(mockDb.user.upsert).toHaveBeenCalledTimes(2);
       expect(mockDb.idpSyncLog.create).toHaveBeenCalledTimes(2);
     });
+
+    test("EnterpriseUserのdepartmentとmanagerを保存し、主所属部署をupsertする", async () => {
+      await handleDirectorySyncEvent(
+        buildUserEvent("user.created", {
+          department: "Product Engineering",
+          manager: { value: "manager-001", displayName: "Grace Hopper" },
+        }),
+      );
+
+      const userArgs = getFirstCallArg(mockDb.user.upsert);
+      expect(userArgs.create.scimDepartment).toStrictEqual(
+        "Product Engineering",
+      );
+      expect(userArgs.create.scimManagerValue).toStrictEqual("manager-001");
+      expect(userArgs.create.scimManagerDisplayName).toStrictEqual(
+        "Grace Hopper",
+      );
+      const orgUnitArgs = getFirstCallArg(mockDb.orgUnit.upsert);
+      expect(orgUnitArgs.where).toStrictEqual({
+        source_externalId: {
+          source: OrgUnitSource.SCIM,
+          externalId: "department:product-engineering",
+        },
+      });
+      expect(orgUnitArgs.create.name).toStrictEqual("Product Engineering");
+      expect(orgUnitArgs.create.externalId).toStrictEqual(
+        "department:product-engineering",
+      );
+      expect(orgUnitArgs.create.source).toStrictEqual(OrgUnitSource.SCIM);
+      expect(orgUnitArgs.create.path).toStrictEqual(
+        "/department:product-engineering",
+      );
+      expect(orgUnitArgs.create.lastSyncedAt).toBeInstanceOf(Date);
+      expect(orgUnitArgs.update.name).toStrictEqual("Product Engineering");
+      expect(orgUnitArgs.update.lastSyncedAt).toBeInstanceOf(Date);
+      expect(mockDb.userOrgUnitMembership.upsert).toHaveBeenCalledWith({
+        where: {
+          userId_orgUnitId: { userId: "user-001", orgUnitId: "org-001" },
+        },
+        create: {
+          userId: "user-001",
+          orgUnitId: "org-001",
+          isPrimary: true,
+        },
+        update: { isPrimary: true },
+      });
+    });
   });
 
   describe("user.updated", () => {
@@ -236,6 +320,9 @@ describe("handleDirectorySyncEvent", () => {
         email: "alice-new@example.com",
         name: "Alice Smith",
         isActive: false,
+        scimDepartment: null,
+        scimManagerValue: null,
+        scimManagerDisplayName: null,
       });
 
       const log = findIdpSyncLogData();

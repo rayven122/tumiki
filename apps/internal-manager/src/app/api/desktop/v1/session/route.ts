@@ -1,15 +1,9 @@
-import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { ApprovalStatus } from "@tumiki/internal-db";
 import { db } from "@tumiki/internal-db/server";
 import { verifyDesktopJwt } from "~/lib/auth/verify-desktop-jwt";
-
-const buildPolicyVersion = (policyState: unknown): string =>
-  `pol_v1_${createHash("sha256")
-    .update(JSON.stringify(policyState))
-    .digest("base64url")
-    .slice(0, 32)}`;
+import { buildPolicyVersion } from "~/server/mcp-policy/effective-permissions";
 
 export const GET = async (request: NextRequest) => {
   let verifiedUser: Awaited<ReturnType<typeof verifyDesktopJwt>>;
@@ -54,6 +48,25 @@ export const GET = async (request: NextRequest) => {
           },
         },
         orderBy: { createdAt: "asc" },
+      },
+      orgUnitMemberships: {
+        select: {
+          isPrimary: true,
+          updatedAt: true,
+          orgUnit: {
+            select: {
+              id: true,
+              name: true,
+              externalId: true,
+              source: true,
+              path: true,
+              parentId: true,
+              lastSyncedAt: true,
+              updatedAt: true,
+            },
+          },
+        },
+        orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
       },
       individualPermissions: {
         where: {
@@ -111,6 +124,17 @@ export const GET = async (request: NextRequest) => {
     }),
   );
 
+  const orgUnits = user.orgUnitMemberships.map((membership) => ({
+    id: membership.orgUnit.id,
+    name: membership.orgUnit.name,
+    externalId: membership.orgUnit.externalId,
+    source: membership.orgUnit.source,
+    path: membership.orgUnit.path,
+    parentId: membership.orgUnit.parentId,
+    isPrimary: membership.isPrimary,
+    lastSyncedAt: membership.orgUnit.lastSyncedAt?.toISOString() ?? null,
+  }));
+
   const policyVersion = buildPolicyVersion({
     user: {
       id: user.id,
@@ -118,6 +142,7 @@ export const GET = async (request: NextRequest) => {
       updatedAt: user.updatedAt.toISOString(),
     },
     groups,
+    orgUnits,
     permissions: [...groupPermissions, ...individualPermissions],
   });
 
@@ -135,9 +160,10 @@ export const GET = async (request: NextRequest) => {
       name: null,
     },
     groups,
+    orgUnits,
     permissions: [...groupPermissions, ...individualPermissions],
     features: {
-      catalog: false,
+      catalog: true,
       accessRequests: false,
       policySync: false,
       auditLogSync: true,

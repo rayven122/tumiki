@@ -44,7 +44,9 @@ type FindUniqueArgs = {
 
 const userUpdatedAt = new Date("2026-05-03T10:00:00.000Z");
 const groupUpdatedAt = new Date("2026-05-03T10:05:00.000Z");
+const orgUnitUpdatedAt = new Date("2026-05-03T10:06:00.000Z");
 const membershipCreatedAt = new Date("2026-05-03T10:01:00.000Z");
+const membershipUpdatedAt = new Date("2026-05-03T10:02:00.000Z");
 const activeUser = {
   id: "user-001",
   name: "Ada Lovelace",
@@ -73,6 +75,22 @@ const activeUser = {
             execute: true,
           },
         ],
+      },
+    },
+  ],
+  orgUnitMemberships: [
+    {
+      isPrimary: true,
+      updatedAt: membershipUpdatedAt,
+      orgUnit: {
+        id: "org-001",
+        name: "Product Engineering",
+        externalId: "department:product-engineering",
+        source: "SCIM",
+        path: "/department:product-engineering",
+        parentId: null,
+        lastSyncedAt: new Date("2026-05-03T09:10:00.000Z"),
+        updatedAt: orgUnitUpdatedAt,
       },
     },
   ],
@@ -121,6 +139,19 @@ const expectedPermissions = [
   },
 ] as const;
 
+const expectedOrgUnits = [
+  {
+    id: "org-001",
+    name: "Product Engineering",
+    externalId: "department:product-engineering",
+    source: "SCIM",
+    path: "/department:product-engineering",
+    parentId: null,
+    isPrimary: true,
+    lastSyncedAt: "2026-05-03T09:10:00.000Z",
+  },
+];
+
 const expectedPolicyVersion = `pol_v1_${createHash("sha256")
   .update(
     JSON.stringify({
@@ -130,6 +161,7 @@ const expectedPolicyVersion = `pol_v1_${createHash("sha256")
         updatedAt: userUpdatedAt.toISOString(),
       },
       groups: expectedGroups,
+      orgUnits: expectedOrgUnits,
       permissions: expectedPermissions,
     }),
   )
@@ -163,9 +195,10 @@ describe("GET /api/desktop/v1/session", () => {
         name: null,
       },
       groups: expectedGroups,
+      orgUnits: expectedOrgUnits,
       permissions: expectedPermissions,
       features: {
-        catalog: false,
+        catalog: true,
         accessRequests: false,
         policySync: false,
         auditLogSync: true,

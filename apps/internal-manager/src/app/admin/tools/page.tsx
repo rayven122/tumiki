@@ -1,151 +1,319 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Settings } from "lucide-react";
-import {
-  TOOLS,
-  type ToolStatus,
-  type ToolProtocol,
-} from "../_components/mock-data";
+import { useMemo, useState } from "react";
+import { Plus, RefreshCw, Settings, Trash2 } from "lucide-react";
+import { api } from "~/trpc/react";
 
-const STATUS_DOT: Record<ToolStatus, string> = {
-  active: "bg-emerald-400",
-  degraded: "bg-amber-400",
-  down: "bg-red-400",
-};
+const transportTypes = ["STDIO", "SSE", "STREAMABLE_HTTP"] as const;
+const authTypes = ["NONE", "API_KEY", "BEARER", "OAUTH"] as const;
 
-const STATUS_LABEL: Record<ToolStatus, string> = {
-  active: "稼働中",
-  degraded: "不安定",
-  down: "停止中",
-};
+type TransportType = (typeof transportTypes)[number];
+type AuthType = (typeof authTypes)[number];
 
 const AdminToolsPage = () => {
-  const [statusFilter, setStatusFilter] = useState<ToolStatus | "all">("all");
-  const [protocolFilter, setProtocolFilter] = useState<ToolProtocol | "all">(
-    "all",
+  const utils = api.useUtils();
+  const catalogsQuery = api.mcpCatalog.list.useQuery();
+  const createCatalog = api.mcpCatalog.create.useMutation({
+    onSuccess: async () => {
+      await utils.mcpCatalog.list.invalidate();
+      setName("");
+      setSlug("");
+      setDescription("");
+    },
+  });
+  const updateCatalog = api.mcpCatalog.update.useMutation({
+    onSuccess: async () => utils.mcpCatalog.list.invalidate(),
+  });
+  const deleteCatalog = api.mcpCatalog.delete.useMutation({
+    onSuccess: async () => utils.mcpCatalog.list.invalidate(),
+  });
+  const refreshTools = api.mcpCatalog.refreshTools.useMutation({
+    onSuccess: async () => {
+      await utils.mcpCatalog.list.invalidate();
+      setToolNames("");
+    },
+  });
+
+  const [name, setName] = useState("");
+  const [slug, setSlug] = useState("");
+  const [description, setDescription] = useState("");
+  const [transportType, setTransportType] = useState<TransportType>("STDIO");
+  const [authType, setAuthType] = useState<AuthType>("NONE");
+  const [selectedCatalogId, setSelectedCatalogId] = useState<string | null>(
+    null,
+  );
+  const [toolNames, setToolNames] = useState("");
+
+  const catalogs = catalogsQuery.data ?? [];
+  const selectedCatalog = useMemo(
+    () => catalogs.find((catalog) => catalog.id === selectedCatalogId) ?? null,
+    [catalogs, selectedCatalogId],
   );
 
-  const filtered = TOOLS.filter(
-    (t) =>
-      (statusFilter === "all" || t.status === statusFilter) &&
-      (protocolFilter === "all" || t.protocol === protocolFilter),
-  );
+  const handleCreate = () => {
+    createCatalog.mutate({
+      slug,
+      name,
+      description: description || undefined,
+      transportType,
+      authType,
+      configTemplate: {},
+      credentialKeys: [],
+    });
+  };
+
+  const handleToggleStatus = (catalog: (typeof catalogs)[number]) => {
+    updateCatalog.mutate({
+      id: catalog.id,
+      name: catalog.name,
+      description: catalog.description,
+      transportType: catalog.transportType,
+      authType: catalog.authType,
+      status: catalog.status === "ACTIVE" ? "DISABLED" : "ACTIVE",
+      iconPath: catalog.iconPath,
+      configTemplate:
+        typeof catalog.configTemplate === "object" &&
+        catalog.configTemplate !== null &&
+        !Array.isArray(catalog.configTemplate)
+          ? catalog.configTemplate
+          : {},
+      credentialKeys: catalog.credentialKeys,
+    });
+  };
+
+  const handleRefreshTools = () => {
+    if (!selectedCatalog) return;
+    const tools = toolNames
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const [toolName, toolDescription] = line.split("|");
+        const trimmedDescription = toolDescription?.trim();
+        return {
+          name: toolName?.trim() ?? "",
+          description:
+            trimmedDescription && trimmedDescription.length > 0
+              ? trimmedDescription
+              : undefined,
+          inputSchema: {},
+          defaultAllowed: false,
+          riskLevel: "MEDIUM" as const,
+        };
+      })
+      .filter((tool) => tool.name.length > 0);
+    refreshTools.mutate({ catalogId: selectedCatalog.id, tools });
+  };
 
   return (
-    <div className="space-y-4 p-6">
-      {/* ヘッダー */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-text-primary text-lg font-semibold">
-            ツール管理
-          </h1>
-          <p className="text-text-secondary mt-1 text-xs">
-            全{TOOLS.length}件のコネクタ
-          </p>
+    <div className="grid h-full min-h-screen grid-cols-[360px_1fr]">
+      <aside className="border-r-border-default border-r p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-text-primary text-base font-semibold">
+              MCPカタログ
+            </h1>
+            <p className="text-text-secondary mt-1 text-xs">
+              {catalogs.length}件
+            </p>
+          </div>
         </div>
-        <button
-          type="button"
-          className="bg-btn-primary-bg text-btn-primary-text flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
-        >
-          <Plus size={13} />
-          ツール追加
-        </button>
-      </div>
 
-      {/* フィルタ */}
-      <div className="flex flex-wrap items-center gap-2">
-        <select
-          value={statusFilter}
-          onChange={(e) =>
-            setStatusFilter(e.target.value as ToolStatus | "all")
-          }
-          className="bg-bg-card border-border-default text-text-secondary rounded-lg border px-3 py-1.5 text-xs outline-none"
-        >
-          <option value="all">すべてのステータス</option>
-          <option value="active">稼働中</option>
-          <option value="degraded">不安定</option>
-          <option value="down">停止中</option>
-        </select>
-        <select
-          value={protocolFilter}
-          onChange={(e) =>
-            setProtocolFilter(e.target.value as ToolProtocol | "all")
-          }
-          className="bg-bg-card border-border-default text-text-secondary rounded-lg border px-3 py-1.5 text-xs outline-none"
-        >
-          <option value="all">すべてのプロトコル</option>
-          <option value="http">http</option>
-          <option value="sse">sse</option>
-          <option value="stdio">stdio</option>
-        </select>
-        <span className="text-text-subtle ml-auto text-xs">
-          {filtered.length} 件表示
-        </span>
-      </div>
-
-      {/* ツールカードグリッド */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-4">
-        {filtered.map((tool) => (
-          <div
-            key={tool.id}
-            className={`bg-bg-card rounded-xl p-4 transition-all hover:-translate-y-0.5 ${tool.approved ? "border border-[rgba(52,211,153,0.2)]" : "border-border-default border"}`}
+        <div className="bg-bg-card border-border-default mb-4 space-y-3 rounded-lg border p-3">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="表示名"
+            className="bg-bg-app border-border-default text-text-secondary w-full rounded-md border px-3 py-2 text-xs outline-none"
+          />
+          <input
+            value={slug}
+            onChange={(e) => setSlug(e.target.value)}
+            placeholder="slug"
+            className="bg-bg-app border-border-default text-text-secondary w-full rounded-md border px-3 py-2 font-mono text-xs outline-none"
+          />
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="説明"
+            rows={3}
+            className="bg-bg-app border-border-default text-text-secondary w-full resize-none rounded-md border px-3 py-2 text-xs outline-none"
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <select
+              value={transportType}
+              onChange={(e) =>
+                setTransportType(e.target.value as TransportType)
+              }
+              className="bg-bg-app border-border-default text-text-secondary rounded-md border px-2 py-2 text-xs outline-none"
+            >
+              {transportTypes.map((type) => (
+                <option key={type}>{type}</option>
+              ))}
+            </select>
+            <select
+              value={authType}
+              onChange={(e) => setAuthType(e.target.value as AuthType)}
+              className="bg-bg-app border-border-default text-text-secondary rounded-md border px-2 py-2 text-xs outline-none"
+            >
+              {authTypes.map((type) => (
+                <option key={type}>{type}</option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="button"
+            onClick={handleCreate}
+            disabled={!name || !slug || createCatalog.isPending}
+            className="bg-btn-primary-bg text-btn-primary-text flex w-full items-center justify-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium disabled:opacity-40"
           >
-            {/* ロゴ + ステータス */}
-            <div className="mb-3 flex items-start justify-between">
-              <span
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-sm font-bold text-white"
-                style={{ backgroundColor: tool.color }}
-              >
-                {tool.name.slice(0, 2).toUpperCase()}
-              </span>
-              <div className="flex items-center gap-1.5">
-                <span
-                  className={`h-2 w-2 rounded-full ${STATUS_DOT[tool.status]}`}
-                />
-                <span className="text-text-subtle text-[10px]">
-                  {STATUS_LABEL[tool.status]}
+            <Plus size={13} />
+            追加
+          </button>
+        </div>
+
+        <div className="space-y-2">
+          {catalogsQuery.isLoading && (
+            <div className="text-text-muted px-2 py-4 text-center text-xs">
+              読み込み中...
+            </div>
+          )}
+          {catalogs.map((catalog) => (
+            <button
+              key={catalog.id}
+              type="button"
+              onClick={() => setSelectedCatalogId(catalog.id)}
+              className={`border-border-default bg-bg-card w-full rounded-lg border p-3 text-left transition-colors hover:bg-white/[0.03] ${
+                selectedCatalogId === catalog.id
+                  ? "ring-text-primary ring-1"
+                  : ""
+              }`}
+            >
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <span className="text-text-primary truncate text-sm font-medium">
+                  {catalog.name}
                 </span>
+                <span
+                  className={`rounded px-1.5 py-0.5 text-[9px] ${
+                    catalog.status === "ACTIVE"
+                      ? "bg-emerald-500/15 text-emerald-400"
+                      : "bg-red-500/15 text-red-400"
+                  }`}
+                >
+                  {catalog.status}
+                </span>
+              </div>
+              <div className="text-text-muted truncate font-mono text-[10px]">
+                {catalog.slug}
+              </div>
+              <div className="text-text-subtle mt-2 text-[10px]">
+                {catalog.tools.length} tools / {catalog.transportType}
+              </div>
+            </button>
+          ))}
+        </div>
+      </aside>
+
+      <main className="p-6">
+        {selectedCatalog === null ? (
+          <div className="flex h-full items-center justify-center">
+            <span className="text-text-muted text-sm">
+              MCPカタログを選択してください
+            </span>
+          </div>
+        ) : (
+          <div className="space-y-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-text-primary text-lg font-semibold">
+                  {selectedCatalog.name}
+                </h2>
+                <p className="text-text-secondary mt-1 text-xs">
+                  {selectedCatalog.description ?? ""}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleToggleStatus(selectedCatalog)}
+                  className="bg-bg-active text-text-secondary flex items-center gap-1.5 rounded-md px-3 py-2 text-xs"
+                >
+                  <Settings size={13} />
+                  {selectedCatalog.status === "ACTIVE" ? "無効化" : "有効化"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    deleteCatalog.mutate({ id: selectedCatalog.id })
+                  }
+                  className="flex items-center gap-1.5 rounded-md bg-red-500/15 px-3 py-2 text-xs text-red-300"
+                >
+                  <Trash2 size={13} />
+                  削除
+                </button>
               </div>
             </div>
 
-            {/* ツール名 */}
-            <div className="text-text-primary mb-1 text-sm font-medium">
-              {tool.name}
+            <div className="bg-bg-card border-border-default rounded-lg border p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-text-primary text-sm font-medium">
+                  ツール同期
+                </h3>
+                <button
+                  type="button"
+                  onClick={handleRefreshTools}
+                  disabled={refreshTools.isPending}
+                  className="bg-btn-primary-bg text-btn-primary-text flex items-center gap-1.5 rounded-md px-3 py-2 text-xs disabled:opacity-40"
+                >
+                  <RefreshCw size={13} />
+                  保存
+                </button>
+              </div>
+              <textarea
+                value={toolNames}
+                onChange={(e) => setToolNames(e.target.value)}
+                placeholder={
+                  "list_repos|Repository list\ncreate_issue|Create issue"
+                }
+                rows={5}
+                className="bg-bg-app border-border-default text-text-secondary w-full resize-none rounded-md border px-3 py-2 font-mono text-xs outline-none"
+              />
             </div>
 
-            {/* 説明 */}
-            <div className="text-text-muted mb-3 text-[10px] leading-relaxed">
-              {tool.description}
-            </div>
-
-            {/* 操作数 + プロトコル */}
-            <div className="mb-3 flex items-center justify-between">
-              <span className="text-text-subtle font-mono text-[9px]">
-                {tool.allowedCount} / {tool.operationCount} ops
-              </span>
-              <span className="bg-bg-active text-text-muted rounded px-1.5 py-0.5 font-mono text-[8px]">
-                {tool.protocol}
-              </span>
-            </div>
-
-            {/* アクション */}
-            <button
-              type="button"
-              className={`w-full rounded-lg px-3 py-1.5 text-[10px] font-medium transition-opacity hover:opacity-80 ${tool.approved ? "bg-bg-active text-text-secondary" : "bg-btn-primary-bg text-btn-primary-text"}`}
-            >
-              {tool.approved ? (
-                <span className="flex items-center justify-center gap-1">
-                  <Settings size={10} />
-                  設定
-                </span>
-              ) : (
-                "有効化"
+            <div className="bg-bg-card border-border-default overflow-hidden rounded-lg border">
+              <div className="border-b-border-default text-text-subtle grid grid-cols-[1fr_110px_120px] border-b px-4 py-2 text-[10px]">
+                <span>ツール</span>
+                <span>リスク</span>
+                <span>初期許可</span>
+              </div>
+              {selectedCatalog.tools.length === 0 && (
+                <div className="text-text-muted px-4 py-8 text-center text-xs">
+                  ツールが登録されていません
+                </div>
               )}
-            </button>
+              {selectedCatalog.tools.map((tool) => (
+                <div
+                  key={tool.id}
+                  className="border-b-border-subtle grid grid-cols-[1fr_110px_120px] border-b px-4 py-3 text-xs"
+                >
+                  <div>
+                    <div className="text-text-primary font-medium">
+                      {tool.name}
+                    </div>
+                    <div className="text-text-muted mt-1">
+                      {tool.description ?? ""}
+                    </div>
+                  </div>
+                  <span className="text-text-secondary">{tool.riskLevel}</span>
+                  <span className="text-text-secondary">
+                    {tool.defaultAllowed ? "ALLOW" : "DENY"}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-        ))}
-      </div>
+        )}
+      </main>
     </div>
   );
 };

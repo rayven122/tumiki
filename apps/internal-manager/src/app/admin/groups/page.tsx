@@ -1,7 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, RefreshCw, Search, UserPlus } from "lucide-react";
+import {
+  Check,
+  Minus,
+  Plus,
+  RefreshCw,
+  Search,
+  UserPlus,
+  X,
+} from "lucide-react";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/react";
 
@@ -102,6 +110,7 @@ const getSyncStatusKey = (group: GroupListItem): SyncStatusKey => {
 /* ===== タブ定義 ===== */
 
 type GroupTab = "members" | "tools" | "idp";
+type PolicyEffectValue = "ALLOW" | "DENY" | null;
 
 /* ===== 日時フォーマット ===== */
 
@@ -257,15 +266,42 @@ const IdpTab = ({ group, idpGroupMap, onIdpGroupChange }: IdpTabProps) => {
 const AdminGroupsPage = () => {
   const [search, setSearch] = useState("");
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [selectedOrgUnitId, setSelectedOrgUnitId] = useState<string | null>(
+    null,
+  );
   const [activeTab, setActiveTab] = useState<GroupTab>("members");
   // IdP連携: グループ別のIdPグループ名
   const [idpGroupMap, setIdpGroupMap] = useState<Record<string, string>>({});
 
   const groupsQuery = api.groups.list.useQuery();
+  const utils = api.useUtils();
+  const policyMatrixQuery = api.mcpPolicies.getMatrix.useQuery(undefined, {
+    enabled: activeTab === "tools",
+  });
+  const updateToolPermission = api.mcpPolicies.updateToolPermission.useMutation(
+    {
+      onSuccess: async () => utils.mcpPolicies.getMatrix.invalidate(),
+    },
+  );
   const groups = groupsQuery.data ?? [];
+  const orgUnits = policyMatrixQuery.data?.orgUnits ?? [];
+  const catalogs = policyMatrixQuery.data?.catalogs ?? [];
 
   /* 選択中グループのオブジェクトを取得 */
   const selectedGroup = groups.find((g) => g.id === selectedGroupId) ?? null;
+  const selectedOrgUnit =
+    orgUnits.find((unit) => unit.id === selectedOrgUnitId) ??
+    orgUnits[0] ??
+    null;
+  const selectedOrgUnitPermissionByTool = new Map(
+    catalogs.flatMap((catalog) =>
+      catalog.tools.flatMap((tool) =>
+        tool.orgUnitPermissions
+          .filter((permission) => permission.orgUnitId === selectedOrgUnit?.id)
+          .map((permission) => [tool.id, permission.effect] as const),
+      ),
+    ),
+  );
 
   /* グループ一覧フィルタリング */
   const filteredGroups = groups.filter(
@@ -493,11 +529,136 @@ const AdminGroupsPage = () => {
 
               {/* MCP権限タブ */}
               {activeTab === "tools" && (
-                <div className="space-y-3">
-                  <div className="bg-bg-card border-border-default rounded-xl border px-4 py-6 text-center">
-                    <p className="text-text-muted text-xs">
-                      ツール権限管理は準備中です
-                    </p>
+                <div className="grid grid-cols-[260px_1fr] gap-4">
+                  <div className="bg-bg-card border-border-default overflow-hidden rounded-xl border">
+                    <div className="border-b-border-default border-b px-4 py-3">
+                      <h2 className="text-text-primary text-xs font-semibold">
+                        部署ツリー
+                      </h2>
+                    </div>
+                    {policyMatrixQuery.isLoading && (
+                      <div className="text-text-muted px-4 py-6 text-center text-xs">
+                        読み込み中...
+                      </div>
+                    )}
+                    {orgUnits.length === 0 && !policyMatrixQuery.isLoading && (
+                      <div className="text-text-muted px-4 py-6 text-center text-xs">
+                        SCIM部署がまだ同期されていません
+                      </div>
+                    )}
+                    {orgUnits.map((orgUnit) => (
+                      <button
+                        key={orgUnit.id}
+                        type="button"
+                        onClick={() => setSelectedOrgUnitId(orgUnit.id)}
+                        className={`border-b-border-subtle w-full border-b px-4 py-3 text-left text-xs transition-colors hover:bg-white/[0.02] ${
+                          selectedOrgUnit?.id === orgUnit.id
+                            ? "bg-bg-active"
+                            : ""
+                        }`}
+                      >
+                        <div className="text-text-primary font-medium">
+                          {orgUnit.name}
+                        </div>
+                        <div className="text-text-muted mt-1 truncate font-mono text-[10px]">
+                          {orgUnit.path}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="bg-bg-card border-border-default overflow-hidden rounded-xl border">
+                    <div className="border-b-border-default flex items-center justify-between border-b px-4 py-3">
+                      <h2 className="text-text-primary text-xs font-semibold">
+                        {selectedOrgUnit?.name ?? "部署"} のMCPツール権限
+                      </h2>
+                      <span className="text-text-subtle text-[10px]">
+                        ALLOW / DENY / 未設定
+                      </span>
+                    </div>
+                    {selectedOrgUnit === null ? (
+                      <div className="text-text-muted px-4 py-8 text-center text-xs">
+                        部署を選択してください
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-[var(--color-border-subtle)]">
+                        {catalogs.map((catalog) => (
+                          <div key={catalog.id} className="p-4">
+                            <div className="text-text-primary mb-3 text-xs font-semibold">
+                              {catalog.name}
+                            </div>
+                            <div className="space-y-2">
+                              {catalog.tools.map((tool) => {
+                                const effect =
+                                  selectedOrgUnitPermissionByTool.get(
+                                    tool.id,
+                                  ) ?? null;
+                                const setEffect = (next: PolicyEffectValue) =>
+                                  updateToolPermission.mutate({
+                                    orgUnitId: selectedOrgUnit.id,
+                                    catalogId: catalog.id,
+                                    toolId: tool.id,
+                                    effect: next,
+                                  });
+                                return (
+                                  <div
+                                    key={tool.id}
+                                    className="grid grid-cols-[1fr_130px] items-center gap-3"
+                                  >
+                                    <div>
+                                      <div className="text-text-secondary text-xs">
+                                        {tool.name}
+                                      </div>
+                                      <div className="text-text-muted mt-0.5 text-[10px]">
+                                        {tool.description ?? ""}
+                                      </div>
+                                    </div>
+                                    <div className="flex justify-end gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => setEffect("ALLOW")}
+                                        className={`rounded-md p-1.5 ${
+                                          effect === "ALLOW"
+                                            ? "bg-emerald-500/20 text-emerald-300"
+                                            : "bg-bg-active text-text-muted"
+                                        }`}
+                                        title="許可"
+                                      >
+                                        <Check size={13} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setEffect("DENY")}
+                                        className={`rounded-md p-1.5 ${
+                                          effect === "DENY"
+                                            ? "bg-red-500/20 text-red-300"
+                                            : "bg-bg-active text-text-muted"
+                                        }`}
+                                        title="拒否"
+                                      >
+                                        <X size={13} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setEffect(null)}
+                                        className={`rounded-md p-1.5 ${
+                                          effect === null
+                                            ? "bg-bg-active text-text-secondary"
+                                            : "bg-bg-active text-text-muted"
+                                        }`}
+                                        title="未設定"
+                                      >
+                                        <Minus size={13} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

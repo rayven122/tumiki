@@ -3,20 +3,19 @@ import type { NextRequest } from "next/server";
 
 const mockFindCatalogs = vi.hoisted(() => vi.fn());
 const mockFindUser = vi.hoisted(() => vi.fn());
+const mockFindOrgUnits = vi.hoisted(() => vi.fn());
 const mockVerifyDesktopJwt = vi.hoisted(() => vi.fn());
-
-vi.mock("@tumiki/db/server", () => ({
-  db: {
-    mcpServer: {
-      findMany: mockFindCatalogs,
-    },
-  },
-}));
 
 vi.mock("@tumiki/internal-db/server", () => ({
   db: {
     user: {
       findUnique: mockFindUser,
+    },
+    orgUnit: {
+      findMany: mockFindOrgUnits,
+    },
+    mcpCatalog: {
+      findMany: mockFindCatalogs,
     },
   },
 }));
@@ -40,21 +39,24 @@ const buildCatalog = (overrides: Record<string, unknown> = {}) => ({
   name: "GitHub",
   description: "GitHub MCP",
   iconPath: "https://example.com/github.svg",
-  serverStatus: "RUNNING",
-  authType: "API_KEY",
-  templateInstances: [
+  status: "ACTIVE",
+  transportType: "STREAMABLE_HTTP",
+  authType: "OAUTH",
+  credentialKeys: ["GITHUB_TOKEN"],
+  updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+  tools: [
     {
-      isEnabled: true,
-      allowedTools: [{ name: "list_repos", description: "List repositories" }],
-      mcpServerTemplate: {
-        transportType: "STREAMABLE_HTTPS",
-        authType: "OAUTH",
-        envVarKeys: ["GITHUB_TOKEN"],
-        mcpTools: [
-          { name: "list_repos", description: "List repositories" },
-          { name: "create_issue", description: "Create an issue" },
-        ],
-      },
+      id: "tool-list-repos",
+      name: "list_repos",
+      description: "List repositories",
+      updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+      orgUnitPermissions: [
+        {
+          orgUnitId: "org-001",
+          effect: "ALLOW",
+          updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+        },
+      ],
     },
   ],
   ...overrides,
@@ -65,22 +67,34 @@ describe("GET /api/desktop/v1/catalogs", () => {
     vi.clearAllMocks();
     mockVerifyDesktopJwt.mockResolvedValue({ userId: "user-001" });
     mockFindUser.mockResolvedValue({
+      id: "user-001",
+      updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+      orgUnitMemberships: [
+        {
+          updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+          orgUnit: {
+            id: "org-001",
+            parentId: null,
+            updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+          },
+        },
+      ],
       groupMemberships: [
         {
           group: {
-            permissions: [
-              {
-                mcpServerId: "server-github",
-                read: true,
-                write: false,
-                execute: true,
-              },
-            ],
+            permissions: [],
           },
         },
       ],
       individualPermissions: [],
     });
+    mockFindOrgUnits.mockResolvedValue([
+      {
+        id: "org-001",
+        parentId: null,
+        updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+      },
+    ]);
     mockFindCatalogs.mockResolvedValue([buildCatalog()]);
   });
 
@@ -104,6 +118,7 @@ describe("GET /api/desktop/v1/catalogs", () => {
               name: "list_repos",
               description: "List repositories",
               allowed: true,
+              deniedReason: null,
             },
           ],
         },
@@ -116,7 +131,10 @@ describe("GET /api/desktop/v1/catalogs", () => {
 
   test("権限がないカタログは申請必要として返す", async () => {
     mockFindUser.mockResolvedValue({
+      id: "user-001",
+      updatedAt: new Date("2026-05-03T10:00:00.000Z"),
       groupMemberships: [],
+      orgUnitMemberships: [],
       individualPermissions: [],
     });
 
@@ -134,9 +152,7 @@ describe("GET /api/desktop/v1/catalogs", () => {
   });
 
   test("停止中のカタログはdisabledとして返す", async () => {
-    mockFindCatalogs.mockResolvedValue([
-      buildCatalog({ serverStatus: "STOPPED" }),
-    ]);
+    mockFindCatalogs.mockResolvedValue([buildCatalog({ status: "DISABLED" })]);
 
     const response = await GET(buildRequest());
     const body = (await response.json()) as { items: [{ status: string }] };
