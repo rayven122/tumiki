@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Copy, KeyRound, Plus, Trash2, X } from "lucide-react";
 import {
   AlertDialog,
@@ -37,10 +38,23 @@ type NewlyCreated = {
   googleAuthorizationUrl: string | null;
 };
 
+// Google OAuth コールバックのエラーコード（route.ts と対応）→ 表示用日本語
+const GOOGLE_CALLBACK_ERROR_LABELS: Record<string, string> = {
+  unauthorized: "認証セッションが無効です。再ログインしてください",
+  oauth_denied: "Google で認可が拒否されました",
+  invalid_request: "認可リクエストに必要なパラメータが不足しています",
+  invalid_state: "認可フローの状態が不正です",
+  token_exchange_failed: "Google からのトークン取得に失敗しました",
+  token_persist_failed: "トークンの保存に失敗しました",
+};
+
 /** SCIM Directory 管理セクション（Jackson Directory Sync） */
 const ScimDirectorySection = () => {
   const utils = api.useUtils();
   const { data: directories, isLoading } = api.scimDirectory.list.useQuery();
+  const searchParams = useSearchParams();
+  const callbackSuccess = searchParams.get("scim_success");
+  const callbackError = searchParams.get("scim_error");
 
   const [newName, setNewName] = useState("");
   const [newType, setNewType] = useState<DirectoryType>("generic-scim-v2");
@@ -70,6 +84,10 @@ const ScimDirectorySection = () => {
     onSuccess: () => void utils.scimDirectory.list.invalidate(),
   });
 
+  // 注: 1コンポーネントで1インスタンスのため、複数 Google directory が
+  // 存在する場合は一方の再認可中に全てのボタンが disabled になる。
+  // 現状は単一 Google directory 運用を想定。将来複数対応する場合は
+  // pendingReauthId state でディレクトリ単位に管理する。
   const reauthMutation =
     api.scimDirectory.getGoogleAuthorizationUrl.useMutation({
       onSuccess: (data) => {
@@ -94,6 +112,25 @@ const ScimDirectorySection = () => {
 
   return (
     <div className="space-y-3">
+      {/* OAuth コールバックの成功通知（Google 認可後のリダイレクト時に表示） */}
+      {callbackSuccess === "google_authorized" && (
+        <div
+          role="status"
+          className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-400"
+        >
+          ✓ Google Workspace の認可が完了しました
+        </div>
+      )}
+      {/* OAuth コールバックのエラー通知 */}
+      {callbackError && (
+        <div
+          role="alert"
+          className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-400"
+        >
+          Google 認可エラー:{" "}
+          {GOOGLE_CALLBACK_ERROR_LABELS[callbackError] ?? callbackError}
+        </div>
+      )}
       {/* ミューテーションエラー表示 */}
       {errorMessage && (
         <div
@@ -238,7 +275,7 @@ const ScimDirectorySection = () => {
                     disabled={reauthMutation.isPending}
                     aria-label="Google OAuth 再認可"
                     title="再認可"
-                    className="text-text-muted hover:text-text-primary disabled:opacity-50"
+                    className="text-text-muted hover:text-text-primary flex h-11 w-11 items-center justify-center disabled:opacity-50"
                   >
                     <KeyRound size={14} />
                   </button>
@@ -249,7 +286,7 @@ const ScimDirectorySection = () => {
                       type="button"
                       disabled={deleteMutation.isPending}
                       aria-label="削除"
-                      className="text-red-400 hover:opacity-80 disabled:opacity-50"
+                      className="flex h-11 w-11 items-center justify-center text-red-400 hover:opacity-80 disabled:opacity-50"
                     >
                       <Trash2 size={14} />
                     </button>

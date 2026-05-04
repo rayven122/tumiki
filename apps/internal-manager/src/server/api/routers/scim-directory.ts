@@ -64,9 +64,11 @@ export const scimDirectoryRouter = createTRPCRouter({
         PRODUCT,
       );
     if (error) {
+      // Jackson 内部メッセージは情報漏洩リスクがあるため console のみに記録
+      console.error("[scim-directory] list failed:", error);
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
-        message: error.message,
+        message: "Directory 一覧の取得に失敗しました",
       });
     }
     return (data ?? []).map((d) => ({
@@ -109,9 +111,10 @@ export const scimDirectoryRouter = createTRPCRouter({
           type: input.type,
         });
       if (error || !data) {
+        console.error("[scim-directory] create failed:", error);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: error?.message ?? "Directory の作成に失敗しました",
+          message: "Directory の作成に失敗しました",
         });
       }
       // google は SCIM Secret なし（OAuth フローへ遷移する用の URL を返す）
@@ -152,9 +155,13 @@ export const scimDirectoryRouter = createTRPCRouter({
           directoryId: input.id,
         });
       if (error || !data) {
+        console.error(
+          "[scim-directory] generateAuthorizationUrl failed:",
+          error,
+        );
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: error?.message ?? "認可URLの生成に失敗しました",
+          message: "認可URLの生成に失敗しました",
         });
       }
       return { authorizationUrl: data.authorizationUrl };
@@ -168,9 +175,10 @@ export const scimDirectoryRouter = createTRPCRouter({
       const { error } =
         await jackson.directorySyncController.directories.delete(input.id);
       if (error) {
+        console.error("[scim-directory] delete failed:", error);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: error.message,
+          message: "Directory の削除に失敗しました",
         });
       }
       return { ok: true };

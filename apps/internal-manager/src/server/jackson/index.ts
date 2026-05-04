@@ -19,8 +19,9 @@ import { handleDirectorySyncEvent } from "~/server/scim/event-handler";
  */
 
 // Google Workspace Directory Sync の OAuth エンドポイントパス
-export const GOOGLE_DSYNC_AUTHORIZE_PATH = "/api/scim/oauth/google/authorize";
-export const GOOGLE_DSYNC_CALLBACK_PATH = "/api/scim/oauth/google/callback";
+// Jackson が `dsync.providers.google.authorizePath/callbackPath` 設定経由で内部的に参照する
+const GOOGLE_DSYNC_AUTHORIZE_PATH = "/api/scim/oauth/google/authorize";
+const GOOGLE_DSYNC_CALLBACK_PATH = "/api/scim/oauth/google/callback";
 
 let jacksonInstance: SAMLJackson | null = null;
 let initPromise: Promise<SAMLJackson> | null = null;
