@@ -49,3 +49,13 @@ export type {
   DashboardInput,
   DashboardResult,
 } from "./features/dashboard/dashboard.types";
+
+// Desktop セッション機能
+export type {
+  DesktopSession,
+  DesktopSessionFeatures,
+  DesktopSessionGroup,
+  DesktopSessionOrganization,
+  DesktopSessionPermission,
+  DesktopSessionUser,
+} from "./features/desktop-session/desktop-session.types";

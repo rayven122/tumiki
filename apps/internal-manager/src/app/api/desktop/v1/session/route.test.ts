@@ -5,6 +5,7 @@ import { ApprovalStatus, GroupSource, Role } from "@tumiki/internal-db";
 
 const mockFindUnique = vi.hoisted(() => vi.fn());
 const mockMcpCatalogFindMany = vi.hoisted(() => vi.fn());
+const mockFindSettings = vi.hoisted(() => vi.fn());
 const mockVerifyDesktopJwt = vi.hoisted(() => vi.fn());
 
 vi.mock("@tumiki/internal-db/server", () => ({
@@ -14,6 +15,9 @@ vi.mock("@tumiki/internal-db/server", () => ({
     },
     mcpCatalog: {
       findMany: mockMcpCatalogFindMany,
+    },
+    desktopApiSettings: {
+      findUnique: mockFindSettings,
     },
   },
 }));
@@ -191,6 +195,14 @@ const expectedPolicyVersion = `pol_v1_${createHash("sha256")
         role: Role.USER,
         updatedAt: userUpdatedAt.toISOString(),
       },
+      settings: {
+        organizationName: "Rayven",
+        organizationSlug: "rayven",
+        catalogEnabled: true,
+        accessRequestsEnabled: true,
+        policySyncEnabled: false,
+        auditLogSyncEnabled: true,
+      },
       groups: expectedGroups,
       orgUnits: expectedOrgUnits,
       catalogs: expectedPolicyCatalogs,
@@ -209,6 +221,14 @@ describe("GET /api/desktop/v1/session", () => {
     });
     mockFindUnique.mockResolvedValue(activeUser);
     mockMcpCatalogFindMany.mockResolvedValue(expectedPolicyCatalogs);
+    mockFindSettings.mockResolvedValue({
+      organizationName: "Rayven",
+      organizationSlug: "rayven",
+      catalogEnabled: true,
+      accessRequestsEnabled: true,
+      policySyncEnabled: false,
+      auditLogSyncEnabled: true,
+    });
   });
 
   test("Desktopセッション情報を認証ユーザーに紐づけて返す", async () => {
@@ -224,15 +244,15 @@ describe("GET /api/desktop/v1/session", () => {
       },
       organization: {
         id: null,
-        slug: null,
-        name: null,
+        slug: "rayven",
+        name: "Rayven",
       },
       groups: expectedGroups,
       orgUnits: expectedOrgUnits,
       permissions: expectedPermissions,
       features: {
         catalog: true,
-        accessRequests: false,
+        accessRequests: true,
         policySync: false,
         auditLogSync: true,
       },
@@ -255,6 +275,40 @@ describe("GET /api/desktop/v1/session", () => {
     expect(
       findUniqueArgs?.select.individualPermissions.where.OR[1].expiresAt.gt,
     ).toBeInstanceOf(Date);
+    expect(mockFindSettings).toHaveBeenCalledWith({
+      where: { id: "default" },
+      select: {
+        organizationName: true,
+        organizationSlug: true,
+        catalogEnabled: true,
+        accessRequestsEnabled: true,
+        policySyncEnabled: true,
+        auditLogSyncEnabled: true,
+      },
+    });
+  });
+
+  test("Desktop API設定が未作成の場合はデフォルト値を返す", async () => {
+    mockFindSettings.mockResolvedValue(null);
+
+    const response = await GET(buildRequest());
+    const body = (await response.json()) as {
+      organization: { name: string | null; slug: string | null };
+      features: Record<string, boolean>;
+    };
+
+    expect(response.status).toStrictEqual(200);
+    expect(body.organization).toStrictEqual({
+      id: null,
+      name: null,
+      slug: null,
+    });
+    expect(body.features).toStrictEqual({
+      catalog: false,
+      accessRequests: false,
+      policySync: false,
+      auditLogSync: true,
+    });
   });
 
   test("認証に失敗した場合は401を返す", async () => {
