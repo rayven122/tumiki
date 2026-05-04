@@ -145,6 +145,17 @@ export const mcpCatalogRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       return ctx.db.$transaction(async (tx) => {
+        const catalog = await tx.mcpCatalog.findFirst({
+          where: { id: input.catalogId, deletedAt: null },
+          select: { id: true },
+        });
+        if (!catalog) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "カタログが見つかりません",
+          });
+        }
+
         const seenNames = new Set(input.tools.map((tool) => tool.name));
         await tx.mcpCatalogTool.updateMany({
           where: {
@@ -154,33 +165,31 @@ export const mcpCatalogRouter = createTRPCRouter({
           },
           data: { deletedAt: new Date() },
         });
-        await Promise.all(
-          input.tools.map((tool) =>
-            tx.mcpCatalogTool.upsert({
-              where: {
-                catalogId_name: {
-                  catalogId: input.catalogId,
-                  name: tool.name,
-                },
-              },
-              create: {
+        for (const tool of input.tools) {
+          await tx.mcpCatalogTool.upsert({
+            where: {
+              catalogId_name: {
                 catalogId: input.catalogId,
                 name: tool.name,
-                description: tool.description ?? null,
-                inputSchema: toInputJson(tool.inputSchema),
-                defaultAllowed: tool.defaultAllowed,
-                riskLevel: tool.riskLevel,
               },
-              update: {
-                description: tool.description ?? null,
-                inputSchema: toInputJson(tool.inputSchema),
-                defaultAllowed: tool.defaultAllowed,
-                riskLevel: tool.riskLevel,
-                deletedAt: null,
-              },
-            }),
-          ),
-        );
+            },
+            create: {
+              catalogId: input.catalogId,
+              name: tool.name,
+              description: tool.description ?? null,
+              inputSchema: toInputJson(tool.inputSchema),
+              defaultAllowed: tool.defaultAllowed,
+              riskLevel: tool.riskLevel,
+            },
+            update: {
+              description: tool.description ?? null,
+              inputSchema: toInputJson(tool.inputSchema),
+              defaultAllowed: tool.defaultAllowed,
+              riskLevel: tool.riskLevel,
+              deletedAt: null,
+            },
+          });
+        }
         return tx.mcpCatalog.findUniqueOrThrow({
           where: { id: input.catalogId },
           include: { tools: { where: { deletedAt: null } } },

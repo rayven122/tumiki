@@ -126,4 +126,31 @@ describe("mcpCatalogRouter", () => {
     );
     expect(update).not.toHaveBeenCalled();
   });
+
+  test("refreshToolsは存在しないカタログをNOT_FOUNDにする", async () => {
+    const updateMany = vi.fn();
+    type RefreshToolsTransaction = (tx: {
+      mcpCatalog: { findFirst: () => Promise<null> };
+      mcpCatalogTool: { updateMany: typeof updateMany };
+    }) => Promise<unknown>;
+    const caller = buildCaller({
+      $transaction: vi.fn((callback: RefreshToolsTransaction) =>
+        callback({
+          mcpCatalog: {
+            findFirst: vi.fn().mockResolvedValue(null),
+          },
+          mcpCatalogTool: { updateMany },
+        }),
+      ),
+    } as unknown as Context["db"]);
+
+    await expectTrpcErrorCode(
+      caller.refreshTools({
+        catalogId: "catalog-missing",
+        tools: [],
+      }),
+      "NOT_FOUND",
+    );
+    expect(updateMany).not.toHaveBeenCalled();
+  });
 });

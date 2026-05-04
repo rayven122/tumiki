@@ -458,7 +458,7 @@ const AdminGroupsPage = () => {
               {(
                 [
                   { id: "members", label: "メンバー" },
-                  { id: "tools", label: "MCP権限" },
+                  { id: "tools", label: "部署別MCP権限" },
                   { id: "idp", label: "IdP連携" },
                 ] as { id: GroupTab; label: string }[]
               ).map((tab) => (
@@ -533,7 +533,7 @@ const AdminGroupsPage = () => {
                 </div>
               )}
 
-              {/* MCP権限タブ */}
+              {/* 部署別MCP権限タブ */}
               {activeTab === "tools" && (
                 <div className="grid grid-cols-[260px_1fr] gap-4">
                   <div className="bg-bg-card border-border-default overflow-hidden rounded-xl border">

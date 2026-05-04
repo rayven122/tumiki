@@ -70,6 +70,8 @@ const emptyBits = (): PermissionBits => ({
 const hasAnyPermission = (permissions: PermissionBits) =>
   permissions.read || permissions.write || permissions.execute;
 
+const POLICY_CONTEXT_ORG_UNIT_LIMIT = 2000;
+
 const collectOrgUnitIds = (
   memberships: PolicyUser["orgUnitMemberships"],
   allOrgUnits: { id: string; parentId: string | null }[],
@@ -231,6 +233,7 @@ export const getPolicyContextForUser = async (
     }),
     client.orgUnit.findMany({
       select: { id: true, parentId: true, updatedAt: true },
+      take: POLICY_CONTEXT_ORG_UNIT_LIMIT,
     }),
   ]);
 

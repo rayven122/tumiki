@@ -85,6 +85,7 @@ const syncPrimaryOrgUnitMembership = async (
       name: attributes.department,
       externalId,
       source: OrgUnitSource.SCIM,
+      // SCIM EnterpriseUser.department だけでは親子関係を判断できないため、初期作成はルート直下に置く。
       path: `/${externalId}`,
       lastSyncedAt: new Date(),
     },
