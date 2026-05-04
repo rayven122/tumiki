@@ -141,7 +141,7 @@ export const SettingsPage = (): JSX.Element => {
     }
   }, []);
 
-  const startRelogin = async (): Promise<void> => {
+  const startRelogin = useCallback(async (): Promise<void> => {
     if (isReloginStarting || isWaitingForRelogin) return;
 
     const managerUrl = profile?.organizationProfile?.managerUrl;
@@ -180,7 +180,12 @@ export const SettingsPage = (): JSX.Element => {
     } finally {
       if (mountedRef.current) setIsReloginStarting(false);
     }
-  };
+  }, [
+    clearReloginTimeout,
+    isReloginStarting,
+    isWaitingForRelogin,
+    profile?.organizationProfile?.managerUrl,
+  ]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -202,7 +207,7 @@ export const SettingsPage = (): JSX.Element => {
       setIsReloginStarting(false);
       setReloginError(
         `再ログインに失敗しました: ${formatElectronIpcErrorMessage(
-          new Error(message),
+          message,
           message,
         )}`,
       );
@@ -229,7 +234,7 @@ export const SettingsPage = (): JSX.Element => {
     );
   };
 
-  const disconnectOrganization = async (): Promise<void> => {
+  const disconnectOrganization = useCallback(async (): Promise<void> => {
     if (isDisconnecting) return;
     setIsDisconnecting(true);
     setDisconnectError(null);
@@ -247,7 +252,7 @@ export const SettingsPage = (): JSX.Element => {
     } finally {
       if (mountedRef.current) setIsDisconnecting(false);
     }
-  };
+  }, [isDisconnecting, navigate]);
 
   // 権限サマリー
   const mockApprovedTools = TOOLS.filter((t) => t.approved);
