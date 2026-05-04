@@ -1,128 +1,197 @@
 "use client";
 
 import { useState } from "react";
-import { Download } from "lucide-react";
-import {
-  AUDIT_LOGS,
-  getStatusBadge,
-  type LogStatus,
-} from "../_components/mock-data";
+import { Download, Loader2 } from "lucide-react";
+import { api, type RouterOutputs } from "~/trpc/react";
 
-const SUMMARY = [
-  { label: "総件数", value: AUDIT_LOGS.length.toString() },
-  {
-    label: "成功率",
-    value: `${Math.round((AUDIT_LOGS.filter((l) => l.status === "success").length / AUDIT_LOGS.length) * 100)}%`,
-  },
-  {
-    label: "ブロック",
-    value: AUDIT_LOGS.filter((l) => l.status === "blocked").length.toString(),
-  },
-  {
-    label: "エラー",
-    value: AUDIT_LOGS.filter((l) => l.status === "error").length.toString(),
-  },
+type LogStatus = "success" | "blocked" | "error";
+type StatusFilter = LogStatus | "all";
+
+type AuditLogItem = RouterOutputs["auditLogs"]["list"]["items"][number];
+
+const statusOptions: Array<{ value: StatusFilter; label: string }> = [
+  { value: "all", label: "すべてのステータス" },
+  { value: "success", label: "成功" },
+  { value: "blocked", label: "ブロック" },
+  { value: "error", label: "エラー" },
 ];
 
-const AdminHistoryPage = () => {
-  const [statusFilter, setStatusFilter] = useState<LogStatus | "all">("all");
-  const [serviceFilter, setServiceFilter] = useState("all");
+const getStatusBadge = (status: LogStatus) => {
+  switch (status) {
+    case "success":
+      return {
+        label: "成功",
+        bg: "bg-badge-success-bg",
+        text: "text-badge-success-text",
+      };
+    case "blocked":
+      return {
+        label: "ブロック",
+        bg: "bg-badge-warning-bg",
+        text: "text-badge-warning-text",
+      };
+    case "error":
+      return {
+        label: "エラー",
+        bg: "bg-badge-error-bg",
+        text: "text-badge-error-text",
+      };
+  }
+};
 
-  const services = [
-    "all",
-    ...Array.from(new Set(AUDIT_LOGS.map((l) => l.tool))),
-  ];
-  const filtered = AUDIT_LOGS.filter(
-    (l) =>
-      (statusFilter === "all" || l.status === statusFilter) &&
-      (serviceFilter === "all" || l.tool === serviceFilter),
+const formatDateTime = (value: Date) =>
+  new Intl.DateTimeFormat("ja-JP", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(value);
+
+const getUserLabel = (log: AuditLogItem) =>
+  log.user.name ?? log.user.email ?? log.user.id;
+
+const getToolColor = (mcpServerId: string) => {
+  const colors = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444"];
+  const hash = Array.from(mcpServerId).reduce(
+    (sum, char) => sum + char.charCodeAt(0),
+    0,
   );
+  return colors[hash % colors.length] ?? colors[0];
+};
+
+const AdminHistoryPage = () => {
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [serviceFilter, setServiceFilter] = useState("all");
+  const [cursor, setCursor] = useState<string | undefined>();
+
+  const auditLogsQuery = api.auditLogs.list.useQuery({
+    status: statusFilter,
+    mcpServerId: serviceFilter === "all" ? undefined : serviceFilter,
+    limit: 100,
+    cursor,
+  });
+
+  const data = auditLogsQuery.data;
+  const summary = data?.summary ?? {
+    total: 0,
+    success: 0,
+    blocked: 0,
+    error: 0,
+  };
+  const successRate =
+    summary.total > 0 ? Math.round((summary.success / summary.total) * 100) : 0;
+
+  const summaryCards = [
+    { label: "総件数", value: summary.total.toString() },
+    { label: "成功率", value: `${successRate}%` },
+    { label: "ブロック", value: summary.blocked.toString() },
+    { label: "エラー", value: summary.error.toString() },
+  ];
 
   return (
     <div className="space-y-4 p-6">
-      {/* ヘッダー */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-text-primary text-lg font-semibold">操作履歴</h1>
           <p className="text-text-secondary mt-1 text-xs">
-            MCPツール呼び出しの監査ログ
+            Desktopから同期されたMCPツール呼び出しの監査ログ
           </p>
         </div>
         <button
           type="button"
-          className="bg-bg-active text-text-secondary flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
+          disabled
+          className="bg-bg-active text-text-secondary flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium opacity-60"
+          title="CSVエクスポートは未実装です"
         >
           <Download size={13} />
           CSVエクスポート
         </button>
       </div>
 
-      {/* サマリーカード */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {SUMMARY.map((s) => (
+        {summaryCards.map((card) => (
           <div
-            key={s.label}
+            key={card.label}
             className="bg-bg-card border-border-default rounded-xl border p-4"
           >
-            <span className="text-text-muted text-xs">{s.label}</span>
+            <span className="text-text-muted text-xs">{card.label}</span>
             <div className="text-text-primary mt-2 text-2xl font-semibold">
-              {s.value}
+              {card.value}
             </div>
           </div>
         ))}
       </div>
 
-      {/* フィルタ */}
       <div className="flex flex-wrap items-center gap-2">
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as LogStatus | "all")}
+          onChange={(event) => {
+            setStatusFilter(event.target.value as StatusFilter);
+            setCursor(undefined);
+          }}
           className="bg-bg-card border-border-default text-text-secondary rounded-lg border px-3 py-1.5 text-xs outline-none"
         >
-          <option value="all">すべてのステータス</option>
-          <option value="success">成功</option>
-          <option value="blocked">ブロック</option>
-          <option value="error">エラー</option>
+          {statusOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
         </select>
         <select
           value={serviceFilter}
-          onChange={(e) => setServiceFilter(e.target.value)}
+          onChange={(event) => {
+            setServiceFilter(event.target.value);
+            setCursor(undefined);
+          }}
           className="bg-bg-card border-border-default text-text-secondary rounded-lg border px-3 py-1.5 text-xs outline-none"
         >
-          {services.map((s) => (
-            <option key={s} value={s}>
-              {s === "all" ? "すべてのツール" : s}
+          <option value="all">すべてのMCPサーバー</option>
+          {(data?.mcpServers ?? []).map((server) => (
+            <option key={server.id} value={server.id}>
+              {server.id} ({server.count})
             </option>
           ))}
         </select>
         <span className="text-text-subtle ml-auto text-xs">
-          {filtered.length} 件表示
+          {auditLogsQuery.isLoading ? "読み込み中" : `${data?.total ?? 0} 件`}
         </span>
       </div>
 
-      {/* テーブル */}
       <div className="bg-bg-card border-border-default overflow-hidden rounded-xl border">
-        <div className="border-b-border-default text-text-subtle grid grid-cols-[110px_90px_110px_130px_1fr_85px_60px] items-center gap-2 border-b px-5 py-2.5 text-[10px]">
+        <div className="border-b-border-default text-text-subtle grid grid-cols-[120px_150px_130px_130px_1fr_90px_70px_70px] items-center gap-2 border-b px-5 py-2.5 text-[10px]">
           <span>日時</span>
           <span>ユーザー</span>
           <span>AIクライアント</span>
           <span>接続先</span>
           <span>操作</span>
           <span>ステータス</span>
+          <span className="text-right">HTTP</span>
           <span className="text-right">応答</span>
         </div>
 
-        {filtered.length === 0 ? (
+        {auditLogsQuery.isLoading ? (
+          <div className="text-text-muted flex items-center justify-center gap-2 py-12 text-sm">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            読み込み中
+          </div>
+        ) : auditLogsQuery.isError ? (
+          <div className="text-badge-error-text py-12 text-center text-sm">
+            監査ログを取得できませんでした
+          </div>
+        ) : (data?.items.length ?? 0) === 0 ? (
           <div className="text-text-muted py-12 text-center text-sm">
             該当するログはありません
           </div>
         ) : (
-          filtered.map((log) => {
+          data?.items.map((log) => {
             const badge = getStatusBadge(log.status);
+            const userLabel = getUserLabel(log);
+            const serviceName = log.connectionName ?? log.mcpServerId;
             return (
               <div
                 key={log.id}
-                className="border-b-border-subtle grid grid-cols-[110px_90px_110px_130px_1fr_85px_60px] items-center gap-2 border-b px-5 py-3 text-xs transition-colors"
+                className="border-b-border-subtle grid grid-cols-[120px_150px_130px_130px_1fr_90px_70px_70px] items-center gap-2 border-b px-5 py-3 text-xs transition-colors"
                 style={{
                   backgroundColor:
                     log.status !== "success"
@@ -131,38 +200,32 @@ const AdminHistoryPage = () => {
                 }}
               >
                 <span className="text-text-subtle font-mono text-[11px]">
-                  {log.datetime}
+                  {formatDateTime(log.occurredAt)}
                 </span>
-                <div className="flex items-center gap-1.5">
-                  <div
-                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-medium ${log.user === "不明" ? "bg-badge-error-bg text-badge-error-text" : "bg-bg-active text-text-secondary"}`}
-                  >
-                    {log.user.charAt(0)}
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <div className="bg-bg-active text-text-secondary flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-medium">
+                    {userLabel.charAt(0)}
                   </div>
                   <span className="text-text-secondary truncate">
-                    {log.user}
+                    {userLabel}
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className="h-2 w-2 rounded-full"
-                    style={{ backgroundColor: log.aiClientColor }}
-                  />
-                  <span className="text-text-muted text-[11px]">
-                    {log.aiClient}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
+                <span className="text-text-muted truncate text-[11px]">
+                  {log.clientName ?? "不明"}
+                </span>
+                <div className="flex min-w-0 items-center gap-1.5">
                   <span
                     className="flex h-4 w-4 shrink-0 items-center justify-center rounded text-[8px] font-bold text-white"
-                    style={{ backgroundColor: log.toolColor }}
+                    style={{ backgroundColor: getToolColor(serviceName) }}
                   >
-                    {log.tool.slice(0, 2).toUpperCase()}
+                    {serviceName.slice(0, 2).toUpperCase()}
                   </span>
-                  <span className="text-text-secondary">{log.tool}</span>
+                  <span className="text-text-secondary truncate">
+                    {serviceName}
+                  </span>
                 </div>
                 <span className="text-text-muted truncate font-mono text-[11px]">
-                  {log.operation}
+                  {log.method}:{log.toolName}
                 </span>
                 <span
                   className={`rounded-full px-1.5 py-0.5 text-center text-[9px] font-medium ${badge.bg} ${badge.text}`}
@@ -170,12 +233,34 @@ const AdminHistoryPage = () => {
                   {badge.label}
                 </span>
                 <span className="text-text-subtle text-right font-mono text-[11px]">
-                  {log.latency}
+                  {log.httpStatus}
+                </span>
+                <span className="text-text-subtle text-right font-mono text-[11px]">
+                  {log.durationMs}ms
                 </span>
               </div>
             );
           })
         )}
+      </div>
+
+      <div className="flex justify-end gap-2">
+        <button
+          type="button"
+          disabled={!cursor}
+          onClick={() => setCursor(undefined)}
+          className="bg-bg-card border-border-default text-text-secondary rounded-lg border px-3 py-1.5 text-xs font-medium disabled:opacity-40"
+        >
+          先頭へ
+        </button>
+        <button
+          type="button"
+          disabled={!data?.nextCursor}
+          onClick={() => setCursor(data?.nextCursor ?? undefined)}
+          className="bg-bg-active text-text-secondary rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-40"
+        >
+          次の100件
+        </button>
       </div>
     </div>
   );
