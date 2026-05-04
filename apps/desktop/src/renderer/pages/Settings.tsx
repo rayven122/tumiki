@@ -81,7 +81,6 @@ const formatSessionError = (error: unknown): string => {
 
 const RELOGIN_TIMEOUT_MS = 120_000;
 
-// 設定ページ
 export const SettingsPage = (): JSX.Element => {
   const navigate = useNavigate();
   const [emailSettings, setEmailSettings] =
@@ -245,7 +244,7 @@ export const SettingsPage = (): JSX.Element => {
     } catch (err) {
       if (mountedRef.current) {
         setDisconnectError(
-          err instanceof Error ? err.message : "組織利用の停止に失敗しました",
+          err instanceof Error ? err.message : "不明なエラー",
         );
       }
     } finally {
@@ -461,7 +460,7 @@ export const SettingsPage = (): JSX.Element => {
                         </div>
                         <div>
                           <p className="text-xs text-[var(--text-subtle)]">
-                            role
+                            ロール
                           </p>
                           <p className="mt-1 text-[var(--text-secondary)]">
                             {desktopSession.user.role}
@@ -469,7 +468,7 @@ export const SettingsPage = (): JSX.Element => {
                         </div>
                         <div>
                           <p className="text-xs text-[var(--text-subtle)]">
-                            sub
+                            サブジェクト
                           </p>
                           <p className="mt-1 truncate font-mono text-[11px] text-[var(--text-secondary)]">
                             {desktopSession.user.sub}
