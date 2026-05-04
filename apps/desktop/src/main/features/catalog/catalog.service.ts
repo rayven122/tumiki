@@ -9,7 +9,7 @@ import {
 } from "../mcp-server-list/mcp.service";
 import * as catalogRepository from "./catalog.repository";
 import { toCatalogItem } from "./catalog.mapper";
-import type { AddFromCatalogInput } from "./catalog.types";
+import type { AddFromCatalogInput } from "../../../types/catalog";
 
 const CATALOG_PAGE_LIMIT = 200;
 
@@ -51,9 +51,6 @@ const catalogListResponseSchema = z.object({
   nextCursor: z.string().nullable(),
 });
 
-/**
- * Manager APIからすべてのカタログを取得（組織利用モード用）
- */
 const fetchFromManagerApi = async (): Promise<CatalogItem[]> => {
   const items: CatalogItem[] = [];
   let cursor: string | null = null;
@@ -82,11 +79,6 @@ const fetchFromManagerApi = async (): Promise<CatalogItem[]> => {
   return items;
 };
 
-/**
- * プロファイルモードに応じてカタログ一覧を取得する。
- * - 個人利用: ローカルSQLiteのシードデータから取得
- * - 組織利用: Manager APIから取得
- */
 export const getAllCatalogs = async (): Promise<CatalogItem[]> =>
   resolveByProfile({
     personal: async () => {
@@ -97,12 +89,6 @@ export const getAllCatalogs = async (): Promise<CatalogItem[]> =>
     organization: fetchFromManagerApi,
   });
 
-/**
- * カタログからMCPサーバーを追加する。
- * renderer は統一された入力型を渡すだけで、モード別の登録APIの違いを意識しない。
- * - 個人利用: createFromCatalog（ローカルカタログID紐付き）
- * - 組織利用: createFromManagerCatalog（Manager APIカタログ経由）
- */
 export const addFromCatalog = async (
   input: AddFromCatalogInput,
 ): Promise<{ serverId: number; serverName: string }> =>
@@ -138,10 +124,7 @@ export const addFromCatalog = async (
       }),
   });
 
-/**
- * ローカルSQLite上のカタログを取得
- * 仮想MCP作成など、既存McpCatalog IDが必要な内部機能向け。
- */
+/** 仮想MCP作成など、既存McpCatalog IDが必要な内部機能向け */
 export const getAllLocalCatalogs = async () => {
   const db = await getDb();
   return catalogRepository.findAll(db);

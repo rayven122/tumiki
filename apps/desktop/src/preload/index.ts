@@ -1,7 +1,10 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { AuthTokenResult } from "../types/auth";
-import type { CatalogItem, LocalCatalogItem } from "../types/catalog";
-import type { AddFromCatalogInput } from "../main/features/catalog/catalog.types";
+import type {
+  CatalogItem,
+  LocalCatalogItem,
+  AddFromCatalogInput,
+} from "../types/catalog";
 import type { ProfileState } from "../shared/types";
 import type {
   McpServerItem,

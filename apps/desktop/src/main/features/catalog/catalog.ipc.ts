@@ -1,5 +1,6 @@
 import { ipcMain } from "electron";
 import { z } from "zod";
+import type { AddFromCatalogInput } from "../../../types/catalog";
 import * as catalogService from "./catalog.service";
 import * as logger from "../../shared/utils/logger";
 
@@ -28,7 +29,7 @@ const addFromCatalogSchema = z.object({
     }),
   ),
   credentials: z.record(z.string(), z.string()),
-});
+}) satisfies z.ZodType<AddFromCatalogInput>;
 
 /**
  * カタログ関連の IPC ハンドラーを設定
@@ -67,8 +68,7 @@ export const setupCatalogIpc = (): void => {
         "Failed to add from catalog",
         error instanceof Error ? error : { error },
       );
-      const detail = error instanceof Error ? `: ${error.message}` : "";
-      throw new Error(`カタログからのMCP登録に失敗しました${detail}`);
+      throw new Error("カタログからのMCP登録に失敗しました");
     }
   });
 };

@@ -31,7 +31,7 @@ import {
   createFromCatalog,
   createFromManagerCatalog,
 } from "../../mcp-server-list/mcp.service";
-import type { AddFromCatalogInput } from "../catalog.types";
+import type { AddFromCatalogInput } from "../../../../types/catalog";
 
 const managerCatalog = {
   id: "github",

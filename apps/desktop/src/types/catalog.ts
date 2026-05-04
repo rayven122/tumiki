@@ -61,3 +61,14 @@ export type LocalCatalogItem = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type AddFromCatalogInput = {
+  catalogId: string;
+  serverName: string;
+  description: string;
+  status: CatalogStatus;
+  permissions: CatalogPermissions;
+  connectionTemplate: CatalogConnectionTemplate;
+  tools: Array<{ name: string; allowed: boolean }>;
+  credentials: Record<string, string>;
+};

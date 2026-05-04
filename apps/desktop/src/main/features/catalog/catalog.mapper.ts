@@ -4,13 +4,20 @@ import type { CatalogItem } from "../../../types/catalog";
 
 const jsonStringArraySchema = z
   .string()
-  .transform((s) => JSON.parse(s) as unknown)
+  .transform((s, ctx) => {
+    try {
+      return JSON.parse(s) as unknown;
+    } catch {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "不正なJSON文字列です",
+      });
+      return z.NEVER;
+    }
+  })
   .pipe(z.array(z.string()));
 
-/**
- * ローカルSQLiteの McpCatalog レコードを renderer が期待する CatalogItem 型に変換する。
- * 個人利用モードでは権限・ステータスの概念がないため、すべて利用可能として扱う。
- */
+/** 個人利用モードでは権限・ステータスの概念がないため、すべて利用可能として扱う */
 export const toCatalogItem = (local: McpCatalog): CatalogItem => {
   const args = jsonStringArraySchema.parse(local.args);
   const credentialKeys = jsonStringArraySchema.parse(local.credentialKeys);
