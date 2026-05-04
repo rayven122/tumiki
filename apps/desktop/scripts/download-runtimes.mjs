@@ -24,8 +24,11 @@
  *   node scripts/download-runtimes.mjs --platform darwin-x64
  *   node scripts/download-runtimes.mjs --force      # 既存を再ダウンロード
  *
- * CI 環境（CI=true）では取得をスキップする。
- * typecheck / lint / test はランタイム実体を使わないため。
+ * CI 環境（CI=true）では引数なしで呼ばれた時のみスキップする。
+ * - 引数なし（`pnpm install` の postinstall）: typecheck / lint / test では
+ *   ランタイム実体は不要なためスキップ
+ * - `--all` / `--platform` / `--force` 付き: リリースビルドの意図とみなし
+ *   CI 上でも実行（`pnpm build:release` がこれに該当）
  */
 
 import { spawn } from "node:child_process";
@@ -50,9 +53,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_DIR = path.resolve(__dirname, "..");
 const RUNTIME_ROOT = path.join(DESKTOP_DIR, "resources", "runtime");
 
+// uv は 0.5.27 から Windows ARM64 (aarch64-pc-windows-msvc) アセットを配布開始。
+// DEV-1598: Windows リリースビルドで win32-arm64 もサポートするため 0.7.21 に統一。
+// （0.5.10 のままだと win-arm64 アセット不在で 404）
 const VERSIONS = {
   node: "22.11.0",
-  uv: "0.5.10",
+  uv: "0.7.21",
 };
 
 /**
@@ -372,11 +378,24 @@ const setupPlatform = async (platform, force) => {
   log(`${platform}: 完了 → ${path.relative(DESKTOP_DIR, target)}`);
 };
 
+/**
+ * CI 上で「リリースビルド意図」を示すフラグが渡されているかを判定する。
+ *
+ * `pnpm build:release` のような明示的な呼び出しでは `--all` が付くため、
+ * これを「CI でも実体取得を行うべきシーン」として識別する。
+ * 引数なしの `pnpm install` postinstall は従来通り CI ではスキップ対象。
+ */
+const isExplicitReleaseInvocation = (argv) =>
+  argv.includes("--all") ||
+  argv.includes("--platform") ||
+  argv.includes("--force");
+
 const main = async () => {
-  // CI 環境ではランタイム実体を使わない（typecheck/lint/test のみ）ためスキップ
-  // 必要なら CI 上で `--force` 付きで明示実行することは可能（force だけではスキップは外れない設計）
-  if (process.env.CI === "true") {
-    log("CI 環境を検出 - ランタイム取得をスキップします");
+  const argv = process.argv.slice(2);
+  if (process.env.CI === "true" && !isExplicitReleaseInvocation(argv)) {
+    log(
+      "CI 環境を検出 - 引数なしのためランタイム取得をスキップします（--all/--platform/--force で強制可）",
+    );
     return;
   }
 
