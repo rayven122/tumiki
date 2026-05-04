@@ -38,9 +38,12 @@ type NewlyCreated = {
   googleAuthorizationUrl: string | null;
 };
 
-// Google OAuth コールバックのエラーコード（route.ts と対応）→ 表示用日本語
+// Google OAuth コールバック／認可エンドポイントのエラーコード → 表示用日本語
 const GOOGLE_CALLBACK_ERROR_LABELS: Record<string, string> = {
   unauthorized: "認証セッションが無効です。再ログインしてください",
+  no_google_directory: "Google Workspace Directory が存在しません",
+  directory_lookup_failed: "Directory 一覧の取得に失敗しました",
+  authorization_url_failed: "Google 認可URLの生成に失敗しました",
   oauth_denied: "Google で認可が拒否されました",
   invalid_request: "認可リクエストに必要なパラメータが不足しています",
   invalid_state: "認可フローの状態が不正です",
