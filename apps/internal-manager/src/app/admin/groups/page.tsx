@@ -49,7 +49,8 @@ const PRESET_COLOR_CLASSES = [
 ];
 
 const getGroupColorClass = (id: string): string => {
-  const index = id.charCodeAt(0) % PRESET_COLOR_CLASSES.length;
+  const hash = [...id].reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const index = hash % PRESET_COLOR_CLASSES.length;
   return (
     PRESET_COLOR_CLASSES[index] ?? PRESET_COLOR_CLASSES[0] ?? "bg-[#a78bfa]"
   );
@@ -163,7 +164,8 @@ const IdpTab = ({ group, idpGroupMap, onIdpGroupChange }: IdpTabProps) => {
           />
           <button
             type="button"
-            className="bg-btn-primary-bg text-btn-primary-text rounded-lg px-3 py-2 text-xs font-medium transition-opacity hover:opacity-80"
+            disabled
+            className="bg-btn-primary-bg text-btn-primary-text cursor-not-allowed rounded-lg px-3 py-2 text-xs font-medium opacity-50"
           >
             保存
           </button>
@@ -178,7 +180,8 @@ const IdpTab = ({ group, idpGroupMap, onIdpGroupChange }: IdpTabProps) => {
           </h2>
           <button
             type="button"
-            className="bg-bg-active text-text-secondary flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
+            disabled
+            className="bg-bg-active text-text-secondary flex cursor-not-allowed items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium opacity-50"
           >
             <RefreshCw size={11} />
             手動同期

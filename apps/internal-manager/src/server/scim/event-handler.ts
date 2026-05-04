@@ -64,7 +64,10 @@ const extractEnterpriseUserAttributes = (
 };
 
 const normalizeExternalId = (name: string) =>
-  `department:${name.trim().toLowerCase().replace(/\s+/g, "-").replace(/\//g, "_")}`;
+  `department:${encodeURIComponent(name.trim().toLowerCase()).replace(
+    /%20/g,
+    "-",
+  )}`;
 
 const syncPrimaryOrgUnitMembership = async (
   tx: PrismaTransactionClient,

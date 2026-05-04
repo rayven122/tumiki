@@ -68,6 +68,7 @@ describe("GET /api/desktop/v1/catalogs", () => {
     mockVerifyDesktopJwt.mockResolvedValue({ userId: "user-001" });
     mockFindUser.mockResolvedValue({
       id: "user-001",
+      isActive: true,
       updatedAt: new Date("2026-05-03T10:00:00.000Z"),
       orgUnitMemberships: [
         {
@@ -177,6 +178,7 @@ describe("GET /api/desktop/v1/catalogs", () => {
   test("権限がないカタログは申請必要として返す", async () => {
     mockFindUser.mockResolvedValue({
       id: "user-001",
+      isActive: true,
       updatedAt: new Date("2026-05-03T10:00:00.000Z"),
       groupMemberships: [],
       orgUnitMemberships: [],
@@ -273,6 +275,25 @@ describe("GET /api/desktop/v1/catalogs", () => {
 
   test("認証成功後にユーザーが存在しない場合は401を返す", async () => {
     mockFindUser.mockResolvedValue(null);
+
+    const response = await GET(buildRequest());
+
+    await expect(response.json()).resolves.toStrictEqual({
+      error: "Unauthorized",
+    });
+    expect(response.status).toStrictEqual(401);
+    expect(mockFindCatalogs).not.toHaveBeenCalled();
+  });
+
+  test("認証成功後にユーザーが無効化済みの場合は401を返す", async () => {
+    mockFindUser.mockResolvedValue({
+      id: "user-001",
+      isActive: false,
+      updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+      groupMemberships: [],
+      orgUnitMemberships: [],
+      individualPermissions: [],
+    });
 
     const response = await GET(buildRequest());
 

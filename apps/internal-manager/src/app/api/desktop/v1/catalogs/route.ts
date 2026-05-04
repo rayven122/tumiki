@@ -139,7 +139,7 @@ export const GET = async (request: NextRequest) => {
 
   const policyContext = await getPolicyContextForUser(verifiedUser.userId);
   const policyUser = policyContext.user;
-  if (!policyUser) {
+  if (!policyUser?.isActive) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

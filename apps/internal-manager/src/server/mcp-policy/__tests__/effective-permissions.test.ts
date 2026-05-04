@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { PolicyEffect } from "@tumiki/internal-db";
 import {
+  buildPolicyVersion,
   evaluateCatalogPermissions,
   type CatalogPolicyInput,
   type PolicyUser,
@@ -10,6 +11,7 @@ const now = new Date("2026-05-04T00:00:00.000Z");
 
 const buildUser = (overrides: Partial<PolicyUser> = {}): PolicyUser => ({
   id: "user-001",
+  isActive: true,
   updatedAt: now,
   orgUnitMemberships: [
     {
@@ -134,5 +136,36 @@ describe("evaluateCatalogPermissions", () => {
       deniedReason: null,
     });
     expect(result.permissions.execute).toStrictEqual(true);
+  });
+
+  test("部署階層が循環していても所属部署収集で停止する", () => {
+    const result = evaluateCatalogPermissions(
+      buildUser(),
+      buildCatalog([
+        { orgUnitId: "parent", effect: PolicyEffect.ALLOW, updatedAt: now },
+      ]),
+      [
+        { id: "parent", parentId: "child" },
+        { id: "child", parentId: "parent" },
+      ],
+    );
+
+    expect(result.tools.get("tool-001")).toStrictEqual({
+      allowed: true,
+      deniedReason: null,
+    });
+  });
+});
+
+describe("buildPolicyVersion", () => {
+  test("同じポリシー状態から決定論的なhashを返す", () => {
+    const policyState = {
+      catalogs: [{ id: "catalog-001", updatedAt: "2026-05-04T00:00:00.000Z" }],
+    };
+
+    expect(buildPolicyVersion(policyState)).toStrictEqual(
+      buildPolicyVersion(policyState),
+    );
+    expect(buildPolicyVersion(policyState)).toMatch(/^pol_v1_[\w-]{32}$/);
   });
 });

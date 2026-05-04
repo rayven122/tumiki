@@ -335,10 +335,10 @@ describe("handleDirectorySyncEvent", () => {
 
       const orgUnitArgs = getFirstCallArg(mockDb.orgUnit.upsert);
       expect(orgUnitArgs.where.source_externalId.externalId).toStrictEqual(
-        "department:product_platform",
+        "department:product%2Fplatform",
       );
       expect(orgUnitArgs.create.path).toStrictEqual(
-        "/department:product_platform",
+        "/department:product%2Fplatform",
       );
     });
   });

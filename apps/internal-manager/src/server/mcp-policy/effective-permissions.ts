@@ -23,6 +23,7 @@ export type EffectiveCatalogPermissions = {
 
 export type PolicyUser = {
   id: string;
+  isActive: boolean;
   updatedAt: Date;
   orgUnitMemberships: {
     updatedAt: Date;
@@ -189,6 +190,7 @@ export const getPolicyContextForUser = async (
       where: { id: userId },
       select: {
         id: true,
+        isActive: true,
         updatedAt: true,
         orgUnitMemberships: {
           select: {

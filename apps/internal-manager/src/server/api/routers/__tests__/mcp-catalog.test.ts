@@ -67,6 +67,24 @@ beforeEach(() => {
 });
 
 describe("mcpCatalogRouter", () => {
+  test("createは末尾ハイフンのslugをBAD_REQUESTにする", async () => {
+    const create = vi.fn();
+    const caller = buildCaller({
+      mcpCatalog: { create },
+    } as unknown as Context["db"]);
+
+    await expectTrpcErrorCode(
+      caller.create({
+        slug: "github-",
+        name: "GitHub",
+        configTemplate: {},
+        credentialKeys: [],
+      }),
+      "BAD_REQUEST",
+    );
+    expect(create).not.toHaveBeenCalled();
+  });
+
   test("updateは存在しないカタログをNOT_FOUNDにする", async () => {
     const update = vi.fn();
     const caller = buildCaller({

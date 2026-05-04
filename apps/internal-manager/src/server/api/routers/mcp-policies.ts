@@ -8,6 +8,7 @@ import {
 } from "~/server/mcp-policy/effective-permissions";
 
 const POLICY_MATRIX_ORG_UNIT_LIMIT = 1000;
+const POLICY_MATRIX_CATALOG_LIMIT = 200;
 
 export const mcpPoliciesRouter = createTRPCRouter({
   getMatrix: adminProcedure.query(async ({ ctx }) => {
@@ -28,6 +29,7 @@ export const mcpPoliciesRouter = createTRPCRouter({
           },
         },
         orderBy: { name: "asc" },
+        take: POLICY_MATRIX_CATALOG_LIMIT,
       }),
     ]);
 
