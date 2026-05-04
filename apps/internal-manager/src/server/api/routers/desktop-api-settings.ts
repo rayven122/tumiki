@@ -1,6 +1,6 @@
 import { z } from "zod";
 import {
-  DEFAULT_DESKTOP_API_SETTINGS,
+  DEFAULT_DESKTOP_API_SETTINGS_RECORD,
   DESKTOP_API_SETTINGS_ID,
 } from "@/lib/desktop-api-settings/constants";
 import { adminProcedure, createTRPCRouter } from "@/server/api/trpc";
@@ -36,31 +36,28 @@ export const desktopApiSettingsRouter = createTRPCRouter({
       where: { id: DESKTOP_API_SETTINGS_ID },
     });
 
-    return settings ?? DEFAULT_DESKTOP_API_SETTINGS;
+    return settings ?? DEFAULT_DESKTOP_API_SETTINGS_RECORD;
   }),
 
   update: adminProcedure
     .input(settingsInputSchema)
     .mutation(async ({ ctx, input }) => {
+      const data = {
+        organizationName: input.organizationName,
+        organizationSlug: input.organizationSlug,
+        catalogEnabled: input.catalogEnabled,
+        accessRequestsEnabled: input.accessRequestsEnabled,
+        policySyncEnabled: input.policySyncEnabled,
+        auditLogSyncEnabled: input.auditLogSyncEnabled,
+      };
+
       return ctx.db.desktopApiSettings.upsert({
         where: { id: DESKTOP_API_SETTINGS_ID },
         create: {
           id: DESKTOP_API_SETTINGS_ID,
-          organizationName: input.organizationName,
-          organizationSlug: input.organizationSlug,
-          catalogEnabled: input.catalogEnabled,
-          accessRequestsEnabled: input.accessRequestsEnabled,
-          policySyncEnabled: input.policySyncEnabled,
-          auditLogSyncEnabled: input.auditLogSyncEnabled,
+          ...data,
         },
-        update: {
-          organizationName: input.organizationName,
-          organizationSlug: input.organizationSlug,
-          catalogEnabled: input.catalogEnabled,
-          accessRequestsEnabled: input.accessRequestsEnabled,
-          policySyncEnabled: input.policySyncEnabled,
-          auditLogSyncEnabled: input.auditLogSyncEnabled,
-        },
+        update: data,
       });
     }),
 });

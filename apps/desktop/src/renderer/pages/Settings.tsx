@@ -173,8 +173,8 @@ export const SettingsPage = (): JSX.Element => {
   };
 
   // 権限サマリー
-  const approvedTools = TOOLS.filter((t) => t.approved);
-  const permissionCounts = approvedTools.reduce(
+  const mockApprovedTools = TOOLS.filter((t) => t.approved);
+  const mockPermissionCounts = mockApprovedTools.reduce(
     (acc, tool) => {
       for (const perm of tool.permissions) {
         acc[perm] = (acc[perm] ?? 0) + 1;
@@ -183,6 +183,21 @@ export const SettingsPage = (): JSX.Element => {
     },
     {} as Record<string, number>,
   );
+  const sessionPermissionCounts = desktopSession?.permissions.reduce(
+    (acc, permission) => {
+      if (permission.read) acc.read = (acc.read ?? 0) + 1;
+      if (permission.write) acc.write = (acc.write ?? 0) + 1;
+      if (permission.execute) acc.execute = (acc.execute ?? 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
+  const approvedToolCount = desktopSession
+    ? new Set(
+        desktopSession.permissions.map((permission) => permission.mcpServerId),
+      ).size
+    : mockApprovedTools.length;
+  const permissionCounts = sessionPermissionCounts ?? mockPermissionCounts;
 
   return (
     <div className="space-y-4 p-6">
@@ -481,7 +496,7 @@ export const SettingsPage = (): JSX.Element => {
             <div className="rounded-lg border border-[var(--border)] px-4 py-2.5">
               <p className="text-xs text-[var(--text-muted)]">承認済みツール</p>
               <p className="text-lg font-semibold text-[var(--text-primary)]">
-                {approvedTools.length}
+                {approvedToolCount}
               </p>
             </div>
             {Object.entries(permissionCounts).map(([perm, count]) => (

@@ -8,7 +8,7 @@ export const setupDesktopSessionIpc = (): void => {
       return await getDesktopSession();
     } catch (error) {
       logger.error(
-        "Failed to get desktop session",
+        "Desktopセッションの取得に失敗しました",
         error instanceof Error ? error : { error },
       );
       throw error instanceof Error

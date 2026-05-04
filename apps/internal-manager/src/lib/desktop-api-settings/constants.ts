@@ -9,7 +9,7 @@ export const DESKTOP_API_SETTINGS_DEFAULTS = {
   auditLogSyncEnabled: true,
 } as const;
 
-export const DEFAULT_DESKTOP_API_SETTINGS = {
+export const DEFAULT_DESKTOP_API_SETTINGS_RECORD = {
   id: DESKTOP_API_SETTINGS_ID,
   ...DESKTOP_API_SETTINGS_DEFAULTS,
 } as const;
