@@ -2,7 +2,9 @@ import { z } from "zod";
 import type { CatalogItem } from "../../../types/catalog";
 import { getDb } from "../../shared/db";
 import { requestManagerApi } from "../../shared/manager-api-client";
+import { resolveByProfile } from "../../shared/profile-dispatch";
 import * as catalogRepository from "./catalog.repository";
+import { toCatalogItem } from "./catalog.mapper";
 
 const CATALOG_PAGE_LIMIT = 200;
 
@@ -45,9 +47,9 @@ const catalogListResponseSchema = z.object({
 });
 
 /**
- * Manager APIからすべてのカタログを取得
+ * Manager APIからすべてのカタログを取得（組織利用モード用）
  */
-export const getAllCatalogs = async (): Promise<CatalogItem[]> => {
+const fetchFromManagerApi = async (): Promise<CatalogItem[]> => {
   const items: CatalogItem[] = [];
   let cursor: string | null = null;
 
@@ -74,6 +76,21 @@ export const getAllCatalogs = async (): Promise<CatalogItem[]> => {
 
   return items;
 };
+
+/**
+ * プロファイルモードに応じてカタログ一覧を取得する。
+ * - 個人利用: ローカルSQLiteのシードデータから取得
+ * - 組織利用: Manager APIから取得
+ */
+export const getAllCatalogs = async (): Promise<CatalogItem[]> =>
+  resolveByProfile({
+    personal: async () => {
+      const db = await getDb();
+      const locals = await catalogRepository.findAll(db);
+      return locals.map(toCatalogItem);
+    },
+    organization: fetchFromManagerApi,
+  });
 
 /**
  * ローカルSQLite上のカタログを取得

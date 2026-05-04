@@ -69,12 +69,22 @@ export const ToolCatalog = (): JSX.Element => {
     clientSecret: string | null;
   } | null>(null);
   const [showRemoteModal, setShowRemoteModal] = useState(false);
+  const [isOrganization, setIsOrganization] = useState(false);
 
   // OAuth 直接フロー時のイベントリスナーがモーダル表示中の AddMcpModal / AddRemoteMcpModal と二重発火しないよう参照で最新状態を保持
   const modalOpenRef = useRef(false);
   useEffect(() => {
     modalOpenRef.current = selectedCatalog !== null || showRemoteModal;
   }, [selectedCatalog, showRemoteModal]);
+
+  useEffect(() => {
+    window.electronAPI.profile
+      .getState()
+      .then((state) =>
+        setIsOrganization(state.activeProfile === "organization"),
+      )
+      .catch(() => setIsOrganization(false));
+  }, []);
 
   const loadCatalogs = useCallback((): void => {
     setLoading(true);
@@ -116,19 +126,32 @@ export const ToolCatalog = (): JSX.Element => {
     // 認証なしは直接コネクタへ追加
     if (template.authType === "NONE") {
       try {
-        const result = await window.electronAPI.mcp.createFromManagerCatalog({
-          catalogId: item.id,
-          serverName: item.name,
-          description: item.description,
-          status: item.status,
-          permissions: item.permissions,
-          connectionTemplate: template,
-          tools: item.tools.map((tool) => ({
-            name: tool.name,
-            allowed: tool.allowed,
-          })),
-          credentials: {},
-        });
+        const result = isOrganization
+          ? await window.electronAPI.mcp.createFromManagerCatalog({
+              catalogId: item.id,
+              serverName: item.name,
+              description: item.description,
+              status: item.status,
+              permissions: item.permissions,
+              connectionTemplate: template,
+              tools: item.tools.map((tool) => ({
+                name: tool.name,
+                allowed: tool.allowed,
+              })),
+              credentials: {},
+            })
+          : await window.electronAPI.mcp.createFromCatalog({
+              catalogId: Number(item.id),
+              catalogName: item.name,
+              description: item.description,
+              transportType: template.transportType,
+              command: template.command,
+              args: JSON.stringify(template.args),
+              url: template.url,
+              credentialKeys: template.credentialKeys,
+              credentials: {},
+              authType: template.authType,
+            });
         toast.success(`${result.serverName}が正常に追加されました。`);
         navigate("/tools");
       } catch {
@@ -232,11 +255,9 @@ export const ToolCatalog = (): JSX.Element => {
       <div className="flex h-full items-center justify-center p-6">
         <div className="max-w-md rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 text-center shadow-[var(--shadow-card)]">
           <h1 className="text-base font-semibold text-[var(--text-primary)]">
-            管理サーバーのカタログ取得に失敗しました
+            カタログの取得に失敗しました
           </h1>
-          <p className="mt-2 text-sm text-[var(--text-muted)]">
-            管理サーバーへの接続状態、ログイン状態、ネットワークを確認してください。
-          </p>
+          <p className="mt-2 text-sm text-[var(--text-muted)]">{loadError}</p>
           <button
             type="button"
             onClick={loadCatalogs}
@@ -435,6 +456,7 @@ export const ToolCatalog = (): JSX.Element => {
       {selectedCatalog && (
         <AddMcpModal
           catalog={selectedCatalog}
+          isOrganization={isOrganization}
           initialNeedsManualOAuthClient={dcrPrefill}
           initialOAuthClientId={cachedOAuthClient?.clientId}
           initialOAuthClientSecret={

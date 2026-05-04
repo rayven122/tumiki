@@ -15,6 +15,8 @@ import { DISCOVERY_ERROR_CODE } from "../../shared/oauth/discovery-error-codes";
 
 type AddMcpModalProps = {
   catalog: CatalogItem;
+  /** 組織利用モードかどうか。追加時のAPI呼び分けに使用 */
+  isOrganization: boolean;
   onClose: () => void;
   onSuccess: (serverName: string) => void;
   /** DCR 非対応が事前検出済みの場合、OAuth クライアント設定を初期表示で開く */
@@ -42,6 +44,7 @@ const TRANSPORT_LABEL: Record<CatalogItem["transportType"], string> = {
 
 export const AddMcpModal = ({
   catalog,
+  isOrganization,
   onClose,
   onSuccess,
   initialNeedsManualOAuthClient = false,
@@ -220,23 +223,36 @@ export const AddMcpModal = ({
     }
 
     try {
-      const result = await window.electronAPI.mcp.createFromManagerCatalog({
-        catalogId: catalog.id,
-        serverName,
-        description: catalog.description,
-        status: catalog.status,
-        permissions: catalog.permissions,
-        connectionTemplate: {
-          ...template,
-          args: resolvedArgs,
-          url: isOutline ? customUrl : template.url,
-        },
-        tools: catalog.tools.map((tool) => ({
-          name: tool.name,
-          allowed: tool.allowed,
-        })),
-        credentials,
-      });
+      const result = isOrganization
+        ? await window.electronAPI.mcp.createFromManagerCatalog({
+            catalogId: catalog.id,
+            serverName,
+            description: catalog.description,
+            status: catalog.status,
+            permissions: catalog.permissions,
+            connectionTemplate: {
+              ...template,
+              args: resolvedArgs,
+              url: isOutline ? customUrl : template.url,
+            },
+            tools: catalog.tools.map((tool) => ({
+              name: tool.name,
+              allowed: tool.allowed,
+            })),
+            credentials,
+          })
+        : await window.electronAPI.mcp.createFromCatalog({
+            catalogId: Number(catalog.id),
+            catalogName: serverName,
+            description: catalog.description,
+            transportType: template.transportType,
+            command: template.command,
+            args: JSON.stringify(resolvedArgs),
+            url: isOutline ? customUrl : template.url,
+            credentialKeys: template.credentialKeys,
+            credentials,
+            authType: template.authType,
+          });
       onSuccess(result.serverName);
     } catch {
       setError("MCPサーバーの登録に失敗しました");
