@@ -8,6 +8,7 @@ const escapeLikePattern = (value: string) =>
   value.replace(/[\\%_]/g, (match) => `\\${match}`);
 
 const ORG_UNIT_TREE_LIMIT = 1000;
+const LIST_USERS_LIMIT = 1000;
 
 export const orgUnitsRouter = createTRPCRouter({
   tree: adminProcedure.query(async ({ ctx }) => {
@@ -53,6 +54,7 @@ export const orgUnitsRouter = createTRPCRouter({
           },
         },
         orderBy: { createdAt: "asc" },
+        take: LIST_USERS_LIMIT,
       });
     }),
 
@@ -78,7 +80,7 @@ export const orgUnitsRouter = createTRPCRouter({
         });
         if (!current) {
           throw new TRPCError({
-            code: "BAD_REQUEST",
+            code: "NOT_FOUND",
             message: "部署が見つかりません",
           });
         }
@@ -91,7 +93,7 @@ export const orgUnitsRouter = createTRPCRouter({
 
         if (input.parentId && !parent) {
           throw new TRPCError({
-            code: "BAD_REQUEST",
+            code: "NOT_FOUND",
             message: "移動先の部署が見つかりません",
           });
         }

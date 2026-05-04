@@ -48,6 +48,20 @@ beforeEach(() => {
 });
 
 describe("orgUnitsRouter", () => {
+  test("listUsersは取得上限を設定する", async () => {
+    const findMany = vi.fn().mockResolvedValue([]);
+    const caller = buildCaller({
+      userOrgUnitMembership: { findMany },
+    } as unknown as Context["db"]);
+
+    await expect(
+      caller.listUsers({ orgUnitId: "org-001" }),
+    ).resolves.toStrictEqual([]);
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ take: 1000 }),
+    );
+  });
+
   test("updateParentは親と子孫のpathを更新する", async () => {
     const update = vi
       .fn()
@@ -143,7 +157,7 @@ describe("orgUnitsRouter", () => {
     );
   });
 
-  test("updateParentは存在しない親をBAD_REQUESTにする", async () => {
+  test("updateParentは存在しない親をNOT_FOUNDにする", async () => {
     const tx = {
       orgUnit: {
         findUnique: vi
@@ -160,11 +174,11 @@ describe("orgUnitsRouter", () => {
 
     await expectTrpcErrorCode(
       caller.updateParent({ orgUnitId: "child", parentId: "missing" }),
-      "BAD_REQUEST",
+      "NOT_FOUND",
     );
   });
 
-  test("updateParentは存在しない部署をBAD_REQUESTにする", async () => {
+  test("updateParentは存在しない部署をNOT_FOUNDにする", async () => {
     const tx = {
       orgUnit: {
         findUnique: vi.fn().mockResolvedValue(null),
@@ -174,7 +188,7 @@ describe("orgUnitsRouter", () => {
 
     await expectTrpcErrorCode(
       caller.updateParent({ orgUnitId: "missing", parentId: null }),
-      "BAD_REQUEST",
+      "NOT_FOUND",
     );
   });
 });

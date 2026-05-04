@@ -126,11 +126,17 @@ export const mcpPoliciesRouter = createTRPCRouter({
           catalogId: catalog.id,
           slug: catalog.slug,
           permissions: effective.permissions,
-          tools: catalog.tools.map((tool) => ({
-            toolId: tool.id,
-            name: tool.name,
-            ...effective.tools.get(tool.id),
-          })),
+          tools: catalog.tools.map((tool) => {
+            const permission = effective.tools.get(tool.id) ?? {
+              allowed: false,
+              deniedReason: "not_granted",
+            };
+            return {
+              toolId: tool.id,
+              name: tool.name,
+              ...permission,
+            };
+          }),
         };
       });
     }),

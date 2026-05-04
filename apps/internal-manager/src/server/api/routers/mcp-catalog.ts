@@ -19,7 +19,7 @@ const jsonRecordSchema = z.record(z.string(), z.unknown());
 const toInputJson = (value: Record<string, unknown>): Prisma.InputJsonValue =>
   value as Prisma.InputJsonValue;
 
-const MCP_CATALOG_LIST_LIMIT = 200;
+const MCP_CATALOG_LIST_LIMIT = 1000;
 const TOOL_UPSERT_CHUNK_SIZE = 50;
 
 export const mcpCatalogRouter = createTRPCRouter({

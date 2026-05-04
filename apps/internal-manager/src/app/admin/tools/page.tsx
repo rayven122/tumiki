@@ -276,7 +276,7 @@ const AdminToolsPage = () => {
                 <button
                   type="button"
                   onClick={handleRefreshTools}
-                  disabled={refreshTools.isPending}
+                  disabled={refreshTools.isPending || toolNames.trim() === ""}
                   className="bg-btn-primary-bg text-btn-primary-text flex min-h-[44px] items-center gap-1.5 rounded-md px-3 py-2 text-xs disabled:opacity-40"
                 >
                   <RefreshCw size={13} />

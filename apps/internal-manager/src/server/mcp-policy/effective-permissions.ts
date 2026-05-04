@@ -238,8 +238,8 @@ export const getPolicyContextForUser = async (
     }),
   ]);
   if (orgUnits.length >= POLICY_CONTEXT_ORG_UNIT_LIMIT) {
-    console.warn(
-      `[mcp-policy] OrgUnit count reached the policy context limit (${POLICY_CONTEXT_ORG_UNIT_LIMIT}); effective permissions may be incomplete.`,
+    throw new Error(
+      `OrgUnit count reached the policy context limit (${POLICY_CONTEXT_ORG_UNIT_LIMIT}); refusing incomplete MCP policy evaluation.`,
     );
   }
 
