@@ -21,11 +21,21 @@ const authBadgeClass: Record<CatalogItem["authType"], string> = {
   OAUTH: "bg-[var(--badge-info-bg)] text-[var(--badge-info-text)]",
 };
 
+/** フィルター用の認証種別定義 */
+const AUTH_TYPE_FILTERS = [
+  { value: "OAUTH", label: "OAuth" },
+  { value: "API_KEY", label: "API Key" },
+  { value: "NONE", label: "設定不要" },
+] as const;
+
 export const ToolCatalog = (): JSX.Element => {
   const navigate = useNavigate();
   const [catalogs, setCatalogs] = useState<CatalogItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const [selectedAuthTypes, setSelectedAuthTypes] = useState<
+    CatalogItem["authType"][]
+  >([]);
   const [selectedCatalog, setSelectedCatalog] = useState<CatalogItem | null>(
     null,
   );
@@ -121,13 +131,33 @@ export const ToolCatalog = (): JSX.Element => {
     }
   };
 
+  const toggleAuthType = (authType: CatalogItem["authType"]): void => {
+    setSelectedAuthTypes((prev) =>
+      prev.includes(authType)
+        ? prev.filter((t) => t !== authType)
+        : [...prev, authType],
+    );
+  };
+
+  const clearAllFilters = (): void => {
+    setQuery("");
+    setSelectedAuthTypes([]);
+  };
+
+  const hasActiveFilters = query !== "" || selectedAuthTypes.length > 0;
+
   const lowerQuery = query.toLowerCase();
-  const filtered = catalogs.filter(
-    (c) =>
+  const filtered = catalogs.filter((c) => {
+    const matchesSearch =
       query === "" ||
       c.name.toLowerCase().includes(lowerQuery) ||
-      c.description.toLowerCase().includes(lowerQuery),
-  );
+      c.description.toLowerCase().includes(lowerQuery);
+
+    const matchesAuthType =
+      selectedAuthTypes.length === 0 || selectedAuthTypes.includes(c.authType);
+
+    return matchesSearch && matchesAuthType;
+  });
 
   if (loading) {
     return (
@@ -159,8 +189,8 @@ export const ToolCatalog = (): JSX.Element => {
       </div>
 
       {/* 検索バー */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative min-w-[200px] flex-1">
+      <div className="space-y-3">
+        <div className="relative min-w-[200px]">
           <Search
             size={14}
             className="absolute top-1/2 left-3 -translate-y-1/2 text-[var(--text-subtle)]"
@@ -172,6 +202,36 @@ export const ToolCatalog = (): JSX.Element => {
             onChange={(e) => setQuery(e.target.value)}
             className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] py-2 pr-3 pl-9 text-sm text-[var(--text-primary)] outline-none"
           />
+        </div>
+
+        {/* 認証種別フィルター */}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-[var(--text-subtle)]">
+            認証種別:
+          </span>
+          {AUTH_TYPE_FILTERS.map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => toggleAuthType(value)}
+              className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-colors ${
+                selectedAuthTypes.includes(value)
+                  ? `${authBadgeClass[value]} ring-1 ring-[var(--text-muted)]`
+                  : "bg-[var(--bg-card)] text-[var(--text-muted)] ring-1 ring-[var(--border)] hover:ring-[var(--text-subtle)]"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={clearAllFilters}
+              className="ml-1 text-[10px] text-[var(--text-muted)] transition-opacity hover:opacity-70"
+            >
+              クリア
+            </button>
+          )}
         </div>
       </div>
 
