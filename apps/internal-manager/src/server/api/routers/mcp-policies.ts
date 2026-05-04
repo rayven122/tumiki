@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { PolicyEffect } from "@tumiki/internal-db";
 import { adminProcedure, createTRPCRouter } from "@/server/api/trpc";
 import {
@@ -43,6 +44,17 @@ export const mcpPoliciesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const tool = await ctx.db.mcpCatalogTool.findUnique({
+        where: { id: input.toolId },
+        select: { catalogId: true },
+      });
+      if (!tool || tool.catalogId !== input.catalogId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "ツールが指定カタログに属していません",
+        });
+      }
+
       if (input.effect === null) {
         await ctx.db.orgUnitToolPermission.deleteMany({
           where: {

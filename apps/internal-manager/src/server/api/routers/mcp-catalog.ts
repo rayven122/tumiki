@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import {
   McpCatalogAuthType,
   McpCatalogStatus,
@@ -81,6 +82,17 @@ export const mcpCatalogRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
+      const catalog = await ctx.db.mcpCatalog.findFirst({
+        where: { id, deletedAt: null },
+        select: { id: true },
+      });
+      if (!catalog) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "カタログが見つかりません",
+        });
+      }
+
       return ctx.db.mcpCatalog.update({
         where: { id },
         data: {
@@ -94,6 +106,17 @@ export const mcpCatalogRouter = createTRPCRouter({
   delete: adminProcedure
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
+      const catalog = await ctx.db.mcpCatalog.findFirst({
+        where: { id: input.id, deletedAt: null },
+        select: { id: true },
+      });
+      if (!catalog) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "カタログが見つかりません",
+        });
+      }
+
       await ctx.db.mcpCatalog.update({
         where: { id: input.id },
         data: { deletedAt: new Date(), status: McpCatalogStatus.DISABLED },

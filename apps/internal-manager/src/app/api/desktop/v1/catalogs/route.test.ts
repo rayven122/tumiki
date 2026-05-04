@@ -129,6 +129,51 @@ describe("GET /api/desktop/v1/catalogs", () => {
     expect(mockVerifyDesktopJwt).toHaveBeenCalledWith("Bearer access-token");
   });
 
+  test("権限評価はツール表示上限ではなく全ツールを対象にする", async () => {
+    const tools = Array.from({ length: 11 }, (_, index) => ({
+      id: `tool-${String(index + 1).padStart(2, "0")}`,
+      name: `tool_${String(index + 1).padStart(2, "0")}`,
+      description: `Tool ${index + 1}`,
+      updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+      orgUnitPermissions:
+        index === 10
+          ? [
+              {
+                orgUnitId: "org-001",
+                effect: "ALLOW",
+                updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+              },
+            ]
+          : [],
+    }));
+    mockFindCatalogs.mockImplementationOnce((args: unknown) => {
+      const toolSelect =
+        typeof args === "object" &&
+        args !== null &&
+        "select" in args &&
+        typeof args.select === "object" &&
+        args.select !== null &&
+        "tools" in args.select &&
+        typeof args.select.tools === "object" &&
+        args.select.tools !== null
+          ? args.select.tools
+          : {};
+      const selectedTools =
+        "take" in toolSelect && typeof toolSelect.take === "number"
+          ? tools.slice(0, toolSelect.take)
+          : tools;
+      return Promise.resolve([buildCatalog({ tools: selectedTools })]);
+    });
+
+    const response = await GET(buildRequest());
+    const body = (await response.json()) as {
+      items: [{ status: string; tools: unknown[] }];
+    };
+
+    expect(body.items[0].status).toStrictEqual("available");
+    expect(body.items[0].tools).toHaveLength(10);
+  });
+
   test("権限がないカタログは申請必要として返す", async () => {
     mockFindUser.mockResolvedValue({
       id: "user-001",
@@ -224,5 +269,36 @@ describe("GET /api/desktop/v1/catalogs", () => {
     expect(response.status).toStrictEqual(401);
     expect(mockFindUser).not.toHaveBeenCalled();
     expect(mockFindCatalogs).not.toHaveBeenCalled();
+  });
+
+  test("認証成功後にユーザーが存在しない場合は401を返す", async () => {
+    mockFindUser.mockResolvedValue(null);
+
+    const response = await GET(buildRequest());
+
+    await expect(response.json()).resolves.toStrictEqual({
+      error: "Unauthorized",
+    });
+    expect(response.status).toStrictEqual(401);
+    expect(mockFindCatalogs).not.toHaveBeenCalled();
+  });
+
+  test("カタログ取得でDBエラーが発生した場合は500を返す", async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    mockFindCatalogs.mockRejectedValue(new Error("DB error"));
+
+    const response = await GET(buildRequest());
+
+    await expect(response.json()).resolves.toStrictEqual({
+      error: "Internal Server Error",
+    });
+    expect(response.status).toStrictEqual(500);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "Failed to fetch desktop MCP catalogs",
+      expect.any(Error),
+    );
+    consoleErrorSpy.mockRestore();
   });
 });

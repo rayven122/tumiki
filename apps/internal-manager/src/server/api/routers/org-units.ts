@@ -3,8 +3,8 @@ import { TRPCError } from "@trpc/server";
 import { OrgUnitSource } from "@tumiki/internal-db";
 import { adminProcedure, createTRPCRouter } from "@/server/api/trpc";
 
-const buildPath = (parentPath: string | null, id: string) =>
-  parentPath ? `${parentPath}/${id}` : `/${id}`;
+const buildPath = (parentPath: string | null, segment: string) =>
+  parentPath ? `${parentPath}/${segment}` : `/${segment}`;
 
 const ORG_UNIT_TREE_LIMIT = 1000;
 
@@ -73,7 +73,7 @@ export const orgUnitsRouter = createTRPCRouter({
       return ctx.db.$transaction(async (tx) => {
         const current = await tx.orgUnit.findUniqueOrThrow({
           where: { id: input.orgUnitId },
-          select: { id: true, path: true },
+          select: { id: true, externalId: true, path: true },
         });
         const parent = input.parentId
           ? await tx.orgUnit.findUnique({
@@ -95,7 +95,10 @@ export const orgUnitsRouter = createTRPCRouter({
           });
         }
 
-        const newPath = buildPath(parent?.path ?? null, current.id);
+        const newPath = buildPath(
+          parent?.path ?? null,
+          current.externalId ?? current.id,
+        );
         const descendants = await tx.orgUnit.findMany({
           where: { path: { startsWith: `${current.path}/` } },
           select: { id: true, path: true },

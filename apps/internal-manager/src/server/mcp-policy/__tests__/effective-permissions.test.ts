@@ -106,4 +106,33 @@ describe("evaluateCatalogPermissions", () => {
     });
     expect(result.permissions.execute).toStrictEqual(false);
   });
+
+  test("部署ポリシー未設定でもグループ権限があれば許可される", () => {
+    const result = evaluateCatalogPermissions(
+      buildUser({
+        groupMemberships: [
+          {
+            group: {
+              permissions: [
+                {
+                  mcpServerId: "catalog-001",
+                  read: true,
+                  write: false,
+                  execute: true,
+                },
+              ],
+            },
+          },
+        ],
+      }),
+      buildCatalog([]),
+      orgUnits,
+    );
+
+    expect(result.tools.get("tool-001")).toStrictEqual({
+      allowed: true,
+      deniedReason: null,
+    });
+    expect(result.permissions.execute).toStrictEqual(true);
+  });
 });

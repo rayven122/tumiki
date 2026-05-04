@@ -325,6 +325,22 @@ describe("handleDirectorySyncEvent", () => {
       });
       expect(mockDb.$transaction).toHaveBeenCalledTimes(1);
     });
+
+    test("departmentのスラッシュはexternalIdで階層区切りにならないよう置換する", async () => {
+      await handleDirectorySyncEvent(
+        buildUserEvent("user.created", {
+          department: "Product/Platform",
+        }),
+      );
+
+      const orgUnitArgs = getFirstCallArg(mockDb.orgUnit.upsert);
+      expect(orgUnitArgs.where.source_externalId.externalId).toStrictEqual(
+        "department:product_platform",
+      );
+      expect(orgUnitArgs.create.path).toStrictEqual(
+        "/department:product_platform",
+      );
+    });
   });
 
   describe("user.updated", () => {

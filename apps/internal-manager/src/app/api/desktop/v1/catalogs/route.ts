@@ -100,7 +100,7 @@ const toCatalogItem = (
     transportType: catalog.transportType,
     authType: catalog.authType ?? "NONE",
     requiredCredentialKeys: catalog.credentialKeys,
-    tools: catalog.tools.map((tool) => ({
+    tools: catalog.tools.slice(0, TOOL_PREVIEW_LIMIT).map((tool) => ({
       name: tool.name,
       description: tool.description ?? "",
       allowed:
@@ -173,7 +173,6 @@ export const GET = async (request: NextRequest) => {
         tools: {
           where: { deletedAt: null },
           orderBy: { name: "asc" },
-          take: TOOL_PREVIEW_LIMIT,
           select: {
             id: true,
             name: true,
