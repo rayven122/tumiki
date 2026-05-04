@@ -8,6 +8,7 @@ const oidcEnvSchema = z.object({
   OIDC_CLIENT_ID: z.string().min(1, "OIDC_CLIENT_ID is required"),
   OIDC_CLIENT_SECRET: z.string().min(1, "OIDC_CLIENT_SECRET is required"),
   OIDC_ISSUER: z.string().url("OIDC_ISSUER must be a valid URL"),
+  OIDC_DESKTOP_CLIENT_ID: z.string().min(1).optional(),
 });
 
 /** セットアップ画面向けユーザー表示用スキーマ（日本語エラーメッセージ） */
@@ -33,6 +34,9 @@ export const getOidcEnv = () => {
   const clientId = process.env.OIDC_CLIENT_ID;
   const clientSecret = process.env.OIDC_CLIENT_SECRET;
   const issuer = process.env.OIDC_ISSUER;
+  const desktopClientId =
+    process.env.OIDC_DESKTOP_CLIENT_ID ??
+    process.env.KEYCLOAK_DESKTOP_CLIENT_ID;
 
   // 未設定（undefined）および空文字列の両方をCIフォールバックの対象とする
   const result = oidcEnvSchema.safeParse({
@@ -50,6 +54,8 @@ export const getOidcEnv = () => {
         : isCI
           ? "https://dummy.oidc.local"
           : undefined,
+    OIDC_DESKTOP_CLIENT_ID:
+      (desktopClientId ?? "") !== "" ? desktopClientId : undefined,
   });
 
   if (!result.success) {

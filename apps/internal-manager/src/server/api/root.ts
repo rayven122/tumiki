@@ -9,6 +9,7 @@ import { groupsRouter } from "./routers/groups";
 import { desktopApiSettingsRouter } from "./routers/desktop-api-settings";
 import { mcpCatalogRouter } from "./routers/mcp-catalog";
 import { mcpPoliciesRouter } from "./routers/mcp-policies";
+import { objectStorageSettingsRouter } from "./routers/object-storage-settings";
 import { orgUnitsRouter } from "./routers/org-units";
 import { scimDirectoryRouter } from "./routers/scim-directory";
 import { ssoRouter } from "./routers/sso";
@@ -28,6 +29,7 @@ export const appRouter = createTRPCRouter({
   dashboard: dashboardRouter,
   scimDirectory: scimDirectoryRouter,
   desktopApiSettings: desktopApiSettingsRouter,
+  objectStorageSettings: objectStorageSettingsRouter,
   groups: groupsRouter,
   mcpCatalog: mcpCatalogRouter,
   mcpPolicies: mcpPoliciesRouter,

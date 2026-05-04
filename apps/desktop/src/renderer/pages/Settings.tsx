@@ -544,8 +544,20 @@ export const SettingsPage = (): JSX.Element => {
             </div>
           </>
         ) : (
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-active)] p-4 text-sm text-[var(--text-muted)]">
-            個人利用プロファイルで動作しています。組織利用へ変更する場合は、初回設定から管理サーバーへ接続してください。
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-active)] p-4">
+            <p className="text-sm leading-6 text-[var(--text-muted)]">
+              個人利用プロファイルで動作しています。組織利用へ変更する場合は、管理サーバーへ接続してください。
+            </p>
+            <button
+              type="button"
+              onClick={() =>
+                navigate("/profile-setup?mode=organization", { replace: false })
+              }
+              className="mt-4 inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-medium text-[var(--text-secondary)] transition hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)]"
+            >
+              <Building2 size={16} />
+              組織利用へ切り替え
+            </button>
           </div>
         )}
       </div>

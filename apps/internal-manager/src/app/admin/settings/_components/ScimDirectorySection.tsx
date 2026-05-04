@@ -30,6 +30,16 @@ const directoryTypeOptions = [
 
 type DirectoryType = (typeof directoryTypeOptions)[number]["value"];
 
+// 名前未指定時のデフォルト名（プレースホルダー表示用、サーバ側と同じ値）
+const DEFAULT_DIRECTORY_NAME_BY_TYPE: Record<DirectoryType, string> = {
+  google: "Google Workspace",
+  "okta-scim-v2": "Okta",
+  "azure-scim-v2": "Entra ID",
+  "onelogin-scim-v2": "OneLogin",
+  "jumpcloud-scim-v2": "JumpCloud",
+  "generic-scim-v2": "SCIM Directory",
+};
+
 type NewlyCreated = {
   name: string;
   type: DirectoryType;
@@ -38,9 +48,12 @@ type NewlyCreated = {
   googleAuthorizationUrl: string | null;
 };
 
-// Google OAuth コールバックのエラーコード（route.ts と対応）→ 表示用日本語
+// Google OAuth コールバック／認可エンドポイントのエラーコード → 表示用日本語
 const GOOGLE_CALLBACK_ERROR_LABELS: Record<string, string> = {
   unauthorized: "認証セッションが無効です。再ログインしてください",
+  no_google_directory: "Google Workspace Directory が存在しません",
+  directory_lookup_failed: "Directory 一覧の取得に失敗しました",
+  authorization_url_failed: "Google 認可URLの生成に失敗しました",
   oauth_denied: "Google で認可が拒否されました",
   invalid_request: "認可リクエストに必要なパラメータが不足しています",
   invalid_state: "認可フローの状態が不正です",
@@ -53,7 +66,13 @@ const GOOGLE_CALLBACK_ERROR_LABELS: Record<string, string> = {
 /** SCIM Directory 管理セクション（Jackson Directory Sync） */
 const ScimDirectorySection = () => {
   const utils = api.useUtils();
-  const { data: directories, isLoading } = api.scimDirectory.list.useQuery();
+  const {
+    data: directoryState,
+    error: listError,
+    isLoading,
+  } = api.scimDirectory.list.useQuery(undefined, { retry: false });
+  const directories = directoryState?.directories ?? [];
+  const isUnavailable = directoryState?.status === "unavailable";
   const searchParams = useSearchParams();
   const callbackSuccess = searchParams.get("scim_success");
   const callbackError = searchParams.get("scim_error");
@@ -236,7 +255,23 @@ const ScimDirectorySection = () => {
           <div className="bg-bg-app border-border-default text-text-muted rounded-lg border px-3 py-2 text-xs">
             読み込み中…
           </div>
-        ) : !directories || directories.length === 0 ? (
+        ) : isUnavailable ? (
+          <div
+            role="status"
+            className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-300"
+          >
+            SCIM Directory は現在利用できません。Jackson
+            設定または暗号化キーを確認してください。
+          </div>
+        ) : listError ? (
+          <div
+            role="alert"
+            className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-300"
+          >
+            SCIM Directory を取得できません。Jackson
+            設定または暗号化キーを確認してください。
+          </div>
+        ) : directories.length === 0 ? (
           <div className="bg-bg-app border-border-default text-text-muted rounded-lg border px-3 py-2 text-xs">
             Directory がまだ作成されていません
           </div>
@@ -329,7 +364,7 @@ const ScimDirectorySection = () => {
           type="text"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
-          placeholder="例: Okta Production"
+          placeholder={`名前（任意、デフォルト: ${DEFAULT_DIRECTORY_NAME_BY_TYPE[newType]}）`}
           className={inputCls}
         />
         <select
@@ -345,10 +380,14 @@ const ScimDirectorySection = () => {
         </select>
         <button
           type="button"
-          onClick={() =>
-            createMutation.mutate({ name: newName.trim(), type: newType })
-          }
-          disabled={createMutation.isPending || newName.trim().length === 0}
+          onClick={() => {
+            const trimmed = newName.trim();
+            createMutation.mutate({
+              type: newType,
+              ...(trimmed.length > 0 ? { name: trimmed } : {}),
+            });
+          }}
+          disabled={createMutation.isPending}
           className="bg-btn-primary-bg text-btn-primary-text flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs transition-opacity hover:opacity-80 disabled:opacity-50"
         >
           <Plus size={12} />

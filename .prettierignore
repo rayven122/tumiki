@@ -3,3 +3,6 @@
 # Ignore generated README files from db:generate
 packages/db/prisma/README.md
 apps/desktop/prisma/README.md
+
+# Ignore downloaded Desktop runtimes
+apps/desktop/resources/runtime/

@@ -1,5 +1,35 @@
-import { NextResponse } from "next/server";
-import { getJackson, isJacksonConfigured } from "./index";
+import { NextResponse, type NextRequest } from "next/server";
+import { getJackson, isJacksonConfigured, resolveExternalUrl } from "./index";
+
+/// SCIM 設定画面へリダイレクトするときのパス（authorize/callback で共有）
+const SETTINGS_PATH = "/admin/settings";
+
+/// 外部公開 URL を起点に設定画面の URL を組み立てる
+/// req.nextUrl.origin は Next.js standalone (HOSTNAME=0.0.0.0) で
+/// container 内部の `https://0.0.0.0:3100` を返してしまうため、
+/// 環境変数経由の externalUrl を使ってブラウザが到達可能な URL を返す
+const buildSettingsUrl = (params: URLSearchParams) =>
+  `${resolveExternalUrl()}${SETTINGS_PATH}?${params.toString()}`;
+
+/**
+ * SCIM OAuth ハンドラからエラーコード付きで設定画面へリダイレクトする
+ * authorize / callback で共通利用する
+ */
+export const redirectToSettingsWithError = (_req: NextRequest, code: string) =>
+  NextResponse.redirect(
+    buildSettingsUrl(new URLSearchParams({ scim_error: code })),
+  );
+
+/**
+ * SCIM OAuth ハンドラから成功通知付きで設定画面へリダイレクトする
+ */
+export const redirectToSettingsWithSuccess = (
+  _req: NextRequest,
+  code: string,
+) =>
+  NextResponse.redirect(
+    buildSettingsUrl(new URLSearchParams({ scim_success: code })),
+  );
 
 /**
  * jackson が未設定なら 503 を返し、設定済みならインスタンスを返す

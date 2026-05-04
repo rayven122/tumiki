@@ -14,12 +14,11 @@ import {
   PanelLeft,
   Sparkles,
   Plug,
-  Building2,
-  User,
 } from "lucide-react";
 import { themeAtom, sidebarOpenAtom } from "../store/atoms";
 import type { ProfileState } from "../../shared/types";
 import { PROFILE_CHANGED_EVENT } from "../../shared/events";
+import type { DesktopSession } from "../../main/types";
 
 type NavItem = {
   path: string;
@@ -43,18 +42,41 @@ export const Sidebar = (): JSX.Element => {
   const [theme, setTheme] = useAtom(themeAtom);
   const [isOpen, setIsOpen] = useAtom(sidebarOpenAtom);
   const [profile, setProfile] = useState<ProfileState | null>(null);
+  const [desktopSession, setDesktopSession] = useState<DesktopSession | null>(
+    null,
+  );
   const mountedRef = useRef(true);
+
+  const refreshDesktopSession = useCallback((): void => {
+    window.electronAPI.desktopSession
+      .get()
+      .then((session) => {
+        if (mountedRef.current) setDesktopSession(session);
+      })
+      .catch(() => {
+        if (mountedRef.current) setDesktopSession(null);
+      });
+  }, []);
 
   const refreshProfile = useCallback((): void => {
     window.electronAPI.profile
       .getState()
       .then((state) => {
-        if (mountedRef.current) setProfile(state);
+        if (!mountedRef.current) return;
+        setProfile(state);
+        if (state.activeProfile !== "organization") {
+          setDesktopSession(null);
+          return;
+        }
+        refreshDesktopSession();
       })
       .catch(() => {
-        if (mountedRef.current) setProfile(null);
+        if (mountedRef.current) {
+          setProfile(null);
+          setDesktopSession(null);
+        }
       });
-  }, []);
+  }, [refreshDesktopSession]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -66,8 +88,23 @@ export const Sidebar = (): JSX.Element => {
     };
   }, [refreshProfile]);
 
+  useEffect(() => {
+    if (profile?.activeProfile !== "organization") return;
+    const refresh = (): void => refreshDesktopSession();
+    window.addEventListener("focus", refresh);
+    const intervalId = window.setInterval(refresh, 30_000);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      window.clearInterval(intervalId);
+    };
+  }, [profile?.activeProfile, refreshDesktopSession]);
+
   const toggleTheme = (): void => setTheme(theme === "dark" ? "light" : "dark");
   const isOrganization = profile?.activeProfile === "organization";
+  const organization = isOrganization ? desktopSession?.organization : null;
+  const workspaceName =
+    isOrganization && organization?.name ? organization.name : "TUMIKI";
+  const workspaceLogoUrl = organization?.logoUrl;
 
   const renderLink = (item: NavItem): JSX.Element => {
     const isActive =
@@ -101,13 +138,13 @@ export const Sidebar = (): JSX.Element => {
       <div className="mb-4 flex items-center justify-between px-3">
         <div className="flex items-center gap-2 overflow-hidden">
           <img
-            src="/rayven_white.png"
-            alt="RAYVEN"
-            className={`h-6 w-6 shrink-0 ${theme === "light" ? "invert" : ""}`}
+            src={workspaceLogoUrl ?? "/tumiki-logo.svg"}
+            alt={workspaceName}
+            className="h-6 w-6 shrink-0 object-contain"
           />
           {isOpen && (
             <span className="truncate text-sm font-semibold text-[var(--text-primary)]">
-              RAYVEN
+              {workspaceName}
             </span>
           )}
         </div>
@@ -121,38 +158,6 @@ export const Sidebar = (): JSX.Element => {
             <PanelLeftClose size={16} />
           </button>
         )}
-      </div>
-
-      {/* プロファイル */}
-      <div className="mb-3 px-2">
-        <div
-          className={`flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-2.5 py-2 ${
-            isOpen ? "" : "justify-center"
-          }`}
-          title={
-            isOrganization
-              ? `組織利用: ${profile?.organizationProfile?.managerUrl ?? ""}`
-              : "個人利用"
-          }
-        >
-          {isOrganization ? (
-            <Building2 size={16} className="text-[var(--badge-info-text)]" />
-          ) : (
-            <User size={16} className="text-[var(--badge-success-text)]" />
-          )}
-          {isOpen && (
-            <div className="min-w-0">
-              <div className="text-xs font-medium text-[var(--text-primary)]">
-                {isOrganization ? "組織利用" : "個人利用"}
-              </div>
-              <div className="truncate text-[10px] text-[var(--text-subtle)]">
-                {isOrganization
-                  ? profile?.organizationProfile?.managerUrl
-                  : "ローカルプロファイル"}
-              </div>
-            </div>
-          )}
-        </div>
       </div>
 
       {/* 収納時の展開ボタン */}
