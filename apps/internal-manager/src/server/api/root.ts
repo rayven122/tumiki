@@ -3,6 +3,8 @@ import {
   createTRPCRouter,
   publicProcedure,
 } from "@/server/api/trpc";
+import { auditLogsRouter } from "./routers/audit-logs";
+import { dashboardRouter } from "./routers/dashboard";
 import { groupsRouter } from "./routers/groups";
 import { desktopApiSettingsRouter } from "./routers/desktop-api-settings";
 import { mcpCatalogRouter } from "./routers/mcp-catalog";
@@ -22,6 +24,8 @@ export const appRouter = createTRPCRouter({
   health: publicProcedure.query(() => {
     return { status: "ok" };
   }),
+  auditLogs: auditLogsRouter,
+  dashboard: dashboardRouter,
   scimDirectory: scimDirectoryRouter,
   desktopApiSettings: desktopApiSettingsRouter,
   groups: groupsRouter,
