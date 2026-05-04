@@ -106,6 +106,12 @@ const buildJacksonOption = (): JacksonOption => {
                 clientSecret: process.env.GOOGLE_DIRECTORY_CLIENT_SECRET,
                 authorizePath: GOOGLE_DSYNC_AUTHORIZE_PATH,
                 callbackPath: GOOGLE_DSYNC_CALLBACK_PATH,
+                // Jackson は cronInterval 未指定だと自動 sync を起動しない。
+                // GOOGLE_DIRECTORY_CRON_INTERVAL_SEC で上書き可、デフォルト
+                // 5分間隔（Google Directory API のレート制限と即時性のバランス）
+                cronInterval: Number(
+                  process.env.GOOGLE_DIRECTORY_CRON_INTERVAL_SEC ?? 300,
+                ),
               },
             },
           }
