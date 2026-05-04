@@ -209,10 +209,13 @@ describe("GET /api/desktop/v1/catalogs", () => {
 
   test("limitを検証し、最大件数を超える場合は400を返す", async () => {
     const response = await GET(buildRequest("?limit=201"));
+    const body = (await response.json()) as {
+      error: string;
+      details: unknown;
+    };
 
-    await expect(response.json()).resolves.toMatchObject({
-      error: "Invalid query",
-    });
+    expect(body.error).toStrictEqual("Invalid query");
+    expect(body.details).toStrictEqual(expect.any(Object));
     expect(response.status).toStrictEqual(400);
     expect(mockFindCatalogs).not.toHaveBeenCalled();
   });
@@ -302,6 +305,26 @@ describe("GET /api/desktop/v1/catalogs", () => {
     });
     expect(response.status).toStrictEqual(401);
     expect(mockFindCatalogs).not.toHaveBeenCalled();
+  });
+
+  test("ポリシーコンテキスト取得でDBエラーが発生した場合は500を返す", async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    mockFindUser.mockRejectedValue(new Error("DB error"));
+
+    const response = await GET(buildRequest());
+
+    await expect(response.json()).resolves.toStrictEqual({
+      error: "Internal Server Error",
+    });
+    expect(response.status).toStrictEqual(500);
+    expect(mockFindCatalogs).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "Failed to fetch desktop MCP policy context",
+      expect.any(Error),
+    );
+    consoleErrorSpy.mockRestore();
   });
 
   test("カタログ取得でDBエラーが発生した場合は500を返す", async () => {

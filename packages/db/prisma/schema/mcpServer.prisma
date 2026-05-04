@@ -10,6 +10,8 @@ enum TransportType {
   STDIO
   /// Server-Sent Eventsでの通信  
   SSE
+  /// Streamable HTTPでの通信
+  STREAMABLE_HTTP
   /// Streamable HTTPSでの通信
   STREAMABLE_HTTPS
 }
@@ -19,10 +21,56 @@ enum TransportType {
 enum AuthType {
   /// 認証不要
   NONE
+  /// Bearerトークン認証
+  BEARER
   /// APIキー認証
   API_KEY
   /// OAuth認証
   OAUTH
+}
+
+/// MCPカタログ（接続テンプレート）
+/// Desktop側のMcpCatalogと同じ概念で、管理画面では「MCPカタログ」として扱う
+/// @namespace McpServer
+model McpCatalog {
+  id String @id @default(cuid())
+
+  /// カタログ表示名
+  name        String
+  /// URL識別子（組織内でユニーク）
+  slug        String
+  /// カタログ説明
+  description String?
+  /// アイコンパス
+  iconPath    String?
+
+  /// 接続タイプ
+  transportType  TransportType @default(STDIO)
+  /// STDIO用コマンド
+  command        String?
+  /// STDIO用引数
+  args           String[]
+  /// SSE/Streamable HTTP用URL
+  url            String?
+  /// 必要な設定キー名（STDIO: 環境変数キー / SSE・Streamable HTTP: ヘッダー名）
+  credentialKeys String[]
+  /// 認証タイプ
+  authType       AuthType      @default(NONE)
+
+  /// 組織ID（公式カタログはOFFICIAL_ORGANIZATION_ID、組織専用カタログは組織ID）
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  /// 作成者
+  createdById String?
+  createdBy   User?   @relation("McpCatalogCreatedBy", fields: [createdById], references: [id])
+
+  connections McpConnection[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, slug])
 }
 
 /// ユーザーカスタムサーバーの可視性
@@ -100,6 +148,14 @@ model McpServerTemplate {
   @@unique([normalizedName, organizationId])
 }
 
+enum McpToolReviewStatus {
+  PENDING_REVIEW
+  APPROVED
+  CHANGED_REQUIRES_REVIEW
+  REJECTED
+  MISSING
+}
+
 /// 各MCPサーバーが提供するツール一覧
 /// @namespace McpServer
 model McpTool {
@@ -112,8 +168,24 @@ model McpTool {
   /// ツールの入力スキーマ（JSON Schema形式）
   inputSchema Json
 
-  mcpServerTemplateId String
-  mcpServerTemplate   McpServerTemplate @relation("mcpTools", fields: [mcpServerTemplateId], references: [id], onDelete: Cascade)
+  /// 旧テンプレートベースのツール定義（互換用）
+  mcpServerTemplateId String?
+  mcpServerTemplate   McpServerTemplate? @relation("mcpTools", fields: [mcpServerTemplateId], references: [id], onDelete: Cascade)
+
+  /// Desktop寄せの接続ベースのツール定義
+  mcpConnectionId String?
+  mcpConnection   McpConnection? @relation(fields: [mcpConnectionId], references: [id], onDelete: Cascade)
+
+  /// 組織全体として公開対象にするか。falseなら常に拒否。
+  isAllowed    Boolean             @default(false)
+  /// 管理者レビュー状態。新規/変更ツールはレビュー待ちにする。
+  reviewStatus McpToolReviewStatus @default(PENDING_REVIEW)
+  /// 初回発見日時
+  discoveredAt DateTime?
+  /// 最終確認日時
+  lastSeenAt   DateTime?
+  /// inputSchema等の変更検知用ハッシュ
+  schemaHash   String?
 
   /// テンプレートインスタンスとの関連
   templateInstances McpServerTemplateInstance[]
@@ -123,4 +195,6 @@ model McpTool {
 
   /// MCP サーバー内のツールの名前は一意
   @@unique([mcpServerTemplateId, name])
+  /// MCP 接続内のツール名は一意
+  @@unique([mcpConnectionId, name])
 }

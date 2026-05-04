@@ -31,6 +31,7 @@ model User {
   groupMemberships      UserGroupMembership[]
   orgUnitMemberships    UserOrgUnitMembership[]
   individualPermissions IndividualPermission[]
+  mcpToolPermissions    UserMcpToolPermission[]
   desktopAuditLogs      DesktopAuditLog[]
   createdMcpCatalogs    McpCatalog[]
 }

@@ -52,6 +52,9 @@ export const createUpstreamClient = (
   let retryCount = 0;
   let retryTimer: ReturnType<typeof setTimeout> | null = null;
   let lastError: string | undefined;
+  const allowedToolNames = config.allowedTools
+    ? new Set(config.allowedTools)
+    : null;
   // handleCrashの二重呼び出し防止フラグ（onclose/onerrorが両方発火するケース対策）
   let crashHandled = false;
 
@@ -243,11 +246,13 @@ export const createUpstreamClient = (
     }
 
     const result = await client.listTools();
-    return result.tools.map((tool) => ({
-      name: tool.name,
-      description: tool.description,
-      inputSchema: tool.inputSchema,
-    }));
+    return result.tools
+      .filter((tool) => !allowedToolNames || allowedToolNames.has(tool.name))
+      .map((tool) => ({
+        name: tool.name,
+        description: tool.description,
+        inputSchema: tool.inputSchema,
+      }));
   };
 
   /**
@@ -261,6 +266,9 @@ export const createUpstreamClient = (
       throw new Error(
         `MCPサーバー "${config.name}" は接続されていません（status: ${status}）`,
       );
+    }
+    if (allowedToolNames && !allowedToolNames.has(name)) {
+      throw new Error(`ツール "${name}" は許可されていません`);
     }
 
     const result = await client.callTool({

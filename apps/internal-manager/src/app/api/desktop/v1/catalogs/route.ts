@@ -137,7 +137,16 @@ export const GET = async (request: NextRequest) => {
     return NextResponse.json({ error: "Invalid cursor" }, { status: 400 });
   }
 
-  const policyContext = await getPolicyContextForUser(verifiedUser.userId);
+  let policyContext: Awaited<ReturnType<typeof getPolicyContextForUser>>;
+  try {
+    policyContext = await getPolicyContextForUser(verifiedUser.userId);
+  } catch (error) {
+    console.error("Failed to fetch desktop MCP policy context", error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
+  }
   const policyUser = policyContext.user;
   if (!policyUser?.isActive) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

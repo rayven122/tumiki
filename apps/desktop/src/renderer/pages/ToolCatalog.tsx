@@ -1,7 +1,7 @@
 import type { JSX } from "react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Plus, ArrowLeft } from "lucide-react";
+import { Search, Plus, ArrowLeft, RefreshCcw } from "lucide-react";
 import type { CatalogItem } from "../../types/catalog";
 import { AddMcpModal } from "../_components/AddMcpModal";
 import { AddRemoteMcpModal } from "../_components/AddRemoteMcpModal";
@@ -29,10 +29,33 @@ const AUTH_TYPE_FILTERS = [
   { value: "NONE", label: "設定不要" },
 ] as const;
 
+const statusLabel: Record<CatalogItem["status"], string> = {
+  available: "利用可能",
+  request_required: "申請が必要",
+  disabled: "利用不可",
+};
+
+const statusBadgeClass: Record<CatalogItem["status"], string> = {
+  available: "bg-[var(--badge-success-bg)] text-[var(--badge-success-text)]",
+  request_required: "bg-[var(--badge-warn-bg)] text-[var(--badge-warn-text)]",
+  disabled: "bg-[var(--badge-error-bg)] text-[var(--badge-error-text)]",
+};
+
+const canAddCatalog = (item: CatalogItem) =>
+  item.status === "available" && item.permissions.execute;
+
+const addButtonLabel = (item: CatalogItem) => {
+  if (item.status === "request_required") return "申請が必要";
+  if (item.status === "disabled") return "利用不可";
+  if (!item.permissions.execute) return "実行権限なし";
+  return "追加";
+};
+
 export const ToolCatalog = (): JSX.Element => {
   const navigate = useNavigate();
   const [catalogs, setCatalogs] = useState<CatalogItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [selectedAuthTypes, setSelectedAuthTypes] = useState<
     CatalogItem["authType"][]
@@ -49,13 +72,22 @@ export const ToolCatalog = (): JSX.Element => {
     modalOpenRef.current = selectedCatalog !== null || showRemoteModal;
   }, [selectedCatalog, showRemoteModal]);
 
-  useEffect(() => {
+  const loadCatalogs = useCallback((): void => {
+    setLoading(true);
+    setLoadError(null);
     window.electronAPI.catalog
       .getAll()
       .then(setCatalogs)
-      .catch(() => setCatalogs([]))
+      .catch(() => {
+        setCatalogs([]);
+        setLoadError("管理サーバーのカタログ取得に失敗しました");
+      })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    loadCatalogs();
+  }, [loadCatalogs]);
 
   // OAuth 直接フロー用のグローバルリスナー（AddMcpModal が開いている時は内部リスナーに任せる）
   useEffect(() => {
@@ -75,20 +107,23 @@ export const ToolCatalog = (): JSX.Element => {
   }, [navigate]);
 
   const handleAddClick = async (item: CatalogItem): Promise<void> => {
+    if (!canAddCatalog(item)) return;
+    const template = item.connectionTemplate;
     // 認証なしは直接コネクタへ追加
-    if (item.authType === "NONE") {
+    if (template.authType === "NONE") {
       try {
-        const result = await window.electronAPI.mcp.createFromCatalog({
+        const result = await window.electronAPI.mcp.createFromManagerCatalog({
           catalogId: item.id,
-          catalogName: item.name,
+          serverName: item.name,
           description: item.description,
-          transportType: item.transportType,
-          command: item.command,
-          args: item.args,
-          url: item.url,
-          credentialKeys: [],
+          status: item.status,
+          permissions: item.permissions,
+          connectionTemplate: template,
+          tools: item.tools.map((tool) => ({
+            name: tool.name,
+            allowed: tool.allowed,
+          })),
           credentials: {},
-          authType: item.authType,
         });
         toast.success(`${result.serverName}が正常に追加されました。`);
         navigate("/tools");
@@ -98,25 +133,34 @@ export const ToolCatalog = (): JSX.Element => {
       return;
     }
     // API Key / Bearer はモーダルで入力
-    if (item.authType !== "OAUTH") {
+    if (template.authType !== "OAUTH") {
       setDcrPrefill(false);
       setSelectedCatalog(item);
       return;
     }
-    if (!item.url) {
+    if (!template.url) {
       toast.error("このカタログには認証先URLが設定されていません");
       return;
     }
     // OAuth は認証ページへ直接リダイレクト
     try {
       await window.electronAPI.oauth.startAuth({
-        catalogId: item.id,
         catalogName: item.name,
         description: item.description,
-        transportType: item.transportType,
-        command: item.command,
-        args: item.args,
-        url: item.url,
+        transportType: template.transportType,
+        command: template.command,
+        args: JSON.stringify(template.args),
+        url: template.url,
+        managerCatalog: {
+          catalogId: item.id,
+          status: item.status,
+          permissions: item.permissions,
+          connectionTemplate: template,
+          tools: item.tools.map((tool) => ({
+            name: tool.name,
+            allowed: tool.allowed,
+          })),
+        },
       });
       toast.success(`${item.name}の認証をブラウザで開始しました。`);
     } catch (err) {
@@ -164,6 +208,29 @@ export const ToolCatalog = (): JSX.Element => {
     return (
       <div className="flex h-full items-center justify-center text-sm text-[var(--text-subtle)]">
         読み込み中...
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex h-full items-center justify-center p-6">
+        <div className="max-w-md rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 text-center shadow-[var(--shadow-card)]">
+          <h1 className="text-base font-semibold text-[var(--text-primary)]">
+            管理サーバーのカタログ取得に失敗しました
+          </h1>
+          <p className="mt-2 text-sm text-[var(--text-muted)]">
+            管理サーバーへの接続状態、ログイン状態、ネットワークを確認してください。
+          </p>
+          <button
+            type="button"
+            onClick={loadCatalogs}
+            className="mt-4 inline-flex items-center gap-2 rounded-md bg-[var(--text-primary)] px-4 py-2 text-sm font-medium text-[var(--bg-card)] transition hover:opacity-90"
+          >
+            <RefreshCcw size={14} />
+            再読み込み
+          </button>
+        </div>
       </div>
     );
   }
@@ -263,50 +330,62 @@ export const ToolCatalog = (): JSX.Element => {
                 URLを指定してリモートMCPを登録
               </span>
             </button>
-            {filtered.map((item) => (
-              <div
-                key={item.id}
-                className="flex flex-col rounded-xl p-4 transition-all hover:-translate-y-0.5 hover:shadow-lg"
-                style={cardStyle}
-              >
-                {/* アイコン + 認証種別 */}
-                <div className="mb-3 flex items-start justify-between">
-                  {item.iconPath ? (
-                    <img
-                      src={item.iconPath}
-                      alt={item.name}
-                      className="h-8 w-8 rounded-lg"
-                    />
-                  ) : (
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-700 text-xs text-gray-400">
-                      MCP
-                    </div>
-                  )}
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[9px] font-medium ${authBadgeClass[item.authType]}`}
-                  >
-                    {authTypeLabel[item.authType]}
-                  </span>
-                </div>
-                {/* 名前 */}
-                <div className="mb-2 text-sm font-medium text-[var(--text-primary)]">
-                  {item.name}
-                </div>
-                {/* 説明 */}
-                <div className="mb-3 line-clamp-2 text-[10px] leading-relaxed text-[var(--text-subtle)]">
-                  {item.description}
-                </div>
-                {/* 追加ボタン（OAuth は直接認証、それ以外はモーダル） */}
-                <button
-                  type="button"
-                  onClick={() => void handleAddClick(item)}
-                  className="mt-auto flex w-full items-center justify-center gap-1 rounded-md bg-[var(--text-primary)] py-1.5 text-[10px] font-medium text-[var(--bg-card)] transition hover:opacity-90"
+            {filtered.map((item) => {
+              const template = item.connectionTemplate;
+              const addable = canAddCatalog(item);
+              return (
+                <div
+                  key={item.id}
+                  className="flex flex-col rounded-xl p-4 transition-all hover:-translate-y-0.5 hover:shadow-lg"
+                  style={cardStyle}
                 >
-                  <Plus size={10} />
-                  追加
-                </button>
-              </div>
-            ))}
+                  {/* アイコン + 認証種別 */}
+                  <div className="mb-3 flex items-start justify-between">
+                    {item.iconUrl ? (
+                      <img
+                        src={item.iconUrl}
+                        alt={item.name}
+                        className="h-8 w-8 rounded-lg"
+                      />
+                    ) : (
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-700 text-xs text-gray-400">
+                        MCP
+                      </div>
+                    )}
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[9px] font-medium ${authBadgeClass[template.authType]}`}
+                    >
+                      {authTypeLabel[template.authType]}
+                    </span>
+                  </div>
+                  <div className="mb-2">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[9px] font-medium ${statusBadgeClass[item.status]}`}
+                    >
+                      {statusLabel[item.status]}
+                    </span>
+                  </div>
+                  {/* 名前 */}
+                  <div className="mb-2 text-sm font-medium text-[var(--text-primary)]">
+                    {item.name}
+                  </div>
+                  {/* 説明 */}
+                  <div className="mb-3 line-clamp-2 text-[10px] leading-relaxed text-[var(--text-subtle)]">
+                    {item.description}
+                  </div>
+                  {/* 追加ボタン（OAuth は直接認証、それ以外はモーダル） */}
+                  <button
+                    type="button"
+                    onClick={() => void handleAddClick(item)}
+                    disabled={!addable}
+                    className="mt-auto flex w-full items-center justify-center gap-1 rounded-md bg-[var(--text-primary)] py-1.5 text-[10px] font-medium text-[var(--bg-card)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {addable && <Plus size={10} />}
+                    {addButtonLabel(item)}
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

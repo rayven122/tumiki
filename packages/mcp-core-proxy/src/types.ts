@@ -11,6 +11,7 @@ export type StdioServerConfig = {
   command: string;
   args: string[];
   env: Record<string, string>;
+  allowedTools?: string[];
 };
 
 // SSE トランスポート設定
@@ -20,6 +21,7 @@ export type SseServerConfig = {
   url: string;
   authType: AuthType;
   headers: Record<string, string>;
+  allowedTools?: string[];
 };
 
 // Streamable HTTP トランスポート設定
@@ -29,6 +31,7 @@ export type StreamableHttpServerConfig = {
   url: string;
   authType: AuthType;
   headers: Record<string, string>;
+  allowedTools?: string[];
 };
 
 // MCPサーバー設定（discriminated union）

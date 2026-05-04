@@ -1,11 +1,12 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { AuthTokenResult } from "../types/auth";
-import type { CatalogItem } from "../types/catalog";
+import type { CatalogItem, LocalCatalogItem } from "../types/catalog";
 import type { ProfileState } from "../shared/types";
 import type {
   McpServerItem,
   McpServerDetailItem,
   CreateFromCatalogInput,
+  CreateFromManagerCatalogInput,
   CreateCustomServerInput,
   CreateVirtualServerInput,
   UpdateServerInput,
@@ -67,6 +68,8 @@ const api = {
   // カタログ関連 API
   catalog: {
     getAll: (): Promise<CatalogItem[]> => ipcRenderer.invoke("catalog:getAll"),
+    getLocalAll: (): Promise<LocalCatalogItem[]> =>
+      ipcRenderer.invoke("catalog:getLocalAll"),
   },
 
   // MCP管理 API
@@ -75,6 +78,10 @@ const api = {
       input: CreateFromCatalogInput,
     ): Promise<{ serverId: number; serverName: string }> =>
       ipcRenderer.invoke("mcp:createFromCatalog", input),
+    createFromManagerCatalog: (
+      input: CreateFromManagerCatalogInput,
+    ): Promise<{ serverId: number; serverName: string }> =>
+      ipcRenderer.invoke("mcp:createFromManagerCatalog", input),
     createCustomServer: (
       input: CreateCustomServerInput,
     ): Promise<{ serverId: number; serverName: string }> =>

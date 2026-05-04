@@ -28,6 +28,14 @@ const INBOUND_AUTH_CONFIG = {
     badgeLabel: "接続",
     description: "APIキー認証で接続",
   },
+  BEARER: {
+    icon: Key,
+    bgColor: "bg-amber-100",
+    textColor: "text-amber-700",
+    label: "Bearer",
+    badgeLabel: "接続",
+    description: "Bearer認証で接続",
+  },
   OAUTH: {
     icon: Shield,
     bgColor: "bg-green-100",
