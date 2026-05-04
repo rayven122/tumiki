@@ -42,6 +42,10 @@ const buildCatalog = (overrides: Record<string, unknown> = {}) => ({
   status: "ACTIVE",
   transportType: "STREAMABLE_HTTP",
   authType: "OAUTH",
+  configTemplate: {
+    url: "https://api.githubcopilot.com/mcp/",
+    args: ["--stdio"],
+  },
   credentialKeys: ["GITHUB_TOKEN"],
   updatedAt: new Date("2026-05-03T10:00:00.000Z"),
   tools: [
@@ -114,6 +118,14 @@ describe("GET /api/desktop/v1/catalogs", () => {
           transportType: "STREAMABLE_HTTP",
           authType: "OAUTH",
           requiredCredentialKeys: ["GITHUB_TOKEN"],
+          connectionTemplate: {
+            transportType: "STREAMABLE_HTTP",
+            command: null,
+            args: ["--stdio"],
+            url: "https://api.githubcopilot.com/mcp/",
+            authType: "OAUTH",
+            credentialKeys: ["GITHUB_TOKEN"],
+          },
           tools: [
             {
               name: "list_repos",
@@ -128,6 +140,34 @@ describe("GET /api/desktop/v1/catalogs", () => {
     });
     expect(response.status).toStrictEqual(200);
     expect(mockVerifyDesktopJwt).toHaveBeenCalledWith("Bearer access-token");
+  });
+
+  test("configTemplateがnullの場合はデフォルト値のconnectionTemplateを返す", async () => {
+    const consoleWarnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    mockFindCatalogs.mockResolvedValue([
+      buildCatalog({ configTemplate: null }),
+    ]);
+
+    const response = await GET(buildRequest());
+    const body = (await response.json()) as {
+      items: [{ connectionTemplate: unknown }];
+    };
+
+    expect(body.items[0].connectionTemplate).toStrictEqual({
+      transportType: "STREAMABLE_HTTP",
+      command: null,
+      args: [],
+      url: null,
+      authType: "OAUTH",
+      credentialKeys: ["GITHUB_TOKEN"],
+    });
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      "Failed to parse MCP catalog configTemplate",
+      expect.objectContaining({ catalogId: "server-github" }),
+    );
+    consoleWarnSpy.mockRestore();
   });
 
   test("権限評価はツール表示上限ではなく全ツールを対象にする", async () => {

@@ -52,6 +52,7 @@ type CatalogRow = {
   status: McpCatalogStatus;
   transportType: string;
   authType: string;
+  configTemplate: unknown;
   credentialKeys: string[];
   updatedAt: Date;
   tools: ToolPreview[];
@@ -73,6 +74,32 @@ const decodeCursor = (cursor: string): CatalogCursor | null => {
   } catch {
     return null;
   }
+};
+
+const configTemplateSchema = z.object({
+  command: z.string().nullable().optional(),
+  args: z.array(z.string()).optional(),
+  url: z.string().nullable().optional(),
+});
+
+const toConnectionTemplate = (catalog: CatalogRow) => {
+  const parsed = configTemplateSchema.safeParse(catalog.configTemplate);
+  if (!parsed.success) {
+    console.warn("Failed to parse MCP catalog configTemplate", {
+      catalogId: catalog.id,
+      error: parsed.error,
+    });
+  }
+  const config = parsed.success ? parsed.data : {};
+
+  return {
+    transportType: catalog.transportType,
+    command: config.command ?? null,
+    args: config.args ?? [],
+    url: config.url ?? null,
+    authType: catalog.authType,
+    credentialKeys: catalog.credentialKeys,
+  };
 };
 
 const toCatalogItem = (
@@ -100,6 +127,7 @@ const toCatalogItem = (
     transportType: catalog.transportType,
     authType: catalog.authType,
     requiredCredentialKeys: catalog.credentialKeys,
+    connectionTemplate: toConnectionTemplate(catalog),
     tools: catalog.tools.slice(0, TOOL_PREVIEW_LIMIT).map((tool) => ({
       name: tool.name,
       description: tool.description ?? "",
@@ -177,6 +205,7 @@ export const GET = async (request: NextRequest) => {
         status: true,
         transportType: true,
         authType: true,
+        configTemplate: true,
         credentialKeys: true,
         updatedAt: true,
         tools: {
