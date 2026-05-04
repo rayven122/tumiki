@@ -25,6 +25,7 @@ const authBadgeClass: Record<CatalogItem["authType"], string> = {
 const AUTH_TYPE_FILTERS = [
   { value: "OAUTH", label: "OAuth" },
   { value: "API_KEY", label: "API Key" },
+  { value: "BEARER", label: "Bearer" },
   { value: "NONE", label: "設定不要" },
 ] as const;
 
@@ -205,7 +206,7 @@ export const ToolCatalog = (): JSX.Element => {
         </div>
 
         {/* 認証種別フィルター */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-[10px] text-[var(--text-subtle)]">
             認証種別:
           </span>
@@ -213,6 +214,7 @@ export const ToolCatalog = (): JSX.Element => {
             <button
               key={value}
               type="button"
+              aria-pressed={selectedAuthTypes.includes(value)}
               onClick={() => toggleAuthType(value)}
               className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-colors ${
                 selectedAuthTypes.includes(value)
