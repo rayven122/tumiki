@@ -27,6 +27,7 @@ import { parseOAuthCallback } from "./oauth.protocol";
 import * as oauthRepository from "./oauth.repository";
 import {
   createFromCatalog,
+  createFromManagerCatalog,
   createCustomServer,
 } from "../mcp-server-list/mcp.service";
 import type {
@@ -268,6 +269,7 @@ export const createMcpOAuthManager = (): McpOAuthManager => {
         codeVerifier,
         serverUrl: input.url,
         catalogId: input.catalogId ?? null,
+        managerCatalog: input.managerCatalog ?? null,
         catalogName: input.catalogName,
         description: input.description,
         transportType: input.transportType,
@@ -316,7 +318,8 @@ export const createMcpOAuthManager = (): McpOAuthManager => {
 
       const credentials = credentialsPayloadFromTokenData(tokenData);
 
-      // カタログ参照ありの場合は既存フロー、なしの場合はカスタムサーバーとして登録
+      // カタログ参照ありの場合は既存フロー、Managerカタログの場合はテンプレートから登録、
+      // それ以外はカスタムサーバーとして登録する。
       const result = session.catalogId
         ? await createFromCatalog({
             catalogId: session.catalogId,
@@ -330,16 +333,27 @@ export const createMcpOAuthManager = (): McpOAuthManager => {
             credentials,
             authType: "OAUTH",
           })
-        : await createCustomServer({
-            serverName: session.catalogName,
-            url: session.url,
-            transportType:
-              session.transportType === "STDIO"
-                ? "STREAMABLE_HTTP"
-                : session.transportType,
-            authType: "OAUTH",
-            credentials,
-          });
+        : session.managerCatalog
+          ? await createFromManagerCatalog({
+              catalogId: session.managerCatalog.catalogId,
+              serverName: session.catalogName,
+              description: session.description,
+              status: session.managerCatalog.status,
+              permissions: session.managerCatalog.permissions,
+              connectionTemplate: session.managerCatalog.connectionTemplate,
+              tools: session.managerCatalog.tools,
+              credentials,
+            })
+          : await createCustomServer({
+              serverName: session.catalogName,
+              url: session.url,
+              transportType:
+                session.transportType === "STDIO"
+                  ? "STREAMABLE_HTTP"
+                  : session.transportType,
+              authType: "OAUTH",
+              credentials,
+            });
 
       logger.info("MCP OAuth flow completed successfully", {
         serverUrl: session.serverUrl,

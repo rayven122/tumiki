@@ -15,6 +15,7 @@ import { encryptToken } from "../../utils/encryption";
 import { decryptCredentials } from "../../utils/credentials";
 import type {
   CreateFromCatalogInput,
+  CreateFromManagerCatalogInput,
   CreateCustomServerInput,
   CreateVirtualServerInput,
 } from "./mcp.types";
@@ -22,6 +23,7 @@ import type {
 // IPC / テストから参照できるよう re-export
 export type {
   CreateFromCatalogInput,
+  CreateFromManagerCatalogInput,
   CreateCustomServerInput,
   CreateVirtualServerInput,
 } from "./mcp.types";
@@ -82,6 +84,7 @@ const generateUniqueName = async (
  */
 const fetchAndStoreToolsForConnection = async (
   connectionId: number,
+  options?: { allowedToolNames?: string[] },
 ): Promise<void> => {
   let tools;
   try {
@@ -103,6 +106,9 @@ const fetchAndStoreToolsForConnection = async (
 
   try {
     const db = await getDb();
+    const allowedToolNameSet = options?.allowedToolNames
+      ? new Set(options.allowedToolNames)
+      : null;
     await mcpRepository.createTools(
       db,
       tools.map((tool) => ({
@@ -110,6 +116,9 @@ const fetchAndStoreToolsForConnection = async (
         description: tool.description ?? "",
         inputSchema: JSON.stringify(tool.inputSchema ?? {}),
         connectionId,
+        ...(allowedToolNameSet && {
+          isAllowed: allowedToolNameSet.has(tool.name),
+        }),
       })),
     );
     logger.info(
@@ -158,6 +167,54 @@ export const createFromCatalog = async (
 
   // 登録直後にツール一覧を取得して保存（失敗しても登録自体は成功扱い）
   await fetchAndStoreToolsForConnection(connection.id);
+
+  return { serverId: server.id, serverName: uniqueName };
+};
+
+/**
+ * Manager APIのカタログレスポンスからMCPサーバーを登録
+ * ローカルMcpCatalogには紐づけないため、McpConnection.catalogIdはnullで保存する。
+ */
+export const createFromManagerCatalog = async (
+  input: CreateFromManagerCatalogInput,
+): Promise<{ serverId: number; serverName: string }> => {
+  if (input.status !== "available" || !input.permissions.execute) {
+    throw new Error("このカタログは追加できません");
+  }
+
+  const template = input.connectionTemplate;
+  const db = await getDb();
+  const uniqueName = await generateUniqueName(db, input.serverName);
+  const slug = await generateUniqueSlug(db, uniqueName);
+
+  const server = await mcpRepository.createServer(db, {
+    name: uniqueName,
+    slug,
+    description: input.description,
+  });
+
+  const connection = await mcpRepository.createConnection(db, {
+    name: uniqueName,
+    slug,
+    transportType: template.transportType,
+    command: template.transportType === "STDIO" ? template.command : null,
+    args: JSON.stringify(template.args),
+    url: template.transportType !== "STDIO" ? template.url : null,
+    credentials: await encryptToken(JSON.stringify(input.credentials)),
+    authType: template.authType,
+    serverId: server.id,
+    catalogId: null,
+  });
+
+  logger.info(`MCP server created from manager catalog: ${uniqueName}`, {
+    managerCatalogId: input.catalogId,
+  });
+
+  await fetchAndStoreToolsForConnection(connection.id, {
+    allowedToolNames: input.tools
+      .filter((tool) => tool.allowed)
+      .map((tool) => tool.name),
+  });
 
   return { serverId: server.id, serverName: uniqueName };
 };

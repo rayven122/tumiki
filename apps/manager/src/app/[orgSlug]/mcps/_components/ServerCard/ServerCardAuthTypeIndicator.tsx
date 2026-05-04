@@ -72,6 +72,12 @@ const AUTH_TYPE_CONFIG = {
     textColor: "text-blue-700",
     label: "API Key",
   },
+  BEARER: {
+    icon: Key,
+    bgColor: "bg-amber-100",
+    textColor: "text-amber-700",
+    label: "Bearer",
+  },
   NONE: {
     icon: Unlock,
     bgColor: "bg-purple-100",

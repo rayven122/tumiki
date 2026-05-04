@@ -20,11 +20,11 @@ model Chat {
   agentId String?
   agent   Agent?  @relation(fields: [agentId], references: [id], onDelete: SetNull)
 
-  messages   Message[]
-  votes      Vote[]
-  streams    Stream[]
+  messages     Message[]
+  votes        Vote[]
+  streams      Stream[]
   /// チャットに紐づくMCPサーバー（暗黙的多対多）
-  mcpServers McpServer[]
+  mcpServers   McpServer[]
   /// エージェント実行ログとの紐付け
   executionLog AgentExecutionLog?
 }

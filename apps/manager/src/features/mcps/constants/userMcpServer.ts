@@ -9,6 +9,7 @@ export const SERVER_STATUS_LABELS = {
 
 export const AUTH_TYPE_LABELS = {
   [AuthType.NONE]: "なし",
+  [AuthType.BEARER]: "Bearer",
   [AuthType.API_KEY]: "APIキー",
   [AuthType.OAUTH]: "OAuth",
 } as const;

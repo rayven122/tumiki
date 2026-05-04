@@ -100,6 +100,22 @@ const toProxyAuthType = (prismaAuthType: string): AuthType => {
 type EnabledConnection = Awaited<
   ReturnType<typeof mcpRepository.findEnabledConnections>
 >[number];
+type ConnectionForConfig = Omit<EnabledConnection, "tools"> & {
+  tools?: Array<{ name: string; isAllowed: boolean }>;
+};
+
+const getAllowedToolNames = (conn: ConnectionForConfig) =>
+  conn.tools && conn.tools.length > 0
+    ? conn.tools.filter((tool) => tool.isAllowed).map((tool) => tool.name)
+    : undefined;
+
+const withAllowedTools = <T extends McpServerConfig>(
+  config: T,
+  conn: ConnectionForConfig,
+): T => {
+  const allowedTools = getAllowedToolNames(conn);
+  return allowedTools ? { ...config, allowedTools } : config;
+};
 
 /**
  * 単一接続からMcpServerConfigを生成する共通ヘルパー。
@@ -107,7 +123,7 @@ type EnabledConnection = Awaited<
  * 生成不可（urlなし等）の場合は null を返す。
  */
 const buildConfigFromConnection = async (
-  conn: EnabledConnection,
+  conn: ConnectionForConfig,
 ): Promise<{ config: McpServerConfig; meta: McpConnectionMeta } | null> => {
   const connLabel = `${conn.server.slug}/${conn.slug}`;
   const name = `${conn.server.slug}-${conn.slug}`;
@@ -147,13 +163,16 @@ const buildConfigFromConnection = async (
       );
       // バンドル済みランタイム (Node.js / uv) を解決し、PATHにバンドルbinを差し込む
       // これによりユーザーPCに npx / uvx が無くても MCP コネクタが起動できる
-      config = {
-        name,
-        transportType: "STDIO",
-        command: resolveValue(conn.command),
-        args: resolveArgs(args),
-        env: buildChildEnv(process.env, credentials),
-      };
+      config = withAllowedTools(
+        {
+          name,
+          transportType: "STDIO",
+          command: resolveValue(conn.command),
+          args: resolveArgs(args),
+          env: buildChildEnv(process.env, credentials),
+        },
+        conn,
+      );
       break;
     }
     case "SSE": {
@@ -164,13 +183,16 @@ const buildConfigFromConnection = async (
         return null;
       }
       const sseAuthType = toProxyAuthType(conn.authType);
-      config = {
-        name,
-        transportType: "SSE",
-        url: conn.url,
-        authType: sseAuthType,
-        headers: buildHeaders(sseAuthType, credentials),
-      };
+      config = withAllowedTools(
+        {
+          name,
+          transportType: "SSE",
+          url: conn.url,
+          authType: sseAuthType,
+          headers: buildHeaders(sseAuthType, credentials),
+        },
+        conn,
+      );
       break;
     }
     case "STREAMABLE_HTTP": {
@@ -181,13 +203,16 @@ const buildConfigFromConnection = async (
         return null;
       }
       const httpAuthType = toProxyAuthType(conn.authType);
-      config = {
-        name,
-        transportType: "STREAMABLE_HTTP",
-        url: conn.url,
-        authType: httpAuthType,
-        headers: buildHeaders(httpAuthType, credentials),
-      };
+      config = withAllowedTools(
+        {
+          name,
+          transportType: "STREAMABLE_HTTP",
+          url: conn.url,
+          authType: httpAuthType,
+          headers: buildHeaders(httpAuthType, credentials),
+        },
+        conn,
+      );
       break;
     }
     default:

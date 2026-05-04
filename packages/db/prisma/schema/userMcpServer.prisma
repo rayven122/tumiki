@@ -30,6 +30,54 @@ model McpConfig {
   @@unique([mcpServerTemplateInstanceId, userId, organizationId])
 }
 
+/// MCP接続（個別のMCPサーバーへの接続設定）
+/// Desktop側のMcpConnectionと同じ概念で、credentialsに接続用credential/configを暗号化保存する
+/// @namespace UserMcpServer
+model McpConnection {
+  id String @id @default(cuid())
+
+  /// 接続表示名
+  name String
+  /// URL識別子（McpServer内でユニーク）
+  slug String
+
+  /// 所属するMCPサーバー
+  mcpServerId String
+  mcpServer   McpServer @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
+
+  /// カタログ参照（カタログから登録した場合）
+  catalogId String?
+  catalog   McpCatalog? @relation(fields: [catalogId], references: [id], onDelete: SetNull)
+
+  /// 接続タイプ
+  transportType  TransportType @default(STDIO)
+  /// STDIO用コマンド
+  command        String?
+  /// STDIO用引数
+  args           String[]
+  /// SSE/Streamable HTTP用URL
+  url            String?
+  /// 必要な設定キー名（STDIO: 環境変数キー / SSE・Streamable HTTP: ヘッダー名）
+  credentialKeys String[]
+  /// 接続設定値（STDIO: 環境変数 / SSE・Streamable HTTP: HTTPヘッダー / OAuth token）
+  credentials    String        @default("{}") /// @encrypted
+  /// 認証タイプ
+  authType       AuthType      @default(NONE)
+
+  /// 有効/無効フラグ
+  isEnabled    Boolean @default(true)
+  /// 統合サーバー内での表示順序
+  displayOrder Int     @default(0)
+
+  /// この接続が提供するツール一覧
+  tools McpTool[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([mcpServerId, slug])
+}
+
 /// サーバーの状態
 /// @namespace UserMcpServer
 enum ServerStatus {
@@ -87,6 +135,8 @@ model McpServer {
 
   /// テンプレートインスタンス一覧
   templateInstances McpServerTemplateInstance[]
+  /// 接続一覧
+  connections       McpConnection[]
 
   /// APIキー一覧
   apiKeys        McpApiKey[]
@@ -96,8 +146,8 @@ model McpServer {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
   /// 作成者（既存データ対応のためオプショナル）
-  createdById String?
-  createdBy   User?   @relation("McpServerCreatedBy", fields: [createdById], references: [id])
+  createdById    String?
+  createdBy      User?        @relation("McpServerCreatedBy", fields: [createdById], references: [id])
   /// 表示順序（ユーザーごと）
   displayOrder   Int          @default(0)
 
@@ -125,9 +175,9 @@ model McpServer {
   /// 権限設定（サーバー削除時に自動削除）
   mcpPermissions McpPermission[]
   /// チャットで利用される mcp server
-  chats Chat[]
+  chats          Chat[]
   /// エージェントで利用される mcp server（暗黙的多対多）
-  agents Agent[]
+  agents         Agent[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -137,6 +187,35 @@ model McpServer {
   /// 組織内でスラッグはユニーク
   @@unique([organizationId, slug])
   @@index([deletedAt])
+}
+
+/// OAuthクライアント登録キャッシュ（DCR結果）
+/// Desktop側のOAuthClientと同じ概念で、MCP OAuth認証時のDynamic Client Registration結果を保存する
+/// @namespace UserMcpServer
+model OAuthClient {
+  id String @id @default(cuid())
+
+  /// MCPサーバーURL（正規化済み、認可サーバー特定用）
+  serverUrl               String
+  /// OAuth Authorization Server issuer URL
+  issuer                  String
+  /// DCRで取得したクライアントID
+  clientId                String /// @encrypted
+  /// DCRで取得したクライアントシークレット
+  clientSecret            String? /// @encrypted
+  /// トークンエンドポイントの認証方式
+  tokenEndpointAuthMethod String  @default("none")
+  /// Authorization Server Metadata（JSON文字列）
+  authServerMetadata      String
+
+  /// 組織ID
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, serverUrl])
 }
 
 /// APIキー管理テーブル

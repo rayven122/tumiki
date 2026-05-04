@@ -3,6 +3,7 @@ import { z } from "zod";
 import * as mcpService from "./mcp.service";
 import type {
   CreateFromCatalogInput,
+  CreateFromManagerCatalogInput,
   CreateVirtualServerInput,
   UpdateServerInput,
   DeleteServerInput,
@@ -40,12 +41,39 @@ const createFromCatalogSchema = z.object({
   authType: z.enum(["NONE", "BEARER", "API_KEY", "OAUTH"]),
 }) satisfies z.ZodType<CreateFromCatalogInput>;
 
+const createFromManagerCatalogSchema = z.object({
+  catalogId: z.string().min(1),
+  serverName: z.string().min(1),
+  description: z.string(),
+  status: z.enum(["available", "request_required", "disabled"]),
+  permissions: z.object({
+    read: z.boolean(),
+    write: z.boolean(),
+    execute: z.boolean(),
+  }),
+  connectionTemplate: z.object({
+    transportType: z.enum(["STDIO", "SSE", "STREAMABLE_HTTP"]),
+    command: z.string().nullable(),
+    args: z.array(z.string()),
+    url: z.string().nullable(),
+    authType: z.enum(["NONE", "BEARER", "API_KEY", "OAUTH"]),
+    credentialKeys: z.array(z.string()),
+  }),
+  tools: z.array(
+    z.object({
+      name: z.string().min(1),
+      allowed: z.boolean(),
+    }),
+  ),
+  credentials: z.record(z.string(), z.string()),
+}) satisfies z.ZodType<CreateFromManagerCatalogInput>;
+
 // .refine()でZodEffectsになるためsatisfies制約は除外（型の整合性はCreateCustomServerInputを参照）
 const createCustomServerSchema = z
   .object({
     serverName: z.string().min(1),
     transportType: z.enum(["STDIO", "SSE", "STREAMABLE_HTTP"]),
-    authType: z.enum(["NONE", "API_KEY", "OAUTH"]),
+    authType: z.enum(["NONE", "BEARER", "API_KEY", "OAUTH"]),
     credentials: z.record(z.string(), z.string()),
     url: z.string().url({ message: "有効なURLを入力してください" }).optional(),
     command: z.string().min(1).optional(),
@@ -89,6 +117,20 @@ export const setupMcpIpc = (): void => {
       const message = error instanceof Error ? error.message : "不明なエラー";
       logger.error(
         "Failed to create MCP server from catalog",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error(`MCPサーバーの登録に失敗しました: ${message}`);
+    }
+  });
+
+  ipcMain.handle("mcp:createFromManagerCatalog", async (_, input: unknown) => {
+    try {
+      const validated = createFromManagerCatalogSchema.parse(input);
+      return await mcpService.createFromManagerCatalog(validated);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "不明なエラー";
+      logger.error(
+        "Failed to create MCP server from manager catalog",
         error instanceof Error ? error : { error },
       );
       throw new Error(`MCPサーバーの登録に失敗しました: ${message}`);

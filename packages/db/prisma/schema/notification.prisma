@@ -48,11 +48,11 @@ model Notification {
 
   /// 通知の受信者（ユーザーID）
   userId String
-  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   /// アクションをトリガーしたユーザー（誰が変更したか）
   triggeredById String?
-  triggeredBy   User? @relation("NotificationTriggeredBy", fields: [triggeredById], references: [id], onDelete: SetNull)
+  triggeredBy   User?   @relation("NotificationTriggeredBy", fields: [triggeredById], references: [id], onDelete: SetNull)
 
   /// 論理削除フラグ（非表示）
   isDeleted Boolean @default(false)

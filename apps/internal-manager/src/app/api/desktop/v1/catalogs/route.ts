@@ -34,8 +34,11 @@ type PermissionRow = {
 };
 
 type ToolPreview = {
+  id?: string;
   name: string;
   description: string;
+  isAllowed?: boolean;
+  reviewStatus?: string;
 };
 
 type CatalogRow = {
@@ -46,16 +49,43 @@ type CatalogRow = {
   iconPath: string | null;
   serverStatus: string;
   authType: string;
+  connections?: {
+    id: string;
+    isEnabled: boolean;
+    transportType: string;
+    command: string | null;
+    args: string[];
+    url: string | null;
+    credentialKeys: string[];
+    authType: string;
+    catalog: {
+      transportType: string;
+      command: string | null;
+      args: string[];
+      url: string | null;
+      credentialKeys: string[];
+      authType: string;
+    } | null;
+    tools: ToolPreview[];
+  }[];
   templateInstances: {
     isEnabled: boolean;
     allowedTools: ToolPreview[];
     mcpServerTemplate: {
       transportType: string;
       authType: string;
+      command: string | null;
+      args: string[];
+      url: string | null;
       envVarKeys: string[];
       mcpTools: ToolPreview[];
     };
   }[];
+};
+
+type ToolPermissionContext = {
+  userPermissions: Map<string, boolean>;
+  groupPermissions: Map<string, boolean[]>;
 };
 
 const emptyPermissions = (): Permissions => ({
@@ -112,6 +142,7 @@ const getEffectivePermissions = async (userId: string) => {
     select: {
       groupMemberships: {
         select: {
+          groupId: true,
           group: {
             select: {
               permissions: {
@@ -133,6 +164,15 @@ const getEffectivePermissions = async (userId: string) => {
         },
         select: {
           mcpServerId: true,
+        },
+      },
+      mcpToolPermissions: {
+        where: {
+          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+        },
+        select: {
+          mcpToolId: true,
+          canUse: true,
         },
       },
     },
@@ -157,22 +197,95 @@ const getEffectivePermissions = async (userId: string) => {
     });
   }
 
-  return permissionMap;
+  const groupIds = user.groupMemberships.map(
+    (membership) => membership.groupId,
+  );
+  const groupToolPermissions =
+    groupIds.length === 0
+      ? []
+      : await internalDb.groupMcpToolPermission.findMany({
+          where: { groupId: { in: groupIds } },
+          select: {
+            mcpToolId: true,
+            canUse: true,
+          },
+        });
+
+  const toolPermissionContext: ToolPermissionContext = {
+    userPermissions: new Map(
+      user.mcpToolPermissions.map((permission) => [
+        permission.mcpToolId,
+        permission.canUse,
+      ]),
+    ),
+    groupPermissions: new Map(),
+  };
+
+  for (const permission of groupToolPermissions) {
+    const current =
+      toolPermissionContext.groupPermissions.get(permission.mcpToolId) ?? [];
+    current.push(permission.canUse);
+    toolPermissionContext.groupPermissions.set(permission.mcpToolId, current);
+  }
+
+  return { permissionMap, toolPermissionContext };
 };
 
-const toCatalogItem = (catalog: CatalogRow, permissions: Permissions) => {
+const canUseTool = (
+  tool: ToolPreview,
+  toolPermissionContext: ToolPermissionContext,
+) => {
+  if (!tool.id) return true;
+  if (!tool.isAllowed) return false;
+  const userPermission = toolPermissionContext.userPermissions.get(tool.id);
+  if (userPermission !== undefined) return userPermission;
+  return (
+    toolPermissionContext.groupPermissions.get(tool.id)?.some(Boolean) ?? false
+  );
+};
+
+const toCatalogItem = (
+  catalog: CatalogRow,
+  permissions: Permissions,
+  toolPermissionContext: ToolPermissionContext,
+) => {
+  const firstConnection = catalog.connections?.[0];
   const firstInstance = catalog.templateInstances[0];
   const template = firstInstance?.mcpServerTemplate;
-  const tools =
-    (firstInstance?.allowedTools.length ?? 0) !== 0
+  const connectionCatalog = firstConnection?.catalog;
+  const tools = firstConnection
+    ? firstConnection.tools
+    : (firstInstance?.allowedTools.length ?? 0) !== 0
       ? (firstInstance?.allowedTools ?? [])
       : (template?.mcpTools ?? []);
+  const hasUsableTool =
+    !firstConnection ||
+    tools.some((tool) => canUseTool(tool, toolPermissionContext));
   const status: CatalogStatus =
-    catalog.serverStatus !== "RUNNING"
+    catalog.serverStatus !== "RUNNING" || !hasUsableTool
       ? "disabled"
       : hasAnyPermission(permissions)
         ? "available"
         : "request_required";
+
+  const transportType =
+    mapTransportType(
+      firstConnection?.transportType ??
+        connectionCatalog?.transportType ??
+        template?.transportType,
+    ) ?? "STDIO";
+  const authType =
+    mapAuthType(
+      firstConnection?.authType ??
+        connectionCatalog?.authType ??
+        template?.authType ??
+        catalog.authType,
+    ) ?? "NONE";
+  const credentialKeys =
+    firstConnection?.credentialKeys ??
+    connectionCatalog?.credentialKeys ??
+    template?.envVarKeys ??
+    [];
 
   return {
     id: catalog.slug,
@@ -181,16 +294,36 @@ const toCatalogItem = (catalog: CatalogRow, permissions: Permissions) => {
     iconUrl: catalog.iconPath,
     status,
     permissions,
-    transportType: mapTransportType(template?.transportType) ?? "STDIO",
-    authType: mapAuthType(template?.authType ?? catalog.authType) ?? "NONE",
-    requiredCredentialKeys: template?.envVarKeys ?? [],
+    transportType,
+    authType,
+    requiredCredentialKeys: credentialKeys,
+    connectionTemplate: {
+      transportType,
+      command:
+        firstConnection?.command ??
+        connectionCatalog?.command ??
+        template?.command ??
+        null,
+      args:
+        firstConnection?.args ??
+        connectionCatalog?.args ??
+        template?.args ??
+        [],
+      url:
+        firstConnection?.url ?? connectionCatalog?.url ?? template?.url ?? null,
+      authType,
+      credentialKeys,
+    },
     tools: tools.map((tool) => ({
+      id: tool.id,
       name: tool.name,
       description: tool.description,
       allowed:
         status === "available" &&
         permissions.execute &&
-        (firstInstance?.isEnabled ?? true),
+        (firstConnection?.isEnabled ?? firstInstance?.isEnabled ?? true) &&
+        canUseTool(tool, toolPermissionContext),
+      reviewStatus: tool.reviewStatus,
     })),
   };
 };
@@ -222,8 +355,13 @@ export const GET = async (request: NextRequest) => {
   }
 
   let permissionMap: Map<string, Permissions>;
+  let toolPermissionContext: ToolPermissionContext;
   try {
-    permissionMap = await getEffectivePermissions(verifiedUser.userId);
+    const effectivePermissions = await getEffectivePermissions(
+      verifiedUser.userId,
+    );
+    permissionMap = effectivePermissions.permissionMap;
+    toolPermissionContext = effectivePermissions.toolPermissionContext;
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -251,6 +389,41 @@ export const GET = async (request: NextRequest) => {
       iconPath: true,
       serverStatus: true,
       authType: true,
+      connections: {
+        orderBy: [{ displayOrder: "asc" }, { id: "asc" }],
+        take: 1,
+        select: {
+          id: true,
+          isEnabled: true,
+          transportType: true,
+          command: true,
+          args: true,
+          url: true,
+          credentialKeys: true,
+          authType: true,
+          catalog: {
+            select: {
+              transportType: true,
+              command: true,
+              args: true,
+              url: true,
+              credentialKeys: true,
+              authType: true,
+            },
+          },
+          tools: {
+            orderBy: { name: "asc" },
+            take: TOOL_PREVIEW_LIMIT,
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              isAllowed: true,
+              reviewStatus: true,
+            },
+          },
+        },
+      },
       templateInstances: {
         orderBy: [{ displayOrder: "asc" }, { id: "asc" }],
         take: 1,
@@ -268,11 +441,15 @@ export const GET = async (request: NextRequest) => {
             select: {
               transportType: true,
               authType: true,
+              command: true,
+              args: true,
+              url: true,
               envVarKeys: true,
               mcpTools: {
                 orderBy: { name: "asc" },
                 take: TOOL_PREVIEW_LIMIT,
                 select: {
+                  id: true,
                   name: true,
                   description: true,
                 },
@@ -293,6 +470,7 @@ export const GET = async (request: NextRequest) => {
       toCatalogItem(
         catalog,
         permissionMap.get(catalog.id) ?? emptyPermissions(),
+        toolPermissionContext,
       ),
     ),
     nextCursor:
