@@ -19,6 +19,10 @@ type AddMcpModalProps = {
   onSuccess: (serverName: string) => void;
   /** DCR 非対応が事前検出済みの場合、OAuth クライアント設定を初期表示で開く */
   initialNeedsManualOAuthClient?: boolean;
+  /** キャッシュ済み手動入力クライアントIDのプリフィル値 */
+  initialOAuthClientId?: string;
+  /** キャッシュ済み手動入力クライアントシークレットのプリフィル値 */
+  initialOAuthClientSecret?: string;
 };
 
 /** 認証タイプの表示ラベル（カタログ指定をそのまま見せる） */
@@ -41,6 +45,8 @@ export const AddMcpModal = ({
   onClose,
   onSuccess,
   initialNeedsManualOAuthClient = false,
+  initialOAuthClientId,
+  initialOAuthClientSecret,
 }: AddMcpModalProps): JSX.Element => {
   const template = catalog.connectionTemplate;
   const credentialKeys: string[] = template.credentialKeys;
@@ -53,8 +59,12 @@ export const AddMcpModal = ({
   const [showOAuthSettings, setShowOAuthSettings] = useState(
     initialNeedsManualOAuthClient,
   );
-  const [oauthClientId, setOauthClientId] = useState("");
-  const [oauthClientSecret, setOauthClientSecret] = useState("");
+  const [oauthClientId, setOauthClientId] = useState(
+    initialOAuthClientId ?? "",
+  );
+  const [oauthClientSecret, setOauthClientSecret] = useState(
+    initialOAuthClientSecret ?? "",
+  );
   /** DCR非対応サーバー用: client_id/secret 手動入力が必要なフラグ */
   const [needsManualOAuthClient, setNeedsManualOAuthClient] = useState(
     initialNeedsManualOAuthClient,

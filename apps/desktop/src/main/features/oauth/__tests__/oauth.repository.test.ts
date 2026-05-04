@@ -44,6 +44,7 @@ describe("oauth.repository", () => {
         clientSecret: "encrypted:client-secret-456",
         tokenEndpointAuthMethod: "client_secret_post",
         authServerMetadata: '{"issuer":"https://www.figma.com"}',
+        isDcr: true,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -58,6 +59,7 @@ describe("oauth.repository", () => {
         clientSecret: "client-secret-456",
         tokenEndpointAuthMethod: "client_secret_post",
         authServerMetadata: '{"issuer":"https://www.figma.com"}',
+        isDcr: true,
       });
     });
 
@@ -77,6 +79,7 @@ describe("oauth.repository", () => {
         clientSecret: null,
         tokenEndpointAuthMethod: "none",
         authServerMetadata: "{}",
+        isDcr: true,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -95,6 +98,7 @@ describe("oauth.repository", () => {
         clientSecret: "my-secret",
         tokenEndpointAuthMethod: "client_secret_post",
         authServerMetadata: '{"issuer":"https://www.figma.com"}',
+        isDcr: true,
       });
 
       expect(mockDb.oAuthClient.upsert).toHaveBeenCalledWith({
@@ -119,6 +123,7 @@ describe("oauth.repository", () => {
         clientSecret: null,
         tokenEndpointAuthMethod: "none",
         authServerMetadata: "{}",
+        isDcr: true,
       });
 
       expect(mockDb.oAuthClient.upsert).toHaveBeenCalledWith(
