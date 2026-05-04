@@ -84,12 +84,23 @@ dmg:
       y: 190
       type: file
 
-# Windows設定（将来対応）
-# win:
-#   target:
-#     - target: nsis
-#       arch: [x64]
-#   icon: resources/icon.ico
+# Windows設定
+# DEV-1598: NSIS インストーラを x64 / arm64 で生成。
+# 現時点ではコード署名なし（EV証明書購入後に CSC_LINK / CSC_KEY_PASSWORD で有効化）。
+# icon は専用 .ico 未作成のため Electron デフォルトを使用（別 Issue で差し替え予定）。
+win:
+  target:
+    - target: nsis
+      arch: [x64, arm64]
+
+# NSIS インストーラ設定
+# - oneClick: false ＆ allowToChangeInstallationDirectory: true でインストール先選択可能
+# - perMachine: false でユーザーごとインストール（管理者権限不要）
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  shortcutName: Tumiki
 
 # Linux設定（将来対応）
 # linux:
