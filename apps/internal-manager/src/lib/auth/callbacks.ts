@@ -29,6 +29,7 @@ const refreshedTokensSchema = z.object({
 
 const TOKEN_ENDPOINT_CACHE_TTL_MS = 10 * 60 * 1000;
 const OIDC_DISCOVERY_TIMEOUT_MS = 5 * 1000;
+const OIDC_REFRESH_TIMEOUT_MS = 10 * 1000;
 
 // OIDCディスカバリーからトークンエンドポイントを取得（issuerをキーに短時間キャッシュ）
 const tokenEndpointCache = new Map<
@@ -80,17 +81,28 @@ const refreshAccessToken = async (token: JWT): Promise<JWT | null> => {
     const { OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_ISSUER } =
       await ensureJacksonOidcClients();
     const tokenEndpoint = await getTokenEndpoint(OIDC_ISSUER);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      OIDC_REFRESH_TIMEOUT_MS,
+    );
 
-    const response = await fetch(tokenEndpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "refresh_token",
-        client_id: OIDC_CLIENT_ID,
-        client_secret: OIDC_CLIENT_SECRET,
-        refresh_token: token.refreshToken,
-      }),
-    });
+    let response: Response;
+    try {
+      response = await fetch(tokenEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "refresh_token",
+          client_id: OIDC_CLIENT_ID,
+          client_secret: OIDC_CLIENT_SECRET,
+          refresh_token: token.refreshToken,
+        }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
       console.error(

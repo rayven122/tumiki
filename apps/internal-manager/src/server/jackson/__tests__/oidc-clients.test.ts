@@ -125,7 +125,7 @@ describe("oidc-clients", () => {
     );
   });
 
-  test("Jackson自動設定では並行呼び出しを1回のconnection生成にまとめる", async () => {
+  test("Jackson自動設定では並行呼び出しを1サイクルのconnection生成にまとめる", async () => {
     configureCustomJacksonAutoEnv();
     const { ensureJacksonOidcClients, isJacksonAutoOidcConfigured } =
       await loadModule();
