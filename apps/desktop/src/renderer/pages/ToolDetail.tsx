@@ -62,8 +62,8 @@ const serverStatusBadge: Record<
 const AUDIT_LOG_LIMIT = 20;
 
 /**
- * 機能設定トグル（compression / dynamicSearch のみ）の永続化キー。
- * masking は DB 永続化されるため対象外。
+ * 機能設定トグル（dynamicSearch のみ）の localStorage 永続化キー。
+ * masking / compression(TOON) は DB 永続化のため対象外。
  */
 const FEATURE_SETTINGS_KEY = (serverId: number): string =>
   `tumiki:server:${serverId}:features`;
@@ -187,14 +187,12 @@ const SAMPLE_TOOLS: DisplayTool[] = [
   },
 ];
 
-// masking は DB（McpServer.isPiiMaskingEnabled）に永続化するため、本型からは除外
+// masking / compression(TOON) は DB に永続化するため、本型からは除外
 type FeatureSettings = {
-  compression: boolean;
   dynamicSearch: boolean;
 };
 
 const DEFAULT_FEATURE_SETTINGS: FeatureSettings = {
-  compression: false,
   dynamicSearch: false,
 };
 
@@ -215,7 +213,9 @@ export const ToolDetail = (): JSX.Element => {
 
   // PII マスキング: DB 永続化（McpServer.isPiiMaskingEnabled）。初期値は getDetail 取得後に上書き
   const [maskingEnabled, setMaskingEnabled] = useState(true);
-  // compression / dynamicSearch: localStorage 永続化（バックエンド未実装、別 Issue で対応予定）
+  // レスポンス圧縮（TOON 変換）: DB 永続化（McpServer.isToonConversionEnabled）。初期値は getDetail 取得後に上書き
+  const [compressionEnabled, setCompressionEnabled] = useState(false);
+  // dynamicSearch: localStorage 永続化（バックエンド未実装、別 Issue で対応予定）
   const [featureSettings, setFeatureSettings] = useState<FeatureSettings>(
     DEFAULT_FEATURE_SETTINGS,
   );
@@ -264,6 +264,7 @@ export const ToolDetail = (): JSX.Element => {
           }
           setToolAllowedMap(initialMap);
           setMaskingEnabled(detail.isPiiMaskingEnabled);
+          setCompressionEnabled(detail.isToonConversionEnabled);
         }
       })
       .catch(() => setServer(null))
@@ -321,6 +322,27 @@ export const ToolDetail = (): JSX.Element => {
         });
     },
     [maskingEnabled, serverId],
+  );
+
+  // レスポンス圧縮（TOON 変換）切替: DB 更新（即時反映）。実プロキシへは次回 spawn 時に反映される。
+  // 失敗時は state をロールバックして元に戻す。
+  const updateCompression = useCallback(
+    (value: boolean): void => {
+      const previous = compressionEnabled;
+      setCompressionEnabled(value);
+      window.electronAPI.mcp
+        .updateToonConversion({ serverId, enabled: value })
+        .then(() => {
+          toast.success(
+            "レスポンス圧縮設定を更新しました。MCPサーバーの再起動後に反映されます",
+          );
+        })
+        .catch(() => {
+          setCompressionEnabled(previous);
+          toast.error("レスポンス圧縮設定の更新に失敗しました");
+        });
+    },
+    [compressionEnabled, serverId],
   );
 
   // ツール on/off（即時反映、失敗時はロールバック。サンプルID は IPC スキップ）
@@ -590,7 +612,7 @@ export const ToolDetail = (): JSX.Element => {
                 機能設定
               </div>
               <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-                {/* マスキングは DB 永続化、再起動で反映。compression / dynamicSearch は localStorage のみ（別 Issue で対応） */}
+                {/* マスキング / 圧縮(TOON) は DB 永続化（再起動後に反映）、dynamicSearch は localStorage のみ（別 Issue で対応） */}
                 <div
                   title="機密情報を自動マスクします（再起動後に反映）"
                   className="flex items-center justify-between gap-2 rounded-lg bg-[var(--bg-card-hover)] px-3 py-2"
@@ -608,13 +630,24 @@ export const ToolDetail = (): JSX.Element => {
                     onChange={updateMasking}
                   />
                 </div>
+                <div
+                  title="レスポンスを TOON 形式へ変換しトークン使用量を削減します（再起動後に反映）"
+                  className="flex items-center justify-between gap-2 rounded-lg bg-[var(--bg-card-hover)] px-3 py-2"
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="shrink-0 text-[var(--text-muted)]">
+                      <Archive size={13} />
+                    </span>
+                    <span className="truncate text-xs text-[var(--text-primary)]">
+                      レスポンス圧縮
+                    </span>
+                  </div>
+                  <ToggleSwitch
+                    checked={compressionEnabled}
+                    onChange={updateCompression}
+                  />
+                </div>
                 {[
-                  {
-                    key: "compression" as const,
-                    icon: <Archive size={13} />,
-                    label: "レスポンス圧縮",
-                    desc: "トークン使用量を削減します",
-                  },
                   {
                     key: "dynamicSearch" as const,
                     icon: <SearchCode size={13} />,

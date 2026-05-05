@@ -77,6 +77,12 @@ export type ProxyHooks = {
    * hooks.filter が指定されていればそちらが優先されるため、本フラグは無視される。
    */
   disableDefaultFilter?: boolean;
+  /**
+   * true の場合、tools/call レスポンスの content[].text を TOON (Token-Oriented Object Notation) に
+   * エンコードして AI クライアントへ返却する。マスキング復号（filter.afterCall）後に適用するため、
+   * `[EMAIL_XXXX]` 等のマスクトークンが含まれた状態で TOON 化されることはない。
+   */
+  enableToonConversion?: boolean;
   /** 指定時、listTools/callTool の都度呼ばれて DB から最新の許可ツールリストを取得する */
   resolveAllowedTools?: ResolveAllowedToolsByName;
 };

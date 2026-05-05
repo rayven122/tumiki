@@ -87,6 +87,7 @@ erDiagram
   ServerStatus serverStatus
   Boolean isEnabled
   Boolean isPiiMaskingEnabled
+  Boolean isToonConversionEnabled
   Int displayOrder
   DateTime createdAt
   DateTime updatedAt
@@ -186,6 +187,7 @@ MCPサーバー（仮想・統合サーバー = Proxyエンドポイント）
   - `serverStatus`: サーバー状態
   - `isEnabled`: 有効/無効フラグ（トグル用）
   - `isPiiMaskingEnabled`: PII マスキングを有効化するか（false なら upstream に生 args をそのまま渡す）
+  - `isToonConversionEnabled`: TOON 変換（レスポンス圧縮）を有効化するか（true なら tools/call の content[].text を TOON エンコードして AI クライアントに返す）
   - `displayOrder`: 一覧画面での表示順序
   - `createdAt`: 
   - `updatedAt`: 

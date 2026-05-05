@@ -220,4 +220,123 @@ describe("stdio-inbound フック", () => {
     const event = onToolCall.mock.calls[0]![0] as ToolCallEvent;
     expect(event.args).toStrictEqual({});
   });
+
+  test("enableToonConversion=true 時に result.content[].text が TOON エンコードされる", async () => {
+    const longJson = JSON.stringify({
+      users: [
+        { id: 1, name: "alice" },
+        { id: 2, name: "bob" },
+        { id: 3, name: "carol" },
+      ],
+    });
+    const hooks: ProxyHooks = { enableToonConversion: true };
+    const core = createMockCore({
+      callTool: vi.fn().mockResolvedValue({
+        content: [{ type: "text", text: longJson }],
+        isError: false,
+      }),
+    });
+
+    await startStdioInbound(core, mockLogger, hooks);
+    const handler = getCallToolHandler();
+
+    const result = (await handler({
+      params: { name: "server__tool", arguments: {} },
+    })) as { content: { type: string; text: string }[] };
+
+    // 元の JSON 文字列より短くなっている（TOON 圧縮済み）
+    expect(result.content[0]!.text.length).toBeLessThan(longJson.length);
+    // 元の JSON とは形式が異なる（{ users: ... } から TOON 形式へ）
+    expect(result.content[0]!.text).not.toBe(longJson);
+  });
+
+  test("enableToonConversion=false（既定）時は素通しで返却される", async () => {
+    const longJson = JSON.stringify({
+      users: [
+        { id: 1, name: "alice" },
+        { id: 2, name: "bob" },
+        { id: 3, name: "carol" },
+      ],
+    });
+    const core = createMockCore({
+      callTool: vi.fn().mockResolvedValue({
+        content: [{ type: "text", text: longJson }],
+        isError: false,
+      }),
+    });
+
+    await startStdioInbound(core, mockLogger);
+    const handler = getCallToolHandler();
+
+    const result = (await handler({
+      params: { name: "server__tool", arguments: {} },
+    })) as { content: { type: string; text: string }[] };
+
+    // TOON 化されておらず元の JSON のまま
+    expect(result.content[0]!.text).toBe(longJson);
+  });
+
+  test("マスキング復号 → TOON 変換 の順で適用され、マスクトークンが TOON 化されない", async () => {
+    // upstream からは [EMAIL_1234] を含むマスク済みのレスポンスが返る想定
+    const maskedJson = JSON.stringify({
+      users: [
+        { id: 1, contact: "[EMAIL_1234]" },
+        { id: 2, contact: "[EMAIL_5678]" },
+      ],
+    });
+    // afterCall でマスクが復号され、生のメールアドレスを含む JSON に戻る想定
+    const decryptedJson = JSON.stringify({
+      users: [
+        { id: 1, contact: "alice@example.com" },
+        { id: 2, contact: "bob@example.com" },
+      ],
+    });
+
+    const afterCall = vi.fn(
+      async (_context: unknown, _result: { content: unknown[] }) => ({
+        content: [{ type: "text" as const, text: decryptedJson }],
+        isError: false,
+      }),
+    );
+
+    const hooks: ProxyHooks = {
+      enableToonConversion: true,
+      filter: {
+        beforeCall: vi.fn(
+          async (_name: string, args: Record<string, unknown>) => ({
+            args,
+            context: {},
+          }),
+        ),
+        afterCall,
+      },
+    };
+
+    const core = createMockCore({
+      callTool: vi.fn().mockResolvedValue({
+        content: [{ type: "text", text: maskedJson }],
+        isError: false,
+      }),
+    });
+
+    await startStdioInbound(core, mockLogger, hooks);
+    const handler = getCallToolHandler();
+
+    const result = (await handler({
+      params: { name: "server__tool", arguments: {} },
+    })) as { content: { type: string; text: string }[] };
+
+    // afterCall は復号後の生メールアドレスを含むテキストを受け取る（TOON 化前のマスク済み JSON）
+    const afterCallResult = afterCall.mock.calls[0]![1] as {
+      content: { type: string; text: string }[];
+    };
+    expect(afterCallResult.content[0]!.text).toContain("[EMAIL_1234]");
+
+    // 最終レスポンスはマスクトークンを含まず、復号後のメールアドレスが TOON 化されている
+    const finalText = result.content[0]!.text;
+    expect(finalText).not.toContain("[EMAIL_1234]");
+    expect(finalText).toContain("alice@example.com");
+    // 元の JSON より短くなっている（TOON 圧縮済み）
+    expect(finalText.length).toBeLessThan(decryptedJson.length);
+  });
 });

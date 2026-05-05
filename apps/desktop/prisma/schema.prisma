@@ -195,6 +195,8 @@ model McpServer {
   isEnabled    Boolean      @default(true)
   /// PII マスキングを有効化するか（false なら upstream に生 args をそのまま渡す）
   isPiiMaskingEnabled Boolean @default(true)
+  /// TOON 変換（レスポンス圧縮）を有効化するか（true なら tools/call の content[].text を TOON エンコードして AI クライアントに返す）
+  isToonConversionEnabled Boolean @default(false)
   /// 一覧画面での表示順序
   displayOrder Int          @default(0)
   createdAt    DateTime     @default(now())

@@ -15,6 +15,7 @@ import {
 import type { ProxyHooks } from "../cli.js";
 import type { ProxyCore } from "../core.js";
 import type { Logger } from "../types.js";
+import { applyToonConversion } from "../toon/toonConverter.js";
 
 /**
  * stdio inboundサーバーを起動
@@ -116,6 +117,11 @@ export const startStdioInbound = async (
             },
           );
         }
+      }
+
+      // TOON 変換: マスキング復号後に適用することで、マスクトークンが TOON 化されないようにする
+      if (hooks?.enableToonConversion) {
+        finalResult = applyToonConversion(finalResult);
       }
 
       resultContent = finalResult.content;
