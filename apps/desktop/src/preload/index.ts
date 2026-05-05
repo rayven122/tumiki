@@ -25,6 +25,9 @@ import type {
   DashboardResult,
   DesktopSession,
   McpProxyLaunchCommand,
+  AiClientPreview,
+  AiClientWriteRequest,
+  AiClientWriteResult,
 } from "../main/types";
 
 // Electron APIを安全に公開
@@ -119,6 +122,16 @@ const api = {
   mcpProxy: {
     getLaunchCommand: (): Promise<McpProxyLaunchCommand> =>
       ipcRenderer.invoke("mcp-proxy:getLaunchCommand"),
+  },
+
+  // AI クライアント設定ファイルの自動書き込み
+  aiClient: {
+    getPreview: (clientId: string): Promise<AiClientPreview> =>
+      ipcRenderer.invoke("aiClient:getPreview", clientId),
+    writeConfig: (
+      request: AiClientWriteRequest,
+    ): Promise<AiClientWriteResult> =>
+      ipcRenderer.invoke("aiClient:writeConfig", request),
   },
 
   // 監査ログ API

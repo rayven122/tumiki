@@ -63,3 +63,11 @@ export type {
 
 // MCP プロキシ起動コマンド
 export type { McpProxyLaunchCommand } from "./features/mcp-proxy/launch-command";
+
+// AI クライアント設定書き込み
+export type {
+  McpEntry,
+  AiClientPreview,
+  AiClientWriteRequest,
+  AiClientWriteResult,
+} from "./features/ai-client/ai-client.types";

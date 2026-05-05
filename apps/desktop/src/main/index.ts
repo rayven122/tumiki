@@ -9,6 +9,7 @@ import {
 import { setupAuthIpc } from "./ipc/auth";
 import { setupCatalogIpc } from "./features/catalog/catalog.ipc";
 import { setupMcpProxyLaunchCommandIpc } from "./features/mcp-proxy/launch-command.ipc";
+import { setupAiClientIpc } from "./features/ai-client/ai-client.ipc";
 import { setupMcpIpc } from "./features/mcp-server-list/mcp.ipc";
 import { setupMcpServerDetailIpc } from "./features/mcp-server-detail/mcp-server-detail.ipc";
 import { setupAuditLogIpc } from "./features/audit-log/audit-log.ipc";
@@ -556,6 +557,7 @@ if (isMcpProxyMode) {
       setupAuthIpc();
       setupCatalogIpc();
       setupMcpProxyLaunchCommandIpc();
+      setupAiClientIpc();
       setupMcpIpc();
       setupMcpServerDetailIpc();
       setupAuditLogIpc();
