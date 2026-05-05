@@ -61,7 +61,8 @@ const serverStatusBadge: Record<
 /** 監査ログ1ページあたりの件数 */
 const AUDIT_LOG_LIMIT = 20;
 
-/** 機能設定トグルの永続化キー（サーバーごと） */
+/** 機能設定トグル（compression / dynamicSearch のみ）の永続化キー */
+// masking は DB 永続化されるため対象外
 const FEATURE_SETTINGS_KEY = (serverId: number): string =>
   `tumiki:server:${serverId}:features`;
 
@@ -184,14 +185,13 @@ const SAMPLE_TOOLS: DisplayTool[] = [
   },
 ];
 
+// masking は DB（McpServer.isPiiMaskingEnabled）に永続化するため、本型からは除外
 type FeatureSettings = {
-  masking: boolean;
   compression: boolean;
   dynamicSearch: boolean;
 };
 
 const DEFAULT_FEATURE_SETTINGS: FeatureSettings = {
-  masking: false,
   compression: false,
   dynamicSearch: false,
 };
@@ -211,7 +211,9 @@ export const ToolDetail = (): JSX.Element => {
     {},
   );
 
-  // 機能設定トグル（localStorage 永続化、バックエンド未実装）
+  // PII マスキング: DB 永続化（McpServer.isPiiMaskingEnabled）。初期値は getDetail 取得後に上書き
+  const [maskingEnabled, setMaskingEnabled] = useState(true);
+  // compression / dynamicSearch: localStorage 永続化（バックエンド未実装、別 Issue で対応予定）
   const [featureSettings, setFeatureSettings] = useState<FeatureSettings>(
     DEFAULT_FEATURE_SETTINGS,
   );
@@ -259,6 +261,7 @@ export const ToolDetail = (): JSX.Element => {
             }
           }
           setToolAllowedMap(initialMap);
+          setMaskingEnabled(detail.isPiiMaskingEnabled);
         }
       })
       .catch(() => setServer(null))
@@ -295,6 +298,24 @@ export const ToolDetail = (): JSX.Element => {
     } catch {
       // localStorage 書き込み失敗時は state のみ更新
     }
+  };
+
+  // PII マスキング切替: DB 更新（即時反映）。実プロキシへは次回 spawn 時に反映されるため
+  // ユーザーへ「再起動後に反映」を案内する。失敗時は state をロールバック。
+  const updateMasking = (value: boolean): void => {
+    const previous = maskingEnabled;
+    setMaskingEnabled(value);
+    window.electronAPI.mcp
+      .updatePiiMasking({ serverId, enabled: value })
+      .then(() => {
+        toast.success(
+          "マスキング設定を更新しました。MCPサーバーの再起動後に反映されます",
+        );
+      })
+      .catch(() => {
+        setMaskingEnabled(previous);
+        toast.error("マスキング設定の更新に失敗しました");
+      });
   };
 
   // ツール on/off（即時反映、失敗時はロールバック。サンプルID は IPC スキップ）
@@ -564,13 +585,25 @@ export const ToolDetail = (): JSX.Element => {
                 機能設定
               </div>
               <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                {/* マスキングは DB 永続化、再起動で反映。compression / dynamicSearch は localStorage のみ（別 Issue で対応） */}
+                <div
+                  title="機密情報を自動マスクします（再起動後に反映）"
+                  className="flex items-center justify-between gap-2 rounded-lg bg-[var(--bg-card-hover)] px-3 py-2"
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="shrink-0 text-[var(--text-muted)]">
+                      <EyeOff size={13} />
+                    </span>
+                    <span className="truncate text-xs text-[var(--text-primary)]">
+                      マスキング
+                    </span>
+                  </div>
+                  <ToggleSwitch
+                    checked={maskingEnabled}
+                    onChange={updateMasking}
+                  />
+                </div>
                 {[
-                  {
-                    key: "masking" as const,
-                    icon: <EyeOff size={13} />,
-                    label: "マスキング",
-                    desc: "機密情報を自動マスクします",
-                  },
                   {
                     key: "compression" as const,
                     icon: <Archive size={13} />,
