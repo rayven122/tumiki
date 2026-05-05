@@ -62,6 +62,11 @@ FROM node:24-alpine AS production
 # dumb-init: シグナル伝播、wget: ヘルスチェック
 RUN apk add --no-cache dumb-init wget
 
+# Prisma CLI（起動時 migrate deploy 用）
+# - standalone build には devDependency の prisma が含まれないため global install
+# - バージョンは packages/internal-db の prisma と揃える
+RUN npm install -g prisma@6.19.0 && npm cache clean --force
+
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
@@ -74,6 +79,13 @@ COPY --from=build --chown=nodejs:nodejs /app/apps/internal-manager/.next/standal
 COPY --from=build --chown=nodejs:nodejs /app/apps/internal-manager/.next/static ./apps/internal-manager/.next/static
 COPY --from=build --chown=nodejs:nodejs /app/apps/internal-manager/public ./apps/internal-manager/public
 
+# Prisma schema（起動時 migrate deploy で参照）
+COPY --from=build --chown=nodejs:nodejs /app/packages/internal-db/prisma ./packages/internal-db/prisma
+
+# Entrypoint（起動時に prisma migrate deploy → node server.js）
+COPY --chown=nodejs:nodejs apps/internal-manager/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 USER nodejs
 
 ENV NODE_ENV=production
@@ -82,8 +94,9 @@ ENV HOSTNAME=0.0.0.0
 
 EXPOSE 3100
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+# migration 実行のため start_period を 30s → 60s に延長
+HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3100/api/health || exit 1
 
-ENTRYPOINT ["dumb-init", "--"]
+ENTRYPOINT ["dumb-init", "--", "/usr/local/bin/docker-entrypoint.sh"]
 CMD ["node", "apps/internal-manager/server.js"]

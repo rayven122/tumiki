@@ -188,6 +188,7 @@ jobs:
               KEYCLOAK_CLIENT_SECRET=test
               KEYCLOAK_ISSUER=https://dummy.keycloak.local/realms/tumiki
               DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
+              SKIP_MIGRATE=true
           - app: mcp-proxy
             change_output: mcp_proxy
             image: tumiki-mcp-proxy
@@ -212,6 +213,8 @@ jobs:
               OIDC_ISSUER=https://dummy.oidc.local
               AUTH_SECRET=dummy-auth-secret-for-smoke-test
               DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
+              INTERNAL_DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
+              SKIP_MIGRATE=true
     steps:
       - name: 📥 Checkout branch
         if: needs.docker-smoke-changes.outputs[matrix.change_output] == 'true'

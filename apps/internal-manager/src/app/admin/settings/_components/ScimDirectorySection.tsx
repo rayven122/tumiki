@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Copy, KeyRound, Plus, Trash2, X } from "lucide-react";
+import { Copy, KeyRound, Plus, RefreshCw, Trash2, X } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -118,10 +118,29 @@ const ScimDirectorySection = () => {
       },
     });
 
+  // 手動同期は Jackson 内部で全 directory に対し sync を実行するため
+  // 1コンポーネントで1ミューテーションを共有する（reauth と同様の制約）
+  const [syncCompleted, setSyncCompleted] = useState(false);
+  const syncCompletedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const triggerSyncMutation = api.scimDirectory.triggerSync.useMutation({
+    onSuccess: () => {
+      setSyncCompleted(true);
+      if (syncCompletedTimerRef.current)
+        clearTimeout(syncCompletedTimerRef.current);
+      syncCompletedTimerRef.current = setTimeout(
+        () => setSyncCompleted(false),
+        3000,
+      );
+    },
+  });
+
   const errorMessage =
     createMutation.error?.message ??
     deleteMutation.error?.message ??
     reauthMutation.error?.message ??
+    triggerSyncMutation.error?.message ??
     null;
 
   const handleCopy = (text: string, kind: "endpoint" | "secret") => {
@@ -140,6 +159,15 @@ const ScimDirectorySection = () => {
           className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-400"
         >
           ✓ Google Workspace の認可が完了しました
+        </div>
+      )}
+      {/* 手動同期の完了通知（3秒で自動的に消える） */}
+      {syncCompleted && (
+        <div
+          role="status"
+          className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-400"
+        >
+          ✓ 同期を実行しました
         </div>
       )}
       {/* OAuth コールバックのエラー通知 */}
@@ -307,16 +335,40 @@ const ScimDirectorySection = () => {
                   {d.type}
                 </span>
                 {d.type === "google" && (
-                  <button
-                    type="button"
-                    onClick={() => reauthMutation.mutate({ id: d.id })}
-                    disabled={reauthMutation.isPending}
-                    aria-label="Google OAuth 再認可"
-                    title="再認可"
-                    className="text-text-muted hover:text-text-primary flex h-11 w-11 items-center justify-center disabled:opacity-50"
-                  >
-                    <KeyRound size={14} />
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => triggerSyncMutation.mutate()}
+                      disabled={
+                        triggerSyncMutation.isPending ||
+                        d.googleAuthorized === false
+                      }
+                      aria-label="今すぐ同期"
+                      title={
+                        d.googleAuthorized === false
+                          ? "OAuth 認可が完了していません"
+                          : "今すぐ同期"
+                      }
+                      className="text-text-muted hover:text-text-primary flex h-11 w-11 items-center justify-center disabled:opacity-50"
+                    >
+                      <RefreshCw
+                        size={14}
+                        className={
+                          triggerSyncMutation.isPending ? "animate-spin" : ""
+                        }
+                      />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => reauthMutation.mutate({ id: d.id })}
+                      disabled={reauthMutation.isPending}
+                      aria-label="Google OAuth 再認可"
+                      title="再認可"
+                      className="text-text-muted hover:text-text-primary flex h-11 w-11 items-center justify-center disabled:opacity-50"
+                    >
+                      <KeyRound size={14} />
+                    </button>
+                  </>
                 )}
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
