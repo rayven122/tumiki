@@ -116,6 +116,34 @@ export const findConnectionByIdWithServer = async (
 };
 
 /**
+ * 仮想MCP作成のための既存接続一括取得（接続情報 + 提供ツール一覧）
+ *
+ * 仮想MCPは「コネクト画面で追加済みコネクタ」を束ねる仕様（DEV-1581）に変更されており、
+ * 接続設定（transportType / command / args / url / 暗号化済み credentials / authType / catalogId）と
+ * 提供ツール一覧（name / description / isAllowed）を一括で読み出してコピー作成に利用する。
+ */
+export const findConnectionsByIdsWithTools = async (
+  db: DbClient,
+  connectionIds: number[],
+) => {
+  if (connectionIds.length === 0) return [];
+  return db.mcpConnection.findMany({
+    where: { id: { in: connectionIds } },
+    include: {
+      tools: {
+        select: {
+          name: true,
+          description: true,
+          inputSchema: true,
+          isAllowed: true,
+        },
+        orderBy: { name: "asc" },
+      },
+    },
+  });
+};
+
+/**
  * slugでサーバーを検索
  */
 export const findServerBySlug = async (db: DbClient, slug: string) => {

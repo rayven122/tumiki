@@ -13,6 +13,8 @@ import type {
   CreateFromManagerCatalogInput,
   CreateCustomServerInput,
   CreateVirtualServerInput,
+  GetToolsForConnectionsInput,
+  GetToolsForConnectionsResult,
   UpdateServerInput,
   DeleteServerInput,
   ToggleServerInput,
@@ -99,6 +101,10 @@ const api = {
       input: CreateVirtualServerInput,
     ): Promise<{ serverId: number; serverName: string }> =>
       ipcRenderer.invoke("mcp:createVirtualServer", input),
+    getToolsForConnections: (
+      input: GetToolsForConnectionsInput,
+    ): Promise<GetToolsForConnectionsResult> =>
+      ipcRenderer.invoke("mcp:getToolsForConnections", input),
     getAll: (): Promise<McpServerItem[]> => ipcRenderer.invoke("mcp:getAll"),
     updateServer: (input: UpdateServerInput): Promise<McpServerItem> =>
       ipcRenderer.invoke("mcp:updateServer", input),

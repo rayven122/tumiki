@@ -5,6 +5,7 @@ import type {
   CreateFromCatalogInput,
   CreateFromManagerCatalogInput,
   CreateVirtualServerInput,
+  GetToolsForConnectionsInput,
   UpdateServerInput,
   DeleteServerInput,
   ToggleServerInput,
@@ -96,13 +97,18 @@ const createVirtualServerSchema = z.object({
   connections: z
     .array(
       z.object({
-        catalogId: z.number().int().positive(),
-        credentials: z.record(z.string(), z.string()),
+        connectionId: z.number().int().positive(),
+        // 公開ツール名一覧。省略可（省略時は元コネクタの isAllowed を継承）
+        allowedToolNames: z.array(z.string()).optional(),
       }),
     )
     .min(1)
     .max(VIRTUAL_SERVER_MAX_CONNECTIONS),
 }) satisfies z.ZodType<CreateVirtualServerInput>;
+
+const getToolsForConnectionsSchema = z.object({
+  connectionIds: z.array(z.number().int().positive()).min(1),
+}) satisfies z.ZodType<GetToolsForConnectionsInput>;
 
 /**
  * MCP関連の IPC ハンドラーを設定
@@ -162,7 +168,7 @@ export const setupMcpIpc = (): void => {
     }
   });
 
-  // 仮想MCPサーバーを登録（複数接続を1サーバーに束ねる）
+  // 仮想MCPサーバーを登録（複数の既存コネクタを1サーバーに束ねる）
   ipcMain.handle("mcp:createVirtualServer", async (_, input: unknown) => {
     try {
       const validated = createVirtualServerSchema.parse(input);
@@ -174,6 +180,21 @@ export const setupMcpIpc = (): void => {
         error instanceof Error ? error : { error },
       );
       throw new Error(`仮想MCPサーバーの登録に失敗しました: ${message}`);
+    }
+  });
+
+  // 仮想MCP作成時のツール選択UIから呼ばれる: 選択中コネクタのツール一覧をまとめて返す
+  ipcMain.handle("mcp:getToolsForConnections", async (_, input: unknown) => {
+    try {
+      const validated = getToolsForConnectionsSchema.parse(input);
+      return await mcpService.getToolsForConnections(validated);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "不明なエラー";
+      logger.error(
+        "Failed to get tools for connections",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error(`ツール一覧の取得に失敗しました: ${message}`);
     }
   });
 
