@@ -73,11 +73,12 @@ jobs:
       - name: 🔒 Restrict secrets file permissions
         run: chmod 600 tumiki.env
 
-      - name: 📤 Transfer compose.yaml and .env
+      - name: 📤 Transfer compose files and .env
         run: |
           # 前回 cleanup が失敗していた場合に備えて既存 .env を削除（リカバリ）
           ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" "mkdir -p ~/tumiki && rm -f ~/tumiki/.env"
           scp -i ~/.ssh/id_ed25519 docker/apps/compose.yaml "${SSH_USER}@${SSH_HOST}:~/tumiki/compose.yaml"
+          scp -i ~/.ssh/id_ed25519 docker/apps/compose.staging.yaml "${SSH_USER}@${SSH_HOST}:~/tumiki/compose.staging.yaml"
           # install -m 600 でファイル作成と権限設定をアトミックに実施（scp + chmod のウィンドウを排除）
           ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" 'install -m 600 /dev/stdin ~/tumiki/.env' < tumiki.env
 
@@ -90,8 +91,8 @@ jobs:
             set +o history
             export IMAGE_TAG="$1"
             cd ~/tumiki
-            docker compose pull
-            docker compose up -d --remove-orphans
+            docker compose -f compose.yaml -f compose.staging.yaml pull
+            docker compose -f compose.yaml -f compose.staging.yaml up -d --remove-orphans
             rm -f .env
           REMOTE_SCRIPT
 
@@ -101,10 +102,12 @@ jobs:
             for i in $(seq 1 20); do
               if curl -sf http://localhost:8080/api/health > /dev/null 2>&1 && \
                  curl -sf http://localhost:8081/health > /dev/null 2>&1 && \
-                 curl -sf http://localhost:3100/api/health > /dev/null 2>&1; then
+                 curl -sf http://localhost:3100/api/health > /dev/null 2>&1 && \
+                 curl -sf http://localhost:9000/minio/health/live > /dev/null 2>&1; then
                 echo "=== Manager ===" && curl -sf http://localhost:8080/api/health | jq .
                 echo "=== MCP Proxy ===" && curl -sf http://localhost:8081/health | jq .
                 echo "=== Internal Manager ===" && curl -sf http://localhost:3100/api/health | jq .
+                echo "=== MinIO ===" && curl -sf http://localhost:9000/minio/health/live
                 exit 0
               fi
               echo "Waiting... ($i/20)" && sleep 5
