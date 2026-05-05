@@ -437,6 +437,18 @@ export const toggleServer = async (id: number, isEnabled: boolean) => {
 };
 
 /**
+ * サーバーのPIIマスキング有効状態を更新
+ * UI トグル → DB 永続化のみ。実プロキシへは次回 spawn 時に DB から読み込まれて反映される。
+ */
+export const updateIsPiiMaskingEnabled = async (
+  id: number,
+  enabled: boolean,
+) => {
+  const db = await getDb();
+  return mcpRepository.updateIsPiiMaskingEnabled(db, id, enabled);
+};
+
+/**
  * サーバーの稼働状態を更新（CLIモードからのステータス同期用）
  */
 export const updateServerStatus = async (

@@ -198,7 +198,7 @@ if (isMcpProxyMode) {
       // 許可ツール解決resolver（GUI のトグル変更を CLI モードに即時反映）
       // DB が0件の場合は null（フィルタ無効）を返し、起動時の挙動と整合させる。
       // 例外時は upstream-client 側で起動時設定にフォールバックされる。
-      const { findToolsByConnectionId } =
+      const { findToolsByConnectionId, findServerBySlug } =
         await import("./features/mcp-server-list/mcp.repository");
       const { getDb } = await import("./shared/db");
       // initializeDb() 完了後に1回だけ取得し、resolver 呼び出しごとの await を避ける
@@ -219,12 +219,25 @@ if (isMcpProxyMode) {
         return tools.filter((t) => t.isAllowed).map((t) => t.name);
       };
 
-      // PII マスキングは runMcpProxy 内でデフォルト有効化されるため、Desktop 側は何も指定しない
-      // （カスタマイズしたい場合のみ hooks.filter を渡す）
+      // PII マスキング: --server <slug> 指定時のみ DB の McpServer.isPiiMaskingEnabled を反映する。
+      // --server 省略時（全サーバー集約モード）はサーバーが特定できないため、安全側でデフォルト ON のまま。
+      // false 時は disableDefaultFilter=true で runMcpProxy 内のデフォルトフィルタ構築をスキップさせる。
+      let disableDefaultFilter = false;
+      if (serverSlug) {
+        const serverRecord = await findServerBySlug(db, serverSlug);
+        if (serverRecord && !serverRecord.isPiiMaskingEnabled) {
+          disableDefaultFilter = true;
+          process.stderr.write(
+            `[tumiki-mcp-proxy] PII マスキングは無効化されています (server="${serverSlug}")\n`,
+          );
+        }
+      }
+
       await mod.runMcpProxy(configs, {
         onToolCall,
         onStatusChange,
         resolveAllowedTools,
+        disableDefaultFilter,
         onShutdown: async () => {
           await stopAuditLogManagerSyncScheduler();
           await resetAllServerStatus().catch(() => {});
