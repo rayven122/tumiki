@@ -93,6 +93,7 @@ const resolveVsCodeExtensionMcp = (
   );
 };
 
+// VS Code Insiders（`Code - Insiders` ディレクトリ）は対象外（後続フェーズで検討）
 const resolveVsCodeUserDataDir = (
   ctx: ResolveConfigPathContext,
 ): string | null => {

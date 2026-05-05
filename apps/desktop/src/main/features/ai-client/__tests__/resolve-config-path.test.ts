@@ -214,5 +214,14 @@ describe("resolveConfigPath", () => {
         "/home/test/.config/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/mcp_settings.json",
       );
     });
+
+    test("Windows で APPDATA が無い場合 null を返す", () => {
+      const result = resolveConfigPath("roo-code", {
+        platform: "win32",
+        homedir: "C:\\Users\\test",
+        appData: undefined,
+      });
+      expect(result).toBeNull();
+    });
   });
 });
