@@ -28,6 +28,7 @@ export const connectToMcpServer = async (
   mcpConfig: DbMcpConfig | null,
 ): Promise<Client> => {
   const { transportType, name, authType } = mcpServerTemplate;
+  // core proxy では OAuth 接続を Bearer ヘッダーとして扱う。
   const mappedAuthType: AuthType =
     mcpServerTemplate.authType === "OAUTH"
       ? "BEARER"
@@ -78,12 +79,11 @@ export const connectToMcpServer = async (
         });
       }
 
-      case "STREAMABLE_HTTP":
       case "STREAMABLE_HTTPS": {
         const url = mcpServerTemplate.url;
         if (!url) {
           throw new Error(
-            `${transportType} transport requires URL for template ${name}`,
+            `STREAMABLE_HTTPS transport requires URL for template ${name}`,
           );
         }
 

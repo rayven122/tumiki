@@ -37,15 +37,12 @@ model Organization {
   mcpConfigs         McpConfig[]
   /// 組織に関連するMCPサーバー
   mcpServers         McpServer[]
-  /// 組織に関連するMCPカタログ
-  mcpCatalogs        McpCatalog[]
   /// 組織限定公開のMCPサーバーテンプレート
   mcpServerTemplates McpServerTemplate[]
 
   /// OAuth関連
   mcpOAuthClients McpOAuthClient[]
   mcpOAuthTokens  McpOAuthToken[]
-  oauthClients    OAuthClient[]
 
   /// フィードバック
   feedbacks Feedback[]
