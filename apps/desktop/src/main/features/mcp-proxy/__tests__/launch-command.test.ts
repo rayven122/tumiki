@@ -13,6 +13,7 @@ describe("getMcpProxyLaunchCommand", () => {
   const originalExecPath = process.execPath;
   const originalArgv = process.argv;
   const originalAppImage = process.env.APPIMAGE;
+  const originalIsPackaged = app.isPackaged;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -29,6 +30,10 @@ describe("getMcpProxyLaunchCommand", () => {
     } else {
       process.env.APPIMAGE = originalAppImage;
     }
+    Object.defineProperty(app, "isPackaged", {
+      value: originalIsPackaged,
+      writable: true,
+    });
   });
 
   test("packaged + macOS: process.execPath をそのまま command に返す", () => {
@@ -66,6 +71,20 @@ describe("getMcpProxyLaunchCommand", () => {
       writable: true,
     });
     delete process.env.APPIMAGE;
+
+    expect(getMcpProxyLaunchCommand()).toStrictEqual({
+      command: "/usr/bin/tumiki",
+      args: ["--mcp-proxy"],
+    });
+  });
+
+  test("packaged + Linux: APPIMAGE が空文字の場合は process.execPath にフォールバックする", () => {
+    Object.defineProperty(app, "isPackaged", { value: true, writable: true });
+    Object.defineProperty(process, "execPath", {
+      value: "/usr/bin/tumiki",
+      writable: true,
+    });
+    process.env.APPIMAGE = "";
 
     expect(getMcpProxyLaunchCommand()).toStrictEqual({
       command: "/usr/bin/tumiki",
