@@ -223,6 +223,27 @@ export const scimDirectoryRouter = createTRPCRouter({
       return { authorizationUrl: data.authorizationUrl };
     }),
 
+  /**
+   * 全 Directory の同期を手動 trigger
+   *
+   * Google Workspace 等の pull 型 provider に対し、cron を待たず
+   * 即座に同期を実行する。Jackson 内部で isJobRunning による排他
+   * 制御が効くため、cron と競合しても安全。
+   */
+  triggerSync: adminProcedure.mutation(async () => {
+    const jackson = await ensureJackson();
+    try {
+      await jackson.directorySyncController.sync();
+    } catch (e) {
+      console.error("[scim-directory] triggerSync failed:", e);
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "同期の実行に失敗しました",
+      });
+    }
+    return { ok: true };
+  }),
+
   /** SCIM Directory を削除 */
   delete: adminProcedure
     .input(z.object({ id: z.string() }))
