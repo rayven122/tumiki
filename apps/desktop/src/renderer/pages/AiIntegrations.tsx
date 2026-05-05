@@ -1,13 +1,34 @@
 import type { JSX } from "react";
+import { useState } from "react";
 import { useAtomValue } from "jotai";
-import { ArrowRight, Plug } from "lucide-react";
+import { ArrowRight, Plug, Lock } from "lucide-react";
 import { themeAtom } from "../store/atoms";
-import { AI_CLIENTS } from "../data/ai-clients";
+import { AI_CLIENTS, type AiClient } from "../data/ai-clients";
 import { cardStyle } from "../utils/theme-styles";
 import { toast } from "../_components/Toast";
+import { AiClientAutoWriteModal } from "../_components/AiClientAutoWriteModal";
+import { useMcpServers } from "../hooks/useMcpServers";
+import { useMcpProxyLaunchCommand } from "../hooks/useMcpProxyLaunchCommand";
+
+// Phase 1 で自動書き込みに対応するクライアントID
+const AUTO_WRITE_SUPPORTED_IDS = new Set(["claude-desktop", "cursor"]);
 
 export const AiIntegrations = (): JSX.Element => {
   const theme = useAtomValue(themeAtom);
+  const { servers } = useMcpServers();
+  const launchCommand = useMcpProxyLaunchCommand();
+  const [activeClient, setActiveClient] = useState<AiClient | null>(null);
+
+  // 有効サーバーのみ書き込み対象として渡す
+  const enabledServers = servers.filter((s) => s.isEnabled);
+
+  const handleClick = (client: AiClient): void => {
+    if (AUTO_WRITE_SUPPORTED_IDS.has(client.id)) {
+      setActiveClient(client);
+      return;
+    }
+    toast.success(`${client.name} へのワンクリック接続は近日対応予定です`);
+  };
 
   return (
     <div className="space-y-6 p-6">
@@ -30,15 +51,12 @@ export const AiIntegrations = (): JSX.Element => {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
         {AI_CLIENTS.map((client) => {
           const logo = client.logoPath?.(theme);
+          const supported = AUTO_WRITE_SUPPORTED_IDS.has(client.id);
           return (
             <button
               key={client.id}
               type="button"
-              onClick={() =>
-                toast.success(
-                  `${client.name} へのワンクリック接続は近日対応予定です`,
-                )
-              }
+              onClick={() => handleClick(client)}
               className="flex flex-col items-start gap-3 rounded-xl p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-lg"
               style={cardStyle}
             >
@@ -54,14 +72,20 @@ export const AiIntegrations = (): JSX.Element => {
                     {client.name.charAt(0)}
                   </div>
                 )}
-                <ArrowRight size={14} className="text-[var(--text-subtle)]" />
+                {supported ? (
+                  <ArrowRight size={14} className="text-[var(--text-subtle)]" />
+                ) : (
+                  <span title="近日対応予定">
+                    <Lock size={12} className="text-[var(--text-subtle)]" />
+                  </span>
+                )}
               </div>
               <div>
                 <div className="text-sm font-medium text-[var(--text-primary)]">
                   {client.name}
                 </div>
                 <div className="mt-0.5 text-[10px] text-[var(--text-subtle)]">
-                  接続設定（近日対応予定）
+                  {supported ? "自動書き込み対応" : "近日対応予定"}
                 </div>
               </div>
               <code className="w-full truncate rounded bg-[var(--bg-input)] px-2 py-1 font-mono text-[9px] text-[var(--text-subtle)]">
@@ -74,9 +98,20 @@ export const AiIntegrations = (): JSX.Element => {
 
       {/* 説明補足 */}
       <p className="text-xs text-[var(--text-subtle)]">
-        ※
-        各AIツールへのワンクリック接続・設定ファイル自動書き込みは近日対応予定です。現在は「コネクト」の各サーバー詳細から設定スニペットをコピーして利用できます。
+        ※ Phase 1 として Claude Desktop / Cursor
+        の自動書き込みに対応しました。その他クライアントは順次対応予定です。
       </p>
+
+      {/* 自動書き込みモーダル */}
+      {activeClient && (
+        <AiClientAutoWriteModal
+          client={activeClient}
+          servers={enabledServers}
+          launchCommand={launchCommand}
+          theme={theme}
+          onClose={() => setActiveClient(null)}
+        />
+      )}
     </div>
   );
 };
