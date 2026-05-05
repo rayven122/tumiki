@@ -73,6 +73,15 @@ beforeEach(() => {
   }));
 });
 
+const configureCustomJacksonAutoEnv = (): void => {
+  process.env.JACKSON_SAML_METADATA_XML = "<xml />";
+  process.env.JACKSON_TENANT = "tenant-001";
+  process.env.JACKSON_WEB_PRODUCT = "tumiki-web";
+  process.env.JACKSON_DESKTOP_PRODUCT = "tumiki-desktop";
+  process.env.JACKSON_DESKTOP_REDIRECT_URL = "tumiki://auth/callback";
+  mockIsJacksonConfigured.mockReturnValue(true);
+};
+
 describe("oidc-clients", () => {
   test("明示的OIDC設定をJackson自動設定より優先する", async () => {
     process.env.OIDC_ISSUER = "https://idp.example.com";
@@ -105,18 +114,10 @@ describe("oidc-clients", () => {
     );
   });
 
-  test("Jackson自動設定では並行呼び出しを1回のconnection生成にまとめて成功後はキャッシュする", async () => {
-    process.env.JACKSON_SAML_METADATA_XML = "<xml />";
-    process.env.JACKSON_TENANT = "tenant-001";
-    process.env.JACKSON_WEB_PRODUCT = "tumiki-web";
-    process.env.JACKSON_DESKTOP_PRODUCT = "tumiki-desktop";
-    process.env.JACKSON_DESKTOP_REDIRECT_URL = "tumiki://auth/callback";
-    mockIsJacksonConfigured.mockReturnValue(true);
-    const {
-      ensureJacksonOidcClients,
-      isJacksonAutoOidcConfigured,
-      resetOidcClients,
-    } = await loadModule();
+  test("Jackson自動設定では並行呼び出しを1回のconnection生成にまとめる", async () => {
+    configureCustomJacksonAutoEnv();
+    const { ensureJacksonOidcClients, isJacksonAutoOidcConfigured } =
+      await loadModule();
 
     const [first, second] = await Promise.all([
       ensureJacksonOidcClients(),
@@ -148,8 +149,23 @@ describe("oidc-clients", () => {
       defaultRedirectUrl: "tumiki://auth/callback",
       redirectUrl: JSON.stringify(["tumiki://auth/callback"]),
     });
+  });
+
+  test("Jackson自動設定は成功後の設定をキャッシュする", async () => {
+    configureCustomJacksonAutoEnv();
+    const { ensureJacksonOidcClients } = await loadModule();
+
+    const first = await ensureJacksonOidcClients();
 
     await expect(ensureJacksonOidcClients()).resolves.toStrictEqual(first);
+    expect(mockCreateSAMLConnection).toHaveBeenCalledTimes(2);
+  });
+
+  test("Jackson自動設定はreset後にconnection生成を再実行する", async () => {
+    configureCustomJacksonAutoEnv();
+    const { ensureJacksonOidcClients, resetOidcClients } = await loadModule();
+
+    const first = await ensureJacksonOidcClients();
     expect(mockCreateSAMLConnection).toHaveBeenCalledTimes(2);
 
     resetOidcClients();

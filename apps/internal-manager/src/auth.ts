@@ -26,7 +26,8 @@ const createOidcProvider = async (): Promise<OAuthConfig<OidcProfile>> => {
     issuer: oidcEnv.OIDC_ISSUER,
     // jackson は CSRF 防止のため state パラメータを必須とするため明示的に指定
     checks: ["pkce", "state"],
-    // Google Workspace が email を保証する信頼済み IdP のため、既存ユーザーへの自動リンクを許可
+    // Jackson connection は管理者のみが登録できることを信頼境界とする。
+    // 登録済み IdP が email の一意性を保証する前提で、既存ユーザーへの自動リンクを許可。
     allowDangerousEmailAccountLinking: true,
     // NextAuth のデフォルト signin ページが authjs.dev/img/providers/oidc.svg を
     // 取得しようとして 404 になるため、ローカル SVG で上書きする

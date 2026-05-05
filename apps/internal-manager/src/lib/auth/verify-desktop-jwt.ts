@@ -27,7 +27,7 @@ const isAudienceValidationError = (error: unknown): boolean =>
   error.claim === "aud";
 
 // OIDCディスカバリ経由でJWKS URIを取得してJWKSクライアントを生成
-const getJwks = async () => {
+const getJwks = async (): Promise<ReturnType<typeof createRemoteJWKSet>> => {
   if (cachedJwks && Date.now() < cachedJwksExpiresAt) return cachedJwks;
   if (jwksPromise) return jwksPromise;
 
