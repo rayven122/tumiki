@@ -10,6 +10,7 @@ import {
   DISCOVERY_ERROR_CODE,
   extractOAuthErrorCode,
 } from "../../shared/oauth/discovery-error-codes";
+import { OAuthCallbackUrlField } from "./OAuthCallbackUrlField";
 import { parseArgsToJson } from "../../shared/parse-args";
 import {
   Select,
@@ -22,7 +23,7 @@ import {
 type AuthMethod = "oauth" | "apikey" | "none";
 type TransportType = "STDIO" | "SSE" | "STREAMABLE_HTTP";
 
-type AddRemoteMcpModalProps = {
+type AddCustomMcpModalProps = {
   onClose: () => void;
   onSuccess: (serverName: string) => void;
 };
@@ -39,10 +40,10 @@ const TRANSPORT_LABEL: Record<TransportType, string> = {
   SSE: "SSE",
 };
 
-export const AddRemoteMcpModal = ({
+export const AddCustomMcpModal = ({
   onClose,
   onSuccess,
-}: AddRemoteMcpModalProps): JSX.Element => {
+}: AddCustomMcpModalProps): JSX.Element => {
   const mountedRef = useRef(true);
   useEffect(() => {
     return () => {
@@ -488,10 +489,13 @@ export const AddRemoteMcpModal = ({
             {showOAuthSettings && (
               <div className="space-y-4 border-t border-t-[var(--border-subtle)] px-4 py-4">
                 {needsManualOAuthClient && (
-                  <p className="text-xs text-[var(--text-muted)]">
-                    このサーバーはOAuth自動登録に対応していません。サービスの開発者設定画面でOAuthアプリを作成し、Client
-                    IDとClient Secretを入力してください。
-                  </p>
+                  <>
+                    <p className="text-xs text-[var(--text-muted)]">
+                      このサーバーはOAuth自動登録に対応していません。サービスの開発者設定画面でOAuthアプリを作成し、Client
+                      IDとClient Secretを入力してください。
+                    </p>
+                    <OAuthCallbackUrlField />
+                  </>
                 )}
                 {!needsManualOAuthClient && (
                   <p className="text-xs text-[var(--text-muted)]">
