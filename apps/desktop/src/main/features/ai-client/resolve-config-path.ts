@@ -40,7 +40,7 @@ const resolveClaudeDesktop = (ctx: ResolveConfigPathContext): string | null => {
   return null;
 };
 
-const resolveCursor = (ctx: ResolveConfigPathContext): string | null => {
+const resolveCursor = (ctx: ResolveConfigPathContext): string => {
   // Cursor は3OS共通で ~/.cursor/mcp.json
   return path.join(ctx.homedir, ".cursor/mcp.json");
 };

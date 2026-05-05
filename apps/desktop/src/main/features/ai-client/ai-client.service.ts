@@ -38,7 +38,7 @@ const formatTimestamp = (date: Date): string => {
   const hh = String(date.getHours()).padStart(2, "0");
   const mi = String(date.getMinutes()).padStart(2, "0");
   const ss = String(date.getSeconds()).padStart(2, "0");
-  return `${String(yyyy)}${mm}${dd}-${hh}${mi}${ss}`;
+  return `${yyyy}${mm}${dd}-${hh}${mi}${ss}`;
 };
 
 // 既存ファイルから { mcpServers: { ... } } を読み出す。形が違う / 不正JSON は明示エラー
@@ -110,6 +110,9 @@ export const getPreview = async (
   };
 };
 
+// TODO(DEV-1613 Phase 2): 古いバックアップ（.bak.*）の自動クリーンアップを実装する
+// 現状は書き込み毎にタイムスタンプ付きバックアップが蓄積するため、
+// 最新N件のみ保持するretention処理を追加する
 const backupFile = async (configPath: string): Promise<string> => {
   const ts = formatTimestamp(new Date());
   const backupPath = `${configPath}.bak.${ts}`;
@@ -219,16 +222,15 @@ export const writeConfig = async (
   try {
     await writeAtomic(configPath, JSON.stringify(merged, null, 2) + "\n");
   } catch (error) {
-    if (
-      error &&
-      typeof error === "object" &&
-      "code" in error &&
-      (error as NodeJS.ErrnoException).code === "EACCES"
-    ) {
-      throw new AiClientWriteError(
-        "PERMISSION_DENIED",
-        "設定ファイルへの書き込み権限がありません",
-      );
+    if (error && typeof error === "object" && "code" in error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      // Windowsでは権限不足が EPERM として返ることがあるため EACCES と同様に扱う
+      if (code === "EACCES" || code === "EPERM") {
+        throw new AiClientWriteError(
+          "PERMISSION_DENIED",
+          "設定ファイルへの書き込み権限がありません",
+        );
+      }
     }
     throw error;
   }

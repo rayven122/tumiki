@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAtomValue } from "jotai";
 import { ArrowRight, Plug, Lock } from "lucide-react";
 import { themeAtom } from "../store/atoms";
@@ -20,7 +20,11 @@ export const AiIntegrations = (): JSX.Element => {
   const [activeClient, setActiveClient] = useState<AiClient | null>(null);
 
   // 有効サーバーのみ書き込み対象として渡す
-  const enabledServers = servers.filter((s) => s.isEnabled);
+  // メモ化することで、子モーダルの useEffect([client.id, servers]) を安定させ getPreview IPC の再実行を防ぐ
+  const enabledServers = useMemo(
+    () => servers.filter((s) => s.isEnabled),
+    [servers],
+  );
 
   const handleClick = (client: AiClient): void => {
     if (AUTO_WRITE_SUPPORTED_IDS.has(client.id)) {
