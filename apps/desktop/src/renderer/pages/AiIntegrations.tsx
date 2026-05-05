@@ -20,6 +20,7 @@ const AUTO_WRITE_SUPPORTED_IDS = new Set([
   "gemini-cli",
   "vscode",
   "zed",
+  "codex-cli",
 ]);
 
 export const AiIntegrations = (): JSX.Element => {

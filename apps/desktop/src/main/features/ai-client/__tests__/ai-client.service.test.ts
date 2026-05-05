@@ -329,6 +329,68 @@ describe("ai-client.service", () => {
       expect(written.mcpServers.foo?.command).toStrictEqual("/new");
     });
 
+    describe("codex-cli (TOML + mcp_servers テーブル)", () => {
+      test("空ファイルから [mcp_servers.<slug>] テーブルで書き込む", async () => {
+        const result = await writeConfig({
+          clientId: "codex-cli",
+          entries: { foo: { command: "/bin/foo", args: ["--x"] } },
+        });
+
+        expect(result.addedCount).toStrictEqual(1);
+        const written = await fs.readFile(configPath, "utf-8");
+        // TOML の [mcp_servers.foo] セクションが含まれる
+        expect(written).toContain("[mcp_servers.foo]");
+        expect(written).toContain('command = "/bin/foo"');
+        expect(written).toContain("--x");
+      });
+
+      test("既存 TOML の他テーブル（[history] 等）を保持する", async () => {
+        const tomlContent = `# Codex CLI 設定
+[history]
+max_size = 1000
+
+[mcp_servers.existing]
+command = "/old"
+args = []
+`;
+        await fs.writeFile(configPath, tomlContent, "utf-8");
+
+        await writeConfig({
+          clientId: "codex-cli",
+          entries: { newone: { command: "/new", args: [] } },
+        });
+
+        const after = await fs.readFile(configPath, "utf-8");
+        // history テーブルが保持されている
+        expect(after).toContain("[history]");
+        expect(after).toContain("max_size = 1000");
+        // 既存と新規両方の mcp_servers が含まれる
+        expect(after).toContain("[mcp_servers.existing]");
+        expect(after).toContain("[mcp_servers.newone]");
+      });
+
+      test("getPreview は mcp_servers テーブルを参照する", async () => {
+        const tomlContent = `[mcp_servers.foo]
+command = "/foo"
+
+[mcp_servers.bar]
+command = "/bar"
+`;
+        await fs.writeFile(configPath, tomlContent, "utf-8");
+
+        const result = await getPreview("codex-cli");
+        expect(result.exists).toStrictEqual(true);
+        expect(result.existingServerSlugs.sort()).toStrictEqual(["bar", "foo"]);
+      });
+
+      test("不正な TOML はエラーになる", async () => {
+        await fs.writeFile(configPath, "this is not = [valid toml", "utf-8");
+        await expect(getPreview("codex-cli")).rejects.toMatchObject({
+          code: "INVALID_JSON",
+        });
+      });
+    });
+
     describe("zed (JSONC + context_servers キー)", () => {
       test("空ファイルから context_servers キーで書き込む", async () => {
         const result = await writeConfig({

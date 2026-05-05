@@ -335,4 +335,33 @@ describe("resolveConfigPath", () => {
       expect(result).toBeNull();
     });
   });
+
+  describe("codex-cli", () => {
+    test("macOS: ~/.codex/config.toml を返す", () => {
+      const result = resolveConfigPath("codex-cli", {
+        platform: "darwin",
+        homedir: "/Users/test",
+        appData: undefined,
+      });
+      expect(result).toStrictEqual("/Users/test/.codex/config.toml");
+    });
+
+    test("Linux: ~/.codex/config.toml を返す", () => {
+      const result = resolveConfigPath("codex-cli", {
+        platform: "linux",
+        homedir: "/home/test",
+        appData: undefined,
+      });
+      expect(result).toStrictEqual("/home/test/.codex/config.toml");
+    });
+
+    test("Windows: ~/.codex/config.toml を返す", () => {
+      const result = resolveConfigPath("codex-cli", {
+        platform: "win32",
+        homedir: "C:\\Users\\test",
+        appData: undefined,
+      });
+      expect(result).toStrictEqual("C:\\Users\\test/.codex/config.toml");
+    });
+  });
 });
