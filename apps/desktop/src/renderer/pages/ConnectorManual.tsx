@@ -33,6 +33,9 @@ const flattenSelectableConnectors = (
     .flatMap((server) => {
       // 上の filter で connections.length === 1 を保証済みのため非null
       const connection = server.connections[0]!;
+      // 接続自体が無効化されている場合は除外
+      // （サーバーが有効でも接続が無効な場合があり、サービス層でも !source.isEnabled で弾かれる）
+      if (!connection.isEnabled) return [];
       // OAuth は仮想MCP化未対応
       if (connection.authType === "OAUTH") return [];
       return [

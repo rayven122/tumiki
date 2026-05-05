@@ -883,6 +883,21 @@ describe("mcp.service", () => {
       expect(mcpRepository.createConnection).not.toHaveBeenCalled();
     });
 
+    test("無効化されたコネクタが含まれる場合はエラーを投げる（書き込みI/Oは起きない）", async () => {
+      vi.mocked(mcpRepository.findConnectionsByIdsWithTools).mockResolvedValue([
+        buildSourceConnection({ id: 1, name: "GitHub", isEnabled: false }),
+      ]);
+
+      await expect(
+        mcpService.createVirtualServer({
+          ...baseInput,
+          connections: [{ connectionId: 1 }],
+        }),
+      ).rejects.toThrow("コネクタ「GitHub」は無効化されています");
+      expect(mcpRepository.createServer).not.toHaveBeenCalled();
+      expect(mcpRepository.createConnection).not.toHaveBeenCalled();
+    });
+
     test("同一コネクタを複数追加した場合は接続slugにサフィックスを付与する", async () => {
       vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
       vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
