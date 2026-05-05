@@ -129,7 +129,7 @@ jobs:
           # DRY_RUN はシェルインジェクション防止のため bash 引数として渡し $1 でエスケープ
           # ヒアドキュメントは quoted で runner 側変数の意図しない展開を防ぐ
           # .env を source して terraform に TF_VAR_* 等を渡す
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" bash -ls -- "${DRY_RUN}" << 'REMOTE_SCRIPT'
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" bash -s -- "${DRY_RUN}" << 'REMOTE_SCRIPT'
             set -euo pipefail
             set +o history
             DRY_RUN="$1"
@@ -365,7 +365,7 @@ jobs:
           # dry_run 時は docker compose の構成確認と theme 検証までに留める
           # ヒアドキュメントは quoted で runner 側変数の意図しない展開を防ぐ
           # docker compose は同ディレクトリの .env を自動読み込みする
-          ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" bash -ls -- "${DRY_RUN}" << 'REMOTE_SCRIPT'
+          ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" bash -s -- "${DRY_RUN}" << 'REMOTE_SCRIPT'
             set -euo pipefail
             set +o history
             DRY_RUN="$1"
@@ -451,7 +451,7 @@ jobs:
           # DRY_RUN はシェルインジェクション防止のため bash 引数として渡し $1 でエスケープ
           # ヒアドキュメントは quoted で runner 側変数の意図しない展開を防ぐ
           # .env を source して terraform に TF_VAR_* 等を渡す
-          ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" bash -ls -- "${DRY_RUN}" << 'REMOTE_SCRIPT'
+          ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" bash -s -- "${DRY_RUN}" << 'REMOTE_SCRIPT'
             set -euo pipefail
             set +o history
             DRY_RUN="$1"
@@ -512,7 +512,7 @@ jobs:
       - name: ♻️ Rollback Keycloak after Terraform failure
         if: ${{ failure() && steps.terraform-apply-production.outcome == 'failure' && inputs.dry_run != 'true' }}
         run: |
-          ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" bash -ls << 'ROLLBACK'
+          ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" bash -s << 'ROLLBACK'
             set -euo pipefail
             cd ~/keycloak || exit 1
             # Terraform 失敗時は、Keycloak のテーマ・コンテナも旧バージョンへ戻して設定適用と実体の一貫性を保つ。
