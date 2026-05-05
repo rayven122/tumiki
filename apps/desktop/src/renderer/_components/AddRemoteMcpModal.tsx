@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { X, Info, ChevronDown, Trash2 } from "lucide-react";
 import { toSlug } from "../../shared/mcp.slug";
 import {
@@ -43,6 +43,13 @@ export const AddRemoteMcpModal = ({
   onClose,
   onSuccess,
 }: AddRemoteMcpModalProps): JSX.Element => {
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   const [serverName, setServerName] = useState("");
   const [url, setUrl] = useState("");
   const [command, setCommand] = useState("");
@@ -200,6 +207,8 @@ export const AddRemoteMcpModal = ({
         const message =
           err instanceof Error ? err.message : "OAuth認証の開始に失敗しました";
         const { code, displayMessage } = extractOAuthErrorCode(message);
+        // unmount 後は state を一切更新しない（メモリリーク・警告防止）
+        if (!mountedRef.current) return;
         if (code === DISCOVERY_ERROR_CODE.DCR_NOT_SUPPORTED) {
           setNeedsManualOAuthClient(true);
           setError(null);
@@ -207,7 +216,7 @@ export const AddRemoteMcpModal = ({
           const cached = await window.electronAPI.oauth.findManualOAuthClient(
             url.trim(),
           );
-          if (cached) {
+          if (cached && mountedRef.current) {
             setOauthClientId(cached.clientId);
             setOauthClientSecret(cached.clientSecret ?? "");
           }
@@ -215,7 +224,7 @@ export const AddRemoteMcpModal = ({
           setNeedsManualOAuthClient(false);
           setError(displayMessage);
         }
-        setLoading(false);
+        if (mountedRef.current) setLoading(false);
       }
       return;
     }

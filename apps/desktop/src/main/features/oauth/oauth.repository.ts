@@ -138,15 +138,7 @@ export const findManualClientByServerUrl = async (
   db: PrismaClient,
   serverUrl: string,
 ): Promise<{ clientId: string; clientSecret: string | null } | null> => {
-  const record = await db.oAuthClient.findFirst({
-    where: { serverUrl, isDcr: false },
-  });
-  if (!record) return null;
-
-  const clientId = await decryptToken(record.clientId);
-  const clientSecret = record.clientSecret
-    ? await decryptToken(record.clientSecret)
-    : null;
-
-  return { clientId, clientSecret };
+  const record = await findByServerUrl(db, serverUrl);
+  if (!record || record.isDcr) return null;
+  return { clientId: record.clientId, clientSecret: record.clientSecret };
 };

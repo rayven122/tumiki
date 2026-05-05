@@ -151,9 +151,16 @@ export const ToolCatalog = (): JSX.Element => {
       return;
     }
     // 手動入力済みクライアントのキャッシュがあればプリフィルしてモーダル表示
-    const cachedClient = await window.electronAPI.oauth.findManualOAuthClient(
-      template.url,
-    );
+    // キャッシュ取得失敗時は通常のOAuthフローへフォールバック（onClickのvoidに例外が握りつぶされるのを防ぐ）
+    let cachedClient: { clientId: string; clientSecret: string | null } | null =
+      null;
+    try {
+      cachedClient = await window.electronAPI.oauth.findManualOAuthClient(
+        template.url,
+      );
+    } catch {
+      // 黙ってフォールバック（後続の startAuth へ）
+    }
     if (cachedClient) {
       setCachedOAuthClient(cachedClient);
       setDcrPrefill(true);
