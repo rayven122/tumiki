@@ -10,8 +10,14 @@ import { AiClientAutoWriteModal } from "../_components/AiClientAutoWriteModal";
 import { useMcpServers } from "../hooks/useMcpServers";
 import { useMcpProxyLaunchCommand } from "../hooks/useMcpProxyLaunchCommand";
 
-// Phase 1 で自動書き込みに対応するクライアントID
-const AUTO_WRITE_SUPPORTED_IDS = new Set(["claude-desktop", "cursor"]);
+const AUTO_WRITE_SUPPORTED_IDS = new Set([
+  "claude-desktop",
+  "claude-code",
+  "cursor",
+  "windsurf",
+  "cline",
+  "roo-code",
+]);
 
 export const AiIntegrations = (): JSX.Element => {
   const theme = useAtomValue(themeAtom);
@@ -102,8 +108,8 @@ export const AiIntegrations = (): JSX.Element => {
 
       {/* 説明補足 */}
       <p className="text-xs text-[var(--text-subtle)]">
-        ※ Phase 1 として Claude Desktop / Cursor
-        の自動書き込みに対応しました。その他クライアントは順次対応予定です。
+        ※
+        鍵アイコン付きのクライアントは現在自動書き込み未対応です。順次対応予定です。
       </p>
 
       {/* 自動書き込みモーダル */}

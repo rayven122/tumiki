@@ -25,7 +25,11 @@ export class AiClientWriteError extends Error {
 
 const SUPPORTED_CLIENT_IDS: readonly SupportedAiClientId[] = [
   "claude-desktop",
+  "claude-code",
   "cursor",
+  "windsurf",
+  "cline",
+  "roo-code",
 ];
 
 const isSupportedClientId = (id: string): id is SupportedAiClientId =>
@@ -92,7 +96,7 @@ export const getPreview = async (
   if (!isSupportedClientId(clientId)) {
     throw new AiClientWriteError(
       "UNSUPPORTED_PLATFORM",
-      `クライアント ${clientId} はPhase 1ではサポート対象外です`,
+      `クライアント ${clientId} はサポート対象外です`,
     );
   }
   const configPath = resolveConfigPath(clientId);
@@ -179,7 +183,7 @@ export const writeConfig = async (
   if (!isSupportedClientId(request.clientId)) {
     throw new AiClientWriteError(
       "UNSUPPORTED_PLATFORM",
-      `クライアント ${request.clientId} はPhase 1ではサポート対象外です`,
+      `クライアント ${request.clientId} はサポート対象外です`,
     );
   }
   const configPath = resolveConfigPath(request.clientId);
