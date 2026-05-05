@@ -45,8 +45,8 @@ const getJwks = async (): Promise<ReturnType<typeof createRemoteJWKSet>> => {
       res = await fetch(discoveryUrl, {
         signal: controller.signal,
       });
-    } catch {
-      throw new Error("OIDCディスカバリ取得失敗");
+    } catch (error) {
+      throw new Error("OIDCディスカバリ取得失敗", { cause: error });
     } finally {
       clearTimeout(timeoutId);
     }

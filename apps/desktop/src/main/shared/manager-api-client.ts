@@ -28,6 +28,7 @@ const findValidAuthToken = async (): Promise<AuthToken | null> => {
 
 const getApiBearerToken = async (token: AuthToken): Promise<string | null> => {
   const encryptedBearerToken = token.idToken ?? token.accessToken;
+  if (!encryptedBearerToken) return null;
   const bearerToken = await decryptToken(encryptedBearerToken);
   return bearerToken || null;
 };

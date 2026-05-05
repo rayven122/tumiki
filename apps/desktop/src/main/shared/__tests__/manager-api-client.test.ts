@@ -128,6 +128,25 @@ describe("manager-api-client", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  test("Bearer候補がnullなら復号せずリクエストしない", async () => {
+    storeData.set("managerUrl", "https://manager.example.com");
+    mockFindFirst.mockResolvedValue({
+      id: 1,
+      accessToken: null,
+      refreshToken: null,
+      idToken: null,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const result = await requestManagerApi("/api/example");
+
+    expect(result).toBeNull();
+    expect(decryptToken).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   test("期限切れトークンは削除してリクエストしない", async () => {
     storeData.set("managerUrl", "https://manager.example.com");
     mockFindFirst.mockResolvedValue({
