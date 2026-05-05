@@ -56,7 +56,7 @@ describe("ai-client.service", () => {
         "utf-8",
       );
       const result = await getPreview("claude-desktop");
-      expect(result.exists).toBeTruthy();
+      expect(result.exists).toStrictEqual(true);
       expect(result.existingServerSlugs.sort()).toStrictEqual(["bar", "foo"]);
     });
 

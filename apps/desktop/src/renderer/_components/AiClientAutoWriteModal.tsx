@@ -55,8 +55,9 @@ export const AiClientAutoWriteModal = ({
   // プレビュー取得
   useEffect(() => {
     let cancelled = false;
-    window.electronAPI.aiClient.getPreview(client.id).then(
-      (result) => {
+    void (async () => {
+      try {
+        const result = await window.electronAPI.aiClient.getPreview(client.id);
         if (cancelled) return;
         setPreview(result);
         // orphan は初期状態で全て「保持」
@@ -65,14 +66,11 @@ export const AiClientAutoWriteModal = ({
           (slug) => !tumikiSlugs.has(slug),
         );
         setKeptOrphanSlugs(new Set(orphans));
-      },
-      (error: unknown) => {
-        if (!cancelled)
-          setPreviewError(
-            error instanceof Error ? error.message : String(error),
-          );
-      },
-    );
+      } catch (error) {
+        if (cancelled) return;
+        setPreviewError(error instanceof Error ? error.message : String(error));
+      }
+    })();
     return () => {
       cancelled = true;
     };
@@ -195,10 +193,14 @@ export const AiClientAutoWriteModal = ({
 
   return (
     <div
+      role="presentation"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={writing ? undefined : onClose}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ai-client-modal-title"
         className="max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-8"
         onClick={(e) => e.stopPropagation()}
       >
@@ -217,7 +219,10 @@ export const AiClientAutoWriteModal = ({
               </div>
             )}
             <div>
-              <h2 className="text-lg font-bold text-[var(--text-primary)]">
+              <h2
+                id="ai-client-modal-title"
+                className="text-lg font-bold text-[var(--text-primary)]"
+              >
                 {client.name} に書き込み
               </h2>
               <p className="text-xs text-[var(--text-muted)]">
