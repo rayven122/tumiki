@@ -1,9 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { z } from "zod";
-import {
-  isExplicitOidcConfigured,
-  isJacksonAutoOidcConfigured,
-} from "~/lib/env";
+import { isJacksonAutoOidcConfigured } from "~/lib/env";
 import { getJackson, resolveExternalUrl } from "./index";
 export {
   isExplicitOidcConfigured,
