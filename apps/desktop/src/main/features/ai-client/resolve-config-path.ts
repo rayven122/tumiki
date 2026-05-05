@@ -10,7 +10,8 @@ export type SupportedAiClientId =
   | "roo-code"
   | "gemini-cli"
   | "vscode"
-  | "zed";
+  | "zed"
+  | "codex-cli";
 
 export type ResolveConfigPathContext = {
   platform: NodeJS.Platform;
@@ -53,6 +54,8 @@ export const resolveConfigPath = (
       return resolveVsCode(ctx);
     case "zed":
       return resolveZed(ctx);
+    case "codex-cli":
+      return resolveCodexCli(ctx);
   }
 };
 
@@ -104,6 +107,11 @@ const resolveZed = (ctx: ResolveConfigPathContext): string | null => {
   }
   // macOS / Linux 共通: ~/.config/zed/settings.json
   return path.join(ctx.homedir, ".config/zed/settings.json");
+};
+
+// Codex CLI の設定は TOML 形式の config.toml。`[mcp_servers.<slug>]` テーブルで MCP サーバーを定義する。
+const resolveCodexCli = (ctx: ResolveConfigPathContext): string => {
+  return path.join(ctx.homedir, ".codex/config.toml");
 };
 
 // VS Code 拡張 (Cline / Roo Code) の MCP 設定パスを返す。

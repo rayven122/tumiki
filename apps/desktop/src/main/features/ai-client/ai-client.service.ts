@@ -6,6 +6,7 @@ import {
   parse as parseJsonc,
   type ParseError,
 } from "jsonc-parser";
+import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
 import * as logger from "../../shared/utils/logger";
 import {
   resolveConfigPath,
@@ -19,7 +20,7 @@ import type {
   McpEntry,
 } from "./ai-client.types";
 
-type ConfigFileFormat = "json" | "jsonc";
+type ConfigFileFormat = "json" | "jsonc" | "toml";
 
 export class AiClientWriteError extends Error {
   constructor(
@@ -31,7 +32,8 @@ export class AiClientWriteError extends Error {
   }
 }
 
-// クライアントごとに MCP サーバーを格納するキー名が異なる（VS Code は `servers`、Zed は `context_servers`、その他は `mcpServers`）
+// クライアントごとに MCP サーバーを格納するキー名が異なる
+// （VS Code: `servers` / Zed: `context_servers` / Codex CLI: `mcp_servers` / 他: `mcpServers`）
 const CLIENT_MCP_SERVERS_KEY: Record<SupportedAiClientId, string> = {
   "claude-desktop": "mcpServers",
   "claude-code": "mcpServers",
@@ -42,9 +44,10 @@ const CLIENT_MCP_SERVERS_KEY: Record<SupportedAiClientId, string> = {
   "gemini-cli": "mcpServers",
   vscode: "servers",
   zed: "context_servers",
+  "codex-cli": "mcp_servers",
 };
 
-// 設定ファイルのフォーマット。JSONC は jsonc-parser で読み書きしコメントを保持する
+// 設定ファイルのフォーマット。JSONC は jsonc-parser、TOML は smol-toml で読み書きする
 const CLIENT_FILE_FORMAT: Record<SupportedAiClientId, ConfigFileFormat> = {
   "claude-desktop": "json",
   "claude-code": "json",
@@ -55,6 +58,7 @@ const CLIENT_FILE_FORMAT: Record<SupportedAiClientId, ConfigFileFormat> = {
   "gemini-cli": "json",
   vscode: "json",
   zed: "jsonc",
+  "codex-cli": "toml",
 };
 
 const SUPPORTED_CLIENT_IDS: readonly SupportedAiClientId[] = Object.keys(
@@ -129,6 +133,16 @@ const parseConfigContent = (
       );
     }
     return parsed;
+  }
+  if (format === "toml") {
+    try {
+      return parseToml(content);
+    } catch {
+      throw new AiClientWriteError(
+        "INVALID_JSON",
+        "設定ファイルが不正なTOML形式です",
+      );
+    }
   }
   try {
     return JSON.parse(content);
@@ -308,11 +322,22 @@ export const writeConfig = async (
     mcpServersKey,
   );
 
-  // 5. シリアライズ。JSONC は jsonc-parser でコメント保持しながら edit する
-  const outputContent =
-    format === "jsonc" && existed
-      ? serializeJsonc(rawText, mcpServersKey, merged[mcpServersKey])
-      : JSON.stringify(merged, null, 2) + "\n";
+  // 5. シリアライズ。フォーマット別に書き出す。
+  // - jsonc: jsonc-parser でコメント保持しながら edit
+  // - toml: smol-toml で stringify（注: smol-toml はコメント保持しないため既存コメントは失われる）
+  // - json: 標準 JSON.stringify
+  let outputContent: string;
+  if (format === "jsonc" && existed) {
+    outputContent = serializeJsonc(
+      rawText,
+      mcpServersKey,
+      merged[mcpServersKey],
+    );
+  } else if (format === "toml") {
+    outputContent = stringifyToml(merged) + "\n";
+  } else {
+    outputContent = JSON.stringify(merged, null, 2) + "\n";
+  }
 
   // 6. アトミック書き込み
   try {
