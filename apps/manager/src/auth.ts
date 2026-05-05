@@ -39,6 +39,11 @@ export const {
       issuer: keycloakEnv.KEYCLOAK_ISSUER,
       // KeycloakでPKCEが必須設定のため有効化
       checks: ["pkce", "state"],
+      // Keycloak realm 再作成や IdP 入れ替えで provider sub が変わると、既存 User と紐付かず
+      // OAuthAccountNotLinked となりログインできなくなる。Keycloak は email を verified と
+      // して返す前提（realm の Verify Email が ON）で、同一 email の既存 User と新しい
+      // Account を自動リンクすることを許可する。
+      allowDangerousEmailAccountLinking: true,
       authorization: {
         params: {
           // Keycloakのログイン画面でログイン方法を選択
