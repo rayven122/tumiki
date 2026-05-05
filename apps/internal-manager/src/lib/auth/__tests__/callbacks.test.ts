@@ -5,9 +5,16 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 const mockEnsureJacksonOidcClients = vi.hoisted(() => vi.fn());
 const mockFindUnique = vi.hoisted(() => vi.fn());
 const mockGetTumikiClaims = vi.hoisted(() => vi.fn());
+const MockOidcNotConfiguredError = vi.hoisted(
+  () =>
+    class OidcNotConfiguredError extends Error {
+      override readonly name = "OidcNotConfiguredError";
+    },
+);
 
 vi.mock("~/server/jackson/oidc-clients", () => ({
   ensureJacksonOidcClients: mockEnsureJacksonOidcClients,
+  OidcNotConfiguredError: MockOidcNotConfiguredError,
 }));
 
 vi.mock("@tumiki/internal-db/server", () => ({
@@ -147,7 +154,7 @@ describe("jwtCallback", () => {
 
   test("OIDC設定取得失敗時はnullを返す", async () => {
     mockEnsureJacksonOidcClients.mockRejectedValue(
-      new Error("OIDC is not configured"),
+      new MockOidcNotConfiguredError("OIDC is not configured"),
     );
     vi.stubGlobal("fetch", vi.fn<typeof fetch>());
     const { jwtCallback } = await loadModule();
@@ -295,7 +302,6 @@ describe("jwtCallback", () => {
         },
       },
       expires: "2099-01-01T00:00:00.000Z",
-      accessToken: "access-token",
     });
   });
 });

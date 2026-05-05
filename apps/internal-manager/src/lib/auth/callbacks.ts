@@ -1,10 +1,14 @@
+import "~/lib/auth/types";
 import type { Session, User, Account, Profile } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import type { AdapterUser } from "@auth/core/adapters";
 import { db } from "@tumiki/internal-db/server";
 import { getTumikiClaims } from "./get-tumiki-claims";
 import { buildOidcDiscoveryUrl } from "./oidc-utils";
-import { ensureJacksonOidcClients } from "~/server/jackson/oidc-clients";
+import {
+  ensureJacksonOidcClients,
+  OidcNotConfiguredError,
+} from "~/server/jackson/oidc-clients";
 import { z } from "zod";
 
 // OIDCアクセストークンのペイロードスキーマ
@@ -39,7 +43,7 @@ const tokenEndpointCache = new Map<
 >();
 
 const isOidcConfigurationError = (error: unknown): boolean =>
-  error instanceof Error && error.message.startsWith("OIDC is not configured");
+  error instanceof OidcNotConfiguredError;
 
 const getTokenEndpoint = async (issuer: string): Promise<string> => {
   const cached = tokenEndpointCache.get(issuer);
@@ -274,6 +278,5 @@ export const sessionCallback = async ({
       tumiki: token.tumiki ?? null,
     });
   }
-  session.accessToken = token.accessToken;
   return session;
 };

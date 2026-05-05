@@ -14,6 +14,10 @@ export type ResolvedOidcConfig = {
   OIDC_DESKTOP_CLIENT_ID: string;
 };
 
+export class OidcNotConfiguredError extends Error {
+  override readonly name = "OidcNotConfiguredError";
+}
+
 type JacksonConnection = {
   clientID: string;
   clientSecret: string;
@@ -106,7 +110,8 @@ export const ensureJacksonOidcClients =
 
     clientsPromise = (async () => {
       if (!isJacksonAutoOidcConfigured()) {
-        throw new Error(
+        // 明示的 OIDC_* env は関数先頭で解決済み。ここでは Jackson 自動生成の必須 env だけを見る。
+        throw new OidcNotConfiguredError(
           "OIDC is not configured. Set OIDC_* directly or configure Jackson automatic provisioning with JACKSON_SAML_METADATA_XML/JACKSON_SAML_METADATA_PATH.",
         );
       }
@@ -147,7 +152,7 @@ export const ensureJacksonOidcClients =
     return clientsPromise;
   };
 
-// Jackson 自動生成 client のプロセスキャッシュだけを破棄する。
+// test-only: Jackson 自動生成 client のプロセスキャッシュだけを破棄する。
 // 明示的な OIDC_* env は毎回 process.env から読むため reset は不要。
 export const resetOidcClients = (): void => {
   resolvedConfig = null;

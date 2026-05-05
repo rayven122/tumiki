@@ -97,8 +97,10 @@ export const verifyDesktopJwt = async (
     audience: OIDC_DESKTOP_CLIENT_ID,
   }).catch(async (error: unknown) => {
     if (!isAudienceValidationError(error)) throw error;
-    // Keycloakのaccess tokenはaudがaccount等の内部リソースになるため、
-    // issuer検証後にIdPが付与するazpでDesktopクライアントを確認する。
+    // Keycloak access_token は aud が "account" 等の内部リソースになり、
+    // Desktop client ID の audience 検証に失敗する。この場合だけ issuer 検証後に
+    // azp（Authorized Party）が Desktop client ID と一致することを代替条件にする。
+    // Desktop が優先送信する id_token は aud が Desktop client ID なので通常パスを通る。
     const result = await jwtVerify(token, jwks, {
       issuer: OIDC_ISSUER,
     });
