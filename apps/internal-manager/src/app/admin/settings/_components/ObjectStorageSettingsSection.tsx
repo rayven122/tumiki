@@ -7,6 +7,7 @@ import { Field } from "./Field";
 
 const inputCls =
   "bg-bg-app border-border-default text-text-secondary w-full rounded-lg border px-3 py-2 text-xs outline-none";
+const disabledInputCls = `${inputCls} disabled:text-text-muted disabled:cursor-not-allowed disabled:opacity-70`;
 
 type StorageFormState = {
   endpoint: string;
@@ -87,6 +88,7 @@ export const ObjectStorageSettingsSection = (): JSX.Element => {
       forcePathStyle: form.forcePathStyle,
     });
   };
+  const canEdit = !environmentConfigured;
 
   return (
     <div className="border-border-default bg-bg-card rounded-xl border p-5">
@@ -111,7 +113,7 @@ export const ObjectStorageSettingsSection = (): JSX.Element => {
 
       {settingsQuery.data?.environmentConfigured && (
         <p className="mb-4 rounded-lg bg-sky-500/10 px-3 py-2 text-xs text-sky-300">
-          環境変数のストレージ設定が有効です。実際のアップロードでは環境変数が優先されます。
+          環境変数のストレージ設定が有効です。現在の値を表示していますが、この画面からは変更できません。
         </p>
       )}
       {settingsQuery.data && !settingsQuery.data.isConfigured && (
@@ -129,18 +131,8 @@ export const ObjectStorageSettingsSection = (): JSX.Element => {
               setForm((prev) => ({ ...prev, endpoint: e.target.value }))
             }
             placeholder="http://localhost:9000"
-            className={inputCls}
-          />
-        </Field>
-        <Field label="Region">
-          <input
-            type="text"
-            value={form.region}
-            onChange={(e) =>
-              setForm((prev) => ({ ...prev, region: e.target.value }))
-            }
-            placeholder="auto"
-            className={inputCls}
+            disabled={!canEdit}
+            className={disabledInputCls}
           />
         </Field>
         <Field label="Bucket">
@@ -151,18 +143,8 @@ export const ObjectStorageSettingsSection = (): JSX.Element => {
               setForm((prev) => ({ ...prev, bucket: e.target.value }))
             }
             placeholder="tumiki-assets"
-            className={inputCls}
-          />
-        </Field>
-        <Field label="Public Base URL">
-          <input
-            type="url"
-            value={form.publicBaseUrl}
-            onChange={(e) =>
-              setForm((prev) => ({ ...prev, publicBaseUrl: e.target.value }))
-            }
-            placeholder="http://localhost:9000/tumiki-assets"
-            className={inputCls}
+            disabled={!canEdit}
+            className={disabledInputCls}
           />
         </Field>
         <Field label="Access Key ID">
@@ -173,13 +155,18 @@ export const ObjectStorageSettingsSection = (): JSX.Element => {
               setForm((prev) => ({ ...prev, accessKeyId: e.target.value }))
             }
             placeholder="minioadmin"
-            className={inputCls}
+            disabled={!canEdit}
+            className={disabledInputCls}
           />
         </Field>
         <Field label="Secret Access Key">
           <input
             type="password"
-            value={form.secretAccessKey}
+            value={
+              environmentConfigured && settingsQuery.data?.hasSecretAccessKey
+                ? "********"
+                : form.secretAccessKey
+            }
             onChange={(e) =>
               setForm((prev) => ({
                 ...prev,
@@ -191,25 +178,59 @@ export const ObjectStorageSettingsSection = (): JSX.Element => {
                 ? "保存済み。変更時のみ入力"
                 : "minioadmin"
             }
-            className={inputCls}
+            disabled={!canEdit}
+            className={disabledInputCls}
           />
         </Field>
       </div>
 
-      <label className="text-text-secondary mt-4 flex items-center gap-2 text-xs">
-        <input
-          type="checkbox"
-          checked={form.forcePathStyle}
-          onChange={(e) =>
-            setForm((prev) => ({
-              ...prev,
-              forcePathStyle: e.currentTarget.checked,
-            }))
-          }
-          className="accent-emerald-400"
-        />
-        Path-style access を使う
-      </label>
+      <details className="border-border-default mt-4 rounded-lg border px-3 py-2">
+        <summary className="text-text-secondary cursor-pointer text-xs">
+          詳細設定（通常は省略可）
+        </summary>
+        <div className="mt-3 grid gap-4 md:grid-cols-2">
+          <Field label="Region">
+            <input
+              type="text"
+              value={form.region}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, region: e.target.value }))
+              }
+              placeholder="auto"
+              disabled={!canEdit}
+              className={disabledInputCls}
+            />
+          </Field>
+          <Field label="Public Base URL">
+            <input
+              type="url"
+              value={form.publicBaseUrl}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, publicBaseUrl: e.target.value }))
+              }
+              placeholder="未指定時は Endpoint/Bucket から生成"
+              disabled={!canEdit}
+              className={disabledInputCls}
+            />
+          </Field>
+        </div>
+
+        <label className="text-text-secondary mt-4 flex items-center gap-2 text-xs">
+          <input
+            type="checkbox"
+            checked={form.forcePathStyle}
+            onChange={(e) =>
+              setForm((prev) => ({
+                ...prev,
+                forcePathStyle: e.currentTarget.checked,
+              }))
+            }
+            disabled={!canEdit}
+            className="accent-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+          />
+          Path-style access を使う
+        </label>
+      </details>
 
       {updateMutation.error && (
         <p className="mt-3 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">
