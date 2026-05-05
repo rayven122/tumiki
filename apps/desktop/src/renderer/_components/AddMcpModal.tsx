@@ -15,6 +15,7 @@ import {
   DISCOVERY_ERROR_CODE,
   extractOAuthErrorCode,
 } from "../../shared/oauth/discovery-error-codes";
+import { OAuthCallbackUrlField } from "./OAuthCallbackUrlField";
 
 type AddMcpModalProps = {
   catalog: CatalogItem;
@@ -416,10 +417,13 @@ export const AddMcpModal = ({
             {showOAuthSettings && (
               <div className="space-y-4 border-t border-t-[var(--border-subtle)] px-4 py-4">
                 {needsManualOAuthClient && (
-                  <p className="text-xs text-[var(--text-muted)]">
-                    このサーバーはOAuth自動登録に対応していません。サービスの開発者設定画面でOAuthアプリを作成し、Client
-                    IDとClient Secretを入力してください。
-                  </p>
+                  <>
+                    <p className="text-xs text-[var(--text-muted)]">
+                      このサーバーはOAuth自動登録に対応していません。サービスの開発者設定画面でOAuthアプリを作成し、Client
+                      IDとClient Secretを入力してください。
+                    </p>
+                    <OAuthCallbackUrlField />
+                  </>
                 )}
                 <div>
                   <label className="mb-2 block text-sm font-medium text-[var(--text-primary)]">

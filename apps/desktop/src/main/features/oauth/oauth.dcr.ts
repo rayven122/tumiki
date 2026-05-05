@@ -12,9 +12,9 @@ import {
   type Client,
 } from "oauth4webapi";
 import { DiscoveryError, DISCOVERY_ERROR_CODE } from "./oauth.discovery";
+import { MCP_OAUTH_REDIRECT_URI } from "../../../shared/oauth/redirect-uri";
 
-/** DCRリダイレクトURI（カスタムプロトコル） */
-export const MCP_OAUTH_REDIRECT_URI = "tumiki://oauth/callback";
+export { MCP_OAUTH_REDIRECT_URI };
 
 /**
  * DCRクライアント名
