@@ -10,11 +10,16 @@ export const setupOidcSchema = z.object({
 });
 
 /** OIDC必須環境変数がすべて設定されているか確認（throw しない） */
-export const isOidcConfigured = (): boolean =>
+export const isExplicitOidcConfigured = (): boolean =>
   ["OIDC_CLIENT_ID", "OIDC_CLIENT_SECRET", "OIDC_ISSUER"].every(
     (key) => (process.env[key] ?? "").length > 0,
-  ) ||
-  ((process.env.INTERNAL_DATABASE_URL ?? "").length > 0 &&
-    (process.env.JACKSON_ENCRYPTION_KEY ?? "").length >= 32 &&
-    ((process.env.JACKSON_SAML_METADATA_XML ?? "").length > 0 ||
-      (process.env.JACKSON_SAML_METADATA_PATH ?? "").length > 0));
+  );
+
+export const isJacksonAutoOidcConfigured = (): boolean =>
+  (process.env.INTERNAL_DATABASE_URL ?? "").length > 0 &&
+  (process.env.JACKSON_ENCRYPTION_KEY ?? "").length >= 32 &&
+  ((process.env.JACKSON_SAML_METADATA_XML ?? "").length > 0 ||
+    (process.env.JACKSON_SAML_METADATA_PATH ?? "").length > 0);
+
+export const isOidcConfigured = (): boolean =>
+  isExplicitOidcConfigured() || isJacksonAutoOidcConfigured();

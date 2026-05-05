@@ -7,11 +7,19 @@ import { ensureJacksonOidcClients } from "~/server/jackson/oidc-clients";
  * public client の client_id と issuer URL のみ返し、機密情報は返さない。
  */
 export const GET = async () => {
-  const env = await ensureJacksonOidcClients();
-  return NextResponse.json({
-    issuer: env.OIDC_ISSUER,
-    clientId: env.OIDC_DESKTOP_CLIENT_ID,
-  });
+  try {
+    const env = await ensureJacksonOidcClients();
+    return NextResponse.json({
+      issuer: env.OIDC_ISSUER,
+      clientId: env.OIDC_DESKTOP_CLIENT_ID,
+    });
+  } catch (error) {
+    console.error("[api/auth/config] OIDC設定取得失敗:", error);
+    return NextResponse.json(
+      { error: "OIDC設定が不完全です" },
+      { status: 503 },
+    );
+  }
 };
 
 export const dynamic = "force-dynamic";

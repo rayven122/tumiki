@@ -28,4 +28,18 @@ describe("GET /api/auth/config", () => {
       clientId: "tumiki-desktop",
     });
   });
+
+  test("OIDC設定取得失敗時は503を返す", async () => {
+    mockEnsureJacksonOidcClients.mockRejectedValue(
+      new Error("OIDC is not configured"),
+    );
+    const { GET } = await import("./route");
+
+    const response = await GET();
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toStrictEqual({
+      error: "OIDC設定が不完全です",
+    });
+  });
 });

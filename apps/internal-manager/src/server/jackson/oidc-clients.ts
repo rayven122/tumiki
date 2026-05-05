@@ -1,6 +1,14 @@
 import { readFile } from "node:fs/promises";
 import { z } from "zod";
-import { getJackson, isJacksonConfigured, resolveExternalUrl } from "./index";
+import {
+  isExplicitOidcConfigured,
+  isJacksonAutoOidcConfigured,
+} from "~/lib/env";
+import { getJackson, resolveExternalUrl } from "./index";
+export {
+  isExplicitOidcConfigured,
+  isJacksonAutoOidcConfigured,
+} from "~/lib/env";
 
 export type ResolvedOidcConfig = {
   OIDC_ISSUER: string;
@@ -21,16 +29,6 @@ const jacksonConnectionSchema = z.object({
 
 let resolvedConfig: ResolvedOidcConfig | null = null;
 let clientsPromise: Promise<ResolvedOidcConfig> | null = null;
-
-export const isExplicitOidcConfigured = (): boolean =>
-  ["OIDC_CLIENT_ID", "OIDC_CLIENT_SECRET", "OIDC_ISSUER"].every(
-    (key) => (process.env[key] ?? "").length > 0,
-  );
-
-export const isJacksonAutoOidcConfigured = (): boolean =>
-  isJacksonConfigured() &&
-  ((process.env.JACKSON_SAML_METADATA_XML ?? "").length > 0 ||
-    (process.env.JACKSON_SAML_METADATA_PATH ?? "").length > 0);
 
 const getProductNames = (): { webProduct: string; desktopProduct: string } => {
   const webProduct =

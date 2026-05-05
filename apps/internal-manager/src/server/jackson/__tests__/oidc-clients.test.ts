@@ -74,6 +74,8 @@ beforeEach(() => {
 });
 
 const configureCustomJacksonAutoEnv = (): void => {
+  process.env.INTERNAL_DATABASE_URL = "postgresql://localhost/tumiki";
+  process.env.JACKSON_ENCRYPTION_KEY = "x".repeat(32);
   process.env.JACKSON_SAML_METADATA_XML = "<xml />";
   process.env.JACKSON_TENANT = "tenant-001";
   process.env.JACKSON_WEB_PRODUCT = "tumiki-web";
@@ -174,6 +176,8 @@ describe("oidc-clients", () => {
   });
 
   test("Jackson自動設定はmetadata pathからXMLを読み込める", async () => {
+    process.env.INTERNAL_DATABASE_URL = "postgresql://localhost/tumiki";
+    process.env.JACKSON_ENCRYPTION_KEY = "x".repeat(32);
     process.env.JACKSON_SAML_METADATA_PATH = "/tmp/idp-metadata.xml";
     mockIsJacksonConfigured.mockReturnValue(true);
     const { ensureJacksonOidcClients } = await loadModule();
@@ -191,6 +195,8 @@ describe("oidc-clients", () => {
   });
 
   test("Jackson自動設定の生成失敗後は次回呼び出しで再試行できる", async () => {
+    process.env.INTERNAL_DATABASE_URL = "postgresql://localhost/tumiki";
+    process.env.JACKSON_ENCRYPTION_KEY = "x".repeat(32);
     process.env.JACKSON_SAML_METADATA_XML = "<xml />";
     mockIsJacksonConfigured.mockReturnValue(true);
     mockCreateSAMLConnection
