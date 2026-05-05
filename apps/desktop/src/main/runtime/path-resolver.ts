@@ -162,6 +162,13 @@ export const buildChildEnv = (
   for (const [key, value] of Object.entries(base)) {
     if (value !== undefined) env[key] = value;
   }
+  // Windows では process.env が `Path` を持つことがあり、そのまま spread すると
+  // `Path: <旧>` と `PATH: <新>` の両方が子プロセスに渡って予期しない動作を招く。
+  // 子プロセスに渡す前に大文字小文字バリアントを除去し、`PATH` のみで上書きする。
+  if (process.platform === "win32") {
+    delete env.Path;
+    delete env.path;
+  }
   return { ...env, ...extra, PATH: newPath };
 };
 

@@ -189,6 +189,18 @@ describe("path-resolver", () => {
       expect(result.PATH).toContain(";");
     });
 
+    test("Windowsでは元envのPath/pathキーを削除しPATHに正規化する", () => {
+      setPlatform("win32", "x64");
+      const result = buildChildEnv({
+        Path: "C:\\Windows",
+        path: "C:\\Lower",
+      });
+      // 子プロセスに `Path: <旧>` と `PATH: <新>` の両方が渡らないことを保証する
+      expect("Path" in result).toStrictEqual(false);
+      expect("path" in result).toStrictEqual(false);
+      expect(result.PATH).toMatch(/;C:\\Windows$/);
+    });
+
     test("undefined値はenvに含めない", () => {
       const result = buildChildEnv({ FOO: "bar", UNDEFINED_KEY: undefined });
       expect(result.FOO).toStrictEqual("bar");

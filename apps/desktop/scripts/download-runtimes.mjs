@@ -138,8 +138,10 @@ const runCommand = async (command, args, label) => {
     const child = spawn(command, args, {
       stdio: ["ignore", "ignore", "inherit"],
     });
-    child.on("exit", (code) => {
+    // SIGKILL 等でプロセスが落ちた場合 code は null になるため、signal を別メッセージで扱う
+    child.on("exit", (code, signal) => {
       if (code === 0) resolve();
+      else if (signal) reject(new Error(`${label} killed by signal ${signal}`));
       else reject(new Error(`${label} exit code ${code}`));
     });
     child.on("error", reject);
@@ -383,15 +385,22 @@ const setupPlatform = async (platform, force) => {
   await rm(target, { recursive: true, force: true });
   await mkdir(target, { recursive: true });
 
-  await installNode(platform, target);
-  await installUv(platform, target);
+  // installNode 成功後に installUv が失敗すると target に中途半端な Node ファイルが残る。
+  // 失敗時は target ごと削除し、次回の再実行でクリーンに開始できるようにする。
+  try {
+    await installNode(platform, target);
+    await installUv(platform, target);
 
-  // sentinel ファイルでバージョンを記録（再ダウンロード判定用）
-  const meta = {
-    versions: VERSIONS,
-    installedAt: new Date().toISOString(),
-  };
-  await writeFile(sentinel, JSON.stringify(meta, null, 2));
+    // sentinel ファイルでバージョンを記録（再ダウンロード判定用）
+    const meta = {
+      versions: VERSIONS,
+      installedAt: new Date().toISOString(),
+    };
+    await writeFile(sentinel, JSON.stringify(meta, null, 2));
+  } catch (error) {
+    await rm(target, { recursive: true, force: true });
+    throw error;
+  }
 
   log(`${platform}: 完了 → ${path.relative(DESKTOP_DIR, target)}`);
 };

@@ -96,11 +96,15 @@ win:
 # NSIS インストーラ設定
 # - oneClick: false ＆ allowToChangeInstallationDirectory: true でインストール先選択可能
 # - perMachine: false でユーザーごとインストール（管理者権限不要）
+# - artifactName: desktop-release.yml のリリースノートと一致するファイル名に固定する
+#   （electron-builder のデフォルトは `Tumiki Setup ${version}.exe` でスペース区切り
+#    かつ arch サフィックスがなく、リリースノート記載のリンク名と乖離する）
 nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
   shortcutName: Tumiki
+  artifactName: "Tumiki-Setup-${version}-${arch}.exe"
 
 # Linux設定（将来対応）
 # linux:
