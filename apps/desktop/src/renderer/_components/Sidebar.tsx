@@ -6,7 +6,6 @@ import {
   Home,
   Wrench,
   History,
-  ShieldCheck,
   Settings,
   Moon,
   Sun,
@@ -30,7 +29,6 @@ const mainNav: NavItem[] = [
   { path: "/", label: "ホーム", icon: <Home size={18} /> },
   { path: "/tools", label: "コネクト", icon: <Wrench size={18} /> },
   { path: "/history", label: "操作履歴", icon: <History size={18} /> },
-  { path: "/requests", label: "権限申請", icon: <ShieldCheck size={18} /> },
 ];
 
 const subNav: NavItem[] = [

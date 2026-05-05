@@ -1,9 +1,14 @@
+import "~/lib/auth/types";
 import type { Session, User, Account, Profile } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import type { AdapterUser } from "@auth/core/adapters";
 import { db } from "@tumiki/internal-db/server";
 import { getTumikiClaims } from "./get-tumiki-claims";
-import { getOidcEnv } from "~/lib/env";
+import { fetchOidcDiscovery } from "./oidc-utils";
+import {
+  ensureJacksonOidcClients,
+  OidcNotConfiguredError,
+} from "~/server/jackson/oidc-clients";
 import { z } from "zod";
 
 // OIDCアクセストークンのペイロードスキーマ
@@ -26,26 +31,49 @@ const refreshedTokensSchema = z.object({
   expires_in: z.number(),
   refresh_token: z.string().optional(),
 });
+const tokenEndpointDiscoverySchema = z.object({
+  token_endpoint: z.string().url(),
+});
 
-// OIDCディスカバリーからトークンエンドポイントを取得（issuerをキーにキャッシュ）
-const tokenEndpointCache = new Map<string, string>();
+const TOKEN_ENDPOINT_CACHE_TTL_MS = 10 * 60 * 1000;
+const OIDC_DISCOVERY_TIMEOUT_MS = 5 * 1000;
+const OIDC_REFRESH_TIMEOUT_MS = 10 * 1000;
+
+// OIDCディスカバリーからトークンエンドポイントを取得（issuerをキーに短時間キャッシュ）
+const tokenEndpointCache = new Map<
+  string,
+  { endpoint: string; expiresAt: number }
+>();
+const pendingTokenEndpointFetches = new Map<string, Promise<string>>();
+
+const isOidcConfigurationError = (error: unknown): boolean =>
+  error instanceof OidcNotConfiguredError;
 
 const getTokenEndpoint = async (issuer: string): Promise<string> => {
   const cached = tokenEndpointCache.get(issuer);
-  if (cached) return cached;
+  if (cached && cached.expiresAt > Date.now()) return cached.endpoint;
+  const pending = pendingTokenEndpointFetches.get(issuer);
+  if (pending) return pending;
 
-  const discoveryUrl = `${issuer.replace(/\/$/, "")}/.well-known/openid-configuration`;
-  const res = await fetch(discoveryUrl);
-  if (!res.ok) throw new Error(`OIDC discovery failed: ${res.status}`);
+  const promise = (async () => {
+    const result = await fetchOidcDiscovery(issuer, {
+      timeoutMs: OIDC_DISCOVERY_TIMEOUT_MS,
+      errorMessage: "OIDC discovery failed",
+      invalidResponseMessage: (message) =>
+        `OIDC discovery invalid response: ${message}`,
+      schema: tokenEndpointDiscoverySchema,
+    });
 
-  const result = z
-    .object({ token_endpoint: z.string().url() })
-    .safeParse(await res.json());
-  if (!result.success)
-    throw new Error(`OIDC discovery invalid response: ${result.error.message}`);
-
-  tokenEndpointCache.set(issuer, result.data.token_endpoint);
-  return result.data.token_endpoint;
+    tokenEndpointCache.set(issuer, {
+      endpoint: result.token_endpoint,
+      expiresAt: Date.now() + TOKEN_ENDPOINT_CACHE_TTL_MS,
+    });
+    return result.token_endpoint;
+  })().finally(() => {
+    pendingTokenEndpointFetches.delete(issuer);
+  });
+  pendingTokenEndpointFetches.set(issuer, promise);
+  return promise;
 };
 
 /**
@@ -56,28 +84,53 @@ const refreshAccessToken = async (token: JWT): Promise<JWT | null> => {
   if (!token.refreshToken) return null;
 
   try {
-    const { OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_ISSUER } = getOidcEnv();
+    const { OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_ISSUER } =
+      await ensureJacksonOidcClients();
     const tokenEndpoint = await getTokenEndpoint(OIDC_ISSUER);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      OIDC_REFRESH_TIMEOUT_MS,
+    );
 
-    const response = await fetch(tokenEndpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "refresh_token",
-        client_id: OIDC_CLIENT_ID,
-        client_secret: OIDC_CLIENT_SECRET,
-        refresh_token: token.refreshToken,
-      }),
-    });
+    let response: Response;
+    try {
+      response = await fetch(tokenEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "refresh_token",
+          client_id: OIDC_CLIENT_ID,
+          client_secret: OIDC_CLIENT_SECRET,
+          refresh_token: token.refreshToken,
+        }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
-      console.error(
-        `[refreshAccessToken] Failed: ${response.status} ${response.statusText}`,
-      );
+      const message = `[refreshAccessToken] Failed: ${response.status} ${response.statusText}`;
+      if (response.status >= 500) {
+        console.warn(`${message}. Keeping current token.`);
+        return token;
+      }
+      console.error(message);
       return null;
     }
 
-    const refreshed = refreshedTokensSchema.parse(await response.json());
+    const refreshedResult = refreshedTokensSchema.safeParse(
+      await response.json(),
+    );
+    if (!refreshedResult.success) {
+      console.error(
+        "[refreshAccessToken] Invalid response:",
+        refreshedResult.error,
+      );
+      return null;
+    }
+    const refreshed = refreshedResult.data;
 
     return {
       ...token,
@@ -86,6 +139,10 @@ const refreshAccessToken = async (token: JWT): Promise<JWT | null> => {
       refreshToken: refreshed.refresh_token ?? token.refreshToken,
     };
   } catch (error) {
+    if (!isOidcConfigurationError(error)) {
+      console.warn("[refreshAccessToken] Transient error:", error);
+      return token;
+    }
     console.error("[refreshAccessToken] Error:", error);
     return null;
   }
@@ -112,6 +169,10 @@ export const jwtCallback = async ({
 }): Promise<JWT | null> => {
   if (user) {
     token.sub = user.id ?? user.email ?? "";
+    if (!token.sub) {
+      console.error("[jwtCallback] User has no id or email");
+      return null;
+    }
     // DB から role を取得（管理者によるロール昇格を即時反映するため）
     const dbUser = await db.user.findUnique({
       where: { id: token.sub },
@@ -219,16 +280,19 @@ export const sessionCallback = async ({
   token: JWT;
 }): Promise<Session> => {
   if (session.user && token?.sub) {
-    Object.assign(session.user, {
-      id: token.sub,
-      sub: token.sub,
-      email: token.email ?? null,
-      name: token.name ?? null,
-      image: token.picture ?? null,
-      role: token.role ?? "USER",
-      tumiki: token.tumiki ?? null,
-    });
+    return {
+      ...session,
+      user: {
+        ...session.user,
+        id: token.sub,
+        sub: token.sub,
+        email: token.email ?? null,
+        name: token.name ?? null,
+        image: token.picture ?? null,
+        role: token.role ?? "USER",
+        tumiki: token.tumiki ?? null,
+      },
+    };
   }
-  session.accessToken = token.accessToken;
   return session;
 };

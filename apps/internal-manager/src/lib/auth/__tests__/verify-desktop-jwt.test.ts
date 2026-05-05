@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { createRemoteJWKSet, jwtVerify } from "jose";
 
 type FindFirstArgs = {
@@ -9,7 +9,7 @@ type FindFirstArgs = {
 const issuer = "https://idp.example.com/realms/tumiki";
 const clientId = "tumiki-internal";
 const desktopClientId = "tumiki-desktop";
-const jwksUri = `${issuer}/protocol/openid-connect/certs`;
+let currentIssuer = issuer;
 const mockJwks = vi.fn() as unknown as ReturnType<typeof createRemoteJWKSet>;
 const mockCreateRemoteJWKSet = vi.fn<typeof createRemoteJWKSet>();
 const mockJwtVerify = vi.fn<typeof jwtVerify>();
@@ -22,10 +22,11 @@ const loadModule = async () => {
     createRemoteJWKSet: mockCreateRemoteJWKSet,
     jwtVerify: mockJwtVerify,
   }));
-  vi.doMock("~/lib/env", () => ({
-    getOidcEnv: () => ({
-      OIDC_ISSUER: issuer,
+  vi.doMock("~/server/jackson/oidc-clients", () => ({
+    ensureJacksonOidcClients: () => ({
+      OIDC_ISSUER: currentIssuer,
       OIDC_CLIENT_ID: clientId,
+      OIDC_CLIENT_SECRET: "internal-secret",
       OIDC_DESKTOP_CLIENT_ID: desktopClientId,
     }),
   }));
@@ -44,13 +45,17 @@ const loadModule = async () => {
 const buildDiscoveryResponse = () =>
   ({
     ok: true,
-    json: async () => ({ jwks_uri: jwksUri }),
+    json: async () => ({
+      jwks_uri: `${currentIssuer}/protocol/openid-connect/certs`,
+    }),
   }) as Response;
 
 beforeEach(() => {
   vi.useRealTimers();
   vi.resetModules();
   vi.clearAllMocks();
+  vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  currentIssuer = issuer;
 
   mockCreateRemoteJWKSet.mockReturnValue(mockJwks);
   mockJwtVerify.mockResolvedValue({
@@ -60,6 +65,10 @@ beforeEach(() => {
   });
   mockFindFirst.mockResolvedValue({ userId: "user-001" });
   mockFetch.mockResolvedValue(buildDiscoveryResponse());
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe("verifyDesktopJwt", () => {
@@ -124,7 +133,7 @@ describe("verifyDesktopJwt", () => {
     const { verifyDesktopJwt } = await loadModule();
 
     await expect(verifyDesktopJwt("Bearer token-001")).rejects.toThrow(
-      "Invalid desktop token client",
+      "Desktopトークンのazpが一致しません",
     );
   });
 
@@ -161,6 +170,22 @@ describe("verifyDesktopJwt", () => {
     await verifyDesktopJwt("Bearer token-003");
 
     expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(mockCreateRemoteJWKSet).toHaveBeenCalledTimes(2);
+  });
+
+  test("OIDC issuerが変わった場合はTTL内でもJWKS discoveryを再取得する", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: false });
+    const { verifyDesktopJwt } = await loadModule();
+
+    await verifyDesktopJwt("Bearer token-001");
+    currentIssuer = "https://idp-alt.example.com/realms/tumiki";
+    await vi.advanceTimersByTimeAsync(30 * 1000);
+    await verifyDesktopJwt("Bearer token-002");
+
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(mockFetch.mock.calls[1]?.[0]).toBe(
+      "https://idp-alt.example.com/realms/tumiki/.well-known/openid-configuration",
+    );
     expect(mockCreateRemoteJWKSet).toHaveBeenCalledTimes(2);
   });
 

@@ -7,7 +7,7 @@ type ManagerRequestOptions = Omit<RequestInit, "headers"> & {
   headers?: HeadersInit;
 };
 
-const findValidAccessToken = async (): Promise<AuthToken | null> => {
+const findValidAuthToken = async (): Promise<AuthToken | null> => {
   const db = await getDb();
   const token = await db.authToken.findFirst({
     orderBy: { createdAt: "desc" },
@@ -24,6 +24,15 @@ const findValidAccessToken = async (): Promise<AuthToken | null> => {
   }
 
   return token;
+};
+
+const getApiBearerToken = async (token: AuthToken): Promise<string | null> => {
+  // Jackson の access_token は opaque のため、internal-manager がJWT検証できる id_token を優先する。
+  // JWT access_token 対応に切り替えた場合は、この優先順も見直す。
+  const encryptedBearerToken = token.idToken ?? token.accessToken;
+  if (!encryptedBearerToken) return null;
+  const bearerToken = await decryptToken(encryptedBearerToken);
+  return bearerToken || null;
 };
 
 const buildManagerUrl = async (path: string): Promise<string | null> => {
@@ -48,12 +57,10 @@ export const requestManagerApi = async (
   const url = await buildManagerUrl(path);
   if (!url) return null;
 
-  const token = await findValidAccessToken();
+  const token = await findValidAuthToken();
   if (!token) return null;
 
-  // accessToken を優先し、プロバイダーが発行しない場合だけ idToken を使う。
-  const encryptedBearerToken = token.accessToken ?? token.idToken;
-  const bearerToken = await decryptToken(encryptedBearerToken);
+  const bearerToken = await getApiBearerToken(token);
   if (!bearerToken) return null;
 
   const headers = new Headers(options.headers);
