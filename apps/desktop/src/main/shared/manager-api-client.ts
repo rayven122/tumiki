@@ -27,6 +27,8 @@ const findValidAuthToken = async (): Promise<AuthToken | null> => {
 };
 
 const getApiBearerToken = async (token: AuthToken): Promise<string | null> => {
+  // Jackson の access_token は opaque のため、internal-manager がJWT検証できる id_token を優先する。
+  // JWT access_token 対応に切り替えた場合は、この優先順も見直す。
   const encryptedBearerToken = token.idToken ?? token.accessToken;
   if (!encryptedBearerToken) return null;
   const bearerToken = await decryptToken(encryptedBearerToken);

@@ -4,7 +4,7 @@ import type { JWT } from "next-auth/jwt";
 import type { AdapterUser } from "@auth/core/adapters";
 import { db } from "@tumiki/internal-db/server";
 import { getTumikiClaims } from "./get-tumiki-claims";
-import { buildOidcDiscoveryUrl } from "./oidc-utils";
+import { fetchOidcDiscovery } from "./oidc-utils";
 import {
   ensureJacksonOidcClients,
   OidcNotConfiguredError,
@@ -31,6 +31,9 @@ const refreshedTokensSchema = z.object({
   expires_in: z.number(),
   refresh_token: z.string().optional(),
 });
+const tokenEndpointDiscoverySchema = z.object({
+  token_endpoint: z.string().url(),
+});
 
 const TOKEN_ENDPOINT_CACHE_TTL_MS = 10 * 60 * 1000;
 const OIDC_DISCOVERY_TIMEOUT_MS = 5 * 1000;
@@ -53,35 +56,19 @@ const getTokenEndpoint = async (issuer: string): Promise<string> => {
   if (pending) return pending;
 
   const promise = (async () => {
-    const discoveryUrl = buildOidcDiscoveryUrl(issuer);
-    const controller = new AbortController();
-    const timeoutId = setTimeout(
-      () => controller.abort(),
-      OIDC_DISCOVERY_TIMEOUT_MS,
-    );
-    let res: Response;
-    try {
-      res = await fetch(discoveryUrl, { signal: controller.signal });
-    } catch (error) {
-      throw new Error("OIDC discovery failed", { cause: error });
-    } finally {
-      clearTimeout(timeoutId);
-    }
-    if (!res.ok) throw new Error(`OIDC discovery failed: ${res.status}`);
-
-    const result = z
-      .object({ token_endpoint: z.string().url() })
-      .safeParse(await res.json());
-    if (!result.success)
-      throw new Error(
-        `OIDC discovery invalid response: ${result.error.message}`,
-      );
+    const result = await fetchOidcDiscovery(issuer, {
+      timeoutMs: OIDC_DISCOVERY_TIMEOUT_MS,
+      errorMessage: "OIDC discovery failed",
+      invalidResponseMessage: (message) =>
+        `OIDC discovery invalid response: ${message}`,
+      schema: tokenEndpointDiscoverySchema,
+    });
 
     tokenEndpointCache.set(issuer, {
-      endpoint: result.data.token_endpoint,
+      endpoint: result.token_endpoint,
       expiresAt: Date.now() + TOKEN_ENDPOINT_CACHE_TTL_MS,
     });
-    return result.data.token_endpoint;
+    return result.token_endpoint;
   })().finally(() => {
     pendingTokenEndpointFetches.delete(issuer);
   });

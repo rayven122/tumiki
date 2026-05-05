@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { createRemoteJWKSet, jwtVerify } from "jose";
 
 type FindFirstArgs = {
@@ -54,6 +54,7 @@ beforeEach(() => {
   vi.useRealTimers();
   vi.resetModules();
   vi.clearAllMocks();
+  vi.spyOn(console, "warn").mockImplementation(() => undefined);
   currentIssuer = issuer;
 
   mockCreateRemoteJWKSet.mockReturnValue(mockJwks);
@@ -64,6 +65,10 @@ beforeEach(() => {
   });
   mockFindFirst.mockResolvedValue({ userId: "user-001" });
   mockFetch.mockResolvedValue(buildDiscoveryResponse());
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe("verifyDesktopJwt", () => {

@@ -75,6 +75,7 @@ const ensureConnection = async ({
       product,
       rawMetadata,
       defaultRedirectUrl: redirectUrl,
+      // Jackson API は redirectUrl を JSON 配列文字列（複数URL許容）として受け付ける。
       redirectUrl: JSON.stringify([redirectUrl]),
     }),
   );

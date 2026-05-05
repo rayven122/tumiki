@@ -1,6 +1,6 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { ensureJacksonOidcClients } from "~/server/jackson/oidc-clients";
-import { buildOidcDiscoveryUrl } from "./oidc-utils";
+import { fetchOidcDiscovery } from "./oidc-utils";
 import { z } from "zod";
 import { db } from "@tumiki/internal-db/server";
 
@@ -42,34 +42,15 @@ const getJwks = async (): Promise<ReturnType<typeof createRemoteJWKSet>> => {
   if (jwksPromise && jwksPromiseIssuer === OIDC_ISSUER) return jwksPromise;
 
   const promise = (async () => {
-    const discoveryUrl = buildOidcDiscoveryUrl(OIDC_ISSUER);
+    const config = await fetchOidcDiscovery(OIDC_ISSUER, {
+      timeoutMs: OIDC_DISCOVERY_TIMEOUT_MS,
+      errorMessage: "OIDCディスカバリ取得失敗",
+      invalidResponseMessage: () =>
+        "OIDCディスカバリにjwks_uriが含まれていません",
+      schema: discoverySchema,
+    });
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(
-      () => controller.abort(),
-      OIDC_DISCOVERY_TIMEOUT_MS,
-    );
-    let res: Response;
-    try {
-      res = await fetch(discoveryUrl, {
-        signal: controller.signal,
-      });
-    } catch (error) {
-      throw new Error("OIDCディスカバリ取得失敗", { cause: error });
-    } finally {
-      clearTimeout(timeoutId);
-    }
-
-    if (!res.ok) {
-      throw new Error("OIDCディスカバリ取得失敗");
-    }
-
-    const config = discoverySchema.safeParse(await res.json());
-    if (!config.success) {
-      throw new Error("OIDCディスカバリにjwks_uriが含まれていません");
-    }
-
-    cachedJwks = createRemoteJWKSet(new URL(config.data.jwks_uri));
+    cachedJwks = createRemoteJWKSet(new URL(config.jwks_uri));
     cachedJwksIssuer = OIDC_ISSUER;
     cachedJwksExpiresAt = Date.now() + JWKS_DISCOVERY_CACHE_TTL_MS;
     return cachedJwks;
@@ -107,6 +88,9 @@ export const verifyDesktopJwt = async (
     // Desktop client ID の audience 検証に失敗する。この場合だけ issuer 検証後に
     // azp（Authorized Party）が Desktop client ID と一致することを代替条件にする。
     // Desktop が優先送信する id_token は aud が Desktop client ID なので通常パスを通る。
+    console.warn(
+      "[verifyDesktopJwt] audience検証失敗、azpフォールバックを使用 (access_token?)",
+    );
     const result = await jwtVerify(token, jwks, {
       issuer: OIDC_ISSUER,
     });
