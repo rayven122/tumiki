@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { Logger, McpServerConfig } from "../types.js";
 import { createProxyCore, createSingleServerCore } from "../core.js";
+import { createUpstreamClient } from "../outbound/upstream-client.js";
 import { createUpstreamPool } from "../outbound/upstream-pool.js";
 import { createMockLogger } from "./test-helpers.js";
 
@@ -275,5 +276,27 @@ describe("createSingleServerCore", () => {
     core.onStatusChange(callback);
 
     expect(mockClientOnStatusChange).toHaveBeenCalledWith(callback);
+  });
+
+  test("DEV-1599: optionsのresolveAllowedToolsをconfig.name部分適用してUpstreamClientへ伝播する", async () => {
+    const resolveAllowedTools = vi.fn().mockResolvedValue(["find_file"]);
+    createSingleServerCore(testConfig, mockLogger, { resolveAllowedTools });
+
+    // UpstreamClient へ渡された options を取り出し、内部 resolver を直接呼んで
+    // config.name で部分適用されていることを確認する
+    const callArgs = vi.mocked(createUpstreamClient).mock.lastCall;
+    expect(callArgs?.[0]).toStrictEqual(testConfig);
+    expect(callArgs?.[1]).toStrictEqual(mockLogger);
+    const passedResolver = callArgs?.[2]?.resolveAllowedTools;
+    expect(typeof passedResolver).toBe("function");
+    await passedResolver?.();
+    expect(resolveAllowedTools).toHaveBeenCalledWith(testConfig.name);
+  });
+
+  test("DEV-1599: optionsが未指定の場合はresolveAllowedTools未設定でUpstreamClientを生成する", () => {
+    createSingleServerCore(testConfig, mockLogger);
+
+    const callArgs = vi.mocked(createUpstreamClient).mock.lastCall;
+    expect(callArgs?.[2]?.resolveAllowedTools).toBeUndefined();
   });
 });

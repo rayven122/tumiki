@@ -204,7 +204,13 @@ if (isMcpProxyMode) {
         serverName: string,
       ): Promise<string[] | null> => {
         const connMeta = metaMap.get(serverName);
-        if (!connMeta) return null;
+        if (!connMeta) {
+          // 未登録サーバーは全許可にせず、明示的に全拒否する（安全側にフォールバック）
+          process.stderr.write(
+            `[tumiki-mcp-proxy] 未登録サーバー "${serverName}" の resolver をスキップ\n`,
+          );
+          return [];
+        }
         const db = await getDb();
         const tools = await findToolsByConnectionId(db, connMeta.connectionId);
         if (tools.length === 0) return null;
