@@ -30,5 +30,6 @@ export type AiClientWriteResult = {
 export type AiClientWriteErrorCode =
   | "UNSUPPORTED_PLATFORM"
   | "INVALID_JSON"
+  | "INVALID_TOML"
   | "PERMISSION_DENIED"
   | "UNKNOWN";

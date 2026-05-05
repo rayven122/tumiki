@@ -139,7 +139,7 @@ const parseConfigContent = (
       return parseToml(content);
     } catch {
       throw new AiClientWriteError(
-        "INVALID_JSON",
+        "INVALID_TOML",
         "設定ファイルが不正なTOML形式です",
       );
     }
@@ -323,7 +323,8 @@ export const writeConfig = async (
   );
 
   // 5. シリアライズ。フォーマット別に書き出す。
-  // - jsonc: jsonc-parser でコメント保持しながら edit
+  // - jsonc + 既存ファイル: jsonc-parser でコメント保持しながら edit
+  // - jsonc 新規作成: コメントが存在しないため標準 JSON.stringify で出力（JSONC は JSON の上位互換）
   // - toml: smol-toml で stringify（注: smol-toml はコメント保持しないため既存コメントは失われる）
   // - json: 標準 JSON.stringify
   let outputContent: string;
