@@ -32,7 +32,7 @@ export const isJacksonAutoOidcConfigured = (): boolean =>
   ((process.env.JACKSON_SAML_METADATA_XML ?? "").length > 0 ||
     (process.env.JACKSON_SAML_METADATA_PATH ?? "").length > 0);
 
-const getProductNames = () => {
+const getProductNames = (): { webProduct: string; desktopProduct: string } => {
   const webProduct =
     process.env.JACKSON_WEB_PRODUCT ?? process.env.JACKSON_PRODUCT ?? "tumiki";
   const desktopProduct =
@@ -90,9 +90,7 @@ const getExplicitOidcConfig = (): ResolvedOidcConfig | null => {
   const clientSecret = process.env.OIDC_CLIENT_SECRET ?? "";
   if (!issuer || !clientId || !clientSecret) return null;
 
-  const desktopClientId =
-    process.env.OIDC_DESKTOP_CLIENT_ID ?? process.env.OIDC_CLIENT_ID;
-  if (!desktopClientId) return null;
+  const desktopClientId = process.env.OIDC_DESKTOP_CLIENT_ID ?? clientId;
 
   // 明示的な OIDC env はローカル Keycloak などの動的切り替えを考慮してキャッシュしない。
   return {
@@ -152,3 +150,8 @@ export const ensureJacksonOidcClients =
 
     return clientsPromise;
   };
+
+export const resetOidcClients = (): void => {
+  resolvedConfig = null;
+  clientsPromise = null;
+};

@@ -1,5 +1,13 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+const mockReadFile = vi.hoisted(() =>
+  vi.fn<(path: string, encoding: BufferEncoding) => Promise<string>>(),
+);
+
+vi.mock("node:fs/promises", () => ({
+  readFile: mockReadFile,
+}));
+
 type CreateSamlArgs = {
   tenant: string;
   product: string;
@@ -51,6 +59,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   clearEnv();
 
+  mockReadFile.mockResolvedValue("<xml-from-file />");
   mockIsJacksonConfigured.mockReturnValue(false);
   mockResolveExternalUrl.mockReturnValue("https://internal.example.com");
   mockGetJackson.mockResolvedValue({
@@ -103,8 +112,11 @@ describe("oidc-clients", () => {
     process.env.JACKSON_DESKTOP_PRODUCT = "tumiki-desktop";
     process.env.JACKSON_DESKTOP_REDIRECT_URL = "tumiki://auth/callback";
     mockIsJacksonConfigured.mockReturnValue(true);
-    const { ensureJacksonOidcClients, isJacksonAutoOidcConfigured } =
-      await loadModule();
+    const {
+      ensureJacksonOidcClients,
+      isJacksonAutoOidcConfigured,
+      resetOidcClients,
+    } = await loadModule();
 
     const [first, second] = await Promise.all([
       ensureJacksonOidcClients(),
@@ -139,6 +151,27 @@ describe("oidc-clients", () => {
 
     await expect(ensureJacksonOidcClients()).resolves.toStrictEqual(first);
     expect(mockCreateSAMLConnection).toHaveBeenCalledTimes(2);
+
+    resetOidcClients();
+    await expect(ensureJacksonOidcClients()).resolves.toStrictEqual(first);
+    expect(mockCreateSAMLConnection).toHaveBeenCalledTimes(4);
+  });
+
+  test("Jackson自動設定はmetadata pathからXMLを読み込める", async () => {
+    process.env.JACKSON_SAML_METADATA_PATH = "/tmp/idp-metadata.xml";
+    mockIsJacksonConfigured.mockReturnValue(true);
+    const { ensureJacksonOidcClients } = await loadModule();
+
+    await expect(ensureJacksonOidcClients()).resolves.toStrictEqual({
+      OIDC_ISSUER: "https://internal.example.com",
+      OIDC_CLIENT_ID: "tumiki-client",
+      OIDC_CLIENT_SECRET: "tumiki-secret",
+      OIDC_DESKTOP_CLIENT_ID: "tumiki-desktop-client",
+    });
+    expect(mockReadFile).toHaveBeenCalledWith("/tmp/idp-metadata.xml", "utf-8");
+    expect(mockCreateSAMLConnection).toHaveBeenCalledWith(
+      expect.objectContaining({ rawMetadata: "<xml-from-file />" }),
+    );
   });
 
   test("Jackson自動設定の生成失敗後は次回呼び出しで再試行できる", async () => {
