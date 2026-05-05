@@ -37,6 +37,7 @@
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
     "check": "concurrently --kill-others-on-fail --names \"lint,format,typecheck\" \"pnpm run lint\" \"pnpm run format\" \"pnpm run typecheck\"",
+    "db:deploy": "pnpm --filter @tumiki/internal-db exec prisma migrate deploy && pnpm --filter @tumiki/db exec prisma migrate deploy",
     "docker:up": "docker compose -f docker/local/compose.yaml up -d",
     "docker:stop": "docker compose -f docker/local/compose.yaml stop",
     "docker:down": "docker compose -f docker/local/compose.yaml down",
