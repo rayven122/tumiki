@@ -353,4 +353,51 @@ describe("mcp.repository（実DB）", () => {
       ).rejects.toThrow();
     });
   });
+
+  describe("updateIsPiiMaskingEnabled", () => {
+    test("PIIマスキングを無効化する（デフォルト true から false へ）", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+
+      const result = await mcpRepository.updateIsPiiMaskingEnabled(
+        db,
+        server.id,
+        false,
+      );
+
+      expect(result.isPiiMaskingEnabled).toBe(false);
+    });
+
+    test("PIIマスキングを再度有効化する", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+      await mcpRepository.updateIsPiiMaskingEnabled(db, server.id, false);
+
+      const result = await mcpRepository.updateIsPiiMaskingEnabled(
+        db,
+        server.id,
+        true,
+      );
+
+      expect(result.isPiiMaskingEnabled).toBe(true);
+    });
+
+    test("isEnabled など他のフィールドは変更しない", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+      await mcpRepository.toggleServerEnabled(db, server.id, false);
+
+      const result = await mcpRepository.updateIsPiiMaskingEnabled(
+        db,
+        server.id,
+        false,
+      );
+
+      expect(result.isEnabled).toBe(false);
+      expect(result.isPiiMaskingEnabled).toBe(false);
+    });
+
+    test("存在しないIDの場合はエラーになる", async () => {
+      await expect(
+        mcpRepository.updateIsPiiMaskingEnabled(db, 99999, false),
+      ).rejects.toThrow();
+    });
+  });
 });

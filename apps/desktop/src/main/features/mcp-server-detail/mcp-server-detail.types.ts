@@ -31,6 +31,9 @@ export type McpConnectionDetailItem = Omit<
 /**
  * MCPサーバー詳細情報型（IPC通信用）
  * サーバー基本情報 + 接続一覧（ツール含む）
+ *
+ * 注: `McpServer` から継承するため、Prisma スキーマで追加されたフィールド
+ * （例: `isPiiMaskingEnabled`）は自動的にこの型に含まれる。
  */
 export type McpServerDetailItem = Omit<McpServer, "createdAt" | "updatedAt"> & {
   createdAt: string;

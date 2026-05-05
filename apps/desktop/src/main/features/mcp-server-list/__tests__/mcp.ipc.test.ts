@@ -413,6 +413,99 @@ describe("setupMcpIpc", () => {
     });
   });
 
+  describe("mcp:updatePiiMasking", () => {
+    test("PIIマスキングを無効化する", async () => {
+      vi.mocked(mcpService.updateIsPiiMaskingEnabled).mockResolvedValue({
+        id: 1,
+        isPiiMaskingEnabled: false,
+      } as Awaited<ReturnType<typeof mcpService.updateIsPiiMaskingEnabled>>);
+      const handler = mockIpcHandlers.get("mcp:updatePiiMasking");
+
+      const result = await handler!({} as IpcMainInvokeEvent, {
+        serverId: 1,
+        enabled: false,
+      });
+
+      // preload は Promise<void> を期待するためハンドラは undefined を返す
+      expect(result).toBeUndefined();
+      expect(mcpService.updateIsPiiMaskingEnabled).toHaveBeenCalledWith(
+        1,
+        false,
+      );
+    });
+
+    test("PIIマスキングを再度有効化する", async () => {
+      vi.mocked(mcpService.updateIsPiiMaskingEnabled).mockResolvedValue({
+        id: 2,
+        isPiiMaskingEnabled: true,
+      } as Awaited<ReturnType<typeof mcpService.updateIsPiiMaskingEnabled>>);
+      const handler = mockIpcHandlers.get("mcp:updatePiiMasking");
+
+      await handler!({} as IpcMainInvokeEvent, {
+        serverId: 2,
+        enabled: true,
+      });
+
+      expect(mcpService.updateIsPiiMaskingEnabled).toHaveBeenCalledWith(
+        2,
+        true,
+      );
+    });
+
+    test("serverIdが欠落している場合はZodバリデーションエラーになる", async () => {
+      const handler = mockIpcHandlers.get("mcp:updatePiiMasking");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, { enabled: true }),
+      ).rejects.toThrow("PIIマスキング設定の更新に失敗しました");
+      expect(mcpService.updateIsPiiMaskingEnabled).not.toHaveBeenCalled();
+    });
+
+    test("serverIdが文字列の場合はZodバリデーションエラーになる", async () => {
+      const handler = mockIpcHandlers.get("mcp:updatePiiMasking");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, {
+          serverId: "invalid",
+          enabled: true,
+        }),
+      ).rejects.toThrow("PIIマスキング設定の更新に失敗しました");
+      expect(mcpService.updateIsPiiMaskingEnabled).not.toHaveBeenCalled();
+    });
+
+    test("enabledが欠落している場合はZodバリデーションエラーになる", async () => {
+      const handler = mockIpcHandlers.get("mcp:updatePiiMasking");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, { serverId: 1 }),
+      ).rejects.toThrow("PIIマスキング設定の更新に失敗しました");
+      expect(mcpService.updateIsPiiMaskingEnabled).not.toHaveBeenCalled();
+    });
+
+    test("enabledが boolean 以外の場合はZodバリデーションエラーになる", async () => {
+      const handler = mockIpcHandlers.get("mcp:updatePiiMasking");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, {
+          serverId: 1,
+          enabled: "true",
+        }),
+      ).rejects.toThrow("PIIマスキング設定の更新に失敗しました");
+      expect(mcpService.updateIsPiiMaskingEnabled).not.toHaveBeenCalled();
+    });
+
+    test("サービスがエラーを投げた場合はラップして再スローする", async () => {
+      vi.mocked(mcpService.updateIsPiiMaskingEnabled).mockRejectedValue(
+        new Error("DB接続エラー"),
+      );
+      const handler = mockIpcHandlers.get("mcp:updatePiiMasking");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, { serverId: 1, enabled: false }),
+      ).rejects.toThrow("PIIマスキング設定の更新に失敗しました: DB接続エラー");
+    });
+  });
+
   describe("ハンドラー登録", () => {
     test("全てのIPCハンドラーが登録される", () => {
       expect(mockIpcHandlers.has("mcp:createFromCatalog")).toBe(true);
@@ -422,6 +515,7 @@ describe("setupMcpIpc", () => {
       expect(mockIpcHandlers.has("mcp:updateServer")).toBe(true);
       expect(mockIpcHandlers.has("mcp:deleteServer")).toBe(true);
       expect(mockIpcHandlers.has("mcp:toggleServer")).toBe(true);
+      expect(mockIpcHandlers.has("mcp:updatePiiMasking")).toBe(true);
     });
   });
 });
