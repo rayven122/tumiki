@@ -24,7 +24,7 @@ export const AI_CLIENTS: AiClient[] = [
       t === "dark"
         ? "/logos/ai-clients/claude.webp"
         : "/logos/ai-clients/claude.svg",
-    configTargetPath: "<プロジェクトルート>/.mcp.json",
+    configTargetPath: "~/.claude.json",
   },
   {
     id: "cursor",

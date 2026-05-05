@@ -73,6 +73,22 @@ describe("ai-client.service", () => {
       );
     });
 
+    test.each(["claude-code", "windsurf", "cline", "roo-code"])(
+      "Phase 2 クライアント %s でも mcpServers を読める",
+      async (clientId) => {
+        await fs.writeFile(
+          configPath,
+          JSON.stringify({
+            mcpServers: { foo: { command: "x", args: [] } },
+          }),
+          "utf-8",
+        );
+        const result = await getPreview(clientId);
+        expect(result.exists).toStrictEqual(true);
+        expect(result.existingServerSlugs).toStrictEqual(["foo"]);
+      },
+    );
+
     test("resolveConfigPath が null を返す場合 UNSUPPORTED_PLATFORM エラー", async () => {
       vi.mocked(resolveConfigPath).mockReturnValueOnce(null);
       await expect(getPreview("claude-desktop")).rejects.toMatchObject({
