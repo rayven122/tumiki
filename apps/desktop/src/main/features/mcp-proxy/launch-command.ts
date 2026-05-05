@@ -11,8 +11,9 @@ export type McpProxyLaunchCommand = {
 export const getMcpProxyLaunchCommand = (): McpProxyLaunchCommand => {
   if (app.isPackaged) {
     // Linux AppImage では process.execPath は FUSE マウント先（実行ごとに変わる）を指すため、
-    // 外側の AppImage バイナリパスを示す環境変数 APPIMAGE を優先する
-    const command = process.env.APPIMAGE ?? process.execPath;
+    // 外側の AppImage バイナリパスを示す環境変数 APPIMAGE を優先する。
+    // 空文字（APPIMAGE="" ）も無効値として扱いたいので ?? ではなく || を使う。
+    const command = process.env.APPIMAGE || process.execPath;
     return { command, args: ["--mcp-proxy"] };
   }
   // dev時 process.argv[1] は electron-vite の起動方式によって "." 等の相対パスのことがある。

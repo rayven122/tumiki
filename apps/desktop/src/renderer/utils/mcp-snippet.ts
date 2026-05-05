@@ -1,5 +1,7 @@
 import type { McpProxyLaunchCommand } from "../../main/types";
 
+// "cursor" は Cursor 専用ではなく、Cursor / Claude Desktop / VS Code / Cline 等が共通で使う
+// `{ mcpServers: { ... } }` ラッパー形式の代表名として扱う（claude-code のみ独自形式）
 export type AiClientFormat = "claude-code" | "cursor" | "claude-desktop";
 
 export type AiClientSnippetSpec = {
