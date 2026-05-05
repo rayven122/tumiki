@@ -1,3 +1,4 @@
+import type { ResolveAllowedToolsByName } from "./outbound/upstream-pool.js";
 import type {
   CallToolResult,
   Logger,
@@ -75,6 +76,10 @@ export const createSingleServerCore = (
   };
 };
 
+export type CreateProxyCoreOptions = {
+  resolveAllowedTools?: ResolveAllowedToolsByName;
+};
+
 /**
  * ProxyCoreを生成（cli.ts / process.ts で共通利用）
  * UpstreamPool（ライフサイクル管理）+ ToolAggregator（ツール集約・ルーティング）を組み合わせる
@@ -82,8 +87,9 @@ export const createSingleServerCore = (
 export const createProxyCore = (
   configs: McpServerConfig[],
   logger: Logger,
+  options?: CreateProxyCoreOptions,
 ): ProxyCore => {
-  const pool = createUpstreamPool(logger);
+  const pool = createUpstreamPool(logger, options);
   for (const config of configs) {
     pool.addServer(config);
   }

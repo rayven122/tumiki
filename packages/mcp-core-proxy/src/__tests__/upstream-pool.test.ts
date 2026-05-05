@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { UpstreamPool } from "../outbound/upstream-pool.js";
 import type { Logger, McpServerConfig } from "../types.js";
+import { createUpstreamClient } from "../outbound/upstream-client.js";
 import { createUpstreamPool } from "../outbound/upstream-pool.js";
 import { createMockLogger } from "./test-helpers.js";
 
@@ -176,6 +177,37 @@ describe("UpstreamPool", () => {
       clientCallback("server-1", "running");
 
       expect(callback).toHaveBeenCalledWith("server-1", "running", undefined);
+    });
+  });
+
+  describe("resolveAllowedTools（DEV-1599: クライアントへ部分適用される）", () => {
+    test("pool に渡した resolver が config.name で部分適用されて client に渡る", async () => {
+      const resolveAllowedTools = vi
+        .fn<(serverName: string) => Promise<string[] | null>>()
+        .mockResolvedValue(["tool-a"]);
+      const dynamicPool = createUpstreamPool(mockLogger, {
+        resolveAllowedTools,
+      });
+      dynamicPool.addServer(createTestConfig("server-1"));
+
+      // createUpstreamClient呼び出し時の第3引数（options）を取得
+      const calls = vi.mocked(createUpstreamClient).mock.calls;
+      const lastCall = calls[calls.length - 1];
+      const passedOptions = lastCall?.[2] as
+        | { resolveAllowedTools?: () => Promise<string[] | null> }
+        | undefined;
+      expect(passedOptions?.resolveAllowedTools).toBeDefined();
+
+      // client側で呼ばれたとき、サーバー名がpoolのresolverに伝わる
+      await passedOptions?.resolveAllowedTools?.();
+      expect(resolveAllowedTools).toHaveBeenCalledWith("server-1");
+    });
+
+    test("pool にresolverを渡さなかった場合はclient optionsはundefined", () => {
+      pool.addServer(createTestConfig("server-1"));
+      const calls = vi.mocked(createUpstreamClient).mock.calls;
+      const lastCall = calls[calls.length - 1];
+      expect(lastCall?.[2]).toBeUndefined();
     });
   });
 });

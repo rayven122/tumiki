@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { Logger, McpServerConfig } from "../types.js";
 import { createProxyCore, createSingleServerCore } from "../core.js";
+import { createUpstreamPool } from "../outbound/upstream-pool.js";
 import { createMockLogger } from "./test-helpers.js";
 
 // UpstreamClientのモック（createSingleServerCore用）
@@ -92,6 +93,16 @@ describe("createProxyCore", () => {
     expect(mockAddServer).toHaveBeenCalledTimes(2);
     expect(mockAddServer).toHaveBeenCalledWith(configs[0]);
     expect(mockAddServer).toHaveBeenCalledWith(configs[1]);
+  });
+
+  test("DEV-1599: optionsのresolveAllowedToolsをupstream-poolに伝播する", () => {
+    const resolveAllowedTools = vi.fn();
+    createProxyCore([], mockLogger, { resolveAllowedTools });
+
+    expect(createUpstreamPool).toHaveBeenLastCalledWith(
+      mockLogger,
+      expect.objectContaining({ resolveAllowedTools }),
+    );
   });
 
   test("listTools()がAggregator経由でツール一覧を返す", async () => {

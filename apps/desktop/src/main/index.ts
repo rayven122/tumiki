@@ -194,11 +194,29 @@ if (isMcpProxyMode) {
         ) => Promise<void>;
       };
 
+      // 許可ツール解決resolver（DEV-1599: GUI のトグル変更を CLI に即時反映）
+      // DB が0件の場合は null（フィルタ無効）を返し、起動時の挙動と整合させる。
+      // 例外時は upstream-client 側で起動時設定にフォールバックされる。
+      const { findToolsByConnectionId } =
+        await import("./features/mcp-server-list/mcp.repository");
+      const { getDb } = await import("./shared/db");
+      const resolveAllowedTools = async (
+        serverName: string,
+      ): Promise<string[] | null> => {
+        const connMeta = metaMap.get(serverName);
+        if (!connMeta) return null;
+        const db = await getDb();
+        const tools = await findToolsByConnectionId(db, connMeta.connectionId);
+        if (tools.length === 0) return null;
+        return tools.filter((t) => t.isAllowed).map((t) => t.name);
+      };
+
       // PII マスキングは runMcpProxy 内でデフォルト有効化されるため、Desktop 側は何も指定しない
       // （カスタマイズしたい場合のみ hooks.filter を渡す）
       await mod.runMcpProxy(configs, {
         onToolCall,
         onStatusChange,
+        resolveAllowedTools,
         onShutdown: async () => {
           await stopAuditLogManagerSyncScheduler();
           await resetAllServerStatus().catch(() => {});

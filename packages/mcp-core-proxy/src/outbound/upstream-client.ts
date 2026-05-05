@@ -36,11 +36,26 @@ export type UpstreamClient = {
 };
 
 /**
+ * 許可ツール名を動的に解決するresolver。
+ * 戻り値: 許可ツール名一覧（その時点の真）。null は「全ツール許可」（フィルタ無効）。
+ */
+export type ResolveAllowedTools = () => Promise<string[] | null>;
+
+export type CreateUpstreamClientOptions = {
+  /**
+   * 指定時、listTools/callTool 毎に呼ばれて config.allowedTools より優先される。
+   * 例外時は config.allowedTools にフォールバック。
+   */
+  resolveAllowedTools?: ResolveAllowedTools;
+};
+
+/**
  * 1つのMCPサーバーへのstdio接続を管理するクライアントを作成
  */
 export const createUpstreamClient = (
   config: McpServerConfig,
   logger: Logger,
+  options?: CreateUpstreamClientOptions,
 ): UpstreamClient => {
   // 内部状態
   let client: Client | null = null;
@@ -52,11 +67,29 @@ export const createUpstreamClient = (
   let retryCount = 0;
   let retryTimer: ReturnType<typeof setTimeout> | null = null;
   let lastError: string | undefined;
-  const allowedToolNames = config.allowedTools
+  // 起動時の静的許可ツール（後方互換 / resolver 失敗時のフォールバック）
+  const staticAllowedToolNames = config.allowedTools
     ? new Set(config.allowedTools)
     : null;
-  // handleCrashの二重呼び出し防止フラグ（onclose/onerrorが両方発火するケース対策）
+  // onclose/onerror の二重発火対策（handleCrash を1回だけ走らせる）
   let crashHandled = false;
+
+  // resolver があれば都度呼んで最新の許可集合を返す（DEV-1599: トグル即時反映）。
+  // 例外時は static にフォールバックする。
+  const getAllowedToolNames = async (): Promise<Set<string> | null> => {
+    const resolver = options?.resolveAllowedTools;
+    if (!resolver) return staticAllowedToolNames;
+    try {
+      const list = await resolver();
+      return list ? new Set(list) : null;
+    } catch (error) {
+      logger.error(
+        `MCPサーバー "${config.name}" の許可ツール解決に失敗しました（起動時設定にフォールバック）`,
+        { error: error instanceof Error ? error.message : String(error) },
+      );
+      return staticAllowedToolNames;
+    }
+  };
 
   /**
    * MCPサーバー接続に必要なClient/Transportを生成
@@ -246,6 +279,7 @@ export const createUpstreamClient = (
     }
 
     const result = await client.listTools();
+    const allowedToolNames = await getAllowedToolNames();
     return result.tools
       .filter((tool) => !allowedToolNames || allowedToolNames.has(tool.name))
       .map((tool) => ({
@@ -267,6 +301,7 @@ export const createUpstreamClient = (
         `MCPサーバー "${config.name}" は接続されていません（status: ${status}）`,
       );
     }
+    const allowedToolNames = await getAllowedToolNames();
     if (allowedToolNames && !allowedToolNames.has(name)) {
       throw new Error(`ツール "${name}" は許可されていません`);
     }
