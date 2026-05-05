@@ -344,7 +344,7 @@ describe("ai-client.service", () => {
         expect(written).toContain("--x");
       });
 
-      test("既存 TOML の他テーブル（[history] 等）を保持する", async () => {
+      test("既存 TOML の他テーブル（[history] 等）を保持する（コメントは失われる既知制約）", async () => {
         const tomlContent = `# Codex CLI 設定
 [history]
 max_size = 1000
@@ -367,6 +367,8 @@ args = []
         // 既存と新規両方の mcp_servers が含まれる
         expect(after).toContain("[mcp_servers.existing]");
         expect(after).toContain("[mcp_servers.newone]");
+        // smol-toml はコメント保持しないため、書き込み後にコメントは失われる（既知の制約）
+        expect(after).not.toContain("# Codex CLI 設定");
       });
 
       test("getPreview は mcp_servers テーブルを参照する", async () => {
@@ -383,10 +385,10 @@ command = "/bar"
         expect(result.existingServerSlugs.sort()).toStrictEqual(["bar", "foo"]);
       });
 
-      test("不正な TOML はエラーになる", async () => {
+      test("不正な TOML は INVALID_TOML エラーになる", async () => {
         await fs.writeFile(configPath, "this is not = [valid toml", "utf-8");
         await expect(getPreview("codex-cli")).rejects.toMatchObject({
-          code: "INVALID_JSON",
+          code: "INVALID_TOML",
         });
       });
     });
@@ -407,7 +409,7 @@ command = "/bar"
         });
       });
 
-      test("既存JSONCファイルのコメントを保持して書き込む", async () => {
+      test("既存JSONCファイルのコメントを保持して書き込む（インラインコメント含む）", async () => {
         // JSONC（コメント付き）で既存ファイルを作成
         const jsoncContent = `{
   // ユーザー設定の MCP サーバー
@@ -428,9 +430,12 @@ command = "/bar"
         });
 
         const after = await fs.readFile(configPath, "utf-8");
-        // コメントが保持されている
+        // ルートレベルの行コメント・ブロックコメントが保持されている
         expect(after).toContain("// ユーザー設定の MCP サーバー");
         expect(after).toContain("/* 他の Zed 設定 */");
+        // context_servers 内のインラインコメントは modify による値置換で失われる（既知制約）
+        // ※ jsonc-parser の modify は対象キー全体を置換するため、その配下のコメントは保持されない
+        expect(after).not.toContain("// 既存サーバー");
         // theme キーが保持されている
         expect(after).toContain('"theme": "One Dark"');
         // 新サーバーが追加されている
