@@ -10,13 +10,14 @@
  *   - JACKSON_ENCRYPTION_KEY: 32 文字以上の暗号化キー
  *   - NEXTAUTH_URL_INTERNAL_MANAGER: アプリの公開 URL（saml-jackson の externalUrl）
  *   - JACKSON_TENANT: テナント識別子（デフォルト "default"）
- *   - JACKSON_PRODUCT: プロダクト識別子（デフォルト "tumiki"）
+ *   - JACKSON_WEB_PRODUCT: Web 用プロダクト識別子（デフォルト JACKSON_PRODUCT or "tumiki"）
+ *   - JACKSON_DESKTOP_PRODUCT: Desktop 用プロダクト識別子（デフォルト "<web-product>-desktop"）
+ *   - JACKSON_DESKTOP_REDIRECT_URL: Desktop 用 redirect_uri（デフォルト "tumiki://auth/callback"）
  *
  * 出力:
- *   登録完了後、以下を環境変数に設定する:
- *   - OIDC_CLIENT_ID: <出力された clientID>
- *   - OIDC_CLIENT_SECRET: <出力された clientSecret>
- *   - OIDC_ISSUER: <NEXTAUTH_URL_INTERNAL_MANAGER>
+ *   登録結果の確認用に client 情報を 0600 のファイルへ書き出す。
+ *   通常運用ではこのスクリプトを使わず、JACKSON_SAML_METADATA_XML /
+ *   JACKSON_SAML_METADATA_PATH からアプリが自動生成した connection を使う。
  */
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -32,53 +33,80 @@ const main = async () => {
   }
 
   const tenant = process.env.JACKSON_TENANT ?? "default";
-  const product = process.env.JACKSON_PRODUCT ?? "tumiki";
+  const webProduct =
+    process.env.JACKSON_WEB_PRODUCT ?? process.env.JACKSON_PRODUCT ?? "tumiki";
+  const desktopProduct =
+    process.env.JACKSON_DESKTOP_PRODUCT ?? `${webProduct}-desktop`;
+  const desktopRedirectUrl =
+    process.env.JACKSON_DESKTOP_REDIRECT_URL ?? "tumiki://auth/callback";
   // モジュールと同じ解決ロジックを使用（不一致防止）
   const externalUrl = resolveExternalUrl();
+  const webRedirectUrl = `${externalUrl}/api/auth/callback/oidc`;
 
   const rawMetadata = await readFile(resolve(metadataPath), "utf-8");
 
   const { connectionAPIController } = await getJackson();
 
-  // 同 tenant/product の既存接続を取得
-  const existing = await connectionAPIController.getConnections({
-    tenant,
+  const createConnection = async ({
     product,
+    redirectUrl,
+  }: {
+    product: string;
+    redirectUrl: string;
+  }) => {
+    const existing = await connectionAPIController.getConnections({
+      tenant,
+      product,
+    });
+
+    if (existing.length > 0) {
+      console.log(
+        `[INFO] Existing connection found for ${tenant}/${product}, will be updated`,
+      );
+    }
+
+    return connectionAPIController.createSAMLConnection({
+      tenant,
+      product,
+      rawMetadata,
+      defaultRedirectUrl: redirectUrl,
+      redirectUrl: JSON.stringify([redirectUrl]),
+    });
+  };
+
+  // 同じ SAML IdP metadata を使い、OIDC client は Web confidential と Desktop public で分ける。
+  const webConnection = await createConnection({
+    product: webProduct,
+    redirectUrl: webRedirectUrl,
   });
-
-  if (existing.length > 0) {
-    console.log(
-      `[INFO] Existing connection found for ${tenant}/${product}, will be updated`,
-    );
-  }
-
-  // Open Redirect 対策のため、redirectUrl はワイルドカードではなく
-  // 具体的なコールバックパスのみを許可する
-  const connection = await connectionAPIController.createSAMLConnection({
-    tenant,
-    product,
-    rawMetadata,
-    defaultRedirectUrl: `${externalUrl}/api/auth/callback/oidc`,
-    redirectUrl: JSON.stringify([
-      `${externalUrl}/api/auth/callback/oidc`,
-      `${externalUrl}/api/auth/callback/jackson`,
-    ]),
+  const desktopConnection = await createConnection({
+    product: desktopProduct,
+    redirectUrl: desktopRedirectUrl,
   });
 
   // クレデンシャルは標準出力ではなくファイルに書き出す（CI ログ等への漏洩防止）
   const outputPath =
     process.env.JACKSON_OUTPUT_FILE ?? "/tmp/jackson-connection.txt";
   const output = [
-    "=== Connection registered ===",
+    "=== Web connection registered ===",
     `tenant:       ${tenant}`,
-    `product:      ${product}`,
-    `clientID:     ${connection.clientID}`,
-    `clientSecret: ${connection.clientSecret}`,
+    `product:      ${webProduct}`,
+    `redirectUrl:  ${webRedirectUrl}`,
+    `clientID:     ${webConnection.clientID}`,
+    `clientSecret: ${webConnection.clientSecret}`,
     "",
-    "=== Set these env vars in Infisical (staging) ===",
+    "=== Desktop connection registered ===",
+    `tenant:       ${tenant}`,
+    `product:      ${desktopProduct}`,
+    `redirectUrl:  ${desktopRedirectUrl}`,
+    `clientID:     ${desktopConnection.clientID}`,
+    `clientSecret: ${desktopConnection.clientSecret}`,
+    "",
+    "=== Auto-provisioned OIDC values (debug only; do not copy to env in normal operation) ===",
     `OIDC_ISSUER=${externalUrl}`,
-    `OIDC_CLIENT_ID=${connection.clientID}`,
-    `OIDC_CLIENT_SECRET=${connection.clientSecret}`,
+    `OIDC_CLIENT_ID=${webConnection.clientID}`,
+    `OIDC_CLIENT_SECRET=${webConnection.clientSecret}`,
+    `OIDC_DESKTOP_CLIENT_ID=${desktopConnection.clientID}`,
     "",
     "=== Update Google Workspace custom SAML app ===",
     `ACS URL:    ${externalUrl}/api/saml/acs`,
@@ -98,16 +126,22 @@ const main = async () => {
 
   console.log("\n=== Connection registered ===");
   console.log(`tenant:       ${tenant}`);
-  console.log(`product:      ${product}`);
-  console.log(`clientID:     ${connection.clientID.slice(0, 8)}...`);
+  console.log(
+    `web:          ${webProduct} / ${webConnection.clientID.slice(0, 8)}...`,
+  );
+  console.log(
+    `desktop:      ${desktopProduct} / ${desktopConnection.clientID.slice(0, 8)}...`,
+  );
   console.log(`clientSecret: ***（マスク）***`);
   console.log("");
   console.log(`✓ 完全な値は保存先に書き出しました: ${outputPath}`);
   console.log(`  権限 0600 で保存。確認後は手動で削除してください:`);
   console.log(`  rm ${outputPath}`);
   console.log("");
-  console.log("Infisical CLI で直接設定する場合:");
-  console.log(`  source ${outputPath} の値を Infisical secrets set で投入`);
+  console.log("通常運用ではこの値を Infisical に転記せず、");
+  console.log(
+    "JACKSON_SAML_METADATA_XML / JACKSON_SAML_METADATA_PATH を使います。",
+  );
 
   process.exit(0);
 };

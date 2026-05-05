@@ -9,7 +9,7 @@ import { ToolDetail } from "./pages/ToolDetail";
 import { ToolCatalog } from "./pages/ToolCatalog";
 import { HistoryList } from "./pages/HistoryList";
 import { HistoryDetail } from "./pages/HistoryDetail";
-import { UpgradePlan } from "./pages/UpgradePlan";
+// import { UpgradePlan } from "./pages/UpgradePlan";
 import { SettingsPage } from "./pages/Settings";
 import { Notifications } from "./pages/Notifications";
 import { ConnectorAuto } from "./pages/ConnectorAuto";
@@ -41,9 +41,10 @@ export const App = (): JSX.Element => {
               <Route path="tools/:toolId" element={<ToolDetail />} />
               <Route path="history" element={<HistoryList />} />
               <Route path="history/:historyId" element={<HistoryDetail />} />
-              <Route path="requests" element={<UpgradePlan />} />
-              <Route path="requests/new" element={<UpgradePlan />} />
-              <Route path="requests/:requestId" element={<UpgradePlan />} />
+              {/* 権限申請画面は一旦非表示 */}
+              {/* <Route path="requests" element={<UpgradePlan />} /> */}
+              {/* <Route path="requests/new" element={<UpgradePlan />} /> */}
+              {/* <Route path="requests/:requestId" element={<UpgradePlan />} /> */}
               <Route path="ai-integrations" element={<AiIntegrations />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="notifications" element={<Notifications />} />

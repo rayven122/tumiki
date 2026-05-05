@@ -18,6 +18,7 @@ Keycloak は `http://localhost:8888` で起動します。
 OIDC_ISSUER=http://localhost:8888/realms/tumiki
 OIDC_CLIENT_ID=tumiki-internal-manager
 OIDC_CLIENT_SECRET=<KEYCLOAK_INTERNAL_MANAGER_CLIENT_SECRET>
+OIDC_DESKTOP_CLIENT_ID=tumiki-desktop
 INTERNAL_MANAGER_BOOTSTRAP_ADMIN_EMAIL=admin@tumiki.local
 ```
 

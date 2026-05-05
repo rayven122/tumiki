@@ -3,7 +3,7 @@ import type { JWT } from "next-auth/jwt";
 import type { AdapterUser } from "@auth/core/adapters";
 import { db } from "@tumiki/internal-db/server";
 import { getTumikiClaims } from "./get-tumiki-claims";
-import { getOidcEnv } from "~/lib/env";
+import { ensureJacksonOidcClients } from "~/server/jackson/oidc-clients";
 import { z } from "zod";
 
 // OIDCアクセストークンのペイロードスキーマ
@@ -56,7 +56,8 @@ const refreshAccessToken = async (token: JWT): Promise<JWT | null> => {
   if (!token.refreshToken) return null;
 
   try {
-    const { OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_ISSUER } = getOidcEnv();
+    const { OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_ISSUER } =
+      await ensureJacksonOidcClients();
     const tokenEndpoint = await getTokenEndpoint(OIDC_ISSUER);
 
     const response = await fetch(tokenEndpoint, {

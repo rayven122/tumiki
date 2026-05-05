@@ -77,6 +77,8 @@ const buildJacksonOption = (): JacksonOption => {
     // OIDC IdP の ID Token 署名鍵
     openid: {
       jwsAlg: "RS256",
+      // Web と Desktop の redirect_uri を client ごとに厳密一致で検証する。
+      redirectExactMatch: true,
       ...(process.env.JACKSON_OIDC_PRIVATE_KEY &&
       process.env.JACKSON_OIDC_PUBLIC_KEY
         ? {

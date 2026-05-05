@@ -7,7 +7,7 @@ type FindFirstArgs = {
 };
 
 const issuer = "https://idp.example.com/realms/tumiki";
-const clientId = "tumiki-internal";
+const desktopClientId = "tumiki-desktop";
 const jwksUri = `${issuer}/protocol/openid-connect/certs`;
 const mockJwks = vi.fn() as unknown as ReturnType<typeof createRemoteJWKSet>;
 const mockCreateRemoteJWKSet = vi.fn<typeof createRemoteJWKSet>();
@@ -21,10 +21,12 @@ const loadModule = async () => {
     createRemoteJWKSet: mockCreateRemoteJWKSet,
     jwtVerify: mockJwtVerify,
   }));
-  vi.doMock("~/lib/env", () => ({
-    getOidcEnv: () => ({
+  vi.doMock("~/server/jackson/oidc-clients", () => ({
+    ensureJacksonOidcClients: () => ({
       OIDC_ISSUER: issuer,
-      OIDC_CLIENT_ID: clientId,
+      OIDC_CLIENT_ID: "tumiki-internal",
+      OIDC_CLIENT_SECRET: "internal-secret",
+      OIDC_DESKTOP_CLIENT_ID: desktopClientId,
     }),
   }));
   vi.doMock("@tumiki/internal-db/server", () => ({
@@ -77,7 +79,7 @@ describe("verifyDesktopJwt", () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  test("OIDC_CLIENT_IDをaudienceとしてJWTを検証する", async () => {
+  test("OIDC_DESKTOP_CLIENT_IDをaudienceとしてJWTを検証する", async () => {
     const { verifyDesktopJwt } = await loadModule();
 
     const result = await verifyDesktopJwt("Bearer token-001");
@@ -85,7 +87,7 @@ describe("verifyDesktopJwt", () => {
     expect(result).toStrictEqual({ sub: "oidc-sub", userId: "user-001" });
     expect(mockJwtVerify).toHaveBeenCalledWith("token-001", mockJwks, {
       issuer,
-      audience: clientId,
+      audience: desktopClientId,
     });
   });
 

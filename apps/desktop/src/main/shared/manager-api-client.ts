@@ -7,7 +7,7 @@ type ManagerRequestOptions = Omit<RequestInit, "headers"> & {
   headers?: HeadersInit;
 };
 
-const findValidAccessToken = async (): Promise<AuthToken | null> => {
+const findValidAuthToken = async (): Promise<AuthToken | null> => {
   const db = await getDb();
   const token = await db.authToken.findFirst({
     orderBy: { createdAt: "desc" },
@@ -24,6 +24,12 @@ const findValidAccessToken = async (): Promise<AuthToken | null> => {
   }
 
   return token;
+};
+
+const getApiBearerToken = async (token: AuthToken): Promise<string | null> => {
+  const encryptedBearerToken = token.idToken ?? token.accessToken;
+  const bearerToken = await decryptToken(encryptedBearerToken);
+  return bearerToken || null;
 };
 
 const buildManagerUrl = async (path: string): Promise<string | null> => {
@@ -48,14 +54,14 @@ export const requestManagerApi = async (
   const url = await buildManagerUrl(path);
   if (!url) return null;
 
-  const token = await findValidAccessToken();
+  const token = await findValidAuthToken();
   if (!token) return null;
 
-  const accessToken = await decryptToken(token.accessToken);
-  if (!accessToken) return null;
+  const bearerToken = await getApiBearerToken(token);
+  if (!bearerToken) return null;
 
   const headers = new Headers(options.headers);
-  headers.set("Authorization", `Bearer ${accessToken}`);
+  headers.set("Authorization", `Bearer ${bearerToken}`);
 
   return fetch(url, {
     ...options,

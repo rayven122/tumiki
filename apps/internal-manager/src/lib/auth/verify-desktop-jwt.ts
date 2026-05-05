@@ -1,5 +1,5 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
-import { getOidcEnv } from "~/lib/env";
+import { ensureJacksonOidcClients } from "~/server/jackson/oidc-clients";
 import { db } from "@tumiki/internal-db/server";
 
 export type VerifiedDesktopUser = {
@@ -20,7 +20,7 @@ const getJwks = async () => {
   if (jwksPromise) return jwksPromise;
 
   jwksPromise = (async () => {
-    const { OIDC_ISSUER } = getOidcEnv();
+    const { OIDC_ISSUER } = await ensureJacksonOidcClients();
     const discoveryUrl = `${OIDC_ISSUER.replace(/\/$/, "")}/.well-known/openid-configuration`;
 
     const controller = new AbortController();
@@ -67,12 +67,13 @@ export const verifyDesktopJwt = async (
   }
 
   const token = authHeader.slice(7);
-  const { OIDC_ISSUER, OIDC_CLIENT_ID } = getOidcEnv();
+  const { OIDC_ISSUER, OIDC_DESKTOP_CLIENT_ID } =
+    await ensureJacksonOidcClients();
 
   const jwks = await getJwks();
   const { payload } = await jwtVerify(token, jwks, {
     issuer: OIDC_ISSUER,
-    audience: OIDC_CLIENT_ID,
+    audience: OIDC_DESKTOP_CLIENT_ID,
   });
 
   const sub = payload.sub;

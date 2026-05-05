@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { getOidcEnv } from "~/lib/env";
+import { ensureJacksonOidcClients } from "~/server/jackson/oidc-clients";
 
-/** OIDC設定エンドポイント。Desktopも管理サーバーのclientIdを使うためOIDC_DESKTOP_CLIENT_IDは持たない。 */
-export const GET = () => {
-  const env = getOidcEnv();
+/** Desktop 用 OIDC 設定エンドポイント。Desktop は public client + PKCE で認証する。 */
+export const GET = async () => {
+  const env = await ensureJacksonOidcClients();
   return NextResponse.json({
     issuer: env.OIDC_ISSUER,
-    clientId: env.OIDC_CLIENT_ID,
+    clientId: env.OIDC_DESKTOP_CLIENT_ID,
   });
 };
 
