@@ -1,14 +1,13 @@
 import type { JSX } from "react";
 import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Check, Plus, X } from "lucide-react";
+import { ArrowLeft, Check, Plus } from "lucide-react";
 import type {
   McpServerItem,
   McpConnectionItem,
   ConnectionToolsResult,
 } from "../../main/types";
 import { toast } from "../_components/Toast";
-import { ToggleSwitch } from "../_components/ToggleSwitch";
 import { toSlug } from "../../shared/mcp.slug";
 import {
   FALLBACK_SLUG_PLACEHOLDER,
@@ -21,9 +20,6 @@ type SelectableConnector = {
   serverName: string;
   connection: McpConnectionItem;
 };
-
-/** 作成フェーズ */
-type Phase = "select" | "tools";
 
 /**
  * 既存の McpServer 一覧から「コネクタとして選択可能な単一接続」を平坦化して取り出す。
@@ -55,21 +51,19 @@ export const ConnectorManual = (): JSX.Element => {
   const [connectors, setConnectors] = useState<SelectableConnector[]>([]);
   const [loadingConnectors, setLoadingConnectors] = useState(true);
 
-  // フェーズ管理: select → tools → submit
-  const [phase, setPhase] = useState<Phase>("select");
-
-  // 共通入力（Step1）
   const [serverName, setServerName] = useState("");
   const [description, setDescription] = useState("");
   const [selectedConnectionIds, setSelectedConnectionIds] = useState<number[]>(
     [],
   );
 
-  // tools フェーズ用（Step2）
-  const [fetchingTools, setFetchingTools] = useState(false);
+  // ツール一覧（connectionId → tools[]）と取得状態
   const [toolsByConnectionId, setToolsByConnectionId] = useState<
     Record<number, ConnectionToolsResult["tools"]>
   >({});
+  const [loadingToolsFor, setLoadingToolsFor] = useState<Set<number>>(
+    () => new Set(),
+  );
   // connectionId → toolName → 公開可否（true=公開）
   const [allowedMap, setAllowedMap] = useState<
     Record<number, Record<string, boolean>>
@@ -111,16 +105,57 @@ export const ConnectorManual = (): JSX.Element => {
     [selectedConnectionIds, connectorByConnectionId],
   );
 
-  const toggleConnector = (connectionId: number): void => {
-    const isCurrentlySelected = selectedConnectionIds.includes(connectionId);
+  /**
+   * 選択コネクタのツール一覧を取得して内部キャッシュ・isAllowed初期値を埋める。
+   * 既に取得済みなら no-op（再取得すると編集中のチェックが消えるため）。
+   */
+  const loadToolsForConnection = async (
+    connectionId: number,
+  ): Promise<void> => {
+    if (toolsByConnectionId[connectionId]) return;
+    setLoadingToolsFor((prev) => {
+      const next = new Set(prev);
+      next.add(connectionId);
+      return next;
+    });
+    try {
+      const result = await window.electronAPI.mcp.getToolsForConnections({
+        connectionIds: [connectionId],
+      });
+      const item = result.items[0];
+      if (!item) return;
+      setToolsByConnectionId((prev) => ({
+        ...prev,
+        [connectionId]: item.tools,
+      }));
+      // 要件「ツール選択のデフォルト値としてコネクタで設定した値を利用する」
+      // → 元コネクタの isAllowed をそのまま初期値にする
+      setAllowedMap((prev) => ({
+        ...prev,
+        [connectionId]: Object.fromEntries(
+          item.tools.map((tool) => [tool.name, tool.isAllowed]),
+        ),
+      }));
+    } catch (e) {
+      const message =
+        e instanceof Error ? e.message : "ツール一覧の取得に失敗しました";
+      toast.error(message);
+    } finally {
+      setLoadingToolsFor((prev) => {
+        const next = new Set(prev);
+        next.delete(connectionId);
+        return next;
+      });
+    }
+  };
 
-    if (isCurrentlySelected) {
+  const toggleConnector = (connectionId: number): void => {
+    if (selectedConnectionIds.includes(connectionId)) {
       setSelectedConnectionIds((prev) =>
         prev.filter((x) => x !== connectionId),
       );
       return;
     }
-
     if (selectedConnectionIds.length >= VIRTUAL_SERVER_MAX_CONNECTIONS) {
       toast.error(
         `接続は最大${String(VIRTUAL_SERVER_MAX_CONNECTIONS)}件までです`,
@@ -128,77 +163,25 @@ export const ConnectorManual = (): JSX.Element => {
       return;
     }
     setSelectedConnectionIds((prev) => [...prev, connectionId]);
-  };
-
-  const canProceed =
-    serverName.trim() !== "" &&
-    selectedConnectionIds.length > 0 &&
-    !fetchingTools;
-
-  /** Step1 → Step2: 選択中コネクタの既存ツール一覧を取得し、isAllowed をデフォルト値として保持 */
-  const handleProceedToTools = async (): Promise<void> => {
-    if (!canProceed) return;
-    setFetchingTools(true);
-    setError(null);
-    try {
-      const result = await window.electronAPI.mcp.getToolsForConnections({
-        connectionIds: selectedConnectionIds,
-      });
-
-      const nextTools: Record<number, ConnectionToolsResult["tools"]> = {};
-      const nextAllowed: Record<number, Record<string, boolean>> = {};
-
-      for (const item of result.items) {
-        nextTools[item.connectionId] = item.tools;
-        // 要件「ツール選択のデフォルト値としてコネクタで設定した値を利用する」
-        // → 元コネクタの isAllowed をそのまま初期値にする
-        nextAllowed[item.connectionId] = Object.fromEntries(
-          item.tools.map((tool) => [tool.name, tool.isAllowed]),
-        );
-      }
-
-      setToolsByConnectionId(nextTools);
-      setAllowedMap(nextAllowed);
-      setPhase("tools");
-    } catch (e) {
-      const message =
-        e instanceof Error ? e.message : "ツール一覧の取得に失敗しました";
-      setError(message);
-    } finally {
-      setFetchingTools(false);
-    }
+    void loadToolsForConnection(connectionId);
   };
 
   /** ツールごとの公開可否トグル */
-  const toggleTool = (
-    connectionId: number,
-    toolName: string,
-    next: boolean,
-  ): void => {
-    setAllowedMap((prev) => ({
-      ...prev,
-      [connectionId]: {
-        ...(prev[connectionId] ?? {}),
-        [toolName]: next,
-      },
-    }));
+  const toggleTool = (connectionId: number, toolName: string): void => {
+    setAllowedMap((prev) => {
+      const current = prev[connectionId] ?? {};
+      return {
+        ...prev,
+        [connectionId]: {
+          ...current,
+          [toolName]: !(current[toolName] ?? false),
+        },
+      };
+    });
   };
 
-  /** 接続単位で全ツールON/OFF */
-  const toggleAllToolsForConnection = (
-    connectionId: number,
-    next: boolean,
-  ): void => {
-    const tools = toolsByConnectionId[connectionId] ?? [];
-    setAllowedMap((prev) => ({
-      ...prev,
-      [connectionId]: Object.fromEntries(
-        tools.map((tool) => [tool.name, next]),
-      ),
-    }));
-  };
-
-  const canSubmit = !submitting && phase === "tools";
+  const canSubmit =
+    serverName.trim() !== "" && selectedConnectionIds.length > 0 && !submitting;
 
   const handleSubmit = async (): Promise<void> => {
     if (!canSubmit) return;
@@ -246,154 +229,141 @@ export const ConnectorManual = (): JSX.Element => {
         </p>
       </div>
 
-      {/* ステップインジケータ */}
-      <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
-        <span
-          className={
-            phase === "select" ? "font-medium text-[var(--text-primary)]" : ""
-          }
-        >
-          1. コネクタ選択
-        </span>
-        <ArrowRight size={12} className="text-[var(--text-subtle)]" />
-        <span
-          className={
-            phase === "tools" ? "font-medium text-[var(--text-primary)]" : ""
-          }
-        >
-          2. ツール選択
-        </span>
-      </div>
-
       <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-5 shadow-[var(--shadow-card)]">
-        {phase === "select" && (
-          <>
-            {/* サーバー名 */}
-            <div className="mb-5">
-              <label className="mb-1 block text-xs text-[var(--text-muted)]">
-                サーバー名
-              </label>
-              <input
-                type="text"
-                value={serverName}
-                onChange={(e) => setServerName(e.target.value)}
-                placeholder="例: 週次レポート用コネクタ"
-                className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-input)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none"
-              />
-              <p className="mt-1.5 text-[10px] text-[var(--text-muted)]">
-                MCP識別子:{" "}
-                <span className="font-mono text-[var(--text-secondary)]">
-                  {isAutoGeneratedSlug
-                    ? `${FALLBACK_SLUG_PLACEHOLDER}（自動生成）`
-                    : slug}
-                </span>
-                <span className="ml-1 text-[var(--text-subtle)]">
-                  {isAutoGeneratedSlug
-                    ? `※サーバー名に英数字が含まれない場合は「${FALLBACK_SLUG_PLACEHOLDER}」形式の識別子が自動生成されます`
-                    : "※同名サーバーが既に存在する場合は自動で番号が付与されます"}
-                </span>
-              </p>
-            </div>
+        {/* サーバー名 */}
+        <div className="mb-5">
+          <label className="mb-1 block text-xs text-[var(--text-muted)]">
+            サーバー名
+          </label>
+          <input
+            type="text"
+            value={serverName}
+            onChange={(e) => setServerName(e.target.value)}
+            placeholder="例: 週次レポート用コネクタ"
+            className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-input)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none"
+          />
+          <p className="mt-1.5 text-[10px] text-[var(--text-muted)]">
+            MCP識別子:{" "}
+            <span className="font-mono text-[var(--text-secondary)]">
+              {isAutoGeneratedSlug
+                ? `${FALLBACK_SLUG_PLACEHOLDER}（自動生成）`
+                : slug}
+            </span>
+            <span className="ml-1 text-[var(--text-subtle)]">
+              {isAutoGeneratedSlug
+                ? `※サーバー名に英数字が含まれない場合は「${FALLBACK_SLUG_PLACEHOLDER}」形式の識別子が自動生成されます`
+                : "※同名サーバーが既に存在する場合は自動で番号が付与されます"}
+            </span>
+          </p>
+        </div>
 
-            {/* 説明 */}
-            <div className="mb-5">
-              <label className="mb-1 block text-xs text-[var(--text-muted)]">
-                説明（任意）
-              </label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={2}
-                placeholder="この仮想MCPサーバーの用途を記述..."
-                className="w-full resize-none rounded-lg border border-[var(--border)] bg-[var(--bg-input)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none"
-              />
-            </div>
+        {/* 説明 */}
+        <div className="mb-5">
+          <label className="mb-1 block text-xs text-[var(--text-muted)]">
+            説明（任意）
+          </label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={2}
+            placeholder="この仮想MCPサーバーの用途を記述..."
+            className="w-full resize-none rounded-lg border border-[var(--border)] bg-[var(--bg-input)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none"
+          />
+        </div>
 
-            {/* コネクタ選択 */}
-            <div className="mb-5 border-t border-t-[var(--border)] pt-4">
-              <label className="mb-2 block text-xs text-[var(--text-muted)]">
-                束ねるコネクタを選択（{selectedConnectionIds.length} /{" "}
-                {String(VIRTUAL_SERVER_MAX_CONNECTIONS)}）
-              </label>
-              {loadingConnectors ? (
-                <div className="py-6 text-center text-xs text-[var(--text-subtle)]">
-                  読み込み中...
-                </div>
-              ) : connectors.length === 0 ? (
-                <div className="rounded-lg bg-[var(--bg-card-hover)] p-4 text-center text-xs text-[var(--text-subtle)]">
-                  選択可能なコネクタがありません。
-                  <br />
-                  <Link
-                    to="/tools"
-                    className="text-[var(--text-secondary)] underline hover:opacity-80"
+        {/* コネクタ選択 */}
+        <div className="mb-5 border-t border-t-[var(--border)] pt-4">
+          <label className="mb-2 block text-xs text-[var(--text-muted)]">
+            束ねるコネクタを選択（{selectedConnectionIds.length} /{" "}
+            {String(VIRTUAL_SERVER_MAX_CONNECTIONS)}）
+          </label>
+          {loadingConnectors ? (
+            <div className="py-6 text-center text-xs text-[var(--text-subtle)]">
+              読み込み中...
+            </div>
+          ) : connectors.length === 0 ? (
+            <div className="rounded-lg bg-[var(--bg-card-hover)] p-4 text-center text-xs text-[var(--text-subtle)]">
+              選択可能なコネクタがありません。
+              <br />
+              <Link
+                to="/tools"
+                className="text-[var(--text-secondary)] underline hover:opacity-80"
+              >
+                コネクト画面
+              </Link>
+              からMCPを追加してください。
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
+              {connectors.map((connector) => {
+                const isSelected = selectedConnectionIds.includes(
+                  connector.connection.id,
+                );
+                const iconPath = connector.connection.catalog?.iconPath;
+                return (
+                  <button
+                    key={connector.connection.id}
+                    type="button"
+                    onClick={() => toggleConnector(connector.connection.id)}
+                    className={`flex min-h-[44px] items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs transition-colors ${
+                      isSelected
+                        ? "border-emerald-400/30 bg-[var(--bg-active)] text-[var(--text-primary)]"
+                        : "border-transparent bg-[var(--bg-card-hover)] text-[var(--text-secondary)]"
+                    }`}
                   >
-                    コネクト画面
-                  </Link>
-                  からMCPを追加してください。
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
-                  {connectors.map((connector) => {
-                    const isSelected = selectedConnectionIds.includes(
-                      connector.connection.id,
-                    );
-                    const iconPath = connector.connection.catalog?.iconPath;
-                    return (
-                      <button
-                        key={connector.connection.id}
-                        type="button"
-                        onClick={() => toggleConnector(connector.connection.id)}
-                        className={`flex min-h-[44px] items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs transition-colors ${
-                          isSelected
-                            ? "border-emerald-400/30 bg-[var(--bg-active)] text-[var(--text-primary)]"
-                            : "border-transparent bg-[var(--bg-card-hover)] text-[var(--text-secondary)]"
-                        }`}
-                      >
-                        {iconPath ? (
-                          <img
-                            src={iconPath}
-                            alt={connector.serverName}
-                            className="h-4 w-4 shrink-0 rounded"
-                          />
-                        ) : (
-                          <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-[var(--bg-input)] text-[7px] text-[var(--text-subtle)]">
-                            MCP
-                          </div>
-                        )}
-                        <span className="flex-1 truncate">
-                          {connector.serverName}
-                        </span>
-                        <span className="shrink-0 text-[10px] text-[var(--text-subtle)]">
-                          {connector.connection.toolCount}件
-                        </span>
-                        {isSelected && (
-                          <Check
-                            size={12}
-                            className="shrink-0 text-[var(--badge-success-text)]"
-                          />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+                    {iconPath ? (
+                      <img
+                        src={iconPath}
+                        alt={connector.serverName}
+                        className="h-4 w-4 shrink-0 rounded"
+                      />
+                    ) : (
+                      <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-[var(--bg-input)] text-[7px] text-[var(--text-subtle)]">
+                        MCP
+                      </div>
+                    )}
+                    <span className="flex-1 truncate">
+                      {connector.serverName}
+                    </span>
+                    {isSelected && (
+                      <Check
+                        size={12}
+                        className="shrink-0 text-[var(--badge-success-text)]"
+                      />
+                    )}
+                  </button>
+                );
+              })}
             </div>
+          )}
+        </div>
 
-            {/* 選択中コネクタのサマリ */}
-            {selectedConnectors.length > 0 && (
-              <div className="mb-5 border-t border-t-[var(--border)] pt-4">
-                <label className="mb-2 block text-xs text-[var(--text-muted)]">
-                  選択中
-                </label>
-                <div className="space-y-2">
-                  {selectedConnectors.map((connector) => (
-                    <div
-                      key={connector.connection.id}
-                      className="flex items-center gap-2 rounded-lg bg-[var(--bg-card-hover)] px-3 py-2"
-                    >
-                      {connector.connection.catalog?.iconPath ? (
+        {/* 選択コネクタごとのツール選択（モック PR #1066 のチップUI を踏襲） */}
+        {selectedConnectors.length > 0 && (
+          <div className="mb-5 border-t border-t-[var(--border)] pt-4">
+            <label className="mb-3 block text-xs text-[var(--text-muted)]">
+              ツール設定
+            </label>
+            <div className="space-y-3">
+              {selectedConnectors.map((connector) => {
+                const connectionId = connector.connection.id;
+                const tools = toolsByConnectionId[connectionId] ?? [];
+                const perTool = allowedMap[connectionId] ?? {};
+                const allowedNames = tools
+                  .filter((tool) => perTool[tool.name])
+                  .map((tool) => tool.name);
+                const isLoading = loadingToolsFor.has(connectionId);
+                const iconPath = connector.connection.catalog?.iconPath;
+                return (
+                  <div
+                    key={connectionId}
+                    className="rounded-lg bg-[var(--bg-card-hover)] p-3"
+                  >
+                    {/* コネクタ名 */}
+                    <div className="mb-3 flex items-center gap-2">
+                      {iconPath ? (
                         <img
-                          src={connector.connection.catalog.iconPath}
+                          src={iconPath}
                           alt={connector.serverName}
                           className="h-4 w-4 rounded"
                         />
@@ -405,121 +375,79 @@ export const ConnectorManual = (): JSX.Element => {
                       <span className="text-xs font-medium text-[var(--text-primary)]">
                         {connector.serverName}
                       </span>
-                      <span className="text-[10px] text-[var(--text-subtle)]">
-                        ツール {connector.connection.toolCount}件
+                      <span className="text-[9px] text-[var(--text-subtle)]">
+                        {allowedNames.length} / {tools.length} ツール選択中
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => toggleConnector(connector.connection.id)}
-                        className="ml-auto flex h-11 w-11 items-center justify-center rounded text-[var(--text-subtle)] transition hover:text-red-400"
-                        aria-label="この接続を外す"
-                      >
-                        <X size={14} />
-                      </button>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
-        )}
 
-        {phase === "tools" && (
-          <div className="mb-5 space-y-4">
-            <p className="text-xs text-[var(--text-muted)]">
-              仮想MCPで公開するツールを選択してください。初期値は元コネクタの設定を引き継いでいます。
-            </p>
-            {selectedConnectors.map((connector) => {
-              const connectionId = connector.connection.id;
-              const tools = toolsByConnectionId[connectionId] ?? [];
-              const perTool = allowedMap[connectionId] ?? {};
-              const enabledCount = tools.filter(
-                (tool) => perTool[tool.name],
-              ).length;
-              return (
-                <div
-                  key={connectionId}
-                  className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card-hover)] p-3"
-                >
-                  <div className="mb-2 flex items-center gap-2">
-                    {connector.connection.catalog?.iconPath ? (
-                      <img
-                        src={connector.connection.catalog.iconPath}
-                        alt={connector.serverName}
-                        className="h-4 w-4 rounded"
-                      />
-                    ) : (
-                      <div className="flex h-4 w-4 items-center justify-center rounded bg-[var(--bg-input)] text-[7px] text-[var(--text-subtle)]">
-                        MCP
-                      </div>
-                    )}
-                    <span className="text-xs font-medium text-[var(--text-primary)]">
-                      {connector.serverName}
-                    </span>
-                    <span className="text-[10px] text-[var(--text-subtle)]">
-                      {enabledCount} / {tools.length} 件公開
-                    </span>
-                    {tools.length > 0 && (
-                      <div className="ml-auto flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            toggleAllToolsForConnection(connectionId, true)
-                          }
-                          className="rounded border border-[var(--border)] px-2 py-1 text-[10px] text-[var(--text-secondary)] transition hover:opacity-80"
-                        >
-                          全て公開
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            toggleAllToolsForConnection(connectionId, false)
-                          }
-                          className="rounded border border-[var(--border)] px-2 py-1 text-[10px] text-[var(--text-secondary)] transition hover:opacity-80"
-                        >
-                          全て非公開
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {tools.length === 0 ? (
-                    <p className="py-3 text-center text-[10px] text-[var(--text-subtle)]">
-                      このコネクタにはツールがありません
-                    </p>
-                  ) : (
-                    <div className="space-y-1">
-                      {tools.map((tool) => {
-                        const isOn = perTool[tool.name] ?? false;
-                        return (
-                          <div
-                            key={tool.name}
-                            className="flex items-center justify-between gap-3 rounded-md bg-[var(--bg-card)] px-2.5 py-2"
-                          >
-                            <div className="min-w-0 flex-1">
-                              <div className="truncate font-mono text-xs font-medium text-[var(--text-primary)]">
+                    {/* ツール（オペレーション）チップ */}
+                    <div className="mb-1">
+                      <span className="mb-1.5 block text-[9px] text-[var(--text-subtle)]">
+                        使用するツール
+                      </span>
+                      {isLoading ? (
+                        <p className="py-2 text-[9px] text-[var(--text-subtle)]">
+                          ツール一覧を取得中...
+                        </p>
+                      ) : tools.length === 0 ? (
+                        <p className="py-2 text-[9px] text-[var(--text-subtle)]">
+                          このコネクタにはツールがありません
+                        </p>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {tools.map((tool) => {
+                            const isOn = perTool[tool.name] ?? false;
+                            return (
+                              <button
+                                key={tool.name}
+                                type="button"
+                                onClick={() =>
+                                  toggleTool(connectionId, tool.name)
+                                }
+                                className={`rounded border px-2 py-1 font-mono text-[9px] transition-colors ${
+                                  isOn
+                                    ? "border-emerald-400/30 bg-[var(--bg-active)] text-[var(--text-primary)]"
+                                    : "border-transparent bg-[var(--bg-input)] text-[var(--text-subtle)]"
+                                }`}
+                                title={tool.description}
+                              >
                                 {tool.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* 選択中ツールの説明リスト */}
+                      {allowedNames.length > 0 && (
+                        <div className="mt-2 space-y-0.5">
+                          {allowedNames.map((name) => {
+                            const tool = tools.find((t) => t.name === name);
+                            if (!tool) return null;
+                            return (
+                              <div
+                                key={name}
+                                className="flex items-start gap-2 text-[9px]"
+                              >
+                                <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-emerald-400" />
+                                <span className="font-mono text-[var(--text-muted)]">
+                                  {tool.name}
+                                </span>
+                                {tool.description && (
+                                  <span className="text-[var(--text-subtle)]">
+                                    — {tool.description}
+                                  </span>
+                                )}
                               </div>
-                              {tool.description && (
-                                <div className="mt-0.5 line-clamp-1 text-[10px] text-[var(--text-muted)]">
-                                  {tool.description}
-                                </div>
-                              )}
-                            </div>
-                            <ToggleSwitch
-                              checked={isOn}
-                              onChange={(v) =>
-                                toggleTool(connectionId, tool.name, v)
-                              }
-                            />
-                          </div>
-                        );
-                      })}
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -532,45 +460,21 @@ export const ConnectorManual = (): JSX.Element => {
 
         {/* ボタン群 */}
         <div className="flex items-center justify-end gap-3 border-t border-t-[var(--border)] pt-4">
-          {phase === "select" ? (
-            <>
-              <Link
-                to="/tools"
-                className="rounded-lg border border-[var(--border)] px-4 py-2 text-xs text-[var(--text-muted)] transition-colors hover:opacity-80"
-              >
-                キャンセル
-              </Link>
-              <button
-                type="button"
-                onClick={() => void handleProceedToTools()}
-                disabled={!canProceed}
-                className="flex items-center gap-1.5 rounded-lg bg-[var(--btn-primary-bg)] px-4 py-2 text-xs font-medium text-[var(--btn-primary-text)] transition-colors hover:opacity-90 disabled:opacity-50"
-              >
-                {fetchingTools ? "ツール一覧取得中..." : "次へ"}
-                <ArrowRight size={14} />
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => setPhase("select")}
-                disabled={submitting}
-                className="rounded-lg border border-[var(--border)] px-4 py-2 text-xs text-[var(--text-muted)] transition-colors hover:opacity-80 disabled:opacity-50"
-              >
-                戻る
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleSubmit()}
-                disabled={!canSubmit}
-                className="flex items-center gap-1.5 rounded-lg bg-[var(--btn-primary-bg)] px-4 py-2 text-xs font-medium text-[var(--btn-primary-text)] transition-colors hover:opacity-90 disabled:opacity-50"
-              >
-                <Plus size={14} />
-                {submitting ? "作成中..." : "仮想MCPを作成"}
-              </button>
-            </>
-          )}
+          <Link
+            to="/tools"
+            className="rounded-lg border border-[var(--border)] px-4 py-2 text-xs text-[var(--text-muted)] transition-colors hover:opacity-80"
+          >
+            キャンセル
+          </Link>
+          <button
+            type="button"
+            onClick={() => void handleSubmit()}
+            disabled={!canSubmit}
+            className="flex items-center gap-1.5 rounded-lg bg-[var(--btn-primary-bg)] px-4 py-2 text-xs font-medium text-[var(--btn-primary-text)] transition-colors hover:opacity-90 disabled:opacity-50"
+          >
+            <Plus size={14} />
+            {submitting ? "作成中..." : "仮想MCPを作成"}
+          </button>
         </div>
       </div>
     </div>
