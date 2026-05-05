@@ -7,7 +7,8 @@ export type SupportedAiClientId =
   | "cursor"
   | "windsurf"
   | "cline"
-  | "roo-code";
+  | "roo-code"
+  | "gemini-cli";
 
 export type ResolveConfigPathContext = {
   platform: NodeJS.Platform;
@@ -44,6 +45,8 @@ export const resolveConfigPath = (
         "rooveterinaryinc.roo-cline",
         "mcp_settings.json",
       );
+    case "gemini-cli":
+      return resolveGeminiCli(ctx);
   }
 };
 
@@ -73,6 +76,11 @@ const resolveCursor = (ctx: ResolveConfigPathContext): string => {
 
 const resolveWindsurf = (ctx: ResolveConfigPathContext): string => {
   return path.join(ctx.homedir, ".codeium/windsurf/mcp_config.json");
+};
+
+// Gemini CLI のグローバル設定。`mcpServers` キーで MCP サーバーを定義（Phase 1 のラッパー形式と完全互換）。
+const resolveGeminiCli = (ctx: ResolveConfigPathContext): string => {
+  return path.join(ctx.homedir, ".gemini/settings.json");
 };
 
 // VS Code 拡張 (Cline / Roo Code) の MCP 設定パスを返す。

@@ -30,6 +30,7 @@ const SUPPORTED_CLIENT_IDS: readonly SupportedAiClientId[] = [
   "windsurf",
   "cline",
   "roo-code",
+  "gemini-cli",
 ];
 
 const isSupportedClientId = (id: string): id is SupportedAiClientId =>

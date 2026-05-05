@@ -224,4 +224,33 @@ describe("resolveConfigPath", () => {
       expect(result).toBeNull();
     });
   });
+
+  describe("gemini-cli", () => {
+    test("macOS: ~/.gemini/settings.json を返す", () => {
+      const result = resolveConfigPath("gemini-cli", {
+        platform: "darwin",
+        homedir: "/Users/test",
+        appData: undefined,
+      });
+      expect(result).toStrictEqual("/Users/test/.gemini/settings.json");
+    });
+
+    test("Linux: ~/.gemini/settings.json を返す", () => {
+      const result = resolveConfigPath("gemini-cli", {
+        platform: "linux",
+        homedir: "/home/test",
+        appData: undefined,
+      });
+      expect(result).toStrictEqual("/home/test/.gemini/settings.json");
+    });
+
+    test("Windows: ~/.gemini/settings.json を返す", () => {
+      const result = resolveConfigPath("gemini-cli", {
+        platform: "win32",
+        homedir: "C:\\Users\\test",
+        appData: undefined,
+      });
+      expect(result).toStrictEqual("C:\\Users\\test/.gemini/settings.json");
+    });
+  });
 });
