@@ -24,6 +24,7 @@ import type {
   DashboardInput,
   DashboardResult,
   DesktopSession,
+  McpProxyLaunchCommand,
 } from "../main/types";
 
 // Electron APIを安全に公開
@@ -112,6 +113,12 @@ const api = {
       isAllowed: boolean;
     }): Promise<void> =>
       ipcRenderer.invoke("mcp-server:toggleTool", input).then(() => undefined),
+  },
+
+  // MCP プロキシ起動コマンド（接続スニペット生成に利用）
+  mcpProxy: {
+    getLaunchCommand: (): Promise<McpProxyLaunchCommand> =>
+      ipcRenderer.invoke("mcp-proxy:getLaunchCommand"),
   },
 
   // 監査ログ API

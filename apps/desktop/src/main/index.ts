@@ -8,6 +8,7 @@ import {
 } from "./shared/app-protocol";
 import { setupAuthIpc } from "./ipc/auth";
 import { setupCatalogIpc } from "./features/catalog/catalog.ipc";
+import { setupMcpProxyLaunchCommandIpc } from "./features/mcp-proxy/launch-command.ipc";
 import { setupMcpIpc } from "./features/mcp-server-list/mcp.ipc";
 import { setupMcpServerDetailIpc } from "./features/mcp-server-detail/mcp-server-detail.ipc";
 import { setupAuditLogIpc } from "./features/audit-log/audit-log.ipc";
@@ -529,6 +530,7 @@ if (isMcpProxyMode) {
       setupManagerIpc(initOAuthManagerFromUrl);
       setupAuthIpc();
       setupCatalogIpc();
+      setupMcpProxyLaunchCommandIpc();
       setupMcpIpc();
       setupMcpServerDetailIpc();
       setupAuditLogIpc();

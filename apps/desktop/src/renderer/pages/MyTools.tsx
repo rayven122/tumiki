@@ -15,7 +15,10 @@ import { ToggleSwitch } from "../_components/ToggleSwitch";
 import { ConfirmDialog } from "../_components/ConfirmDialog";
 import { useMcpServers } from "../hooks/useMcpServers";
 import type { McpServerWithRuntime } from "../hooks/useMcpServers";
+import { useMcpProxyLaunchCommand } from "../hooks/useMcpProxyLaunchCommand";
 import { cardStyle } from "../utils/theme-styles";
+import type { McpProxyLaunchCommand } from "../../main/types";
+import { AI_CLIENT_SNIPPETS, buildMcpSnippet } from "../utils/mcp-snippet";
 
 /** MCPサーバーステータス表示（CLIモードがDB上のserverStatusを更新する） */
 const STATUS_CONFIG: Record<
@@ -28,29 +31,10 @@ const STATUS_CONFIG: Record<
   PENDING: { dotClass: "bg-amber-400", label: "接続中" },
 };
 
-// MCP 設定スニペット生成テンプレート（カード下部のコピー用、slug でテンプレート展開）
-// data/ai-clients.ts とは別目的（あちらはロゴ/設定ファイルパス、こちらはスニペット文字列）
-const AI_CLIENT_SNIPPETS = [
-  {
-    name: "Claude Code / .mcp.json",
-    path: (slug: string) =>
-      `{ "${slug}": { "command": "path/to/Electron", "args": ["path/to/apps/desktop", "--mcp-proxy", "--server", "${slug}"] } }`,
-  },
-  {
-    name: "Cursor",
-    path: (slug: string) =>
-      `{ "mcpServers": { "${slug}": { "command": "path/to/Electron", "args": ["path/to/apps/desktop", "--mcp-proxy", "--server", "${slug}"] } } }`,
-  },
-  {
-    name: "Claude Desktop",
-    path: (slug: string) =>
-      `{ "mcpServers": { "${slug}": { "command": "path/to/Electron", "args": ["path/to/apps/desktop", "--mcp-proxy", "--server", "${slug}"] } } }`,
-  },
-];
-
 export const MyTools = (): JSX.Element => {
   const [query, setQuery] = useState("");
   const { servers, loading, toggleServer, deleteServer } = useMcpServers();
+  const launchCommand = useMcpProxyLaunchCommand();
 
   const lowerQuery = query.toLowerCase();
   const filteredServers = servers.filter(
@@ -127,6 +111,7 @@ export const MyTools = (): JSX.Element => {
               <ServerCard
                 key={server.id}
                 server={server}
+                launchCommand={launchCommand}
                 onToggle={(isEnabled) =>
                   void toggleServer(server.id, isEnabled)
                 }
@@ -187,10 +172,12 @@ const CopyButton = ({ text }: { text: string }): JSX.Element => {
 /** サーバーカードコンポーネント */
 const ServerCard = ({
   server,
+  launchCommand,
   onToggle,
   onDelete,
 }: {
   server: McpServerWithRuntime;
+  launchCommand: McpProxyLaunchCommand | null;
   onToggle: (isEnabled: boolean) => void;
   onDelete: () => void;
 }): JSX.Element => {
@@ -292,19 +279,32 @@ const ServerCard = ({
         {/* 接続コマンド一覧（折りたたみ） */}
         {showCommands && (
           <div className="mt-2 space-y-1.5">
-            {AI_CLIENT_SNIPPETS.map((ai) => (
-              <div key={ai.name} className="text-[9px]">
-                <span className="mb-0.5 block text-[var(--text-subtle)]">
-                  {ai.name}
-                </span>
-                <div className="flex items-center gap-1">
-                  <code className="flex-1 rounded bg-[var(--bg-input)] px-1.5 py-1 font-mono break-all text-[var(--text-secondary)]">
-                    {ai.path(server.slug)}
-                  </code>
-                  <CopyButton text={ai.path(server.slug)} />
-                </div>
-              </div>
-            ))}
+            {launchCommand === null ? (
+              <p className="text-[9px] text-[var(--text-subtle)]">
+                起動コマンドを取得中...
+              </p>
+            ) : (
+              AI_CLIENT_SNIPPETS.map((ai) => {
+                const snippet = buildMcpSnippet(
+                  launchCommand,
+                  server.slug,
+                  ai.format,
+                );
+                return (
+                  <div key={ai.name} className="text-[9px]">
+                    <span className="mb-0.5 block text-[var(--text-subtle)]">
+                      {ai.name}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <code className="flex-1 rounded bg-[var(--bg-input)] px-1.5 py-1 font-mono break-all text-[var(--text-secondary)]">
+                        {snippet}
+                      </code>
+                      <CopyButton text={snippet} />
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         )}
       </div>

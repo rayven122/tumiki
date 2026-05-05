@@ -60,3 +60,6 @@ export type {
   DesktopSessionPermission,
   DesktopSessionUser,
 } from "./features/desktop-session/desktop-session.types";
+
+// MCP プロキシ起動コマンド
+export type { McpProxyLaunchCommand } from "./features/mcp-proxy/launch-command";

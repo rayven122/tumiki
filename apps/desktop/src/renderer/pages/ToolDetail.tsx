@@ -14,8 +14,9 @@ import {
   Plug,
 } from "lucide-react";
 import { themeAtom } from "../store/atoms";
-import { MCP_CLI_COMMAND } from "../data/mock";
 import { AI_CLIENTS, type AiClient } from "../data/ai-clients";
+import { useMcpProxyLaunchCommand } from "../hooks/useMcpProxyLaunchCommand";
+import { buildMcpSnippet } from "../utils/mcp-snippet";
 import type {
   McpServerDetailItem,
   McpToolItem,
@@ -221,6 +222,9 @@ export const ToolDetail = (): JSX.Element => {
   // 接続先AIサイドバーから選択中のクライアント
   const [selectedClient, setSelectedClient] = useState<AiClient | null>(null);
 
+  // MCP プロキシ起動コマンド（接続スニペット生成に利用）
+  const launchCommand = useMcpProxyLaunchCommand();
+
   // 監査ログ（実データ）
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
   const [auditTotal, setAuditTotal] = useState(0);
@@ -391,19 +395,11 @@ export const ToolDetail = (): JSX.Element => {
 
   /** 選択クライアント向けの MCP 設定 JSON スニペット生成 */
   const buildConfigSnippet = (): string => {
-    const parts = MCP_CLI_COMMAND.split(" ");
-    return JSON.stringify(
-      {
-        mcpServers: {
-          [server.slug]: {
-            command: parts[0] ?? "npx",
-            args: [...parts.slice(1), "--server", server.slug],
-          },
-        },
-      },
-      null,
-      2,
-    );
+    if (!launchCommand) return "起動コマンドを取得中...";
+    // claude-code のみ .mcp.json 直下にサーバー名キーを置く形式、その他は mcpServers でラップする形式
+    const format =
+      selectedClient?.id === "claude-code" ? "claude-code" : "cursor";
+    return buildMcpSnippet(launchCommand, server.slug, format, true);
   };
   const filteredTools = baseTools.filter((t) => {
     const q = toolQuery.trim().toLowerCase();
