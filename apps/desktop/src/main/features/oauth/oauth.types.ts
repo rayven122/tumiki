@@ -25,8 +25,6 @@ export type McpOAuthSession = {
   /** MCPサーバーURL */
   serverUrl: string;
   /** カタログ情報（MCP登録用、カスタムURLの場合はnull） */
-  catalogId: number | null;
-  /** Manager APIカタログ情報（MCP登録用、カスタムURLの場合はnull） */
   managerCatalog: ManagerCatalogOAuthContext | null;
   catalogName: string;
   description: string;
@@ -54,7 +52,6 @@ export type McpOAuthTokenData = {
 
 /** OAuthフロー開始の入力型（renderer → main） */
 export type StartOAuthInput = {
-  catalogId?: number;
   managerCatalog?: ManagerCatalogOAuthContext;
   catalogName: string;
   description: string;
