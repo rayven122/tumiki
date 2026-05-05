@@ -1,5 +1,11 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import {
+  applyEdits,
+  modify,
+  parse as parseJsonc,
+  type ParseError,
+} from "jsonc-parser";
 import * as logger from "../../shared/utils/logger";
 import {
   resolveConfigPath,
@@ -13,6 +19,8 @@ import type {
   McpEntry,
 } from "./ai-client.types";
 
+type ConfigFileFormat = "json" | "jsonc";
+
 export class AiClientWriteError extends Error {
   constructor(
     public code: AiClientWriteErrorCode,
@@ -23,7 +31,7 @@ export class AiClientWriteError extends Error {
   }
 }
 
-// クライアントごとに MCP サーバーを格納するキー名が異なる（VS Code は `servers`、その他は `mcpServers`）
+// クライアントごとに MCP サーバーを格納するキー名が異なる（VS Code は `servers`、Zed は `context_servers`、その他は `mcpServers`）
 const CLIENT_MCP_SERVERS_KEY: Record<SupportedAiClientId, string> = {
   "claude-desktop": "mcpServers",
   "claude-code": "mcpServers",
@@ -33,6 +41,20 @@ const CLIENT_MCP_SERVERS_KEY: Record<SupportedAiClientId, string> = {
   "roo-code": "mcpServers",
   "gemini-cli": "mcpServers",
   vscode: "servers",
+  zed: "context_servers",
+};
+
+// 設定ファイルのフォーマット。JSONC は jsonc-parser で読み書きしコメントを保持する
+const CLIENT_FILE_FORMAT: Record<SupportedAiClientId, ConfigFileFormat> = {
+  "claude-desktop": "json",
+  "claude-code": "json",
+  cursor: "json",
+  windsurf: "json",
+  cline: "json",
+  "roo-code": "json",
+  "gemini-cli": "json",
+  vscode: "json",
+  zed: "jsonc",
 };
 
 const SUPPORTED_CLIENT_IDS: readonly SupportedAiClientId[] = Object.keys(
@@ -52,24 +74,19 @@ const formatTimestamp = (date: Date): string => {
   return `${yyyy}${mm}${dd}-${hh}${mi}${ss}`;
 };
 
-// 既存ファイルから { mcpServers: { ... } } を読み出す。形が違う / 不正JSON は明示エラー
+// 既存ファイルを読み出す。format が "jsonc" の場合はコメント付きJSON を許容する。
+// 書き戻し時のコメント保持に rawText も返す。
 const readExistingConfig = async (
   configPath: string,
-): Promise<{ raw: Record<string, unknown>; existed: boolean }> => {
+  format: ConfigFileFormat,
+): Promise<{
+  raw: Record<string, unknown>;
+  existed: boolean;
+  rawText: string;
+}> => {
+  let content: string;
   try {
-    const content = await fs.readFile(configPath, "utf-8");
-    const parsed: unknown = JSON.parse(content);
-    if (
-      typeof parsed !== "object" ||
-      parsed === null ||
-      Array.isArray(parsed)
-    ) {
-      throw new AiClientWriteError(
-        "INVALID_JSON",
-        "設定ファイルが想定外の形式です（オブジェクトではありません）",
-      );
-    }
-    return { raw: parsed as Record<string, unknown>, existed: true };
+    content = await fs.readFile(configPath, "utf-8");
   } catch (error) {
     if (
       error &&
@@ -77,16 +94,49 @@ const readExistingConfig = async (
       "code" in error &&
       (error as NodeJS.ErrnoException).code === "ENOENT"
     ) {
-      return { raw: {}, existed: false };
-    }
-    if (error instanceof AiClientWriteError) throw error;
-    if (error instanceof SyntaxError) {
-      throw new AiClientWriteError(
-        "INVALID_JSON",
-        "設定ファイルが不正なJSON形式です",
-      );
+      return { raw: {}, existed: false, rawText: "" };
     }
     throw error;
+  }
+
+  const parsed = parseConfigContent(content, format);
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new AiClientWriteError(
+      "INVALID_JSON",
+      "設定ファイルが想定外の形式です（オブジェクトではありません）",
+    );
+  }
+  return {
+    raw: parsed as Record<string, unknown>,
+    existed: true,
+    rawText: content,
+  };
+};
+
+const parseConfigContent = (
+  content: string,
+  format: ConfigFileFormat,
+): unknown => {
+  if (format === "jsonc") {
+    const errors: ParseError[] = [];
+    const parsed: unknown = parseJsonc(content, errors, {
+      allowTrailingComma: true,
+    });
+    if (errors.length > 0) {
+      throw new AiClientWriteError(
+        "INVALID_JSON",
+        "設定ファイルが不正なJSONC形式です",
+      );
+    }
+    return parsed;
+  }
+  try {
+    return JSON.parse(content);
+  } catch {
+    throw new AiClientWriteError(
+      "INVALID_JSON",
+      "設定ファイルが不正なJSON形式です",
+    );
   }
 };
 
@@ -116,7 +166,10 @@ export const getPreview = async (
       `現在のOS (${process.platform}) では ${clientId} はサポートされていません`,
     );
   }
-  const { raw, existed } = await readExistingConfig(configPath);
+  const { raw, existed } = await readExistingConfig(
+    configPath,
+    CLIENT_FILE_FORMAT[clientId],
+  );
   return {
     configPath,
     exists: existed,
@@ -135,6 +188,18 @@ const backupFile = async (configPath: string): Promise<string> => {
   const backupPath = `${configPath}.bak.${ts}`;
   await fs.copyFile(configPath, backupPath);
   return backupPath;
+};
+
+// JSONC (Zed 等) でコメントとフォーマットを保持しつつ MCP サーバーキーのみ書き換える
+const serializeJsonc = (
+  rawText: string,
+  mcpServersKey: string,
+  newServersValue: unknown,
+): string => {
+  const edits = modify(rawText, [mcpServersKey], newServersValue, {
+    formattingOptions: { tabSize: 2, insertSpaces: true, eol: "\n" },
+  });
+  return applyEdits(rawText, edits);
 };
 
 const writeAtomic = async (
@@ -213,7 +278,12 @@ export const writeConfig = async (
   await fs.mkdir(path.dirname(configPath), { recursive: true });
 
   // 2. 既存読み込み
-  const { raw, existed } = await readExistingConfig(configPath);
+  const format = CLIENT_FILE_FORMAT[request.clientId];
+  const mcpServersKey = CLIENT_MCP_SERVERS_KEY[request.clientId];
+  const { raw, existed, rawText } = await readExistingConfig(
+    configPath,
+    format,
+  );
 
   // 3. 既存があればバックアップ
   let backupPath: string | null = null;
@@ -235,12 +305,18 @@ export const writeConfig = async (
     raw,
     request.entries,
     removeSlugs,
-    CLIENT_MCP_SERVERS_KEY[request.clientId],
+    mcpServersKey,
   );
 
-  // 5. アトミック書き込み
+  // 5. シリアライズ。JSONC は jsonc-parser でコメント保持しながら edit する
+  const outputContent =
+    format === "jsonc" && existed
+      ? serializeJsonc(rawText, mcpServersKey, merged[mcpServersKey])
+      : JSON.stringify(merged, null, 2) + "\n";
+
+  // 6. アトミック書き込み
   try {
-    await writeAtomic(configPath, JSON.stringify(merged, null, 2) + "\n");
+    await writeAtomic(configPath, outputContent);
   } catch (error) {
     if (error && typeof error === "object" && "code" in error) {
       const code = (error as NodeJS.ErrnoException).code;

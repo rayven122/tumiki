@@ -9,7 +9,8 @@ export type SupportedAiClientId =
   | "cline"
   | "roo-code"
   | "gemini-cli"
-  | "vscode";
+  | "vscode"
+  | "zed";
 
 export type ResolveConfigPathContext = {
   platform: NodeJS.Platform;
@@ -50,6 +51,8 @@ export const resolveConfigPath = (
       return resolveGeminiCli(ctx);
     case "vscode":
       return resolveVsCode(ctx);
+    case "zed":
+      return resolveZed(ctx);
   }
 };
 
@@ -91,6 +94,16 @@ const resolveVsCode = (ctx: ResolveConfigPathContext): string | null => {
   const userDataDir = resolveVsCodeUserDataDir(ctx);
   if (!userDataDir) return null;
   return path.join(userDataDir, "User/mcp.json");
+};
+
+// Zed の設定は JSONC 形式の settings.json。`context_servers` キーで MCP サーバーを定義する。
+const resolveZed = (ctx: ResolveConfigPathContext): string | null => {
+  if (ctx.platform === "win32") {
+    if (!ctx.appData) return null;
+    return path.join(ctx.appData, "Zed/settings.json");
+  }
+  // macOS / Linux 共通: ~/.config/zed/settings.json
+  return path.join(ctx.homedir, ".config/zed/settings.json");
 };
 
 // VS Code 拡張 (Cline / Roo Code) の MCP 設定パスを返す。
