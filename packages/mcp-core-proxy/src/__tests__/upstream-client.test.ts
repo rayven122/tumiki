@@ -416,6 +416,33 @@ describe("UpstreamClient", () => {
         expect.objectContaining({ error: "DB unavailable" }),
       );
     });
+
+    test("resolver例外時にconfig.allowedToolsが未設定なら全ツール許可にフォールバックする", async () => {
+      mockConnect.mockResolvedValue(undefined);
+      mockListTools.mockResolvedValue(buildToolsResponse());
+
+      const resolveAllowedTools = vi
+        .fn()
+        .mockRejectedValue(new Error("DB unavailable"));
+      const dynamicClient = createUpstreamClient(
+        createTestConfig(),
+        mockLogger,
+        { resolveAllowedTools },
+      );
+      await dynamicClient.connect();
+
+      const tools = await dynamicClient.listTools();
+      // staticAllowedToolNames が null のため全ツール許可（フィルタ無効）扱いになる
+      expect(tools.map((t) => t.name)).toStrictEqual([
+        "read_file",
+        "write_file",
+        "delete_file",
+      ]);
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining("許可ツール解決に失敗しました"),
+        expect.objectContaining({ error: "DB unavailable" }),
+      );
+    });
   });
 
   describe("createTransport（トランスポート生成）", () => {

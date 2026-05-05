@@ -293,10 +293,10 @@ describe("createSingleServerCore", () => {
     expect(resolveAllowedTools).toHaveBeenCalledWith(testConfig.name);
   });
 
-  test("optionsが未指定の場合はresolveAllowedTools未設定でUpstreamClientを生成する", () => {
+  test("optionsが未指定の場合はoptions引数なしでUpstreamClientを生成する", () => {
     createSingleServerCore(testConfig, mockLogger);
 
     const callArgs = vi.mocked(createUpstreamClient).mock.lastCall;
-    expect(callArgs?.[2]?.resolveAllowedTools).toBeUndefined();
+    expect(callArgs?.[2]).toBeUndefined();
   });
 });

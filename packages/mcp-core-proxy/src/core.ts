@@ -42,11 +42,10 @@ export const createSingleServerCore = (
 ): ProxyCore => {
   // ResolveAllowedToolsByName は server 名を受け取るため、単一サーバー向けに部分適用する
   const byNameResolver = options?.resolveAllowedTools;
-  const client = createUpstreamClient(config, logger, {
-    resolveAllowedTools: byNameResolver
-      ? () => byNameResolver(config.name)
-      : undefined,
-  });
+  const clientOptions = byNameResolver
+    ? { resolveAllowedTools: () => byNameResolver(config.name) }
+    : undefined;
+  const client = createUpstreamClient(config, logger, clientOptions);
 
   return {
     startAll: () => client.connect(),

@@ -200,6 +200,8 @@ if (isMcpProxyMode) {
       const { findToolsByConnectionId } =
         await import("./features/mcp-server-list/mcp.repository");
       const { getDb } = await import("./shared/db");
+      // initializeDb() 完了後に1回だけ取得し、resolver 呼び出しごとの await を避ける
+      const db = await getDb();
       const resolveAllowedTools = async (
         serverName: string,
       ): Promise<string[] | null> => {
@@ -211,7 +213,6 @@ if (isMcpProxyMode) {
           );
           return [];
         }
-        const db = await getDb();
         const tools = await findToolsByConnectionId(db, connMeta.connectionId);
         if (tools.length === 0) return null;
         return tools.filter((t) => t.isAllowed).map((t) => t.name);
