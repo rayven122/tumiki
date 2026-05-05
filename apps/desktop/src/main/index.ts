@@ -194,7 +194,7 @@ if (isMcpProxyMode) {
         ) => Promise<void>;
       };
 
-      // 許可ツール解決resolver（DEV-1599: GUI のトグル変更を CLI に即時反映）
+      // 許可ツール解決resolver（GUI のトグル変更を CLI モードに即時反映）
       // DB が0件の場合は null（フィルタ無効）を返し、起動時の挙動と整合させる。
       // 例外時は upstream-client 側で起動時設定にフォールバックされる。
       const { findToolsByConnectionId } =

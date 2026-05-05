@@ -96,7 +96,7 @@ describe("createProxyCore", () => {
     expect(mockAddServer).toHaveBeenCalledWith(configs[1]);
   });
 
-  test("DEV-1599: optionsのresolveAllowedToolsをupstream-poolに伝播する", () => {
+  test("optionsのresolveAllowedToolsをupstream-poolに伝播する", () => {
     const resolveAllowedTools = vi.fn();
     createProxyCore([], mockLogger, { resolveAllowedTools });
 
@@ -278,7 +278,7 @@ describe("createSingleServerCore", () => {
     expect(mockClientOnStatusChange).toHaveBeenCalledWith(callback);
   });
 
-  test("DEV-1599: optionsのresolveAllowedToolsをconfig.name部分適用してUpstreamClientへ伝播する", async () => {
+  test("optionsのresolveAllowedToolsをconfig.name部分適用してUpstreamClientへ伝播する", async () => {
     const resolveAllowedTools = vi.fn().mockResolvedValue(["find_file"]);
     createSingleServerCore(testConfig, mockLogger, { resolveAllowedTools });
 
@@ -293,7 +293,7 @@ describe("createSingleServerCore", () => {
     expect(resolveAllowedTools).toHaveBeenCalledWith(testConfig.name);
   });
 
-  test("DEV-1599: optionsが未指定の場合はresolveAllowedTools未設定でUpstreamClientを生成する", () => {
+  test("optionsが未指定の場合はresolveAllowedTools未設定でUpstreamClientを生成する", () => {
     createSingleServerCore(testConfig, mockLogger);
 
     const callArgs = vi.mocked(createUpstreamClient).mock.lastCall;

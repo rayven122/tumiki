@@ -90,7 +90,7 @@ export const createTools = async (db: DbClient, data: CreateMcpToolInput[]) => {
 };
 
 /**
- * 指定接続のツール名と許可状態を取得（DEV-1599: CLI モードの動的フィルタ resolver 用）
+ * 指定接続のツール名と許可状態を取得（CLI モードの動的フィルタ resolver 用）
  */
 export const findToolsByConnectionId = async (
   db: DbClient,

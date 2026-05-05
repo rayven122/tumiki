@@ -35,17 +35,11 @@ export type UpstreamClient = {
   ) => void;
 };
 
-/**
- * 許可ツール名を動的に解決するresolver。
- * 戻り値: 許可ツール名一覧（その時点の真）。null は「全ツール許可」（フィルタ無効）。
- */
+/** null を返すと全ツール許可（フィルタ無効）扱いになる */
 export type ResolveAllowedTools = () => Promise<string[] | null>;
 
 export type CreateUpstreamClientOptions = {
-  /**
-   * 指定時、listTools/callTool 毎に呼ばれて config.allowedTools より優先される。
-   * 例外時は config.allowedTools にフォールバック。
-   */
+  /** 指定時、listTools/callTool 毎に呼ばれて config.allowedTools より優先される（例外時は config.allowedTools にフォールバック） */
   resolveAllowedTools?: ResolveAllowedTools;
 };
 
@@ -74,8 +68,7 @@ export const createUpstreamClient = (
   // onclose/onerror の二重発火対策（handleCrash を1回だけ走らせる）
   let crashHandled = false;
 
-  // resolver があれば都度呼んで最新の許可集合を返す（DEV-1599: トグル即時反映）。
-  // 例外時は static にフォールバックする。
+  // resolver があれば都度呼んで最新の許可集合を返す（例外時は static にフォールバック）
   const getAllowedToolNames = async (): Promise<Set<string> | null> => {
     const resolver = options?.resolveAllowedTools;
     if (!resolver) return staticAllowedToolNames;

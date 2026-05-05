@@ -71,10 +71,7 @@ export type ProxyHooks = {
   onStatusChange?: (name: string, status: ServerStatus, error?: string) => void;
   /** ツール呼び出しフィルタ（PII マスキング等の前処理・後処理） */
   filter?: ToolCallFilter;
-  /**
-   * 指定時、listTools/callTool の都度呼ばれて DB から最新の許可リストを取得する。
-   * （DEV-1599: GUI のトグル変更を CLI モードのプロキシに即時反映するため）
-   */
+  /** 指定時、listTools/callTool の都度呼ばれて DB から最新の許可ツールリストを取得する */
   resolveAllowedTools?: ResolveAllowedToolsByName;
 };
 

@@ -130,7 +130,7 @@ describe("runMcpProxy", () => {
     );
   });
 
-  test("DEV-1599: hooks.resolveAllowedTools を createProxyCore に伝播する", async () => {
+  test("hooks.resolveAllowedTools を createProxyCore に伝播する", async () => {
     const resolveAllowedTools = vi.fn();
     await runMcpProxy([], { resolveAllowedTools });
 

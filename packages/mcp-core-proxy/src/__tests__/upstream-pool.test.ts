@@ -180,7 +180,7 @@ describe("UpstreamPool", () => {
     });
   });
 
-  describe("resolveAllowedTools（DEV-1599: クライアントへ部分適用される）", () => {
+  describe("resolveAllowedTools（クライアントへ部分適用される）", () => {
     test("pool に渡した resolver が config.name で部分適用されて client に渡る", async () => {
       const resolveAllowedTools = vi
         .fn<(serverName: string) => Promise<string[] | null>>()

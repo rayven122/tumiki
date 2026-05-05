@@ -24,10 +24,7 @@ export type UpstreamPool = {
   ) => void;
 };
 
-/**
- * サーバー名から許可ツールを解決するresolver。
- * （DEV-1599: GUI のトグル変更を CLI モードに即時反映するために listTools/callTool 都度呼ばれる）
- */
+/** サーバー名から許可ツールを解決する resolver（listTools/callTool の都度呼ばれて DB から最新値を取得する） */
 export type ResolveAllowedToolsByName = (
   serverName: string,
 ) => Promise<string[] | null>;

@@ -290,7 +290,7 @@ describe("UpstreamClient", () => {
     });
   });
 
-  describe("resolveAllowedTools（DEV-1599: 動的ツールフィルタ）", () => {
+  describe("resolveAllowedTools（動的ツールフィルタ）", () => {
     const buildToolsResponse = () => ({
       tools: [
         { name: "read_file", description: "読み取り", inputSchema: {} },
