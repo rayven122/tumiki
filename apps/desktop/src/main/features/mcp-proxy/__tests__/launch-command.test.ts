@@ -105,6 +105,52 @@ describe("getMcpProxyLaunchCommand", () => {
     });
   });
 
+  test("dev: process.argv[1] が相対パス（'.'）の場合 process.cwd() で絶対化する", () => {
+    Object.defineProperty(app, "isPackaged", { value: false, writable: true });
+    Object.defineProperty(process, "execPath", {
+      value: "/repo/node_modules/.bin/electron",
+      writable: true,
+    });
+    process.argv = ["/repo/node_modules/.bin/electron", "."];
+    delete process.env.APPIMAGE;
+
+    const cwdSpy = vi
+      .spyOn(process, "cwd")
+      .mockReturnValue("/repo/apps/desktop");
+
+    try {
+      expect(getMcpProxyLaunchCommand()).toStrictEqual({
+        command: "/repo/node_modules/.bin/electron",
+        args: ["/repo/apps/desktop", "--mcp-proxy"],
+      });
+    } finally {
+      cwdSpy.mockRestore();
+    }
+  });
+
+  test("dev: process.argv[1] が相対パス（'../desktop'）でも cwd を基準に絶対化する", () => {
+    Object.defineProperty(app, "isPackaged", { value: false, writable: true });
+    Object.defineProperty(process, "execPath", {
+      value: "/repo/node_modules/.bin/electron",
+      writable: true,
+    });
+    process.argv = ["/repo/node_modules/.bin/electron", "../desktop"];
+    delete process.env.APPIMAGE;
+
+    const cwdSpy = vi
+      .spyOn(process, "cwd")
+      .mockReturnValue("/repo/apps/manager");
+
+    try {
+      expect(getMcpProxyLaunchCommand()).toStrictEqual({
+        command: "/repo/node_modules/.bin/electron",
+        args: ["/repo/apps/desktop", "--mcp-proxy"],
+      });
+    } finally {
+      cwdSpy.mockRestore();
+    }
+  });
+
   test("dev でエントリースクリプトが取れない場合は --mcp-proxy のみ args に入る", () => {
     Object.defineProperty(app, "isPackaged", { value: false, writable: true });
     Object.defineProperty(process, "execPath", {
