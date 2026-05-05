@@ -182,13 +182,15 @@ describe("oidc-clients", () => {
 
   test("Jackson自動設定はreset後にconnection生成を再実行する", async () => {
     configureCustomJacksonAutoEnv();
-    const { ensureJacksonOidcClients, resetOidcClients } = await loadModule();
+    const { ensureJacksonOidcClients } = await loadModule();
 
     const first = await ensureJacksonOidcClients();
     expect(mockCreateSAMLConnection).toHaveBeenCalledTimes(2);
 
-    resetOidcClients();
-    await expect(ensureJacksonOidcClients()).resolves.toStrictEqual(first);
+    vi.resetModules();
+    const { ensureJacksonOidcClients: ensureAfterModuleReset } =
+      await loadModule();
+    await expect(ensureAfterModuleReset()).resolves.toStrictEqual(first);
     expect(mockCreateSAMLConnection).toHaveBeenCalledTimes(4);
   });
 

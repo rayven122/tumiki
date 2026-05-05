@@ -182,6 +182,10 @@ export const jwtCallback = async ({
 }): Promise<JWT | null> => {
   if (user) {
     token.sub = user.id ?? user.email ?? "";
+    if (!token.sub) {
+      console.error("[jwtCallback] User has no id or email");
+      return null;
+    }
     // DB から role を取得（管理者によるロール昇格を即時反映するため）
     const dbUser = await db.user.findUnique({
       where: { id: token.sub },
@@ -289,15 +293,19 @@ export const sessionCallback = async ({
   token: JWT;
 }): Promise<Session> => {
   if (session.user && token?.sub) {
-    Object.assign(session.user, {
-      id: token.sub,
-      sub: token.sub,
-      email: token.email ?? null,
-      name: token.name ?? null,
-      image: token.picture ?? null,
-      role: token.role ?? "USER",
-      tumiki: token.tumiki ?? null,
-    });
+    return {
+      ...session,
+      user: {
+        ...session.user,
+        id: token.sub,
+        sub: token.sub,
+        email: token.email ?? null,
+        name: token.name ?? null,
+        image: token.picture ?? null,
+        role: token.role ?? "USER",
+        tumiki: token.tumiki ?? null,
+      },
+    };
   }
   return session;
 };

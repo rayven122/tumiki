@@ -14,6 +14,7 @@ let cachedJwks: ReturnType<typeof createRemoteJWKSet> | null = null;
 let cachedJwksIssuer: string | null = null;
 let cachedJwksExpiresAt = 0;
 let jwksPromise: Promise<ReturnType<typeof createRemoteJWKSet>> | null = null;
+let jwksPromiseIssuer: string | null = null;
 const JWKS_DISCOVERY_CACHE_TTL_MS = 10 * 60 * 1000;
 const OIDC_DISCOVERY_TIMEOUT_MS = 5 * 1000;
 const discoverySchema = z.object({
@@ -38,9 +39,9 @@ const getJwks = async (): Promise<ReturnType<typeof createRemoteJWKSet>> => {
   ) {
     return cachedJwks;
   }
-  if (jwksPromise) return jwksPromise;
+  if (jwksPromise && jwksPromiseIssuer === OIDC_ISSUER) return jwksPromise;
 
-  jwksPromise = (async () => {
+  const promise = (async () => {
     const discoveryUrl = buildOidcDiscoveryUrl(OIDC_ISSUER);
 
     const controller = new AbortController();
@@ -73,8 +74,13 @@ const getJwks = async (): Promise<ReturnType<typeof createRemoteJWKSet>> => {
     cachedJwksExpiresAt = Date.now() + JWKS_DISCOVERY_CACHE_TTL_MS;
     return cachedJwks;
   })().finally(() => {
-    jwksPromise = null;
+    if (jwksPromise === promise) {
+      jwksPromise = null;
+      jwksPromiseIssuer = null;
+    }
   });
+  jwksPromise = promise;
+  jwksPromiseIssuer = OIDC_ISSUER;
 
   return jwksPromise;
 };
