@@ -1,11 +1,9 @@
 import { readFile } from "node:fs/promises";
 import { z } from "zod";
-import { isJacksonAutoOidcConfigured } from "~/lib/env";
+import { hasSamlUpstream, isJacksonAutoOidcConfigured } from "~/lib/env";
 import { getJackson, resolveExternalUrl } from "./index";
-export {
-  isExplicitOidcConfigured,
-  isJacksonAutoOidcConfigured,
-} from "~/lib/env";
+import { registerJacksonResetHook } from "./reset-hooks";
+export { isJacksonAutoOidcConfigured } from "~/lib/env";
 
 export type ResolvedOidcConfig = {
   OIDC_ISSUER: string;
@@ -20,10 +18,27 @@ export class OidcNotConfiguredError extends Error {
   override readonly name = "OidcNotConfiguredError";
 }
 
+class UpstreamNotConfiguredError extends Error {
+  override readonly name = "UpstreamNotConfiguredError";
+}
+
+class UpstreamConflictError extends Error {
+  override readonly name = "UpstreamConflictError";
+}
+
 type JacksonConnection = {
   clientID: string;
   clientSecret: string;
 };
+
+type UpstreamConfig =
+  | { type: "saml"; rawMetadata: string }
+  | {
+      type: "oidc";
+      oidcDiscoveryUrl: string;
+      oidcClientId: string;
+      oidcClientSecret: string;
+    };
 
 const jacksonConnectionSchema = z.object({
   clientID: z.string().min(1),
@@ -32,6 +47,13 @@ const jacksonConnectionSchema = z.object({
 
 let resolvedConfig: ResolvedOidcConfig | null = null;
 let clientsPromise: Promise<ResolvedOidcConfig> | null = null;
+
+export const resetOidcClients = (): void => {
+  resolvedConfig = null;
+  clientsPromise = null;
+};
+
+registerJacksonResetHook(resetOidcClients);
 
 const getProductNames = (): { webProduct: string; desktopProduct: string } => {
   const webProduct =
@@ -44,15 +66,70 @@ const getProductNames = (): { webProduct: string; desktopProduct: string } => {
 const getDesktopRedirectUrl = (): string =>
   process.env.JACKSON_DESKTOP_REDIRECT_URL ?? DEFAULT_DESKTOP_REDIRECT_URL;
 
+const OIDC_DISCOVERY_PATH_RE = /(^|\/)\.well-known\/openid-configuration$/;
+
+const toDiscoveryUrl = (issuerOrDiscoveryUrl: string): string => {
+  const parsed = new URL(issuerOrDiscoveryUrl);
+  if (OIDC_DISCOVERY_PATH_RE.test(parsed.pathname)) {
+    return parsed.toString();
+  }
+
+  parsed.pathname = `${parsed.pathname.replace(/\/+$/, "")}/.well-known/openid-configuration`;
+  return parsed.toString();
+};
+
 const getRawMetadata = async (): Promise<string> => {
-  const rawMetadata = process.env.JACKSON_SAML_METADATA_XML;
+  const rawMetadata =
+    process.env.TUMIKI_INTERNAL_MANAGER_SAML_METADATA_XML ??
+    process.env.JACKSON_SAML_METADATA_XML;
   if (rawMetadata) return rawMetadata;
 
-  const metadataPath = process.env.JACKSON_SAML_METADATA_PATH;
+  const metadataPath =
+    process.env.TUMIKI_INTERNAL_MANAGER_SAML_METADATA_PATH ??
+    process.env.JACKSON_SAML_METADATA_PATH;
   if (metadataPath) return readFile(metadataPath, "utf-8");
 
-  throw new Error(
-    "JACKSON_SAML_METADATA_XML or JACKSON_SAML_METADATA_PATH is required for automatic Jackson OIDC client provisioning",
+  throw new UpstreamNotConfiguredError(
+    "TUMIKI_INTERNAL_MANAGER_SAML_METADATA_XML or TUMIKI_INTERNAL_MANAGER_SAML_METADATA_PATH is required for SAML upstream provisioning",
+  );
+};
+
+const getOidcUpstreamConfig = (): UpstreamConfig | null => {
+  const discoveryUrl =
+    process.env.TUMIKI_INTERNAL_MANAGER_OIDC_DISCOVERY_URL ??
+    process.env.OIDC_ISSUER;
+  const clientId =
+    process.env.TUMIKI_INTERNAL_MANAGER_OIDC_CLIENT_ID ??
+    process.env.OIDC_CLIENT_ID;
+  const clientSecret =
+    process.env.TUMIKI_INTERNAL_MANAGER_OIDC_CLIENT_SECRET ??
+    process.env.OIDC_CLIENT_SECRET;
+
+  if (!discoveryUrl || !clientId || !clientSecret) return null;
+
+  return {
+    type: "oidc",
+    oidcDiscoveryUrl: toDiscoveryUrl(discoveryUrl),
+    oidcClientId: clientId,
+    oidcClientSecret: clientSecret,
+  };
+};
+
+const getUpstreamConfig = async (): Promise<UpstreamConfig> => {
+  const hasSaml = hasSamlUpstream();
+  const oidc = getOidcUpstreamConfig();
+
+  if (hasSaml && oidc) {
+    throw new UpstreamConflictError(
+      "Configure either SAML upstream or OIDC upstream, not both",
+    );
+  }
+
+  if (oidc) return oidc;
+  if (hasSaml) return { type: "saml", rawMetadata: await getRawMetadata() };
+
+  throw new UpstreamNotConfiguredError(
+    "TUMIKI_INTERNAL_MANAGER_SAML_* or TUMIKI_INTERNAL_MANAGER_OIDC_* is required for automatic Jackson OIDC client provisioning",
   );
 };
 
@@ -60,24 +137,35 @@ const ensureConnection = async ({
   tenant,
   product,
   redirectUrl,
-  rawMetadata,
+  upstream,
 }: {
   tenant: string;
   product: string;
   redirectUrl: string;
-  rawMetadata: string;
+  upstream: UpstreamConfig;
 }): Promise<JacksonConnection> => {
   const { connectionAPIController } = await getJackson();
 
+  const commonParams = {
+    tenant,
+    product,
+    defaultRedirectUrl: redirectUrl,
+    // Jackson API は redirectUrl を JSON 配列文字列（複数URL許容）として受け付ける。
+    redirectUrl: JSON.stringify([redirectUrl]),
+  };
+
   const connection = jacksonConnectionSchema.parse(
-    await connectionAPIController.createSAMLConnection({
-      tenant,
-      product,
-      rawMetadata,
-      defaultRedirectUrl: redirectUrl,
-      // Jackson API は redirectUrl を JSON 配列文字列（複数URL許容）として受け付ける。
-      redirectUrl: JSON.stringify([redirectUrl]),
-    }),
+    upstream.type === "saml"
+      ? await connectionAPIController.createSAMLConnection({
+          ...commonParams,
+          rawMetadata: upstream.rawMetadata,
+        })
+      : await connectionAPIController.createOIDCConnection({
+          ...commonParams,
+          oidcDiscoveryUrl: upstream.oidcDiscoveryUrl,
+          oidcClientId: upstream.oidcClientId,
+          oidcClientSecret: upstream.oidcClientSecret,
+        }),
   );
 
   return {
@@ -86,57 +174,47 @@ const ensureConnection = async ({
   };
 };
 
-const getExplicitOidcConfig = (): ResolvedOidcConfig | null => {
-  const issuer = process.env.OIDC_ISSUER ?? "";
-  const clientId = process.env.OIDC_CLIENT_ID ?? "";
-  const clientSecret = process.env.OIDC_CLIENT_SECRET ?? "";
-  if (!issuer || !clientId || !clientSecret) return null;
-
-  const desktopClientId = process.env.OIDC_DESKTOP_CLIENT_ID ?? clientId;
-
-  // 明示的な OIDC env はローカル Keycloak などの動的切り替えを考慮してキャッシュしない。
-  return {
-    OIDC_ISSUER: issuer,
-    OIDC_CLIENT_ID: clientId,
-    OIDC_CLIENT_SECRET: clientSecret,
-    OIDC_DESKTOP_CLIENT_ID: desktopClientId,
-  };
-};
-
 export const ensureJacksonOidcClients =
   async (): Promise<ResolvedOidcConfig> => {
-    const explicit = getExplicitOidcConfig();
-    if (explicit) return explicit;
-
     if (resolvedConfig) return resolvedConfig;
     if (clientsPromise) return clientsPromise;
 
     clientsPromise = (async () => {
-      if (!isJacksonAutoOidcConfigured()) {
-        // 明示的 OIDC_* env は関数先頭で解決済み。ここでは Jackson 自動生成の必須 env だけを見る。
+      const upstream = await getUpstreamConfig().catch((error: unknown) => {
+        if (error instanceof UpstreamNotConfiguredError) {
+          return null;
+        }
+        const detail = error instanceof Error ? error.message : String(error);
         throw new OidcNotConfiguredError(
-          "OIDC is not configured. Set OIDC_* directly or configure Jackson automatic provisioning with JACKSON_SAML_METADATA_XML/JACKSON_SAML_METADATA_PATH.",
+          error instanceof UpstreamConflictError
+            ? detail
+            : `OIDC upstream config failed: ${detail}`,
+        );
+      });
+
+      if (!upstream || !isJacksonAutoOidcConfigured()) {
+        throw new OidcNotConfiguredError(
+          "OIDC is not configured. Configure Jackson provisioning with TUMIKI_INTERNAL_MANAGER_SECRET_KEY, TUMIKI_INTERNAL_MANAGER_OIDC_PRIVATE_KEY, TUMIKI_INTERNAL_MANAGER_PUBLIC_URL, and TUMIKI_INTERNAL_MANAGER_SAML_* or TUMIKI_INTERNAL_MANAGER_OIDC_*.",
         );
       }
 
       const tenant = process.env.JACKSON_TENANT ?? "default";
       const { webProduct, desktopProduct } = getProductNames();
       const externalUrl = resolveExternalUrl();
-      const rawMetadata = await getRawMetadata();
 
-      // Jackson 自動設定は起動後に SAML IdP 設定が変わらない前提でプロセス内キャッシュする。
-      // createSAMLConnection は Jackson 側で同一 tenant/product の connection を upsert する。
+      // Jackson 自動設定は起動後に upstream IdP 設定が変わらない前提でプロセス内キャッシュする。
+      // create*Connection は Jackson 側で同一 tenant/product の connection を upsert する。
       const webConnection = await ensureConnection({
         tenant,
         product: webProduct,
         redirectUrl: `${externalUrl}/api/auth/callback/oidc`,
-        rawMetadata,
+        upstream,
       });
       const desktopConnection = await ensureConnection({
         tenant,
         product: desktopProduct,
         redirectUrl: getDesktopRedirectUrl(),
-        rawMetadata,
+        upstream,
       });
 
       const config = {

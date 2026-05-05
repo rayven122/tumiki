@@ -28,7 +28,7 @@ Desktop は `issuer` の Discovery Document から `authorization_endpoint` / `t
 注意:
 
 - Desktop は public client として `OIDC_DESKTOP_CLIENT_ID` を使う。Desktop は `client_secret` を持てないため、管理サーバー用の confidential client（`OIDC_CLIENT_ID`）とは分ける。
-- Jackson 経由固定では `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` / `OIDC_DESKTOP_CLIENT_ID` を手動発行しない。`JACKSON_SAML_METADATA_XML` または `JACKSON_SAML_METADATA_PATH` から Web / Desktop 用 connection を自動生成して使う。
+- Jackson 経由固定では Auth.js / Desktop 用の `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` / `OIDC_DESKTOP_CLIENT_ID` を手動発行しない。`TUMIKI_INTERNAL_MANAGER_SAML_*` または `TUMIKI_INTERNAL_MANAGER_OIDC_*` から Web / Desktop 用 connection を自動生成して使う。
 - 監査ログ API の JWT 検証は `issuer`, `audience`, `sub` を検証する。`audience` は Desktop 用 clientID と一致する必要がある。
 - Jackson の `access_token` は opaque token のため、Desktop から internal-manager API へ送る Bearer は保存済み `id_token` を優先する。
 

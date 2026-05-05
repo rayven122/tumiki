@@ -7,8 +7,9 @@
  *
  * 環境変数:
  *   - INTERNAL_DATABASE_URL: jackson が使う PostgreSQL
- *   - JACKSON_ENCRYPTION_KEY: 32 文字以上の暗号化キー
- *   - NEXTAUTH_URL_INTERNAL_MANAGER: アプリの公開 URL（saml-jackson の externalUrl）
+ *   - TUMIKI_INTERNAL_MANAGER_SECRET_KEY: Auth.js / Jackson 暗号化キーの導出元
+ *   - TUMIKI_INTERNAL_MANAGER_OIDC_PRIVATE_KEY: OIDC ID Token 署名用 private key
+ *   - TUMIKI_INTERNAL_MANAGER_PUBLIC_URL: アプリの公開 URL（saml-jackson の externalUrl）
  *   - JACKSON_TENANT: テナント識別子（デフォルト "default"）
  *   - JACKSON_WEB_PRODUCT: Web 用プロダクト識別子（デフォルト JACKSON_PRODUCT or "tumiki"）
  *   - JACKSON_DESKTOP_PRODUCT: Desktop 用プロダクト識別子（デフォルト "<web-product>-desktop"）
@@ -16,8 +17,8 @@
  *
  * 出力:
  *   登録結果の確認用に client 情報を 0600 のファイルへ書き出す。
- *   通常運用ではこのスクリプトを使わず、JACKSON_SAML_METADATA_XML /
- *   JACKSON_SAML_METADATA_PATH からアプリが自動生成した connection を使う。
+ *   通常運用ではこのスクリプトを使わず、TUMIKI_INTERNAL_MANAGER_SAML_* /
+ *   TUMIKI_INTERNAL_MANAGER_OIDC_* からアプリが自動生成した connection を使う。
  */
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -141,7 +142,7 @@ const main = async () => {
   console.log("");
   console.log("通常運用ではこの値を Infisical に転記せず、");
   console.log(
-    "JACKSON_SAML_METADATA_XML / JACKSON_SAML_METADATA_PATH を使います。",
+    "TUMIKI_INTERNAL_MANAGER_SAML_* / TUMIKI_INTERNAL_MANAGER_OIDC_* を使います。",
   );
 
   process.exit(0);

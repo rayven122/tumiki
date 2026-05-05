@@ -1,5 +1,16 @@
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { GroupSource, Prisma } from "@tumiki/internal-db";
 import { adminProcedure, createTRPCRouter } from "@/server/api/trpc";
+
+export const GROUP_LIST_LIMIT = 200;
+
+const idpExternalIdSchema = z
+  .string()
+  .trim()
+  .max(200)
+  .transform((value) => (value === "" ? null : value))
+  .nullable();
 
 export const groupsRouter = createTRPCRouter({
   /** グループ一覧をメンバーシップカウント付きで取得 */
@@ -31,7 +42,7 @@ export const groupsRouter = createTRPCRouter({
         },
       },
       orderBy: { createdAt: "asc" },
-      take: 200,
+      take: GROUP_LIST_LIMIT + 1,
     });
   }),
 
@@ -68,11 +79,67 @@ export const groupsRouter = createTRPCRouter({
           status: true,
           added: true,
           removed: true,
+          detail: true,
           startedAt: true,
           completedAt: true,
         },
         orderBy: { startedAt: "desc" },
         take: 20,
       });
+    }),
+
+  /** Tumikiグループに対応するIdPグループ識別子を設定する */
+  updateIdpMapping: adminProcedure
+    .input(
+      z.object({
+        groupId: z.string(),
+        // 管理UIの手動mappingはSCIM/JIT共通のTumiki group mappingとして扱う。
+        provider: z.literal("scim-map").default("scim-map"),
+        externalId: idpExternalIdSchema,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const group = await ctx.db.group.findUnique({
+        where: { id: input.groupId },
+        select: { source: true },
+      });
+      if (!group) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+      if (group.source !== GroupSource.TUMIKI) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "IdPグループのマッピングはTumiki作成グループにのみ設定できます",
+        });
+      }
+
+      try {
+        return await ctx.db.group.update({
+          where: { id: input.groupId },
+          data: {
+            provider: input.externalId ? input.provider : null,
+            externalId: input.externalId,
+          },
+          select: {
+            id: true,
+            provider: true,
+            externalId: true,
+            updatedAt: true,
+          },
+        });
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === "P2002"
+        ) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "そのIdPグループ識別子は既に別のグループに使用されています",
+          });
+        }
+        throw error;
+      }
     }),
 });

@@ -24,6 +24,8 @@ type SyncTriggerValue = (typeof SyncTrigger)[keyof typeof SyncTrigger];
 type GroupListItem = RouterOutputs["groups"]["list"][number];
 type SyncLog = RouterOutputs["groups"]["getSyncLogs"][number];
 
+const GROUP_DISPLAY_LIMIT = 200;
+
 /* ===== グループカラー（IDから決定論的に導出） ===== */
 
 const PRESET_COLOR_CLASSES = [
@@ -123,13 +125,26 @@ const formatDateTime = (date: Date): string => {
 
 type IdpTabProps = {
   group: GroupListItem;
+  idpGroupMap: Record<string, string>;
+  onIdpGroupChange: (groupId: string, value: string) => void;
+  onSaveIdpMapping: (groupId: string) => void;
+  isSaving: boolean;
 };
 
-const IdpTab = ({ group }: IdpTabProps) => {
+const IdpTab = ({
+  group,
+  idpGroupMap,
+  onIdpGroupChange,
+  onSaveIdpMapping,
+  isSaving,
+}: IdpTabProps) => {
   const syncLogsQuery = api.groups.getSyncLogs.useQuery({ groupId: group.id });
   const syncLogs: SyncLog[] = syncLogsQuery.data ?? [];
-  const syncStatusKey = getSyncStatusKey(group);
-  const syncCfg = SYNC_STATUS_CONFIG[syncStatusKey];
+  const syncCfg =
+    group.source === GroupSource.TUMIKI
+      ? null
+      : SYNC_STATUS_CONFIG[getSyncStatusKey(group)];
+  const mappingValue = idpGroupMap[group.id] ?? "";
 
   return (
     <div className="space-y-4">
@@ -139,24 +154,38 @@ const IdpTab = ({ group }: IdpTabProps) => {
           IdPグループ設定
         </h2>
         <label className="text-text-secondary mb-1 block text-[11px]">
-          IdPグループ名（メールアドレス）
+          IdPグループ識別子
         </label>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            placeholder="group@example.com"
-            value={group.externalId ?? ""}
-            disabled
-            className="bg-bg-app border-border-default text-text-secondary disabled:text-text-muted flex-1 cursor-not-allowed rounded-lg border px-3 py-2 text-xs opacity-70 outline-none"
-          />
-          <button
-            type="button"
-            disabled
-            className="bg-btn-primary-bg text-btn-primary-text min-h-[44px] cursor-not-allowed rounded-lg px-3 py-2 text-xs font-medium opacity-50"
-          >
-            保存
-          </button>
-        </div>
+        {group.source === GroupSource.IDP ? (
+          <div className="bg-bg-app border-border-default rounded-lg border px-3 py-2">
+            <p className="text-text-muted text-xs">
+              SCIMで自動同期されたグループです。IdPマッピングはTumiki作成グループにのみ設定できます。
+            </p>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="IdP group id / name / email"
+              value={mappingValue}
+              onChange={(e) => onIdpGroupChange(group.id, e.target.value)}
+              className="bg-bg-app border-border-default text-text-secondary flex-1 rounded-lg border px-3 py-2 text-xs outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => onSaveIdpMapping(group.id)}
+              disabled={isSaving}
+              className="bg-btn-primary-bg text-btn-primary-text min-h-[44px] rounded-lg px-3 py-2 text-xs font-medium transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isSaving ? "保存中" : "保存"}
+            </button>
+          </div>
+        )}
+        {group.externalId && (
+          <p className="text-text-muted mt-2 text-[10px]">
+            現在の紐付け: {group.provider ?? "scim"} / {group.externalId}
+          </p>
+        )}
       </div>
 
       {/* 同期ステータス */}
@@ -175,7 +204,7 @@ const IdpTab = ({ group }: IdpTabProps) => {
           </button>
         </div>
         <div className="flex items-center gap-2">
-          {group.source === GroupSource.TUMIKI ? (
+          {syncCfg === null ? (
             <span className="text-text-muted text-[11px]">-</span>
           ) : (
             <>
@@ -217,11 +246,18 @@ const IdpTab = ({ group }: IdpTabProps) => {
               読み込み中...
             </div>
           )}
-          {!syncLogsQuery.isLoading && syncLogs.length === 0 && (
-            <div className="text-text-muted min-w-[600px] px-4 py-6 text-center text-xs">
-              同期履歴がありません
+          {syncLogsQuery.isError && (
+            <div className="min-w-[600px] px-4 py-6 text-center text-xs text-red-400">
+              同期履歴の読み込みに失敗しました
             </div>
           )}
+          {!syncLogsQuery.isLoading &&
+            !syncLogsQuery.isError &&
+            syncLogs.length === 0 && (
+              <div className="text-text-muted min-w-[600px] px-4 py-6 text-center text-xs">
+                同期履歴がありません
+              </div>
+            )}
           {syncLogs.map((log) => {
             const statusKey =
               log.status in HISTORY_STATUS_CONFIG
@@ -252,7 +288,9 @@ const IdpTab = ({ group }: IdpTabProps) => {
                 <span className="text-text-secondary text-right font-mono">
                   -{log.removed}
                 </span>
-                <span className="text-text-muted text-[10px]">—</span>
+                <span className="text-text-muted text-[10px]">
+                  {log.detail ?? "—"}
+                </span>
               </div>
             );
           })}
@@ -270,16 +308,33 @@ export const GroupsManagementPanel = ({
   const [search, setSearch] = useState("");
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<GroupTab>("members");
+  const [idpGroupMap, setIdpGroupMap] = useState<Record<string, string>>({});
+  const utils = api.useUtils();
+  const updateIdpMapping = api.groups.updateIdpMapping.useMutation({
+    onSuccess: async (updatedGroup) => {
+      setIdpGroupMap((prev) => ({
+        ...prev,
+        [updatedGroup.id]: updatedGroup.externalId ?? "",
+      }));
+      await utils.groups.list.invalidate();
+    },
+  });
+  const mutationError = updateIdpMapping.error;
 
   const groupsQuery = api.groups.list.useQuery();
   const groups = groupsQuery.data ?? [];
+  const hasMoreGroups = groups.length > GROUP_DISPLAY_LIMIT;
+  const visibleGroups = hasMoreGroups
+    ? groups.slice(0, GROUP_DISPLAY_LIMIT)
+    : groups;
   const Heading = embedded ? "h2" : "h1";
 
   /* 選択中グループのオブジェクトを取得 */
-  const selectedGroup = groups.find((g) => g.id === selectedGroupId) ?? null;
+  const selectedGroup =
+    visibleGroups.find((g) => g.id === selectedGroupId) ?? null;
 
   /* グループ一覧フィルタリング */
-  const filteredGroups = groups.filter(
+  const filteredGroups = visibleGroups.filter(
     (g) =>
       search === "" ||
       g.name.includes(search) ||
@@ -289,7 +344,23 @@ export const GroupsManagementPanel = ({
   /* グループ選択ハンドラ */
   const handleSelectGroup = (group: GroupListItem) => {
     setSelectedGroupId(group.id);
-    setActiveTab("members");
+    updateIdpMapping.reset();
+    setIdpGroupMap((prev) => {
+      if (prev[group.id] !== undefined) return prev;
+      return { ...prev, [group.id]: group.externalId ?? "" };
+    });
+  };
+
+  const handleIdpGroupChange = (groupId: string, value: string) => {
+    setIdpGroupMap((prev) => ({ ...prev, [groupId]: value }));
+  };
+
+  const handleSaveIdpMapping = (groupId: string) => {
+    const value = idpGroupMap[groupId]?.trim() ?? "";
+    updateIdpMapping.mutate({
+      groupId,
+      externalId: value.length > 0 ? value : null,
+    });
   };
 
   return (
@@ -341,11 +412,23 @@ export const GroupsManagementPanel = ({
               読み込み中...
             </div>
           )}
-          {!groupsQuery.isLoading && filteredGroups.length === 0 && (
-            <div className="text-text-muted px-4 py-6 text-center text-xs">
-              {search ? "検索結果がありません" : "グループがありません"}
+          {groupsQuery.isError && (
+            <div className="px-4 py-6 text-center text-xs text-red-400">
+              グループの読み込みに失敗しました
             </div>
           )}
+          {hasMoreGroups && (
+            <div className="border-b-border-subtle bg-amber-500/10 px-4 py-2 text-[10px] text-amber-300">
+              表示上限の200件まで表示しています
+            </div>
+          )}
+          {!groupsQuery.isLoading &&
+            !groupsQuery.isError &&
+            filteredGroups.length === 0 && (
+              <div className="text-text-muted px-4 py-6 text-center text-xs">
+                {search ? "検索結果がありません" : "グループがありません"}
+              </div>
+            )}
           {filteredGroups.map((group) => {
             const syncStatusKey = getSyncStatusKey(group);
             const syncCfg = SYNC_STATUS_CONFIG[syncStatusKey];
@@ -512,7 +595,22 @@ export const GroupsManagementPanel = ({
               )}
 
               {/* IdP連携タブ */}
-              {activeTab === "idp" && <IdpTab group={selectedGroup} />}
+              {activeTab === "idp" && (
+                <div className="space-y-3">
+                  <IdpTab
+                    group={selectedGroup}
+                    idpGroupMap={idpGroupMap}
+                    onIdpGroupChange={handleIdpGroupChange}
+                    onSaveIdpMapping={handleSaveIdpMapping}
+                    isSaving={updateIdpMapping.isPending}
+                  />
+                  {mutationError && (
+                    <div className="rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                      {mutationError.message}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </>
         )}

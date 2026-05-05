@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "PORT=3100 pnpm with-env next dev --turbopack",
-    "dev:keycloak": "infisical run --env=dev -- sh -c ': \"${KEYCLOAK_INTERNAL_MANAGER_CLIENT_SECRET:?KEYCLOAK_INTERNAL_MANAGER_CLIENT_SECRET is required for local Keycloak. Set it in Infisical dev or the shell.}\"; PORT=${PORT:-3100} OIDC_ISSUER=http://localhost:8888/realms/tumiki OIDC_CLIENT_ID=tumiki-internal-manager OIDC_CLIENT_SECRET=${KEYCLOAK_INTERNAL_MANAGER_CLIENT_SECRET} OIDC_DESKTOP_CLIENT_ID=${KEYCLOAK_DESKTOP_CLIENT_ID:-tumiki-desktop} INTERNAL_MANAGER_BOOTSTRAP_ADMIN_EMAIL=${INTERNAL_MANAGER_BOOTSTRAP_ADMIN_EMAIL:-admin@tumiki.local} NEXTAUTH_URL=http://localhost:${PORT:-3100} next dev --turbopack'",
+    "dev:keycloak": "infisical run --env=dev -- sh -c ': \"${KEYCLOAK_INTERNAL_MANAGER_CLIENT_SECRET:?KEYCLOAK_INTERNAL_MANAGER_CLIENT_SECRET is required for local Keycloak. Set it in Infisical dev or the shell.}\"; PORT=${PORT:-3100} TUMIKI_INTERNAL_MANAGER_OIDC_DISCOVERY_URL=http://localhost:8888/realms/tumiki/.well-known/openid-configuration TUMIKI_INTERNAL_MANAGER_OIDC_CLIENT_ID=tumiki-internal-manager TUMIKI_INTERNAL_MANAGER_OIDC_CLIENT_SECRET=${KEYCLOAK_INTERNAL_MANAGER_CLIENT_SECRET} TUMIKI_INTERNAL_MANAGER_PUBLIC_URL=http://localhost:${PORT:-3100} INTERNAL_MANAGER_BOOTSTRAP_ADMIN_EMAIL=${INTERNAL_MANAGER_BOOTSTRAP_ADMIN_EMAIL:-admin@tumiki.local} next dev --turbopack'",
     "build": "pnpm with-env next build --turbopack",
     "build:bare": "next build --webpack",
     "start": "PORT=3100 pnpm with-env next start",
@@ -14,6 +14,7 @@
     "typecheck": "tsc --noEmit",
     "with-env": "infisical run --env=dev --",
     "with-env:prod": "infisical run --env=prod --",
+    "secrets:generate": "node scripts/generate-secrets.mjs",
     "lint": "eslint",
     "format": "prettier --check . --ignore-path ../../.gitignore",
     "check": "concurrently --kill-others-on-fail --names \"lint,format,typecheck\" \"pnpm run lint\" \"pnpm run format\" \"pnpm run typecheck\"",

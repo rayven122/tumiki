@@ -2,6 +2,8 @@
 
 ローカル環境では、組み込みの Keycloak OIDC provider を使用して internal-manager の認証を検証します。
 
+internal-manager の Auth.js / Desktop は Keycloak に直接接続せず、Jackson を OIDC IdP として使います。全体の env 方針は [Internal Manager Jackson 認証設定](./internal-manager-jackson-auth.md) を参照してください。
+
 ## 起動
 
 ```bash
@@ -12,17 +14,19 @@ Keycloak は `http://localhost:8888` で起動します。
 
 ## 環境変数（internal-manager）
 
-`pnpm setup:dev` は Keycloak に internal-manager 用 OIDC client を作成します。ローカルで手動設定する場合は以下を使用してください。`OIDC_CLIENT_SECRET` は `KEYCLOAK_INTERNAL_MANAGER_CLIENT_SECRET` と同じ値を設定します。
+`pnpm setup:dev` は Keycloak に internal-manager 用 OIDC client を作成します。ローカルで手動設定する場合は以下を使用してください。`TUMIKI_INTERNAL_MANAGER_OIDC_CLIENT_SECRET` は `KEYCLOAK_INTERNAL_MANAGER_CLIENT_SECRET` と同じ値を設定します。
 
 ```env
-OIDC_ISSUER=http://localhost:8888/realms/tumiki
-OIDC_CLIENT_ID=tumiki-internal-manager
-OIDC_CLIENT_SECRET=<KEYCLOAK_INTERNAL_MANAGER_CLIENT_SECRET>
-OIDC_DESKTOP_CLIENT_ID=tumiki-desktop
+TUMIKI_INTERNAL_MANAGER_OIDC_DISCOVERY_URL=http://localhost:8888/realms/tumiki/.well-known/openid-configuration
+TUMIKI_INTERNAL_MANAGER_OIDC_CLIENT_ID=tumiki-internal-manager
+TUMIKI_INTERNAL_MANAGER_OIDC_CLIENT_SECRET=<KEYCLOAK_INTERNAL_MANAGER_CLIENT_SECRET>
+TUMIKI_INTERNAL_MANAGER_PUBLIC_URL=http://localhost:3100
 INTERNAL_MANAGER_BOOTSTRAP_ADMIN_EMAIL=admin@tumiki.local
 ```
 
-Infisical の `dev` 環境に別の OIDC 設定が入っている場合でも、ローカル Keycloak で起動するには以下を使います。`dev:keycloak` は `KEYCLOAK_INTERNAL_MANAGER_CLIENT_SECRET` を `OIDC_CLIENT_SECRET` として渡します。
+Auth.js / Desktop は Keycloak に直接接続せず、Jackson が発行した Web / Desktop 用 OIDC client を使います。Keycloak 側の OIDC client には Jackson callback URL（例: `http://localhost:3100/api/oauth/oidc`）を redirect URI として許可してください。
+
+Infisical の `dev` 環境に別の OIDC 設定が入っている場合でも、ローカル Keycloak で起動するには以下を使います。`dev:keycloak` は `KEYCLOAK_INTERNAL_MANAGER_CLIENT_SECRET` を `TUMIKI_INTERNAL_MANAGER_OIDC_CLIENT_SECRET` として渡します。
 
 ```bash
 cd apps/internal-manager
