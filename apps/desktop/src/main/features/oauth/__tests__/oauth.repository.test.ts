@@ -14,6 +14,7 @@ import {
   findByServerUrl,
   upsertOAuthClient,
   deleteByServerUrl,
+  findManualClientByServerUrl,
 } from "../oauth.repository";
 import { encryptToken, decryptToken } from "../../../utils/encryption";
 
@@ -141,6 +142,91 @@ describe("oauth.repository", () => {
 
       expect(mockDb.oAuthClient.deleteMany).toHaveBeenCalledWith({
         where: { serverUrl: "https://mcp.figma.com/mcp" },
+      });
+    });
+  });
+
+  describe("findManualClientByServerUrl", () => {
+    test("isDcr=falseのレコードが存在する場合、復号化された値を返す", async () => {
+      vi.mocked(mockDb.oAuthClient.findUnique).mockResolvedValueOnce({
+        id: 1,
+        serverUrl: "https://mcp.example.com",
+        issuer: "https://example.com",
+        clientId: "encrypted:manual-client-id",
+        clientSecret: "encrypted:manual-client-secret",
+        tokenEndpointAuthMethod: "client_secret_post",
+        authServerMetadata: "{}",
+        isDcr: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const result = await findManualClientByServerUrl(
+        mockDb,
+        "https://mcp.example.com",
+      );
+
+      expect(result).toStrictEqual({
+        clientId: "manual-client-id",
+        clientSecret: "manual-client-secret",
+      });
+    });
+
+    test("isDcr=trueのレコード（DCR自動登録）はキャッシュ対象外としてnullを返す", async () => {
+      vi.mocked(mockDb.oAuthClient.findUnique).mockResolvedValueOnce({
+        id: 1,
+        serverUrl: "https://mcp.figma.com/mcp",
+        issuer: "https://www.figma.com",
+        clientId: "encrypted:dcr-client-id",
+        clientSecret: "encrypted:dcr-client-secret",
+        tokenEndpointAuthMethod: "client_secret_post",
+        authServerMetadata: "{}",
+        isDcr: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const result = await findManualClientByServerUrl(
+        mockDb,
+        "https://mcp.figma.com/mcp",
+      );
+
+      expect(result).toBeNull();
+    });
+
+    test("レコードが存在しない場合nullを返す", async () => {
+      vi.mocked(mockDb.oAuthClient.findUnique).mockResolvedValueOnce(null);
+
+      const result = await findManualClientByServerUrl(
+        mockDb,
+        "https://unknown.example.com",
+      );
+
+      expect(result).toBeNull();
+    });
+
+    test("isDcr=falseでclientSecretがnullの場合もnullのまま返す", async () => {
+      vi.mocked(mockDb.oAuthClient.findUnique).mockResolvedValueOnce({
+        id: 2,
+        serverUrl: "https://mcp.public.example.com",
+        issuer: "https://public.example.com",
+        clientId: "encrypted:public-client",
+        clientSecret: null,
+        tokenEndpointAuthMethod: "none",
+        authServerMetadata: "{}",
+        isDcr: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const result = await findManualClientByServerUrl(
+        mockDb,
+        "https://mcp.public.example.com",
+      );
+
+      expect(result).toStrictEqual({
+        clientId: "public-client",
+        clientSecret: null,
       });
     });
   });
