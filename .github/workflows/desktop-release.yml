@@ -50,8 +50,12 @@ jobs:
       - name: 📦 Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: 🔧 Build database package
-        run: pnpm --filter @tumiki/db build
+      # @tumiki/desktop が依存する全ワークスペースパッケージ (db / mcp-core-proxy / tooling) を
+      # ビルドする。package.json の `exports` が `dist/` を指すため、未ビルドのまま
+      # electron-builder が asar に同梱すると配布先で Cannot find module で起動失敗する。
+      # ローカルでは `pnpm build` (root, turbo) が依存先まで自動ビルドするので顕在化しない。
+      - name: 🔧 Build workspace dependencies
+        run: pnpm --filter "@tumiki/desktop^..." build
 
       - name: 🔧 Generate Prisma client for desktop
         run: |
@@ -124,8 +128,10 @@ jobs:
       - name: 📦 Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: 🔧 Build database package
-        run: pnpm --filter @tumiki/db build
+      # @tumiki/desktop が依存する全ワークスペースパッケージ (db / mcp-core-proxy / tooling) を
+      # ビルドする。詳細は build-macos ジョブのコメント参照。
+      - name: 🔧 Build workspace dependencies
+        run: pnpm --filter "@tumiki/desktop^..." build
 
       - name: 🔧 Generate Prisma client for desktop
         shell: bash
