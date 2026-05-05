@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { z } from "zod";
 import { getJackson, isJacksonConfigured, resolveExternalUrl } from "./index";
 
 export type ResolvedOidcConfig = {
@@ -13,6 +14,12 @@ type JacksonConnection = {
   clientSecret: string;
 };
 
+const jacksonConnectionSchema = z.object({
+  clientID: z.string().min(1),
+  clientSecret: z.string().min(1),
+});
+
+let resolvedConfig: ResolvedOidcConfig | null = null;
 let clientsPromise: Promise<ResolvedOidcConfig> | null = null;
 
 export const isExplicitOidcConfigured = (): boolean =>
@@ -60,20 +67,16 @@ const ensureConnection = async ({
   rawMetadata: string;
 }): Promise<JacksonConnection> => {
   const { connectionAPIController } = await getJackson();
-  const existing = (await connectionAPIController.getConnections({
-    tenant,
-    product,
-  })) as JacksonConnection[];
 
-  const connection =
-    existing[0] ??
-    ((await connectionAPIController.createSAMLConnection({
+  const connection = jacksonConnectionSchema.parse(
+    await connectionAPIController.createSAMLConnection({
       tenant,
       product,
       rawMetadata,
       defaultRedirectUrl: redirectUrl,
       redirectUrl: JSON.stringify([redirectUrl]),
-    })) as JacksonConnection);
+    }),
+  );
 
   return {
     clientID: connection.clientID,
@@ -101,6 +104,7 @@ export const ensureJacksonOidcClients =
     const explicit = getExplicitOidcConfig();
     if (explicit) return explicit;
 
+    if (resolvedConfig) return resolvedConfig;
     if (clientsPromise) return clientsPromise;
 
     clientsPromise = (async () => {
@@ -128,12 +132,14 @@ export const ensureJacksonOidcClients =
         rawMetadata,
       });
 
-      return {
+      const config = {
         OIDC_ISSUER: externalUrl,
         OIDC_CLIENT_ID: webConnection.clientID,
         OIDC_CLIENT_SECRET: webConnection.clientSecret,
         OIDC_DESKTOP_CLIENT_ID: desktopConnection.clientID,
       };
+      resolvedConfig = config;
+      return config;
     })().finally(() => {
       clientsPromise = null;
     });

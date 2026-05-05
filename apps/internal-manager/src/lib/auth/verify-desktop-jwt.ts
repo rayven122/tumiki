@@ -82,11 +82,10 @@ export const verifyDesktopJwt = async (
   const { OIDC_ISSUER, OIDC_DESKTOP_CLIENT_ID } =
     await ensureJacksonOidcClients();
 
-  const expectedClientId = OIDC_DESKTOP_CLIENT_ID;
   const jwks = await getJwks();
   const { payload } = await jwtVerify(token, jwks, {
     issuer: OIDC_ISSUER,
-    audience: expectedClientId,
+    audience: OIDC_DESKTOP_CLIENT_ID,
   }).catch(async (error: unknown) => {
     if (!isAudienceValidationError(error)) throw error;
     // Keycloakのaccess tokenはaudがaccount等の内部リソースになるため、
@@ -94,7 +93,7 @@ export const verifyDesktopJwt = async (
     const result = await jwtVerify(token, jwks, {
       issuer: OIDC_ISSUER,
     });
-    if (result.payload.azp !== expectedClientId) {
+    if (result.payload.azp !== OIDC_DESKTOP_CLIENT_ID) {
       throw new Error("Invalid desktop token client");
     }
     return result;

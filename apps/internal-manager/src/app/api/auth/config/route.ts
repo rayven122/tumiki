@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { ensureJacksonOidcClients } from "~/server/jackson/oidc-clients";
 
-/** Desktop 用 OIDC 設定エンドポイント。Desktop は public client + PKCE で認証する。 */
+/**
+ * Desktop 用 OIDC 設定エンドポイント。
+ * 未認証状態の Desktop が組織サインイン開始前に呼ぶ公開 API。
+ * public client の client_id と issuer URL のみ返し、機密情報は返さない。
+ */
 export const GET = async () => {
   const env = await ensureJacksonOidcClients();
   return NextResponse.json({

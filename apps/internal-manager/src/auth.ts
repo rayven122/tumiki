@@ -32,14 +32,12 @@ const createOidcProvider = async (): Promise<OAuthConfig<OidcProfile>> => {
     // 取得しようとして 404 になるため、ローカル SVG で上書きする
     style: { logo: "/sso-logo.svg", text: "#fff", bg: "#1f2937" },
     // sub を User.id に使うことで ExternalIdentity の (provider, sub) → userId マッピングが成立する
-    profile(profile) {
-      return {
-        id: profile.sub,
-        email: profile.email ?? null,
-        name: profile.name ?? null,
-        image: profile.picture ?? null,
-      };
-    },
+    profile: (profile) => ({
+      id: profile.sub,
+      email: profile.email ?? null,
+      name: profile.name ?? null,
+      image: profile.picture ?? null,
+    }),
   };
 };
 
