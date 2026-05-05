@@ -228,3 +228,45 @@ variable "google_client_secret" {
   sensitive   = true
   default     = ""
 }
+
+# Google IdP の First Broker Login フロー alias
+# 本番 realm では手動配備された "tumiki-broker-login" を参照する。
+# 開発・staging ではデフォルトの "first broker login" を使用。
+variable "first_broker_login_flow_alias" {
+  description = "Google IdP の First Broker Login フロー alias"
+  type        = string
+  default     = "first broker login"
+}
+
+# 環境別フィーチャーフラグ
+# 旧本番 realm では User Profile feature を有効化していないため、
+# 本番では false に設定して drift を発生させない。
+variable "enable_user_profile" {
+  description = "keycloak_realm_user_profile を Terraform で管理するか"
+  type        = bool
+  default     = true
+}
+
+# 管理者テストユーザーの作成可否
+# 本番 realm では Terraform 管理のテストユーザーを作成しない。
+variable "enable_test_user" {
+  description = "管理者テストユーザー（admin_test）を作成するか"
+  type        = bool
+  default     = true
+}
+
+# Internal Manager クライアントの作成可否
+# 本番 realm にはまだ配備していないため、本番では false を指定。
+variable "enable_internal_manager_client" {
+  description = "tumiki-internal-manager クライアントを作成するか"
+  type        = bool
+  default     = true
+}
+
+# Desktop クライアントの作成可否
+# 本番 realm にはまだ配備していないため、本番では false を指定。
+variable "enable_desktop_client" {
+  description = "tumiki-desktop クライアントを作成するか"
+  type        = bool
+  default     = true
+}

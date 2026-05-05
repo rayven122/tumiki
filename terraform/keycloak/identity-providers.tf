@@ -62,10 +62,11 @@ resource "keycloak_oidc_google_identity_provider" "google" {
   default_scopes = "openid profile email"
   sync_mode      = "IMPORT"
 
-  # Review Profileステップはカスタムフローで制御
-  # 注: Terraformではカスタム認証フローの完全な設定が難しいため、
-  # 基本的なIdP設定のみを行い、First Broker Loginフローは
-  # デフォルトを使用する
+  # First Broker Login フロー
+  # 本番 realm に手動で配備済みのカスタムフロー "tumiki-broker-login" を参照する。
+  # （Terraform 上ではフロー本体は管理せず、alias 文字列のみ宣言）
+  # var.first_broker_login_flow_alias で環境別に上書き可能。
+  first_broker_login_flow_alias = var.first_broker_login_flow_alias
 
   # Keycloak → Google への認可リクエストで使う prompt を固定値で上書き
   # クライアントから prompt=create (OIDC Prompt Values 1.0拡張) が来た場合、

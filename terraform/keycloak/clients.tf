@@ -75,7 +75,9 @@ resource "keycloak_openid_client_default_scopes" "manager_default_scopes" {
 # =============================================================================
 
 # Internal Manager 用のOIDCクライアント
+# var.enable_internal_manager_client = false の環境では作成しない。
 resource "keycloak_openid_client" "internal_manager" {
+  count       = var.enable_internal_manager_client ? 1 : 0
   realm_id    = keycloak_realm.tumiki.id
   client_id   = var.internal_manager_client_id
   name        = "Tumiki Internal Manager"
@@ -104,8 +106,9 @@ resource "keycloak_openid_client" "internal_manager" {
 
 # Internal Manager クライアントのデフォルトスコープ設定
 resource "keycloak_openid_client_default_scopes" "internal_manager_default_scopes" {
+  count          = var.enable_internal_manager_client ? 1 : 0
   realm_id       = keycloak_realm.tumiki.id
-  client_id      = keycloak_openid_client.internal_manager.id
+  client_id      = keycloak_openid_client.internal_manager[0].id
   default_scopes = local.authenticated_app_default_scopes
 }
 
@@ -178,7 +181,9 @@ resource "keycloak_openid_client_optional_scopes" "proxy_optional_scopes" {
 # =============================================================================
 
 # Desktop Electron Application用のOIDCクライアント
+# var.enable_desktop_client = false の環境では作成しない。
 resource "keycloak_openid_client" "desktop" {
+  count       = var.enable_desktop_client ? 1 : 0
   realm_id    = keycloak_realm.tumiki.id
   client_id   = var.desktop_client_id
   name        = "Tumiki Desktop Application"
@@ -204,7 +209,8 @@ resource "keycloak_openid_client" "desktop" {
 
 # Desktop クライアントのデフォルトスコープ設定
 resource "keycloak_openid_client_default_scopes" "desktop_default_scopes" {
+  count          = var.enable_desktop_client ? 1 : 0
   realm_id       = keycloak_realm.tumiki.id
-  client_id      = keycloak_openid_client.desktop.id
+  client_id      = keycloak_openid_client.desktop[0].id
   default_scopes = local.authenticated_app_default_scopes
 }

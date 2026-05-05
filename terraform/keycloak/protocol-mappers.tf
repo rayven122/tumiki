@@ -113,8 +113,9 @@ resource "keycloak_openid_group_membership_protocol_mapper" "manager_group_roles
 
 # Tumiki Organization Roles マッパー
 resource "keycloak_openid_user_realm_role_protocol_mapper" "internal_manager_org_roles" {
+  count     = var.enable_internal_manager_client ? 1 : 0
   realm_id  = keycloak_realm.tumiki.id
-  client_id = keycloak_openid_client.internal_manager.id
+  client_id = keycloak_openid_client.internal_manager[0].id
   name      = "Tumiki Organization Roles"
 
   claim_name          = "tumiki.roles"
@@ -127,8 +128,9 @@ resource "keycloak_openid_user_realm_role_protocol_mapper" "internal_manager_org
 
 # Tumiki Group Roles マッパー
 resource "keycloak_openid_group_membership_protocol_mapper" "internal_manager_group_roles" {
+  count     = var.enable_internal_manager_client ? 1 : 0
   realm_id  = keycloak_realm.tumiki.id
-  client_id = keycloak_openid_client.internal_manager.id
+  client_id = keycloak_openid_client.internal_manager[0].id
   name      = "Tumiki Group Roles"
 
   claim_name          = "tumiki.group_roles"

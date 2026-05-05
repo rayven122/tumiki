@@ -34,23 +34,23 @@ output "proxy_client_internal_id" {
 
 output "desktop_client_id" {
   description = "Desktop App クライアントID"
-  value       = keycloak_openid_client.desktop.client_id
+  value       = var.enable_desktop_client ? keycloak_openid_client.desktop[0].client_id : null
 }
 
 output "desktop_client_internal_id" {
   description = "Desktop App 内部ID"
-  value       = keycloak_openid_client.desktop.id
+  value       = var.enable_desktop_client ? keycloak_openid_client.desktop[0].id : null
 }
 
-# テストユーザー情報
+# テストユーザー情報（enable_test_user = false の環境では null）
 output "test_user_id" {
   description = "テストユーザーID"
-  value       = keycloak_user.admin_test.id
+  value       = var.enable_test_user ? keycloak_user.admin_test[0].id : null
 }
 
 output "test_user_email" {
   description = "テストユーザーメールアドレス"
-  value       = keycloak_user.admin_test.email
+  value       = var.enable_test_user ? keycloak_user.admin_test[0].email : null
 }
 
 # ロール情報

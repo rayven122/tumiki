@@ -24,14 +24,15 @@ realm_display_name = "Tumiki Platform"
 
 # Manager Appクライアント設定
 # 本番環境のリダイレクトURI
-# Vercel preview URL の team scope（rayven-38d708d3）は Vercel Project URL から確認して更新する。
+# 注: 旧 realm の設定実態に合わせ、Vercel preview URL は team scope 無しの wildcard を許可。
+#     team scope 付きにする場合は live realm 側の値も更新する必要あり。
 manager_redirect_uris = [
   "https://www.tumiki.cloud/*",
-  "https://tumiki-*-rayven-38d708d3.vercel.app/*"
+  "https://tumiki-*.vercel.app/*"
 ]
 manager_web_origins = [
   "https://www.tumiki.cloud",
-  "https://tumiki-*-rayven-38d708d3.vercel.app"
+  "https://tumiki-*.vercel.app"
 ]
 
 # MCP Proxyクライアント設定
@@ -46,10 +47,23 @@ proxy_redirect_uris = [
 ssl_required = "external"
 
 # テーマ設定
+# 旧 realm の実態に合わせ account_theme は "tumiki" を使用。
 login_theme   = "tumiki"
-account_theme = "keycloak.v3"
+account_theme = "tumiki"
 
-# テストユーザー設定（動作確認・監視用アカウント）
+# Google IdP のカスタム First Broker Login フロー
+# 旧 realm に手動配備された "tumiki-broker-login" フローを参照。
+first_broker_login_flow_alias = "tumiki-broker-login"
+
+# 環境別フィーチャーフラグ
+# 本番では realm_user_profile / 管理者テストユーザー / 未配備クライアントは
+# Terraform 管理対象外（旧 realm の実態に揃えて drift を発生させない）
+enable_user_profile            = false
+enable_test_user               = false
+enable_internal_manager_client = false
+enable_desktop_client          = false
+
+# テストユーザー設定（enable_test_user = false のため未使用だが定義は維持）
 # test_user_passwordは環境変数TF_VAR_test_user_passwordで設定
 test_user_email      = "admin@tumiki.cloud"
 test_user_first_name = "Admin"

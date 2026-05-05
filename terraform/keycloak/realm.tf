@@ -55,13 +55,15 @@ resource "keycloak_realm" "tumiki" {
   }
 
   # User Profile有効化
-  attributes = {
+  # var.enable_user_profile = false の環境では何も追加せず、live realm の挙動に合わせる
+  attributes = var.enable_user_profile ? {
     userProfileEnabled = "true"
-  }
+  } : {}
 }
 
 # User Profile設定（firstName/lastNameをオプショナルに）
 resource "keycloak_realm_user_profile" "tumiki" {
+  count    = var.enable_user_profile ? 1 : 0
   realm_id = keycloak_realm.tumiki.id
 
   attribute {
