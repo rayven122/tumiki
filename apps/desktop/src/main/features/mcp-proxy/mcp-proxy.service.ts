@@ -24,6 +24,7 @@ const DEFAULT_TOOL_FETCH_TIMEOUT_MS = 30_000;
 export type McpConnectionMeta = {
   configName: string;
   serverId: number;
+  connectionId: number;
   connectionName: string;
   transportType: TransportType;
 };
@@ -228,6 +229,7 @@ const buildConfigFromConnection = async (
     meta: {
       configName: name,
       serverId: conn.server.id,
+      connectionId: conn.id,
       connectionName: conn.name,
       transportType: conn.transportType,
     },

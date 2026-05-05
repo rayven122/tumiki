@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { Logger, McpServerConfig } from "../types.js";
 import { createProxyCore, createSingleServerCore } from "../core.js";
+import { createUpstreamClient } from "../outbound/upstream-client.js";
+import { createUpstreamPool } from "../outbound/upstream-pool.js";
 import { createMockLogger } from "./test-helpers.js";
 
 // UpstreamClientのモック（createSingleServerCore用）
@@ -92,6 +94,16 @@ describe("createProxyCore", () => {
     expect(mockAddServer).toHaveBeenCalledTimes(2);
     expect(mockAddServer).toHaveBeenCalledWith(configs[0]);
     expect(mockAddServer).toHaveBeenCalledWith(configs[1]);
+  });
+
+  test("optionsのresolveAllowedToolsをupstream-poolに伝播する", () => {
+    const resolveAllowedTools = vi.fn();
+    createProxyCore([], mockLogger, { resolveAllowedTools });
+
+    expect(createUpstreamPool).toHaveBeenLastCalledWith(
+      mockLogger,
+      expect.objectContaining({ resolveAllowedTools }),
+    );
   });
 
   test("listTools()がAggregator経由でツール一覧を返す", async () => {
@@ -264,5 +276,27 @@ describe("createSingleServerCore", () => {
     core.onStatusChange(callback);
 
     expect(mockClientOnStatusChange).toHaveBeenCalledWith(callback);
+  });
+
+  test("optionsのresolveAllowedToolsをconfig.name部分適用してUpstreamClientへ伝播する", async () => {
+    const resolveAllowedTools = vi.fn().mockResolvedValue(["find_file"]);
+    createSingleServerCore(testConfig, mockLogger, { resolveAllowedTools });
+
+    // UpstreamClient へ渡された options を取り出し、内部 resolver を直接呼んで
+    // config.name で部分適用されていることを確認する
+    const callArgs = vi.mocked(createUpstreamClient).mock.lastCall;
+    expect(callArgs?.[0]).toStrictEqual(testConfig);
+    expect(callArgs?.[1]).toStrictEqual(mockLogger);
+    const passedResolver = callArgs?.[2]?.resolveAllowedTools;
+    expect(typeof passedResolver).toBe("function");
+    await passedResolver?.();
+    expect(resolveAllowedTools).toHaveBeenCalledWith(testConfig.name);
+  });
+
+  test("optionsが未指定の場合はoptions引数なしでUpstreamClientを生成する", () => {
+    createSingleServerCore(testConfig, mockLogger);
+
+    const callArgs = vi.mocked(createUpstreamClient).mock.lastCall;
+    expect(callArgs?.[2]).toBeUndefined();
   });
 });

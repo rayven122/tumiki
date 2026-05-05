@@ -194,11 +194,36 @@ if (isMcpProxyMode) {
         ) => Promise<void>;
       };
 
+      // 許可ツール解決resolver（GUI のトグル変更を CLI モードに即時反映）
+      // DB が0件の場合は null（フィルタ無効）を返し、起動時の挙動と整合させる。
+      // 例外時は upstream-client 側で起動時設定にフォールバックされる。
+      const { findToolsByConnectionId } =
+        await import("./features/mcp-server-list/mcp.repository");
+      const { getDb } = await import("./shared/db");
+      // initializeDb() 完了後に1回だけ取得し、resolver 呼び出しごとの await を避ける
+      const db = await getDb();
+      const resolveAllowedTools = async (
+        serverName: string,
+      ): Promise<string[] | null> => {
+        const connMeta = metaMap.get(serverName);
+        if (!connMeta) {
+          // 未登録サーバーは全許可にせず、明示的に全拒否する（安全側にフォールバック）
+          process.stderr.write(
+            `[tumiki-mcp-proxy] 未登録サーバー "${serverName}" の resolver をスキップ\n`,
+          );
+          return [];
+        }
+        const tools = await findToolsByConnectionId(db, connMeta.connectionId);
+        if (tools.length === 0) return null;
+        return tools.filter((t) => t.isAllowed).map((t) => t.name);
+      };
+
       // PII マスキングは runMcpProxy 内でデフォルト有効化されるため、Desktop 側は何も指定しない
       // （カスタマイズしたい場合のみ hooks.filter を渡す）
       await mod.runMcpProxy(configs, {
         onToolCall,
         onStatusChange,
+        resolveAllowedTools,
         onShutdown: async () => {
           await stopAuditLogManagerSyncScheduler();
           await resetAllServerStatus().catch(() => {});

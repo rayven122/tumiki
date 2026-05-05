@@ -8,6 +8,7 @@
  * desktop の --server <slug> オプションで渡す configs を絞り込むことで
  * 単体サーバーとして動作させる。
  */
+import type { ResolveAllowedToolsByName } from "./outbound/upstream-pool.js";
 import type {
   Logger,
   McpServerConfig,
@@ -70,6 +71,8 @@ export type ProxyHooks = {
   onStatusChange?: (name: string, status: ServerStatus, error?: string) => void;
   /** ツール呼び出しフィルタ（PII マスキング等の前処理・後処理） */
   filter?: ToolCallFilter;
+  /** 指定時、listTools/callTool の都度呼ばれて DB から最新の許可ツールリストを取得する */
+  resolveAllowedTools?: ResolveAllowedToolsByName;
 };
 
 export const runMcpProxy = async (
@@ -78,7 +81,9 @@ export const runMcpProxy = async (
 ): Promise<void> => {
   logger.info("tumiki-mcp-proxy を起動しています...");
 
-  const core = createProxyCore(configs, logger);
+  const core = createProxyCore(configs, logger, {
+    resolveAllowedTools: hooks?.resolveAllowedTools,
+  });
 
   // ステータス変更フックを登録
   if (hooks?.onStatusChange) {
