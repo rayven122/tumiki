@@ -42,7 +42,7 @@ export const AI_CLIENTS: AiClient[] = [
       t === "dark"
         ? "/logos/ai-clients/copilot.webp"
         : "/logos/ai-clients/copilot.svg",
-    configTargetPath: "~/Library/Application Support/Code/User/settings.json",
+    configTargetPath: "~/Library/Application Support/Code/User/mcp.json",
   },
   {
     id: "windsurf",

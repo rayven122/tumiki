@@ -18,6 +18,7 @@ const AUTO_WRITE_SUPPORTED_IDS = new Set([
   "cline",
   "roo-code",
   "gemini-cli",
+  "vscode",
 ]);
 
 export const AiIntegrations = (): JSX.Element => {

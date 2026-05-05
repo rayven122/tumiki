@@ -23,15 +23,21 @@ export class AiClientWriteError extends Error {
   }
 }
 
-const SUPPORTED_CLIENT_IDS: readonly SupportedAiClientId[] = [
-  "claude-desktop",
-  "claude-code",
-  "cursor",
-  "windsurf",
-  "cline",
-  "roo-code",
-  "gemini-cli",
-];
+// クライアントごとに MCP サーバーを格納するキー名が異なる（VS Code は `servers`、その他は `mcpServers`）
+const CLIENT_MCP_SERVERS_KEY: Record<SupportedAiClientId, string> = {
+  "claude-desktop": "mcpServers",
+  "claude-code": "mcpServers",
+  cursor: "mcpServers",
+  windsurf: "mcpServers",
+  cline: "mcpServers",
+  "roo-code": "mcpServers",
+  "gemini-cli": "mcpServers",
+  vscode: "servers",
+};
+
+const SUPPORTED_CLIENT_IDS: readonly SupportedAiClientId[] = Object.keys(
+  CLIENT_MCP_SERVERS_KEY,
+) as SupportedAiClientId[];
 
 const isSupportedClientId = (id: string): id is SupportedAiClientId =>
   (SUPPORTED_CLIENT_IDS as readonly string[]).includes(id);
@@ -84,8 +90,11 @@ const readExistingConfig = async (
   }
 };
 
-const extractExistingServerSlugs = (raw: Record<string, unknown>): string[] => {
-  const wrapper = raw.mcpServers;
+const extractExistingServerSlugs = (
+  raw: Record<string, unknown>,
+  mcpServersKey: string,
+): string[] => {
+  const wrapper = raw[mcpServersKey];
   if (typeof wrapper !== "object" || wrapper === null || Array.isArray(wrapper))
     return [];
   return Object.keys(wrapper);
@@ -111,7 +120,10 @@ export const getPreview = async (
   return {
     configPath,
     exists: existed,
-    existingServerSlugs: extractExistingServerSlugs(raw),
+    existingServerSlugs: extractExistingServerSlugs(
+      raw,
+      CLIENT_MCP_SERVERS_KEY[clientId],
+    ),
   };
 };
 
@@ -143,16 +155,18 @@ const mergeMcpServers = (
   existing: Record<string, unknown>,
   newEntries: Record<string, McpEntry>,
   removeSlugs: readonly string[],
+  mcpServersKey: string,
 ): {
   merged: Record<string, unknown>;
   replacedSlugs: string[];
   removedSlugs: string[];
 } => {
+  const existingValue = existing[mcpServersKey];
   const existingServers =
-    typeof existing.mcpServers === "object" &&
-    existing.mcpServers !== null &&
-    !Array.isArray(existing.mcpServers)
-      ? (existing.mcpServers as Record<string, unknown>)
+    typeof existingValue === "object" &&
+    existingValue !== null &&
+    !Array.isArray(existingValue)
+      ? (existingValue as Record<string, unknown>)
       : {};
   // 1. 既存から removeSlugs を取り除く
   const afterRemoval: Record<string, unknown> = {};
@@ -171,7 +185,7 @@ const mergeMcpServers = (
   return {
     merged: {
       ...existing,
-      mcpServers: { ...afterRemoval, ...newEntries },
+      [mcpServersKey]: { ...afterRemoval, ...newEntries },
     },
     replacedSlugs,
     removedSlugs,
@@ -221,6 +235,7 @@ export const writeConfig = async (
     raw,
     request.entries,
     removeSlugs,
+    CLIENT_MCP_SERVERS_KEY[request.clientId],
   );
 
   // 5. アトミック書き込み
