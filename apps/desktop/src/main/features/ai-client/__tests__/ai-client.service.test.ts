@@ -73,7 +73,7 @@ describe("ai-client.service", () => {
       );
     });
 
-    test.each(["claude-code", "windsurf", "cline", "roo-code"])(
+    test.each(["claude-code", "windsurf", "cline", "roo-code", "gemini-cli"])(
       "Phase 2 クライアント %s でも mcpServers を読める",
       async (clientId) => {
         await fs.writeFile(

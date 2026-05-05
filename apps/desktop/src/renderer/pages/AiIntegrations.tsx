@@ -17,6 +17,7 @@ const AUTO_WRITE_SUPPORTED_IDS = new Set([
   "windsurf",
   "cline",
   "roo-code",
+  "gemini-cli",
 ]);
 
 export const AiIntegrations = (): JSX.Element => {
