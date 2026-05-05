@@ -295,4 +295,44 @@ describe("resolveConfigPath", () => {
       expect(result).toBeNull();
     });
   });
+
+  describe("zed", () => {
+    test("macOS: ~/.config/zed/settings.json を返す", () => {
+      const result = resolveConfigPath("zed", {
+        platform: "darwin",
+        homedir: "/Users/test",
+        appData: undefined,
+      });
+      expect(result).toStrictEqual("/Users/test/.config/zed/settings.json");
+    });
+
+    test("Linux: ~/.config/zed/settings.json を返す", () => {
+      const result = resolveConfigPath("zed", {
+        platform: "linux",
+        homedir: "/home/test",
+        appData: undefined,
+      });
+      expect(result).toStrictEqual("/home/test/.config/zed/settings.json");
+    });
+
+    test("Windows: APPDATA/Zed/settings.json を返す", () => {
+      const result = resolveConfigPath("zed", {
+        platform: "win32",
+        homedir: "C:\\Users\\test",
+        appData: "C:\\Users\\test\\AppData\\Roaming",
+      });
+      expect(result).toStrictEqual(
+        "C:\\Users\\test\\AppData\\Roaming/Zed/settings.json",
+      );
+    });
+
+    test("Windows で APPDATA が無い場合 null を返す", () => {
+      const result = resolveConfigPath("zed", {
+        platform: "win32",
+        homedir: "C:\\Users\\test",
+        appData: undefined,
+      });
+      expect(result).toBeNull();
+    });
+  });
 });

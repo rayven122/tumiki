@@ -329,6 +329,79 @@ describe("ai-client.service", () => {
       expect(written.mcpServers.foo?.command).toStrictEqual("/new");
     });
 
+    describe("zed (JSONC + context_servers キー)", () => {
+      test("空ファイルから context_servers キーで書き込む", async () => {
+        const result = await writeConfig({
+          clientId: "zed",
+          entries: { foo: { command: "/bin/foo", args: [] } },
+        });
+
+        expect(result.addedCount).toStrictEqual(1);
+        const written: unknown = JSON.parse(
+          await fs.readFile(configPath, "utf-8"),
+        );
+        expect(written).toStrictEqual({
+          context_servers: { foo: { command: "/bin/foo", args: [] } },
+        });
+      });
+
+      test("既存JSONCファイルのコメントを保持して書き込む", async () => {
+        // JSONC（コメント付き）で既存ファイルを作成
+        const jsoncContent = `{
+  // ユーザー設定の MCP サーバー
+  "context_servers": {
+    "existing": {
+      "command": "/old", // 既存サーバー
+      "args": []
+    }
+  },
+  /* 他の Zed 設定 */
+  "theme": "One Dark"
+}`;
+        await fs.writeFile(configPath, jsoncContent, "utf-8");
+
+        await writeConfig({
+          clientId: "zed",
+          entries: { newone: { command: "/new", args: [] } },
+        });
+
+        const after = await fs.readFile(configPath, "utf-8");
+        // コメントが保持されている
+        expect(after).toContain("// ユーザー設定の MCP サーバー");
+        expect(after).toContain("/* 他の Zed 設定 */");
+        // theme キーが保持されている
+        expect(after).toContain('"theme": "One Dark"');
+        // 新サーバーが追加されている
+        expect(after).toContain("newone");
+        expect(after).toContain("existing");
+      });
+
+      test("getPreview は context_servers キーを参照する", async () => {
+        await fs.writeFile(
+          configPath,
+          `{
+  // コメント
+  "context_servers": {
+    "foo": {},
+    "bar": {}
+  }
+}`,
+          "utf-8",
+        );
+
+        const result = await getPreview("zed");
+        expect(result.exists).toStrictEqual(true);
+        expect(result.existingServerSlugs.sort()).toStrictEqual(["bar", "foo"]);
+      });
+
+      test("不正なJSONCはエラーになる", async () => {
+        await fs.writeFile(configPath, "{ broken json", "utf-8");
+        await expect(getPreview("zed")).rejects.toMatchObject({
+          code: "INVALID_JSON",
+        });
+      });
+    });
+
     describe("vscode (servers キー)", () => {
       test("空ファイルから servers キーで書き込む", async () => {
         const result = await writeConfig({
