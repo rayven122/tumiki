@@ -68,7 +68,7 @@ describe("ai-client.service", () => {
     });
 
     test("サポート外クライアントは UNSUPPORTED_PLATFORM エラー", async () => {
-      await expect(getPreview("vscode")).rejects.toBeInstanceOf(
+      await expect(getPreview("unknown-client")).rejects.toBeInstanceOf(
         AiClientWriteError,
       );
     });
@@ -327,6 +327,67 @@ describe("ai-client.service", () => {
         mcpServers: Record<string, { command: string } | undefined>;
       };
       expect(written.mcpServers.foo?.command).toStrictEqual("/new");
+    });
+
+    describe("vscode (servers キー)", () => {
+      test("空ファイルから servers キーで書き込む", async () => {
+        const result = await writeConfig({
+          clientId: "vscode",
+          entries: { foo: { command: "/bin/foo", args: [] } },
+        });
+
+        expect(result.addedCount).toStrictEqual(1);
+
+        const written: unknown = JSON.parse(
+          await fs.readFile(configPath, "utf-8"),
+        );
+        expect(written).toStrictEqual({
+          servers: { foo: { command: "/bin/foo", args: [] } },
+        });
+      });
+
+      test("既存 servers キーをマージし、他キー（inputs等）は保持する", async () => {
+        await fs.writeFile(
+          configPath,
+          JSON.stringify({
+            servers: { existing: { command: "/old", args: [] } },
+            inputs: [{ id: "api-key", type: "promptString" }],
+          }),
+          "utf-8",
+        );
+
+        await writeConfig({
+          clientId: "vscode",
+          entries: { newone: { command: "/new", args: [] } },
+        });
+
+        const written = JSON.parse(await fs.readFile(configPath, "utf-8")) as {
+          servers: Record<string, unknown>;
+          inputs: unknown[];
+        };
+        expect(Object.keys(written.servers).sort()).toStrictEqual([
+          "existing",
+          "newone",
+        ]);
+        expect(written.inputs).toStrictEqual([
+          { id: "api-key", type: "promptString" },
+        ]);
+      });
+
+      test("getPreview は servers キーを参照する", async () => {
+        await fs.writeFile(
+          configPath,
+          JSON.stringify({
+            servers: { foo: {}, bar: {} },
+            // mcpServers キーは VS Code では無視される
+            mcpServers: { ignored: {} },
+          }),
+          "utf-8",
+        );
+
+        const result = await getPreview("vscode");
+        expect(result.existingServerSlugs.sort()).toStrictEqual(["bar", "foo"]);
+      });
     });
   });
 });

@@ -253,4 +253,46 @@ describe("resolveConfigPath", () => {
       expect(result).toStrictEqual("C:\\Users\\test/.gemini/settings.json");
     });
   });
+
+  describe("vscode", () => {
+    test("macOS: VS Code User/mcp.json を返す", () => {
+      const result = resolveConfigPath("vscode", {
+        platform: "darwin",
+        homedir: "/Users/test",
+        appData: undefined,
+      });
+      expect(result).toStrictEqual(
+        "/Users/test/Library/Application Support/Code/User/mcp.json",
+      );
+    });
+
+    test("Windows: APPDATA/Code/User/mcp.json を返す", () => {
+      const result = resolveConfigPath("vscode", {
+        platform: "win32",
+        homedir: "C:\\Users\\test",
+        appData: "C:\\Users\\test\\AppData\\Roaming",
+      });
+      expect(result).toStrictEqual(
+        "C:\\Users\\test\\AppData\\Roaming/Code/User/mcp.json",
+      );
+    });
+
+    test("Linux: ~/.config/Code/User/mcp.json を返す", () => {
+      const result = resolveConfigPath("vscode", {
+        platform: "linux",
+        homedir: "/home/test",
+        appData: undefined,
+      });
+      expect(result).toStrictEqual("/home/test/.config/Code/User/mcp.json");
+    });
+
+    test("Windows で APPDATA が無い場合 null を返す", () => {
+      const result = resolveConfigPath("vscode", {
+        platform: "win32",
+        homedir: "C:\\Users\\test",
+        appData: undefined,
+      });
+      expect(result).toBeNull();
+    });
+  });
 });
