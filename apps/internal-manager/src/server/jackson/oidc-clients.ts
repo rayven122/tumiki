@@ -147,6 +147,8 @@ export const ensureJacksonOidcClients =
     return clientsPromise;
   };
 
+// Jackson 自動生成 client のプロセスキャッシュだけを破棄する。
+// 明示的な OIDC_* env は毎回 process.env から読むため reset は不要。
 export const resetOidcClients = (): void => {
   resolvedConfig = null;
   clientsPromise = null;

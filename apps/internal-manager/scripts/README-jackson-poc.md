@@ -60,7 +60,7 @@ JACKSON_DESKTOP_REDIRECT_URL=tumiki://auth/callback
 
 ### Email account linking の許可条件
 
-Auth.js は Jackson 経由のログインで `allowDangerousEmailAccountLinking: true` を使う。これは登録済み IdP が email の一意性を保証し、Jackson connection を管理者だけが追加・変更できることを前提にする。別 IdP を同じ tenant/product に追加する場合や IdP 側の email 設定を変更する場合は、同一 email による既存アカウント乗っ取りが起きないことを事前に確認する。
+Auth.js は Jackson 経由のログインでも `allowDangerousEmailAccountLinking: false` のまま運用する。email が同じでも OIDC `sub` が一致しないアカウントは自動リンクしないため、IdP migration が必要な場合は `ExternalIdentity` を管理者フローまたは migration で明示的に移行する。
 
 ## 5. Google Workspace の SAML アプリを更新
 

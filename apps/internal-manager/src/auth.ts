@@ -23,10 +23,9 @@ const createOidcProvider = async (): Promise<OAuthConfig<OidcProfile>> => {
     issuer: oidcEnv.OIDC_ISSUER,
     // jackson は CSRF 防止のため state パラメータを必須とするため明示的に指定
     checks: ["pkce", "state"],
-    // SECURITY: Jackson connection を管理者だけが登録できる信頼境界が成立する場合のみ有効。
-    // IdP 側の email 一意性保証が崩れると、同一 email の別ユーザーへ既存アカウントがリンクされる。
-    // IdP 追加・email 設定変更時は、同一 email による乗っ取りが起きないことを必ず確認する。
-    allowDangerousEmailAccountLinking: true,
+    // email のみで既存アカウントへ自動リンクしない。IdP migration が必要な場合は
+    // ExternalIdentity を管理者フローで明示的に移行する。
+    allowDangerousEmailAccountLinking: false,
     // NextAuth のデフォルト signin ページが authjs.dev/img/providers/oidc.svg を
     // 取得しようとして 404 になるため、ローカル SVG で上書きする
     style: { logo: "/sso-logo.svg", text: "#fff", bg: "#1f2937" },

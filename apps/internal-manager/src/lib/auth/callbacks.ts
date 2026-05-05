@@ -3,6 +3,7 @@ import type { JWT } from "next-auth/jwt";
 import type { AdapterUser } from "@auth/core/adapters";
 import { db } from "@tumiki/internal-db/server";
 import { getTumikiClaims } from "./get-tumiki-claims";
+import { buildOidcDiscoveryUrl } from "./oidc-utils";
 import { ensureJacksonOidcClients } from "~/server/jackson/oidc-clients";
 import { z } from "zod";
 
@@ -37,11 +38,14 @@ const tokenEndpointCache = new Map<
   { endpoint: string; expiresAt: number }
 >();
 
+const isOidcConfigurationError = (error: unknown): boolean =>
+  error instanceof Error && error.message.startsWith("OIDC is not configured");
+
 const getTokenEndpoint = async (issuer: string): Promise<string> => {
   const cached = tokenEndpointCache.get(issuer);
   if (cached && cached.expiresAt > Date.now()) return cached.endpoint;
 
-  const discoveryUrl = `${issuer.replace(/\/$/, "")}/.well-known/openid-configuration`;
+  const discoveryUrl = buildOidcDiscoveryUrl(issuer);
   const controller = new AbortController();
   const timeoutId = setTimeout(
     () => controller.abort(),
@@ -105,9 +109,12 @@ const refreshAccessToken = async (token: JWT): Promise<JWT | null> => {
     }
 
     if (!response.ok) {
-      console.error(
-        `[refreshAccessToken] Failed: ${response.status} ${response.statusText}`,
-      );
+      const message = `[refreshAccessToken] Failed: ${response.status} ${response.statusText}`;
+      if (response.status >= 500) {
+        console.warn(`${message}. Keeping current token.`);
+        return token;
+      }
+      console.error(message);
       return null;
     }
 
@@ -120,6 +127,10 @@ const refreshAccessToken = async (token: JWT): Promise<JWT | null> => {
       refreshToken: refreshed.refresh_token ?? token.refreshToken,
     };
   } catch (error) {
+    if (!isOidcConfigurationError(error)) {
+      console.warn("[refreshAccessToken] Transient error:", error);
+      return token;
+    }
     console.error("[refreshAccessToken] Error:", error);
     return null;
   }

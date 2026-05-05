@@ -1,5 +1,6 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { ensureJacksonOidcClients } from "~/server/jackson/oidc-clients";
+import { buildOidcDiscoveryUrl } from "./oidc-utils";
 import { z } from "zod";
 import { db } from "@tumiki/internal-db/server";
 
@@ -10,6 +11,7 @@ export type VerifiedDesktopUser = {
 
 // Discovery結果は短時間キャッシュし、IdP設定変更時もプロセス再起動なしで追従する
 let cachedJwks: ReturnType<typeof createRemoteJWKSet> | null = null;
+let cachedJwksIssuer: string | null = null;
 let cachedJwksExpiresAt = 0;
 let jwksPromise: Promise<ReturnType<typeof createRemoteJWKSet>> | null = null;
 const JWKS_DISCOVERY_CACHE_TTL_MS = 10 * 60 * 1000;
@@ -28,12 +30,18 @@ const isAudienceValidationError = (error: unknown): boolean =>
 
 // OIDCディスカバリ経由でJWKS URIを取得してJWKSクライアントを生成
 const getJwks = async (): Promise<ReturnType<typeof createRemoteJWKSet>> => {
-  if (cachedJwks && Date.now() < cachedJwksExpiresAt) return cachedJwks;
+  const { OIDC_ISSUER } = await ensureJacksonOidcClients();
+  if (
+    cachedJwks &&
+    cachedJwksIssuer === OIDC_ISSUER &&
+    Date.now() < cachedJwksExpiresAt
+  ) {
+    return cachedJwks;
+  }
   if (jwksPromise) return jwksPromise;
 
   jwksPromise = (async () => {
-    const { OIDC_ISSUER } = await ensureJacksonOidcClients();
-    const discoveryUrl = `${OIDC_ISSUER.replace(/\/$/, "")}/.well-known/openid-configuration`;
+    const discoveryUrl = buildOidcDiscoveryUrl(OIDC_ISSUER);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(
@@ -61,6 +69,7 @@ const getJwks = async (): Promise<ReturnType<typeof createRemoteJWKSet>> => {
     }
 
     cachedJwks = createRemoteJWKSet(new URL(config.data.jwks_uri));
+    cachedJwksIssuer = OIDC_ISSUER;
     cachedJwksExpiresAt = Date.now() + JWKS_DISCOVERY_CACHE_TTL_MS;
     return cachedJwks;
   })().finally(() => {

@@ -35,6 +35,7 @@ describe("jwtCallback", () => {
     vi.resetModules();
     vi.clearAllMocks();
     vi.spyOn(console, "error").mockImplementation(() => undefined);
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
     mockEnsureJacksonOidcClients.mockResolvedValue({
       OIDC_ISSUER: "https://idp.example.com",
       OIDC_CLIENT_ID: "web-client",
@@ -113,6 +114,35 @@ describe("jwtCallback", () => {
     const { jwtCallback } = await loadModule();
 
     await expect(jwtCallback({ token: expiredToken() })).resolves.toBeNull();
+  });
+
+  test("refresh endpointの一時障害時は既存tokenを維持する", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn<typeof fetch>()
+        .mockResolvedValueOnce(
+          Response.json({
+            token_endpoint: "https://idp.example.com/oauth/token",
+          }),
+        )
+        .mockResolvedValueOnce(new Response(null, { status: 503 })),
+    );
+    const { jwtCallback } = await loadModule();
+    const token = expiredToken();
+
+    await expect(jwtCallback({ token })).resolves.toStrictEqual(token);
+  });
+
+  test("OIDC discoveryの一時障害時は既存tokenを維持する", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockRejectedValueOnce(new Error("network down")),
+    );
+    const { jwtCallback } = await loadModule();
+    const token = expiredToken();
+
+    await expect(jwtCallback({ token })).resolves.toStrictEqual(token);
   });
 
   test("OIDC設定取得失敗時はnullを返す", async () => {
