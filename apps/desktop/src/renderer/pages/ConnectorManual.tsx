@@ -202,13 +202,14 @@ export const ConnectorManual = (): JSX.Element => {
           const allowedToolNames = Object.entries(allowed)
             .filter(([, isAllowed]) => isAllowed)
             .map(([name]) => name);
-          // 空配列はサービス層で「全ツール非公開」と解釈され、未初期化状態と
-          // 区別できなくなるため undefined にして省略する（意図的な全非公開時のみ
-          // 空配列が渡るが、現状そのケースは UI 上発生しない）
+          // allowedMap に当該 connectionId のキーが存在すれば「ツール一覧をフェッチ済みで
+          // ユーザーが編集可能だった」と判断し、空配列もそのまま渡してサービス層で
+          // 「全ツール非公開」として扱わせる。キー未登録（=フェッチ未完了の保険的ケース）
+          // のみ undefined を渡し、サービス側で元コネクタの isAllowed を継承させる。
+          const hasEditedTools = connectionId in allowedMap;
           return {
             connectionId,
-            allowedToolNames:
-              allowedToolNames.length > 0 ? allowedToolNames : undefined,
+            allowedToolNames: hasEditedTools ? allowedToolNames : undefined,
           };
         }),
       });
@@ -416,7 +417,7 @@ export const ConnectorManual = (): JSX.Element => {
                                 onClick={() =>
                                   toggleTool(connectionId, tool.name)
                                 }
-                                className={`rounded border px-2 py-1 font-mono text-[9px] transition-colors ${
+                                className={`flex min-h-[44px] items-center rounded border px-2 py-1 font-mono text-[9px] transition-colors ${
                                   isOn
                                     ? "border-emerald-400/30 bg-[var(--bg-active)] text-[var(--text-primary)]"
                                     : "border-transparent bg-[var(--bg-input)] text-[var(--text-subtle)]"

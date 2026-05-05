@@ -305,6 +305,9 @@ export const createVirtualServer = async (
         `コネクタ(id=${String(connection.connectionId)})が見つかりません`,
       );
     }
+    if (!source.isEnabled) {
+      throw new Error(`コネクタ「${source.name}」は無効化されています`);
+    }
     if (source.authType === "OAUTH") {
       throw new Error(
         `OAuth認証のコネクタ「${source.name}」は仮想MCP作成では未対応です`,
@@ -406,6 +409,9 @@ export const createVirtualServer = async (
 export const getToolsForConnections = async (
   input: GetToolsForConnectionsInput,
 ): Promise<GetToolsForConnectionsResult> => {
+  // IPC層のZodスキーマで connectionIds は最小1件を保証されているため、
+  // 通常 IPC 経由ではここに到達しない。サービスを直接呼ぶ経路（テストや
+  // 将来のAPI拡張）の防御として空配列チェックを残す。
   if (input.connectionIds.length === 0) {
     return { items: [] };
   }
