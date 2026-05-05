@@ -48,6 +48,11 @@ describe("mcp.service", () => {
     ),
   } as unknown as Awaited<ReturnType<typeof getDb>>;
 
+  // 複数の describe ブロックで使い回す共通型エイリアス
+  type ConnectionWithTools = Awaited<
+    ReturnType<typeof mcpRepository.findConnectionsByIdsWithTools>
+  >[number];
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getDb).mockResolvedValue(mockDb);
@@ -570,10 +575,6 @@ describe("mcp.service", () => {
   });
 
   describe("createVirtualServer", () => {
-    type ConnectionWithTools = Awaited<
-      ReturnType<typeof mcpRepository.findConnectionsByIdsWithTools>
-    >[number];
-
     const buildSourceConnection = (
       overrides: Partial<ConnectionWithTools>,
     ): ConnectionWithTools =>
@@ -1024,10 +1025,6 @@ describe("mcp.service", () => {
   });
 
   describe("getToolsForConnections", () => {
-    type ConnectionWithTools = Awaited<
-      ReturnType<typeof mcpRepository.findConnectionsByIdsWithTools>
-    >[number];
-
     test("選択中の各コネクタからツール情報（name/description/isAllowed）を取得する", async () => {
       vi.mocked(mcpRepository.findConnectionsByIdsWithTools).mockResolvedValue([
         {

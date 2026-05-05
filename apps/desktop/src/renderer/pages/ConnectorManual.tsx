@@ -180,8 +180,13 @@ export const ConnectorManual = (): JSX.Element => {
     });
   };
 
+  // ツール一覧フェッチ中は allowedMap が未初期化のため送信を抑止する
+  // （空の allowedToolNames=[] が渡るとサービス層で全ツール非公開扱いになる）
   const canSubmit =
-    serverName.trim() !== "" && selectedConnectionIds.length > 0 && !submitting;
+    serverName.trim() !== "" &&
+    selectedConnectionIds.length > 0 &&
+    loadingToolsFor.size === 0 &&
+    !submitting;
 
   const handleSubmit = async (): Promise<void> => {
     if (!canSubmit) return;
@@ -197,7 +202,14 @@ export const ConnectorManual = (): JSX.Element => {
           const allowedToolNames = Object.entries(allowed)
             .filter(([, isAllowed]) => isAllowed)
             .map(([name]) => name);
-          return { connectionId, allowedToolNames };
+          // 空配列はサービス層で「全ツール非公開」と解釈され、未初期化状態と
+          // 区別できなくなるため undefined にして省略する（意図的な全非公開時のみ
+          // 空配列が渡るが、現状そのケースは UI 上発生しない）
+          return {
+            connectionId,
+            allowedToolNames:
+              allowedToolNames.length > 0 ? allowedToolNames : undefined,
+          };
         }),
       });
       toast.success(`${result.serverName}を作成しました`);

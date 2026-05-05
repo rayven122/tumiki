@@ -474,6 +474,7 @@ describe("setupMcpIpc", () => {
     test("全てのIPCハンドラーが登録される", () => {
       expect(mockIpcHandlers.has("mcp:createFromCatalog")).toBe(true);
       expect(mockIpcHandlers.has("mcp:createFromManagerCatalog")).toBe(true);
+      expect(mockIpcHandlers.has("mcp:createCustomServer")).toBe(true);
       expect(mockIpcHandlers.has("mcp:createVirtualServer")).toBe(true);
       expect(mockIpcHandlers.has("mcp:getToolsForConnections")).toBe(true);
       expect(mockIpcHandlers.has("mcp:getAll")).toBe(true);
