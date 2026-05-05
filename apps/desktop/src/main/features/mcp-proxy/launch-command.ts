@@ -1,3 +1,4 @@
+import path from "node:path";
 import { app } from "electron";
 
 export type McpProxyLaunchCommand = {
@@ -14,8 +15,10 @@ export const getMcpProxyLaunchCommand = (): McpProxyLaunchCommand => {
     const command = process.env.APPIMAGE ?? process.execPath;
     return { command, args: ["--mcp-proxy"] };
   }
-  // 開発時は process.execPath が Electron バイナリを指すため、エントリースクリプトを引数先頭で渡す
-  const appEntry = process.argv[1];
+  // dev時 process.argv[1] は electron-vite の起動方式によって "." 等の相対パスのことがある。
+  // AIクライアントは別cwdから本コマンドを spawn するため、絶対パスへ解決して保存する。
+  const rawAppEntry = process.argv[1];
+  const appEntry = rawAppEntry ? path.resolve(rawAppEntry) : null;
   return {
     command: process.execPath,
     args: appEntry ? [appEntry, "--mcp-proxy"] : ["--mcp-proxy"],
