@@ -61,8 +61,10 @@ const serverStatusBadge: Record<
 /** 監査ログ1ページあたりの件数 */
 const AUDIT_LOG_LIMIT = 20;
 
-/** 機能設定トグル（compression / dynamicSearch のみ）の永続化キー */
-// masking は DB 永続化されるため対象外
+/**
+ * 機能設定トグル（compression / dynamicSearch のみ）の永続化キー。
+ * masking は DB 永続化されるため対象外。
+ */
 const FEATURE_SETTINGS_KEY = (serverId: number): string =>
   `tumiki:server:${serverId}:features`;
 
@@ -302,21 +304,24 @@ export const ToolDetail = (): JSX.Element => {
 
   // PII マスキング切替: DB 更新（即時反映）。実プロキシへは次回 spawn 時に反映されるため
   // ユーザーへ「再起動後に反映」を案内する。失敗時は state をロールバック。
-  const updateMasking = (value: boolean): void => {
-    const previous = maskingEnabled;
-    setMaskingEnabled(value);
-    window.electronAPI.mcp
-      .updatePiiMasking({ serverId, enabled: value })
-      .then(() => {
-        toast.success(
-          "マスキング設定を更新しました。MCPサーバーの再起動後に反映されます",
-        );
-      })
-      .catch(() => {
-        setMaskingEnabled(previous);
-        toast.error("マスキング設定の更新に失敗しました");
-      });
-  };
+  const updateMasking = useCallback(
+    (value: boolean): void => {
+      const previous = maskingEnabled;
+      setMaskingEnabled(value);
+      window.electronAPI.mcp
+        .updatePiiMasking({ serverId, enabled: value })
+        .then(() => {
+          toast.success(
+            "マスキング設定を更新しました。MCPサーバーの再起動後に反映されます",
+          );
+        })
+        .catch(() => {
+          setMaskingEnabled(previous);
+          toast.error("マスキング設定の更新に失敗しました");
+        });
+    },
+    [maskingEnabled, serverId],
+  );
 
   // ツール on/off（即時反映、失敗時はロールバック。サンプルID は IPC スキップ）
   const toggleTool = (toolId: number, isAllowed: boolean): void => {

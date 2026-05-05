@@ -222,15 +222,15 @@ if (isMcpProxyMode) {
       // PII マスキング: --server <slug> 指定時のみ DB の McpServer.isPiiMaskingEnabled を反映する。
       // --server 省略時（全サーバー集約モード）はサーバーが特定できないため、安全側でデフォルト ON のまま。
       // false 時は disableDefaultFilter=true で runMcpProxy 内のデフォルトフィルタ構築をスキップさせる。
-      let disableDefaultFilter = false;
-      if (serverSlug) {
-        const serverRecord = await findServerBySlug(db, serverSlug);
-        if (serverRecord && !serverRecord.isPiiMaskingEnabled) {
-          disableDefaultFilter = true;
-          process.stderr.write(
-            `[tumiki-mcp-proxy] PII マスキングは無効化されています (server="${serverSlug}")\n`,
-          );
-        }
+      const serverRecord = serverSlug
+        ? await findServerBySlug(db, serverSlug)
+        : null;
+      const disableDefaultFilter =
+        serverRecord !== null && !serverRecord.isPiiMaskingEnabled;
+      if (disableDefaultFilter) {
+        process.stderr.write(
+          `[tumiki-mcp-proxy] PII マスキングは無効化されています (server="${serverSlug}")\n`,
+        );
       }
 
       await mod.runMcpProxy(configs, {
