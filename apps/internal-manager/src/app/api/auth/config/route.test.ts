@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-const mockGetOidcEnv = vi.fn();
+const mockEnsureJacksonOidcClients = vi.hoisted(() => vi.fn());
 
-vi.mock("~/lib/env", () => ({
-  getOidcEnv: mockGetOidcEnv,
+vi.mock("~/server/jackson/oidc-clients", () => ({
+  ensureJacksonOidcClients: mockEnsureJacksonOidcClients,
 }));
 
 describe("GET /api/auth/config", () => {
@@ -12,8 +12,8 @@ describe("GET /api/auth/config", () => {
     vi.clearAllMocks();
   });
 
-  test("Desktop client IDが設定されている場合はclientIdとして返す", async () => {
-    mockGetOidcEnv.mockReturnValue({
+  test("Desktop client IDをclientIdとして返す", async () => {
+    mockEnsureJacksonOidcClients.mockResolvedValue({
       OIDC_ISSUER: "http://localhost:8888/realms/tumiki",
       OIDC_CLIENT_ID: "tumiki-internal-manager",
       OIDC_CLIENT_SECRET: "secret",
@@ -21,7 +21,7 @@ describe("GET /api/auth/config", () => {
     });
     const { GET } = await import("./route");
 
-    const response = GET();
+    const response = await GET();
 
     await expect(response.json()).resolves.toStrictEqual({
       issuer: "http://localhost:8888/realms/tumiki",
@@ -29,19 +29,17 @@ describe("GET /api/auth/config", () => {
     });
   });
 
-  test("Desktop client IDが未設定の場合はWeb client IDにフォールバックする", async () => {
-    mockGetOidcEnv.mockReturnValue({
-      OIDC_ISSUER: "http://localhost:8888/realms/tumiki",
-      OIDC_CLIENT_ID: "tumiki-internal-manager",
-      OIDC_CLIENT_SECRET: "secret",
-    });
+  test("OIDC設定取得失敗時は503を返す", async () => {
+    mockEnsureJacksonOidcClients.mockRejectedValue(
+      new Error("OIDC is not configured"),
+    );
     const { GET } = await import("./route");
 
-    const response = GET();
+    const response = await GET();
 
+    expect(response.status).toBe(503);
     await expect(response.json()).resolves.toStrictEqual({
-      issuer: "http://localhost:8888/realms/tumiki",
-      clientId: "tumiki-internal-manager",
+      error: "OIDC設定が不完全です",
     });
   });
 });

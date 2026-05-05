@@ -8,7 +8,7 @@ Tumiki Desktop は、管理サーバー URL を起点に internal-manager と連
 
 ## 認証
 
-Desktop は `GET /api/auth/config` で OIDC 設定を取得し、PKCE 認可コードフローでアクセストークンを取得する。
+Desktop は `GET /api/auth/config` で OIDC 設定を取得し、Jackson 経由の PKCE 認可コードフローでトークンを取得する。
 
 ```http
 GET {managerUrl}/api/auth/config
@@ -18,8 +18,8 @@ GET {managerUrl}/api/auth/config
 
 ```json
 {
-  "issuer": "https://idp.example.com/realms/tumiki",
-  "clientId": "tumiki-internal"
+  "issuer": "https://stg-internal.tumiki.cloud",
+  "clientId": "<Jackson が自動生成した Desktop 用 clientID>"
 }
 ```
 
@@ -27,8 +27,10 @@ Desktop は `issuer` の Discovery Document から `authorization_endpoint` / `t
 
 注意:
 
-- Desktop 専用 client id は作らず、`OIDC_CLIENT_ID` を共用する。IdP クライアント管理を増やさず、管理画面と Desktop の認証設定を同じ運用単位にするため。
-- 監査ログ API の JWT 検証は `issuer`, `audience`, `sub` を検証する。`audience` は `OIDC_CLIENT_ID` と一致する必要がある。
+- Desktop は public client として `OIDC_DESKTOP_CLIENT_ID` を使う。Desktop は `client_secret` を持てないため、管理サーバー用の confidential client（`OIDC_CLIENT_ID`）とは分ける。
+- Jackson 経由固定では `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` / `OIDC_DESKTOP_CLIENT_ID` を手動発行しない。`JACKSON_SAML_METADATA_XML` または `JACKSON_SAML_METADATA_PATH` から Web / Desktop 用 connection を自動生成して使う。
+- 監査ログ API の JWT 検証は `issuer`, `audience`, `sub` を検証する。`audience` は Desktop 用 clientID と一致する必要がある。
+- Jackson の `access_token` は opaque token のため、Desktop から internal-manager API へ送る Bearer は保存済み `id_token` を優先する。
 
 ## 現行 API
 
@@ -50,7 +52,7 @@ Desktop が MCP 実行ログを internal-manager に送信する。
 認証: 必須
 
 ```http
-Authorization: Bearer {access_token}
+Authorization: Bearer {id_token}
 Content-Type: application/json
 ```
 

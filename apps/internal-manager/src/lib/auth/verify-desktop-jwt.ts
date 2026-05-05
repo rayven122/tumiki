@@ -1,6 +1,7 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
+import { ensureJacksonOidcClients } from "~/server/jackson/oidc-clients";
+import { fetchOidcDiscovery } from "./oidc-utils";
 import { z } from "zod";
-import { getOidcEnv } from "~/lib/env";
 import { db } from "@tumiki/internal-db/server";
 
 export type VerifiedDesktopUser = {
@@ -10,8 +11,10 @@ export type VerifiedDesktopUser = {
 
 // Discovery結果は短時間キャッシュし、IdP設定変更時もプロセス再起動なしで追従する
 let cachedJwks: ReturnType<typeof createRemoteJWKSet> | null = null;
+let cachedJwksIssuer: string | null = null;
 let cachedJwksExpiresAt = 0;
 let jwksPromise: Promise<ReturnType<typeof createRemoteJWKSet>> | null = null;
+let jwksPromiseIssuer: string | null = null;
 const JWKS_DISCOVERY_CACHE_TTL_MS = 10 * 60 * 1000;
 const OIDC_DISCOVERY_TIMEOUT_MS = 5 * 1000;
 const discoverySchema = z.object({
@@ -27,45 +30,38 @@ const isAudienceValidationError = (error: unknown): boolean =>
   error.claim === "aud";
 
 // OIDCディスカバリ経由でJWKS URIを取得してJWKSクライアントを生成
-const getJwks = async () => {
-  if (cachedJwks && Date.now() < cachedJwksExpiresAt) return cachedJwks;
-  if (jwksPromise) return jwksPromise;
+const getJwks = async (): Promise<ReturnType<typeof createRemoteJWKSet>> => {
+  const { OIDC_ISSUER } = await ensureJacksonOidcClients();
+  if (
+    cachedJwks &&
+    cachedJwksIssuer === OIDC_ISSUER &&
+    Date.now() < cachedJwksExpiresAt
+  ) {
+    return cachedJwks;
+  }
+  if (jwksPromise && jwksPromiseIssuer === OIDC_ISSUER) return jwksPromise;
 
-  jwksPromise = (async () => {
-    const { OIDC_ISSUER } = getOidcEnv();
-    const discoveryUrl = `${OIDC_ISSUER.replace(/\/$/, "")}/.well-known/openid-configuration`;
+  const promise = (async () => {
+    const config = await fetchOidcDiscovery(OIDC_ISSUER, {
+      timeoutMs: OIDC_DISCOVERY_TIMEOUT_MS,
+      errorMessage: "OIDCディスカバリ取得失敗",
+      invalidResponseMessage: () =>
+        "OIDCディスカバリにjwks_uriが含まれていません",
+      schema: discoverySchema,
+    });
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(
-      () => controller.abort(),
-      OIDC_DISCOVERY_TIMEOUT_MS,
-    );
-    let res: Response;
-    try {
-      res = await fetch(discoveryUrl, {
-        signal: controller.signal,
-      });
-    } catch {
-      throw new Error("OIDCディスカバリ取得失敗");
-    } finally {
-      clearTimeout(timeoutId);
-    }
-
-    if (!res.ok) {
-      throw new Error("OIDCディスカバリ取得失敗");
-    }
-
-    const config = discoverySchema.safeParse(await res.json());
-    if (!config.success) {
-      throw new Error("OIDCディスカバリにjwks_uriが含まれていません");
-    }
-
-    cachedJwks = createRemoteJWKSet(new URL(config.data.jwks_uri));
+    cachedJwks = createRemoteJWKSet(new URL(config.jwks_uri));
+    cachedJwksIssuer = OIDC_ISSUER;
     cachedJwksExpiresAt = Date.now() + JWKS_DISCOVERY_CACHE_TTL_MS;
     return cachedJwks;
   })().finally(() => {
-    jwksPromise = null;
+    if (jwksPromise === promise) {
+      jwksPromise = null;
+      jwksPromiseIssuer = null;
+    }
   });
+  jwksPromise = promise;
+  jwksPromiseIssuer = OIDC_ISSUER;
 
   return jwksPromise;
 };
@@ -79,22 +75,28 @@ export const verifyDesktopJwt = async (
   }
 
   const token = authHeader.slice(7);
-  const { OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_DESKTOP_CLIENT_ID } = getOidcEnv();
+  const { OIDC_ISSUER, OIDC_DESKTOP_CLIENT_ID } =
+    await ensureJacksonOidcClients();
 
-  const expectedClientId = OIDC_DESKTOP_CLIENT_ID ?? OIDC_CLIENT_ID;
   const jwks = await getJwks();
   const { payload } = await jwtVerify(token, jwks, {
     issuer: OIDC_ISSUER,
-    audience: expectedClientId,
+    audience: OIDC_DESKTOP_CLIENT_ID,
   }).catch(async (error: unknown) => {
     if (!isAudienceValidationError(error)) throw error;
-    // Keycloakのaccess tokenはaudがaccount等の内部リソースになるため、
-    // issuer検証後にIdPが付与するazpでDesktopクライアントを確認する。
+    // Keycloak access_token は aud が "account" 等の内部リソースになり、
+    // Desktop client ID の audience 検証に失敗する。この場合だけ issuer 検証後に
+    // azp（Authorized Party）が Desktop client ID と一致することを代替条件にする。
+    // Desktop が優先送信する id_token は aud が Desktop client ID なので通常パスを通る。
+    console.warn(
+      "[verifyDesktopJwt] audience検証失敗、azpフォールバックを使用 (access_token?)",
+    );
     const result = await jwtVerify(token, jwks, {
       issuer: OIDC_ISSUER,
     });
-    if (result.payload.azp !== expectedClientId) {
-      throw new Error("Invalid desktop token client");
+    // Keycloak access token 専用フォールバック。azp がない IdP は安全側で拒否する。
+    if (!result.payload.azp || result.payload.azp !== OIDC_DESKTOP_CLIENT_ID) {
+      throw new Error("Desktopトークンのazpが一致しません");
     }
     return result;
   });

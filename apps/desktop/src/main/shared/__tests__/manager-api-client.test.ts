@@ -86,27 +86,65 @@ describe("manager-api-client", () => {
     );
   });
 
-  test("idTokenが保存されている場合もManager APIのBearerにはaccessTokenを優先する", async () => {
+  test("idTokenが保存されている場合はManager APIのBearerにidTokenを使う", async () => {
     storeData.set("managerUrl", "https://manager.example.com/");
     mockFindFirst.mockResolvedValue({
       id: 1,
-      accessToken: "encrypted:access-token",
+      accessToken: "encrypted:opaque-access-token",
       refreshToken: null,
-      idToken: "encrypted:id-token",
+      idToken: "encrypted:jwt-id-token",
       expiresAt: new Date(Date.now() + 60 * 60 * 1000),
       createdAt: new Date("2026-05-03T09:00:00.000Z"),
       updatedAt: new Date("2026-05-03T09:00:00.000Z"),
     });
-    vi.mocked(decryptToken).mockResolvedValueOnce("access-token");
+    vi.mocked(decryptToken).mockResolvedValue("jwt-id-token");
 
     const result = await requestManagerApi("/api/internal/example");
 
     expect(result?.ok).toBe(true);
-    expect(decryptToken).toHaveBeenCalledWith("encrypted:access-token");
+    expect(decryptToken).toHaveBeenCalledWith("encrypted:jwt-id-token");
     const [, init] = vi.mocked(fetch).mock.calls[0] ?? [];
     expect(new Headers(init?.headers).get("Authorization")).toBe(
-      "Bearer access-token",
+      "Bearer jwt-id-token",
     );
+  });
+
+  test("復号したBearerが空ならリクエストしない", async () => {
+    storeData.set("managerUrl", "https://manager.example.com");
+    mockFindFirst.mockResolvedValue({
+      id: 1,
+      accessToken: "encrypted:empty-token",
+      refreshToken: null,
+      idToken: null,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    vi.mocked(decryptToken).mockResolvedValue("");
+
+    const result = await requestManagerApi("/api/example");
+
+    expect(result).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  test("Bearer候補がnullなら復号せずリクエストしない", async () => {
+    storeData.set("managerUrl", "https://manager.example.com");
+    mockFindFirst.mockResolvedValue({
+      id: 1,
+      accessToken: null,
+      refreshToken: null,
+      idToken: null,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const result = await requestManagerApi("/api/example");
+
+    expect(result).toBeNull();
+    expect(decryptToken).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   test("期限切れトークンは削除してリクエストしない", async () => {

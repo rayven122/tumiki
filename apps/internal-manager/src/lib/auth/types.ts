@@ -49,7 +49,6 @@ declare module "next-auth" {
       tumiki: TumikiClaims | null;
     };
     expires: string;
-    accessToken?: string;
   }
 }
 

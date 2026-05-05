@@ -4,9 +4,11 @@ export const dynamic = "force-dynamic";
 
 const getEnvErrors = (): Record<string, string> => {
   const result = setupOidcSchema.safeParse({
-    OIDC_ISSUER: process.env.OIDC_ISSUER,
-    OIDC_CLIENT_ID: process.env.OIDC_CLIENT_ID,
-    OIDC_CLIENT_SECRET: process.env.OIDC_CLIENT_SECRET,
+    INTERNAL_DATABASE_URL: process.env.INTERNAL_DATABASE_URL,
+    JACKSON_ENCRYPTION_KEY: process.env.JACKSON_ENCRYPTION_KEY,
+    JACKSON_SAML_METADATA:
+      process.env.JACKSON_SAML_METADATA_XML ??
+      process.env.JACKSON_SAML_METADATA_PATH,
   });
 
   if (result.success) return {};
@@ -20,9 +22,21 @@ const SetupPage = () => {
   const errors = getEnvErrors();
 
   const vars = [
-    { key: "OIDC_ISSUER", label: "Issuer URL" },
-    { key: "OIDC_CLIENT_ID", label: "Client ID（管理サーバー用）" },
-    { key: "OIDC_CLIENT_SECRET", label: "Client Secret（管理サーバー用）" },
+    {
+      key: "INTERNAL_DATABASE_URL",
+      errorKey: "INTERNAL_DATABASE_URL",
+      label: "Jackson 接続保存 DB",
+    },
+    {
+      key: "JACKSON_ENCRYPTION_KEY",
+      errorKey: "JACKSON_ENCRYPTION_KEY",
+      label: "Jackson 暗号化キー",
+    },
+    {
+      key: "JACKSON_SAML_METADATA_XML / JACKSON_SAML_METADATA_PATH",
+      errorKey: "JACKSON_SAML_METADATA",
+      label: "SAML metadata XML またはファイルパス（いずれか一方）",
+    },
   ];
 
   return (
@@ -32,11 +46,12 @@ const SetupPage = () => {
           Tumiki Internal Manager
         </h1>
         <p className="mb-6 text-sm text-gray-400">
-          以下の環境変数を設定して再起動してください。
+          Jackson が Web / Desktop 用 OIDC client
+          を自動生成するため、以下を設定してください。
         </p>
         <div className="space-y-2">
-          {vars.map(({ key, label }) => {
-            const error = errors[key];
+          {vars.map(({ key, errorKey, label }) => {
+            const error = errors[errorKey];
             return (
               <div
                 key={key}
@@ -47,7 +62,9 @@ const SetupPage = () => {
                 }`}
               >
                 <div>
-                  <p className="font-mono text-xs text-white">{key}</p>
+                  <p className="font-mono text-xs break-all text-white">
+                    {key}
+                  </p>
                   <p className="mt-0.5 text-[11px] text-gray-400">{label}</p>
                 </div>
                 <span
