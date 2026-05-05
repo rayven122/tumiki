@@ -51,6 +51,7 @@ export const objectStorageSettingsRouter = createTRPCRouter({
   get: adminProcedure.query(async () => {
     const envConfig = getEnvironmentObjectStorageConfig();
     const settings = await getDatabaseObjectStorageSettings();
+    const resolved = envConfig ?? settings;
 
     return {
       source: envConfig ? "environment" : "database",
@@ -62,13 +63,15 @@ export const objectStorageSettingsRouter = createTRPCRouter({
           settings.encryptedSecretAccessKey),
       ),
       environmentConfigured: Boolean(envConfig),
-      endpoint: settings.endpoint,
-      region: settings.region,
-      bucket: settings.bucket,
-      publicBaseUrl: settings.publicBaseUrl,
-      accessKeyId: settings.accessKeyId,
-      hasSecretAccessKey: Boolean(settings.encryptedSecretAccessKey),
-      forcePathStyle: settings.forcePathStyle,
+      endpoint: resolved.endpoint,
+      region: resolved.region,
+      bucket: resolved.bucket,
+      publicBaseUrl: resolved.publicBaseUrl,
+      accessKeyId: resolved.accessKeyId,
+      hasSecretAccessKey: envConfig
+        ? Boolean(envConfig.secretAccessKey)
+        : Boolean(settings.encryptedSecretAccessKey),
+      forcePathStyle: resolved.forcePathStyle,
     };
   }),
 
