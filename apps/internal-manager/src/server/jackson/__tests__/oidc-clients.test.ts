@@ -100,6 +100,21 @@ describe("oidc-clients", () => {
     expect(mockCreateSAMLConnection).not.toHaveBeenCalled();
   });
 
+  test("明示的OIDC設定でDesktop client ID未設定ならWeb client IDを使う", async () => {
+    process.env.OIDC_ISSUER = "https://idp.example.com";
+    process.env.OIDC_CLIENT_ID = "web-client";
+    process.env.OIDC_CLIENT_SECRET = "web-secret";
+    const { ensureJacksonOidcClients } = await loadModule();
+
+    await expect(ensureJacksonOidcClients()).resolves.toStrictEqual({
+      OIDC_ISSUER: "https://idp.example.com",
+      OIDC_CLIENT_ID: "web-client",
+      OIDC_CLIENT_SECRET: "web-secret",
+      OIDC_DESKTOP_CLIENT_ID: "web-client",
+    });
+    expect(mockCreateSAMLConnection).not.toHaveBeenCalled();
+  });
+
   test("Jackson自動設定が未設定ならエラーを返す", async () => {
     const { ensureJacksonOidcClients, isJacksonAutoOidcConfigured } =
       await loadModule();

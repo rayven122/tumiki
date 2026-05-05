@@ -93,8 +93,9 @@ export const verifyDesktopJwt = async (
     const result = await jwtVerify(token, jwks, {
       issuer: OIDC_ISSUER,
     });
-    if (result.payload.azp !== OIDC_DESKTOP_CLIENT_ID) {
-      throw new Error("Invalid desktop token client");
+    // Keycloak access token 専用フォールバック。azp がない IdP は安全側で拒否する。
+    if (!result.payload.azp || result.payload.azp !== OIDC_DESKTOP_CLIENT_ID) {
+      throw new Error("Invalid desktop token client (azp mismatch or missing)");
     }
     return result;
   });

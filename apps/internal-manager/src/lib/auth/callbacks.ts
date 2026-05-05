@@ -28,6 +28,7 @@ const refreshedTokensSchema = z.object({
 });
 
 const TOKEN_ENDPOINT_CACHE_TTL_MS = 10 * 60 * 1000;
+const OIDC_DISCOVERY_TIMEOUT_MS = 5 * 1000;
 
 // OIDCディスカバリーからトークンエンドポイントを取得（issuerをキーに短時間キャッシュ）
 const tokenEndpointCache = new Map<
@@ -40,7 +41,19 @@ const getTokenEndpoint = async (issuer: string): Promise<string> => {
   if (cached && cached.expiresAt > Date.now()) return cached.endpoint;
 
   const discoveryUrl = `${issuer.replace(/\/$/, "")}/.well-known/openid-configuration`;
-  const res = await fetch(discoveryUrl);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(
+    () => controller.abort(),
+    OIDC_DISCOVERY_TIMEOUT_MS,
+  );
+  let res: Response;
+  try {
+    res = await fetch(discoveryUrl, { signal: controller.signal });
+  } catch (error) {
+    throw new Error("OIDC discovery failed", { cause: error });
+  } finally {
+    clearTimeout(timeoutId);
+  }
   if (!res.ok) throw new Error(`OIDC discovery failed: ${res.status}`);
 
   const result = z
