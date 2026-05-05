@@ -52,4 +52,11 @@ if (result.error) {
   console.error("prisma generate 実行に失敗しました:", result.error.message);
   process.exit(1);
 }
+// シグナルで強制終了された場合は status が null になり原因特定が困難なため、signal 名をログする
+if (result.signal) {
+  console.error(
+    "prisma generate がシグナルで強制終了されました:",
+    result.signal,
+  );
+}
 process.exit(result.status ?? 1);

@@ -16,6 +16,9 @@ jobs:
   build-macos:
     name: 🍎 macOS ビルド
     runs-on: macos-latest
+    # 最小権限の原則: ビルドジョブは checkout のみのため read 権限で十分
+    permissions:
+      contents: read
     env:
       # Keycloak認証用の環境変数（ビルド時にバイナリへ埋め込み）
       # 値を変更した場合は新しいリリースビルドが必要
@@ -95,6 +98,9 @@ jobs:
   build-windows:
     name: 🪟 Windows ビルド
     runs-on: windows-latest
+    # 最小権限の原則: ビルドジョブは checkout のみのため read 権限で十分
+    permissions:
+      contents: read
     env:
       # macOS ジョブと同じくビルド時にバイナリへ埋め込まれる
       KEYCLOAK_ISSUER: ${{ secrets.KEYCLOAK_ISSUER }}

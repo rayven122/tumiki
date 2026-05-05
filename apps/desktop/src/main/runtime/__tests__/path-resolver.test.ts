@@ -30,13 +30,27 @@ describe("path-resolver", () => {
   const originalArch = process.arch;
   const originalExecPath = process.execPath;
 
+  // configurable / writable を明示しないと一度の defineProperty 後に non-configurable 化し、
+  // 後続の afterEach リストアで TypeError になる Node.js 環境がある（将来バージョン対策）
   const setPlatform = (platform: NodeJS.Platform, arch: string) => {
-    Object.defineProperty(process, "platform", { value: platform });
-    Object.defineProperty(process, "arch", { value: arch });
+    Object.defineProperty(process, "platform", {
+      value: platform,
+      configurable: true,
+      writable: true,
+    });
+    Object.defineProperty(process, "arch", {
+      value: arch,
+      configurable: true,
+      writable: true,
+    });
   };
 
   const setExecPath = (execPath: string) => {
-    Object.defineProperty(process, "execPath", { value: execPath });
+    Object.defineProperty(process, "execPath", {
+      value: execPath,
+      configurable: true,
+      writable: true,
+    });
   };
 
   beforeEach(() => {
