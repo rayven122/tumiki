@@ -58,6 +58,10 @@ JACKSON_DESKTOP_REDIRECT_URL=tumiki://auth/callback
 
 自動生成された client は Jackson DB に保存され、Web ログインと `GET /api/auth/config` で利用される。
 
+### Email account linking の許可条件
+
+Auth.js は Jackson 経由のログインで `allowDangerousEmailAccountLinking: true` を使う。これは登録済み IdP が email の一意性を保証し、Jackson connection を管理者だけが追加・変更できることを前提にする。別 IdP を同じ tenant/product に追加する場合や IdP 側の email 設定を変更する場合は、同一 email による既存アカウント乗っ取りが起きないことを事前に確認する。
+
 ## 5. Google Workspace の SAML アプリを更新
 
 Google 管理コンソール → Tumiki Internal Manager (SAML) → 「サービス プロバイダの詳細」を編集:
