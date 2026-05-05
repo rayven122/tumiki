@@ -86,6 +86,7 @@ erDiagram
   String description
   ServerStatus serverStatus
   Boolean isEnabled
+  Boolean isPiiMaskingEnabled
   Int displayOrder
   DateTime createdAt
   DateTime updatedAt
@@ -184,6 +185,7 @@ MCPサーバー（仮想・統合サーバー = Proxyエンドポイント）
   - `description`: サーバー説明
   - `serverStatus`: サーバー状態
   - `isEnabled`: 有効/無効フラグ（トグル用）
+  - `isPiiMaskingEnabled`: PII マスキングを有効化するか（false なら upstream に生 args をそのまま渡す）
   - `displayOrder`: 一覧画面での表示順序
   - `createdAt`: 
   - `updatedAt`: 
