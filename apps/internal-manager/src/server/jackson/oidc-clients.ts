@@ -138,6 +138,7 @@ export const ensureJacksonOidcClients =
         OIDC_ISSUER: externalUrl,
         OIDC_CLIENT_ID: webConnection.clientID,
         OIDC_CLIENT_SECRET: webConnection.clientSecret,
+        // Desktop は PKCE public client のため、Jackson が生成する clientSecret は使用しない。
         OIDC_DESKTOP_CLIENT_ID: desktopConnection.clientID,
       };
       resolvedConfig = config;

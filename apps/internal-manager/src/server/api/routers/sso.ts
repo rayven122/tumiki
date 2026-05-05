@@ -10,10 +10,15 @@ export const ssoRouter = createTRPCRouter({
     if (!isExplicitOidcConfigured() && !isJacksonAutoOidcConfigured()) {
       return { issuer: null, clientId: null };
     }
-    const env = await ensureJacksonOidcClients();
-    return {
-      issuer: env.OIDC_ISSUER,
-      clientId: env.OIDC_CLIENT_ID,
-    };
+    try {
+      const env = await ensureJacksonOidcClients();
+      return {
+        issuer: env.OIDC_ISSUER,
+        clientId: env.OIDC_CLIENT_ID,
+      };
+    } catch (error) {
+      console.error("[sso.getConfig] OIDC設定取得失敗:", error);
+      return { issuer: null, clientId: null };
+    }
   }),
 });

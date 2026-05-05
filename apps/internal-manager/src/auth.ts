@@ -11,10 +11,7 @@ import "~/lib/auth/types";
 
 export type { Session as SessionReturnType } from "next-auth";
 
-/**
- * 汎用OIDCプロバイダー設定
- * Entra ID / Google Workspace / Okta / Keycloak など任意のOIDC準拠プロバイダーに対応
- */
+// OIDCプロバイダー設定（Auth.js lazy config用。Entra/GWS/Okta/Keycloak対応）
 const createOidcProvider = async (): Promise<OAuthConfig<OidcProfile>> => {
   const oidcEnv = await ensureJacksonOidcClients();
   return {
