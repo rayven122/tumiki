@@ -846,11 +846,6 @@ describe("mcp.service", () => {
     });
 
     test("コネクタが見つからない場合はエラーを投げる（書き込みI/Oは起きない）", async () => {
-      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
-      vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
-      vi.mocked(mcpRepository.createServer).mockResolvedValue({
-        id: 10,
-      } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
       vi.mocked(mcpRepository.findConnectionsByIdsWithTools).mockResolvedValue(
         [],
       );

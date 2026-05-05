@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Check, Plus } from "lucide-react";
 import type {
@@ -31,8 +31,8 @@ const flattenSelectableConnectors = (
   servers
     .filter((server) => server.connections.length === 1 && server.isEnabled)
     .flatMap((server) => {
-      const connection = server.connections[0];
-      if (!connection) return [];
+      // 上の filter で connections.length === 1 を保証済みのため非null
+      const connection = server.connections[0]!;
       // OAuth は仮想MCP化未対応
       if (connection.authType === "OAUTH") return [];
       return [
@@ -71,6 +71,10 @@ export const ConnectorManual = (): JSX.Element => {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 進行中のツール一覧フェッチを同期的に追跡し、二重フェッチを防ぐ
+  // （loadingToolsFor は state のため setState 反映前に再呼び出しされると素通りする）
+  const inflightLoadsRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     window.electronAPI.mcp
@@ -112,7 +116,11 @@ export const ConnectorManual = (): JSX.Element => {
   const loadToolsForConnection = async (
     connectionId: number,
   ): Promise<void> => {
-    if (toolsByConnectionId[connectionId]) return;
+    // 既にツール一覧をロード済み、または別フェッチが進行中なら何もしない
+    if (toolsByConnectionId[connectionId] !== undefined) return;
+    if (inflightLoadsRef.current.has(connectionId)) return;
+    inflightLoadsRef.current.add(connectionId);
+
     setLoadingToolsFor((prev) => {
       const next = new Set(prev);
       next.add(connectionId);
@@ -141,6 +149,7 @@ export const ConnectorManual = (): JSX.Element => {
         e instanceof Error ? e.message : "ツール一覧の取得に失敗しました";
       toast.error(message);
     } finally {
+      inflightLoadsRef.current.delete(connectionId);
       setLoadingToolsFor((prev) => {
         const next = new Set(prev);
         next.delete(connectionId);
@@ -351,7 +360,7 @@ export const ConnectorManual = (): JSX.Element => {
           )}
         </div>
 
-        {/* 選択コネクタごとのツール選択（モック PR #1066 のチップUI を踏襲） */}
+        {/* チップ形式でツールをON/OFFする選択エリア */}
         {selectedConnectors.length > 0 && (
           <div className="mb-5 border-t border-t-[var(--border)] pt-4">
             <label className="mb-3 block text-xs text-[var(--text-muted)]">
