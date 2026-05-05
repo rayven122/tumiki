@@ -28,6 +28,7 @@ const createOidcProvider = async (): Promise<OAuthConfig<OidcProfile>> => {
     checks: ["pkce", "state"],
     // Jackson connection は管理者のみが登録できることを信頼境界とする。
     // 登録済み IdP が email の一意性を保証する前提で、既存ユーザーへの自動リンクを許可。
+    // IdP 側の email 一意性設定を変更する場合は、アカウント乗っ取りリスクを必ず再確認する。
     allowDangerousEmailAccountLinking: true,
     // NextAuth のデフォルト signin ページが authjs.dev/img/providers/oidc.svg を
     // 取得しようとして 404 になるため、ローカル SVG で上書きする

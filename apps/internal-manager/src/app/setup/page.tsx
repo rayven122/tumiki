@@ -22,11 +22,20 @@ const SetupPage = () => {
   const errors = getEnvErrors();
 
   const vars = [
-    { key: "INTERNAL_DATABASE_URL", label: "Jackson 接続保存 DB" },
-    { key: "JACKSON_ENCRYPTION_KEY", label: "Jackson 暗号化キー" },
     {
-      key: "JACKSON_SAML_METADATA",
-      label: "Google SAML metadata XML またはファイルパス",
+      key: "INTERNAL_DATABASE_URL",
+      errorKey: "INTERNAL_DATABASE_URL",
+      label: "Jackson 接続保存 DB",
+    },
+    {
+      key: "JACKSON_ENCRYPTION_KEY",
+      errorKey: "JACKSON_ENCRYPTION_KEY",
+      label: "Jackson 暗号化キー",
+    },
+    {
+      key: "JACKSON_SAML_METADATA_XML / JACKSON_SAML_METADATA_PATH",
+      errorKey: "JACKSON_SAML_METADATA",
+      label: "SAML metadata XML またはファイルパス（いずれか一方）",
     },
   ];
 
@@ -41,8 +50,8 @@ const SetupPage = () => {
           を自動生成するため、以下を設定してください。
         </p>
         <div className="space-y-2">
-          {vars.map(({ key, label }) => {
-            const error = errors[key];
+          {vars.map(({ key, errorKey, label }) => {
+            const error = errors[errorKey];
             return (
               <div
                 key={key}
@@ -53,7 +62,9 @@ const SetupPage = () => {
                 }`}
               >
                 <div>
-                  <p className="font-mono text-xs text-white">{key}</p>
+                  <p className="font-mono text-xs break-all text-white">
+                    {key}
+                  </p>
                   <p className="mt-0.5 text-[11px] text-gray-400">{label}</p>
                 </div>
                 <span

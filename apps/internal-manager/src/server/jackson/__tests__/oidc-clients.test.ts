@@ -19,7 +19,6 @@ type CreateSamlArgs = {
 const mockCreateSAMLConnection =
   vi.fn<(args: CreateSamlArgs) => Promise<unknown>>();
 const mockGetJackson = vi.fn();
-const mockIsJacksonConfigured = vi.fn<() => boolean>();
 const mockResolveExternalUrl = vi.fn<() => string>();
 
 const envKeys = [
@@ -47,7 +46,6 @@ const clearEnv = (): void => {
 const loadModule = async () => {
   vi.doMock("../index", () => ({
     getJackson: mockGetJackson,
-    isJacksonConfigured: mockIsJacksonConfigured,
     resolveExternalUrl: mockResolveExternalUrl,
   }));
 
@@ -60,7 +58,6 @@ beforeEach(() => {
   clearEnv();
 
   mockReadFile.mockResolvedValue("<xml-from-file />");
-  mockIsJacksonConfigured.mockReturnValue(false);
   mockResolveExternalUrl.mockReturnValue("https://internal.example.com");
   mockGetJackson.mockResolvedValue({
     connectionAPIController: {
@@ -81,7 +78,6 @@ const configureCustomJacksonAutoEnv = (): void => {
   process.env.JACKSON_WEB_PRODUCT = "tumiki-web";
   process.env.JACKSON_DESKTOP_PRODUCT = "tumiki-desktop";
   process.env.JACKSON_DESKTOP_REDIRECT_URL = "tumiki://auth/callback";
-  mockIsJacksonConfigured.mockReturnValue(true);
 };
 
 describe("oidc-clients", () => {
@@ -91,7 +87,6 @@ describe("oidc-clients", () => {
     process.env.OIDC_CLIENT_SECRET = "web-secret";
     process.env.OIDC_DESKTOP_CLIENT_ID = "desktop-client";
     process.env.JACKSON_SAML_METADATA_XML = "<xml />";
-    mockIsJacksonConfigured.mockReturnValue(true);
     const { ensureJacksonOidcClients, isExplicitOidcConfigured } =
       await loadModule();
 
@@ -106,7 +101,6 @@ describe("oidc-clients", () => {
   });
 
   test("Jackson自動設定が未設定ならエラーを返す", async () => {
-    mockIsJacksonConfigured.mockReturnValue(false);
     const { ensureJacksonOidcClients, isJacksonAutoOidcConfigured } =
       await loadModule();
 
@@ -179,7 +173,6 @@ describe("oidc-clients", () => {
     process.env.INTERNAL_DATABASE_URL = "postgresql://localhost/tumiki";
     process.env.JACKSON_ENCRYPTION_KEY = "x".repeat(32);
     process.env.JACKSON_SAML_METADATA_PATH = "/tmp/idp-metadata.xml";
-    mockIsJacksonConfigured.mockReturnValue(true);
     const { ensureJacksonOidcClients } = await loadModule();
 
     await expect(ensureJacksonOidcClients()).resolves.toStrictEqual({
@@ -198,7 +191,6 @@ describe("oidc-clients", () => {
     process.env.INTERNAL_DATABASE_URL = "postgresql://localhost/tumiki";
     process.env.JACKSON_ENCRYPTION_KEY = "x".repeat(32);
     process.env.JACKSON_SAML_METADATA_XML = "<xml />";
-    mockIsJacksonConfigured.mockReturnValue(true);
     mockCreateSAMLConnection
       .mockRejectedValueOnce(new Error("temporary failure"))
       .mockImplementation(async (args) => ({
