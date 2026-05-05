@@ -2,6 +2,18 @@ import { defineConfig, externalizeDepsPlugin } from "electron-vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "path";
 
+// Prisma 生成クライアントの絶対パス（ビルドマシン上のもの）と、
+// bundle 出力 (dist-electron/main/index.cjs) からの相対パス。
+// alias で絶対パスに解決 → external で素通し → output.paths で相対パスに書き戻す、
+// の3段構成でビルドマシン固有のパスが require() に inline されるのを防ぐ。
+//
+// 相対パスを直接 alias に書くと vite が importer (src/main/index.ts や
+// packages/mcp-core-proxy 配下) の場所を起点に解決し直してしまい、
+// 出力に複数の異なる絶対パスが混在する。output.paths 経由なら出力時の
+// 一括書き換えになるので importer 位置に依存しない。
+const PRISMA_DESKTOP_CLIENT_ABS = resolve(__dirname, "prisma/generated/client");
+const PRISMA_DESKTOP_CLIENT_REL = "../../prisma/generated/client";
+
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin({ exclude: ["oauth4webapi"] })],
@@ -15,7 +27,7 @@ export default defineConfig({
     },
     resolve: {
       alias: {
-        "@prisma/desktop-client": resolve(__dirname, "prisma/generated/client"),
+        "@prisma/desktop-client": PRISMA_DESKTOP_CLIENT_ABS,
       },
     },
     build: {
@@ -34,6 +46,11 @@ export default defineConfig({
         },
         output: {
           format: "cjs",
+          // 絶対パスのまま external 化された Prisma client 参照を、
+          // bundle 出力ファイルからの相対パスに書き戻す。
+          paths: {
+            [PRISMA_DESKTOP_CLIENT_ABS]: PRISMA_DESKTOP_CLIENT_REL,
+          },
         },
         external: [
           "electron",
