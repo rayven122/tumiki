@@ -225,6 +225,12 @@ if (isMcpProxyMode) {
       const serverRecord = serverSlug
         ? await findServerBySlug(db, serverSlug)
         : null;
+      // slug は指定されたが DB に該当サーバーがない場合、設定ミスをログで気付けるようにする
+      if (serverSlug && serverRecord === null) {
+        process.stderr.write(
+          `[tumiki-mcp-proxy] サーバー "${serverSlug}" が DB に見つかりません。マスキングはデフォルト ON で起動します\n`,
+        );
+      }
       const disableDefaultFilter =
         serverRecord !== null && !serverRecord.isPiiMaskingEnabled;
       if (disableDefaultFilter) {

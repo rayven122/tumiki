@@ -98,13 +98,13 @@ export const runMcpProxy = async (
 
   // PII マスキングフィルタを内蔵（呼び出し側が hooks.filter を指定すればそちらを優先）。
   // hooks.disableDefaultFilter=true の場合はデフォルトフィルタも構築しない（サーバー単位 OFF 用）。
+  // disableDefaultFilter はここで役目を終えるため、下流に伝播しないよう除外する
+  const { disableDefaultFilter, ...restHooks } = hooks ?? {};
   const enrichedHooks: ProxyHooks = {
-    ...hooks,
+    ...restHooks,
     filter:
-      hooks?.filter ??
-      (hooks?.disableDefaultFilter
-        ? undefined
-        : buildDefaultRedactionFilter(logger)),
+      restHooks.filter ??
+      (disableDefaultFilter ? undefined : buildDefaultRedactionFilter(logger)),
   };
 
   // 全MCPサーバーに接続

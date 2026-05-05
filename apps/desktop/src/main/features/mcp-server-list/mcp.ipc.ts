@@ -249,7 +249,8 @@ export const setupMcpIpc = (): void => {
   ipcMain.handle("mcp:updatePiiMasking", async (_, input: unknown) => {
     try {
       const validated = updatePiiMaskingSchema.parse(input);
-      return await mcpService.updateIsPiiMaskingEnabled(
+      // preload 側は Promise<void> を期待するため、Prisma レコードは返さない
+      await mcpService.updateIsPiiMaskingEnabled(
         validated.serverId,
         validated.enabled,
       );
