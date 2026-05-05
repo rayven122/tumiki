@@ -109,6 +109,25 @@ describe("manager-api-client", () => {
     );
   });
 
+  test("復号したBearerが空ならリクエストしない", async () => {
+    storeData.set("managerUrl", "https://manager.example.com");
+    mockFindFirst.mockResolvedValue({
+      id: 1,
+      accessToken: "encrypted:empty-token",
+      refreshToken: null,
+      idToken: null,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    vi.mocked(decryptToken).mockResolvedValue("");
+
+    const result = await requestManagerApi("/api/example");
+
+    expect(result).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   test("期限切れトークンは削除してリクエストしない", async () => {
     storeData.set("managerUrl", "https://manager.example.com");
     mockFindFirst.mockResolvedValue({

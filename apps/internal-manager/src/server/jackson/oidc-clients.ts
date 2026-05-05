@@ -85,16 +85,20 @@ const ensureConnection = async ({
 };
 
 const getExplicitOidcConfig = (): ResolvedOidcConfig | null => {
-  if (!isExplicitOidcConfigured()) return null;
+  const issuer = process.env.OIDC_ISSUER ?? "";
+  const clientId = process.env.OIDC_CLIENT_ID ?? "";
+  const clientSecret = process.env.OIDC_CLIENT_SECRET ?? "";
+  if (!issuer || !clientId || !clientSecret) return null;
 
   const desktopClientId =
     process.env.OIDC_DESKTOP_CLIENT_ID ?? process.env.OIDC_CLIENT_ID;
   if (!desktopClientId) return null;
 
+  // 明示的な OIDC env はローカル Keycloak などの動的切り替えを考慮してキャッシュしない。
   return {
-    OIDC_ISSUER: process.env.OIDC_ISSUER!,
-    OIDC_CLIENT_ID: process.env.OIDC_CLIENT_ID!,
-    OIDC_CLIENT_SECRET: process.env.OIDC_CLIENT_SECRET!,
+    OIDC_ISSUER: issuer,
+    OIDC_CLIENT_ID: clientId,
+    OIDC_CLIENT_SECRET: clientSecret,
     OIDC_DESKTOP_CLIENT_ID: desktopClientId,
   };
 };
@@ -119,6 +123,8 @@ export const ensureJacksonOidcClients =
       const externalUrl = resolveExternalUrl();
       const rawMetadata = await getRawMetadata();
 
+      // Jackson 自動設定は起動後に SAML IdP 設定が変わらない前提でプロセス内キャッシュする。
+      // createSAMLConnection は Jackson 側で同一 tenant/product の connection を upsert する。
       const webConnection = await ensureConnection({
         tenant,
         product: webProduct,
