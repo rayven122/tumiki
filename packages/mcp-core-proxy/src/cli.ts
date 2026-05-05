@@ -71,6 +71,12 @@ export type ProxyHooks = {
   onStatusChange?: (name: string, status: ServerStatus, error?: string) => void;
   /** ツール呼び出しフィルタ（PII マスキング等の前処理・後処理） */
   filter?: ToolCallFilter;
+  /**
+   * true の場合、hooks.filter 未指定でもデフォルトの PII マスキングフィルタを構築しない。
+   * サーバー単位でマスキングを無効化したい呼び出し側（Desktop の isPiiMaskingEnabled=false 等）が利用する。
+   * hooks.filter が指定されていればそちらが優先されるため、本フラグは無視される。
+   */
+  disableDefaultFilter?: boolean;
   /** 指定時、listTools/callTool の都度呼ばれて DB から最新の許可ツールリストを取得する */
   resolveAllowedTools?: ResolveAllowedToolsByName;
 };
@@ -90,10 +96,15 @@ export const runMcpProxy = async (
     core.onStatusChange(hooks.onStatusChange);
   }
 
-  // PII マスキングフィルタを内蔵（呼び出し側が hooks.filter を指定すればそちらを優先）
+  // PII マスキングフィルタを内蔵（呼び出し側が hooks.filter を指定すればそちらを優先）。
+  // hooks.disableDefaultFilter=true の場合はデフォルトフィルタも構築しない（サーバー単位 OFF 用）。
   const enrichedHooks: ProxyHooks = {
     ...hooks,
-    filter: hooks?.filter ?? buildDefaultRedactionFilter(logger),
+    filter:
+      hooks?.filter ??
+      (hooks?.disableDefaultFilter
+        ? undefined
+        : buildDefaultRedactionFilter(logger)),
   };
 
   // 全MCPサーバーに接続
