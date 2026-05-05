@@ -148,8 +148,14 @@ jobs:
             state_list_file=$(mktemp)
             state_error_file=$(mktemp)
             if ! terraform state list >"${state_list_file}" 2>"${state_error_file}"; then
-              cat "${state_error_file}" >&2
-              exit 1
+              # 初回デプロイ等で state がまだ無いケースは空 state として扱う。
+              if grep -q "No state file was found" "${state_error_file}"; then
+                echo "Note: terraform.tfstate not present yet; treating as empty (first-time deploy)" >&2
+                : > "${state_list_file}"
+              else
+                cat "${state_error_file}" >&2
+                exit 1
+              fi
             fi
             if ! grep -qx 'keycloak_realm\.tumiki' "${state_list_file}"; then
               if [ "${DRY_RUN}" = "true" ]; then
@@ -470,8 +476,14 @@ jobs:
             state_list_file=$(mktemp)
             state_error_file=$(mktemp)
             if ! terraform state list >"${state_list_file}" 2>"${state_error_file}"; then
-              cat "${state_error_file}" >&2
-              exit 1
+              # 初回デプロイ等で state がまだ無いケースは空 state として扱う。
+              if grep -q "No state file was found" "${state_error_file}"; then
+                echo "Note: terraform.tfstate not present yet; treating as empty (first-time deploy)" >&2
+                : > "${state_list_file}"
+              else
+                cat "${state_error_file}" >&2
+                exit 1
+              fi
             fi
             if ! grep -qx 'keycloak_realm\.tumiki' "${state_list_file}"; then
               if [ "${DRY_RUN}" = "true" ]; then
