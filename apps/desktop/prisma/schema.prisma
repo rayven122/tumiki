@@ -193,6 +193,8 @@ model McpServer {
   serverStatus ServerStatus @default(STOPPED)
   /// 有効/無効フラグ（トグル用）
   isEnabled    Boolean      @default(true)
+  /// PII マスキングを有効化するか（false なら upstream に生 args をそのまま渡す）
+  isPiiMaskingEnabled Boolean @default(true)
   /// 一覧画面での表示順序
   displayOrder Int          @default(0)
   createdAt    DateTime     @default(now())

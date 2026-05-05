@@ -16,6 +16,7 @@ import type {
   UpdateServerInput,
   DeleteServerInput,
   ToggleServerInput,
+  UpdatePiiMaskingInput,
   StartOAuthInput,
   OAuthResult,
   AuditLogListAllInput,
@@ -109,6 +110,8 @@ const api = {
       ipcRenderer.invoke("mcp:deleteServer", input),
     toggleServer: (input: ToggleServerInput): Promise<McpServerItem> =>
       ipcRenderer.invoke("mcp:toggleServer", input),
+    updatePiiMasking: (input: UpdatePiiMaskingInput): Promise<void> =>
+      ipcRenderer.invoke("mcp:updatePiiMasking", input),
     getDetail: (serverId: number): Promise<McpServerDetailItem | null> =>
       ipcRenderer.invoke("mcp-server:getDetail", serverId),
     toggleTool: (input: {
