@@ -79,9 +79,11 @@ describe("jwtCallback", () => {
     expect(result?.accessToken).toBe("new-access-token");
     expect(result?.refreshToken).toBe("new-refresh-token");
     expect(result?.expiresAt).toBeGreaterThan(Math.floor(Date.now() / 1000));
-    expect(fetchMock).toHaveBeenCalledWith(
+    const discoveryCall = fetchMock.mock.calls[0];
+    expect(discoveryCall?.[0]).toBe(
       "https://idp.example.com/.well-known/openid-configuration",
     );
+    expect(discoveryCall?.[1]?.signal).toBeInstanceOf(AbortSignal);
     expect(fetchMock).toHaveBeenCalledWith(
       "https://idp.example.com/oauth/token",
       expect.objectContaining({
