@@ -22,6 +22,14 @@ type DirectoryType = z.infer<typeof directoryTypeSchema>;
 
 const TENANT = "default";
 const PRODUCT = "internal-manager";
+let lastJacksonInitWarning: string | null = null;
+
+const warnJacksonInitFailed = (error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error);
+  if (lastJacksonInitWarning === message) return;
+  lastJacksonInitWarning = message;
+  console.warn(`[scim-directory] jackson init failed: ${message}`);
+};
 
 // Google Workspace OAuth Client が設定されているか
 const isGoogleConfigured = () =>
@@ -57,11 +65,21 @@ const ensureJackson = async () => {
   try {
     return await getJackson();
   } catch (e) {
-    console.error("[scim-directory] jackson init failed:", e);
+    warnJacksonInitFailed(e);
     throw new TRPCError({
       code: "SERVICE_UNAVAILABLE",
       message: "Jackson の初期化に失敗しました",
     });
+  }
+};
+
+const getJacksonForList = async () => {
+  if (!isJacksonConfigured()) return null;
+  try {
+    return await getJackson();
+  } catch (e) {
+    warnJacksonInitFailed(e);
+    return null;
   }
 };
 
@@ -74,7 +92,14 @@ const buildScimEndpoint = (scim: { endpoint?: string; path: string }) =>
 export const scimDirectoryRouter = createTRPCRouter({
   /** SCIM Directory 一覧を取得 */
   list: adminProcedure.query(async () => {
-    const jackson = await ensureJackson();
+    const jackson = await getJacksonForList();
+    if (!jackson) {
+      return {
+        status: "unavailable" as const,
+        directories: [],
+      };
+    }
+
     const { data, error } =
       await jackson.directorySyncController.directories.getByTenantAndProduct(
         TENANT,
@@ -88,20 +113,23 @@ export const scimDirectoryRouter = createTRPCRouter({
         message: "Directory 一覧の取得に失敗しました",
       });
     }
-    return (data ?? []).map((d) => {
-      const type = normalizeDirectoryType(d.type);
-      return {
-        id: d.id,
-        name: d.name,
-        type,
-        deactivated: d.deactivated ?? false,
-        // google タイプは SCIM endpoint を持たない（pull 型）
-        scimEndpoint: type === "google" ? null : buildScimEndpoint(d.scim),
-        // google は OAuth 認可済みかどうか
-        googleAuthorized:
-          type === "google" ? !!d.google_refresh_token : undefined,
-      };
-    });
+    return {
+      status: "ready" as const,
+      directories: (data ?? []).map((d) => {
+        const type = normalizeDirectoryType(d.type);
+        return {
+          id: d.id,
+          name: d.name,
+          type,
+          deactivated: d.deactivated ?? false,
+          // google タイプは SCIM endpoint を持たない（pull 型）
+          scimEndpoint: type === "google" ? null : buildScimEndpoint(d.scim),
+          // google は OAuth 認可済みかどうか
+          googleAuthorized:
+            type === "google" ? !!d.google_refresh_token : undefined,
+        };
+      }),
+    };
   }),
 
   /** SCIM Directory を作成し、初回のみ Bearer Secret を返却 */

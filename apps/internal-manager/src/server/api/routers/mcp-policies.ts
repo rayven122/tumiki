@@ -9,32 +9,52 @@ import {
 
 const POLICY_MATRIX_ORG_UNIT_LIMIT = 1000;
 const POLICY_MATRIX_CATALOG_LIMIT = 200;
+const UNSELECTED_ORG_UNIT_ID = "";
 
 export const mcpPoliciesRouter = createTRPCRouter({
-  getMatrix: adminProcedure.query(async ({ ctx }) => {
-    const [orgUnits, catalogs] = await Promise.all([
-      ctx.db.orgUnit.findMany({
-        orderBy: [{ path: "asc" }, { name: "asc" }],
-        take: POLICY_MATRIX_ORG_UNIT_LIMIT,
-      }),
-      ctx.db.mcpCatalog.findMany({
-        where: { deletedAt: null },
-        include: {
-          tools: {
-            where: { deletedAt: null },
-            include: {
-              orgUnitPermissions: true,
+  getMatrix: adminProcedure
+    .input(
+      z
+        .object({
+          orgUnitId: z.string().min(1).nullable().optional(),
+        })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const selectedOrgUnitId = input?.orgUnitId ?? null;
+      const [orgUnits, catalogs] = await Promise.all([
+        ctx.db.orgUnit.findMany({
+          orderBy: [{ path: "asc" }, { name: "asc" }],
+          take: POLICY_MATRIX_ORG_UNIT_LIMIT,
+        }),
+        ctx.db.mcpCatalog.findMany({
+          where: { deletedAt: null },
+          include: {
+            tools: {
+              where: { deletedAt: null },
+              include: {
+                orgUnitPermissions: {
+                  // orgUnit未選択時は存在しないIDで絞り込み、全権限データのロードを避ける。
+                  where: {
+                    orgUnitId: selectedOrgUnitId ?? UNSELECTED_ORG_UNIT_ID,
+                  },
+                  select: {
+                    orgUnitId: true,
+                    toolId: true,
+                    effect: true,
+                  },
+                },
+              },
+              orderBy: { name: "asc" },
             },
-            orderBy: { name: "asc" },
           },
-        },
-        orderBy: { name: "asc" },
-        take: POLICY_MATRIX_CATALOG_LIMIT,
-      }),
-    ]);
+          orderBy: { name: "asc" },
+          take: POLICY_MATRIX_CATALOG_LIMIT,
+        }),
+      ]);
 
-    return { orgUnits, catalogs };
-  }),
+      return { orgUnits, catalogs };
+    }),
 
   updateToolPermission: adminProcedure
     .input(
@@ -63,7 +83,13 @@ export const mcpPoliciesRouter = createTRPCRouter({
             message: "部署が見つかりません",
           });
         }
-        if (!tool || tool.catalogId !== input.catalogId) {
+        if (!tool) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "ツールが見つかりません",
+          });
+        }
+        if (tool.catalogId !== input.catalogId) {
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: "ツールが指定カタログに属していません",

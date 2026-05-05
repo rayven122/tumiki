@@ -66,7 +66,13 @@ const GOOGLE_CALLBACK_ERROR_LABELS: Record<string, string> = {
 /** SCIM Directory 管理セクション（Jackson Directory Sync） */
 const ScimDirectorySection = () => {
   const utils = api.useUtils();
-  const { data: directories, isLoading } = api.scimDirectory.list.useQuery();
+  const {
+    data: directoryState,
+    error: listError,
+    isLoading,
+  } = api.scimDirectory.list.useQuery(undefined, { retry: false });
+  const directories = directoryState?.directories ?? [];
+  const isUnavailable = directoryState?.status === "unavailable";
   const searchParams = useSearchParams();
   const callbackSuccess = searchParams.get("scim_success");
   const callbackError = searchParams.get("scim_error");
@@ -249,7 +255,23 @@ const ScimDirectorySection = () => {
           <div className="bg-bg-app border-border-default text-text-muted rounded-lg border px-3 py-2 text-xs">
             読み込み中…
           </div>
-        ) : !directories || directories.length === 0 ? (
+        ) : isUnavailable ? (
+          <div
+            role="status"
+            className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-300"
+          >
+            SCIM Directory は現在利用できません。Jackson
+            設定または暗号化キーを確認してください。
+          </div>
+        ) : listError ? (
+          <div
+            role="alert"
+            className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-300"
+          >
+            SCIM Directory を取得できません。Jackson
+            設定または暗号化キーを確認してください。
+          </div>
+        ) : directories.length === 0 ? (
           <div className="bg-bg-app border-border-default text-text-muted rounded-lg border px-3 py-2 text-xs">
             Directory がまだ作成されていません
           </div>

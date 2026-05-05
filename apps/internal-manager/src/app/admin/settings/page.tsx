@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { DesktopApiSettingsSection } from "./_components/DesktopApiSettingsSection";
+import { ObjectStorageSettingsSection } from "./_components/ObjectStorageSettingsSection";
 import ScimDirectorySection from "./_components/ScimDirectorySection";
 import SsoConfigSection from "./_components/SsoConfigSection";
 
@@ -74,10 +75,6 @@ const Field = ({
 );
 
 const AdminSettingsPage = () => {
-  /* 組織情報 */
-  const [orgName, setOrgName] = useState("株式会社Example");
-  const [adminEmail, setAdminEmail] = useState("admin@example.co.jp");
-
   /* セキュリティ */
   const [mfaPolicy, setMfaPolicy] = useState<"all" | "admin" | "optional">(
     "admin",
@@ -114,27 +111,10 @@ const AdminSettingsPage = () => {
         </p>
       </div>
 
-      {/* 1. 組織情報 */}
-      <SectionCard title="組織情報">
-        <Field label="組織名">
-          <input
-            type="text"
-            value={orgName}
-            onChange={(e) => setOrgName(e.target.value)}
-            className={inputCls}
-          />
-        </Field>
-        <Field label="管理者メールアドレス">
-          <input
-            type="email"
-            value={adminEmail}
-            onChange={(e) => setAdminEmail(e.target.value)}
-            className={inputCls}
-          />
-        </Field>
-      </SectionCard>
+      <DesktopApiSettingsSection />
+      <ObjectStorageSettingsSection />
 
-      {/* 2. 認証・SSO */}
+      {/* 1. 認証・SSO */}
       <div className="bg-bg-card border-border-default rounded-xl border p-5">
         <h2 className="text-text-primary mb-4 text-sm font-semibold">
           認証・SSO
@@ -149,9 +129,7 @@ const AdminSettingsPage = () => {
         </div>
       </div>
 
-      <DesktopApiSettingsSection />
-
-      {/* 3. セキュリティ */}
+      {/* 2. セキュリティ */}
       <SectionCard title="セキュリティ">
         {/* MFA強制ポリシー */}
         <div>
@@ -207,7 +185,7 @@ const AdminSettingsPage = () => {
         </Field>
       </SectionCard>
 
-      {/* 4. MCPプロキシ */}
+      {/* 3. MCPプロキシ */}
       <SectionCard title="MCPプロキシ">
         <Field label="デフォルトタイムアウト（秒）">
           <input
@@ -245,7 +223,7 @@ const AdminSettingsPage = () => {
         </div>
       </SectionCard>
 
-      {/* 5. 監査・ログ */}
+      {/* 4. 監査・ログ */}
       <SectionCard title="監査・ログ">
         <Field label="ログ保管期間">
           <select
@@ -289,7 +267,7 @@ const AdminSettingsPage = () => {
         )}
       </SectionCard>
 
-      {/* 6. 通知 */}
+      {/* 5. 通知 */}
       <SectionCard title="通知">
         <Field label="Slack Webhook URL">
           <input

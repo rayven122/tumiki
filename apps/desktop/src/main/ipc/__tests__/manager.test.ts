@@ -95,7 +95,31 @@ describe("setupManagerIpc", () => {
     const handler = mockIpcHandlers.get("manager:connect");
 
     await expect(handler!({} as IpcMainInvokeEvent, "not-url")).rejects.toThrow(
-      "無効なURLです",
+      "管理サーバーURLはhttp://またはhttps://で指定してください",
+    );
+  });
+
+  test("httpの管理サーバーURLも接続を許可する", async () => {
+    const handler = mockIpcHandlers.get("manager:connect");
+
+    await handler!({} as IpcMainInvokeEvent, "http://localhost:3101");
+
+    expect(fetch).toHaveBeenCalledWith(
+      "http://localhost:3101/api/auth/config",
+      {
+        signal: expect.any(AbortSignal),
+      },
+    );
+    expect(storeData.get("managerUrl")).toBe("http://localhost:3101");
+  });
+
+  test("http/https以外のURLは拒否する", async () => {
+    const handler = mockIpcHandlers.get("manager:connect");
+
+    await expect(
+      handler!({} as IpcMainInvokeEvent, "ftp://manager.example.com"),
+    ).rejects.toThrow(
+      "管理サーバーURLはhttp://またはhttps://で指定してください",
     );
   });
 });

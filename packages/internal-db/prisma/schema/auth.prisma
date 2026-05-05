@@ -8,17 +8,17 @@ enum Role {
 
 /// @namespace Auth
 model User {
-  id            String    @id
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  role          Role      @default(USER)
+  id                     String    @id
+  name                   String?
+  email                  String?   @unique
+  emailVerified          DateTime?
+  image                  String?
+  role                   Role      @default(USER)
   /// IDPで無効化・削除されたユーザーはfalseになる
-  isActive      Boolean   @default(true)
-  lastLoginAt   DateTime?
-  scimDepartment     String?
-  scimManagerValue   String?
+  isActive               Boolean   @default(true)
+  lastLoginAt            DateTime?
+  scimDepartment         String?
+  scimManagerValue       String?
   scimManagerDisplayName String?
 
   createdAt DateTime @default(now())

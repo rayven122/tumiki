@@ -15,8 +15,26 @@ const validSession = {
     email: "ada@example.com",
     role: "USER",
   },
-  organization: { id: null, slug: "rayven", name: "Rayven" },
+  organization: {
+    id: null,
+    slug: null,
+    name: "Rayven",
+    logoUrl:
+      "http://localhost:9000/tumiki-assets/org-assets/organization-logo.png",
+  },
   groups: [],
+  orgUnits: [
+    {
+      id: "org-unit-001",
+      name: "Engineering",
+      externalId: "eng",
+      source: "google",
+      path: "/Engineering",
+      parentId: null,
+      isPrimary: true,
+      lastSyncedAt: "2026-05-04T00:00:00.000Z",
+    },
+  ],
   permissions: [],
   features: {
     catalog: true,
@@ -42,6 +60,29 @@ describe("desktop-session.service", () => {
       "/api/desktop/v1/session",
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
+  });
+
+  test("古いManager APIでlogoUrlが未返却でもnullとして扱う", async () => {
+    vi.mocked(requestManagerApi).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ...validSession,
+          organization: {
+            ...validSession.organization,
+            logoUrl: undefined,
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await expect(getDesktopSession()).resolves.toStrictEqual({
+      ...validSession,
+      organization: {
+        ...validSession.organization,
+        logoUrl: null,
+      },
+    });
   });
 
   test("Manager未接続または未ログインの場合はnullを返す", async () => {

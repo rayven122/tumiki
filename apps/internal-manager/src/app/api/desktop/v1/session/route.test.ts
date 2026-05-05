@@ -197,11 +197,8 @@ const expectedPolicyVersion = `pol_v1_${createHash("sha256")
       },
       settings: {
         organizationName: "Rayven",
-        organizationSlug: "rayven",
-        catalogEnabled: true,
-        accessRequestsEnabled: true,
-        policySyncEnabled: false,
-        auditLogSyncEnabled: true,
+        organizationLogoUrl:
+          "http://localhost:9000/tumiki-assets/org-assets/organization-logo.png",
       },
       groups: expectedGroups,
       orgUnits: expectedOrgUnits,
@@ -223,11 +220,8 @@ describe("GET /api/desktop/v1/session", () => {
     mockMcpCatalogFindMany.mockResolvedValue(expectedPolicyCatalogs);
     mockFindSettings.mockResolvedValue({
       organizationName: "Rayven",
-      organizationSlug: "rayven",
-      catalogEnabled: true,
-      accessRequestsEnabled: true,
-      policySyncEnabled: false,
-      auditLogSyncEnabled: true,
+      organizationLogoUrl:
+        "http://localhost:9000/tumiki-assets/org-assets/organization-logo.png",
     });
   });
 
@@ -244,8 +238,10 @@ describe("GET /api/desktop/v1/session", () => {
       },
       organization: {
         id: null,
-        slug: "rayven",
+        slug: null,
         name: "Rayven",
+        logoUrl:
+          "http://localhost:9000/tumiki-assets/org-assets/organization-logo.png",
       },
       groups: expectedGroups,
       orgUnits: expectedOrgUnits,
@@ -253,7 +249,7 @@ describe("GET /api/desktop/v1/session", () => {
       features: {
         catalog: true,
         accessRequests: true,
-        policySync: false,
+        policySync: true,
         auditLogSync: true,
       },
       policyVersion: expectedPolicyVersion,
@@ -279,11 +275,7 @@ describe("GET /api/desktop/v1/session", () => {
       where: { id: "default" },
       select: {
         organizationName: true,
-        organizationSlug: true,
-        catalogEnabled: true,
-        accessRequestsEnabled: true,
-        policySyncEnabled: true,
-        auditLogSyncEnabled: true,
+        organizationLogoUrl: true,
       },
     });
   });
@@ -293,7 +285,11 @@ describe("GET /api/desktop/v1/session", () => {
 
     const response = await GET(buildRequest());
     const body = (await response.json()) as {
-      organization: { name: string | null; slug: string | null };
+      organization: {
+        name: string | null;
+        slug: string | null;
+        logoUrl: string | null;
+      };
       features: Record<string, boolean>;
     };
 
@@ -302,11 +298,12 @@ describe("GET /api/desktop/v1/session", () => {
       id: null,
       name: null,
       slug: null,
+      logoUrl: null,
     });
     expect(body.features).toStrictEqual({
-      catalog: false,
-      accessRequests: false,
-      policySync: false,
+      catalog: true,
+      accessRequests: true,
+      policySync: true,
       auditLogSync: true,
     });
   });

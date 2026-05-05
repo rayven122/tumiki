@@ -125,7 +125,6 @@ export const createOidcClient = (config: OidcClientConfig): OidcClient => {
     authUrl.searchParams.set("client_id", validated.clientId);
     authUrl.searchParams.set("redirect_uri", validated.redirectUri);
     authUrl.searchParams.set("response_type", "code");
-    // jackson は offline_access を無視する（refresh_token を返さない）が、Keycloak 直接ログイン時のために送信を継続
     authUrl.searchParams.set("scope", "openid profile email offline_access");
     authUrl.searchParams.set("state", state);
     authUrl.searchParams.set("code_challenge", codeChallenge);

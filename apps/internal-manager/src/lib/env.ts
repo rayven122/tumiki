@@ -42,7 +42,9 @@ export const getOidcEnv = () => {
   const clientId = process.env.OIDC_CLIENT_ID;
   const clientSecret = process.env.OIDC_CLIENT_SECRET;
   const issuer = process.env.OIDC_ISSUER;
-  const desktopClientId = process.env.OIDC_DESKTOP_CLIENT_ID;
+  const desktopClientId =
+    process.env.OIDC_DESKTOP_CLIENT_ID ??
+    process.env.KEYCLOAK_DESKTOP_CLIENT_ID;
 
   // 未設定（undefined）および空文字列の両方をCIフォールバックの対象とする
   const result = oidcEnvSchema.safeParse({
