@@ -284,14 +284,21 @@ export const UserMcpServerCard = ({
                 <ServerStatusBadge serverStatus={userMcpServer.serverStatus} />
               )}
               <InboundAuthIndicator
-                authType={userMcpServer.authType}
+                authType={
+                  // BEARERはDBマイグレーションでAPI_KEYに変換済みだが、Prisma enum型に残存するため正規化
+                  userMcpServer.authType === "BEARER"
+                    ? "API_KEY"
+                    : userMcpServer.authType
+                }
                 apiKeyCount={
-                  userMcpServer.authType === "API_KEY"
+                  userMcpServer.authType === "API_KEY" ||
+                  userMcpServer.authType === "BEARER"
                     ? userMcpServer.apiKeys.length
                     : undefined
                 }
                 onApiKeyClick={
-                  userMcpServer.authType === "API_KEY"
+                  userMcpServer.authType === "API_KEY" ||
+                  userMcpServer.authType === "BEARER"
                     ? () => setConfigEditModalOpen(true)
                     : undefined
                 }
