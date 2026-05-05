@@ -63,12 +63,35 @@ GitHub Actions の `Deploy Apps` ワークフローを手動実行。
 ④ Restrict permissions      chmod 600 tumiki.env
 ⑤ Transfer files            compose.yaml・.env を VM に scp 転送
 ⑥ Deploy containers         VM 上で実行:
-   - docker compose pull（最新イメージ取得）
-   - docker compose up -d --remove-orphans
+   - docker compose -f compose.yaml -f compose.staging.yaml pull（最新イメージ取得）
+   - docker compose -f compose.yaml -f compose.staging.yaml up -d --remove-orphans
    - .env 削除
-⑦ Verify health endpoints   3エンドポイントが 200 OK になるまで確認
+⑦ Verify health endpoints   Manager / MCP Proxy / Internal Manager / MinIO が 200 OK になるまで確認
 ⑧ Cleanup                   VM 側 .env を SSH 越しに削除 + 一時ファイル・SSH 鍵を削除
 ```
+
+### staging MinIO
+
+staging では S3 互換ストレージ連携の検証用に MinIO を同じアプリ VM 上で起動する。
+
+- compose: `docker/apps/compose.staging.yaml`
+- API endpoint: `http://minio:9000`（Docker ネットワーク内部）
+- host bind: `127.0.0.1:9000` / `127.0.0.1:9001`（VM 外へ直接公開しない）
+- bucket: `OBJECT_STORAGE_BUCKET`（未指定時 `tumiki-assets`）
+- public prefix: `org-assets/`, `connector-assets/`
+- private prefix: 監査ログ・利用ログ export 用 prefix は匿名公開しない
+
+staging の Infisical `/` には少なくとも以下が必要。
+
+```dotenv
+MINIO_ROOT_USER=...
+MINIO_ROOT_PASSWORD=...
+OBJECT_STORAGE_PUBLIC_BASE_URL=https://stg-assets.tumiki.cloud/tumiki-assets
+OBJECT_STORAGE_BUCKET=tumiki-assets
+OBJECT_STORAGE_REGION=auto
+```
+
+`OBJECT_STORAGE_PUBLIC_BASE_URL` は Desktop などクライアントから到達できる公開 URL を指定する。MinIO 自体は localhost bind のため、公開する場合は Cloudflare Tunnel などで別途 `127.0.0.1:9000` にルーティングする。
 
 ### Keycloak デプロイフロー
 
@@ -227,16 +250,16 @@ ssh -J lab-proxmox hisuzuya@10.11.0.15
 
 ```bash
 # 状態確認
-cd ~/tumiki && docker compose ps
+cd ~/tumiki && docker compose -f compose.yaml -f compose.staging.yaml ps
 
 # ログ確認
-docker compose logs <service> --tail=50
+docker compose -f compose.yaml -f compose.staging.yaml logs <service> --tail=50
 
 # 手動再起動（VM上に手元の Infisical CLI が残っている場合）
 export IMAGE_TAG=main
 infisical export --projectId=dbff850c-430a-431b-b7fe-efc744e304d6 \
   --env=staging --format=dotenv --domain https://secrets.rayven.cloud > .env
-docker compose up -d --remove-orphans
+docker compose -f compose.yaml -f compose.staging.yaml up -d --remove-orphans
 rm -f .env
 ```
 
