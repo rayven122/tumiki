@@ -14,6 +14,8 @@ export type ResolvedOidcConfig = {
   OIDC_DESKTOP_CLIENT_ID: string;
 };
 
+export const DEFAULT_DESKTOP_REDIRECT_URL = "tumiki://auth/callback";
+
 export class OidcNotConfiguredError extends Error {
   override readonly name = "OidcNotConfiguredError";
 }
@@ -40,7 +42,7 @@ const getProductNames = (): { webProduct: string; desktopProduct: string } => {
 };
 
 const getDesktopRedirectUrl = (): string =>
-  process.env.JACKSON_DESKTOP_REDIRECT_URL ?? "tumiki://auth/callback";
+  process.env.JACKSON_DESKTOP_REDIRECT_URL ?? DEFAULT_DESKTOP_REDIRECT_URL;
 
 const getRawMetadata = async (): Promise<string> => {
   const rawMetadata = process.env.JACKSON_SAML_METADATA_XML;
@@ -146,6 +148,7 @@ export const ensureJacksonOidcClients =
       resolvedConfig = config;
       return config;
     })().finally(() => {
+      // 成功後は resolvedConfig にキャッシュ済み。失敗後は次回呼び出しで再試行させる。
       clientsPromise = null;
     });
 

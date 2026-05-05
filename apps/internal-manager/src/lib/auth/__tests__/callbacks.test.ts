@@ -123,6 +123,54 @@ describe("jwtCallback", () => {
     await expect(jwtCallback({ token: expiredToken() })).resolves.toBeNull();
   });
 
+  test("refresh endpointのレスポンス形式が不正な場合はnullを返す", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn<typeof fetch>()
+        .mockResolvedValueOnce(
+          Response.json({
+            token_endpoint: "https://idp.example.com/oauth/token",
+          }),
+        )
+        .mockResolvedValueOnce(Response.json({ access_token: "missing-exp" })),
+    );
+    const { jwtCallback } = await loadModule();
+
+    await expect(jwtCallback({ token: expiredToken() })).resolves.toBeNull();
+  });
+
+  test("同じissuerのOIDC discoveryは並行refreshで1回にまとめる", async () => {
+    let resolveDiscovery: ((response: Response) => void) | undefined;
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockReturnValueOnce(
+        new Promise<Response>((resolve) => {
+          resolveDiscovery = resolve;
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({ access_token: "new-access-token-1", expires_in: 3600 }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({ access_token: "new-access-token-2", expires_in: 3600 }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const { jwtCallback } = await loadModule();
+
+    const first = jwtCallback({ token: expiredToken() });
+    const second = jwtCallback({ token: expiredToken() });
+    resolveDiscovery?.(
+      Response.json({ token_endpoint: "https://idp.example.com/oauth/token" }),
+    );
+
+    await expect(Promise.all([first, second])).resolves.toHaveLength(2);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "https://idp.example.com/.well-known/openid-configuration",
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
   test("refresh endpointの一時障害時は既存tokenを維持する", async () => {
     vi.stubGlobal(
       "fetch",

@@ -128,7 +128,7 @@ describe("verifyDesktopJwt", () => {
     const { verifyDesktopJwt } = await loadModule();
 
     await expect(verifyDesktopJwt("Bearer token-001")).rejects.toThrow(
-      "Invalid desktop token client",
+      "Desktopトークンのazpが一致しません",
     );
   });
 

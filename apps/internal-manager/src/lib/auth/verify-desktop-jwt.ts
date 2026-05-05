@@ -106,7 +106,7 @@ export const verifyDesktopJwt = async (
     });
     // Keycloak access token 専用フォールバック。azp がない IdP は安全側で拒否する。
     if (!result.payload.azp || result.payload.azp !== OIDC_DESKTOP_CLIENT_ID) {
-      throw new Error("Invalid desktop token client (azp mismatch or missing)");
+      throw new Error("Desktopトークンのazpが一致しません");
     }
     return result;
   });

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 const mockReadFile = vi.hoisted(() =>
   vi.fn<(path: string, encoding: BufferEncoding) => Promise<string>>(),
@@ -39,8 +39,12 @@ const envKeys = [
 
 const clearEnv = (): void => {
   for (const key of envKeys) {
-    delete process.env[key];
+    vi.stubEnv(key, undefined);
   }
+};
+
+const setEnv = (key: (typeof envKeys)[number], value: string): void => {
+  vi.stubEnv(key, value);
 };
 
 const loadModule = async () => {
@@ -70,23 +74,27 @@ beforeEach(() => {
   }));
 });
 
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
 const configureCustomJacksonAutoEnv = (): void => {
-  process.env.INTERNAL_DATABASE_URL = "postgresql://localhost/tumiki";
-  process.env.JACKSON_ENCRYPTION_KEY = "x".repeat(32);
-  process.env.JACKSON_SAML_METADATA_XML = "<xml />";
-  process.env.JACKSON_TENANT = "tenant-001";
-  process.env.JACKSON_WEB_PRODUCT = "tumiki-web";
-  process.env.JACKSON_DESKTOP_PRODUCT = "tumiki-desktop";
-  process.env.JACKSON_DESKTOP_REDIRECT_URL = "tumiki://auth/callback";
+  setEnv("INTERNAL_DATABASE_URL", "postgresql://localhost/tumiki");
+  setEnv("JACKSON_ENCRYPTION_KEY", "x".repeat(32));
+  setEnv("JACKSON_SAML_METADATA_XML", "<xml />");
+  setEnv("JACKSON_TENANT", "tenant-001");
+  setEnv("JACKSON_WEB_PRODUCT", "tumiki-web");
+  setEnv("JACKSON_DESKTOP_PRODUCT", "tumiki-desktop");
+  setEnv("JACKSON_DESKTOP_REDIRECT_URL", "tumiki://auth/callback");
 };
 
 describe("oidc-clients", () => {
   test("明示的OIDC設定をJackson自動設定より優先する", async () => {
-    process.env.OIDC_ISSUER = "https://idp.example.com";
-    process.env.OIDC_CLIENT_ID = "web-client";
-    process.env.OIDC_CLIENT_SECRET = "web-secret";
-    process.env.OIDC_DESKTOP_CLIENT_ID = "desktop-client";
-    process.env.JACKSON_SAML_METADATA_XML = "<xml />";
+    setEnv("OIDC_ISSUER", "https://idp.example.com");
+    setEnv("OIDC_CLIENT_ID", "web-client");
+    setEnv("OIDC_CLIENT_SECRET", "web-secret");
+    setEnv("OIDC_DESKTOP_CLIENT_ID", "desktop-client");
+    setEnv("JACKSON_SAML_METADATA_XML", "<xml />");
     const { ensureJacksonOidcClients, isExplicitOidcConfigured } =
       await loadModule();
 
@@ -101,9 +109,9 @@ describe("oidc-clients", () => {
   });
 
   test("明示的OIDC設定でDesktop client ID未設定ならWeb client IDを使う", async () => {
-    process.env.OIDC_ISSUER = "https://idp.example.com";
-    process.env.OIDC_CLIENT_ID = "web-client";
-    process.env.OIDC_CLIENT_SECRET = "web-secret";
+    setEnv("OIDC_ISSUER", "https://idp.example.com");
+    setEnv("OIDC_CLIENT_ID", "web-client");
+    setEnv("OIDC_CLIENT_SECRET", "web-secret");
     const { ensureJacksonOidcClients } = await loadModule();
 
     await expect(ensureJacksonOidcClients()).resolves.toStrictEqual({
@@ -185,9 +193,9 @@ describe("oidc-clients", () => {
   });
 
   test("Jackson自動設定はmetadata pathからXMLを読み込める", async () => {
-    process.env.INTERNAL_DATABASE_URL = "postgresql://localhost/tumiki";
-    process.env.JACKSON_ENCRYPTION_KEY = "x".repeat(32);
-    process.env.JACKSON_SAML_METADATA_PATH = "/tmp/idp-metadata.xml";
+    setEnv("INTERNAL_DATABASE_URL", "postgresql://localhost/tumiki");
+    setEnv("JACKSON_ENCRYPTION_KEY", "x".repeat(32));
+    setEnv("JACKSON_SAML_METADATA_PATH", "/tmp/idp-metadata.xml");
     const { ensureJacksonOidcClients } = await loadModule();
 
     await expect(ensureJacksonOidcClients()).resolves.toStrictEqual({
@@ -203,9 +211,9 @@ describe("oidc-clients", () => {
   });
 
   test("Jackson自動設定の生成失敗後は次回呼び出しで再試行できる", async () => {
-    process.env.INTERNAL_DATABASE_URL = "postgresql://localhost/tumiki";
-    process.env.JACKSON_ENCRYPTION_KEY = "x".repeat(32);
-    process.env.JACKSON_SAML_METADATA_XML = "<xml />";
+    setEnv("INTERNAL_DATABASE_URL", "postgresql://localhost/tumiki");
+    setEnv("JACKSON_ENCRYPTION_KEY", "x".repeat(32));
+    setEnv("JACKSON_SAML_METADATA_XML", "<xml />");
     mockCreateSAMLConnection
       .mockRejectedValueOnce(new Error("temporary failure"))
       .mockImplementation(async (args) => ({

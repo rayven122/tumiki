@@ -41,6 +41,7 @@ const tokenEndpointCache = new Map<
   string,
   { endpoint: string; expiresAt: number }
 >();
+const pendingTokenEndpointFetches = new Map<string, Promise<string>>();
 
 const isOidcConfigurationError = (error: unknown): boolean =>
   error instanceof OidcNotConfiguredError;
@@ -48,34 +49,44 @@ const isOidcConfigurationError = (error: unknown): boolean =>
 const getTokenEndpoint = async (issuer: string): Promise<string> => {
   const cached = tokenEndpointCache.get(issuer);
   if (cached && cached.expiresAt > Date.now()) return cached.endpoint;
+  const pending = pendingTokenEndpointFetches.get(issuer);
+  if (pending) return pending;
 
-  const discoveryUrl = buildOidcDiscoveryUrl(issuer);
-  const controller = new AbortController();
-  const timeoutId = setTimeout(
-    () => controller.abort(),
-    OIDC_DISCOVERY_TIMEOUT_MS,
-  );
-  let res: Response;
-  try {
-    res = await fetch(discoveryUrl, { signal: controller.signal });
-  } catch (error) {
-    throw new Error("OIDC discovery failed", { cause: error });
-  } finally {
-    clearTimeout(timeoutId);
-  }
-  if (!res.ok) throw new Error(`OIDC discovery failed: ${res.status}`);
+  const promise = (async () => {
+    const discoveryUrl = buildOidcDiscoveryUrl(issuer);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      OIDC_DISCOVERY_TIMEOUT_MS,
+    );
+    let res: Response;
+    try {
+      res = await fetch(discoveryUrl, { signal: controller.signal });
+    } catch (error) {
+      throw new Error("OIDC discovery failed", { cause: error });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+    if (!res.ok) throw new Error(`OIDC discovery failed: ${res.status}`);
 
-  const result = z
-    .object({ token_endpoint: z.string().url() })
-    .safeParse(await res.json());
-  if (!result.success)
-    throw new Error(`OIDC discovery invalid response: ${result.error.message}`);
+    const result = z
+      .object({ token_endpoint: z.string().url() })
+      .safeParse(await res.json());
+    if (!result.success)
+      throw new Error(
+        `OIDC discovery invalid response: ${result.error.message}`,
+      );
 
-  tokenEndpointCache.set(issuer, {
-    endpoint: result.data.token_endpoint,
-    expiresAt: Date.now() + TOKEN_ENDPOINT_CACHE_TTL_MS,
+    tokenEndpointCache.set(issuer, {
+      endpoint: result.data.token_endpoint,
+      expiresAt: Date.now() + TOKEN_ENDPOINT_CACHE_TTL_MS,
+    });
+    return result.data.token_endpoint;
+  })().finally(() => {
+    pendingTokenEndpointFetches.delete(issuer);
   });
-  return result.data.token_endpoint;
+  pendingTokenEndpointFetches.set(issuer, promise);
+  return promise;
 };
 
 /**
@@ -122,7 +133,17 @@ const refreshAccessToken = async (token: JWT): Promise<JWT | null> => {
       return null;
     }
 
-    const refreshed = refreshedTokensSchema.parse(await response.json());
+    const refreshedResult = refreshedTokensSchema.safeParse(
+      await response.json(),
+    );
+    if (!refreshedResult.success) {
+      console.error(
+        "[refreshAccessToken] Invalid response:",
+        refreshedResult.error,
+      );
+      return null;
+    }
+    const refreshed = refreshedResult.data;
 
     return {
       ...token,

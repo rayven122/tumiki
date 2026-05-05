@@ -22,6 +22,7 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { getJackson, resolveExternalUrl } from "../src/server/jackson";
+import { DEFAULT_DESKTOP_REDIRECT_URL } from "../src/server/jackson/oidc-clients";
 
 const main = async () => {
   const metadataPath = process.argv[2];
@@ -38,7 +39,7 @@ const main = async () => {
   const desktopProduct =
     process.env.JACKSON_DESKTOP_PRODUCT ?? `${webProduct}-desktop`;
   const desktopRedirectUrl =
-    process.env.JACKSON_DESKTOP_REDIRECT_URL ?? "tumiki://auth/callback";
+    process.env.JACKSON_DESKTOP_REDIRECT_URL ?? DEFAULT_DESKTOP_REDIRECT_URL;
   // モジュールと同じ解決ロジックを使用（不一致防止）
   const externalUrl = resolveExternalUrl();
   const webRedirectUrl = `${externalUrl}/api/auth/callback/oidc`;
