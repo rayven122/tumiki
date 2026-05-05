@@ -91,7 +91,7 @@ export const useCreateServerForm = ({
     (params: {
       serverName: string;
       slug: string;
-      authType: "NONE" | "BEARER" | "API_KEY";
+      authType: "NONE" | "API_KEY";
       transportType?: TransportType;
       mcpServerTemplateId?: string;
       customUrl?: string;
