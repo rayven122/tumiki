@@ -13,6 +13,7 @@ import {
   generateState,
 } from "../../auth/pkce";
 import { getDb } from "../../shared/db";
+import { resolveByProfile } from "../../shared/profile-dispatch";
 import * as logger from "../../shared/utils/logger";
 import { AUTH_SESSION_TIMEOUT_MS } from "../../../shared/types";
 import {
@@ -268,7 +269,6 @@ export const createMcpOAuthManager = (): McpOAuthManager => {
         state,
         codeVerifier,
         serverUrl: input.url,
-        catalogId: input.catalogId ?? null,
         managerCatalog: input.managerCatalog ?? null,
         catalogName: input.catalogName,
         description: input.description,
@@ -318,42 +318,58 @@ export const createMcpOAuthManager = (): McpOAuthManager => {
 
       const credentials = credentialsPayloadFromTokenData(tokenData);
 
-      // カタログ参照ありの場合は既存フロー、Managerカタログの場合はテンプレートから登録、
+      // カタログ情報があればプロファイルモードに応じて分岐し、
       // それ以外はカスタムサーバーとして登録する。
-      const result = session.catalogId
-        ? await createFromCatalog({
-            catalogId: session.catalogId,
-            catalogName: session.catalogName,
-            description: session.description,
-            transportType: session.transportType,
-            command: session.command,
-            args: session.args,
-            url: session.url,
-            credentialKeys: [],
-            credentials,
-            authType: "OAUTH",
+      // 個人モード: ローカル McpCatalog FK 付きで登録（追加後画面でロゴ等を解決するため）
+      // 組織モード: Manager API カタログ情報からテンプレート登録（ローカル FK は持たない）
+      const result = session.managerCatalog
+        ? await resolveByProfile({
+            personal: () => {
+              const localCatalogId = Number(
+                session.managerCatalog?.catalogId ?? "",
+              );
+              if (Number.isNaN(localCatalogId)) {
+                throw new Error("カタログIDが不正です");
+              }
+              return createFromCatalog({
+                catalogId: localCatalogId,
+                catalogName: session.catalogName,
+                description: session.description,
+                transportType: session.transportType,
+                command: session.command,
+                args: session.args,
+                url: session.url,
+                credentialKeys: [],
+                credentials,
+                authType: "OAUTH",
+              });
+            },
+            organization: () => {
+              if (!session.managerCatalog) {
+                throw new Error("Managerカタログ情報がありません");
+              }
+              return createFromManagerCatalog({
+                catalogId: session.managerCatalog.catalogId,
+                serverName: session.catalogName,
+                description: session.description,
+                status: session.managerCatalog.status,
+                permissions: session.managerCatalog.permissions,
+                connectionTemplate: session.managerCatalog.connectionTemplate,
+                tools: session.managerCatalog.tools,
+                credentials,
+              });
+            },
           })
-        : session.managerCatalog
-          ? await createFromManagerCatalog({
-              catalogId: session.managerCatalog.catalogId,
-              serverName: session.catalogName,
-              description: session.description,
-              status: session.managerCatalog.status,
-              permissions: session.managerCatalog.permissions,
-              connectionTemplate: session.managerCatalog.connectionTemplate,
-              tools: session.managerCatalog.tools,
-              credentials,
-            })
-          : await createCustomServer({
-              serverName: session.catalogName,
-              url: session.url,
-              transportType:
-                session.transportType === "STDIO"
-                  ? "STREAMABLE_HTTP"
-                  : session.transportType,
-              authType: "OAUTH",
-              credentials,
-            });
+        : await createCustomServer({
+            serverName: session.catalogName,
+            url: session.url,
+            transportType:
+              session.transportType === "STDIO"
+                ? "STREAMABLE_HTTP"
+                : session.transportType,
+            authType: "OAUTH",
+            credentials,
+          });
 
       logger.info("MCP OAuth flow completed successfully", {
         serverUrl: session.serverUrl,

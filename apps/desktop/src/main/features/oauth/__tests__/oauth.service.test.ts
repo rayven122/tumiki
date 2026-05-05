@@ -22,6 +22,7 @@ vi.mock("../oauth.token");
 vi.mock("../oauth.protocol");
 vi.mock("../oauth.repository");
 vi.mock("../../mcp-server-list/mcp.service");
+vi.mock("../../../shared/profile-dispatch");
 
 import { shell } from "electron";
 import { getDb } from "../../../shared/db";
@@ -36,7 +37,11 @@ import { generateAuthorizationUrl } from "../oauth.auth-url";
 import { exchangeCodeForToken } from "../oauth.token";
 import { parseOAuthCallback } from "../oauth.protocol";
 import * as oauthRepository from "../oauth.repository";
-import { createFromCatalog } from "../../mcp-server-list/mcp.service";
+import {
+  createFromCatalog,
+  createFromManagerCatalog,
+} from "../../mcp-server-list/mcp.service";
+import { resolveByProfile } from "../../../shared/profile-dispatch";
 import { createMcpOAuthManager } from "../oauth.service";
 import type { StartOAuthInput } from "../oauth.types";
 import type * as oauth from "oauth4webapi";
@@ -44,14 +49,30 @@ import type * as oauth from "oauth4webapi";
 describe("oauth.service", () => {
   const mockDb = {} as Awaited<ReturnType<typeof getDb>>;
 
+  const defaultManagerCatalog: NonNullable<StartOAuthInput["managerCatalog"]> =
+    {
+      catalogId: "1",
+      status: "available",
+      permissions: { read: true, write: true, execute: true },
+      connectionTemplate: {
+        transportType: "STREAMABLE_HTTP",
+        command: null,
+        args: [],
+        url: "https://mcp.figma.com/mcp",
+        authType: "OAUTH",
+        credentialKeys: [],
+      },
+      tools: [],
+    };
+
   const defaultInput: StartOAuthInput = {
-    catalogId: 1,
     catalogName: "Figma MCP",
     description: "Figma MCP Server",
     transportType: "STREAMABLE_HTTP",
     command: null,
     args: "[]",
     url: "https://mcp.figma.com/mcp",
+    managerCatalog: defaultManagerCatalog,
   };
 
   const mockMetadata: oauth.AuthorizationServer = {
@@ -76,6 +97,10 @@ describe("oauth.service", () => {
     vi.mocked(generateState).mockReturnValue("test-state");
     vi.mocked(generateAuthorizationUrl).mockReturnValue(
       new URL("https://www.figma.com/oauth?client_id=test"),
+    );
+    // 既定では個人モードとして振る舞う（テストごとに上書き可）
+    vi.mocked(resolveByProfile).mockImplementation(async (handlers) =>
+      handlers.personal(),
     );
   });
 
@@ -265,7 +290,7 @@ describe("oauth.service", () => {
   });
 
   describe("handleCallback", () => {
-    test("コールバックでトークン交換しMCPサーバーを作成する", async () => {
+    test("個人モードではローカル McpCatalog FK 付きで登録する", async () => {
       // セッション開始
       vi.mocked(oauthRepository.findByServerUrl).mockResolvedValue({
         id: 1,
@@ -305,9 +330,10 @@ describe("oauth.service", () => {
         serverName: "Figma MCP",
       });
 
-      // createFromCatalogにOAuthトークンが渡される
+      // 個人モードでは createFromCatalog が catalogId 付きで呼ばれる（追加後画面でロゴ等を解決するため）
       expect(createFromCatalog).toHaveBeenCalledWith(
         expect.objectContaining({
+          catalogId: 1,
           authType: "OAUTH",
           credentials: expect.objectContaining({
             access_token: "access123",
@@ -315,6 +341,7 @@ describe("oauth.service", () => {
           }),
         }),
       );
+      expect(createFromManagerCatalog).not.toHaveBeenCalled();
 
       // セッションがクリアされる
       expect(manager.getActiveSession()).toBeNull();
@@ -391,6 +418,89 @@ describe("oauth.service", () => {
           "tumiki://oauth/callback?code=auth-code&state=test-state",
         ),
       ).rejects.toThrow("有効期限が切れています");
+    });
+
+    test("組織モードでは Manager API カタログから登録する", async () => {
+      // 組織モードに切り替え
+      vi.mocked(resolveByProfile).mockImplementation(async (handlers) =>
+        handlers.organization(),
+      );
+
+      vi.mocked(oauthRepository.findByServerUrl).mockResolvedValue({
+        id: 1,
+        serverUrl: "https://mcp.figma.com/mcp",
+        issuer: "https://www.figma.com",
+        clientId: "test-client-id",
+        clientSecret: "test-secret",
+        tokenEndpointAuthMethod: "client_secret_post",
+        authServerMetadata: JSON.stringify(mockMetadata),
+      });
+
+      const manager = createMcpOAuthManager();
+      await manager.startAuthFlow({
+        ...defaultInput,
+        managerCatalog: {
+          ...defaultManagerCatalog,
+          catalogId: "manager-catalog-uuid",
+        },
+      });
+
+      vi.mocked(parseOAuthCallback).mockReturnValueOnce({
+        code: "auth-code",
+        state: "test-state",
+      });
+      vi.mocked(exchangeCodeForToken).mockResolvedValueOnce({
+        access_token: "access123",
+      });
+      vi.mocked(createFromManagerCatalog).mockResolvedValueOnce({
+        serverId: 99,
+        serverName: "Figma MCP",
+      });
+
+      await manager.handleCallback(
+        "tumiki://oauth/callback?code=auth-code&state=test-state",
+      );
+
+      expect(createFromManagerCatalog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          catalogId: "manager-catalog-uuid",
+          serverName: "Figma MCP",
+        }),
+      );
+      expect(createFromCatalog).not.toHaveBeenCalled();
+    });
+
+    test("個人モードで managerCatalog.catalogId が数値変換できない場合エラーをスローする", async () => {
+      vi.mocked(oauthRepository.findByServerUrl).mockResolvedValue({
+        id: 1,
+        serverUrl: "https://mcp.figma.com/mcp",
+        issuer: "https://www.figma.com",
+        clientId: "test-client-id",
+        clientSecret: "test-secret",
+        tokenEndpointAuthMethod: "client_secret_post",
+        authServerMetadata: JSON.stringify(mockMetadata),
+      });
+
+      const manager = createMcpOAuthManager();
+      await manager.startAuthFlow({
+        ...defaultInput,
+        managerCatalog: { ...defaultManagerCatalog, catalogId: "not-a-number" },
+      });
+
+      vi.mocked(parseOAuthCallback).mockReturnValueOnce({
+        code: "auth-code",
+        state: "test-state",
+      });
+      vi.mocked(exchangeCodeForToken).mockResolvedValueOnce({
+        access_token: "access123",
+      });
+
+      await expect(
+        manager.handleCallback(
+          "tumiki://oauth/callback?code=auth-code&state=test-state",
+        ),
+      ).rejects.toThrow("カタログIDが不正です");
+      expect(createFromCatalog).not.toHaveBeenCalled();
     });
   });
 
