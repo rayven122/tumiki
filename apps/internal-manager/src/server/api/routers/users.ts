@@ -11,7 +11,7 @@ const userSelect = {
   isActive: true,
   lastLoginAt: true,
   createdAt: true,
-  _count: { select: { groupMemberships: true } },
+  _count: { select: { externalIdentities: true, groupMemberships: true } },
 } as const;
 
 const assertCanRemoveSystemAdminAccess = async ({
@@ -168,6 +168,59 @@ export const usersRouter = createTRPCRouter({
           where: { id: input.userId },
           data: { role: input.role },
           select: userSelect,
+        });
+      });
+    }),
+
+  deleteUser: adminProcedure
+    .input(
+      z.object({
+        userId: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (input.userId === ctx.session.user.id) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "自分自身を削除することはできません",
+        });
+      }
+
+      return ctx.db.$transaction(async (tx) => {
+        const targetUser = await tx.user.findUnique({
+          where: { id: input.userId },
+          select: {
+            id: true,
+            isActive: true,
+            _count: { select: { externalIdentities: true } },
+          },
+        });
+
+        if (!targetUser) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "ユーザーが見つかりません",
+          });
+        }
+
+        if (targetUser.isActive) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "利用中ユーザーは削除できません",
+          });
+        }
+
+        if (targetUser._count.externalIdentities > 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "IdP/SAML/SCIMで同期されたユーザーはTumikiから削除できません",
+          });
+        }
+
+        return tx.user.delete({
+          where: { id: input.userId },
+          select: { id: true },
         });
       });
     }),

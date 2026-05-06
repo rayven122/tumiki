@@ -40,24 +40,40 @@ const buildDb = ({
   targetUser,
   remainingActiveSystemAdmins = 1,
 }: {
-  targetUser: { id: string; role: Role; isActive: boolean } | null;
+  targetUser: {
+    id: string;
+    role: Role;
+    isActive: boolean;
+    externalIdentityCount?: number;
+  } | null;
   remainingActiveSystemAdmins?: number;
 }) => {
+  const selectedTargetUser = targetUser
+    ? {
+        ...targetUser,
+        _count: { externalIdentities: targetUser.externalIdentityCount ?? 0 },
+      }
+    : null;
   const tx = {
     user: {
-      findUnique: vi.fn().mockResolvedValue(targetUser),
+      findUnique: vi.fn().mockResolvedValue(selectedTargetUser),
       count: vi.fn().mockResolvedValue(remainingActiveSystemAdmins),
       update: vi.fn().mockImplementation(({ data }) =>
         Promise.resolve({
-          ...targetUser,
+          ...selectedTargetUser,
           ...data,
           name: "Target User",
           email: "target@example.com",
           lastLoginAt: null,
           createdAt: new Date("2026-05-06T00:00:00.000Z"),
-          _count: { groupMemberships: 0 },
+          _count: { externalIdentities: 0, groupMemberships: 0 },
         }),
       ),
+      delete: vi
+        .fn()
+        .mockImplementation(({ where }: { where: { id: string } }) =>
+          Promise.resolve({ id: where.id }),
+        ),
     },
   };
 
@@ -209,6 +225,82 @@ describe("usersRouter", () => {
         },
       });
       expect(tx.user.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("deleteUser", () => {
+    test("Tumikiで追加されたアクセス停止中ユーザーを削除できる", async () => {
+      const { db, tx } = buildDb({
+        targetUser: {
+          id: "user-001",
+          role: Role.USER,
+          isActive: false,
+          externalIdentityCount: 0,
+        },
+      });
+      const caller = buildCaller(db);
+
+      await expect(caller.deleteUser({ userId: "user-001" })).resolves.toEqual({
+        id: "user-001",
+      });
+      expect(tx.user.delete).toHaveBeenCalledWith({
+        where: { id: "user-001" },
+        select: { id: true },
+      });
+    });
+
+    test("利用中ユーザーは削除できない", async () => {
+      const { db, tx } = buildDb({
+        targetUser: {
+          id: "user-001",
+          role: Role.USER,
+          isActive: true,
+          externalIdentityCount: 0,
+        },
+      });
+      const caller = buildCaller(db);
+
+      await expectTrpcErrorCode(
+        caller.deleteUser({ userId: "user-001" }),
+        "BAD_REQUEST",
+      );
+      expect(tx.user.delete).not.toHaveBeenCalled();
+    });
+
+    test("IdP同期ユーザーは削除できない", async () => {
+      const { db, tx } = buildDb({
+        targetUser: {
+          id: "user-001",
+          role: Role.USER,
+          isActive: false,
+          externalIdentityCount: 1,
+        },
+      });
+      const caller = buildCaller(db);
+
+      await expectTrpcErrorCode(
+        caller.deleteUser({ userId: "user-001" }),
+        "BAD_REQUEST",
+      );
+      expect(tx.user.delete).not.toHaveBeenCalled();
+    });
+
+    test("自分自身は削除できない", async () => {
+      const { db, tx } = buildDb({
+        targetUser: {
+          id: "admin-001",
+          role: Role.SYSTEM_ADMIN,
+          isActive: false,
+          externalIdentityCount: 0,
+        },
+      });
+      const caller = buildCaller(db);
+
+      await expectTrpcErrorCode(
+        caller.deleteUser({ userId: "admin-001" }),
+        "BAD_REQUEST",
+      );
+      expect(tx.user.delete).not.toHaveBeenCalled();
     });
   });
 });
