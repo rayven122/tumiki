@@ -1,4 +1,4 @@
-import { ServerStatus } from "@prisma/desktop-client";
+import { ServerStatus, ServerType } from "@prisma/desktop-client";
 import { getDb } from "../../shared/db";
 import type { DbClient } from "../../shared/db";
 import * as mcpRepository from "./mcp.repository";
@@ -149,6 +149,7 @@ export const createFromCatalog = async (
     name: uniqueName,
     slug,
     description: input.description,
+    serverType: ServerType.OFFICIAL,
   });
 
   // MCP接続作成
@@ -193,6 +194,7 @@ export const createFromManagerCatalog = async (
     name: uniqueName,
     slug,
     description: input.description,
+    serverType: ServerType.OFFICIAL,
   });
 
   const connection = await mcpRepository.createConnection(db, {
@@ -235,6 +237,7 @@ export const createCustomServer = async (
     name: uniqueName,
     slug,
     description: "",
+    serverType: ServerType.OFFICIAL,
   });
 
   const command = input.transportType === "STDIO" ? input.command : null;
@@ -320,10 +323,10 @@ export const createVirtualServer = async (
         `コネクタ「${source.name}」が属するサーバーは無効化されています`,
       );
     }
-    // 仮想MCP（複数接続を束ねたサーバー）配下の接続を再ネストして取り込まないことを保証する。
-    // UI でも `connections.length === 1` で同等のフィルタをかけているが、IPCを直接呼ぶ
+    // 仮想MCP（CUSTOM）配下の接続を再ネストして取り込まないことを保証する。
+    // UI でも `serverType === "OFFICIAL"` で同等のフィルタをかけているが、IPCを直接呼ぶ
     // 経路（テストや将来のAPI拡張）の防御層として残す。
-    if (source.server._count.connections !== 1) {
+    if (source.server.serverType === ServerType.CUSTOM) {
       throw new Error(
         `コネクタ「${source.name}」は仮想MCPに含まれるため、新しい仮想MCPの構成要素にできません`,
       );
@@ -359,6 +362,7 @@ export const createVirtualServer = async (
       name: uniqueName,
       slug: serverSlug,
       description: input.description,
+      serverType: ServerType.CUSTOM,
     });
 
     for (const {

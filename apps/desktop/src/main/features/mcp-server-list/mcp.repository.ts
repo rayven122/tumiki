@@ -1,13 +1,16 @@
-import type { ServerStatus } from "@prisma/desktop-client";
+import type { ServerStatus, ServerType } from "@prisma/desktop-client";
 import type { DbClient } from "../../shared/db";
 
 /**
  * MCPサーバー作成時の入力データ型
+ * `serverType` は呼び出し元（カタログ/カスタム入力経路は OFFICIAL、仮想MCP作成経路は CUSTOM）が
+ * 明示的に渡すことで「どの経路で生成されたサーバーか」をDBレベルで保持する。
  */
 export type CreateMcpServerInput = {
   name: string;
   slug: string;
   description: string;
+  serverType: ServerType;
 };
 
 /**
@@ -130,12 +133,12 @@ export const findConnectionsByIdsWithTools = async (
   return db.mcpConnection.findMany({
     where: { id: { in: connectionIds } },
     include: {
-      // サーバーの有効状態に加え、_count.connections で「仮想MCP（複数接続を束ねたサーバー）」かを
-      // 呼び出し側で判別できるようにする（仮想MCP配下の接続を新しい仮想MCPに再ネストしないため）
+      // サーバーの有効状態に加え、serverType を取得することで「仮想MCP（CUSTOM）配下の接続を
+      // 新しい仮想MCPの素材として再ネストしない」ことをサービス層でDBレベルに依拠して保証する
       server: {
         select: {
           isEnabled: true,
-          _count: { select: { connections: true } },
+          serverType: true,
         },
       },
       tools: {
