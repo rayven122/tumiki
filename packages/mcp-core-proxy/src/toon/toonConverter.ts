@@ -10,13 +10,8 @@ import { encode } from "@toon-format/toon";
 
 import type { CallToolResult } from "../types.js";
 
-/**
- * 個別 text を TOON にエンコードする
- * JSON 文字列はパースしてからエンコード、それ以外は文字列そのままエンコード
- *
- * 注: JSON パース失敗のみをここで握りつぶす。`encode()` 自体の例外は
- * 呼び出し側（applyToonConversion）の try-catch でフェイルオープンとして扱う。
- */
+// JSON パース失敗のみをここで握りつぶす。`encode()` 自体の例外は呼び出し側（applyToonConversion）の
+// try-catch でフェイルオープンとして扱うため、ここではキャッチしない
 const encodeText = (text: string): string => {
   let parsed: unknown;
   try {

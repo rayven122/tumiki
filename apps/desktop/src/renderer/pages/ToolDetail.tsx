@@ -325,9 +325,11 @@ export const ToolDetail = (): JSX.Element => {
     [maskingEnabled, serverId],
   );
 
-  // 仮想MCPサーバー（複数接続）では `--server <slug>` が解決できず TOON 変換は常に OFF になる
+  // 仮想MCPサーバー（有効な接続が複数）では `--server <slug>` が解決できず TOON 変換は常に OFF になる
   // （main/index.ts の制限）。設定保存自体は成功するため、UI 上で常時警告を出してユーザー混乱を防ぐ。
-  const isMultiConnectionServer = (server?.connections.length ?? 0) > 1;
+  // ※ runtime の findEnabledConnectionsBySlug と整合させるため isEnabled な接続のみカウントする
+  const isMultiConnectionServer =
+    (server?.connections.filter((c) => c.isEnabled).length ?? 0) > 1;
 
   // レスポンス圧縮（TOON 変換）切替: DB 更新（即時反映）。実プロキシへは次回 spawn 時に反映される。
   // 失敗時は state をロールバックして元に戻す。

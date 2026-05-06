@@ -93,12 +93,15 @@ describe("applyToonConversion", () => {
     // JSON としてパースできないプレーンテキストでは encodeText の catch 分岐が選ばれる
     const plainText = "this is not json {invalid syntax";
 
-    applyToonConversion({
+    const result = applyToonConversion({
       content: [{ type: "text", text: plainText }],
     });
 
     // JSON.parse 失敗後、encode は元の文字列でそのまま呼ばれる
     expect(vi.mocked(encode)).toHaveBeenCalledWith(plainText);
+    // encode の出力（プレーン文字列）は通常引用符等で膨張するためサイズガードが効き元テキストが返る
+    const converted = result.content[0] as { type: "text"; text: string };
+    expect(converted.text).toBe(plainText);
   });
 
   test("encode が例外をスローした場合は元の result をそのまま返す（fail-open）", () => {
