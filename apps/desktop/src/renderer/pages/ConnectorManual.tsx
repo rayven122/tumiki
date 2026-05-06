@@ -1,13 +1,14 @@
 import type { JSX } from "react";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Check, Plus } from "lucide-react";
+import { ArrowLeft, Check, Plus, Search } from "lucide-react";
 import type {
   McpServerItem,
   McpConnectionItem,
   ConnectionToolsResult,
 } from "../../main/types";
 import { toast } from "../_components/Toast";
+import { ToggleSwitch } from "../_components/ToggleSwitch";
 import { toSlug } from "../../shared/mcp.slug";
 import {
   FALLBACK_SLUG_PLACEHOLDER,
@@ -73,6 +74,8 @@ export const ConnectorManual = (): JSX.Element => {
   const [allowedMap, setAllowedMap] = useState<
     Record<number, Record<string, boolean>>
   >({});
+  // connectionId → ツール検索クエリ（コネクタごとに独立）
+  const [toolQueries, setToolQueries] = useState<Record<number, string>>({});
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -191,15 +194,19 @@ export const ConnectorManual = (): JSX.Element => {
     void loadToolsForConnection(connectionId);
   };
 
-  /** ツールごとの公開可否トグル */
-  const toggleTool = (connectionId: number, toolName: string): void => {
+  /** ツールごとの公開可否を直接セット（ToggleSwitch から boolean を受け取る） */
+  const setToolAllowed = (
+    connectionId: number,
+    toolName: string,
+    isAllowed: boolean,
+  ): void => {
     setAllowedMap((prev) => {
       const current = prev[connectionId] ?? {};
       return {
         ...prev,
         [connectionId]: {
           ...current,
-          [toolName]: !(current[toolName] ?? false),
+          [toolName]: isAllowed,
         },
       };
     });
@@ -376,7 +383,7 @@ export const ConnectorManual = (): JSX.Element => {
           )}
         </div>
 
-        {/* チップ形式でツールをON/OFFする選択エリア */}
+        {/* ツール選択エリア（コネクト UI の「提供ツール」と同じカード形式） */}
         {selectedConnectors.length > 0 && (
           <div className="mb-5 border-t border-t-[var(--border)] pt-4">
             <label className="mb-3 block text-xs text-[var(--text-muted)]">
@@ -387,19 +394,31 @@ export const ConnectorManual = (): JSX.Element => {
                 const connectionId = connector.connection.id;
                 const tools = toolsByConnectionId[connectionId] ?? [];
                 const perTool = allowedMap[connectionId] ?? {};
-                const allowedNames = tools
-                  .filter((tool) => perTool[tool.name])
-                  .map((tool) => tool.name);
+                const allowedCount = tools.filter(
+                  (tool) => perTool[tool.name],
+                ).length;
                 const isLoading = loadingToolsFor.has(connectionId);
                 const hasFailed = failedToolLoads.has(connectionId);
                 const iconPath = connector.connection.catalog?.iconPath;
+                const query = toolQueries[connectionId] ?? "";
+                const lowerQuery = query.trim().toLowerCase();
+                const filteredTools =
+                  lowerQuery === ""
+                    ? tools
+                    : tools.filter(
+                        (tool) =>
+                          tool.name.toLowerCase().includes(lowerQuery) ||
+                          (tool.description ?? "")
+                            .toLowerCase()
+                            .includes(lowerQuery),
+                      );
                 return (
                   <div
                     key={connectionId}
-                    className="rounded-lg bg-[var(--bg-card-hover)] p-3"
+                    className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card-hover)] p-3"
                   >
-                    {/* コネクタ名 */}
-                    <div className="mb-3 flex items-center gap-2">
+                    {/* コネクタヘッダー */}
+                    <div className="mb-2 flex items-center gap-2">
                       {iconPath ? (
                         <img
                           src={iconPath}
@@ -411,93 +430,94 @@ export const ConnectorManual = (): JSX.Element => {
                           MCP
                         </div>
                       )}
-                      <span className="text-xs font-medium text-[var(--text-primary)]">
+                      <h3 className="text-xs font-medium text-[var(--text-primary)]">
                         {connector.serverName}
-                      </span>
-                      <span className="text-[9px] text-[var(--text-subtle)]">
-                        {allowedNames.length} / {tools.length} ツール選択中
+                      </h3>
+                      <span className="ml-auto text-[10px] text-[var(--text-subtle)]">
+                        {allowedCount} / {tools.length} ツール選択中
                       </span>
                     </div>
 
-                    {/* ツール（オペレーション）チップ */}
-                    <div className="mb-1">
-                      <span className="mb-1.5 block text-[9px] text-[var(--text-subtle)]">
-                        使用するツール
-                      </span>
-                      {isLoading ? (
-                        <p className="py-2 text-[9px] text-[var(--text-subtle)]">
-                          ツール一覧を取得中...
-                        </p>
-                      ) : hasFailed ? (
-                        <div className="flex items-center gap-2 py-2">
-                          <p className="text-[9px] text-[var(--badge-error-text)]">
-                            ツール一覧の取得に失敗しました
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              void loadToolsForConnection(connectionId)
-                            }
-                            className="inline-flex min-h-[44px] items-center rounded border border-[var(--border)] px-2 py-1 text-[9px] text-[var(--text-secondary)] transition-colors hover:opacity-80"
-                          >
-                            再試行
-                          </button>
-                        </div>
-                      ) : tools.length === 0 ? (
-                        <p className="py-2 text-[9px] text-[var(--text-subtle)]">
-                          このコネクタにはツールがありません
-                        </p>
-                      ) : (
-                        <div className="flex flex-wrap gap-1.5">
-                          {tools.map((tool) => {
-                            const isOn = perTool[tool.name] ?? false;
-                            return (
-                              <button
-                                key={tool.name}
-                                type="button"
-                                onClick={() =>
-                                  toggleTool(connectionId, tool.name)
-                                }
-                                className={`flex min-h-[44px] items-center rounded border px-2 py-1 font-mono text-[9px] transition-colors ${
-                                  isOn
-                                    ? "border-emerald-400/30 bg-[var(--bg-active)] text-[var(--text-primary)]"
-                                    : "border-transparent bg-[var(--bg-input)] text-[var(--text-subtle)]"
-                                }`}
-                                title={tool.description}
-                              >
-                                {tool.name}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
+                    {/* 検索バー（コネクト UI と同形式、ツールが多い場合のみ表示） */}
+                    {tools.length > 5 && (
+                      <div className="relative mb-2">
+                        <Search
+                          size={12}
+                          className="absolute top-1/2 left-2.5 -translate-y-1/2 text-[var(--text-subtle)]"
+                        />
+                        <input
+                          type="text"
+                          placeholder="ツールを検索..."
+                          value={query}
+                          onChange={(e) =>
+                            setToolQueries((prev) => ({
+                              ...prev,
+                              [connectionId]: e.target.value,
+                            }))
+                          }
+                          className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-input)] py-1.5 pr-2 pl-8 text-xs text-[var(--text-primary)] outline-none placeholder:text-[var(--text-subtle)]"
+                        />
+                      </div>
+                    )}
 
-                      {/* 選択中ツールの説明リスト */}
-                      {allowedNames.length > 0 && (
-                        <div className="mt-2 space-y-0.5">
-                          {allowedNames.map((name) => {
-                            const tool = tools.find((t) => t.name === name);
-                            if (!tool) return null;
-                            return (
-                              <div
-                                key={name}
-                                className="flex items-start gap-2 text-[9px]"
-                              >
-                                <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-emerald-400" />
-                                <span className="font-mono text-[var(--text-muted)]">
+                    {/* ツール一覧（カード + ToggleSwitch） */}
+                    {isLoading ? (
+                      <p className="py-3 text-center text-[10px] text-[var(--text-subtle)]">
+                        ツール一覧を取得中...
+                      </p>
+                    ) : hasFailed ? (
+                      <div className="flex items-center justify-center gap-2 py-3">
+                        <p className="text-[10px] text-[var(--badge-error-text)]">
+                          ツール一覧の取得に失敗しました
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void loadToolsForConnection(connectionId)
+                          }
+                          className="inline-flex min-h-[44px] items-center rounded border border-[var(--border)] px-2 py-1 text-[10px] text-[var(--text-secondary)] transition-colors hover:opacity-80"
+                        >
+                          再試行
+                        </button>
+                      </div>
+                    ) : tools.length === 0 ? (
+                      <p className="py-3 text-center text-[10px] text-[var(--text-subtle)]">
+                        このコネクタにはツールがありません
+                      </p>
+                    ) : filteredTools.length === 0 ? (
+                      <p className="py-3 text-center text-[10px] text-[var(--text-subtle)]">
+                        条件に一致するツールが見つかりません
+                      </p>
+                    ) : (
+                      <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
+                        {filteredTools.map((tool) => {
+                          const isOn = perTool[tool.name] ?? false;
+                          return (
+                            <div
+                              key={tool.name}
+                              className="flex items-center justify-between gap-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-input)] px-2.5 py-2"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <div className="truncate font-mono text-xs font-medium text-[var(--text-primary)]">
                                   {tool.name}
-                                </span>
+                                </div>
                                 {tool.description && (
-                                  <span className="text-[var(--text-subtle)]">
-                                    — {tool.description}
-                                  </span>
+                                  <div className="mt-0.5 line-clamp-1 text-[10px] text-[var(--text-muted)]">
+                                    {tool.description}
+                                  </div>
                                 )}
                               </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
+                              <ToggleSwitch
+                                checked={isOn}
+                                onChange={(v) =>
+                                  setToolAllowed(connectionId, tool.name, v)
+                                }
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })}
