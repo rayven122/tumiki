@@ -353,9 +353,9 @@ describe("usersRouter", () => {
       });
       const caller = buildCaller(db);
 
-      await expect(caller.deleteUser({ userId: "user-001" })).resolves.toEqual({
-        id: "user-001",
-      });
+      await expect(
+        caller.deleteUser({ userId: "user-001" }),
+      ).resolves.toStrictEqual({ id: "user-001" });
       expect(tx.user.delete).toHaveBeenCalledWith({
         where: { id: "user-001" },
         select: { id: true },

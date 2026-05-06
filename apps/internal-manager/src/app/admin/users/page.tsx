@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import {
@@ -226,7 +227,7 @@ const AdminUsersPage = () => {
                     isActive: !user.isActive,
                   })
                 }
-                className={`flex min-h-[28px] w-8 items-center justify-center rounded-md border transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                className={`flex min-h-[44px] w-11 items-center justify-center rounded-md border transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                   user.isActive
                     ? "border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/15"
                     : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/15"
@@ -263,7 +264,7 @@ const AdminUsersPage = () => {
                       deleteUser.mutate({ userId: user.id });
                     }
                   }}
-                  className="border-border-default bg-bg-card text-text-muted flex min-h-[28px] w-8 items-center justify-center rounded-md border transition-colors hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="border-border-default bg-bg-card text-text-muted flex min-h-[44px] w-11 items-center justify-center rounded-md border transition-colors hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
                   aria-label={`${user.name ?? user.email ?? "ユーザー"}を削除`}
                 >
                   <Trash2 size={12} />
@@ -431,8 +432,13 @@ const AdminUsersPage = () => {
       {tooltip && (
         <div
           role="tooltip"
-          className="bg-bg-card border-border-default text-text-secondary pointer-events-none fixed z-[100] w-72 -translate-x-full -translate-y-1/2 rounded-md border px-2.5 py-2 text-left text-[11px] leading-relaxed shadow-lg"
-          style={{ left: tooltip.left, top: tooltip.top }}
+          className="bg-bg-card border-border-default text-text-secondary pointer-events-none fixed top-[var(--tooltip-top)] left-[var(--tooltip-left)] z-[100] w-72 -translate-x-full -translate-y-1/2 rounded-md border px-2.5 py-2 text-left text-[11px] leading-relaxed shadow-lg"
+          style={
+            {
+              "--tooltip-left": `${tooltip.left}px`,
+              "--tooltip-top": `${tooltip.top}px`,
+            } as CSSProperties
+          }
         >
           {tooltip.text}
         </div>

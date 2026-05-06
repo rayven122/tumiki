@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { Role } from "@tumiki/internal-db";
+import { Prisma, Role } from "@tumiki/internal-db";
 import { adminProcedure, createTRPCRouter } from "@/server/api/trpc";
 
 const userSelect = {
@@ -124,36 +124,39 @@ export const usersRouter = createTRPCRouter({
         });
       }
 
-      return ctx.db.$transaction(async (tx) => {
-        const targetUser = await tx.user.findUnique({
-          where: { id: input.userId },
-          select: { id: true, role: true, isActive: true },
-        });
-
-        if (!targetUser) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "ユーザーが見つかりません",
+      return ctx.db.$transaction(
+        async (tx) => {
+          const targetUser = await tx.user.findUnique({
+            where: { id: input.userId },
+            select: { id: true, role: true, isActive: true },
           });
-        }
 
-        if (
-          !input.isActive &&
-          targetUser.isActive &&
-          targetUser.role === Role.SYSTEM_ADMIN
-        ) {
-          await assertCanRemoveSystemAdminAccess({
-            db: tx,
-            targetUserId: input.userId,
+          if (!targetUser) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "ユーザーが見つかりません",
+            });
+          }
+
+          if (
+            !input.isActive &&
+            targetUser.isActive &&
+            targetUser.role === Role.SYSTEM_ADMIN
+          ) {
+            await assertCanRemoveSystemAdminAccess({
+              db: tx,
+              targetUserId: input.userId,
+            });
+          }
+
+          return tx.user.update({
+            where: { id: input.userId },
+            data: { isActive: input.isActive },
+            select: userSelect,
           });
-        }
-
-        return tx.user.update({
-          where: { id: input.userId },
-          data: { isActive: input.isActive },
-          select: userSelect,
-        });
-      });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
     }),
 
   updateRole: adminProcedure
@@ -174,36 +177,39 @@ export const usersRouter = createTRPCRouter({
         });
       }
 
-      return ctx.db.$transaction(async (tx) => {
-        const targetUser = await tx.user.findUnique({
-          where: { id: input.userId },
-          select: { id: true, role: true, isActive: true },
-        });
-
-        if (!targetUser) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "ユーザーが見つかりません",
+      return ctx.db.$transaction(
+        async (tx) => {
+          const targetUser = await tx.user.findUnique({
+            where: { id: input.userId },
+            select: { id: true, role: true, isActive: true },
           });
-        }
 
-        if (
-          targetUser.role === Role.SYSTEM_ADMIN &&
-          input.role !== Role.SYSTEM_ADMIN &&
-          targetUser.isActive
-        ) {
-          await assertCanRemoveSystemAdminAccess({
-            db: tx,
-            targetUserId: input.userId,
+          if (!targetUser) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "ユーザーが見つかりません",
+            });
+          }
+
+          if (
+            targetUser.role === Role.SYSTEM_ADMIN &&
+            input.role !== Role.SYSTEM_ADMIN &&
+            targetUser.isActive
+          ) {
+            await assertCanRemoveSystemAdminAccess({
+              db: tx,
+              targetUserId: input.userId,
+            });
+          }
+
+          return tx.user.update({
+            where: { id: input.userId },
+            data: { role: input.role },
+            select: userSelect,
           });
-        }
-
-        return tx.user.update({
-          where: { id: input.userId },
-          data: { role: input.role },
-          select: userSelect,
-        });
-      });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
     }),
 
   deleteUser: adminProcedure
