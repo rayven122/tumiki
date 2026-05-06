@@ -3,6 +3,12 @@ import { useId, useState } from "react";
 import { Copy, Check } from "lucide-react";
 import { MCP_OAUTH_REDIRECT_URI } from "../../shared/oauth/redirect-uri";
 
+/**
+ * OAuthコールバックURL（リダイレクトURI）の表示フィールド
+ *
+ * Tumikiは RFC 8252 のループバックHTTP方式（固定ポート）を採用しているため、
+ * SaaS側のOAuthアプリ設定にこの固定URIを Callback URL として登録すれば良い。
+ */
 export const OAuthCallbackUrlField = (): JSX.Element => {
   const inputId = useId();
   const [copied, setCopied] = useState(false);
