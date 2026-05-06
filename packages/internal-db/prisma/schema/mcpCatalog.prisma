@@ -209,6 +209,7 @@ model OrgUnitToolPermission {
 
   @@unique([orgUnitId, toolId])
   @@index([catalogId])
+  @@index([toolId])
   @@index([effect])
 }
 

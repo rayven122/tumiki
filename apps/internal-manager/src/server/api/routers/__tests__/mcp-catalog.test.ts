@@ -94,10 +94,58 @@ describe("mcpCatalogRouter", () => {
       caller.create({
         slug: "github",
         name: "GitHub",
+        command: "${runtime:npx}",
         credentialKeys: [],
       }),
       "CONFLICT",
     );
+  });
+
+  test("createはSTDIOでcommandが空ならBAD_REQUESTにする", async () => {
+    const create = vi.fn();
+    const caller = buildCaller({
+      mcpCatalog: { create },
+    } as unknown as Context["db"]);
+
+    await expectTrpcErrorCode(
+      caller.create({
+        slug: "github",
+        name: "GitHub",
+        transportType: McpCatalogTransportType.STDIO,
+        command: null,
+        credentialKeys: [],
+      }),
+      "BAD_REQUEST",
+    );
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  test("updateはHTTP系transportでurlが空ならBAD_REQUESTにする", async () => {
+    const update = vi.fn();
+    const caller = buildCaller({
+      mcpCatalog: {
+        findFirst: vi.fn(),
+        update,
+      },
+    } as unknown as Context["db"]);
+
+    await expectTrpcErrorCode(
+      caller.update({
+        id: "catalog-001",
+        name: "GitHub",
+        description: null,
+        transportType: McpCatalogTransportType.STREAMABLE_HTTP,
+        authType: McpCatalogAuthType.OAUTH,
+        status: McpCatalogStatus.ACTIVE,
+        iconPath: null,
+        command: null,
+        args: [],
+        url: null,
+        credentialKeys: [],
+      }),
+      "BAD_REQUEST",
+    );
+    expect(update).not.toHaveBeenCalled();
   });
 
   test("createは接続テンプレートを明示カラムで保存する", async () => {
@@ -157,7 +205,7 @@ describe("mcpCatalogRouter", () => {
         iconPath: null,
         command: null,
         args: [],
-        url: null,
+        url: "https://api.githubcopilot.com/mcp/",
         credentialKeys: [],
       }),
       "NOT_FOUND",

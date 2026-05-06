@@ -24,6 +24,33 @@ const optionalConnectionString = z
   .nullable()
   .optional()
   .transform((value) => (value && value.length > 0 ? value : null));
+const validateConnectionTemplate = (
+  value: {
+    transportType: McpCatalogTransportType;
+    command: string | null;
+    url: string | null;
+  },
+  ctx: z.RefinementCtx,
+) => {
+  if (value.transportType === McpCatalogTransportType.STDIO && !value.command) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["command"],
+      message: "STDIOはcommandが必須です",
+    });
+  }
+  if (
+    (value.transportType === McpCatalogTransportType.SSE ||
+      value.transportType === McpCatalogTransportType.STREAMABLE_HTTP) &&
+    !value.url
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["url"],
+      message: "HTTP系transportはurlが必須です",
+    });
+  }
+};
 
 const MCP_CATALOG_LIST_LIMIT = 1000;
 const TOOL_UPSERT_CHUNK_SIZE = 50;
@@ -52,22 +79,24 @@ export const mcpCatalogRouter = createTRPCRouter({
 
   create: adminProcedure
     .input(
-      z.object({
-        slug: slugSchema,
-        name: z.string().min(1).max(120),
-        description: z.string().max(1000).optional(),
-        transportType: z
-          .nativeEnum(McpCatalogTransportType)
-          .default(McpCatalogTransportType.STDIO),
-        authType: z
-          .nativeEnum(McpCatalogAuthType)
-          .default(McpCatalogAuthType.NONE),
-        iconPath: z.string().max(500).optional(),
-        command: optionalConnectionString,
-        args: z.array(z.string().min(1).max(1000)).default([]),
-        url: optionalConnectionString,
-        credentialKeys: z.array(z.string().min(1).max(120)).default([]),
-      }),
+      z
+        .object({
+          slug: slugSchema,
+          name: z.string().min(1).max(120),
+          description: z.string().max(1000).optional(),
+          transportType: z
+            .nativeEnum(McpCatalogTransportType)
+            .default(McpCatalogTransportType.STDIO),
+          authType: z
+            .nativeEnum(McpCatalogAuthType)
+            .default(McpCatalogAuthType.NONE),
+          iconPath: z.string().max(500).optional(),
+          command: optionalConnectionString,
+          args: z.array(z.string().min(1).max(1000)).default([]),
+          url: optionalConnectionString,
+          credentialKeys: z.array(z.string().min(1).max(120)).default([]),
+        })
+        .superRefine(validateConnectionTemplate),
     )
     .mutation(async ({ ctx, input }) => {
       try {
@@ -96,19 +125,21 @@ export const mcpCatalogRouter = createTRPCRouter({
 
   update: adminProcedure
     .input(
-      z.object({
-        id: z.string().min(1),
-        name: z.string().min(1).max(120),
-        description: z.string().max(1000).nullable(),
-        transportType: z.nativeEnum(McpCatalogTransportType),
-        authType: z.nativeEnum(McpCatalogAuthType),
-        status: z.nativeEnum(McpCatalogStatus),
-        iconPath: z.string().max(500).nullable(),
-        command: optionalConnectionString,
-        args: z.array(z.string().min(1).max(1000)),
-        url: optionalConnectionString,
-        credentialKeys: z.array(z.string().min(1).max(120)),
-      }),
+      z
+        .object({
+          id: z.string().min(1),
+          name: z.string().min(1).max(120),
+          description: z.string().max(1000).nullable(),
+          transportType: z.nativeEnum(McpCatalogTransportType),
+          authType: z.nativeEnum(McpCatalogAuthType),
+          status: z.nativeEnum(McpCatalogStatus),
+          iconPath: z.string().max(500).nullable(),
+          command: optionalConnectionString,
+          args: z.array(z.string().min(1).max(1000)),
+          url: optionalConnectionString,
+          credentialKeys: z.array(z.string().min(1).max(120)),
+        })
+        .superRefine(validateConnectionTemplate),
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;

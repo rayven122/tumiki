@@ -200,6 +200,8 @@ CREATE TRIGGER "OrgUnitToolPermission_catalog_match"
 BEFORE INSERT OR UPDATE OF "catalogId", "toolId" ON "OrgUnitToolPermission"
 FOR EACH ROW EXECUTE FUNCTION "check_mcp_catalog_tool_permission_catalog"();
 
+CREATE INDEX IF NOT EXISTS "OrgUnitToolPermission_toolId_idx" ON "OrgUnitToolPermission"("toolId");
+
 DROP TRIGGER IF EXISTS "GroupCatalogToolPermission_catalog_match" ON "GroupCatalogToolPermission";
 CREATE TRIGGER "GroupCatalogToolPermission_catalog_match"
 BEFORE INSERT OR UPDATE OF "catalogId", "toolId" ON "GroupCatalogToolPermission"
