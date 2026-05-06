@@ -15,6 +15,7 @@ import {
 import type { ProxyHooks } from "../cli.js";
 import type { ProxyCore } from "../core.js";
 import type { Logger } from "../types.js";
+import { applyToonConversion } from "../toon/toonConverter.js";
 
 /**
  * stdio inboundサーバーを起動
@@ -118,7 +119,15 @@ export const startStdioInbound = async (
         }
       }
 
+      // 監査ログには TOON 変換 *前* の content を記録する
+      // → TOON ON/OFF を切り替えても outputBytes の意味が変わらず、時系列での比較・分析が可能
       resultContent = finalResult.content;
+
+      // TOON 変換: マスキング復号後に適用することで、マスクトークンが TOON 化されないようにする
+      // isError=true のレスポンスは変換対象から除外する（エラーメッセージは通常短く、圧縮効果が見込めないため）
+      if (hooks?.enableToonConversion && !finalResult.isError) {
+        finalResult = applyToonConversion(finalResult);
+      }
 
       if (finalResult.isError) {
         isSuccess = false;
