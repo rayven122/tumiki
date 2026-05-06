@@ -153,8 +153,7 @@ model OrgUnit {
   @@index([path])
 }
 
-/// ユーザーと部署の所属関係
-/// Desktop API の権限評価で、ユーザーがどの部署ポリシーを受けるかを決める
+/// 部署ごとの MCP カタログ許可 / 拒否ポリシー
 /// @namespace McpCatalog
 model OrgUnitCatalogPermission {
   id        String       @id @default(cuid())
@@ -172,6 +171,8 @@ model OrgUnitCatalogPermission {
   @@index([effect])
 }
 
+/// ユーザーと部署の所属関係
+/// Desktop API の権限評価で、ユーザーがどの部署ポリシーを受けるかを決める
 /// @namespace McpCatalog
 model UserOrgUnitMembership {
   id        String  @id @default(cuid())

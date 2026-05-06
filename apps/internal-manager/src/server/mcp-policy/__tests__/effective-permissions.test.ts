@@ -168,6 +168,99 @@ describe("evaluateCatalogPermissions", () => {
     });
   });
 
+  test("ツール単位の部署DENYはカタログ単位のユーザーALLOWより優先される", () => {
+    const result = evaluateCatalogPermissions(
+      buildUser(),
+      {
+        ...buildCatalog([
+          { orgUnitId: "child", effect: PolicyEffect.DENY, updatedAt: now },
+        ]),
+        userCatalogPermissions: [
+          { userId: "user-001", effect: PolicyEffect.ALLOW, updatedAt: now },
+        ],
+      },
+      orgUnits,
+    );
+
+    expect(result.tools.get("tool-001")).toStrictEqual({
+      allowed: false,
+      deniedReason: "org_unit_denied",
+    });
+    expect(result.permissions.execute).toStrictEqual(false);
+  });
+
+  test("カタログ単位のグループDENYは全ツールを拒否する", () => {
+    const baseTool = buildCatalog([]).tools[0]!;
+    const result = evaluateCatalogPermissions(
+      buildUser({
+        groupMemberships: [{ group: { id: "group-001" } }],
+      }),
+      {
+        ...buildCatalog([]),
+        groupCatalogPermissions: [
+          { groupId: "group-001", effect: PolicyEffect.DENY, updatedAt: now },
+        ],
+        tools: [
+          { ...baseTool, id: "tool-001", defaultAllowed: true },
+          { ...baseTool, id: "tool-002", name: "delete_issue" },
+        ],
+      },
+      orgUnits,
+    );
+
+    expect(result.tools.get("tool-001")).toStrictEqual({
+      allowed: false,
+      deniedReason: "group_denied",
+    });
+    expect(result.tools.get("tool-002")).toStrictEqual({
+      allowed: false,
+      deniedReason: "group_denied",
+    });
+    expect(result.permissions.execute).toStrictEqual(false);
+  });
+
+  test("ツールごとの明示ポリシーで許可と拒否が混在する", () => {
+    const baseTool = buildCatalog([]).tools[0]!;
+    const result = evaluateCatalogPermissions(
+      buildUser(),
+      {
+        ...buildCatalog([]),
+        tools: [
+          {
+            ...baseTool,
+            id: "tool-allowed",
+            userPermissions: [
+              {
+                userId: "user-001",
+                effect: PolicyEffect.ALLOW,
+                updatedAt: now,
+              },
+            ],
+          },
+          {
+            ...baseTool,
+            id: "tool-denied",
+            name: "delete_issue",
+            orgUnitPermissions: [
+              { orgUnitId: "child", effect: PolicyEffect.DENY, updatedAt: now },
+            ],
+          },
+        ],
+      },
+      orgUnits,
+    );
+
+    expect(result.tools.get("tool-allowed")).toStrictEqual({
+      allowed: true,
+      deniedReason: null,
+    });
+    expect(result.tools.get("tool-denied")).toStrictEqual({
+      allowed: false,
+      deniedReason: "org_unit_denied",
+    });
+    expect(result.permissions.execute).toStrictEqual(true);
+  });
+
   test("明示ポリシー未設定ならdefaultAllowedを使う", () => {
     const result = evaluateCatalogPermissions(
       buildUser(),

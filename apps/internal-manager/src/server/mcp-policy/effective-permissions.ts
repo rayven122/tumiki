@@ -76,12 +76,6 @@ export type CatalogPolicyInput = {
   }[];
 };
 
-const emptyBits = (): PermissionBits => ({
-  read: false,
-  write: false,
-  execute: false,
-});
-
 const POLICY_CONTEXT_ORG_UNIT_LIMIT = 2000;
 
 const collectOrgUnitIds = (
@@ -143,6 +137,7 @@ export const evaluateCatalogPermissions = (
         .map((permission) => permission.effect),
     ];
 
+    // 明示DENYは source に関わらず ALLOW より優先する。
     if (userEffects.includes(PolicyEffect.DENY)) {
       return [
         tool.id,
@@ -214,40 +209,78 @@ export const getPolicyContextForUser = async (
   userId: string,
   client: PrismaTransactionClient = db,
 ) => {
-  const [user, orgUnits] = await Promise.all([
-    client.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        isActive: true,
-        updatedAt: true,
-        orgUnitMemberships: {
-          select: {
-            updatedAt: true,
-            orgUnit: {
-              select: { id: true, parentId: true, updatedAt: true },
-            },
-          },
-        },
-        groupMemberships: {
-          select: {
-            group: {
-              select: { id: true },
-            },
+  const user = await client.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      isActive: true,
+      updatedAt: true,
+      orgUnitMemberships: {
+        select: {
+          updatedAt: true,
+          orgUnit: {
+            select: { id: true, parentId: true, updatedAt: true },
           },
         },
       },
-    }),
-    client.orgUnit.findMany({
-      select: { id: true, parentId: true, updatedAt: true },
-      take: POLICY_CONTEXT_ORG_UNIT_LIMIT,
-    }),
-  ]);
-  if (orgUnits.length >= POLICY_CONTEXT_ORG_UNIT_LIMIT) {
-    throw new Error(
-      `OrgUnit count reached the policy context limit (${POLICY_CONTEXT_ORG_UNIT_LIMIT}); refusing incomplete MCP policy evaluation.`,
+      groupMemberships: {
+        select: {
+          group: {
+            select: { id: true },
+          },
+        },
+      },
+    },
+  });
+
+  if (!user) return { user, orgUnits: [] };
+
+  const orgUnitsById = new Map(
+    user.orgUnitMemberships.map((membership) => [
+      membership.orgUnit.id,
+      {
+        id: membership.orgUnit.id,
+        parentId: membership.orgUnit.parentId,
+        updatedAt: membership.orgUnit.updatedAt,
+      },
+    ]),
+  );
+  const pendingParentIds = new Set(
+    user.orgUnitMemberships
+      .map((membership) => membership.orgUnit.parentId)
+      .filter((parentId): parentId is string => parentId !== null),
+  );
+
+  while (pendingParentIds.size > 0) {
+    const parentIds = [...pendingParentIds].filter(
+      (parentId) => !orgUnitsById.has(parentId),
     );
+    pendingParentIds.clear();
+    if (parentIds.length === 0) break;
+
+    if (orgUnitsById.size + parentIds.length > POLICY_CONTEXT_ORG_UNIT_LIMIT) {
+      throw new Error(
+        `OrgUnit ancestor count exceeded the policy context limit (${POLICY_CONTEXT_ORG_UNIT_LIMIT}); refusing incomplete MCP policy evaluation.`,
+      );
+    }
+
+    const parents = await client.orgUnit.findMany({
+      where: { id: { in: parentIds } },
+      select: { id: true, parentId: true, updatedAt: true },
+    });
+    for (const parent of parents) {
+      if (orgUnitsById.has(parent.id)) continue;
+      orgUnitsById.set(parent.id, parent);
+      if (orgUnitsById.size > POLICY_CONTEXT_ORG_UNIT_LIMIT) {
+        throw new Error(
+          `OrgUnit ancestor count exceeded the policy context limit (${POLICY_CONTEXT_ORG_UNIT_LIMIT}); refusing incomplete MCP policy evaluation.`,
+        );
+      }
+      if (parent.parentId && !orgUnitsById.has(parent.parentId)) {
+        pendingParentIds.add(parent.parentId);
+      }
+    }
   }
 
-  return { user, orgUnits };
+  return { user, orgUnits: [...orgUnitsById.values()] };
 };

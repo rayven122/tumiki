@@ -156,7 +156,7 @@ export const GET = async (request: NextRequest) => {
                   effect: true,
                   updatedAt: true,
                 },
-                orderBy: [{ orgUnitId: "asc" }, { toolId: "asc" }],
+                orderBy: [{ orgUnitId: "asc" }],
               },
               groupPermissions: {
                 select: {
