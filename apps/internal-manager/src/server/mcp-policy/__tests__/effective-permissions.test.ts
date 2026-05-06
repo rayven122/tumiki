@@ -168,6 +168,30 @@ describe("evaluateCatalogPermissions", () => {
     });
   });
 
+  test("グループDENYはユーザーALLOWより優先される", () => {
+    const result = evaluateCatalogPermissions(
+      buildUser({
+        groupMemberships: [{ group: { id: "group-001" } }],
+      }),
+      {
+        ...buildCatalog([]),
+        groupCatalogPermissions: [
+          { groupId: "group-001", effect: PolicyEffect.DENY, updatedAt: now },
+        ],
+        userCatalogPermissions: [
+          { userId: "user-001", effect: PolicyEffect.ALLOW, updatedAt: now },
+        ],
+      },
+      orgUnits,
+    );
+
+    expect(result.tools.get("tool-001")).toStrictEqual({
+      allowed: false,
+      deniedReason: "group_denied",
+    });
+    expect(result.permissions.execute).toStrictEqual(false);
+  });
+
   test("ツール単位の部署DENYはカタログ単位のユーザーALLOWより優先される", () => {
     const result = evaluateCatalogPermissions(
       buildUser(),

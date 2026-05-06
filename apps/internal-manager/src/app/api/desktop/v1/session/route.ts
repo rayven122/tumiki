@@ -48,23 +48,6 @@ export const GET = async (request: NextRequest) => {
                 externalId: true,
                 lastSyncedAt: true,
                 updatedAt: true,
-                catalogPermissions: {
-                  select: {
-                    catalogId: true,
-                    effect: true,
-                    updatedAt: true,
-                  },
-                  orderBy: [{ catalogId: "asc" }],
-                },
-                catalogToolPermissions: {
-                  select: {
-                    catalogId: true,
-                    toolId: true,
-                    effect: true,
-                    updatedAt: true,
-                  },
-                  orderBy: [{ catalogId: "asc" }, { toolId: "asc" }],
-                },
               },
             },
           },
@@ -249,26 +232,26 @@ export const GET = async (request: NextRequest) => {
       lastSyncedAt: membership.group.lastSyncedAt?.toISOString() ?? null,
     }));
 
-    const groupCatalogPermissions = user.groupMemberships.flatMap(
-      (membership) =>
-        membership.group.catalogPermissions.map((permission) => ({
-          source: "GROUP" as const,
-          scope: "CATALOG" as const,
-          groupId: membership.group.id,
-          catalogId: permission.catalogId,
-          effect: permission.effect,
-        })),
-    );
-
-    const groupToolPermissions = user.groupMemberships.flatMap((membership) =>
-      membership.group.catalogToolPermissions.map((permission) => ({
+    const groupCatalogPermissions = policyCatalogs.flatMap((catalog) =>
+      catalog.groupCatalogPermissions.map((permission) => ({
         source: "GROUP" as const,
-        scope: "TOOL" as const,
-        groupId: membership.group.id,
-        catalogId: permission.catalogId,
-        toolId: permission.toolId,
+        scope: "CATALOG" as const,
+        groupId: permission.groupId,
+        catalogId: catalog.id,
         effect: permission.effect,
       })),
+    );
+    const groupToolPermissions = policyCatalogs.flatMap((catalog) =>
+      catalog.tools.flatMap((tool) =>
+        tool.groupPermissions.map((permission) => ({
+          source: "GROUP" as const,
+          scope: "TOOL" as const,
+          groupId: permission.groupId,
+          catalogId: catalog.id,
+          toolId: tool.id,
+          effect: permission.effect,
+        })),
+      ),
     );
 
     const orgUnitCatalogPermissions = policyCatalogs.flatMap((catalog) =>

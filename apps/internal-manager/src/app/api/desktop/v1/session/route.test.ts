@@ -47,12 +47,7 @@ type FindUniqueArgs = {
     groupMemberships: {
       select: {
         group: {
-          select: {
-            catalogPermissions: { orderBy: [{ catalogId: "asc" }] };
-            catalogToolPermissions: {
-              orderBy: [{ catalogId: "asc" }, { toolId: "asc" }];
-            };
-          };
+          select: Record<string, unknown>;
         };
       };
     };
@@ -132,14 +127,6 @@ const activeUser = {
         externalId: "engineering",
         lastSyncedAt: new Date("2026-05-03T09:00:00.000Z"),
         updatedAt: groupUpdatedAt,
-        catalogPermissions: [
-          {
-            catalogId: "catalog-001",
-            effect: PolicyEffect.ALLOW,
-            updatedAt: new Date("2026-05-03T09:20:00.000Z"),
-          },
-        ],
-        catalogToolPermissions: [],
       },
     },
   ],
@@ -230,7 +217,13 @@ const expectedPolicyCatalogs = [
     status: "ACTIVE",
     updatedAt: catalogUpdatedAt,
     orgUnitCatalogPermissions: [],
-    groupCatalogPermissions: [],
+    groupCatalogPermissions: [
+      {
+        groupId: "group-001",
+        effect: PolicyEffect.ALLOW,
+        updatedAt: new Date("2026-05-03T09:20:00.000Z"),
+      },
+    ],
     userCatalogPermissions: [],
     tools: [
       {
@@ -330,13 +323,11 @@ describe("GET /api/desktop/v1/session", () => {
     expect(findUniqueArgs?.where).toStrictEqual({ id: "user-001" });
     expect(findUniqueArgs?.select.id).toStrictEqual(true);
     expect(
-      findUniqueArgs?.select.groupMemberships.select.group.select
-        .catalogPermissions.orderBy,
-    ).toStrictEqual([{ catalogId: "asc" }]);
+      findUniqueArgs?.select.groupMemberships.select.group.select,
+    ).not.toHaveProperty("catalogPermissions");
     expect(
-      findUniqueArgs?.select.groupMemberships.select.group.select
-        .catalogToolPermissions.orderBy,
-    ).toStrictEqual([{ catalogId: "asc" }, { toolId: "asc" }]);
+      findUniqueArgs?.select.groupMemberships.select.group.select,
+    ).not.toHaveProperty("catalogToolPermissions");
     expect(findUniqueArgs?.select.catalogPermissions.where.OR[0]).toStrictEqual(
       { expiresAt: null },
     );

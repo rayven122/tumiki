@@ -177,6 +177,20 @@ DECLARE
   unmatched_group_tool_count INTEGER;
   unmatched_user_tool_count INTEGER;
 BEGIN
+  IF (
+    SELECT COUNT(*)
+    FROM information_schema.tables
+    WHERE table_schema = current_schema()
+      AND table_name IN (
+        'GroupToolPermission',
+        'GroupMcpToolPermission',
+        'UserMcpToolPermission',
+        'IndividualPermission'
+      )
+  ) <> 4 THEN
+    RAISE EXCEPTION 'Cannot backfill MCP permissions because one or more legacy permission tables are missing';
+  END IF;
+
   SELECT COUNT(*) INTO unmatched_group_server_count
   FROM "GroupToolPermission" gtp
   WHERE (gtp."read" OR gtp."write" OR gtp."execute")

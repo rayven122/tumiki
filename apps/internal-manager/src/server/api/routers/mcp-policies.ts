@@ -9,7 +9,8 @@ import {
 
 const POLICY_MATRIX_ORG_UNIT_LIMIT = 1000;
 const POLICY_MATRIX_CATALOG_LIMIT = 200;
-const UNSELECTED_ORG_UNIT_ID = "__UNSELECTED_ORG_UNIT__";
+const NO_ORG_UNIT_PERMISSION_ID = "__NO_ORG_UNIT_PERMISSION__";
+const NO_GROUP_PERMISSION_ID = "__NO_GROUP_PERMISSION__";
 
 export const mcpPoliciesRouter = createTRPCRouter({
   getMatrix: adminProcedure
@@ -33,7 +34,7 @@ export const mcpPoliciesRouter = createTRPCRouter({
             orgUnitCatalogPermissions: {
               // orgUnit未選択時は存在しないIDで絞り込み、全権限データのロードを避ける。
               where: {
-                orgUnitId: selectedOrgUnitId ?? UNSELECTED_ORG_UNIT_ID,
+                orgUnitId: selectedOrgUnitId ?? NO_ORG_UNIT_PERMISSION_ID,
               },
               select: {
                 orgUnitId: true,
@@ -47,7 +48,7 @@ export const mcpPoliciesRouter = createTRPCRouter({
                 orgUnitPermissions: {
                   // orgUnit未選択時は存在しないIDで絞り込み、全権限データのロードを避ける。
                   where: {
-                    orgUnitId: selectedOrgUnitId ?? UNSELECTED_ORG_UNIT_ID,
+                    orgUnitId: selectedOrgUnitId ?? NO_ORG_UNIT_PERMISSION_ID,
                   },
                   select: {
                     orgUnitId: true,
@@ -217,10 +218,10 @@ export const mcpPoliciesRouter = createTRPCRouter({
         (membership) => membership.group.id,
       );
       const groupPermissionIds =
-        groupIds.length > 0 ? groupIds : ["__NO_GROUP_PERMISSION__"];
+        groupIds.length > 0 ? groupIds : [NO_GROUP_PERMISSION_ID];
       const orgUnitIds = orgUnits.map((orgUnit) => orgUnit.id);
       const orgUnitPermissionIds =
-        orgUnitIds.length > 0 ? orgUnitIds : [UNSELECTED_ORG_UNIT_ID];
+        orgUnitIds.length > 0 ? orgUnitIds : [NO_ORG_UNIT_PERMISSION_ID];
 
       const catalogs = await ctx.db.mcpCatalog.findMany({
         where: { deletedAt: null },
