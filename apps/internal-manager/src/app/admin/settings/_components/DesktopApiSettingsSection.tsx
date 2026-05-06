@@ -139,7 +139,6 @@ export const DesktopApiSettingsSection = (): JSX.Element => {
   };
 
   const openFileDialog = (): void => {
-    if (isUploadingLogo) return;
     fileInputRef.current?.click();
   };
 
@@ -183,6 +182,7 @@ export const DesktopApiSettingsSection = (): JSX.Element => {
 
       <div className="flex items-start gap-4">
         {/* ロゴ（クリックで変更、右上の × で削除） */}
+        {/* pt-[18px] は組織名の Field ラベル（text-[11px] + mb-1）の高さ分のオフセット。ロゴと右側のインプットの上端を揃える */}
         <div className="relative shrink-0 pt-[18px]">
           <button
             type="button"
@@ -202,7 +202,11 @@ export const DesktopApiSettingsSection = (): JSX.Element => {
                 {initial || "?"}
               </span>
             )}
-            <span className="absolute inset-0 hidden items-center justify-center bg-black/55 text-[10px] text-white group-hover/logo:flex">
+            {/* オーバーレイ: モバイル(<sm)はタップ手掛かりとして常時薄く表示、デスクトップ(sm以上)はホバー時のみ濃く表示 */}
+            <span className="absolute inset-0 flex items-center justify-center bg-black/35 text-[10px] text-white sm:hidden sm:group-hover/logo:flex">
+              {isUploadingLogo ? "アップロード中..." : "変更"}
+            </span>
+            <span className="absolute inset-0 hidden items-center justify-center bg-black/55 text-[10px] text-white sm:group-hover/logo:flex">
               {isUploadingLogo ? "アップロード中..." : "変更"}
             </span>
           </button>
@@ -211,7 +215,7 @@ export const DesktopApiSettingsSection = (): JSX.Element => {
               type="button"
               onClick={removeLogo}
               aria-label="ロゴを削除"
-              className="border-border-default bg-bg-card text-text-secondary absolute top-3 -right-2 flex h-5 w-5 items-center justify-center rounded-full border text-xs leading-none transition-colors hover:border-red-400 hover:text-red-400"
+              className="border-border-default bg-bg-card text-text-secondary absolute top-3 -right-2 flex h-5 w-5 items-center justify-center rounded-full border text-xs leading-none transition-colors hover:border-red-400 hover:text-red-400 focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:outline-none"
             >
               ×
             </button>
@@ -234,9 +238,12 @@ export const DesktopApiSettingsSection = (): JSX.Element => {
               className={`${inputCls} max-w-sm`}
             />
           </Field>
-          <p className="text-text-muted text-[10px]">
-            ロゴをクリックで画像を変更、× で削除（PNG / JPG / WebP、
-            {maxLogoFileSizeKb}KBまで）
+          <p
+            className={`text-[10px] ${isUploadingLogo ? "text-text-secondary" : "text-text-muted"}`}
+          >
+            {isUploadingLogo
+              ? "ロゴ画像をアップロード中..."
+              : `ロゴをクリックで画像を変更、× で削除（PNG / JPG / WebP、${maxLogoFileSizeKb}KBまで）`}
           </p>
           {logoError && (
             <p className="rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">
