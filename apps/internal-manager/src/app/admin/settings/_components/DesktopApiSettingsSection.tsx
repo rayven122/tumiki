@@ -202,10 +202,11 @@ export const DesktopApiSettingsSection = (): JSX.Element => {
                 {initial || "?"}
               </span>
             )}
-            {/* オーバーレイ: モバイル(<sm)はタップ手掛かりとして常時薄く表示、デスクトップ(sm以上)はホバー時のみ濃く表示 */}
-            <span className="absolute inset-0 flex items-center justify-center bg-black/35 text-[10px] text-white sm:hidden sm:group-hover/logo:flex">
+            {/* オーバーレイ: モバイル(<sm)はタップ手掛かりとして常時薄く表示 */}
+            <span className="absolute inset-0 flex items-center justify-center bg-black/35 text-[10px] text-white sm:hidden">
               {isUploadingLogo ? "アップロード中..." : "変更"}
             </span>
+            {/* オーバーレイ: デスクトップ(sm以上)はホバー時のみ濃く表示 */}
             <span className="absolute inset-0 hidden items-center justify-center bg-black/55 text-[10px] text-white sm:group-hover/logo:flex">
               {isUploadingLogo ? "アップロード中..." : "変更"}
             </span>
@@ -215,7 +216,8 @@ export const DesktopApiSettingsSection = (): JSX.Element => {
               type="button"
               onClick={removeLogo}
               aria-label="ロゴを削除"
-              className="border-border-default bg-bg-card text-text-secondary absolute top-3 -right-2 flex h-5 w-5 items-center justify-center rounded-full border text-xs leading-none transition-colors hover:border-red-400 hover:text-red-400 focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:outline-none"
+              // ::after 擬似要素で 44x44 のヒット領域を確保（モバイル最小タップターゲット規約）。視覚的なボタンは h-5 w-5 のまま
+              className="border-border-default bg-bg-card text-text-secondary absolute top-3 -right-2 flex h-5 w-5 items-center justify-center rounded-full border text-xs leading-none transition-colors after:absolute after:inset-[-12px] after:content-[''] hover:border-red-400 hover:text-red-400 focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:outline-none"
             >
               ×
             </button>
