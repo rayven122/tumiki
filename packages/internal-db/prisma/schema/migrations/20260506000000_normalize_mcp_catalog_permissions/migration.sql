@@ -193,14 +193,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS "OrgUnitToolPermission_catalog_match" ON "OrgUnitToolPermission";
 CREATE TRIGGER "OrgUnitToolPermission_catalog_match"
 BEFORE INSERT OR UPDATE OF "catalogId", "toolId" ON "OrgUnitToolPermission"
 FOR EACH ROW EXECUTE FUNCTION "check_mcp_catalog_tool_permission_catalog"();
 
+DROP TRIGGER IF EXISTS "GroupCatalogToolPermission_catalog_match" ON "GroupCatalogToolPermission";
 CREATE TRIGGER "GroupCatalogToolPermission_catalog_match"
 BEFORE INSERT OR UPDATE OF "catalogId", "toolId" ON "GroupCatalogToolPermission"
 FOR EACH ROW EXECUTE FUNCTION "check_mcp_catalog_tool_permission_catalog"();
 
+DROP TRIGGER IF EXISTS "UserCatalogToolPermission_catalog_match" ON "UserCatalogToolPermission";
 CREATE TRIGGER "UserCatalogToolPermission_catalog_match"
 BEFORE INSERT OR UPDATE OF "catalogId", "toolId" ON "UserCatalogToolPermission"
 FOR EACH ROW EXECUTE FUNCTION "check_mcp_catalog_tool_permission_catalog"();

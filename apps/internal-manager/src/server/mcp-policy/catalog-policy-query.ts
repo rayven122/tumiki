@@ -17,6 +17,7 @@ export const buildCatalogPolicySelect = ({
   slug: true,
   status: true,
   updatedAt: true,
+  // policyVersionハッシュを安定させるため、権限行は常に同じ順序で取得する。
   orgUnitCatalogPermissions: {
     where: { orgUnitId: { in: orgUnitPermissionIds } },
     select: { orgUnitId: true, effect: true, updatedAt: true },

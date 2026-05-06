@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import {
+  McpCatalogStatus,
   PolicyEffect,
   type PrismaTransactionClient,
 } from "@tumiki/internal-db";
@@ -48,6 +49,7 @@ export type PolicyUser = {
 export type CatalogPolicyInput = {
   id: string;
   slug: string;
+  status: McpCatalogStatus;
   updatedAt: Date;
   orgUnitCatalogPermissions: {
     orgUnitId: string;
@@ -173,6 +175,25 @@ export const evaluateCatalogPermissions = (
   catalog: CatalogPolicyInput,
   allOrgUnits: { id: string; parentId: string | null }[],
 ): EffectiveCatalogPermissions => {
+  if (catalog.status !== McpCatalogStatus.ACTIVE) {
+    return {
+      permissions: {
+        read: false,
+        write: false,
+        execute: false,
+      },
+      tools: new Map(
+        catalog.tools.map((tool) => [
+          tool.id,
+          {
+            allowed: false,
+            deniedReason: "catalog_disabled",
+          },
+        ]),
+      ),
+    };
+  }
+
   const orgUnitIds = collectPolicyOrgUnitIds(
     user.orgUnitMemberships,
     allOrgUnits,
@@ -181,6 +202,7 @@ export const evaluateCatalogPermissions = (
     user.groupMemberships.map((membership) => membership.group.id),
   );
 
+  // DB側でも対象ユーザー・所属グループ・所属部署に絞るが、呼び出し元が増えても安全側になるよう評価時にも再確認する。
   const catalogUserEffects = catalog.userCatalogPermissions
     .filter((permission) => permission.userId === user.id)
     .map((permission) => permission.effect);

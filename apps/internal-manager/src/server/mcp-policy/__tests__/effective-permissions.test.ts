@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
-import { PolicyEffect } from "@tumiki/internal-db";
+import { McpCatalogStatus, PolicyEffect } from "@tumiki/internal-db";
 import {
   buildPolicyVersion,
   collectPolicyOrgUnitIds,
@@ -32,6 +32,7 @@ const buildCatalog = (
 ): CatalogPolicyInput => ({
   id: "catalog-001",
   slug: "github",
+  status: McpCatalogStatus.ACTIVE,
   updatedAt: now,
   orgUnitCatalogPermissions: [],
   groupCatalogPermissions: [],
@@ -125,6 +126,33 @@ describe("evaluateCatalogPermissions", () => {
       deniedReason: "not_granted",
     });
     expect(result.permissions.execute).toStrictEqual(false);
+  });
+
+  test("DISABLEDカタログは権限があっても利用不可にする", () => {
+    const result = evaluateCatalogPermissions(
+      buildUser(),
+      {
+        ...buildCatalog([]),
+        status: McpCatalogStatus.DISABLED,
+        tools: [
+          {
+            ...buildCatalog([]).tools[0]!,
+            defaultAllowed: true,
+          },
+        ],
+      },
+      orgUnits,
+    );
+
+    expect(result.permissions).toStrictEqual({
+      read: false,
+      write: false,
+      execute: false,
+    });
+    expect(result.tools.get("tool-001")).toStrictEqual({
+      allowed: false,
+      deniedReason: "catalog_disabled",
+    });
   });
 
   test("ツール未登録のカタログはカタログ単位ALLOWがあっても利用不可にする", () => {

@@ -1,7 +1,7 @@
 import type { Session } from "next-auth";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { PolicyEffect, Role } from "@tumiki/internal-db";
+import { McpCatalogStatus, PolicyEffect, Role } from "@tumiki/internal-db";
 import type { Context } from "../../trpc";
 import type * as TrpcModule from "../../trpc";
 import { mcpPoliciesRouter } from "../mcp-policies";
@@ -81,6 +81,7 @@ type EffectiveCatalogFindManyArgs = {
   select: {
     id: true;
     slug: true;
+    status: true;
     updatedAt: true;
     orgUnitCatalogPermissions: {
       where: { orgUnitId: { in: string[] } };
@@ -295,6 +296,54 @@ describe("mcpPoliciesRouter", () => {
         caller.getEffectivePermissions({ userId: "user-001" }),
         "INTERNAL_SERVER_ERROR",
       );
+    });
+
+    test("getEffectivePermissionsはDISABLEDカタログを利用不可にする", async () => {
+      const findCatalogs = vi.fn().mockResolvedValue([
+        {
+          id: "catalog-001",
+          slug: "catalog-001",
+          status: McpCatalogStatus.DISABLED,
+          updatedAt: new Date("2026-05-04T00:00:00.000Z"),
+          orgUnitCatalogPermissions: [],
+          groupCatalogPermissions: [],
+          userCatalogPermissions: [],
+          tools: [
+            {
+              id: "tool-001",
+              name: "Tool 1",
+              defaultAllowed: true,
+              updatedAt: new Date("2026-05-04T00:00:00.000Z"),
+              orgUnitPermissions: [],
+              groupPermissions: [],
+              userPermissions: [],
+            },
+          ],
+        },
+      ]);
+      const caller = buildCaller({
+        user: { findUnique: vi.fn().mockResolvedValue(buildPolicyUser()) },
+        orgUnit: { findMany: vi.fn().mockResolvedValue([]) },
+        mcpCatalog: { findMany: findCatalogs },
+      } as unknown as Context["db"]);
+
+      await expect(
+        caller.getEffectivePermissions({ userId: "user-001" }),
+      ).resolves.toStrictEqual([
+        {
+          catalogId: "catalog-001",
+          slug: "catalog-001",
+          permissions: { read: false, write: false, execute: false },
+          tools: [
+            {
+              toolId: "tool-001",
+              name: "Tool 1",
+              allowed: false,
+              deniedReason: "catalog_disabled",
+            },
+          ],
+        },
+      ]);
     });
 
     test("getEffectivePermissionsは期限付きユーザー権限の基準時刻を揃える", async () => {
