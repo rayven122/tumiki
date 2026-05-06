@@ -15,7 +15,10 @@ import {
   NO_ORG_UNIT_PERMISSION_ID,
 } from "~/server/mcp-policy/constants";
 import { buildCatalogPolicySelect } from "~/server/mcp-policy/catalog-policy-query";
-import { POLICY_TOOL_LIMIT } from "~/server/mcp-policy/limits";
+import {
+  POLICY_TOOL_LIMIT,
+  POLICY_TOOL_TAKE,
+} from "~/server/mcp-policy/limits";
 
 const POLICY_VERSION_CATALOG_LIMIT = 500;
 
@@ -105,7 +108,7 @@ export const GET = async (request: NextRequest) => {
           groupPermissionIds,
           orgUnitPermissionIds,
           now,
-          toolTake: POLICY_TOOL_LIMIT + 1,
+          toolTake: POLICY_TOOL_TAKE,
         }),
         orderBy: [{ slug: "asc" }, { id: "asc" }],
         take: POLICY_VERSION_CATALOG_LIMIT + 1,

@@ -298,7 +298,7 @@ describe("GET /api/desktop/v1/catalogs", () => {
     });
     expect(response.status).toStrictEqual(500);
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      "Desktop MCP catalog tool count exceeded limit",
+      "MCP tool count exceeded the catalog policy limit (500) for catalog server-github",
     );
     consoleErrorSpy.mockRestore();
   });
