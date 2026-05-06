@@ -358,6 +358,12 @@ describe("mcp.service", () => {
       const result = await mcpService.createFromManagerCatalog(input);
 
       expect(result).toStrictEqual({ serverId: 10, serverName: "GitHub" });
+      expect(mcpRepository.createServer).toHaveBeenCalledWith(mockDb, {
+        name: "GitHub",
+        slug: "github",
+        description: "GitHub MCP",
+        serverType: "OFFICIAL",
+      });
       expect(mcpRepository.createConnection).toHaveBeenCalledWith(mockDb, {
         name: "GitHub",
         slug: "github",
