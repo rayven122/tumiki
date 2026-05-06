@@ -125,6 +125,7 @@ export const auditLogsRouter = createTRPCRouter({
       ctx.db.desktopAuditLog.count({ where: baseWhere }),
       ctx.db.desktopAuditLog.groupBy({
         by: ["httpStatus"],
+        where: baseWhere,
         _count: { _all: true },
       }),
       ctx.db.desktopAuditLog.groupBy({
