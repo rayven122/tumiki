@@ -2,7 +2,6 @@ import { ServerStatus } from "@prisma/desktop-client";
 import { getDb } from "../../shared/db";
 import type { DbClient } from "../../shared/db";
 import * as mcpRepository from "./mcp.repository";
-import * as catalogRepository from "../catalog/catalog.repository";
 import * as mcpProxyService from "../mcp-proxy/mcp-proxy.service";
 import * as logger from "../../shared/utils/logger";
 import { toSlug, generateRandomSuffix } from "../../../shared/mcp.slug";
@@ -10,7 +9,6 @@ import {
   SLUG_FALLBACK_PREFIX,
   VIRTUAL_SERVER_MAX_CONNECTIONS,
 } from "../../../shared/mcp.constants";
-import { FILESYSTEM_STDIO_NAME } from "../../../shared/catalog.constants";
 import { encryptToken } from "../../utils/encryption";
 import { decryptCredentials } from "../../utils/credentials";
 import type {
@@ -18,6 +16,8 @@ import type {
   CreateFromManagerCatalogInput,
   CreateCustomServerInput,
   CreateVirtualServerInput,
+  GetToolsForConnectionsInput,
+  GetToolsForConnectionsResult,
 } from "./mcp.types";
 
 // IPC / テストから参照できるよう re-export
@@ -26,6 +26,8 @@ export type {
   CreateFromManagerCatalogInput,
   CreateCustomServerInput,
   CreateVirtualServerInput,
+  GetToolsForConnectionsInput,
+  GetToolsForConnectionsResult,
 } from "./mcp.types";
 
 /**
@@ -260,14 +262,23 @@ export const createCustomServer = async (
 
 /**
  * 仮想MCPサーバーを作成
- * 1つのMcpServerに対して複数のMcpConnection（カタログ参照）を1トランザクションで登録する。
+ *
+ * DEV-1581: 「コネクト画面で追加済みコネクタ」を束ねる仕様に変更。
+ * 元コネクタの McpConnection（接続設定 + 暗号化済み credentials）と McpTool（提供ツール定義 + isAllowed）を
+ * 1つの新規 McpServer 配下に丸ごとコピーする。ツール公開可否の初期値は元コネクタの isAllowed をそのまま継承し、
+ * 入力で `allowedToolNames` が指定された場合はその一覧で上書きする（UI のチェック編集を反映）。
  *
  * - 接続0件は不正入力として拒否（最低1接続必須）
- * - OAuth認証のカタログは現状サポート外（OAuthはAddMcpModalの専用フローを利用）
- * - 各接続のslugはサーバー内で一意（カタログ名 + 必要に応じてサフィックス）
+ * - 各接続のslugはサーバー内で一意（接続名 + 必要に応じてサフィックス）
  *
- * SQLiteの$transactionタイムアウト回避のため、書き込み以外（カタログ取得・OAuth拒否チェック・
- * slug計算・暗号化）は全てtx外で先に実行し、tx内には書き込みI/Oだけを残す
+ * 【既知の制限 / DEV-1624 で対処予定】
+ * 現状は credentials を行ごとコピーしているため、OAuth コネクタを含めるとトークンが
+ * 元コネクタと仮想MCP配下で独立し、refresh_token ローテーション系IdP では衝突しうる。
+ * プレリリース段階では許容し、後続で McpSecret テーブル経由の共有に切り替える。
+ *
+ * SQLite $transaction タイムアウト回避のため、接続取得（findConnectionsByIdsWithTools）と
+ * 接続 slug 計算は tx 外で先行実行する。サーバー名/slug の一意性チェックは名前重複時の
+ * サフィックス付与に DB 参照が必要なため tx 内に残す。
  */
 export const createVirtualServer = async (
   input: CreateVirtualServerInput,
@@ -284,58 +295,59 @@ export const createVirtualServer = async (
 
   const db = await getDb();
 
-  // カタログ取得・バリデーションを並列実行
-  // 並列なので1件目失敗でも他の取得自体はキャンセルされないが、Promise.allが即rejectされるため
-  // 後段の暗号化（CPU/IO重）は実行されない＝バリデーション失敗時のコストを最小化できる
-  const usedConnectionSlugs = new Set<string>();
-  const enrichedConnections = await Promise.all(
-    input.connections.map(async (connection, index) => {
-      const catalog = await catalogRepository.findById(
-        db,
-        connection.catalogId,
+  // 元コネクタを一括取得（toolsも含む）
+  const sourceConnectionIds = input.connections.map((c) => c.connectionId);
+  const sourceConnections = await mcpRepository.findConnectionsByIdsWithTools(
+    db,
+    sourceConnectionIds,
+  );
+  const sourceById = new Map(sourceConnections.map((c) => [c.id, c]));
+
+  // 入力順を保ちつつ、元コネクタを引き当て + バリデーション
+  const enrichedConnections = input.connections.map((connection, index) => {
+    const source = sourceById.get(connection.connectionId);
+    if (!source) {
+      throw new Error(
+        `コネクタ(id=${String(connection.connectionId)})が見つかりません`,
       );
-      if (!catalog) {
-        throw new Error(
-          `カタログ(id=${String(connection.catalogId)})が見つかりません`,
-        );
-      }
-      if (catalog.authType === "OAUTH") {
-        throw new Error(
-          `OAuth認証のカタログ「${catalog.name}」は仮想MCP作成では未対応です`,
-        );
-      }
-      // Filesystem STDIOはアクセス許可ディレクトリのargs指定UIが仮想MCP作成画面に未実装のため未対応
-      // （単体作成フローのAddMcpModalにはdirectoryPath入力UIがある）
-      if (catalog.name === FILESYSTEM_STDIO_NAME) {
-        throw new Error(
-          `「${catalog.name}」は仮想MCP作成では未対応です（単体作成をご利用ください）`,
-        );
-      }
-      return { catalog, index };
-    }),
-  );
-
-  // バリデーション通過後に暗号化（CPU/IO重）をtx外で実行（SQLiteタイムアウト回避）
-  const encryptedCredentialsList = await Promise.all(
-    input.connections.map((conn) =>
-      encryptToken(JSON.stringify(conn.credentials)),
-    ),
-  );
-
-  // 接続slugを入力順で確定（Promise.allの結果はindex順を保証しているため決定論的）
-  const connectionsWithSlug = enrichedConnections.map(({ catalog, index }) => {
-    const baseSlug = toSlug(catalog.name) || generateFallbackSlug();
-    let connectionSlug = baseSlug;
-    let counter = 1;
-    while (usedConnectionSlugs.has(connectionSlug)) {
-      connectionSlug = `${baseSlug}-${String(counter)}`;
-      counter++;
     }
-    usedConnectionSlugs.add(connectionSlug);
-    return { catalog, index, connectionSlug };
+    if (!source.isEnabled) {
+      throw new Error(`コネクタ「${source.name}」は無効化されています`);
+    }
+    // UIフィルタ後にサーバーが無効化された競合状態でも、無効サーバー配下の接続を仮想MCPへ取り込まないよう保証
+    if (!source.server.isEnabled) {
+      throw new Error(
+        `コネクタ「${source.name}」が属するサーバーは無効化されています`,
+      );
+    }
+    // 仮想MCP（複数接続を束ねたサーバー）配下の接続を再ネストして取り込まないことを保証する。
+    // UI でも `connections.length === 1` で同等のフィルタをかけているが、IPCを直接呼ぶ
+    // 経路（テストや将来のAPI拡張）の防御層として残す。
+    if (source.server._count.connections !== 1) {
+      throw new Error(
+        `コネクタ「${source.name}」は仮想MCPに含まれるため、新しい仮想MCPの構成要素にできません`,
+      );
+    }
+    return { source, input: connection, index };
   });
 
-  // tx内は書き込みI/Oのみ（generateUniqueNameは重複時のサフィックス付与にDB参照が必要なため内側に残す）
+  // 接続 slug を入力順で確定（仮想MCP内で重複しないよう、必要に応じてサフィックス付与）
+  const usedConnectionSlugs = new Set<string>();
+  const connectionsWithSlug = enrichedConnections.map(
+    ({ source, input: connectionInput, index }) => {
+      const baseSlug = toSlug(source.name) || generateFallbackSlug();
+      let connectionSlug = baseSlug;
+      let counter = 1;
+      while (usedConnectionSlugs.has(connectionSlug)) {
+        connectionSlug = `${baseSlug}-${String(counter)}`;
+        counter++;
+      }
+      usedConnectionSlugs.add(connectionSlug);
+      return { source, input: connectionInput, index, connectionSlug };
+    },
+  );
+
+  // tx 内は書き込み I/O のみ（generateUniqueName は重複時のサフィックス付与にDB参照が必要なため内側に残す）
   // 注意: SQLiteのinteractive transactionは他writerをロックしないため、
   // 同名サーバーが同時作成された場合は@uniqueでP2002が発生し得る。
   // Desktopアプリは単一ユーザー前提のため許容する（IPC層で汎用エラーにラップされる）
@@ -349,38 +361,97 @@ export const createVirtualServer = async (
       description: input.description,
     });
 
-    const connectionIds: number[] = [];
-    for (const { catalog, index, connectionSlug } of connectionsWithSlug) {
-      const connection = await mcpRepository.createConnection(tx, {
-        name: catalog.name,
+    for (const {
+      source,
+      input: connectionInput,
+      index,
+      connectionSlug,
+    } of connectionsWithSlug) {
+      // 暗号化済み credentials はそのまま（再入力なし）コピーする
+      const newConnection = await mcpRepository.createConnection(tx, {
+        name: source.name,
         slug: connectionSlug,
-        transportType: catalog.transportType,
-        command: catalog.command,
-        args: catalog.args,
-        url: catalog.url,
-        // Promise.allのindex対応により実質undefinedにならないが、型ガードのためfallbackはスキーマdefaultと揃える
-        credentials: encryptedCredentialsList[index] ?? "{}",
-        authType: catalog.authType,
+        transportType: source.transportType,
+        command: source.command,
+        args: source.args,
+        url: source.url,
+        credentials: source.credentials,
+        authType: source.authType,
         serverId: server.id,
-        catalogId: catalog.id,
+        catalogId: source.catalogId,
         displayOrder: index,
       });
-      connectionIds.push(connection.id);
+
+      // 元コネクタの McpTool を新接続にコピー。`allowedToolNames` 指定があれば
+      // その集合に含まれるツールのみ isAllowed=true とする（UI 編集の反映）。
+      // 未指定なら元コネクタの isAllowed をそのまま継承する。
+      if (source.tools.length > 0) {
+        const allowedNameSet = connectionInput.allowedToolNames
+          ? new Set(connectionInput.allowedToolNames)
+          : null;
+        await mcpRepository.createTools(
+          tx,
+          source.tools.map((tool) => ({
+            name: tool.name,
+            description: tool.description,
+            inputSchema: tool.inputSchema,
+            connectionId: newConnection.id,
+            isAllowed: allowedNameSet
+              ? allowedNameSet.has(tool.name)
+              : tool.isAllowed,
+          })),
+        );
+      }
     }
 
-    return { serverId: server.id, serverName: uniqueName, connectionIds };
+    return { serverId: server.id, serverName: uniqueName };
   });
 
   logger.info(
     `Virtual MCP server created: ${result.serverName} (${String(input.connections.length)} connections)`,
   );
 
-  // tx commit 後に各接続のツール一覧を取得・保存（並列、失敗しても登録自体は成功扱い）
-  await Promise.all(
-    result.connectionIds.map((id) => fetchAndStoreToolsForConnection(id)),
-  );
-
   return { serverId: result.serverId, serverName: result.serverName };
+};
+
+/**
+ * 仮想MCP作成のツール選択UI向け、選択中コネクタのツール一覧を一括取得する。
+ *
+ * UI は本結果を「ツール選択のデフォルト値（isAllowed）」として利用する。
+ * コネクタ追加時に既に `tools/list` を取得して McpTool に保存済みのため、
+ * 一時接続を張り直さずに DB のレコードをそのまま返す。
+ */
+export const getToolsForConnections = async (
+  input: GetToolsForConnectionsInput,
+): Promise<GetToolsForConnectionsResult> => {
+  // IPC層のZodスキーマで connectionIds は最小1件を保証されているため、
+  // 通常 IPC 経由ではここに到達しない。サービスを直接呼ぶ経路（テストや
+  // 将来のAPI拡張）の防御として空配列チェックを残す。
+  if (input.connectionIds.length === 0) {
+    return { items: [] };
+  }
+  const db = await getDb();
+  const connections = await mcpRepository.findConnectionsByIdsWithTools(
+    db,
+    input.connectionIds,
+  );
+  const byId = new Map(connections.map((c) => [c.id, c]));
+  // 入力順を保って返す（UI のカード表示順を呼び出し側で制御できるようにする）
+  const items = input.connectionIds.flatMap((id) => {
+    const conn = byId.get(id);
+    if (!conn) return [];
+    return [
+      {
+        connectionId: id,
+        tools: conn.tools.map((tool) => ({
+          name: tool.name,
+          description: tool.description,
+          isAllowed: tool.isAllowed,
+        })),
+      },
+    ];
+  });
+  return { items };
 };
 
 /**

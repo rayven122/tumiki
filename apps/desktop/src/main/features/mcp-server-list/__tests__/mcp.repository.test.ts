@@ -321,6 +321,78 @@ describe("mcp.repository（実DB）", () => {
     });
   });
 
+  describe("findConnectionsByIdsWithTools", () => {
+    test("複数IDで接続をtoolsと共に一括取得する", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+      const conn1 = await mcpRepository.createConnection(db, {
+        ...buildConnectionData(server.id),
+        slug: "c1",
+      });
+      const conn2 = await mcpRepository.createConnection(db, {
+        ...buildConnectionData(server.id),
+        slug: "c2",
+      });
+      await mcpRepository.createTools(db, [
+        {
+          name: "tool-a",
+          description: "desc-a",
+          inputSchema: "{}",
+          connectionId: conn1.id,
+          isAllowed: true,
+        },
+        {
+          name: "tool-b",
+          description: "desc-b",
+          inputSchema: "{}",
+          connectionId: conn1.id,
+          isAllowed: false,
+        },
+        {
+          name: "tool-c",
+          description: "desc-c",
+          inputSchema: "{}",
+          connectionId: conn2.id,
+          isAllowed: true,
+        },
+      ]);
+
+      const result = await mcpRepository.findConnectionsByIdsWithTools(db, [
+        conn1.id,
+        conn2.id,
+      ]);
+
+      expect(result).toHaveLength(2);
+      const byId = new Map(result.map((c) => [c.id, c]));
+      expect(byId.get(conn1.id)!.tools).toHaveLength(2);
+      expect(byId.get(conn1.id)!.tools[0]!.name).toBe("tool-a");
+      expect(byId.get(conn1.id)!.tools[0]!.isAllowed).toBe(true);
+      expect(byId.get(conn1.id)!.tools[1]!.name).toBe("tool-b");
+      expect(byId.get(conn1.id)!.tools[1]!.isAllowed).toBe(false);
+      expect(byId.get(conn2.id)!.tools).toHaveLength(1);
+    });
+
+    test("空配列の場合は空配列を返す（DB問い合わせをスキップ）", async () => {
+      const result = await mcpRepository.findConnectionsByIdsWithTools(db, []);
+      expect(result).toStrictEqual([]);
+    });
+
+    test("存在しないIDは結果から除外される", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+      const connection = await mcpRepository.createConnection(
+        db,
+        buildConnectionData(server.id),
+      );
+
+      const result = await mcpRepository.findConnectionsByIdsWithTools(db, [
+        connection.id,
+        99999,
+      ]);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]!.id).toBe(connection.id);
+    });
+  });
+
   describe("toggleServerEnabled", () => {
     test("サーバーを無効化する", async () => {
       const server = await mcpRepository.createServer(db, serverData);

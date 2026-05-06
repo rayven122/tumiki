@@ -145,13 +145,16 @@ export type CreateCustomServerInput =
 
 /**
  * 仮想MCP作成における1接続分の入力型
- * カタログIDとそのカタログに対する認証情報を持つ
+ *
+ * 既存の McpConnection（コネクト画面で追加済みのコネクタ）を束ねる構造に変更。
+ * 認証情報は元コネクタの暗号化済み credentials をそのままコピーするため再入力不要。
+ * `allowedToolNames` は元コネクタの McpTool.isAllowed をデフォルトとして UI が初期化し、
+ * ユーザー編集後に「公開する」ツール名のみを送ってくる想定。省略時は元コネクタの設定をそのまま継承。
  */
 export type VirtualServerConnectionInput = {
-  catalogId: number;
-  // STDIO: 環境変数 / SSE・Streamable HTTP: HTTPヘッダー
-  // カタログのcredentialKeysに対応するキーを持つことを期待する
-  credentials: Record<string, string>;
+  connectionId: number;
+  /** 公開するツール名一覧（省略時は元コネクタの isAllowed をそのまま継承） */
+  allowedToolNames?: string[];
 };
 
 /**
@@ -162,4 +165,28 @@ export type CreateVirtualServerInput = {
   name: string;
   description: string;
   connections: VirtualServerConnectionInput[];
+};
+
+/**
+ * 仮想MCP作成のツール選択UI向け、選択中コネクタのツール一覧取得入力
+ */
+export type GetToolsForConnectionsInput = {
+  connectionIds: number[];
+};
+
+/**
+ * 仮想MCP作成のツール選択UIに渡すツール情報（接続単位）
+ * `isAllowed` は元コネクタでの設定値で、UI 上の初期チェック状態として利用する
+ */
+export type ConnectionToolsResult = {
+  connectionId: number;
+  tools: Array<{
+    name: string;
+    description: string;
+    isAllowed: boolean;
+  }>;
+};
+
+export type GetToolsForConnectionsResult = {
+  items: ConnectionToolsResult[];
 };
