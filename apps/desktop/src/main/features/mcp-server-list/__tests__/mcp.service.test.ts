@@ -1338,8 +1338,36 @@ describe("mcp.service", () => {
       expect(result[0]?.connections[1]?.credentials).toBe(
         '{"API_KEY":"decrypted"}',
       );
-      // secret はIPC戻り値から除去される（credentials が代わりに付与される）
+      // secret / secretId は内部キーのため IPC 戻り値から除去される
       expect(result[0]?.connections[0]).not.toHaveProperty("secret");
+      expect(result[0]?.connections[0]).not.toHaveProperty("secretId");
+    });
+
+    test("secretId は IPC 戻り値に含めない（内部キーは renderer に公開しない）", async () => {
+      const mockServers = [
+        {
+          id: 1,
+          name: "Server A",
+          connections: [
+            {
+              id: 10,
+              secretId: 99,
+              secret: { credentials: "safe:abc" },
+              _count: { tools: 0 },
+            },
+          ],
+        },
+      ];
+      vi.mocked(mcpRepository.findAllWithConnections).mockResolvedValue(
+        mockServers as unknown as Awaited<
+          ReturnType<typeof mcpRepository.findAllWithConnections>
+        >,
+      );
+      vi.mocked(decryptCredentials).mockResolvedValue("{}");
+
+      const result = await mcpService.getAllServers();
+
+      expect(result[0]?.connections[0]).not.toHaveProperty("secretId");
     });
 
     test("平文の既存credentialsはそのまま返す（マイグレーション互換）", async () => {

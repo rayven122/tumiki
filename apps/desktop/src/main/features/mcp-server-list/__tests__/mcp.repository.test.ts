@@ -361,26 +361,32 @@ describe("mcp.repository（実DB）", () => {
       expect(secret.credentials).toBe("encrypted:abc");
     });
 
-    test("findSecretIdsByServerId は配下接続の secretId 一覧を返す（重複あり）", async () => {
+    test("findSecretIdsByServerId は配下接続ごとの secretId を返す（共有時の重複を含む）", async () => {
+      // service 層は new Set() で重複除去するため、repository は重複ありで返す前提
       const server = await mcpRepository.createServer(db, serverData);
-      const sharedSecret = await mcpRepository.createSecret(db, "shared");
-      const otherSecret = await mcpRepository.createSecret(db, "other");
+      const shared = await mcpRepository.createSecret(db, "shared");
+      const other = await mcpRepository.createSecret(db, "other");
       await mcpRepository.createConnection(db, {
         ...(await buildConnectionData(server.id)),
         slug: "c1",
-        secretId: sharedSecret.id,
+        secretId: shared.id,
       });
       await mcpRepository.createConnection(db, {
         ...(await buildConnectionData(server.id)),
         slug: "c2",
-        secretId: otherSecret.id,
+        secretId: shared.id,
+      });
+      await mcpRepository.createConnection(db, {
+        ...(await buildConnectionData(server.id)),
+        slug: "c3",
+        secretId: other.id,
       });
 
       const result = await mcpRepository.findSecretIdsByServerId(db, server.id);
 
-      expect(result.length).toBe(2);
-      expect(result).toContain(sharedSecret.id);
-      expect(result).toContain(otherSecret.id);
+      expect(result).toHaveLength(3);
+      expect(result.filter((id) => id === shared.id)).toHaveLength(2);
+      expect(result.filter((id) => id === other.id)).toHaveLength(1);
     });
 
     test("deleteSecretIfOrphaned は参照が残っていなければ削除する", async () => {

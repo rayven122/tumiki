@@ -462,7 +462,9 @@ export const getAllServers = async () => {
       ...server,
       connections: await Promise.all(
         server.connections.map(async (conn) => {
-          const { _count, secret, ...rest } = conn;
+          // secretId は内部キーのため IPC 戻り値から除外する
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { _count, secret, secretId, ...rest } = conn;
           return {
             ...rest,
             credentials: await decryptCredentials(secret.credentials),
