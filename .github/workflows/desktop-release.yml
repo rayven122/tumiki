@@ -227,7 +227,7 @@ jobs:
 
           **Windows:**
           - Windows 10/11 (x64): `Tumiki-Setup-${{ steps.version.outputs.version }}-x64.exe`
-          - Windows on ARM: `Tumiki-Setup-${{ steps.version.outputs.version }}-arm64.exe`
+          - Windows on ARM: 上記 x64 版が Windows 11 の x64 エミュレーション (Prism) でそのまま動作します
 
           ### インストール方法
 
@@ -246,7 +246,7 @@ jobs:
           ### システム要件
 
           - macOS 11.0 (Big Sur) 以降 / Windows 10 以降
-          - Intel / Apple Silicon / x64 / ARM64 プロセッサ
+          - Intel / Apple Silicon / x64 プロセッサ（Windows on ARM は x64 エミュレーション動作）
 
           ### 注意事項
 
