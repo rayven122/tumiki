@@ -147,6 +147,7 @@ describe("usersRouter", () => {
 
       const [findManyArgs] = findMany.mock.calls[0] as [
         {
+          take: number;
           select: {
             externalIdentities: {
               select: { provider: boolean };
@@ -173,6 +174,7 @@ describe("usersRouter", () => {
         externalIdentities: true,
         groupMemberships: true,
       });
+      expect(findManyArgs.take).toBe(200);
       expect(groupBy).toHaveBeenCalledWith({
         by: ["userId"],
         where: { userId: { in: ["user-001", "user-002"] } },
@@ -378,6 +380,26 @@ describe("usersRouter", () => {
         },
       });
       expect(tx.user.update).not.toHaveBeenCalled();
+    });
+
+    test("非アクティブなSYSTEM_ADMINは有効管理者数を確認せず降格できる", async () => {
+      const { db, tx } = buildDb({
+        targetUser: {
+          id: "admin-002",
+          role: Role.SYSTEM_ADMIN,
+          isActive: false,
+        },
+        remainingActiveSystemAdmins: 0,
+      });
+      const caller = buildCaller(db);
+
+      await expect(
+        caller.updateRole({ userId: "admin-002", role: Role.USER }),
+      ).resolves.toMatchObject({
+        id: "admin-002",
+        role: Role.USER,
+      });
+      expect(tx.user.count).not.toHaveBeenCalled();
     });
 
     test("存在しないユーザーはNOT_FOUNDになる", async () => {

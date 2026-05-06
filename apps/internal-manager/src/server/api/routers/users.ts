@@ -67,21 +67,22 @@ export const usersRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
+      const where: Prisma.UserWhereInput = {
+        ...(input.role !== "all" ? { role: input.role } : {}),
+        ...(input.isActive !== "all"
+          ? { isActive: input.isActive === "true" }
+          : {}),
+        ...(input.search
+          ? {
+              OR: [
+                { name: { contains: input.search, mode: "insensitive" } },
+                { email: { contains: input.search, mode: "insensitive" } },
+              ],
+            }
+          : {}),
+      };
       const users = await ctx.db.user.findMany({
-        where: {
-          ...(input.role !== "all" ? { role: input.role } : {}),
-          ...(input.isActive !== "all"
-            ? { isActive: input.isActive === "true" }
-            : {}),
-          ...(input.search
-            ? {
-                OR: [
-                  { name: { contains: input.search, mode: "insensitive" } },
-                  { email: { contains: input.search, mode: "insensitive" } },
-                ],
-              }
-            : {}),
-        },
+        where,
         select: userSelect,
         orderBy: { createdAt: "asc" },
         take: USER_LIST_LIMIT,

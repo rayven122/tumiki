@@ -1,6 +1,5 @@
 "use client";
 
-import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import type { Role } from "@tumiki/internal-db";
@@ -31,24 +30,30 @@ type RoleFilter = "SYSTEM_ADMIN" | "USER" | "all";
 type StatusFilter = "true" | "false" | "all";
 type DirectoryTab = "users" | "groups";
 
-const ROLE_STYLES: Record<
-  string,
-  { bg: string; text: string; label: string } | undefined
-> = {
-  SYSTEM_ADMIN: {
-    bg: "bg-emerald-500/15",
-    text: "text-emerald-400",
-    label: "オーナー",
-  },
-  USER: { bg: "bg-amber-500/15", text: "text-amber-400", label: "メンバー" },
-};
+const ROLE_STYLES: Record<string, { text: string; label: string } | undefined> =
+  {
+    SYSTEM_ADMIN: {
+      text: "text-emerald-400",
+      label: "オーナー",
+    },
+    USER: { text: "text-amber-400", label: "メンバー" },
+  };
 
 const DEFAULT_ROLE_STYLE = {
-  bg: "bg-amber-500/15",
   text: "text-amber-400",
   label: "メンバー",
 };
-const TOOLTIP_ID = "admin-user-action-tooltip";
+const USER_LIST_LIMIT = 200;
+
+const ActionTooltip = ({ id, text }: { id: string; text: string }) => (
+  <span
+    id={id}
+    role="tooltip"
+    className="bg-bg-card border-border-default text-text-secondary pointer-events-none absolute top-1/2 right-full z-[100] mr-2 hidden w-72 -translate-y-1/2 rounded-md border px-2.5 py-2 text-left text-[11px] leading-relaxed shadow-lg group-focus-within:block group-hover:block"
+  >
+    {text}
+  </span>
+);
 
 const SYNC_SOURCE_LABELS: Record<string, string | undefined> = {
   entra: "Entra ID",
@@ -99,12 +104,6 @@ const AdminUsersPage = () => {
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [tooltip, setTooltip] = useState<{
-    id: string;
-    left: number;
-    text: string;
-    top: number;
-  } | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300);
@@ -141,23 +140,11 @@ const AdminUsersPage = () => {
 
   const isMutating =
     updateActive.isPending || updateRole.isPending || deleteUser.isPending;
+  const isUserListAtLimit = users.length >= USER_LIST_LIMIT;
   const activeUsers = users.filter((user) => user.isActive);
   const suspendedUsers = users.filter((user) => !user.isActive);
   const shouldShowActiveUsers = statusFilter !== "false";
   const shouldShowSuspendedUsers = statusFilter !== "true";
-  const showActionTooltip = (
-    element: HTMLElement,
-    text: string,
-    id: string,
-  ) => {
-    const rect = element.getBoundingClientRect();
-    setTooltip({
-      id,
-      left: rect.left - 8,
-      text,
-      top: rect.top + rect.height / 2,
-    });
-  };
 
   const renderUserRows = (sectionUsers: UserListItem[]) => {
     if (sectionUsers.length === 0) {
@@ -239,27 +226,9 @@ const AdminUsersPage = () => {
           </div>
           <div className="flex justify-end gap-1.5">
             <span
-              className="inline-flex"
-              onBlur={() => setTooltip(null)}
-              onFocus={(event) =>
-                showActionTooltip(
-                  event.currentTarget,
-                  accessActionTooltip,
-                  accessTooltipId,
-                )
-              }
-              onMouseEnter={(event) =>
-                showActionTooltip(
-                  event.currentTarget,
-                  accessActionTooltip,
-                  accessTooltipId,
-                )
-              }
-              onMouseLeave={() => setTooltip(null)}
+              className="group relative inline-flex"
               tabIndex={isMutating || (isSelf && user.isActive) ? 0 : undefined}
-              aria-describedby={
-                tooltip?.id === accessTooltipId ? TOOLTIP_ID : undefined
-              }
+              aria-describedby={accessTooltipId}
             >
               <button
                 type="button"
@@ -278,33 +247,17 @@ const AdminUsersPage = () => {
                 aria-label={`${user.name ?? user.email ?? "ユーザー"}のアクセスを${
                   user.isActive ? "停止" : "再開"
                 }`}
+                aria-describedby={accessTooltipId}
               >
                 {user.isActive ? <UserX size={13} /> : <UserCheck size={13} />}
               </button>
+              <ActionTooltip id={accessTooltipId} text={accessActionTooltip} />
             </span>
             {!user.isActive && (
               <span
-                className="inline-flex"
-                onBlur={() => setTooltip(null)}
-                onFocus={(event) =>
-                  showActionTooltip(
-                    event.currentTarget,
-                    deleteTooltip,
-                    deleteTooltipId,
-                  )
-                }
-                onMouseEnter={(event) =>
-                  showActionTooltip(
-                    event.currentTarget,
-                    deleteTooltip,
-                    deleteTooltipId,
-                  )
-                }
-                onMouseLeave={() => setTooltip(null)}
+                className="group relative inline-flex"
                 tabIndex={!canDelete ? 0 : undefined}
-                aria-describedby={
-                  tooltip?.id === deleteTooltipId ? TOOLTIP_ID : undefined
-                }
+                aria-describedby={deleteTooltipId}
               >
                 {canDelete ? (
                   <AlertDialog>
@@ -314,6 +267,7 @@ const AdminUsersPage = () => {
                         disabled={isMutating}
                         className="border-border-default bg-bg-card text-text-muted flex min-h-[44px] w-11 items-center justify-center rounded-md border transition-colors hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
                         aria-label={`${user.name ?? user.email ?? "ユーザー"}を削除`}
+                        aria-describedby={deleteTooltipId}
                       >
                         <Trash2 size={12} />
                       </button>
@@ -345,10 +299,12 @@ const AdminUsersPage = () => {
                     disabled
                     className="border-border-default bg-bg-card text-text-muted flex min-h-[44px] w-11 items-center justify-center rounded-md border transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                     aria-label={`${user.name ?? user.email ?? "ユーザー"}を削除`}
+                    aria-describedby={deleteTooltipId}
                   >
                     <Trash2 size={12} />
                   </button>
                 )}
+                <ActionTooltip id={deleteTooltipId} text={deleteTooltip} />
               </span>
             )}
           </div>
@@ -376,7 +332,7 @@ const AdminUsersPage = () => {
           {sectionUsers.length} 名
         </span>
       </div>
-      <div className="bg-bg-card border-border-default overflow-hidden rounded-xl border">
+      <div className="bg-bg-card border-border-default rounded-xl border">
         <div className="border-b-border-default text-text-subtle grid grid-cols-[minmax(180px,1fr)_130px_90px_100px_72px] items-center gap-3 border-b px-5 py-2.5 text-[10px]">
           <span>ユーザー</span>
           <span>ロール</span>
@@ -484,6 +440,16 @@ const AdminUsersPage = () => {
             </div>
           )}
 
+          {isUserListAtLimit && (
+            <div
+              role="status"
+              className="border-border-default bg-bg-card text-text-secondary rounded-lg border px-3 py-2 text-xs"
+            >
+              表示上限の{USER_LIST_LIMIT}
+              名に達している可能性があります。検索またはフィルターで対象を絞り込んでください。
+            </div>
+          )}
+
           {isLoading ? (
             <div className="bg-bg-card border-border-default text-text-muted rounded-xl border py-12 text-center text-sm">
               読み込み中…
@@ -511,21 +477,6 @@ const AdminUsersPage = () => {
             </div>
           )}
         </>
-      )}
-      {tooltip && (
-        <div
-          id={TOOLTIP_ID}
-          role="tooltip"
-          className="bg-bg-card border-border-default text-text-secondary pointer-events-none fixed top-[var(--tooltip-top)] left-[var(--tooltip-left)] z-[100] w-72 -translate-x-full -translate-y-1/2 rounded-md border px-2.5 py-2 text-left text-[11px] leading-relaxed shadow-lg"
-          style={
-            {
-              "--tooltip-left": `${tooltip.left}px`,
-              "--tooltip-top": `${tooltip.top}px`,
-            } as CSSProperties
-          }
-        >
-          {tooltip.text}
-        </div>
       )}
     </div>
   );
