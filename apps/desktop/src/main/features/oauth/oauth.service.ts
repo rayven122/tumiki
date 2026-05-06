@@ -412,8 +412,11 @@ export const createMcpOAuthManager = (): McpOAuthManager => {
       );
 
       // 6. state/code 検証 → トークン交換
+      // クロージャの currentSession は cancelAuthFlow() で null 化される可能性があるため、
+      // ローカルの session を直接検証する。cancelによる中断はloopbackのwaitForCallback
+      // 側のreject経由で自然に伝播する。
       const { state: receivedState } = parseOAuthCallback(callbackUrl);
-      validateCallbackSession(currentSession, receivedState);
+      validateCallbackSession(session, receivedState);
 
       const tokenData = await exchangeCodeForToken(
         metadata,

@@ -99,4 +99,54 @@ describe("oauth.loopback", () => {
       await first.close();
     }
   });
+
+  test("error_description に script タグが含まれてもHTMLエスケープされる", async () => {
+    const server = await startLoopbackServer(TEST_OPTIONS);
+    try {
+      const callbackPromise = server.waitForCallback(5_000);
+      const target = new URL(server.redirectUri);
+      target.searchParams.set("error", "access_denied");
+      target.searchParams.set(
+        "error_description",
+        "<script>alert('xss')</script>",
+      );
+
+      const res = await fetch(target.toString());
+      const html = await res.text();
+
+      // 生のscriptタグが含まれず、エスケープ後のエンティティが含まれること
+      expect(html).not.toContain("<script>alert");
+      expect(html).toContain("&lt;script&gt;alert");
+
+      // CSPヘッダで二重防御されていること
+      expect(res.headers.get("content-security-policy")).toContain(
+        "default-src 'none'",
+      );
+      expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+
+      await callbackPromise;
+    } finally {
+      await server.close();
+    }
+  });
+
+  test("waitForCallback 呼び出し前にコールバックが到着してもPromiseが解決する", async () => {
+    const server = await startLoopbackServer(TEST_OPTIONS);
+    try {
+      // 先にコールバックを送信してから waitForCallback を呼ぶ（race condition再現）
+      const target = new URL(server.redirectUri);
+      target.searchParams.set("code", "early-arrival");
+      target.searchParams.set("state", "early-state");
+      const fetchRes = await fetch(target.toString());
+      expect(fetchRes.status).toBe(200);
+
+      // ここで waitForCallback を呼ぶ。pendingCallbackUrl 経由で即解決するはず
+      const callbackUrl = await server.waitForCallback(2_000);
+      const parsed = new URL(callbackUrl);
+      expect(parsed.searchParams.get("code")).toBe("early-arrival");
+      expect(parsed.searchParams.get("state")).toBe("early-state");
+    } finally {
+      await server.close();
+    }
+  });
 });

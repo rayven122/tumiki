@@ -34,20 +34,43 @@ export type LoopbackServer = {
 /** ポート占有時のエラーコード（rendererで識別するため） */
 export const LOOPBACK_PORT_IN_USE = "LOOPBACK_PORT_IN_USE";
 
+/**
+ * 完了/エラーHTMLに埋め込まれるテキスト用のHTMLエスケープ。
+ *
+ * `error_description` 等は OAuth 認可サーバーから来る untrusted input で、
+ * 悪意ある AS が `<script>` 等を仕込めばユーザーのブラウザで実行され得るため、
+ * テンプレート埋め込み前に必ず通すこと。
+ */
+const escapeHtml = (str: string): string =>
+  str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
 const renderResultPage = (
   title: string,
   message: string,
 ): string => `<!DOCTYPE html>
-<html lang="ja"><head><meta charset="utf-8"><title>${title}</title>
+<html lang="ja"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>
 <style>
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0f1115;color:#e6e8ee;margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh}
   .card{background:#1a1d24;padding:32px 40px;border-radius:12px;max-width:420px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4)}
   h1{font-size:18px;margin:0 0 12px}
   p{font-size:14px;color:#a5acba;margin:0;line-height:1.6}
-</style></head><body><div class="card"><h1>${title}</h1><p>${message}</p></div></body></html>`;
+</style></head><body><div class="card"><h1>${escapeHtml(title)}</h1><p>${escapeHtml(message)}</p></div></body></html>`;
 
 const writeHtml = (res: ServerResponse, status: number, html: string): void => {
-  res.writeHead(status, { "Content-Type": "text/html; charset=utf-8" });
+  // CSP: default-src 'none' で外部リソース読込・スクリプト実行を完全禁止。
+  // インライン <style> を使っているため style-src 'unsafe-inline' のみ許可。
+  // 万一 escapeHtml をすり抜ける入力があっても script 実行を防ぐ二重防御。
+  res.writeHead(status, {
+    "Content-Type": "text/html; charset=utf-8",
+    "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+  });
   res.end(html);
 };
 
@@ -72,6 +95,11 @@ export const startLoopbackServer = async (options?: {
 }): Promise<LoopbackServer> => {
   const targetPort = options?.port ?? MCP_OAUTH_LOOPBACK_PORT;
 
+  // waitForCallback 呼び出し前にコールバックが到着した場合に備えて受信URLを保持しておく。
+  // これがないと: サーバー起動 → (DCR等の非同期処理中にブラウザがコールバック) → received=true,
+  // resolveCallback=null のまま → waitForCallback 後に新リクエストは「二重受信」扱いで早期return,
+  // Promise が永遠に pending → タイムアウトでrejectとなり UX が悪化する。
+  let pendingCallbackUrl: string | null = null;
   let resolveCallback: ((url: string) => void) | null = null;
   let rejectCallback: ((error: Error) => void) | null = null;
   let received = false;
@@ -108,7 +136,9 @@ export const startLoopbackServer = async (options?: {
           200,
           renderResultPage("認証エラー", `OAuth認証エラー: ${desc}`),
         );
-        resolveCallback?.(url.toString());
+        const callbackUrl = url.toString();
+        pendingCallbackUrl = callbackUrl;
+        resolveCallback?.(callbackUrl);
         return;
       }
 
@@ -120,7 +150,9 @@ export const startLoopbackServer = async (options?: {
           "Tumikiに戻ってください。このウィンドウは閉じて構いません。",
         ),
       );
-      resolveCallback?.(url.toString());
+      const callbackUrl = url.toString();
+      pendingCallbackUrl = callbackUrl;
+      resolveCallback?.(callbackUrl);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       writeHtml(res, 500, renderResultPage("エラー", message));
@@ -161,12 +193,16 @@ export const startLoopbackServer = async (options?: {
   const close = async (): Promise<void> => {
     if (closed) return;
     closed = true;
-    await new Promise<void>((resolve) => {
-      server.close(() => resolve());
+    await new Promise<void>((resolve, reject) => {
+      server.close((err) => (err ? reject(err) : resolve()));
     });
   };
 
   const waitForCallback = (timeoutMs: number): Promise<string> => {
+    // 既にコールバック受信済みなら即座に解決（race condition対策）
+    if (pendingCallbackUrl) {
+      return Promise.resolve(pendingCallbackUrl);
+    }
     return new Promise<string>((resolve, reject) => {
       const timer = setTimeout(() => {
         if (!received) {

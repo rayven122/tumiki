@@ -12,9 +12,10 @@
  * - ポート完全一致を要求するAS実装でもブラウザ→ループバックのリダイレクトが安定する
  *
  * ポート選定:
- * - 49152-65535（IANA dynamic/private port range）から選択
- * - 33418 は主要サービスと衝突しない値
- * - ローカルで他プロセスが先に占有している場合は明示エラーで通知
+ * - 33418 は IANA registered port 範囲（1024-49151）の未割り当て領域から選定。
+ *   主要サービス（PostgreSQL=5432, Redis=6379, MySQL=3306 等）と衝突しない値。
+ * - ローカルで他プロセスが先に占有している場合は明示エラー（LOOPBACK_PORT_IN_USE）
+ *   をrendererへ伝搬し、ユーザーに対処を促す。
  */
 
 export const MCP_OAUTH_LOOPBACK_HOST = "127.0.0.1";
