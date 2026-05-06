@@ -36,10 +36,10 @@ model Group {
   externalId   String?
   lastSyncedAt DateTime?
 
-  memberships        UserGroupMembership[]
-  permissions        GroupToolPermission[]
-  mcpToolPermissions GroupMcpToolPermission[]
-  syncLogs           IdpSyncLog[]
+  memberships               UserGroupMembership[]
+  catalogPermissions        GroupCatalogPermission[]
+  catalogToolPermissions    GroupCatalogToolPermission[]
+  syncLogs                  IdpSyncLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -71,97 +71,6 @@ model UserGroupMembership {
   createdAt DateTime @default(now())
 
   @@unique([userId, groupId])
-}
-
-/// @namespace Idp
-/// グループ単位のMCPサーバーアクセス権限
-/// mcpServerIdはpages/dbのMcpServer.idと対応（FK制約なし）
-model GroupToolPermission {
-  id          String  @id @default(cuid())
-  groupId     String
-  group       Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  /// 対象MCPサーバーID（packages/dbのMcpServer.idと対応）
-  mcpServerId String
-  read        Boolean @default(false)
-  write       Boolean @default(false)
-  execute     Boolean @default(false)
-
-  @@unique([groupId, mcpServerId])
-}
-
-/// グループ単位のMCPツール利用権限（allowlist）
-/// mcpServerId / mcpConnectionId / mcpToolId は packages/db の各IDと対応（FK制約なし）
-model GroupMcpToolPermission {
-  id String @id @default(cuid())
-
-  groupId String
-  group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
-
-  mcpServerId     String
-  mcpConnectionId String
-  mcpToolId       String
-
-  canUse Boolean @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([groupId, mcpToolId])
-  @@index([groupId, mcpServerId])
-}
-
-/// ユーザー単位のMCPツール利用権限（グループ権限より優先される例外）
-/// mcpServerId / mcpConnectionId / mcpToolId は packages/db の各IDと対応（FK制約なし）
-model UserMcpToolPermission {
-  id String @id @default(cuid())
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  mcpServerId     String
-  mcpConnectionId String
-  mcpToolId       String
-
-  canUse    Boolean   @default(true)
-  reason    String?
-  expiresAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([userId, mcpToolId])
-  @@index([userId, mcpServerId])
-}
-
-/// @namespace Idp
-/// 個別申請による例外アクセス許可（GBAC 2層目）
-model IndividualPermission {
-  id          String         @id @default(cuid())
-  userId      String
-  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  /// 対象MCPサーバーID（packages/dbのMcpServer.idと対応）
-  mcpServerId String
-  /// 申請理由
-  reason      String
-  status      ApprovalStatus @default(PENDING)
-  /// 承認者のユーザーID
-  approvedBy  String?
-  approvedAt  DateTime?
-  /// 有効期限（nullは無期限）
-  expiresAt   DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([userId, mcpServerId])
-}
-
-/// @namespace Idp
-enum ApprovalStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  EXPIRED
 }
 
 /// @namespace Idp

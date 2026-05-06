@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { NextRequest } from "next/server";
-import { ApprovalStatus, GroupSource, Role } from "@tumiki/internal-db";
+import { GroupSource, PolicyEffect, Role } from "@tumiki/internal-db";
 
 const mockFindUnique = vi.hoisted(() => vi.fn());
 const mockMcpCatalogFindMany = vi.hoisted(() => vi.fn());
@@ -41,9 +41,8 @@ type FindUniqueArgs = {
   select: {
     id: true;
     groupMemberships: unknown;
-    individualPermissions: {
+    catalogPermissions: {
       where: {
-        status: ApprovalStatus;
         OR: [{ expiresAt: null }, { expiresAt: { gt: Date } }];
       };
     };
@@ -78,14 +77,14 @@ const activeUser = {
         externalId: "engineering",
         lastSyncedAt: new Date("2026-05-03T09:00:00.000Z"),
         updatedAt: groupUpdatedAt,
-        permissions: [
+        catalogPermissions: [
           {
-            mcpServerId: "github",
-            read: true,
-            write: false,
-            execute: true,
+            catalogId: "catalog-001",
+            effect: PolicyEffect.ALLOW,
+            updatedAt: new Date("2026-05-03T09:20:00.000Z"),
           },
         ],
+        catalogToolPermissions: [],
       },
     },
   ],
@@ -105,15 +104,16 @@ const activeUser = {
       },
     },
   ],
-  individualPermissions: [
+  catalogPermissions: [
     {
-      mcpServerId: "slack",
+      catalogId: "catalog-002",
+      effect: PolicyEffect.ALLOW,
       reason: "Temporary support",
-      approvedAt: new Date("2026-05-03T09:30:00.000Z"),
       expiresAt: null,
       updatedAt: new Date("2026-05-03T10:10:00.000Z"),
     },
   ],
+  catalogToolPermissions: [],
 };
 
 const expectedGroups = [
@@ -132,20 +132,17 @@ const expectedGroups = [
 const expectedPermissions = [
   {
     source: "GROUP",
+    scope: "CATALOG",
     groupId: "group-001",
-    mcpServerId: "github",
-    read: true,
-    write: false,
-    execute: true,
+    catalogId: "catalog-001",
+    effect: PolicyEffect.ALLOW,
   },
   {
-    source: "INDIVIDUAL",
-    mcpServerId: "slack",
-    read: true,
-    write: true,
-    execute: true,
+    source: "USER",
+    scope: "CATALOG",
+    catalogId: "catalog-002",
+    effect: PolicyEffect.ALLOW,
     reason: "Temporary support",
-    approvedAt: "2026-05-03T09:30:00.000Z",
     expiresAt: null,
   },
 ] as const;
@@ -169,6 +166,9 @@ const expectedPolicyCatalogs = [
     slug: "github",
     status: "ACTIVE",
     updatedAt: catalogUpdatedAt,
+    orgUnitCatalogPermissions: [],
+    groupCatalogPermissions: [],
+    userCatalogPermissions: [],
     tools: [
       {
         id: "tool-001",
@@ -182,6 +182,8 @@ const expectedPolicyCatalogs = [
             updatedAt: orgUnitPermissionUpdatedAt,
           },
         ],
+        groupPermissions: [],
+        userPermissions: [],
       },
     ],
   },
@@ -262,14 +264,11 @@ describe("GET /api/desktop/v1/session", () => {
     expect(findUniqueArgs?.where).toStrictEqual({ id: "user-001" });
     expect(findUniqueArgs?.select.id).toStrictEqual(true);
     expect(findUniqueArgs?.select.groupMemberships).toBeDefined();
+    expect(findUniqueArgs?.select.catalogPermissions.where.OR[0]).toStrictEqual(
+      { expiresAt: null },
+    );
     expect(
-      findUniqueArgs?.select.individualPermissions.where.status,
-    ).toStrictEqual(ApprovalStatus.APPROVED);
-    expect(
-      findUniqueArgs?.select.individualPermissions.where.OR[0],
-    ).toStrictEqual({ expiresAt: null });
-    expect(
-      findUniqueArgs?.select.individualPermissions.where.OR[1].expiresAt.gt,
+      findUniqueArgs?.select.catalogPermissions.where.OR[1].expiresAt.gt,
     ).toBeInstanceOf(Date);
     expect(mockFindSettings).toHaveBeenCalledWith({
       where: { id: "default" },

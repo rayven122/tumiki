@@ -87,8 +87,13 @@ model McpCatalog {
   createdBy      String?
   creator        User?                   @relation(fields: [createdBy], references: [id], onDelete: SetNull)
 
-  tools              McpCatalogTool[]
-  orgUnitPermissions OrgUnitToolPermission[]
+  tools                     McpCatalogTool[]
+  orgUnitCatalogPermissions OrgUnitCatalogPermission[]
+  orgUnitToolPermissions    OrgUnitToolPermission[]
+  groupCatalogPermissions   GroupCatalogPermission[]
+  groupToolPermissions      GroupCatalogToolPermission[]
+  userCatalogPermissions    UserCatalogPermission[]
+  userToolPermissions       UserCatalogToolPermission[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -111,6 +116,8 @@ model McpCatalogTool {
   riskLevel      McpToolRiskLevel @default(MEDIUM)
 
   orgUnitPermissions OrgUnitToolPermission[]
+  groupPermissions   GroupCatalogToolPermission[]
+  userPermissions    UserCatalogToolPermission[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -135,7 +142,8 @@ model OrgUnit {
   lastSyncedAt DateTime?
 
   memberships UserOrgUnitMembership[]
-  permissions OrgUnitToolPermission[]
+  catalogPermissions OrgUnitCatalogPermission[]
+  permissions        OrgUnitToolPermission[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -147,6 +155,23 @@ model OrgUnit {
 
 /// ユーザーと部署の所属関係
 /// Desktop API の権限評価で、ユーザーがどの部署ポリシーを受けるかを決める
+/// @namespace McpCatalog
+model OrgUnitCatalogPermission {
+  id        String       @id @default(cuid())
+  orgUnitId String
+  orgUnit   OrgUnit      @relation(fields: [orgUnitId], references: [id], onDelete: Cascade)
+  catalogId String
+  catalog   McpCatalog   @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  effect    PolicyEffect
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([orgUnitId, catalogId])
+  @@index([catalogId])
+  @@index([effect])
+}
+
 /// @namespace McpCatalog
 model UserOrgUnitMembership {
   id        String  @id @default(cuid())
@@ -182,4 +207,82 @@ model OrgUnitToolPermission {
   @@unique([orgUnitId, toolId])
   @@index([catalogId])
   @@index([effect])
+}
+
+/// @namespace McpCatalog
+model GroupCatalogPermission {
+  id        String       @id @default(cuid())
+  groupId   String
+  group     Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  catalogId String
+  catalog   McpCatalog   @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  effect    PolicyEffect
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([groupId, catalogId])
+  @@index([catalogId])
+  @@index([effect])
+}
+
+/// @namespace McpCatalog
+model GroupCatalogToolPermission {
+  id        String         @id @default(cuid())
+  groupId   String
+  group     Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  catalogId String
+  catalog   McpCatalog     @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  toolId    String
+  tool      McpCatalogTool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  effect    PolicyEffect
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([groupId, toolId])
+  @@index([catalogId])
+  @@index([effect])
+}
+
+/// @namespace McpCatalog
+model UserCatalogPermission {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  catalogId String
+  catalog   McpCatalog   @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  effect    PolicyEffect
+  reason    String?
+  expiresAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, catalogId])
+  @@index([catalogId])
+  @@index([effect])
+  @@index([expiresAt])
+}
+
+/// @namespace McpCatalog
+model UserCatalogToolPermission {
+  id        String         @id @default(cuid())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  catalogId String
+  catalog   McpCatalog     @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  toolId    String
+  tool      McpCatalogTool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  effect    PolicyEffect
+  reason    String?
+  expiresAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, toolId])
+  @@index([catalogId])
+  @@index([effect])
+  @@index([expiresAt])
 }

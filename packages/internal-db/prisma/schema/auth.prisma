@@ -27,13 +27,13 @@ model User {
   accounts Account[]
   sessions Session[]
 
-  externalIdentities    ExternalIdentity[]
-  groupMemberships      UserGroupMembership[]
-  orgUnitMemberships    UserOrgUnitMembership[]
-  individualPermissions IndividualPermission[]
-  mcpToolPermissions    UserMcpToolPermission[]
-  desktopAuditLogs      DesktopAuditLog[]
-  createdMcpCatalogs    McpCatalog[]
+  externalIdentities         ExternalIdentity[]
+  groupMemberships           UserGroupMembership[]
+  orgUnitMemberships         UserOrgUnitMembership[]
+  catalogPermissions         UserCatalogPermission[]
+  catalogToolPermissions     UserCatalogToolPermission[]
+  desktopAuditLogs           DesktopAuditLog[]
+  createdMcpCatalogs         McpCatalog[]
 }
 
 /// @namespace Auth

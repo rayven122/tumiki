@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { ApprovalStatus } from "@tumiki/internal-db";
 import { db } from "@tumiki/internal-db/server";
 import {
   DESKTOP_API_SETTINGS_DEFAULTS,
@@ -20,6 +19,7 @@ export const GET = async (request: NextRequest) => {
   }
 
   try {
+    const now = new Date();
     const [user, policyCatalogs, settings] = await Promise.all([
       db.user.findUnique({
         where: { id: verifiedUser.userId },
@@ -44,12 +44,19 @@ export const GET = async (request: NextRequest) => {
                   externalId: true,
                   lastSyncedAt: true,
                   updatedAt: true,
-                  permissions: {
+                  catalogPermissions: {
                     select: {
-                      mcpServerId: true,
-                      read: true,
-                      write: true,
-                      execute: true,
+                      catalogId: true,
+                      effect: true,
+                      updatedAt: true,
+                    },
+                  },
+                  catalogToolPermissions: {
+                    select: {
+                      catalogId: true,
+                      toolId: true,
+                      effect: true,
+                      updatedAt: true,
                     },
                   },
                 },
@@ -76,15 +83,28 @@ export const GET = async (request: NextRequest) => {
             },
             orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
           },
-          individualPermissions: {
+          catalogPermissions: {
             where: {
-              status: ApprovalStatus.APPROVED,
-              OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+              OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
             },
             select: {
-              mcpServerId: true,
+              catalogId: true,
+              effect: true,
               reason: true,
-              approvedAt: true,
+              expiresAt: true,
+              updatedAt: true,
+            },
+            orderBy: { updatedAt: "desc" },
+          },
+          catalogToolPermissions: {
+            where: {
+              OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+            },
+            select: {
+              catalogId: true,
+              toolId: true,
+              effect: true,
+              reason: true,
               expiresAt: true,
               updatedAt: true,
             },
@@ -99,6 +119,30 @@ export const GET = async (request: NextRequest) => {
           slug: true,
           status: true,
           updatedAt: true,
+          orgUnitCatalogPermissions: {
+            select: {
+              orgUnitId: true,
+              effect: true,
+              updatedAt: true,
+            },
+          },
+          groupCatalogPermissions: {
+            select: {
+              groupId: true,
+              effect: true,
+              updatedAt: true,
+            },
+          },
+          userCatalogPermissions: {
+            where: {
+              OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+            },
+            select: {
+              userId: true,
+              effect: true,
+              updatedAt: true,
+            },
+          },
           tools: {
             where: { deletedAt: null },
             select: {
@@ -113,6 +157,23 @@ export const GET = async (request: NextRequest) => {
                   updatedAt: true,
                 },
                 orderBy: [{ orgUnitId: "asc" }, { toolId: "asc" }],
+              },
+              groupPermissions: {
+                select: {
+                  groupId: true,
+                  effect: true,
+                  updatedAt: true,
+                },
+              },
+              userPermissions: {
+                where: {
+                  OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+                },
+                select: {
+                  userId: true,
+                  effect: true,
+                  updatedAt: true,
+                },
               },
             },
             orderBy: { name: "asc" },
@@ -147,30 +208,55 @@ export const GET = async (request: NextRequest) => {
       lastSyncedAt: membership.group.lastSyncedAt?.toISOString() ?? null,
     }));
 
-    const groupPermissions = user.groupMemberships.flatMap((membership) =>
-      membership.group.permissions.map((permission) => ({
+    const groupCatalogPermissions = user.groupMemberships.flatMap(
+      (membership) =>
+        membership.group.catalogPermissions.map((permission) => ({
+          source: "GROUP" as const,
+          scope: "CATALOG" as const,
+          groupId: membership.group.id,
+          catalogId: permission.catalogId,
+          effect: permission.effect,
+        })),
+    );
+
+    const groupToolPermissions = user.groupMemberships.flatMap((membership) =>
+      membership.group.catalogToolPermissions.map((permission) => ({
         source: "GROUP" as const,
+        scope: "TOOL" as const,
         groupId: membership.group.id,
-        mcpServerId: permission.mcpServerId,
-        read: permission.read,
-        write: permission.write,
-        execute: permission.execute,
+        catalogId: permission.catalogId,
+        toolId: permission.toolId,
+        effect: permission.effect,
       })),
     );
 
-    const individualPermissions = user.individualPermissions.map(
+    const userCatalogPermissions = user.catalogPermissions.map(
       (permission) => ({
-        source: "INDIVIDUAL" as const,
-        mcpServerId: permission.mcpServerId,
-        // ApprovalRequest承認は対象MCPサーバーへの全操作権限付与として扱う。
-        read: true,
-        write: true,
-        execute: true,
+        source: "USER" as const,
+        scope: "CATALOG" as const,
+        catalogId: permission.catalogId,
+        effect: permission.effect,
         reason: permission.reason,
-        approvedAt: permission.approvedAt?.toISOString() ?? null,
         expiresAt: permission.expiresAt?.toISOString() ?? null,
       }),
     );
+    const userToolPermissions = user.catalogToolPermissions.map(
+      (permission) => ({
+        source: "USER" as const,
+        scope: "TOOL" as const,
+        catalogId: permission.catalogId,
+        toolId: permission.toolId,
+        effect: permission.effect,
+        reason: permission.reason,
+        expiresAt: permission.expiresAt?.toISOString() ?? null,
+      }),
+    );
+    const permissions = [
+      ...groupCatalogPermissions,
+      ...groupToolPermissions,
+      ...userCatalogPermissions,
+      ...userToolPermissions,
+    ];
 
     const orgUnits = user.orgUnitMemberships.map((membership) => ({
       id: membership.orgUnit.id,
@@ -196,7 +282,7 @@ export const GET = async (request: NextRequest) => {
       groups,
       orgUnits,
       catalogs: policyCatalogs,
-      permissions: [...groupPermissions, ...individualPermissions],
+      permissions,
     });
 
     return NextResponse.json({
@@ -215,7 +301,7 @@ export const GET = async (request: NextRequest) => {
       },
       groups,
       orgUnits,
-      permissions: [...groupPermissions, ...individualPermissions],
+      permissions,
       features: {
         catalog: true,
         accessRequests: false,

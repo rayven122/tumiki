@@ -143,7 +143,7 @@ describe("mcpCatalogRouter", () => {
         iconPath: null,
         command: null,
         args: [],
-        url: "https://api.githubcopilot.com/mcp/",
+        url: null,
         credentialKeys: [],
       }),
       "NOT_FOUND",

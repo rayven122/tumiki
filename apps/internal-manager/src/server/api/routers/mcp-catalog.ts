@@ -18,6 +18,12 @@ const slugSchema = z
 const jsonRecordSchema = z.record(z.string(), z.unknown());
 const toInputJson = (value: Record<string, unknown>): Prisma.InputJsonValue =>
   value as Prisma.InputJsonValue;
+const optionalConnectionString = z
+  .string()
+  .max(1000)
+  .nullable()
+  .optional()
+  .transform((value) => (value && value.length > 0 ? value : null));
 
 const MCP_CATALOG_LIST_LIMIT = 1000;
 const TOOL_UPSERT_CHUNK_SIZE = 50;
@@ -50,9 +56,9 @@ export const mcpCatalogRouter = createTRPCRouter({
           .nativeEnum(McpCatalogAuthType)
           .default(McpCatalogAuthType.NONE),
         iconPath: z.string().max(500).optional(),
-        command: z.string().max(500).nullable().optional(),
-        args: z.array(z.string().max(500)).default([]),
-        url: z.string().max(1000).nullable().optional(),
+        command: optionalConnectionString,
+        args: z.array(z.string().min(1).max(1000)).default([]),
+        url: optionalConnectionString,
         credentialKeys: z.array(z.string().min(1).max(120)).default([]),
       }),
     )
@@ -63,8 +69,6 @@ export const mcpCatalogRouter = createTRPCRouter({
             ...input,
             description: input.description ?? null,
             iconPath: input.iconPath ?? null,
-            command: input.command ?? null,
-            url: input.url ?? null,
             createdBy: ctx.session.user.id,
           },
           include: { tools: true },
@@ -93,9 +97,9 @@ export const mcpCatalogRouter = createTRPCRouter({
         authType: z.nativeEnum(McpCatalogAuthType),
         status: z.nativeEnum(McpCatalogStatus),
         iconPath: z.string().max(500).nullable(),
-        command: z.string().max(500).nullable(),
-        args: z.array(z.string().max(500)),
-        url: z.string().max(1000).nullable(),
+        command: optionalConnectionString,
+        args: z.array(z.string().min(1).max(1000)),
+        url: optionalConnectionString,
         credentialKeys: z.array(z.string().min(1).max(120)),
       }),
     )

@@ -20,7 +20,6 @@ const buildUser = (overrides: Partial<PolicyUser> = {}): PolicyUser => ({
     },
   ],
   groupMemberships: [],
-  individualPermissions: [],
   ...overrides,
 });
 
@@ -30,12 +29,18 @@ const buildCatalog = (
   id: "catalog-001",
   slug: "github",
   updatedAt: now,
+  orgUnitCatalogPermissions: [],
+  groupCatalogPermissions: [],
+  userCatalogPermissions: [],
   tools: [
     {
       id: "tool-001",
       name: "create_issue",
+      defaultAllowed: false,
       updatedAt: now,
       orgUnitPermissions: permissions,
+      groupPermissions: [],
+      userPermissions: [],
     },
   ],
 });
@@ -78,20 +83,23 @@ describe("evaluateCatalogPermissions", () => {
     });
   });
 
-  test("個人例外は部署DENYより優先される", () => {
+  test("ユーザーDENYは部署ALLOWより優先される", () => {
     const result = evaluateCatalogPermissions(
-      buildUser({
-        individualPermissions: [{ mcpServerId: "github", updatedAt: now }],
-      }),
-      buildCatalog([
-        { orgUnitId: "child", effect: PolicyEffect.DENY, updatedAt: now },
-      ]),
+      buildUser(),
+      {
+        ...buildCatalog([
+          { orgUnitId: "child", effect: PolicyEffect.ALLOW, updatedAt: now },
+        ]),
+        userCatalogPermissions: [
+          { userId: "user-001", effect: PolicyEffect.DENY, updatedAt: now },
+        ],
+      },
       orgUnits,
     );
 
     expect(result.tools.get("tool-001")).toStrictEqual({
-      allowed: true,
-      deniedReason: null,
+      allowed: false,
+      deniedReason: "user_denied",
     });
   });
 
@@ -114,20 +122,16 @@ describe("evaluateCatalogPermissions", () => {
       buildUser({
         groupMemberships: [
           {
-            group: {
-              permissions: [
-                {
-                  mcpServerId: "catalog-001",
-                  read: true,
-                  write: false,
-                  execute: true,
-                },
-              ],
-            },
+            group: { id: "group-001" },
           },
         ],
       }),
-      buildCatalog([]),
+      {
+        ...buildCatalog([]),
+        groupCatalogPermissions: [
+          { groupId: "group-001", effect: PolicyEffect.ALLOW, updatedAt: now },
+        ],
+      },
       orgUnits,
     );
 
@@ -143,22 +147,18 @@ describe("evaluateCatalogPermissions", () => {
       buildUser({
         groupMemberships: [
           {
-            group: {
-              permissions: [
-                {
-                  mcpServerId: "catalog-001",
-                  read: true,
-                  write: false,
-                  execute: true,
-                },
-              ],
-            },
+            group: { id: "group-001" },
           },
         ],
       }),
-      buildCatalog([
-        { orgUnitId: "child", effect: PolicyEffect.DENY, updatedAt: now },
-      ]),
+      {
+        ...buildCatalog([
+          { orgUnitId: "child", effect: PolicyEffect.DENY, updatedAt: now },
+        ]),
+        groupCatalogPermissions: [
+          { groupId: "group-001", effect: PolicyEffect.ALLOW, updatedAt: now },
+        ],
+      },
       orgUnits,
     );
 
@@ -166,6 +166,28 @@ describe("evaluateCatalogPermissions", () => {
       allowed: false,
       deniedReason: "org_unit_denied",
     });
+  });
+
+  test("明示ポリシー未設定ならdefaultAllowedを使う", () => {
+    const result = evaluateCatalogPermissions(
+      buildUser(),
+      {
+        ...buildCatalog([]),
+        tools: [
+          {
+            ...buildCatalog([]).tools[0]!,
+            defaultAllowed: true,
+          },
+        ],
+      },
+      orgUnits,
+    );
+
+    expect(result.tools.get("tool-001")).toStrictEqual({
+      allowed: true,
+      deniedReason: null,
+    });
+    expect(result.permissions.execute).toStrictEqual(true);
   });
 
   test("部署階層が循環していても所属部署収集で停止する", () => {

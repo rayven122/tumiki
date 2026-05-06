@@ -136,9 +136,27 @@ export const mcpPoliciesRouter = createTRPCRouter({
         ctx.db.mcpCatalog.findMany({
           where: { deletedAt: null },
           include: {
+            orgUnitCatalogPermissions: true,
+            groupCatalogPermissions: true,
+            userCatalogPermissions: {
+              where: {
+                OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+              },
+            },
             tools: {
               where: { deletedAt: null },
-              include: { orgUnitPermissions: true },
+              include: {
+                orgUnitPermissions: true,
+                groupPermissions: true,
+                userPermissions: {
+                  where: {
+                    OR: [
+                      { expiresAt: null },
+                      { expiresAt: { gt: new Date() } },
+                    ],
+                  },
+                },
+              },
             },
           },
           take: POLICY_MATRIX_CATALOG_LIMIT,

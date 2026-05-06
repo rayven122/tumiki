@@ -31,15 +31,23 @@ type Permissions = {
 type CatalogStatus = "available" | "disabled";
 type CatalogCursor = z.infer<typeof cursorSchema>;
 
+type PermissionRow = {
+  effect: PolicyEffect;
+  updatedAt: Date;
+};
+
 type ToolPreview = {
   id: string;
   name: string;
   description: string | null;
+  defaultAllowed: boolean;
   orgUnitPermissions: {
     orgUnitId: string;
     effect: PolicyEffect;
     updatedAt: Date;
   }[];
+  groupPermissions: ({ groupId: string } & PermissionRow)[];
+  userPermissions: ({ userId: string } & PermissionRow)[];
   updatedAt: Date;
 };
 
@@ -57,14 +65,17 @@ type CatalogRow = {
   url: string | null;
   credentialKeys: string[];
   updatedAt: Date;
+  orgUnitCatalogPermissions: ({ orgUnitId: string } & PermissionRow)[];
+  groupCatalogPermissions: ({ groupId: string } & PermissionRow)[];
+  userCatalogPermissions: ({ userId: string } & PermissionRow)[];
   tools: ToolPreview[];
 };
 
-const hasAnyPermission = (permissions: Permissions) =>
-  permissions.read || permissions.write || permissions.execute;
-
 const encodeCursor = (cursor: CatalogCursor) =>
   Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
+
+const hasAnyPermission = (permissions: Permissions) =>
+  permissions.read || permissions.write || permissions.execute;
 
 const decodeCursor = (cursor: string): CatalogCursor | null => {
   try {
@@ -117,7 +128,7 @@ const toCatalogItem = (
       name: tool.name,
       description: tool.description ?? "",
       allowed:
-        status === "available" &&
+        catalog.status === McpCatalogStatus.ACTIVE &&
         (toolPermissions.get(tool.id)?.allowed ?? false),
       deniedReason: toolPermissions.get(tool.id)?.deniedReason ?? null,
     })),
@@ -164,6 +175,9 @@ export const GET = async (request: NextRequest) => {
   if (!policyUser?.isActive) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const groupIds = policyUser.groupMemberships.map(
+    (membership) => membership.group.id,
+  );
 
   let catalogs: CatalogRow[];
   try {
@@ -195,6 +209,34 @@ export const GET = async (request: NextRequest) => {
         url: true,
         credentialKeys: true,
         updatedAt: true,
+        orgUnitCatalogPermissions: {
+          select: {
+            orgUnitId: true,
+            effect: true,
+            updatedAt: true,
+          },
+        },
+        groupCatalogPermissions: {
+          where: {
+            groupId: { in: groupIds.length > 0 ? groupIds : [""] },
+          },
+          select: {
+            groupId: true,
+            effect: true,
+            updatedAt: true,
+          },
+        },
+        userCatalogPermissions: {
+          where: {
+            userId: policyUser.id,
+            OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+          },
+          select: {
+            userId: true,
+            effect: true,
+            updatedAt: true,
+          },
+        },
         tools: {
           where: { deletedAt: null },
           orderBy: { name: "asc" },
@@ -202,10 +244,32 @@ export const GET = async (request: NextRequest) => {
             id: true,
             name: true,
             description: true,
+            defaultAllowed: true,
             updatedAt: true,
             orgUnitPermissions: {
               select: {
                 orgUnitId: true,
+                effect: true,
+                updatedAt: true,
+              },
+            },
+            groupPermissions: {
+              where: {
+                groupId: { in: groupIds.length > 0 ? groupIds : [""] },
+              },
+              select: {
+                groupId: true,
+                effect: true,
+                updatedAt: true,
+              },
+            },
+            userPermissions: {
+              where: {
+                userId: policyUser.id,
+                OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+              },
+              select: {
+                userId: true,
                 effect: true,
                 updatedAt: true,
               },

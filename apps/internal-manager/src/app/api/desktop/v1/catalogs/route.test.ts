@@ -47,11 +47,15 @@ const buildCatalog = (overrides: Record<string, unknown> = {}) => ({
   url: "https://api.githubcopilot.com/mcp/",
   credentialKeys: ["GITHUB_TOKEN"],
   updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+  orgUnitCatalogPermissions: [],
+  groupCatalogPermissions: [],
+  userCatalogPermissions: [],
   tools: [
     {
       id: "tool-list-repos",
       name: "list_repos",
       description: "List repositories",
+      defaultAllowed: false,
       updatedAt: new Date("2026-05-03T10:00:00.000Z"),
       orgUnitPermissions: [
         {
@@ -60,6 +64,8 @@ const buildCatalog = (overrides: Record<string, unknown> = {}) => ({
           updatedAt: new Date("2026-05-03T10:00:00.000Z"),
         },
       ],
+      groupPermissions: [],
+      userPermissions: [],
     },
   ],
   ...overrides,
@@ -86,11 +92,10 @@ describe("GET /api/desktop/v1/catalogs", () => {
       groupMemberships: [
         {
           group: {
-            permissions: [],
+            id: "group-001",
           },
         },
       ],
-      individualPermissions: [],
     });
     mockFindOrgUnits.mockResolvedValue([
       {
@@ -166,6 +171,7 @@ describe("GET /api/desktop/v1/catalogs", () => {
       id: `tool-${String(index + 1).padStart(2, "0")}`,
       name: `tool_${String(index + 1).padStart(2, "0")}`,
       description: `Tool ${index + 1}`,
+      defaultAllowed: false,
       updatedAt: new Date("2026-05-03T10:00:00.000Z"),
       orgUnitPermissions:
         index === 10
@@ -177,6 +183,8 @@ describe("GET /api/desktop/v1/catalogs", () => {
               },
             ]
           : [],
+      groupPermissions: [],
+      userPermissions: [],
     }));
     mockFindCatalogs.mockImplementationOnce((args: unknown) => {
       const toolSelect =
@@ -213,7 +221,6 @@ describe("GET /api/desktop/v1/catalogs", () => {
       updatedAt: new Date("2026-05-03T10:00:00.000Z"),
       groupMemberships: [],
       orgUnitMemberships: [],
-      individualPermissions: [],
     });
 
     const response = await GET(buildRequest());
@@ -326,7 +333,6 @@ describe("GET /api/desktop/v1/catalogs", () => {
       updatedAt: new Date("2026-05-03T10:00:00.000Z"),
       groupMemberships: [],
       orgUnitMemberships: [],
-      individualPermissions: [],
     });
 
     const response = await GET(buildRequest());

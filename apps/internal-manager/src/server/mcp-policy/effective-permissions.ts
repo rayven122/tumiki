@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 import {
-  ApprovalStatus,
   PolicyEffect,
   type PrismaTransactionClient,
 } from "@tumiki/internal-db";
@@ -31,18 +30,7 @@ export type PolicyUser = {
     orgUnit: { id: string; parentId: string | null; updatedAt: Date };
   }[];
   groupMemberships: {
-    group: {
-      permissions: {
-        mcpServerId: string;
-        read: boolean;
-        write: boolean;
-        execute: boolean;
-      }[];
-    };
-  }[];
-  individualPermissions: {
-    mcpServerId: string;
-    updatedAt: Date;
+    group: { id: string };
   }[];
 };
 
@@ -50,12 +38,38 @@ export type CatalogPolicyInput = {
   id: string;
   slug: string;
   updatedAt: Date;
+  orgUnitCatalogPermissions: {
+    orgUnitId: string;
+    effect: PolicyEffect;
+    updatedAt: Date;
+  }[];
+  groupCatalogPermissions: {
+    groupId: string;
+    effect: PolicyEffect;
+    updatedAt: Date;
+  }[];
+  userCatalogPermissions: {
+    userId: string;
+    effect: PolicyEffect;
+    updatedAt: Date;
+  }[];
   tools: {
     id: string;
     name: string;
+    defaultAllowed: boolean;
     updatedAt: Date;
     orgUnitPermissions: {
       orgUnitId: string;
+      effect: PolicyEffect;
+      updatedAt: Date;
+    }[];
+    groupPermissions: {
+      groupId: string;
+      effect: PolicyEffect;
+      updatedAt: Date;
+    }[];
+    userPermissions: {
+      userId: string;
       effect: PolicyEffect;
       updatedAt: Date;
     }[];
@@ -67,9 +81,6 @@ const emptyBits = (): PermissionBits => ({
   write: false,
   execute: false,
 });
-
-const hasAnyPermission = (permissions: PermissionBits) =>
-  permissions.read || permissions.write || permissions.execute;
 
 const POLICY_CONTEXT_ORG_UNIT_LIMIT = 2000;
 
@@ -92,56 +103,65 @@ const collectOrgUnitIds = (
   return ids;
 };
 
-const hasIndividualAllow = (user: PolicyUser, catalog: CatalogPolicyInput) =>
-  user.individualPermissions.some(
-    (permission) =>
-      // IndividualPermission.mcpServerId は旧McpServer ID/slug互換のため両方を許容する。
-      permission.mcpServerId === catalog.id ||
-      permission.mcpServerId === catalog.slug,
-  );
-
-const getFallbackGroupBits = (
-  user: PolicyUser,
-  catalog: CatalogPolicyInput,
-): PermissionBits => {
-  const permissions = emptyBits();
-  for (const membership of user.groupMemberships) {
-    for (const permission of membership.group.permissions) {
-      if (
-        permission.mcpServerId !== catalog.id &&
-        permission.mcpServerId !== catalog.slug
-      ) {
-        continue;
-      }
-      permissions.read ||= permission.read;
-      permissions.write ||= permission.write;
-      permissions.execute ||= permission.execute;
-    }
-  }
-  return permissions;
-};
-
 export const evaluateCatalogPermissions = (
   user: PolicyUser,
   catalog: CatalogPolicyInput,
   allOrgUnits: { id: string; parentId: string | null }[],
 ): EffectiveCatalogPermissions => {
   const orgUnitIds = collectOrgUnitIds(user.orgUnitMemberships, allOrgUnits);
-  const individualAllow = hasIndividualAllow(user, catalog);
-  const fallbackGroupBits = getFallbackGroupBits(user, catalog);
-  const fallbackGroupAllowed = hasAnyPermission(fallbackGroupBits);
+  const groupIds = new Set(
+    user.groupMemberships.map((membership) => membership.group.id),
+  );
+
+  const catalogUserEffects = catalog.userCatalogPermissions
+    .filter((permission) => permission.userId === user.id)
+    .map((permission) => permission.effect);
+  const catalogGroupEffects = catalog.groupCatalogPermissions
+    .filter((permission) => groupIds.has(permission.groupId))
+    .map((permission) => permission.effect);
+  const catalogOrgUnitEffects = catalog.orgUnitCatalogPermissions
+    .filter((permission) => orgUnitIds.has(permission.orgUnitId))
+    .map((permission) => permission.effect);
 
   const tools = catalog.tools.map((tool) => {
-    if (individualAllow) {
-      return [tool.id, { allowed: true, deniedReason: null }] as const;
-    }
+    const userEffects = [
+      ...catalogUserEffects,
+      ...tool.userPermissions
+        .filter((permission) => permission.userId === user.id)
+        .map((permission) => permission.effect),
+    ];
+    const groupEffects = [
+      ...catalogGroupEffects,
+      ...tool.groupPermissions
+        .filter((permission) => groupIds.has(permission.groupId))
+        .map((permission) => permission.effect),
+    ];
+    const orgUnitEffects = [
+      ...catalogOrgUnitEffects,
+      ...tool.orgUnitPermissions
+        .filter((permission) => orgUnitIds.has(permission.orgUnitId))
+        .map((permission) => permission.effect),
+    ];
 
-    const relevant = tool.orgUnitPermissions.filter((permission) =>
-      orgUnitIds.has(permission.orgUnitId),
-    );
-    if (
-      relevant.some((permission) => permission.effect === PolicyEffect.DENY)
-    ) {
+    if (userEffects.includes(PolicyEffect.DENY)) {
+      return [
+        tool.id,
+        {
+          allowed: false,
+          deniedReason: "user_denied",
+        },
+      ] as const;
+    }
+    if (groupEffects.includes(PolicyEffect.DENY)) {
+      return [
+        tool.id,
+        {
+          allowed: false,
+          deniedReason: "group_denied",
+        },
+      ] as const;
+    }
+    if (orgUnitEffects.includes(PolicyEffect.DENY)) {
       return [
         tool.id,
         {
@@ -150,10 +170,16 @@ export const evaluateCatalogPermissions = (
         },
       ] as const;
     }
-    if (
-      relevant.some((permission) => permission.effect === PolicyEffect.ALLOW) ||
-      fallbackGroupAllowed
-    ) {
+    if (userEffects.includes(PolicyEffect.ALLOW)) {
+      return [tool.id, { allowed: true, deniedReason: null }] as const;
+    }
+    if (groupEffects.includes(PolicyEffect.ALLOW)) {
+      return [tool.id, { allowed: true, deniedReason: null }] as const;
+    }
+    if (orgUnitEffects.includes(PolicyEffect.ALLOW)) {
+      return [tool.id, { allowed: true, deniedReason: null }] as const;
+    }
+    if (tool.defaultAllowed) {
       return [tool.id, { allowed: true, deniedReason: null }] as const;
     }
 
@@ -188,7 +214,6 @@ export const getPolicyContextForUser = async (
   userId: string,
   client: PrismaTransactionClient = db,
 ) => {
-  const now = new Date();
   const [user, orgUnits] = await Promise.all([
     client.user.findUnique({
       where: { id: userId },
@@ -207,27 +232,8 @@ export const getPolicyContextForUser = async (
         groupMemberships: {
           select: {
             group: {
-              select: {
-                permissions: {
-                  select: {
-                    mcpServerId: true,
-                    read: true,
-                    write: true,
-                    execute: true,
-                  },
-                },
-              },
+              select: { id: true },
             },
-          },
-        },
-        individualPermissions: {
-          where: {
-            status: ApprovalStatus.APPROVED,
-            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-          },
-          select: {
-            mcpServerId: true,
-            updatedAt: true,
           },
         },
       },
