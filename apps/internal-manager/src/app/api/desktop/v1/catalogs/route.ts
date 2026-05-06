@@ -36,6 +36,11 @@ type PermissionRow = {
   updatedAt: Date;
 };
 
+type UserPermissionRow = { userId: string } & PermissionRow & {
+    reason: string | null;
+    expiresAt: Date | null;
+  };
+
 type ToolPreview = {
   id: string;
   name: string;
@@ -47,7 +52,7 @@ type ToolPreview = {
     updatedAt: Date;
   }[];
   groupPermissions: ({ groupId: string } & PermissionRow)[];
-  userPermissions: ({ userId: string } & PermissionRow)[];
+  userPermissions: UserPermissionRow[];
   updatedAt: Date;
 };
 
@@ -67,7 +72,7 @@ type CatalogRow = {
   updatedAt: Date;
   orgUnitCatalogPermissions: ({ orgUnitId: string } & PermissionRow)[];
   groupCatalogPermissions: ({ groupId: string } & PermissionRow)[];
-  userCatalogPermissions: ({ userId: string } & PermissionRow)[];
+  userCatalogPermissions: UserPermissionRow[];
   tools: ToolPreview[];
 };
 
@@ -202,6 +207,7 @@ export const GET = async (request: NextRequest) => {
       },
       orderBy: [{ name: "asc" }, { id: "asc" }],
       take: parsedQuery.data.limit + 1,
+      // 権限関連のwhere/selectはsession APIのbuildCatalogPolicySelectと同期する。
       select: {
         id: true,
         slug: true,
@@ -244,6 +250,8 @@ export const GET = async (request: NextRequest) => {
           select: {
             userId: true,
             effect: true,
+            reason: true,
+            expiresAt: true,
             updatedAt: true,
           },
         },
@@ -284,6 +292,8 @@ export const GET = async (request: NextRequest) => {
               select: {
                 userId: true,
                 effect: true,
+                reason: true,
+                expiresAt: true,
                 updatedAt: true,
               },
             },

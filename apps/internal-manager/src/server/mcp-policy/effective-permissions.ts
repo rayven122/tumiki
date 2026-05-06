@@ -58,6 +58,8 @@ export type CatalogPolicyInput = {
   userCatalogPermissions: {
     userId: string;
     effect: PolicyEffect;
+    reason: string | null;
+    expiresAt: Date | null;
     updatedAt: Date;
   }[];
   tools: {
@@ -78,6 +80,8 @@ export type CatalogPolicyInput = {
     userPermissions: {
       userId: string;
       effect: PolicyEffect;
+      reason: string | null;
+      expiresAt: Date | null;
       updatedAt: Date;
     }[];
   }[];
@@ -165,6 +169,7 @@ export const evaluateCatalogPermissions = (
   catalog: CatalogPolicyInput,
   allOrgUnits: { id: string; parentId: string | null }[],
 ): EffectiveCatalogPermissions => {
+  // ユーザー/グループ単位のカタログ権限更新APIは後続UIで追加予定。
   const orgUnitIds = collectPolicyOrgUnitIds(
     user.orgUnitMemberships,
     allOrgUnits,

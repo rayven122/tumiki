@@ -349,7 +349,7 @@ END $$;
 
 INSERT INTO "GroupCatalogPermission" ("id", "groupId", "catalogId", "effect", "createdAt", "updatedAt")
 SELECT DISTINCT ON (gtp."groupId", catalog."id")
-  concat('migrated_gtp_', md5(gtp."groupId" || ':' || catalog."id")),
+  gen_random_uuid()::TEXT,
   gtp."groupId",
   catalog."id",
   'ALLOW'::"PolicyEffect",
@@ -363,7 +363,7 @@ ON CONFLICT ("groupId", "catalogId") DO NOTHING;
 
 INSERT INTO "GroupCatalogToolPermission" ("id", "groupId", "catalogId", "toolId", "effect", "createdAt", "updatedAt")
 SELECT
-  concat('migrated_gmtp_', md5(gmtp."groupId" || ':' || tool."id")),
+  gen_random_uuid()::TEXT,
   gmtp."groupId",
   tool."catalogId",
   tool."id",
@@ -376,7 +376,7 @@ ON CONFLICT ("groupId", "toolId") DO NOTHING;
 
 INSERT INTO "UserCatalogToolPermission" ("id", "userId", "catalogId", "toolId", "effect", "reason", "expiresAt", "createdAt", "updatedAt")
 SELECT
-  concat('migrated_umtp_', md5(umtp."userId" || ':' || tool."id")),
+  gen_random_uuid()::TEXT,
   umtp."userId",
   tool."catalogId",
   tool."id",
@@ -391,7 +391,7 @@ ON CONFLICT ("userId", "toolId") DO NOTHING;
 
 INSERT INTO "UserCatalogPermission" ("id", "userId", "catalogId", "effect", "reason", "expiresAt", "createdAt", "updatedAt")
 SELECT DISTINCT ON (ip."userId", catalog."id")
-  concat('migrated_ip_', md5(ip."userId" || ':' || catalog."id")),
+  gen_random_uuid()::TEXT,
   ip."userId",
   catalog."id",
   'ALLOW'::"PolicyEffect",

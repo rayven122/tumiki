@@ -95,7 +95,13 @@ describe("evaluateCatalogPermissions", () => {
           { orgUnitId: "child", effect: PolicyEffect.ALLOW, updatedAt: now },
         ]),
         userCatalogPermissions: [
-          { userId: "user-001", effect: PolicyEffect.DENY, updatedAt: now },
+          {
+            userId: "user-001",
+            effect: PolicyEffect.DENY,
+            updatedAt: now,
+            reason: null,
+            expiresAt: null,
+          },
         ],
       },
       orgUnits,
@@ -183,7 +189,13 @@ describe("evaluateCatalogPermissions", () => {
           { groupId: "group-001", effect: PolicyEffect.DENY, updatedAt: now },
         ],
         userCatalogPermissions: [
-          { userId: "user-001", effect: PolicyEffect.ALLOW, updatedAt: now },
+          {
+            userId: "user-001",
+            effect: PolicyEffect.ALLOW,
+            updatedAt: now,
+            reason: null,
+            expiresAt: null,
+          },
         ],
       },
       orgUnits,
@@ -204,7 +216,13 @@ describe("evaluateCatalogPermissions", () => {
           { orgUnitId: "child", effect: PolicyEffect.DENY, updatedAt: now },
         ]),
         userCatalogPermissions: [
-          { userId: "user-001", effect: PolicyEffect.ALLOW, updatedAt: now },
+          {
+            userId: "user-001",
+            effect: PolicyEffect.ALLOW,
+            updatedAt: now,
+            reason: null,
+            expiresAt: null,
+          },
         ],
       },
       orgUnits,
@@ -224,7 +242,13 @@ describe("evaluateCatalogPermissions", () => {
       {
         ...buildCatalog([]),
         userCatalogPermissions: [
-          { userId: "user-001", effect: PolicyEffect.DENY, updatedAt: now },
+          {
+            userId: "user-001",
+            effect: PolicyEffect.DENY,
+            updatedAt: now,
+            reason: null,
+            expiresAt: null,
+          },
         ],
         tools: [
           {
@@ -234,6 +258,8 @@ describe("evaluateCatalogPermissions", () => {
                 userId: "user-001",
                 effect: PolicyEffect.ALLOW,
                 updatedAt: now,
+                reason: null,
+                expiresAt: null,
               },
             ],
           },
@@ -294,6 +320,8 @@ describe("evaluateCatalogPermissions", () => {
                 userId: "user-001",
                 effect: PolicyEffect.ALLOW,
                 updatedAt: now,
+                reason: null,
+                expiresAt: null,
               },
             ],
           },
