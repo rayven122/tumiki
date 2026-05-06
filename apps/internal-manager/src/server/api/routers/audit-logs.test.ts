@@ -118,7 +118,7 @@ describe("auditLogsRouter", () => {
     const desktopAuditLog = buildDesktopAuditLogMock();
     desktopAuditLog.findMany.mockResolvedValue([]);
     desktopAuditLog.count.mockResolvedValue(0);
-    desktopAuditLog.groupBy.mockResolvedValue([]);
+    desktopAuditLog.groupBy.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
     const caller = auditLogsRouter.createCaller(
       buildContext(
@@ -134,19 +134,64 @@ describe("auditLogsRouter", () => {
       limit: 50,
     });
 
+    const filteredWhere = {
+      mcpServerId: "slack",
+      httpStatus: 403,
+      occurredAt: {
+        gte: new Date("2026-05-01T00:00:00.000Z"),
+        lte: new Date("2026-05-04T00:00:00.000Z"),
+      },
+    };
+
     expect(desktopAuditLog.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: {
-          mcpServerId: "slack",
-          httpStatus: 403,
-          occurredAt: {
-            gte: new Date("2026-05-01T00:00:00.000Z"),
-            lte: new Date("2026-05-04T00:00:00.000Z"),
-          },
-        },
+        where: filteredWhere,
         take: 51,
       }),
     );
+    expect(desktopAuditLog.count).toHaveBeenCalledWith({
+      where: filteredWhere,
+    });
+    expect(desktopAuditLog.groupBy).toHaveBeenNthCalledWith(1, {
+      by: ["httpStatus"],
+      where: filteredWhere,
+      _count: { _all: true },
+    });
+    expect(desktopAuditLog.groupBy).toHaveBeenNthCalledWith(2, {
+      by: ["mcpServerId"],
+      orderBy: { mcpServerId: "asc" },
+      _count: { _all: true },
+    });
+  });
+
+  test("サマリーはフィルタ済みのステータス集計から返す", async () => {
+    const desktopAuditLog = buildDesktopAuditLogMock();
+    desktopAuditLog.findMany.mockResolvedValue([]);
+    desktopAuditLog.count.mockResolvedValue(3);
+    desktopAuditLog.groupBy
+      .mockResolvedValueOnce([{ httpStatus: 403, _count: { _all: 3 } }])
+      .mockResolvedValueOnce([{ mcpServerId: "slack", _count: { _all: 10 } }]);
+
+    const caller = auditLogsRouter.createCaller(
+      buildContext(
+        desktopAuditLog as unknown as Context["db"]["desktopAuditLog"],
+      ),
+    );
+
+    const result = await caller.list({
+      status: "blocked",
+      mcpServerId: "slack",
+      limit: 50,
+    });
+
+    expect(result.total).toStrictEqual(3);
+    expect(result.summary).toStrictEqual({
+      total: 3,
+      success: 0,
+      blocked: 3,
+      error: 0,
+    });
+    expect(result.mcpServers).toStrictEqual([{ id: "slack", count: 10 }]);
   });
 
   test("不正なカーソルはBAD_REQUESTを返す", async () => {
