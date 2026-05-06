@@ -255,17 +255,6 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "Google Maps MCP",
-    description:
-      "Google Maps Platform MCP - ルート検索、地点情報、距離・移動時間の取得",
-    iconPath: "/logos/services/google-maps.svg",
-    transportType: "STREAMABLE_HTTP",
-    url: "https://mcp.googleapis.com/v1alpha/maps:streamableHttp",
-    credentialKeys: [],
-    authType: "OAUTH",
-    isOfficial: true,
-  },
-  {
     name: "GitHub MCP",
     description:
       "GitHub 公式MCPサーバー - リポジトリ、イシュー、PR、ワークフローの管理",
