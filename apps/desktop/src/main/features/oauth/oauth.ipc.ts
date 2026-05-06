@@ -1,7 +1,8 @@
-import { ipcMain } from "electron";
+import { BrowserWindow, ipcMain } from "electron";
 import { z } from "zod";
 import type { McpOAuthManager } from "./oauth.service";
 import { DiscoveryError, DISCOVERY_ERROR_CODE } from "./oauth.discovery";
+import { LOOPBACK_PORT_IN_USE } from "./oauth.loopback";
 import * as logger from "../../shared/utils/logger";
 
 /** IPC入力のバリデーションスキーマ */
@@ -41,52 +42,111 @@ const StartOAuthInputSchema = z.object({
   oauthClientSecret: z.string().min(1).optional(),
 });
 
+/** Errorに `code` プロパティが付与されている場合に取り出す */
+const errorCodeOf = (error: unknown): string | null => {
+  if (typeof error !== "object" || error === null) return null;
+  const code = (error as { code?: unknown }).code;
+  return typeof code === "string" ? code : null;
+};
+
 /**
- * OAuthエラーをユーザー向けメッセージに変換
+ * OAuthエラーをユーザー向けメッセージとエラーコードのペアに変換
  */
-const getOAuthErrorMessage = (error: unknown): string => {
+const resolveOAuthErrorInfo = (
+  error: unknown,
+): { code: string; message: string } => {
   if (error instanceof DiscoveryError) {
     switch (error.code) {
       case DISCOVERY_ERROR_CODE.DCR_NOT_SUPPORTED:
-        return "このサーバーはOAuth自動登録に対応していません。手動でクライアントIDを設定してください。";
+        return {
+          code: error.code,
+          message:
+            "このサーバーはOAuth自動登録に対応していません。手動でクライアントIDを設定してください。",
+        };
       case DISCOVERY_ERROR_CODE.DCR_REGISTRATION_FAILED:
-        return `OAuth クライアント登録が拒否されました（${error.statusCode ?? "不明"}）。サーバーの設定を確認してください。`;
+        return {
+          code: error.code,
+          message: `OAuth クライアント登録が拒否されました（${error.statusCode ?? "不明"}）。サーバーの設定を確認してください。`,
+        };
       case DISCOVERY_ERROR_CODE.ISSUER_VALIDATION_ERROR:
-        return "認可サーバーの検証に失敗しました。セキュリティ上の理由により接続できません。";
+        return {
+          code: error.code,
+          message:
+            "認可サーバーの検証に失敗しました。セキュリティ上の理由により接続できません。",
+        };
       case DISCOVERY_ERROR_CODE.DISCOVERY_ERROR:
       case DISCOVERY_ERROR_CODE.AS_DISCOVERY_ERROR:
-        return "OAuthサーバーの情報を取得できませんでした。サーバーURLを確認してください。";
+        return {
+          code: error.code,
+          message:
+            "OAuthサーバーの情報を取得できませんでした。サーバーURLを確認してください。",
+        };
       default:
-        return error.message;
+        return { code: error.code, message: error.message };
     }
   }
-  if (error instanceof Error) {
-    return error.message;
+
+  // ループバックポート占有
+  if (errorCodeOf(error) === LOOPBACK_PORT_IN_USE) {
+    return {
+      code: LOOPBACK_PORT_IN_USE,
+      message:
+        error instanceof Error
+          ? error.message
+          : "OAuthコールバック用ポートが使用中です。",
+    };
   }
-  return "OAuth認証の開始に失敗しました";
+
+  if (error instanceof Error) {
+    return { code: "UNKNOWN", message: error.message };
+  }
+  return { code: "UNKNOWN", message: "OAuth認証の開始に失敗しました" };
+};
+
+const broadcastToWindows = (channel: string, ...args: unknown[]): void => {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send(channel, ...args);
+    }
+  }
 };
 
 /**
  * MCP OAuth関連の IPC ハンドラーを設定
  */
 export const setupOAuthIpc = (manager: McpOAuthManager): void => {
-  // OAuth認証フロー開始（ブラウザを開く）
+  // OAuth認証フロー開始（ループバック起動 → ブラウザオープン → コールバック受信 → トークン交換まで一括）
   ipcMain.handle("oauth:startAuth", async (_, input: unknown) => {
+    let parsed: z.infer<typeof StartOAuthInputSchema>;
     try {
-      const parsed = StartOAuthInputSchema.parse(input);
-      await manager.startAuthFlow(parsed);
+      parsed = StartOAuthInputSchema.parse(input);
     } catch (error) {
       logger.error(
-        "Failed to start MCP OAuth flow",
+        "Invalid OAuth IPC input",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error("[UNKNOWN] OAuth入力の検証に失敗しました");
+    }
+
+    try {
+      const result = await manager.startAuthFlow(parsed);
+      broadcastToWindows("oauth:success", result);
+      return result;
+    } catch (error) {
+      logger.error(
+        "Failed to complete MCP OAuth flow",
         error instanceof Error ? error : { error },
       );
 
-      // ユーザー向けエラーメッセージを生成
-      // ElectronのIPCはカスタムプロパティをシリアライズしないため、
-      // エラーコードをメッセージに埋め込んでrenderer側で抽出する
-      const userMessage = getOAuthErrorMessage(error);
-      const code = error instanceof DiscoveryError ? error.code : "UNKNOWN";
-      throw new Error(`[${code}] ${userMessage}`);
+      const { code, message } = resolveOAuthErrorInfo(error);
+      const wrapped = `[${code}] ${message}`;
+
+      // DCR非対応はrenderer側でフォーム表示に分岐するためエラーイベントは送らない
+      if (code !== DISCOVERY_ERROR_CODE.DCR_NOT_SUPPORTED) {
+        broadcastToWindows("oauth:error", wrapped);
+      }
+
+      throw new Error(wrapped);
     }
   });
 

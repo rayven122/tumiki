@@ -36,6 +36,8 @@ export type McpOAuthSession = {
   oauthClientId?: string;
   /** DCR非対応サーバー用: ユーザーが手動入力したOAuthクライアントシークレット */
   oauthClientSecret?: string;
+  /** このセッションで使うループバックredirect_uri（http://127.0.0.1:<port>/callback） */
+  redirectUri: string;
   /** セッション開始時刻 */
   createdAt: Date;
 };

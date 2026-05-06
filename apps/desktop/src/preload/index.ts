@@ -185,7 +185,7 @@ const api = {
 
   // MCP OAuth認証 API
   oauth: {
-    startAuth: (input: StartOAuthInput): Promise<void> =>
+    startAuth: (input: StartOAuthInput): Promise<OAuthResult> =>
       ipcRenderer.invoke("oauth:startAuth", input),
     cancelAuth: (): Promise<void> => ipcRenderer.invoke("oauth:cancelAuth"),
     findManualOAuthClient: (

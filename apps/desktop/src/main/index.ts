@@ -22,7 +22,6 @@ import { getOAuthManager, setOAuthManager } from "./auth/manager-registry";
 import { getKeycloakEnvOptional } from "./utils/env";
 import { createMcpOAuthManager } from "./features/oauth/oauth.service";
 import { setupOAuthIpc } from "./features/oauth/oauth.ipc";
-import { isMcpOAuthCallback } from "./features/oauth/oauth.protocol";
 import type { McpOAuthManager } from "./features/oauth/oauth.service";
 import { setupManagerIpc, fetchManagerOidcConfig } from "./ipc/manager";
 import { setupProfileIpc } from "./ipc/profile";
@@ -399,45 +398,12 @@ if (isMcpProxyMode) {
   };
 
   /**
-   * MCP OAuthコールバックを処理（tumiki://oauth/callback）
-   */
-  const handleMcpOAuthCallback = async (url: string): Promise<void> => {
-    ensureWindowAndFocus();
-
-    if (!mcpOAuthManager) {
-      logger.error("McpOAuthManager not initialized when handling callback");
-      sendToWindow(
-        "oauth:error",
-        "OAuth認証マネージャーが初期化されていません",
-      );
-      return;
-    }
-
-    try {
-      const result = await mcpOAuthManager.handleCallback(url);
-      sendToWindow("oauth:success", result);
-      logger.info("MCP OAuth callback handled successfully", {
-        serverId: result.serverId,
-      });
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "OAuth認証に失敗しました";
-      sendToWindow("oauth:error", message);
-      logger.error("MCP OAuth callback failed", { error });
-    }
-  };
-
-  /**
-   * カスタムURLスキームのコールバックを処理（ルーティング）
+   * カスタムURLスキームのコールバックを処理（Keycloak のみ）
+   *
+   * MCP OAuth は loopback HTTP（http://127.0.0.1:<port>/callback）に移行済みのため
+   * ここでは扱わない。tumiki:// は Keycloak ログインコールバック専用。
    */
   const handleDeepLink = async (url: string): Promise<void> => {
-    // MCP OAuthコールバック（tumiki://oauth/callback）
-    if (isMcpOAuthCallback(url)) {
-      await handleMcpOAuthCallback(url);
-      return;
-    }
-
-    // Keycloak認証コールバック（tumiki://auth/callback）
     let isKeycloakCallback = false;
     try {
       const parsed = new URL(url);
