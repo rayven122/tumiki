@@ -122,6 +122,39 @@ ALTER TABLE "UserCatalogToolPermission" ADD CONSTRAINT "UserCatalogToolPermissio
 ALTER TABLE "UserCatalogToolPermission" ADD CONSTRAINT "UserCatalogToolPermission_catalogId_fkey" FOREIGN KEY ("catalogId") REFERENCES "McpCatalog"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "UserCatalogToolPermission" ADD CONSTRAINT "UserCatalogToolPermission_toolId_fkey" FOREIGN KEY ("toolId") REFERENCES "McpCatalogTool"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
+DO $$
+DECLARE
+  unmatched_group_server_count INTEGER;
+  unmatched_individual_server_count INTEGER;
+BEGIN
+  SELECT COUNT(*) INTO unmatched_group_server_count
+  FROM "GroupToolPermission" gtp
+  WHERE (gtp."read" OR gtp."write" OR gtp."execute")
+    AND NOT EXISTS (
+      SELECT 1
+      FROM "McpCatalog" catalog
+      WHERE catalog."id" = gtp."mcpServerId" OR catalog."slug" = gtp."mcpServerId"
+    );
+
+  IF unmatched_group_server_count > 0 THEN
+    RAISE NOTICE 'Skipped % GroupToolPermission rows because mcpServerId did not match McpCatalog.id or McpCatalog.slug', unmatched_group_server_count;
+  END IF;
+
+  SELECT COUNT(*) INTO unmatched_individual_server_count
+  FROM "IndividualPermission" ip
+  WHERE ip."status" = 'APPROVED'
+    AND (ip."expiresAt" IS NULL OR ip."expiresAt" > CURRENT_TIMESTAMP)
+    AND NOT EXISTS (
+      SELECT 1
+      FROM "McpCatalog" catalog
+      WHERE catalog."id" = ip."mcpServerId" OR catalog."slug" = ip."mcpServerId"
+    );
+
+  IF unmatched_individual_server_count > 0 THEN
+    RAISE NOTICE 'Skipped % approved IndividualPermission rows because mcpServerId did not match McpCatalog.id or McpCatalog.slug', unmatched_individual_server_count;
+  END IF;
+END $$;
+
 INSERT INTO "GroupCatalogPermission" ("id", "groupId", "catalogId", "effect", "createdAt", "updatedAt")
 SELECT DISTINCT ON (gtp."groupId", catalog."id")
   concat('migrated_gtp_', md5(gtp."groupId" || ':' || catalog."id")),
