@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Activity,
+  Building2,
   ExternalLink,
   History,
   PanelLeft,
@@ -21,9 +22,10 @@ import { ThemeToggle } from "./ThemeToggle";
 const NAV_ITEMS = [
   { path: "/admin", label: "ダッシュボード", icon: Activity },
   { path: "/admin/history", label: "操作履歴", icon: History },
-  { path: "/admin/users", label: "ユーザー・グループ", icon: Users },
-  { path: "/admin/roles", label: "ロール管理", icon: Shield },
-  { path: "/admin/tools", label: "ツール管理", icon: Server },
+  { path: "/admin/directory", label: "ディレクトリ管理", icon: Building2 },
+  { path: "/admin/roles", label: "権限管理", icon: Shield },
+  { path: "/admin/users", label: "ユーザー管理", icon: Users },
+  { path: "/admin/tools", label: "カタログ管理", icon: Server },
   { path: "/admin/settings", label: "システム設定", icon: Settings },
 ] as const;
 
@@ -80,7 +82,10 @@ export const AdminSidebar = ({ initialTheme }: Props) => {
         {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
           const isActive =
             pathname === path ||
-            (path === "/admin/users" && pathname === "/admin/groups");
+            (path === "/admin/directory" &&
+              (pathname === "/admin/organizations" ||
+                pathname === "/admin/groups")) ||
+            (path === "/admin/users" && pathname.startsWith("/admin/users/"));
           return (
             <Link
               key={path}

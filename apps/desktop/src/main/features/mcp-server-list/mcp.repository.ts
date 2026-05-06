@@ -1,13 +1,16 @@
-import type { ServerStatus } from "@prisma/desktop-client";
+import type { ServerStatus, ServerType } from "@prisma/desktop-client";
 import type { DbClient } from "../../shared/db";
 
 /**
  * MCPサーバー作成時の入力データ型
+ * `serverType` は呼び出し元（カタログ/カスタム入力経路は OFFICIAL、仮想MCP作成経路は CUSTOM）が
+ * 明示的に渡すことで「どの経路で生成されたサーバーか」をDBレベルで保持する。
  */
 export type CreateMcpServerInput = {
   name: string;
   slug: string;
   description: string;
+  serverType: ServerType;
 };
 
 /**
@@ -112,6 +115,42 @@ export const findConnectionByIdWithServer = async (
   return db.mcpConnection.findUnique({
     where: { id: connectionId },
     include: { server: true },
+  });
+};
+
+/**
+ * 仮想MCP作成のための既存接続一括取得（接続情報 + 提供ツール一覧）
+ *
+ * 仮想MCPは「コネクト画面で追加済みコネクタ」を束ねる仕様（DEV-1581）に変更されており、
+ * 接続設定（transportType / command / args / url / 暗号化済み credentials / authType / catalogId）と
+ * 提供ツール一覧（name / description / isAllowed）を一括で読み出してコピー作成に利用する。
+ */
+export const findConnectionsByIdsWithTools = async (
+  db: DbClient,
+  connectionIds: number[],
+) => {
+  if (connectionIds.length === 0) return [];
+  return db.mcpConnection.findMany({
+    where: { id: { in: connectionIds } },
+    include: {
+      // サーバーの有効状態に加え、serverType を取得することで「仮想MCP（CUSTOM）配下の接続を
+      // 新しい仮想MCPの素材として再ネストしない」ことをサービス層でDBレベルに依拠して保証する
+      server: {
+        select: {
+          isEnabled: true,
+          serverType: true,
+        },
+      },
+      tools: {
+        select: {
+          name: true,
+          description: true,
+          inputSchema: true,
+          isAllowed: true,
+        },
+        orderBy: { name: "asc" },
+      },
+    },
   });
 };
 

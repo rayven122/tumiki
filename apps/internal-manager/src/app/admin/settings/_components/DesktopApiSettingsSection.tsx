@@ -28,6 +28,7 @@ export const DesktopApiSettingsSection = (): JSX.Element => {
   const savedMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [form, setForm] = useState<SettingsFormState>({
     organizationName: "",
     organizationLogoUrl: "",
@@ -137,6 +138,16 @@ export const DesktopApiSettingsSection = (): JSX.Element => {
     }
   };
 
+  const openFileDialog = (): void => {
+    fileInputRef.current?.click();
+  };
+
+  const removeLogo = (): void => {
+    saveForm({ ...formRef.current, organizationLogoUrl: "" });
+  };
+
+  const initial = form.organizationName.trim().charAt(0).toUpperCase();
+
   return (
     <div className="border-border-default bg-bg-card rounded-xl border p-5">
       <div className="mb-4 flex items-start justify-between gap-4">
@@ -156,68 +167,92 @@ export const DesktopApiSettingsSection = (): JSX.Element => {
         )}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Field label="組織名">
-          <input
-            type="text"
-            value={form.organizationName}
-            onChange={(e) =>
-              setForm((prev) => ({
-                ...prev,
-                organizationName: e.target.value,
-              }))
-            }
-            placeholder="Rayven株式会社"
-            className={inputCls}
-          />
-        </Field>
-        <Field label="組織ロゴ">
-          <div className="flex items-center gap-3">
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              disabled={isUploadingLogo}
-              onChange={(e) => {
-                void handleLogoUpload(e.currentTarget.files?.[0]);
-              }}
-              className={inputCls}
-            />
-            <div className="border-border-default bg-bg-app flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border">
-              {form.organizationLogoUrl ? (
-                <img
-                  src={form.organizationLogoUrl}
-                  alt=""
-                  className="h-full w-full object-contain"
-                />
-              ) : (
-                <span className="text-text-subtle text-[10px]">Logo</span>
-              )}
-            </div>
-          </div>
-          <div className="mt-2 flex items-center justify-between gap-3">
-            <p className="text-text-muted text-[10px]">
-              {isUploadingLogo
-                ? "アップロード中..."
-                : `PNG / JPG / WebP、${maxLogoFileSizeKb}KBまで`}
-            </p>
-            {form.organizationLogoUrl && (
-              <button
-                type="button"
-                onClick={() => {
-                  saveForm({ ...formRef.current, organizationLogoUrl: "" });
-                }}
-                className="text-text-secondary hover:text-text-primary text-[10px] transition-colors"
-              >
-                ロゴを削除
-              </button>
+      {/* 隠しファイル入力。プレビュー or アップロードボタンから呼び出す */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        disabled={isUploadingLogo}
+        onChange={(e) => {
+          void handleLogoUpload(e.currentTarget.files?.[0]);
+          e.currentTarget.value = "";
+        }}
+        className="hidden"
+      />
+
+      <div className="flex items-start gap-4">
+        {/* ロゴ（クリックで変更、右上の × で削除） */}
+        {/* pt-[18px] は組織名の Field ラベル（text-[11px] + mb-1）の高さ分のオフセット。ロゴと右側のインプットの上端を揃える */}
+        <div className="relative shrink-0 pt-[18px]">
+          <button
+            type="button"
+            onClick={openFileDialog}
+            disabled={isUploadingLogo}
+            aria-label="ロゴを変更"
+            className="border-border-default bg-bg-app hover:border-text-secondary group/logo relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-lg border transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {form.organizationLogoUrl ? (
+              <img
+                src={form.organizationLogoUrl}
+                alt=""
+                className="h-full w-full object-contain"
+              />
+            ) : (
+              <span className="text-text-secondary text-2xl font-semibold">
+                {initial || "?"}
+              </span>
             )}
-          </div>
+            {/* オーバーレイ: モバイル(<sm)はタップ手掛かりとして常時薄く表示 */}
+            <span className="absolute inset-0 flex items-center justify-center bg-black/35 text-[10px] text-white sm:hidden">
+              {isUploadingLogo ? "アップロード中..." : "変更"}
+            </span>
+            {/* オーバーレイ: デスクトップ(sm以上)はホバー時のみ濃く表示 */}
+            <span className="absolute inset-0 hidden items-center justify-center bg-black/55 text-[10px] text-white sm:group-hover/logo:flex">
+              {isUploadingLogo ? "アップロード中..." : "変更"}
+            </span>
+          </button>
+          {form.organizationLogoUrl && !isUploadingLogo && (
+            <button
+              type="button"
+              onClick={removeLogo}
+              aria-label="ロゴを削除"
+              // ::after 擬似要素で 44x44 のヒット領域を確保（モバイル最小タップターゲット規約）。視覚的なボタンは h-5 w-5 のまま
+              className="border-border-default bg-bg-card text-text-secondary absolute top-3 -right-2 flex h-5 w-5 items-center justify-center rounded-full border text-xs leading-none transition-colors after:absolute after:inset-[-12px] after:content-[''] hover:border-red-400 hover:text-red-400 focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:outline-none"
+            >
+              ×
+            </button>
+          )}
+        </div>
+
+        {/* 右: 組織名 + 補助テキスト */}
+        <div className="flex-1 space-y-1.5">
+          <Field label="組織名">
+            <input
+              type="text"
+              value={form.organizationName}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  organizationName: e.target.value,
+                }))
+              }
+              placeholder="Rayven株式会社"
+              className={`${inputCls} max-w-sm`}
+            />
+          </Field>
+          <p
+            className={`text-[10px] ${isUploadingLogo ? "text-text-secondary" : "text-text-muted"}`}
+          >
+            {isUploadingLogo
+              ? "ロゴ画像をアップロード中..."
+              : `ロゴをクリックで画像を変更、× で削除（PNG / JPG / WebP、${maxLogoFileSizeKb}KBまで）`}
+          </p>
           {logoError && (
-            <p className="mt-2 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">
+            <p className="rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">
               {logoError}
             </p>
           )}
-        </Field>
+        </div>
       </div>
 
       {updateMutation.error && (

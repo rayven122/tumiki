@@ -12,7 +12,6 @@ import {
   SearchCode,
   ChevronRight,
   Plug,
-  AlertTriangle,
 } from "lucide-react";
 import { themeAtom } from "../store/atoms";
 import { AI_CLIENTS, type AiClient } from "../data/ai-clients";
@@ -325,15 +324,8 @@ export const ToolDetail = (): JSX.Element => {
     [maskingEnabled, serverId],
   );
 
-  // 仮想MCPサーバー（有効な接続が複数）では `--server <slug>` が解決できず TOON 変換は常に OFF になる
-  // （main/index.ts の制限）。設定保存自体は成功するため、UI 上で常時警告を出してユーザー混乱を防ぐ。
-  // ※ runtime の findEnabledConnectionsBySlug と整合させるため isEnabled な接続のみカウントする
-  const isMultiConnectionServer =
-    (server?.connections.filter((c) => c.isEnabled).length ?? 0) > 1;
-
   // レスポンス圧縮（TOON 変換）切替: DB 更新（即時反映）。実プロキシへは次回 spawn 時に反映される。
   // 失敗時は state をロールバックして元に戻す。
-  // updateMasking と同じクロージャパターン（setState updater 内に副作用を置かないことで Strict Mode の重複実行を回避）。
   const updateCompression = useCallback(
     (value: boolean): void => {
       const previous = compressionEnabled;
@@ -341,17 +333,8 @@ export const ToolDetail = (): JSX.Element => {
       window.electronAPI.mcp
         .updateToonConversion({ serverId, enabled: value })
         .then(() => {
-          if (value && isMultiConnectionServer) {
-            toast.warning(
-              "設定を保存しましたが、複数接続を持つ仮想MCPサーバーではレスポンス圧縮は機能しません。単体サーバーとして起動した場合のみ有効です",
-            );
-            return;
-          }
-          // 仮想MCPサーバーでは「再起動後に反映」の文言が誤解を招くため、保存のみを伝える
           toast.success(
-            isMultiConnectionServer
-              ? "レスポンス圧縮設定を保存しました"
-              : "レスポンス圧縮設定を更新しました。MCPサーバーの再起動後に反映されます",
+            "レスポンス圧縮設定を更新しました。MCPサーバーの再起動後に反映されます",
           );
         })
         .catch(() => {
@@ -359,7 +342,7 @@ export const ToolDetail = (): JSX.Element => {
           toast.error("レスポンス圧縮設定の更新に失敗しました");
         });
     },
-    [compressionEnabled, serverId, isMultiConnectionServer],
+    [compressionEnabled, serverId],
   );
 
   // ツール on/off（即時反映、失敗時はロールバック。サンプルID は IPC スキップ）
@@ -648,7 +631,7 @@ export const ToolDetail = (): JSX.Element => {
                   />
                 </div>
                 <div
-                  title="レスポンスを TOON 形式へ変換しトークン使用量を削減します（再起動後に反映 / 単体サーバー起動時のみ有効）"
+                  title="レスポンスを TOON 形式へ変換しトークン使用量を削減します（再起動後に反映）"
                   className="flex items-center justify-between gap-2 rounded-lg bg-[var(--bg-card-hover)] px-3 py-2"
                 >
                   <div className="flex min-w-0 items-center gap-2">
@@ -664,21 +647,6 @@ export const ToolDetail = (): JSX.Element => {
                     onChange={updateCompression}
                   />
                 </div>
-                {isMultiConnectionServer && (
-                  <div
-                    role="alert"
-                    className="flex items-start gap-2 rounded-lg bg-[var(--badge-warn-bg)] px-3 py-2 text-xs text-[var(--badge-warn-text)] md:col-span-3"
-                  >
-                    <AlertTriangle
-                      size={13}
-                      className="mt-0.5 shrink-0"
-                      aria-hidden
-                    />
-                    <span>
-                      このサーバーは複数のMCPサーバーを集約した仮想サーバーのため、レスポンス圧縮は適用されません（単体サーバー起動時のみ有効）
-                    </span>
-                  </div>
-                )}
                 {[
                   {
                     key: "dynamicSearch" as const,

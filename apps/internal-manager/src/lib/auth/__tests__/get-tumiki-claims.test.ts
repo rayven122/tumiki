@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, test, expect, vi, beforeEach } from "vitest";
 import { GroupSource, SyncStatus, SyncTrigger } from "@tumiki/internal-db";
 import { getTumikiClaims } from "../get-tumiki-claims";
 import type { PrismaTransactionClient } from "@tumiki/internal-db";
@@ -8,7 +8,11 @@ const buildDb = (
   overrides: Partial<typeof mockDb> & Record<string, unknown> = {},
 ) => ({ ...mockDb, ...overrides }) as unknown as PrismaTransactionClient;
 
-const mockUser = { id: "user-sub-001", role: "USER" as const };
+const mockUser = {
+  id: "user-sub-001",
+  role: "USER" as const,
+  isActive: true,
+};
 
 const fn = <TArgs extends unknown[] = [], TReturn = unknown>() =>
   vi.fn<(...args: TArgs) => TReturn>();
@@ -27,6 +31,7 @@ const expectArrayContaining = <T>(value: T[]): T[] => {
 
 const mockDb = {
   user: {
+    findUnique: fn(),
     update: fn(),
   },
   externalIdentity: {
@@ -47,17 +52,14 @@ const mockDb = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockDb.user.update.mockResolvedValue(mockUser);
+  mockDb.user.findUnique.mockResolvedValue(mockUser);
+  mockDb.user.update.mockResolvedValue({ id: mockUser.id });
   mockDb.externalIdentity.upsert.mockResolvedValue({});
   mockDb.group.findMany.mockResolvedValue([]);
   mockDb.userGroupMembership.findMany.mockResolvedValue([]);
   mockDb.userGroupMembership.createMany.mockResolvedValue({ count: 0 });
   mockDb.userGroupMembership.deleteMany.mockResolvedValue({ count: 0 });
   mockDb.idpSyncLog.create.mockResolvedValue({});
-});
-
-afterEach(() => {
-  vi.restoreAllMocks();
 });
 
 describe("getTumikiClaims", () => {
@@ -67,7 +69,7 @@ describe("getTumikiClaims", () => {
       const consoleError = vi
         .spyOn(console, "error")
         .mockImplementation(() => undefined);
-      mockDb.user.update.mockRejectedValue(error);
+      mockDb.user.findUnique.mockRejectedValue(error);
 
       const result = await getTumikiClaims(
         buildDb(),
@@ -79,9 +81,30 @@ describe("getTumikiClaims", () => {
 
       expect(result).toBeNull();
       expect(consoleError).toHaveBeenCalledWith(
-        "[getTumikiClaims] user.update failed:",
+        "[getTumikiClaims] user.findUnique failed:",
         error,
       );
+      consoleError.mockRestore();
+    });
+
+    test("無効化されたユーザーはnullを返す", async () => {
+      mockDb.user.findUnique.mockResolvedValue({
+        ...mockUser,
+        isActive: false,
+      });
+
+      const result = await getTumikiClaims(
+        buildDb(),
+        mockUser.id,
+        "oidc",
+        mockUser.id,
+        [],
+      );
+
+      expect(result).toBeNull();
+      expect(mockDb.user.update).not.toHaveBeenCalled();
+      expect(mockDb.externalIdentity.upsert).not.toHaveBeenCalled();
+      expect(mockDb.idpSyncLog.create).not.toHaveBeenCalled();
     });
   });
 
@@ -159,18 +182,26 @@ describe("getTumikiClaims", () => {
     });
   });
 
-  describe("lastLoginAt・isActive更新", () => {
-    test("User.updateにlastLoginAtとisActive:trueが渡される", async () => {
+  describe("lastLoginAt更新", () => {
+    test("有効ユーザーのみUser.updateにlastLoginAtが渡される", async () => {
       await getTumikiClaims(buildDb(), mockUser.id, "oidc", mockUser.id, []);
 
+      expect(mockDb.user.findUnique).toHaveBeenCalledWith({
+        where: { id: mockUser.id },
+        select: { id: true, role: true, isActive: true },
+      });
       expect(mockDb.user.update).toHaveBeenCalledWith({
         where: { id: mockUser.id },
         data: expectObjectContaining({
-          isActive: true,
           lastLoginAt: expect.any(Date) as Date,
         }),
-        select: { id: true, role: true },
+        select: { id: true },
       });
+      expect(mockDb.user.update).not.toHaveBeenCalledWith(
+        expectObjectContaining({
+          data: expectObjectContaining({ isActive: true }),
+        }),
+      );
     });
   });
 
@@ -183,6 +214,12 @@ describe("getTumikiClaims", () => {
         create: { userId: mockUser.id, provider: "oidc", sub: mockUser.id },
         update: {},
       });
+    });
+
+    test("oidcSubが空文字の場合はupsertを呼ばない", async () => {
+      await getTumikiClaims(buildDb(), mockUser.id, "oidc", "", []);
+
+      expect(mockDb.externalIdentity.upsert).not.toHaveBeenCalled();
     });
   });
 
