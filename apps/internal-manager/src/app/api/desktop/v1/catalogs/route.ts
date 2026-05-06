@@ -17,6 +17,7 @@ import {
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
 const TOOL_PREVIEW_LIMIT = 10;
+const CATALOG_TOOL_LIMIT = 500;
 
 const cursorSchema = z.object({
   id: z.string().min(1),
@@ -262,6 +263,7 @@ export const GET = async (request: NextRequest) => {
         tools: {
           where: { deletedAt: null },
           orderBy: { name: "asc" },
+          take: CATALOG_TOOL_LIMIT + 1,
           select: {
             id: true,
             name: true,
@@ -307,6 +309,14 @@ export const GET = async (request: NextRequest) => {
     });
   } catch (error) {
     console.error("Failed to fetch desktop MCP catalogs", error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
+  }
+
+  if (catalogs.some((catalog) => catalog.tools.length > CATALOG_TOOL_LIMIT)) {
+    console.error("Desktop MCP catalog tool count exceeded limit");
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 },

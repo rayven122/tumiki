@@ -269,6 +269,38 @@ describe("GET /api/desktop/v1/catalogs", () => {
 
     expect(body.items[0].status).toStrictEqual("available");
     expect(body.items[0].tools).toHaveLength(10);
+    const [findManyArgs] = mockFindCatalogs.mock.calls[0] as [
+      { select: { tools: { take: number } } },
+    ];
+    expect(findManyArgs.select.tools.take).toStrictEqual(501);
+  });
+
+  test("カタログ内ツールが上限を超える場合は500を返す", async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const tools = Array.from({ length: 501 }, (_, index) => ({
+      id: `tool-${String(index + 1).padStart(3, "0")}`,
+      name: `tool_${String(index + 1).padStart(3, "0")}`,
+      description: `Tool ${index + 1}`,
+      defaultAllowed: false,
+      updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+      orgUnitPermissions: [],
+      groupPermissions: [],
+      userPermissions: [],
+    }));
+    mockFindCatalogs.mockResolvedValue([buildCatalog({ tools })]);
+
+    const response = await GET(buildRequest());
+
+    await expect(response.json()).resolves.toStrictEqual({
+      error: "Internal Server Error",
+    });
+    expect(response.status).toStrictEqual(500);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "Desktop MCP catalog tool count exceeded limit",
+    );
+    consoleErrorSpy.mockRestore();
   });
 
   test("権限がないカタログはdisabledとして返す", async () => {

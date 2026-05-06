@@ -33,7 +33,6 @@ export const buildCatalogPolicySelect = ({
       OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
     },
     select: {
-      id: true,
       userId: true,
       effect: true,
       reason: true,
@@ -65,7 +64,6 @@ export const buildCatalogPolicySelect = ({
           OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
         },
         select: {
-          id: true,
           userId: true,
           effect: true,
           reason: true,

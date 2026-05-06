@@ -400,7 +400,8 @@ SELECT DISTINCT ON (gtp."groupId", catalog."id")
   CURRENT_TIMESTAMP
 FROM "GroupToolPermission" gtp
 JOIN "McpCatalog" catalog ON catalog."id" = gtp."mcpServerId" OR catalog."slug" = gtp."mcpServerId"
-WHERE gtp."read" OR gtp."write" OR gtp."execute"
+WHERE (gtp."read" OR gtp."write" OR gtp."execute")
+  AND catalog."deletedAt" IS NULL
 ORDER BY gtp."groupId", catalog."id";
 
 INSERT INTO "GroupCatalogToolPermission" ("id", "groupId", "catalogId", "toolId", "effect", "createdAt", "updatedAt")

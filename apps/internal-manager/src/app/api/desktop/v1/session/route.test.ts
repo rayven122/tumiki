@@ -70,7 +70,7 @@ type FindPolicyCatalogsArgs = {
         userId: string;
         OR: [{ expiresAt: null }, { expiresAt: { gt: Date } }];
       };
-      orderBy: [{ userId: "asc" }];
+      orderBy: [{ id: "asc" }];
     };
     tools: {
       take: number;
@@ -88,7 +88,7 @@ type FindPolicyCatalogsArgs = {
             userId: string;
             OR: [{ expiresAt: null }, { expiresAt: { gt: Date } }];
           };
-          orderBy: [{ userId: "asc" }];
+          orderBy: [{ id: "asc" }];
         };
       };
     };
