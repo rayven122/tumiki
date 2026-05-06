@@ -29,9 +29,10 @@ model Group {
   color        String?
   /// IDP: IdPから自動同期 / TUMIKI: 管理画面で手動作成
   source       GroupSource
-  /// source=IDPの場合: "entra" | "okta" | "google" | "keycloak"
+  /// source=IDPの場合: "scim" | "entra" | "okta" | "google" | "keycloak"
+  /// source=TUMIKIの場合: "scim-map" 等（IdP group → Tumiki group mapping）
   provider     String?
-  /// source=IDPの場合: IdP側のグループID/メール等
+  /// IdP側のグループID/メール等。source=TUMIKIではmapping元のIdP group識別子
   externalId   String?
   lastSyncedAt DateTime?
 
@@ -43,6 +44,9 @@ model Group {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /// PostgreSQL の UNIQUE は NULL を複数許容するため、mapping未設定の
+  /// TUMIKI group（provider/externalId=null）は複数作成できる前提。
+  /// IdP mapping 済みの provider/externalId だけを一意にする。
   @@unique([provider, externalId])
 }
 
@@ -166,7 +170,7 @@ model IdpSyncLog {
   id      String      @id @default(cuid())
   /// nullは全体同期
   groupId String?
-  group   Group?      @relation(fields: [groupId], references: [id])
+  group   Group?      @relation(fields: [groupId], references: [id], onDelete: SetNull)
   trigger SyncTrigger
   status  SyncStatus
   added   Int         @default(0)

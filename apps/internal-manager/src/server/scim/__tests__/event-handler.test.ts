@@ -48,6 +48,13 @@ const mockDb = {
   },
   group: {
     upsert: vi.fn<(args: UpsertArgs) => Promise<{ id: string }>>(),
+    findMany:
+      vi.fn<
+        (args: {
+          where: Record<string, unknown>;
+          select: { id: true };
+        }) => Promise<{ id: string }[]>
+      >(),
     findUnique:
       vi.fn<
         (args: { where: { id: string } }) => Promise<GroupFindUniqueResult>
@@ -58,6 +65,13 @@ const mockDb = {
   },
   userGroupMembership: {
     upsert: vi.fn<(args: UpsertArgs) => Promise<{ id: string }>>(),
+    createMany:
+      vi.fn<
+        (args: {
+          data: Record<string, unknown>[];
+          skipDuplicates: true;
+        }) => Promise<{ count: number }>
+      >(),
     deleteMany:
       vi.fn<
         (args: { where: Record<string, unknown> }) => Promise<{ count: number }>
@@ -195,10 +209,12 @@ beforeEach(() => {
   mockDb.user.upsert.mockResolvedValue({ id: "user-001" });
   mockDb.user.updateMany.mockResolvedValue({ count: 1 });
   mockDb.group.upsert.mockResolvedValue({ id: "group-001" });
+  mockDb.group.findMany.mockResolvedValue([]);
   mockDb.group.findUnique.mockResolvedValue(null);
   mockDb.group.delete.mockResolvedValue({ id: "group-001" });
   mockDb.group.updateMany.mockResolvedValue({ count: 1 });
   mockDb.userGroupMembership.upsert.mockResolvedValue({ id: "mem-001" });
+  mockDb.userGroupMembership.createMany.mockResolvedValue({ count: 1 });
   mockDb.userGroupMembership.deleteMany.mockResolvedValue({ count: 1 });
   mockDb.orgUnit.upsert.mockResolvedValue({ id: "org-001" });
   mockDb.userOrgUnitMembership.deleteMany.mockResolvedValue({ count: 1 });
@@ -472,8 +488,9 @@ describe("handleDirectorySyncEvent", () => {
       });
 
       const log = findIdpSyncLogData();
-      expect(log.groupId).toStrictEqual("group-001");
+      expect(log.groupId).toBeNull();
       expect(log.removed).toStrictEqual(3);
+      expect(log.detail).toStrictEqual("deleted group: group-001");
     });
 
     test("存在しないGroupの場合はdeleteを呼ばずSUCCESSとして処理する", async () => {
@@ -491,21 +508,20 @@ describe("handleDirectorySyncEvent", () => {
   });
 
   describe("group.user_added", () => {
-    test("UserGroupMembershipをupsertし、group.lastSyncedAtを更新する", async () => {
+    test("UserGroupMembershipをcreateManyし、group.lastSyncedAtを更新する", async () => {
       await handleDirectorySyncEvent(
         buildUserWithGroupEvent("group.user_added"),
       );
 
-      expect(mockDb.userGroupMembership.upsert).toHaveBeenCalledWith({
-        where: {
-          userId_groupId: { userId: "user-001", groupId: "group-001" },
-        },
-        create: {
-          userId: "user-001",
-          groupId: "group-001",
-          source: GroupSource.IDP,
-        },
-        update: {},
+      expect(mockDb.userGroupMembership.createMany).toHaveBeenCalledWith({
+        data: [
+          {
+            userId: "user-001",
+            groupId: "group-001",
+            source: GroupSource.IDP,
+          },
+        ],
+        skipDuplicates: true,
       });
 
       // group.updateMany を呼ぶ（updateではなく updateMany でgroup削除済みでも冪等）
@@ -520,6 +536,50 @@ describe("handleDirectorySyncEvent", () => {
       expect(log.added).toStrictEqual(1);
       expect(log.removed).toStrictEqual(0);
     });
+
+    test("IdPグループにmappingされたTumikiグループにもメンバーシップを作成する", async () => {
+      mockDb.group.findMany.mockResolvedValue([
+        { id: "tumiki-group-001" },
+        { id: "tumiki-group-002" },
+      ]);
+      mockDb.userGroupMembership.createMany.mockResolvedValue({ count: 3 });
+
+      await handleDirectorySyncEvent(
+        buildUserWithGroupEvent("group.user_added"),
+      );
+
+      expect(mockDb.group.findMany).toHaveBeenCalledWith({
+        where: {
+          provider: `${SCIM_PROVIDER}-map`,
+          externalId: "group-001",
+          id: { not: "group-001" },
+        },
+        select: { id: true },
+      });
+      expect(mockDb.userGroupMembership.createMany).toHaveBeenCalledWith({
+        data: [
+          {
+            userId: "user-001",
+            groupId: "group-001",
+            source: GroupSource.IDP,
+          },
+          {
+            userId: "user-001",
+            groupId: "tumiki-group-001",
+            source: GroupSource.IDP,
+          },
+          {
+            userId: "user-001",
+            groupId: "tumiki-group-002",
+            source: GroupSource.IDP,
+          },
+        ],
+        skipDuplicates: true,
+      });
+
+      const log = findIdpSyncLogData();
+      expect(log.added).toStrictEqual(3);
+    });
   });
 
   describe("group.user_removed", () => {
@@ -529,7 +589,7 @@ describe("handleDirectorySyncEvent", () => {
       );
 
       expect(mockDb.userGroupMembership.deleteMany).toHaveBeenCalledWith({
-        where: { userId: "user-001", groupId: "group-001" },
+        where: { userId: "user-001", groupId: { in: ["group-001"] } },
       });
       expect(mockDb.group.updateMany).toHaveBeenCalledTimes(1);
 
@@ -538,6 +598,25 @@ describe("handleDirectorySyncEvent", () => {
       expect(log.status).toStrictEqual(SyncStatus.SUCCESS);
       expect(log.added).toStrictEqual(0);
       expect(log.removed).toStrictEqual(1);
+    });
+
+    test("mappingされたTumikiグループのメンバーシップも削除対象にする", async () => {
+      mockDb.group.findMany.mockResolvedValue([{ id: "tumiki-group-001" }]);
+      mockDb.userGroupMembership.deleteMany.mockResolvedValue({ count: 2 });
+
+      await handleDirectorySyncEvent(
+        buildUserWithGroupEvent("group.user_removed"),
+      );
+
+      expect(mockDb.userGroupMembership.deleteMany).toHaveBeenCalledWith({
+        where: {
+          userId: "user-001",
+          groupId: { in: ["group-001", "tumiki-group-001"] },
+        },
+      });
+
+      const log = findIdpSyncLogData();
+      expect(log.removed).toStrictEqual(2);
     });
 
     test("存在しないメンバーシップでもcount=0でエラーにならない（冪等）", async () => {

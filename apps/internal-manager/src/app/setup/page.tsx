@@ -1,21 +1,40 @@
-import { setupOidcSchema } from "~/lib/env";
+import { hasOidcUpstream, hasSamlUpstream, setupOidcSchema } from "~/lib/env";
 
 export const dynamic = "force-dynamic";
 
 const getEnvErrors = (): Record<string, string> => {
+  const hasSaml = hasSamlUpstream();
+  const hasOidc = hasOidcUpstream();
   const result = setupOidcSchema.safeParse({
     INTERNAL_DATABASE_URL: process.env.INTERNAL_DATABASE_URL,
-    JACKSON_ENCRYPTION_KEY: process.env.JACKSON_ENCRYPTION_KEY,
-    JACKSON_SAML_METADATA:
-      process.env.JACKSON_SAML_METADATA_XML ??
-      process.env.JACKSON_SAML_METADATA_PATH,
+    TUMIKI_INTERNAL_MANAGER_SECRET_KEY:
+      process.env.TUMIKI_INTERNAL_MANAGER_SECRET_KEY,
+    TUMIKI_INTERNAL_MANAGER_OIDC_PRIVATE_KEY:
+      process.env.TUMIKI_INTERNAL_MANAGER_OIDC_PRIVATE_KEY,
+    TUMIKI_INTERNAL_MANAGER_PUBLIC_URL:
+      process.env.TUMIKI_INTERNAL_MANAGER_PUBLIC_URL,
+    TUMIKI_INTERNAL_MANAGER_UPSTREAM:
+      hasSaml || hasOidc ? "configured" : undefined,
   });
 
-  if (result.success) return {};
+  const errors = result.success
+    ? {}
+    : Object.fromEntries(
+        result.error.issues.map((issue) => [
+          String(issue.path[0]),
+          issue.message,
+        ]),
+      );
 
-  return Object.fromEntries(
-    result.error.issues.map((issue) => [String(issue.path[0]), issue.message]),
-  );
+  if (hasSaml && hasOidc) {
+    return {
+      ...errors,
+      TUMIKI_INTERNAL_MANAGER_UPSTREAM:
+        "SAML upstream と OIDC upstream はどちらか一方だけ設定してください",
+    };
+  }
+
+  return errors;
 };
 
 const SetupPage = () => {
@@ -28,14 +47,24 @@ const SetupPage = () => {
       label: "Jackson 接続保存 DB",
     },
     {
-      key: "JACKSON_ENCRYPTION_KEY",
-      errorKey: "JACKSON_ENCRYPTION_KEY",
-      label: "Jackson 暗号化キー",
+      key: "TUMIKI_INTERNAL_MANAGER_SECRET_KEY",
+      errorKey: "TUMIKI_INTERNAL_MANAGER_SECRET_KEY",
+      label: "Auth.js / Jackson 暗号化キーの導出元",
     },
     {
-      key: "JACKSON_SAML_METADATA_XML / JACKSON_SAML_METADATA_PATH",
-      errorKey: "JACKSON_SAML_METADATA",
-      label: "SAML metadata XML またはファイルパス（いずれか一方）",
+      key: "TUMIKI_INTERNAL_MANAGER_OIDC_PRIVATE_KEY",
+      errorKey: "TUMIKI_INTERNAL_MANAGER_OIDC_PRIVATE_KEY",
+      label: "Jackson OIDC ID Token 署名用 private key",
+    },
+    {
+      key: "TUMIKI_INTERNAL_MANAGER_PUBLIC_URL",
+      errorKey: "TUMIKI_INTERNAL_MANAGER_PUBLIC_URL",
+      label: "issuer / SAML ACS / Auth.js callback URL の基準",
+    },
+    {
+      key: "TUMIKI_INTERNAL_MANAGER_SAML_* / TUMIKI_INTERNAL_MANAGER_OIDC_*",
+      errorKey: "TUMIKI_INTERNAL_MANAGER_UPSTREAM",
+      label: "SAML または OIDC upstream 設定",
     },
   ];
 

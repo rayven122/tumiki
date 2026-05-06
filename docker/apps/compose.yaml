@@ -45,7 +45,15 @@ services:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/api/health",
+        ]
       interval: 30s
       timeout: 10s
       start_period: 30s
@@ -64,7 +72,15 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/health",
+        ]
       interval: 30s
       timeout: 10s
       start_period: 30s
@@ -78,16 +94,24 @@ services:
       - "3100:3100"
     env_file: .env
     environment:
-      # .env 内の NEXTAUTH_URL は manager 用 (https://stg.tumiki.cloud) のため、
-      # internal-manager 専用の NEXTAUTH_URL_INTERNAL_MANAGER で上書きする。
-      # auth.ts は trustHost: true だが Next.js standalone の HOSTNAME=0.0.0.0 が
-      # 干渉するため明示的な NEXTAUTH_URL 指定が必要。
+      # Auth.js は trustHost: true だが、standalone の HOSTNAME=0.0.0.0 が
+      # 干渉する環境があるため互換用に NEXTAUTH_URL も上書きする。
+      # Jackson の issuer / SAML ACS / Auth.js callback の基準 URL は
+      # TUMIKI_INTERNAL_MANAGER_PUBLIC_URL を .env で設定する。
       NEXTAUTH_URL: ${NEXTAUTH_URL_INTERNAL_MANAGER}
     depends_on:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3100/api/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3100/api/health",
+        ]
       interval: 30s
       timeout: 10s
       start_period: 30s
