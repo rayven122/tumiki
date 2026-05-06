@@ -58,7 +58,6 @@ describe("mcpCatalogRouter", () => {
       caller.create({
         slug: "github-",
         name: "GitHub",
-        configTemplate: {},
         credentialKeys: [],
       }),
       "BAD_REQUEST",
@@ -81,11 +80,47 @@ describe("mcpCatalogRouter", () => {
       caller.create({
         slug: "github",
         name: "GitHub",
-        configTemplate: {},
         credentialKeys: [],
       }),
       "CONFLICT",
     );
+  });
+
+  test("createは接続テンプレートを明示カラムで保存する", async () => {
+    const create = vi.fn().mockResolvedValue({ id: "catalog-001" });
+    const caller = buildCaller({
+      mcpCatalog: { create },
+    } as unknown as Context["db"]);
+
+    await caller.create({
+      slug: "github",
+      name: "GitHub",
+      description: "GitHub MCP",
+      transportType: McpCatalogTransportType.STREAMABLE_HTTP,
+      authType: McpCatalogAuthType.OAUTH,
+      iconPath: "/logos/services/github.svg",
+      command: null,
+      args: ["--stdio"],
+      url: "https://api.githubcopilot.com/mcp/",
+      credentialKeys: ["GITHUB_TOKEN"],
+    });
+
+    expect(create).toHaveBeenCalledWith({
+      data: {
+        slug: "github",
+        name: "GitHub",
+        description: "GitHub MCP",
+        transportType: McpCatalogTransportType.STREAMABLE_HTTP,
+        authType: McpCatalogAuthType.OAUTH,
+        iconPath: "/logos/services/github.svg",
+        command: null,
+        args: ["--stdio"],
+        url: "https://api.githubcopilot.com/mcp/",
+        credentialKeys: ["GITHUB_TOKEN"],
+        createdBy: "admin-001",
+      },
+      include: { tools: true },
+    });
   });
 
   test("updateは存在しないカタログをNOT_FOUNDにする", async () => {
@@ -106,12 +141,55 @@ describe("mcpCatalogRouter", () => {
         authType: McpCatalogAuthType.OAUTH,
         status: McpCatalogStatus.ACTIVE,
         iconPath: null,
-        configTemplate: {},
+        command: null,
+        args: [],
+        url: "https://api.githubcopilot.com/mcp/",
         credentialKeys: [],
       }),
       "NOT_FOUND",
     );
     expect(update).not.toHaveBeenCalled();
+  });
+
+  test("updateは接続テンプレートを明示カラムで保存する", async () => {
+    const update = vi.fn().mockResolvedValue({ id: "catalog-001" });
+    const caller = buildCaller({
+      mcpCatalog: {
+        findFirst: vi.fn().mockResolvedValue({ id: "catalog-001" }),
+        update,
+      },
+    } as unknown as Context["db"]);
+
+    await caller.update({
+      id: "catalog-001",
+      name: "GitHub",
+      description: "GitHub MCP",
+      transportType: McpCatalogTransportType.STDIO,
+      authType: McpCatalogAuthType.API_KEY,
+      status: McpCatalogStatus.ACTIVE,
+      iconPath: "/logos/services/github.svg",
+      command: "${runtime:npx}",
+      args: ["-y", "@modelcontextprotocol/server-github"],
+      url: null,
+      credentialKeys: ["GITHUB_TOKEN"],
+    });
+
+    expect(update).toHaveBeenCalledWith({
+      where: { id: "catalog-001" },
+      data: {
+        name: "GitHub",
+        description: "GitHub MCP",
+        transportType: McpCatalogTransportType.STDIO,
+        authType: McpCatalogAuthType.API_KEY,
+        status: McpCatalogStatus.ACTIVE,
+        iconPath: "/logos/services/github.svg",
+        command: "${runtime:npx}",
+        args: ["-y", "@modelcontextprotocol/server-github"],
+        url: null,
+        credentialKeys: ["GITHUB_TOKEN"],
+      },
+      include: { tools: { where: { deletedAt: null } } },
+    });
   });
 
   test("deleteは存在しないカタログをNOT_FOUNDにする", async () => {

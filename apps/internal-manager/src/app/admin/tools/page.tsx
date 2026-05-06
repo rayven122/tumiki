@@ -63,7 +63,9 @@ const AdminToolsPage = () => {
       description: description || undefined,
       transportType,
       authType,
-      configTemplate: {},
+      command: null,
+      args: [],
+      url: null,
       credentialKeys: [],
     });
   };
@@ -78,7 +80,9 @@ const AdminToolsPage = () => {
       authType: catalog.authType,
       status: catalog.status === "ACTIVE" ? "DISABLED" : "ACTIVE",
       iconPath: catalog.iconPath,
-      configTemplate: catalog.configTemplate as Record<string, unknown>,
+      command: catalog.command,
+      args: catalog.args,
+      url: catalog.url,
       credentialKeys: catalog.credentialKeys,
     });
   };

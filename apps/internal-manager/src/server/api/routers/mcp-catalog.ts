@@ -50,7 +50,9 @@ export const mcpCatalogRouter = createTRPCRouter({
           .nativeEnum(McpCatalogAuthType)
           .default(McpCatalogAuthType.NONE),
         iconPath: z.string().max(500).optional(),
-        configTemplate: jsonRecordSchema.default({}),
+        command: z.string().max(500).nullable().optional(),
+        args: z.array(z.string().max(500)).default([]),
+        url: z.string().max(1000).nullable().optional(),
         credentialKeys: z.array(z.string().min(1).max(120)).default([]),
       }),
     )
@@ -61,7 +63,8 @@ export const mcpCatalogRouter = createTRPCRouter({
             ...input,
             description: input.description ?? null,
             iconPath: input.iconPath ?? null,
-            configTemplate: toInputJson(input.configTemplate),
+            command: input.command ?? null,
+            url: input.url ?? null,
             createdBy: ctx.session.user.id,
           },
           include: { tools: true },
@@ -90,7 +93,9 @@ export const mcpCatalogRouter = createTRPCRouter({
         authType: z.nativeEnum(McpCatalogAuthType),
         status: z.nativeEnum(McpCatalogStatus),
         iconPath: z.string().max(500).nullable(),
-        configTemplate: jsonRecordSchema,
+        command: z.string().max(500).nullable(),
+        args: z.array(z.string().max(500)),
+        url: z.string().max(1000).nullable(),
         credentialKeys: z.array(z.string().min(1).max(120)),
       }),
     )
@@ -109,10 +114,7 @@ export const mcpCatalogRouter = createTRPCRouter({
 
       return ctx.db.mcpCatalog.update({
         where: { id },
-        data: {
-          ...data,
-          configTemplate: toInputJson(data.configTemplate),
-        },
+        data,
         include: { tools: { where: { deletedAt: null } } },
       });
     }),

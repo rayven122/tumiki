@@ -52,7 +52,9 @@ type CatalogRow = {
   status: McpCatalogStatus;
   transportType: string;
   authType: string;
-  configTemplate: unknown;
+  command: string | null;
+  args: string[];
+  url: string | null;
   credentialKeys: string[];
   updatedAt: Date;
   tools: ToolPreview[];
@@ -76,27 +78,12 @@ const decodeCursor = (cursor: string): CatalogCursor | null => {
   }
 };
 
-const configTemplateSchema = z.object({
-  command: z.string().nullable().optional(),
-  args: z.array(z.string()).optional(),
-  url: z.string().nullable().optional(),
-});
-
 const toConnectionTemplate = (catalog: CatalogRow) => {
-  const parsed = configTemplateSchema.safeParse(catalog.configTemplate);
-  if (!parsed.success) {
-    console.warn("Failed to parse MCP catalog configTemplate", {
-      catalogId: catalog.id,
-      error: parsed.error,
-    });
-  }
-  const config = parsed.success ? parsed.data : {};
-
   return {
     transportType: catalog.transportType,
-    command: config.command ?? null,
-    args: config.args ?? [],
-    url: config.url ?? null,
+    command: catalog.command,
+    args: catalog.args,
+    url: catalog.url,
     authType: catalog.authType,
     credentialKeys: catalog.credentialKeys,
   };
@@ -203,7 +190,9 @@ export const GET = async (request: NextRequest) => {
         status: true,
         transportType: true,
         authType: true,
-        configTemplate: true,
+        command: true,
+        args: true,
+        url: true,
         credentialKeys: true,
         updatedAt: true,
         tools: {
