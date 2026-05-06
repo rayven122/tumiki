@@ -46,12 +46,11 @@ export const createTestDb = async (dbPath: string): Promise<PrismaClient> => {
     .sort();
 
   const combinedSql = migrationDirs
-    .map((dir) => {
+    .flatMap((dir) => {
       const sqlPath = join(MIGRATIONS_DIR, dir, "migration.sql");
-      if (!existsSync(sqlPath)) return "";
-      return `-- migration: ${dir}\n${readFileSync(sqlPath, "utf8")}\n`;
+      if (!existsSync(sqlPath)) return [];
+      return [`-- migration: ${dir}\n${readFileSync(sqlPath, "utf8")}\n`];
     })
-    .filter((sql): sql is string => sql.length > 0)
     .join("\n");
 
   // マイグレーションが 0 件のときは prisma 呼び出しをスキップ（旧動作と整合）
