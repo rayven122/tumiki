@@ -5,6 +5,25 @@ ADD COLUMN "command" TEXT,
 ADD COLUMN "args" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
 ADD COLUMN "url" TEXT;
 
+DO $$
+DECLARE
+  invalid_config_args_count INTEGER;
+BEGIN
+  SELECT COUNT(*) INTO invalid_config_args_count
+  FROM "McpCatalog" catalog
+  WHERE jsonb_typeof(catalog."configTemplate") = 'object'
+    AND jsonb_typeof(catalog."configTemplate"->'args') = 'array'
+    AND EXISTS (
+      SELECT 1
+      FROM jsonb_array_elements(catalog."configTemplate"->'args') AS arg(value)
+      WHERE jsonb_typeof(arg.value) <> 'string'
+    );
+
+  IF invalid_config_args_count > 0 THEN
+    RAISE EXCEPTION 'Cannot migrate % McpCatalog rows because configTemplate.args contains non-string values', invalid_config_args_count;
+  END IF;
+END $$;
+
 UPDATE "McpCatalog"
 SET
   "command" = CASE

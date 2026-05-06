@@ -13,6 +13,7 @@ import {
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
 const TOOL_PREVIEW_LIMIT = 10;
+const NO_ORG_UNIT_PERMISSION_ID = "__NO_ORG_UNIT_PERMISSION__";
 const NO_GROUP_PERMISSION_ID = "__NO_GROUP_PERMISSION__";
 
 const cursorSchema = z.object({
@@ -175,8 +176,11 @@ export const GET = async (request: NextRequest) => {
   const groupIds = policyUser.groupMemberships.map(
     (membership) => membership.group.id,
   );
+  const orgUnitIds = policyContext.orgUnits.map((orgUnit) => orgUnit.id);
   const now = new Date();
   // Prisma の in: [] は provider 差分を避けるため、未所属時は存在しないIDで空結果を強制する。
+  const orgUnitPermissionIds =
+    orgUnitIds.length > 0 ? orgUnitIds : [NO_ORG_UNIT_PERMISSION_ID];
   const groupPermissionIds =
     groupIds.length > 0 ? groupIds : [NO_GROUP_PERMISSION_ID];
 
@@ -211,6 +215,9 @@ export const GET = async (request: NextRequest) => {
         credentialKeys: true,
         updatedAt: true,
         orgUnitCatalogPermissions: {
+          where: {
+            orgUnitId: { in: orgUnitPermissionIds },
+          },
           select: {
             orgUnitId: true,
             effect: true,
@@ -248,6 +255,9 @@ export const GET = async (request: NextRequest) => {
             defaultAllowed: true,
             updatedAt: true,
             orgUnitPermissions: {
+              where: {
+                orgUnitId: { in: orgUnitPermissionIds },
+              },
               select: {
                 orgUnitId: true,
                 effect: true,

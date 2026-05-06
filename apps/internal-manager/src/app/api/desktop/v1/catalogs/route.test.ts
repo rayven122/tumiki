@@ -146,6 +146,63 @@ describe("GET /api/desktop/v1/catalogs", () => {
     expect(mockVerifyDesktopJwt).toHaveBeenCalledWith("Bearer access-token");
   });
 
+  test("所属部署と親部署の権限だけを取得する", async () => {
+    mockFindUser.mockResolvedValue({
+      id: "user-001",
+      isActive: true,
+      updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+      orgUnitMemberships: [
+        {
+          updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+          orgUnit: {
+            id: "org-child",
+            parentId: "org-parent",
+            updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+          },
+        },
+      ],
+      groupMemberships: [],
+    });
+    mockFindOrgUnits.mockResolvedValue([
+      {
+        id: "org-child",
+        parentId: "org-parent",
+        updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+      },
+      {
+        id: "org-parent",
+        parentId: null,
+        updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+      },
+    ]);
+
+    const response = await GET(buildRequest());
+
+    expect(response.status).toStrictEqual(200);
+    const [findManyArgs] = mockFindCatalogs.mock.calls[0] as [
+      {
+        select: {
+          orgUnitCatalogPermissions: {
+            where: { orgUnitId: { in: string[] } };
+          };
+          tools: {
+            select: {
+              orgUnitPermissions: {
+                where: { orgUnitId: { in: string[] } };
+              };
+            };
+          };
+        };
+      },
+    ];
+    expect(
+      findManyArgs.select.orgUnitCatalogPermissions.where.orgUnitId.in,
+    ).toStrictEqual(["org-child", "org-parent"]);
+    expect(
+      findManyArgs.select.tools.select.orgUnitPermissions.where.orgUnitId.in,
+    ).toStrictEqual(["org-child", "org-parent"]);
+  });
+
   test("接続テンプレートのnullableフィールドをそのまま返す", async () => {
     mockFindCatalogs.mockResolvedValue([
       buildCatalog({ command: "${runtime:npx}", args: [], url: null }),
@@ -234,6 +291,28 @@ describe("GET /api/desktop/v1/catalogs", () => {
       write: false,
       execute: false,
     });
+    const [findManyArgs] = mockFindCatalogs.mock.calls[0] as [
+      {
+        select: {
+          orgUnitCatalogPermissions: {
+            where: { orgUnitId: { in: string[] } };
+          };
+          tools: {
+            select: {
+              orgUnitPermissions: {
+                where: { orgUnitId: { in: string[] } };
+              };
+            };
+          };
+        };
+      },
+    ];
+    expect(
+      findManyArgs.select.orgUnitCatalogPermissions.where.orgUnitId.in,
+    ).toStrictEqual(["__NO_ORG_UNIT_PERMISSION__"]);
+    expect(
+      findManyArgs.select.tools.select.orgUnitPermissions.where.orgUnitId.in,
+    ).toStrictEqual(["__NO_ORG_UNIT_PERMISSION__"]);
   });
 
   test("停止中のカタログはdisabledとして返す", async () => {

@@ -142,6 +142,8 @@ export const evaluateCatalogPermissions = (
     .map((permission) => permission.effect);
 
   const tools = catalog.tools.map((tool) => {
+    // カタログ単位の権限は、そのカタログ内の全ツールに適用する。
+    // ツール単位の権限はカタログ単位の権限と合算し、下の優先順で最終判定する。
     const userEffects = [
       ...catalogUserEffects,
       ...tool.userPermissions
@@ -212,13 +214,15 @@ export const evaluateCatalogPermissions = (
     ] as const;
   });
 
+  const anyAllowed = tools.some(([, permission]) => permission.allowed);
+
   return {
     permissions: {
       // v1 はカタログ閲覧とツール実行を同じ許可状態として扱う。
-      read: tools.some(([, permission]) => permission.allowed),
+      read: anyAllowed,
       // v1 はツール実行可否のみを扱うため、書き込み権限は常に無効にする。
       write: false,
-      execute: tools.some(([, permission]) => permission.allowed),
+      execute: anyAllowed,
     },
     tools: new Map<string, EffectiveToolPermission>(tools),
   };
