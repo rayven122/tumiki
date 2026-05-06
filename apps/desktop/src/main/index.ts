@@ -37,6 +37,22 @@ import { ServerStatus } from "@prisma/desktop-client";
 import type { Prisma } from "@prisma/desktop-client";
 import * as logger from "./shared/utils/logger";
 import { ensureNodeShim } from "./runtime/path-resolver";
+import { spawnSync } from "node:child_process";
+
+// Cursor など親プロセス（Electron アプリ）が子プロセスへ ELECTRON_RUN_AS_NODE=1 を継承
+// させたケース対応。Electron が Node モードで起動すると `import { app } from "electron"` が
+// undefined になり、後段の app.whenReady() で TypeError になる。
+// env を除いて自身を Electron 主プロセスとして再起動し、その結果コードで終了する。
+// 親（MCPクライアント）から見れば、stdio を継承した単一の長時間プロセスに見える。
+if (!app) {
+  const cleanEnv = { ...process.env };
+  delete cleanEnv.ELECTRON_RUN_AS_NODE;
+  const result = spawnSync(process.execPath, process.argv.slice(1), {
+    env: cleanEnv,
+    stdio: "inherit",
+  });
+  process.exit(result.status ?? 1);
+}
 
 // --mcp-proxy モード: GUI不要、stdioでMCPプロキシとして動作
 const isMcpProxyMode = process.argv.includes("--mcp-proxy");
