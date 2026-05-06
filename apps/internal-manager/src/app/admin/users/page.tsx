@@ -55,6 +55,11 @@ const AdminUsersPage = () => {
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [tooltip, setTooltip] = useState<{
+    left: number;
+    text: string;
+    top: number;
+  } | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300);
@@ -95,6 +100,14 @@ const AdminUsersPage = () => {
   const suspendedUsers = users.filter((user) => !user.isActive);
   const shouldShowActiveUsers = statusFilter !== "false";
   const shouldShowSuspendedUsers = statusFilter !== "true";
+  const showActionTooltip = (element: HTMLElement, text: string) => {
+    const rect = element.getBoundingClientRect();
+    setTooltip({
+      left: rect.left - 8,
+      text,
+      top: rect.top + rect.height / 2,
+    });
+  };
 
   const renderUserRows = (sectionUsers: UserListItem[]) => {
     if (sectionUsers.length === 0) {
@@ -109,18 +122,21 @@ const AdminUsersPage = () => {
       const role = ROLE_STYLES[user.role] ?? DEFAULT_ROLE_STYLE;
       const isSelf = user.id === session?.user?.id;
       const canDelete = !user.isActive && user._count.externalIdentities === 0;
-      const accessActionLabel = user.isActive
-        ? "アクセスを停止"
-        : "アクセスを再開";
+      const accessActionTooltip =
+        isSelf && user.isActive
+          ? "自分自身のアクセスは停止できません。別の管理者に操作してもらってください。"
+          : user.isActive
+            ? "このユーザーの internal-manager と Tumiki Desktop の利用を停止します。IdP 側のユーザーは削除されません。"
+            : "このユーザーの internal-manager と Tumiki Desktop の利用を再開します。";
       const deleteTooltip = user.isActive
         ? "利用中ユーザーは削除できません。先にアクセスを停止してください。"
         : user._count.externalIdentities > 0
           ? "SAML/SCIM/IdPで同期されたユーザーはTumikiから削除できません。IdP側で削除してください。"
-          : "Tumikiで追加されたアクセス停止中ユーザーを削除します。";
+          : "Tumikiで追加されたアクセス停止中ユーザーを削除します。削除すると一覧から消え、この操作は取り消せません。";
       return (
         <div
           key={user.id}
-          className="border-b-border-subtle hover:bg-bg-card-hover grid grid-cols-[minmax(220px,1fr)_150px_120px_130px_70px_88px] items-center gap-3 border-b px-5 py-3 text-xs transition-colors last:border-b-0"
+          className="border-b-border-subtle hover:bg-bg-card-hover grid grid-cols-[minmax(180px,1fr)_130px_110px_72px] items-center gap-3 border-b px-5 py-3 text-xs transition-colors last:border-b-0"
         >
           <div className="flex items-center gap-2.5">
             <div className="bg-bg-active text-text-secondary flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium">
@@ -132,6 +148,13 @@ const AdminUsersPage = () => {
               </div>
               <div className="text-text-muted text-[10px]">
                 {user.email ?? "—"}
+              </div>
+              <div className="text-text-subtle mt-0.5 text-[10px]">
+                最終ログイン:{" "}
+                {user.lastLoginAt
+                  ? new Date(user.lastLoginAt).toLocaleDateString("ja-JP")
+                  : "—"}{" "}
+                / グループ: {user._count.groupMemberships}
               </div>
             </div>
           </div>
@@ -164,41 +187,55 @@ const AdminUsersPage = () => {
               {user.isActive ? "利用中" : "アクセス停止中"}
             </span>
           </div>
-          <span className="text-text-muted font-mono text-[11px]">
-            {user.lastLoginAt
-              ? new Date(user.lastLoginAt).toLocaleDateString("ja-JP")
-              : "—"}
-          </span>
-          <span className="text-text-secondary text-right font-mono">
-            {user._count.groupMemberships}
-          </span>
           <div className="flex justify-end gap-1.5">
-            <button
-              type="button"
-              title={accessActionLabel}
-              disabled={isMutating || (isSelf && user.isActive)}
-              onClick={() =>
-                updateActive.mutate({
-                  userId: user.id,
-                  isActive: !user.isActive,
-                })
+            <span
+              className="inline-flex"
+              onBlur={() => setTooltip(null)}
+              onFocus={(event) =>
+                showActionTooltip(event.currentTarget, accessActionTooltip)
               }
-              className={`flex min-h-[28px] w-8 items-center justify-center rounded-md border transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                user.isActive
-                  ? "border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/15"
-                  : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/15"
-              }`}
-              aria-label={`${user.name ?? user.email ?? "ユーザー"}のアクセスを${
-                user.isActive ? "停止" : "再開"
-              }`}
+              onMouseEnter={(event) =>
+                showActionTooltip(event.currentTarget, accessActionTooltip)
+              }
+              onMouseLeave={() => setTooltip(null)}
+              tabIndex={isSelf && user.isActive ? 0 : undefined}
             >
-              {user.isActive ? <UserX size={13} /> : <UserCheck size={13} />}
-            </button>
+              <button
+                type="button"
+                disabled={isMutating || (isSelf && user.isActive)}
+                onClick={() =>
+                  updateActive.mutate({
+                    userId: user.id,
+                    isActive: !user.isActive,
+                  })
+                }
+                className={`flex min-h-[28px] w-8 items-center justify-center rounded-md border transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                  user.isActive
+                    ? "border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/15"
+                    : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/15"
+                }`}
+                aria-label={`${user.name ?? user.email ?? "ユーザー"}のアクセスを${
+                  user.isActive ? "停止" : "再開"
+                }`}
+              >
+                {user.isActive ? <UserX size={13} /> : <UserCheck size={13} />}
+              </button>
+            </span>
             {!user.isActive && (
-              <span title={deleteTooltip}>
+              <span
+                className="inline-flex"
+                onBlur={() => setTooltip(null)}
+                onFocus={(event) =>
+                  showActionTooltip(event.currentTarget, deleteTooltip)
+                }
+                onMouseEnter={(event) =>
+                  showActionTooltip(event.currentTarget, deleteTooltip)
+                }
+                onMouseLeave={() => setTooltip(null)}
+                tabIndex={!canDelete ? 0 : undefined}
+              >
                 <button
                   type="button"
-                  title={deleteTooltip}
                   disabled={isMutating || !canDelete}
                   onClick={() => {
                     if (
@@ -242,12 +279,10 @@ const AdminUsersPage = () => {
         </span>
       </div>
       <div className="bg-bg-card border-border-default overflow-hidden rounded-xl border">
-        <div className="border-b-border-default text-text-subtle grid grid-cols-[minmax(220px,1fr)_150px_120px_130px_70px_88px] items-center gap-3 border-b px-5 py-2.5 text-[10px]">
+        <div className="border-b-border-default text-text-subtle grid grid-cols-[minmax(180px,1fr)_130px_110px_72px] items-center gap-3 border-b px-5 py-2.5 text-[10px]">
           <span>ユーザー</span>
           <span>ロール</span>
           <span>アクセス</span>
-          <span>最終ログイン</span>
-          <span className="text-right">グループ</span>
           <span className="text-right">操作</span>
         </div>
         {renderUserRows(sectionUsers)}
@@ -374,6 +409,15 @@ const AdminUsersPage = () => {
             </div>
           )}
         </>
+      )}
+      {tooltip && (
+        <div
+          role="tooltip"
+          className="bg-bg-card border-border-default text-text-secondary pointer-events-none fixed z-[100] w-72 -translate-x-full -translate-y-1/2 rounded-md border px-2.5 py-2 text-left text-[11px] leading-relaxed shadow-lg"
+          style={{ left: tooltip.left, top: tooltip.top }}
+        >
+          {tooltip.text}
+        </div>
       )}
     </div>
   );
