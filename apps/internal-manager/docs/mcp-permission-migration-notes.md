@@ -18,6 +18,8 @@
 
 現時点で競合する部署 ALLOW がない孤立 `canUse=false` は、migration で `RAISE NOTICE` を出した上で明示 DENY として移行する。移行後に新しく部署 ALLOW を設定しても、このグループ DENY が優先されるため、NOTICE が出た場合は不要な拒否設定を管理画面で削除する。
 
+同一ユーザーが複数グループに所属し、あるグループが同じツールを `ALLOW`、別グループが `DENY` として持つ場合、新モデルではグループ間でも `DENY` が優先される。旧モデルの運用上この競合が存在する場合は、移行前に残す拒否設定を確認し、不要な `GroupMcpToolPermission.canUse=false` を削除する。
+
 ## OrgUnit 権限の扱い
 
 既存の `OrgUnitToolPermission` は保持する。旧モデルにはカタログ単位の部署権限に対応するデータがないため、`OrgUnitCatalogPermission` は backfill しない。

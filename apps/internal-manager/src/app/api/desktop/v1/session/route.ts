@@ -16,11 +16,10 @@ import {
 } from "~/server/mcp-policy/constants";
 import { buildCatalogPolicySelect } from "~/server/mcp-policy/catalog-policy-query";
 import {
+  POLICY_VERSION_CATALOG_LIMIT,
   POLICY_TOOL_LIMIT,
   POLICY_TOOL_TAKE,
 } from "~/server/mcp-policy/limits";
-
-const POLICY_VERSION_CATALOG_LIMIT = 500;
 
 export const GET = async (request: NextRequest) => {
   let verifiedUser: Awaited<ReturnType<typeof verifyDesktopJwt>>;
