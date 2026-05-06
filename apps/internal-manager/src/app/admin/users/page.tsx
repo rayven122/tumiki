@@ -23,7 +23,8 @@ import {
   Users,
   Users2,
 } from "lucide-react";
-import { api } from "~/trpc/react";
+import { USER_LIST_LIMIT } from "@/lib/user-management";
+import { api, type RouterOutputs } from "~/trpc/react";
 import { GroupsManagementPanel } from "../_components/GroupsManagementPanel";
 
 type RoleFilter = "SYSTEM_ADMIN" | "USER" | "all";
@@ -43,7 +44,6 @@ const DEFAULT_ROLE_STYLE = {
   text: "text-amber-400",
   label: "メンバー",
 };
-const USER_LIST_LIMIT = 200;
 
 const ActionTooltip = ({ id, text }: { id: string; text: string }) => (
   <span
@@ -79,21 +79,7 @@ const getUserActionErrorMessage = (error: {
   return "操作に失敗しました。時間をおいて再試行してください。";
 };
 
-type UserListItem = {
-  id: string;
-  name: string | null;
-  email: string | null;
-  role: Role;
-  isActive: boolean;
-  lastLoginAt: Date | string | null;
-  lastUsedAt: Date | string | null;
-  externalIdentities: { provider: string }[];
-  _count: {
-    desktopAuditLogs: number;
-    externalIdentities: number;
-    groupMemberships: number;
-  };
-};
+type UserListItem = RouterOutputs["users"]["list"][number];
 
 const AdminUsersPage = () => {
   const { data: session } = useSession();
@@ -140,7 +126,7 @@ const AdminUsersPage = () => {
 
   const isMutating =
     updateActive.isPending || updateRole.isPending || deleteUser.isPending;
-  const isUserListAtLimit = users.length >= USER_LIST_LIMIT;
+  const isUserListAtLimit = users.length === USER_LIST_LIMIT;
   const activeUsers = users.filter((user) => user.isActive);
   const suspendedUsers = users.filter((user) => !user.isActive);
   const shouldShowActiveUsers = statusFilter !== "false";

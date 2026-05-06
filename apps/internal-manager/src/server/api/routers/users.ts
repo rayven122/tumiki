@@ -1,9 +1,8 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { Prisma, Role } from "@tumiki/internal-db";
+import { USER_LIST_LIMIT } from "@/lib/user-management";
 import { adminProcedure, createTRPCRouter } from "@/server/api/trpc";
-
-const USER_LIST_LIMIT = 200;
 
 const userSelect = {
   id: true,
