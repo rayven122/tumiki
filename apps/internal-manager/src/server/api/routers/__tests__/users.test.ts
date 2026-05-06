@@ -300,6 +300,17 @@ describe("usersRouter", () => {
       });
       expect(tx.user.update).not.toHaveBeenCalled();
     });
+
+    test("存在しないユーザーはNOT_FOUNDになる", async () => {
+      const { db, tx } = buildDb({ targetUser: null });
+      const caller = buildCaller(db);
+
+      await expectTrpcErrorCode(
+        caller.updateActive({ userId: "missing-user", isActive: false }),
+        "NOT_FOUND",
+      );
+      expect(tx.user.update).not.toHaveBeenCalled();
+    });
   });
 
   describe("updateRole", () => {
@@ -366,6 +377,17 @@ describe("usersRouter", () => {
           id: { not: "admin-002" },
         },
       });
+      expect(tx.user.update).not.toHaveBeenCalled();
+    });
+
+    test("存在しないユーザーはNOT_FOUNDになる", async () => {
+      const { db, tx } = buildDb({ targetUser: null });
+      const caller = buildCaller(db);
+
+      await expectTrpcErrorCode(
+        caller.updateRole({ userId: "missing-user", role: Role.USER }),
+        "NOT_FOUND",
+      );
       expect(tx.user.update).not.toHaveBeenCalled();
     });
   });
@@ -444,6 +466,17 @@ describe("usersRouter", () => {
       await expectTrpcErrorCode(
         caller.deleteUser({ userId: "admin-001" }),
         "BAD_REQUEST",
+      );
+      expect(tx.user.delete).not.toHaveBeenCalled();
+    });
+
+    test("存在しないユーザーはNOT_FOUNDになる", async () => {
+      const { db, tx } = buildDb({ targetUser: null });
+      const caller = buildCaller(db);
+
+      await expectTrpcErrorCode(
+        caller.deleteUser({ userId: "missing-user" }),
+        "NOT_FOUND",
       );
       expect(tx.user.delete).not.toHaveBeenCalled();
     });

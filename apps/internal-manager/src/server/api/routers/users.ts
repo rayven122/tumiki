@@ -3,6 +3,8 @@ import { TRPCError } from "@trpc/server";
 import { Prisma, Role } from "@tumiki/internal-db";
 import { adminProcedure, createTRPCRouter } from "@/server/api/trpc";
 
+const USER_LIST_LIMIT = 200;
+
 const userSelect = {
   id: true,
   name: true,
@@ -82,7 +84,7 @@ export const usersRouter = createTRPCRouter({
         },
         select: userSelect,
         orderBy: { createdAt: "asc" },
-        take: 200,
+        take: USER_LIST_LIMIT,
       });
 
       const userIds = users.map((user) => user.id);

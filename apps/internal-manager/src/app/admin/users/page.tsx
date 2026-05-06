@@ -63,6 +63,17 @@ const SYNC_SOURCE_LABELS: Record<string, string | undefined> = {
 const formatDate = (value: Date | string | null) =>
   value ? new Date(value).toLocaleDateString("ja-JP") : "—";
 
+const getUserActionErrorMessage = (error: {
+  data?: { code?: string } | null;
+  message: string;
+}) => {
+  if (error.data?.code === "BAD_REQUEST" || error.data?.code === "NOT_FOUND") {
+    return error.message;
+  }
+
+  return "操作に失敗しました。時間をおいて再試行してください。";
+};
+
 type UserListItem = {
   id: string;
   name: string | null;
@@ -111,21 +122,21 @@ const AdminUsersPage = () => {
       setErrorMessage(null);
       await utils.users.list.invalidate();
     },
-    onError: (error) => setErrorMessage(error.message),
+    onError: (error) => setErrorMessage(getUserActionErrorMessage(error)),
   });
   const updateRole = api.users.updateRole.useMutation({
     onSuccess: async () => {
       setErrorMessage(null);
       await utils.users.list.invalidate();
     },
-    onError: (error) => setErrorMessage(error.message),
+    onError: (error) => setErrorMessage(getUserActionErrorMessage(error)),
   });
   const deleteUser = api.users.deleteUser.useMutation({
     onSuccess: async () => {
       setErrorMessage(null);
       await utils.users.list.invalidate();
     },
-    onError: (error) => setErrorMessage(error.message),
+    onError: (error) => setErrorMessage(getUserActionErrorMessage(error)),
   });
 
   const isMutating =
@@ -432,6 +443,7 @@ const AdminUsersPage = () => {
               />
               <input
                 type="text"
+                aria-label="名前またはメールアドレスで検索"
                 placeholder="名前・メールで検索"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -442,6 +454,7 @@ const AdminUsersPage = () => {
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value as RoleFilter)}
               className="bg-bg-card border-border-default text-text-secondary rounded-lg border px-3 py-1.5 text-xs outline-none"
+              aria-label="ロールで絞り込み"
             >
               <option value="all">すべてのロール</option>
               <option value="SYSTEM_ADMIN">オーナー</option>
@@ -451,6 +464,7 @@ const AdminUsersPage = () => {
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
               className="bg-bg-card border-border-default text-text-secondary rounded-lg border px-3 py-1.5 text-xs outline-none"
+              aria-label="アクセス状態で絞り込み"
             >
               <option value="all">すべてのアクセス状態</option>
               <option value="true">利用中</option>
