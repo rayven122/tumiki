@@ -31,14 +31,13 @@ type RoleFilter = "SYSTEM_ADMIN" | "USER" | "all";
 type StatusFilter = "true" | "false" | "all";
 type DirectoryTab = "users" | "groups";
 
-const ROLE_STYLES: Record<string, { text: string; label: string } | undefined> =
-  {
-    SYSTEM_ADMIN: {
-      text: "text-emerald-400",
-      label: "オーナー",
-    },
-    USER: { text: "text-amber-400", label: "メンバー" },
-  };
+const ROLE_STYLES: Partial<Record<Role, { text: string; label: string }>> = {
+  SYSTEM_ADMIN: {
+    text: "text-emerald-400",
+    label: "オーナー",
+  },
+  USER: { text: "text-amber-400", label: "メンバー" },
+};
 
 const DEFAULT_ROLE_STYLE = {
   text: "text-amber-400",
@@ -156,8 +155,7 @@ const AdminUsersPage = () => {
       const isSessionReady = sessionStatus === "authenticated";
       const isSelf = isSessionReady && user.id === session?.user?.id;
       const canDelete = !user.isActive && user._count.externalIdentities === 0;
-      const isAccessActionDisabled =
-        isMutating || !isSessionReady || (isSelf && user.isActive);
+      const isAccessActionDisabled = isMutating || !isSessionReady || isSelf;
       const syncSource = user.externalIdentities[0]?.provider;
       const syncSourceLabel = syncSource
         ? (SYNC_SOURCE_LABELS[syncSource.toLowerCase()] ?? syncSource)
@@ -167,8 +165,8 @@ const AdminUsersPage = () => {
       const roleLabel = ROLE_STYLES[user.role]?.label ?? user.role;
       const accessActionTooltip = !isSessionReady
         ? "セッション確認中です。確認後に操作できます。"
-        : isSelf && user.isActive
-          ? "自分自身のアクセスは停止できません。別の管理者に操作してもらってください。"
+        : isSelf
+          ? "自分自身のアクセス状態は変更できません。別の管理者に操作してもらってください。"
           : user.isActive
             ? "このユーザーの internal-manager と Tumiki Desktop の利用を停止します。IdP 側のユーザーは削除されません。"
             : "このユーザーの internal-manager と Tumiki Desktop の利用を再開します。";

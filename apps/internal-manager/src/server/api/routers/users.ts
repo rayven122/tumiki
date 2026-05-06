@@ -245,18 +245,18 @@ export const usersRouter = createTRPCRouter({
             });
           }
 
-          if (targetUser.isActive) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: "利用中ユーザーは削除できません",
-            });
-          }
-
           if (targetUser._count.externalIdentities > 0) {
             throw new TRPCError({
               code: "BAD_REQUEST",
               message:
                 "IdP/SAML/SCIMで同期されたユーザーはTumikiから削除できません",
+            });
+          }
+
+          if (targetUser.isActive) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "利用中ユーザーは削除できません",
             });
           }
 
