@@ -50,10 +50,13 @@ RUN pnpm --filter @tumiki/internal-manager run build:bare
 # saml-jackson が動的 import で jose / openid-client を読み込む際、Node.js は node_modules/<pkg> を探す。
 # pnpm の standalone コピーは .pnpm 仮想ストア形式になるためルートリンクが作られない。
 # 相対パスで symlink を作成して、production stage へ COPY 後も解決できるようにする。
+# パッケージが見つからない場合はビルドを失敗させ、壊れた symlink が staging まで届かないようにする。
 RUN cd /app/apps/internal-manager/.next/standalone/node_modules && \
     jose_pkg=$(ls .pnpm/ | grep '^jose@' | head -1) && \
+    [ -n "$jose_pkg" ] || { echo "ERROR: jose package not found in .pnpm/"; exit 1; } && \
     ln -s ".pnpm/${jose_pkg}/node_modules/jose" jose && \
     oidc_pkg=$(ls .pnpm/ | grep '^openid-client@' | head -1) && \
+    [ -n "$oidc_pkg" ] || { echo "ERROR: openid-client package not found in .pnpm/"; exit 1; } && \
     ln -s ".pnpm/${oidc_pkg}/node_modules/openid-client" openid-client
 
 # ========================================
