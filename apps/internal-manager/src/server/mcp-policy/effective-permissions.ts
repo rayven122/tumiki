@@ -201,10 +201,17 @@ export const evaluateCatalogPermissions = (
   const groupIds = new Set(
     user.groupMemberships.map((membership) => membership.group.id),
   );
+  const now = new Date();
+  const isActiveUserPermission = (permission: {
+    userId: string;
+    expiresAt: Date | null;
+  }) =>
+    permission.userId === user.id &&
+    (permission.expiresAt === null || permission.expiresAt > now);
 
   // DB側でも対象ユーザー・所属グループ・所属部署に絞るが、呼び出し元が増えても安全側になるよう評価時にも再確認する。
   const catalogUserEffects = catalog.userCatalogPermissions
-    .filter((permission) => permission.userId === user.id)
+    .filter(isActiveUserPermission)
     .map((permission) => permission.effect);
   const catalogGroupEffects = catalog.groupCatalogPermissions
     .filter((permission) => groupIds.has(permission.groupId))
@@ -220,7 +227,7 @@ export const evaluateCatalogPermissions = (
     // カタログ単位の権限は、そのカタログ内の全ツールに適用する。
     // ツール単位の権限はカタログ単位の権限と合算し、下の優先順で最終判定する。
     const toolUserEffects = tool.userPermissions
-      .filter((permission) => permission.userId === user.id)
+      .filter(isActiveUserPermission)
       .map((permission) => permission.effect);
     const toolGroupEffects = tool.groupPermissions
       .filter((permission) => groupIds.has(permission.groupId))

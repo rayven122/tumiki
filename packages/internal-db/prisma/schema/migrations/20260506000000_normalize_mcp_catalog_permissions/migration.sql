@@ -2,6 +2,7 @@
 -- 警告: このマイグレーションは不可逆です。
 -- configTemplate と旧権限テーブルをバックフィル後に削除します。
 -- 本番適用前に必ずフルバックアップを取得してください。
+-- 既存DBへの適用はPrisma migrate deployを前提にし、db pushでは実行しません。
 -- このSQLは旧権限テーブルが存在する既存DBへの適用を前提にし、新規DBは全マイグレーション履歴またはdb pushで構築します。
 
 ALTER TABLE "McpCatalog"

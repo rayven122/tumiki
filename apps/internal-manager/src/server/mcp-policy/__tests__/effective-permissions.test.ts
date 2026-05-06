@@ -324,6 +324,46 @@ describe("evaluateCatalogPermissions", () => {
     expect(result.permissions.execute).toStrictEqual(false);
   });
 
+  test("期限切れのユーザー個別権限は無視する", () => {
+    const baseTool = buildCatalog([]).tools[0]!;
+    const result = evaluateCatalogPermissions(
+      buildUser(),
+      {
+        ...buildCatalog([]),
+        userCatalogPermissions: [
+          {
+            userId: "user-001",
+            effect: PolicyEffect.ALLOW,
+            updatedAt: now,
+            reason: null,
+            expiresAt: new Date("2000-01-01T00:00:00.000Z"),
+          },
+        ],
+        tools: [
+          {
+            ...baseTool,
+            userPermissions: [
+              {
+                userId: "user-001",
+                effect: PolicyEffect.ALLOW,
+                updatedAt: now,
+                reason: null,
+                expiresAt: new Date("2000-01-01T00:00:00.000Z"),
+              },
+            ],
+          },
+        ],
+      },
+      orgUnits,
+    );
+
+    expect(result.tools.get("tool-001")).toStrictEqual({
+      allowed: false,
+      deniedReason: "not_granted",
+    });
+    expect(result.permissions.execute).toStrictEqual(false);
+  });
+
   test("カタログ単位のグループDENYは全ツールを拒否する", () => {
     const baseTool = buildCatalog([]).tools[0]!;
     const result = evaluateCatalogPermissions(
