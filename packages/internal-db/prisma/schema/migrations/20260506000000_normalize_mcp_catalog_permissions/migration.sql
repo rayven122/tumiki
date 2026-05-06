@@ -52,6 +52,7 @@ SET
 DO $$
 DECLARE
   null_stdio_command_count INTEGER;
+  null_http_url_count INTEGER;
 BEGIN
   SELECT COUNT(*) INTO null_stdio_command_count
   FROM "McpCatalog" catalog
@@ -61,6 +62,16 @@ BEGIN
 
   IF null_stdio_command_count > 0 THEN
     RAISE EXCEPTION 'Cannot migrate % active STDIO McpCatalog rows because command is NULL after configTemplate backfill', null_stdio_command_count;
+  END IF;
+
+  SELECT COUNT(*) INTO null_http_url_count
+  FROM "McpCatalog" catalog
+  WHERE catalog."transportType" IN ('SSE', 'STREAMABLE_HTTP')
+    AND catalog."deletedAt" IS NULL
+    AND catalog."url" IS NULL;
+
+  IF null_http_url_count > 0 THEN
+    RAISE EXCEPTION 'Cannot migrate % active SSE/STREAMABLE_HTTP McpCatalog rows because url is NULL after configTemplate backfill', null_http_url_count;
   END IF;
 END $$;
 
@@ -228,6 +239,7 @@ DECLARE
   duplicate_group_tool_count INTEGER;
   duplicate_user_tool_count INTEGER;
   orphaned_group_tool_allow_count INTEGER;
+  orphaned_group_tool_deny_count INTEGER;
   conflicting_group_tool_deny_with_individual_count INTEGER;
   orphaned_group_tool_deny_with_org_unit_allow_count INTEGER;
   conflicting_user_tool_deny_with_individual_count INTEGER;
@@ -379,6 +391,25 @@ BEGIN
 
   IF orphaned_group_tool_allow_count > 0 THEN
     RAISE EXCEPTION 'Cannot migrate % GroupMcpToolPermission allow rows because their group has no active GroupToolPermission for the tool catalog', orphaned_group_tool_allow_count;
+  END IF;
+
+  SELECT COUNT(*) INTO orphaned_group_tool_deny_count
+  FROM "GroupMcpToolPermission" gmtp
+  JOIN "McpCatalogTool" tool ON tool."id" = gmtp."mcpToolId"
+  JOIN "McpCatalog" catalog ON catalog."id" = tool."catalogId"
+  WHERE NOT gmtp."canUse"
+    AND tool."deletedAt" IS NULL
+    AND catalog."deletedAt" IS NULL
+    AND NOT EXISTS (
+      SELECT 1
+      FROM "GroupToolPermission" gtp
+      WHERE gtp."groupId" = gmtp."groupId"
+        AND (gtp."read" OR gtp."write" OR gtp."execute")
+        AND (catalog."id" = gtp."mcpServerId" OR catalog."slug" = gtp."mcpServerId")
+    );
+
+  IF orphaned_group_tool_deny_count > 0 THEN
+    RAISE NOTICE '% GroupMcpToolPermission deny rows without catalog permission will become active DENY rows in GroupCatalogToolPermission', orphaned_group_tool_deny_count;
   END IF;
 
   -- 旧canUse=falseは新モデルで明示DENYにするため、既存の有効な個人承認を上書きするデータは移行前に止める。

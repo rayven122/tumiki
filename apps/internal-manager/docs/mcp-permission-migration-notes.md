@@ -16,6 +16,8 @@
 
 また、カタログ権限を持たないグループの `GroupMcpToolPermission.canUse=false` が部署単位の `OrgUnitToolPermission(ALLOW)` を遮断する場合も事前検証で停止する。旧モデルではカタログ権限のないグループツール拒否が実質無効だった可能性があるため、該当データは移行前に削除または明示的な拒否として残すかを判断する。
 
+現時点で競合する部署 ALLOW がない孤立 `canUse=false` は、migration で `RAISE NOTICE` を出した上で明示 DENY として移行する。移行後に新しく部署 ALLOW を設定しても、このグループ DENY が優先されるため、NOTICE が出た場合は不要な拒否設定を管理画面で削除する。
+
 ## OrgUnit 権限の扱い
 
 既存の `OrgUnitToolPermission` は保持する。旧モデルにはカタログ単位の部署権限に対応するデータがないため、`OrgUnitCatalogPermission` は backfill しない。
