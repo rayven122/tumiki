@@ -51,33 +51,36 @@ export const createTestDb = async (dbPath: string): Promise<PrismaClient> => {
       if (!existsSync(sqlPath)) return "";
       return `-- migration: ${dir}\n${readFileSync(sqlPath, "utf8")}\n`;
     })
-    .filter(Boolean)
+    .filter((sql): sql is string => sql.length > 0)
     .join("\n");
 
-  const tmpDir = mkdtempSync(join(tmpdir(), "tumiki-desktop-test-db-"));
-  const combinedSqlPath = join(tmpDir, "combined-migrations.sql");
-  try {
-    writeFileSync(combinedSqlPath, combinedSql);
+  // マイグレーションが 0 件のときは prisma 呼び出しをスキップ（旧動作と整合）
+  if (combinedSql.length > 0) {
+    const tmpDir = mkdtempSync(join(tmpdir(), "tumiki-desktop-test-db-"));
+    const combinedSqlPath = join(tmpDir, "combined-migrations.sql");
+    try {
+      writeFileSync(combinedSqlPath, combinedSql);
 
-    execFileSync(
-      "pnpm",
-      [
-        "exec",
-        "prisma",
-        "db",
-        "execute",
-        "--file",
-        combinedSqlPath,
-        "--url",
-        databaseUrl,
-      ],
-      {
-        cwd: DESKTOP_ROOT,
-        stdio: "pipe",
-      },
-    );
-  } finally {
-    rmSync(tmpDir, { recursive: true, force: true });
+      execFileSync(
+        "pnpm",
+        [
+          "exec",
+          "prisma",
+          "db",
+          "execute",
+          "--file",
+          combinedSqlPath,
+          "--url",
+          databaseUrl,
+        ],
+        {
+          cwd: DESKTOP_ROOT,
+          stdio: "pipe",
+        },
+      );
+    } finally {
+      rmSync(tmpDir, { recursive: true, force: true });
+    }
   }
 
   return new PrismaClient({
