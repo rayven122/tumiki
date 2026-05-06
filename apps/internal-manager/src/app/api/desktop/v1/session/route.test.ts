@@ -248,7 +248,7 @@ describe("GET /api/desktop/v1/session", () => {
       permissions: expectedPermissions,
       features: {
         catalog: true,
-        accessRequests: true,
+        accessRequests: false,
         policySync: true,
         auditLogSync: true,
       },
@@ -302,7 +302,7 @@ describe("GET /api/desktop/v1/session", () => {
     });
     expect(body.features).toStrictEqual({
       catalog: true,
-      accessRequests: true,
+      accessRequests: false,
       policySync: true,
       auditLogSync: true,
     });

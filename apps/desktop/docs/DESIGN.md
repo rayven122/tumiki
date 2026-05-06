@@ -435,9 +435,6 @@ ER図・カラム定義の詳細は [prisma/README.md](../prisma/README.md)（pr
 |          | `/tools/connector/manual` | マニュアル作成     | フォーム形式でコネクタ作成           |
 |          | `/history`                | 操作履歴一覧       | 検索・フィルタ・統計                 |
 |          | `/history/:historyId`     | 操作履歴詳細       | 実行内容・ログ・結果                 |
-|          | `/requests`               | 権限申請一覧       | タブ切替（全て・審査中・承認・却下） |
-|          | `/requests/new`           | 権限申請フォーム   | ツール選択・理由記入                 |
-|          | `/requests/:requestId`    | 申請詳細           | 審査状況・承認者コメント             |
 |          | `/settings`               | 設定               | 通知設定・プロフィール               |
 |          | `/notifications`          | 通知センター       | 承認・申請・ツール・メンテ・エラー   |
 |          | `/login`                  | ログイン           | Entra ID・SSO                        |
@@ -446,7 +443,6 @@ ER図・カラム定義の詳細は [prisma/README.md](../prisma/README.md)（pr
 |          | `/admin/users`            | ユーザー管理       | ロール別フィルタ・ステータス変更     |
 |          | `/admin/roles`            | ロール管理         | 権限設定                             |
 |          | `/admin/tools`            | ツール管理         | ツール承認・拒否                     |
-|          | `/admin/approvals`        | 承認管理           | 権限申請の承認・却下                 |
 
 ### 6.2 レイアウト構成
 
@@ -457,7 +453,6 @@ ER図・カラム定義の詳細は [prisma/README.md](../prisma/README.md)（pr
 │ [ホーム]          │                                         │
 │ [コネクト]        │  ページ内容（Outlet）                   │
 │ [操作履歴]        │                                         │
-│ [権限申請]        │                                         │
 │ [通知] (2)       │                                         │
 │ ─────────────    │                                         │
 │ [カスタムコネクタ] │                                         │

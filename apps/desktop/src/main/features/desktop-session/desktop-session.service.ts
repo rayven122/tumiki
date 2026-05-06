@@ -54,7 +54,7 @@ export const desktopSessionSchema = z.object({
   ),
   features: z.object({
     catalog: z.boolean(),
-    accessRequests: z.boolean(),
+    accessRequests: z.boolean().default(false),
     policySync: z.boolean(),
     auditLogSync: z.boolean(),
   }),
