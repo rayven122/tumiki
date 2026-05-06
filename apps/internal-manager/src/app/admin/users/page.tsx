@@ -86,7 +86,7 @@ type PendingRoleChange = {
 } | null;
 
 const AdminUsersPage = () => {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const utils = api.useUtils();
   const [activeTab, setActiveTab] = useState<DirectoryTab>("users");
   const [search, setSearch] = useState("");
@@ -150,7 +150,8 @@ const AdminUsersPage = () => {
 
     return sectionUsers.map((user) => {
       const role = ROLE_STYLES[user.role] ?? DEFAULT_ROLE_STYLE;
-      const isSelf = user.id === session?.user?.id;
+      const isSelf =
+        sessionStatus !== "authenticated" || user.id === session?.user?.id;
       const canDelete = !user.isActive && user._count.externalIdentities === 0;
       const syncSource = user.externalIdentities[0]?.provider;
       const syncSourceLabel = syncSource
@@ -326,7 +327,7 @@ const AdminUsersPage = () => {
           {sectionUsers.length} 名
         </span>
       </div>
-      <div className="bg-bg-card border-border-default rounded-xl border">
+      <div className="bg-bg-card border-border-default overflow-x-auto rounded-xl border">
         <div className="border-b-border-default text-text-subtle grid grid-cols-[minmax(180px,1fr)_130px_90px_100px_72px] items-center gap-3 border-b px-5 py-2.5 text-[10px]">
           <span>ユーザー</span>
           <span>ロール</span>

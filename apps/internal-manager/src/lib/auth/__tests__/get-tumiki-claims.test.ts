@@ -218,6 +218,12 @@ describe("getTumikiClaims", () => {
         update: {},
       });
     });
+
+    test("oidcSubが空文字の場合はupsertを呼ばない", async () => {
+      await getTumikiClaims(buildDb(), mockUser.id, "oidc", "", []);
+
+      expect(mockDb.externalIdentity.upsert).not.toHaveBeenCalled();
+    });
   });
 
   describe("グループ追加（新規メンバーシップ）", () => {

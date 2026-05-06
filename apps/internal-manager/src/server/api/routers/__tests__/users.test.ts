@@ -502,7 +502,7 @@ describe("usersRouter", () => {
     });
 
     test("自分自身は削除できない", async () => {
-      const { db, tx } = buildDb({
+      const { db, tx, transactionMock } = buildDb({
         targetUser: {
           id: "admin-001",
           role: Role.SYSTEM_ADMIN,
@@ -516,6 +516,7 @@ describe("usersRouter", () => {
         caller.deleteUser({ userId: "admin-001" }),
         "BAD_REQUEST",
       );
+      expect(transactionMock).not.toHaveBeenCalled();
       expect(tx.user.delete).not.toHaveBeenCalled();
     });
 
