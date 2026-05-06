@@ -201,7 +201,11 @@ const AdminUsersPage = () => {
           <div className="hidden items-center gap-2 md:flex">
             <ShieldCheck size={13} className={role.text} />
             <select
-              value={user.role}
+              value={
+                pendingRoleChange?.user.id === user.id
+                  ? pendingRoleChange.role
+                  : user.role
+              }
               disabled={isMutating || !isSessionReady || isSelf}
               onChange={(e) => {
                 const nextRole = e.target.value as Role;
@@ -332,7 +336,7 @@ const AdminUsersPage = () => {
           {sectionUsers.length} 名
         </span>
       </div>
-      <div className="bg-bg-card border-border-default overflow-x-auto rounded-xl border">
+      <div className="bg-bg-card border-border-default rounded-xl border">
         <div
           className={`border-b-border-default text-text-subtle grid ${USER_GRID_COLUMNS} items-center gap-3 border-b px-5 py-2.5 text-[10px]`}
         >

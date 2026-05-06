@@ -262,8 +262,8 @@ describe("usersRouter", () => {
       );
     });
 
-    test("自分自身は無効化できない", async () => {
-      const { db, tx } = buildDb({
+    test("自分自身のアクセス状態は変更できない", async () => {
+      const { db, tx, transactionMock } = buildDb({
         targetUser: {
           id: "admin-001",
           role: Role.SYSTEM_ADMIN,
@@ -276,6 +276,11 @@ describe("usersRouter", () => {
         caller.updateActive({ userId: "admin-001", isActive: false }),
         "BAD_REQUEST",
       );
+      await expectTrpcErrorCode(
+        caller.updateActive({ userId: "admin-001", isActive: true }),
+        "BAD_REQUEST",
+      );
+      expect(transactionMock).not.toHaveBeenCalled();
       expect(tx.user.update).not.toHaveBeenCalled();
     });
 

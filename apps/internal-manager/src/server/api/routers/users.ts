@@ -117,10 +117,10 @@ export const usersRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (input.userId === ctx.session.user.id && !input.isActive) {
+      if (input.userId === ctx.session.user.id) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "自分自身を無効化することはできません",
+          message: "自分自身のアクセス状態は変更できません",
         });
       }
 
