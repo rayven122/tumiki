@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { Prisma, Role } from "@tumiki/internal-db";
+import {
+  Prisma,
+  Role,
+  type PrismaTransactionClient,
+} from "@tumiki/internal-db";
 import { USER_LIST_LIMIT } from "@/lib/user-management";
 import { adminProcedure, createTRPCRouter } from "@/server/api/trpc";
 
@@ -30,13 +34,7 @@ const assertCanRemoveSystemAdminAccess = async ({
   db,
   targetUserId,
 }: {
-  db: {
-    user: {
-      count: (args: {
-        where: { role: Role; isActive: boolean; id?: { not: string } };
-      }) => Promise<number>;
-    };
-  };
+  db: Pick<PrismaTransactionClient, "user">;
   targetUserId: string;
 }) => {
   const remainingActiveSystemAdmins = await db.user.count({
@@ -50,7 +48,7 @@ const assertCanRemoveSystemAdminAccess = async ({
   if (remainingActiveSystemAdmins === 0) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "最後のSYSTEM_ADMINは変更できません",
+      message: "最後の有効なオーナーは操作できません",
     });
   }
 };

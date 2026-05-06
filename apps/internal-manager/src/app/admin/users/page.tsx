@@ -49,7 +49,7 @@ const ActionTooltip = ({ id, text }: { id: string; text: string }) => (
   <span
     id={id}
     role="tooltip"
-    className="bg-bg-card border-border-default text-text-secondary pointer-events-none absolute top-1/2 right-full z-[100] mr-2 hidden w-72 -translate-y-1/2 rounded-md border px-2.5 py-2 text-left text-[11px] leading-relaxed shadow-lg group-focus-within:block group-hover:block"
+    className="bg-bg-card border-border-default text-text-secondary pointer-events-none absolute top-1/2 right-full z-[100] mr-2 w-72 -translate-y-1/2 rounded-md border px-2.5 py-2 text-left text-[11px] leading-relaxed opacity-0 shadow-lg transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
   >
     {text}
   </span>
@@ -80,6 +80,10 @@ const getUserActionErrorMessage = (error: {
 };
 
 type UserListItem = RouterOutputs["users"]["list"][number];
+type PendingRoleChange = {
+  user: UserListItem;
+  role: Role;
+} | null;
 
 const AdminUsersPage = () => {
   const { data: session } = useSession();
@@ -90,6 +94,8 @@ const AdminUsersPage = () => {
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [pendingRoleChange, setPendingRoleChange] =
+    useState<PendingRoleChange>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300);
@@ -112,6 +118,7 @@ const AdminUsersPage = () => {
   const updateRole = api.users.updateRole.useMutation({
     onSuccess: async () => {
       setErrorMessage(null);
+      setPendingRoleChange(null);
       await utils.users.list.invalidate();
     },
     onError: (error) => setErrorMessage(getUserActionErrorMessage(error)),
@@ -151,6 +158,7 @@ const AdminUsersPage = () => {
         : "Tumiki";
       const accessTooltipId = `${user.id}-access`;
       const deleteTooltipId = `${user.id}-delete`;
+      const roleLabel = ROLE_STYLES[user.role]?.label ?? user.role;
       const accessActionTooltip =
         isSelf && user.isActive
           ? "自分自身のアクセスは停止できません。別の管理者に操作してもらってください。"
@@ -189,12 +197,13 @@ const AdminUsersPage = () => {
             <select
               value={user.role}
               disabled={isMutating || isSelf}
-              onChange={(e) =>
-                updateRole.mutate({
-                  userId: user.id,
-                  role: e.target.value as Role,
-                })
-              }
+              onChange={(e) => {
+                const nextRole = e.target.value as Role;
+                if (nextRole === user.role) {
+                  return;
+                }
+                setPendingRoleChange({ user, role: nextRole });
+              }}
               className={`border-border-default bg-bg-card w-[120px] rounded-md border px-2 py-1 text-[11px] outline-none disabled:cursor-not-allowed disabled:opacity-50 ${role.text}`}
               aria-label={`${user.name ?? user.email ?? "ユーザー"}のロール`}
             >
@@ -203,6 +212,7 @@ const AdminUsersPage = () => {
               </option>
               <option value="USER">{ROLE_STYLES.USER?.label}</option>
             </select>
+            <span className="sr-only">現在のロール: {roleLabel}</span>
           </div>
           <div className="text-text-secondary text-[11px]">
             {syncSourceLabel}
@@ -214,11 +224,6 @@ const AdminUsersPage = () => {
             <span
               className="group relative inline-flex"
               tabIndex={isMutating || (isSelf && user.isActive) ? 0 : undefined}
-              aria-describedby={
-                isMutating || (isSelf && user.isActive)
-                  ? accessTooltipId
-                  : undefined
-              }
             >
               <button
                 type="button"
@@ -247,7 +252,6 @@ const AdminUsersPage = () => {
               <span
                 className="group relative inline-flex"
                 tabIndex={!canDelete ? 0 : undefined}
-                aria-describedby={!canDelete ? deleteTooltipId : undefined}
               >
                 {canDelete ? (
                   <AlertDialog>
@@ -466,6 +470,48 @@ const AdminUsersPage = () => {
                 })}
             </div>
           )}
+
+          <AlertDialog
+            open={pendingRoleChange !== null}
+            onOpenChange={(open) => {
+              if (!open) {
+                setPendingRoleChange(null);
+              }
+            }}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>ロールを変更しますか？</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {pendingRoleChange?.user.name ??
+                    pendingRoleChange?.user.email ??
+                    "ユーザー"}
+                  のロールを
+                  {pendingRoleChange
+                    ? (ROLE_STYLES[pendingRoleChange.role]?.label ??
+                      pendingRoleChange.role)
+                    : ""}
+                  に変更します。
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>キャンセル</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    if (!pendingRoleChange) {
+                      return;
+                    }
+                    updateRole.mutate({
+                      userId: pendingRoleChange.user.id,
+                      role: pendingRoleChange.role,
+                    });
+                  }}
+                >
+                  変更
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </>
       )}
     </div>
