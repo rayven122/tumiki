@@ -3,31 +3,48 @@
  * internal-manager が管理する社内 MCP カタログとツール単位ポリシー
  */
 
+/// MCP カタログの接続方式
 /// @namespace McpCatalog
 enum McpCatalogTransportType {
+  /// ローカルプロセスを標準入出力で起動して接続する
   STDIO
+  /// Server-Sent Events でリモート MCP サーバーへ接続する
   SSE
+  /// Streamable HTTP でリモート MCP サーバーへ接続する
   STREAMABLE_HTTP
 }
 
+/// MCP カタログから接続を作成する際の認証方式
 /// @namespace McpCatalog
 enum McpCatalogAuthType {
+  /// 認証不要
   NONE
+  /// API キーを credentialKeys で指定した環境変数またはヘッダーとして渡す
   API_KEY
+  /// 手動入力した token を Authorization: Bearer <token> として渡す
+  /// OAuth フローで取得する access token は OAUTH として管理し、接続時に Bearer として送出する
   BEARER
+  /// Desktop 側で OAuth フローを実行して access token を取得する
   OAUTH
 }
 
+/// MCP カタログの公開状態
 /// @namespace McpCatalog
 enum McpCatalogStatus {
+  /// Desktop API のカタログ一覧で利用可能として扱う
   ACTIVE
+  /// Desktop API では disabled として返し、追加対象から外す
   DISABLED
 }
 
+/// MCP ツールの管理者向けリスク分類
 /// @namespace McpCatalog
 enum McpToolRiskLevel {
+  /// 読み取りや参照中心の低リスクツール
   LOW
+  /// 外部サービス操作や軽微な変更を含む標準リスクツール
   MEDIUM
+  /// 書き込み、削除、権限変更など影響が大きい高リスクツール
   HIGH
 }
 
@@ -45,22 +62,41 @@ enum PolicyEffect {
   DENY
 }
 
+/// internal-manager が配布する MCP サーバーカタログ
+/// Desktop はこの定義から connectionTemplate を受け取り、ローカル MCP 接続を作成する
 /// @namespace McpCatalog
 model McpCatalog {
   id             String                  @id @default(cuid())
+  /// Desktop API 上の安定 ID として返す識別子
   slug           String                  @unique
+  /// カタログ表示名
   name           String
+  /// カタログ説明
   description    String?
+  /// 接続方式
   transportType  McpCatalogTransportType @default(STDIO)
+  /// 認証方式
   authType       McpCatalogAuthType      @default(NONE)
+  /// カタログの公開状態
   status         McpCatalogStatus        @default(ACTIVE)
+  /// Desktop で表示するアイコンパスまたは URL
   iconPath       String?
-  configTemplate Json                    @default("{}")
+  /// STDIO 接続で起動するコマンド
+  command        String?
+  /// STDIO 接続で command に渡す引数
+  args           String[]                @default([])
+  /// SSE / Streamable HTTP 接続先 URL
+  url            String?
+  /// Desktop で入力を促す credential 名
+  /// STDIO では環境変数名、SSE / Streamable HTTP ではヘッダーまたは token 入力キーとして使う
   credentialKeys String[]                @default([])
+  /// カタログを作成した internal-manager ユーザー
   createdBy      String?
   creator        User?                   @relation(fields: [createdBy], references: [id], onDelete: SetNull)
 
+  /// このカタログに属する MCP ツール定義
   tools              McpCatalogTool[]
+  /// カタログ単位の部署権限
   orgUnitPermissions OrgUnitToolPermission[]
 
   createdAt DateTime  @default(now())
@@ -71,17 +107,24 @@ model McpCatalog {
   @@index([status])
 }
 
+/// MCP カタログ内のツール定義と初期許可設定
 /// @namespace McpCatalog
 model McpCatalogTool {
   id             String           @id @default(cuid())
   catalogId      String
   catalog        McpCatalog       @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  /// MCP サーバーが公開するツール名
   name           String
+  /// ツール説明
   description    String?
+  /// ツールの入力スキーマ（JSON Schema 形式）
   inputSchema    Json             @default("{}")
+  /// 個別ポリシーがない場合に Desktop へ許可扱いで返すか
   defaultAllowed Boolean          @default(false)
+  /// 管理画面で権限判断に使うリスク分類
   riskLevel      McpToolRiskLevel @default(MEDIUM)
 
+  /// 部署別のツール許可 / 拒否設定
   orgUnitPermissions OrgUnitToolPermission[]
 
   createdAt DateTime  @default(now())

@@ -42,10 +42,9 @@ const buildCatalog = (overrides: Record<string, unknown> = {}) => ({
   status: "ACTIVE",
   transportType: "STREAMABLE_HTTP",
   authType: "OAUTH",
-  configTemplate: {
-    url: "https://api.githubcopilot.com/mcp/",
-    args: ["--stdio"],
-  },
+  command: null,
+  args: ["--stdio"],
+  url: "https://api.githubcopilot.com/mcp/",
   credentialKeys: ["GITHUB_TOKEN"],
   updatedAt: new Date("2026-05-03T10:00:00.000Z"),
   tools: [
@@ -142,12 +141,9 @@ describe("GET /api/desktop/v1/catalogs", () => {
     expect(mockVerifyDesktopJwt).toHaveBeenCalledWith("Bearer access-token");
   });
 
-  test("configTemplateがnullの場合はデフォルト値のconnectionTemplateを返す", async () => {
-    const consoleWarnSpy = vi
-      .spyOn(console, "warn")
-      .mockImplementation(() => undefined);
+  test("接続テンプレートのnullableフィールドをそのまま返す", async () => {
     mockFindCatalogs.mockResolvedValue([
-      buildCatalog({ configTemplate: null }),
+      buildCatalog({ command: "${runtime:npx}", args: [], url: null }),
     ]);
 
     const response = await GET(buildRequest());
@@ -157,17 +153,12 @@ describe("GET /api/desktop/v1/catalogs", () => {
 
     expect(body.items[0].connectionTemplate).toStrictEqual({
       transportType: "STREAMABLE_HTTP",
-      command: null,
+      command: "${runtime:npx}",
       args: [],
       url: null,
       authType: "OAUTH",
       credentialKeys: ["GITHUB_TOKEN"],
     });
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
-      "Failed to parse MCP catalog configTemplate",
-      expect.objectContaining({ catalogId: "server-github" }),
-    );
-    consoleWarnSpy.mockRestore();
   });
 
   test("権限評価はツール表示上限ではなく全ツールを対象にする", async () => {
