@@ -83,7 +83,7 @@ describe("evaluateCatalogPermissions", () => {
 
     expect(result.tools.get("tool-001")).toStrictEqual({
       allowed: false,
-      deniedReason: "org_unit_denied",
+      deniedReason: "org_unit_tool_denied",
     });
   });
 
@@ -109,7 +109,7 @@ describe("evaluateCatalogPermissions", () => {
 
     expect(result.tools.get("tool-001")).toStrictEqual({
       allowed: false,
-      deniedReason: "user_denied",
+      deniedReason: "user_catalog_denied",
     });
   });
 
@@ -195,7 +195,7 @@ describe("evaluateCatalogPermissions", () => {
 
     expect(result.tools.get("tool-001")).toStrictEqual({
       allowed: false,
-      deniedReason: "org_unit_denied",
+      deniedReason: "org_unit_tool_denied",
     });
   });
 
@@ -224,7 +224,7 @@ describe("evaluateCatalogPermissions", () => {
 
     expect(result.tools.get("tool-001")).toStrictEqual({
       allowed: false,
-      deniedReason: "group_denied",
+      deniedReason: "group_catalog_denied",
     });
     expect(result.permissions.execute).toStrictEqual(false);
   });
@@ -251,7 +251,7 @@ describe("evaluateCatalogPermissions", () => {
 
     expect(result.tools.get("tool-001")).toStrictEqual({
       allowed: false,
-      deniedReason: "org_unit_denied",
+      deniedReason: "org_unit_tool_denied",
     });
     expect(result.permissions.execute).toStrictEqual(false);
   });
@@ -291,7 +291,7 @@ describe("evaluateCatalogPermissions", () => {
 
     expect(result.tools.get("tool-001")).toStrictEqual({
       allowed: false,
-      deniedReason: "user_denied",
+      deniedReason: "user_catalog_denied",
     });
     expect(result.permissions.execute).toStrictEqual(false);
   });
@@ -317,11 +317,11 @@ describe("evaluateCatalogPermissions", () => {
 
     expect(result.tools.get("tool-001")).toStrictEqual({
       allowed: false,
-      deniedReason: "group_denied",
+      deniedReason: "group_catalog_denied",
     });
     expect(result.tools.get("tool-002")).toStrictEqual({
       allowed: false,
-      deniedReason: "group_denied",
+      deniedReason: "group_catalog_denied",
     });
     expect(result.permissions.execute).toStrictEqual(false);
   });
@@ -365,7 +365,7 @@ describe("evaluateCatalogPermissions", () => {
     });
     expect(result.tools.get("tool-denied")).toStrictEqual({
       allowed: false,
-      deniedReason: "org_unit_denied",
+      deniedReason: "org_unit_tool_denied",
     });
     expect(result.permissions.execute).toStrictEqual(true);
   });

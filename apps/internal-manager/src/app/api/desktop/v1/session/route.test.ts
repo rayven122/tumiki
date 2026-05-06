@@ -176,6 +176,7 @@ const expectedPermissions = [
   {
     source: "USER",
     scope: "CATALOG",
+    userId: "user-001",
     catalogId: "catalog-001",
     effect: PolicyEffect.ALLOW,
     reason: "Temporary support",
@@ -494,6 +495,7 @@ describe("GET /api/desktop/v1/session", () => {
         {
           source: "USER",
           scope: "TOOL",
+          userId: "user-001",
           catalogId: "catalog-001",
           toolId: "tool-001",
           effect: PolicyEffect.DENY,

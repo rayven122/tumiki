@@ -189,14 +189,34 @@ export const mcpCatalogRouter = createTRPCRouter({
         }
 
         const seenNames = new Set(input.tools.map((tool) => tool.name));
-        await tx.mcpCatalogTool.updateMany({
+        const toolsToDelete = await tx.mcpCatalogTool.findMany({
           where: {
             catalogId: input.catalogId,
             name: { notIn: [...seenNames] },
             deletedAt: null,
           },
-          data: { deletedAt: new Date() },
+          select: { id: true },
         });
+        const toolIdsToDelete = toolsToDelete.map((tool) => tool.id);
+        if (toolIdsToDelete.length > 0) {
+          await tx.mcpCatalogTool.updateMany({
+            where: {
+              id: { in: toolIdsToDelete },
+            },
+            data: { deletedAt: new Date() },
+          });
+          await Promise.all([
+            tx.orgUnitToolPermission.deleteMany({
+              where: { toolId: { in: toolIdsToDelete } },
+            }),
+            tx.groupCatalogToolPermission.deleteMany({
+              where: { toolId: { in: toolIdsToDelete } },
+            }),
+            tx.userCatalogToolPermission.deleteMany({
+              where: { toolId: { in: toolIdsToDelete } },
+            }),
+          ]);
+        }
         for (let i = 0; i < input.tools.length; i += TOOL_UPSERT_CHUNK_SIZE) {
           await Promise.all(
             input.tools.slice(i, i + TOOL_UPSERT_CHUNK_SIZE).map((tool) =>

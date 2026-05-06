@@ -409,6 +409,9 @@ WHERE (gtp."read" OR gtp."write" OR gtp."execute")
   AND catalog."deletedAt" IS NULL
 ORDER BY gtp."groupId", catalog."id";
 
+-- OrgUnitToolPermissionは既存行をそのまま保持する。
+-- カタログ単位のOrgUnitCatalogPermissionは旧モデルに相当するデータがないため、
+-- backfillせず管理画面から新規設定する運用とする。
 INSERT INTO "GroupCatalogToolPermission" ("id", "groupId", "catalogId", "toolId", "effect", "createdAt", "updatedAt")
 SELECT
   gen_random_uuid()::TEXT,

@@ -8,14 +8,17 @@ import { db } from "@tumiki/internal-db/server";
 export type PermissionBits = {
   read: boolean;
   // v1はツール実行可否だけを管理するため、レスポンス値は常にfalseにする。
-  write: boolean;
+  write: false;
   execute: boolean;
 };
 
 export type DeniedReason =
-  | "user_denied"
-  | "group_denied"
-  | "org_unit_denied"
+  | "user_catalog_denied"
+  | "user_tool_denied"
+  | "group_catalog_denied"
+  | "group_tool_denied"
+  | "org_unit_catalog_denied"
+  | "org_unit_tool_denied"
   | "not_granted"
   | "catalog_disabled";
 
@@ -193,60 +196,87 @@ export const evaluateCatalogPermissions = (
     // ユーザー個別ALLOWは未設定状態への例外であり、部署/グループDENYを上書きしない。
     // カタログ単位の権限は、そのカタログ内の全ツールに適用する。
     // ツール単位の権限はカタログ単位の権限と合算し、下の優先順で最終判定する。
-    const userEffects = [
-      ...catalogUserEffects,
-      ...tool.userPermissions
-        .filter((permission) => permission.userId === user.id)
-        .map((permission) => permission.effect),
-    ];
-    const groupEffects = [
-      ...catalogGroupEffects,
-      ...tool.groupPermissions
-        .filter((permission) => groupIds.has(permission.groupId))
-        .map((permission) => permission.effect),
-    ];
-    const orgUnitEffects = [
-      ...catalogOrgUnitEffects,
-      ...tool.orgUnitPermissions
-        .filter((permission) => orgUnitIds.has(permission.orgUnitId))
-        .map((permission) => permission.effect),
-    ];
+    const toolUserEffects = tool.userPermissions
+      .filter((permission) => permission.userId === user.id)
+      .map((permission) => permission.effect);
+    const toolGroupEffects = tool.groupPermissions
+      .filter((permission) => groupIds.has(permission.groupId))
+      .map((permission) => permission.effect);
+    const toolOrgUnitEffects = tool.orgUnitPermissions
+      .filter((permission) => orgUnitIds.has(permission.orgUnitId))
+      .map((permission) => permission.effect);
 
     // 明示DENYは安全側のガードレールとして扱うため、sourceに関わらずALLOWより優先する。
-    if (userEffects.includes(PolicyEffect.DENY)) {
+    if (catalogUserEffects.includes(PolicyEffect.DENY)) {
       return [
         tool.id,
         {
           allowed: false,
-          deniedReason: "user_denied",
+          deniedReason: "user_catalog_denied",
         },
       ] as const;
     }
-    if (groupEffects.includes(PolicyEffect.DENY)) {
+    if (toolUserEffects.includes(PolicyEffect.DENY)) {
       return [
         tool.id,
         {
           allowed: false,
-          deniedReason: "group_denied",
+          deniedReason: "user_tool_denied",
         },
       ] as const;
     }
-    if (orgUnitEffects.includes(PolicyEffect.DENY)) {
+    if (catalogGroupEffects.includes(PolicyEffect.DENY)) {
       return [
         tool.id,
         {
           allowed: false,
-          deniedReason: "org_unit_denied",
+          deniedReason: "group_catalog_denied",
         },
       ] as const;
     }
-    if (userEffects.includes(PolicyEffect.ALLOW)) {
+    if (toolGroupEffects.includes(PolicyEffect.DENY)) {
+      return [
+        tool.id,
+        {
+          allowed: false,
+          deniedReason: "group_tool_denied",
+        },
+      ] as const;
+    }
+    if (catalogOrgUnitEffects.includes(PolicyEffect.DENY)) {
+      return [
+        tool.id,
+        {
+          allowed: false,
+          deniedReason: "org_unit_catalog_denied",
+        },
+      ] as const;
+    }
+    if (toolOrgUnitEffects.includes(PolicyEffect.DENY)) {
+      return [
+        tool.id,
+        {
+          allowed: false,
+          deniedReason: "org_unit_tool_denied",
+        },
+      ] as const;
+    }
+    if (
+      catalogUserEffects.includes(PolicyEffect.ALLOW) ||
+      toolUserEffects.includes(PolicyEffect.ALLOW)
+    ) {
       return [tool.id, { allowed: true, deniedReason: null }] as const;
     }
-    if (groupEffects.includes(PolicyEffect.ALLOW)) {
+    if (
+      catalogGroupEffects.includes(PolicyEffect.ALLOW) ||
+      toolGroupEffects.includes(PolicyEffect.ALLOW)
+    ) {
       return [tool.id, { allowed: true, deniedReason: null }] as const;
     }
-    if (orgUnitEffects.includes(PolicyEffect.ALLOW)) {
+    if (
+      catalogOrgUnitEffects.includes(PolicyEffect.ALLOW) ||
+      toolOrgUnitEffects.includes(PolicyEffect.ALLOW)
+    ) {
       return [tool.id, { allowed: true, deniedReason: null }] as const;
     }
     if (tool.defaultAllowed) {

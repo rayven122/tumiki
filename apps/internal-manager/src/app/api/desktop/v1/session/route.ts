@@ -201,6 +201,7 @@ export const GET = async (request: NextRequest) => {
       catalog.userCatalogPermissions.map((permission) => ({
         source: "USER" as const,
         scope: "CATALOG" as const,
+        userId: permission.userId,
         catalogId: catalog.id,
         effect: permission.effect,
         reason: permission.reason,
@@ -212,6 +213,7 @@ export const GET = async (request: NextRequest) => {
         tool.userPermissions.map((permission) => ({
           source: "USER" as const,
           scope: "TOOL" as const,
+          userId: permission.userId,
           catalogId: catalog.id,
           toolId: tool.id,
           effect: permission.effect,
