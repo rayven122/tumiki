@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { app, BrowserWindow, powerMonitor } from "electron";
 import { createMainWindow } from "./window";
 import { initializeDb, closeDb } from "./shared/db";
@@ -37,7 +38,6 @@ import { ServerStatus } from "@prisma/desktop-client";
 import type { Prisma } from "@prisma/desktop-client";
 import * as logger from "./shared/utils/logger";
 import { ensureNodeShim } from "./runtime/path-resolver";
-import { spawnSync } from "node:child_process";
 
 // Cursor など親プロセス（Electron アプリ）が子プロセスへ ELECTRON_RUN_AS_NODE=1 を継承
 // させたケース対応。Electron が Node モードで起動すると `import { app } from "electron"` が
@@ -51,6 +51,11 @@ if (!app) {
     env: cleanEnv,
     stdio: "inherit",
   });
+  if (result.error) {
+    process.stderr.write(
+      `[tumiki-desktop] Electron 再起動に失敗しました: ${result.error.message}\n`,
+    );
+  }
   process.exit(result.status ?? 1);
 }
 
