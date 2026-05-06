@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, test, expect, vi, beforeEach } from "vitest";
 import { GroupSource, SyncStatus, SyncTrigger } from "@tumiki/internal-db";
 import { getTumikiClaims } from "../get-tumiki-claims";
 import type { PrismaTransactionClient } from "@tumiki/internal-db";
@@ -62,10 +62,6 @@ beforeEach(() => {
   mockDb.idpSyncLog.create.mockResolvedValue({});
 });
 
-afterEach(() => {
-  vi.restoreAllMocks();
-});
-
 describe("getTumikiClaims", () => {
   describe("ユーザーが存在しない場合", () => {
     test("nullを返す", async () => {
@@ -88,6 +84,7 @@ describe("getTumikiClaims", () => {
         "[getTumikiClaims] user.findUnique failed:",
         error,
       );
+      consoleError.mockRestore();
     });
 
     test("無効化されたユーザーはnullを返す", async () => {

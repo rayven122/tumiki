@@ -260,6 +260,9 @@ export const usersRouter = createTRPCRouter({
             });
           }
 
+          // deleteUser はアクセス停止中ユーザーだけを削除対象にする。
+          // そのうえで SYSTEM_ADMIN レコードを削除するときは、DB が不整合な状態でも
+          // 有効なオーナーを完全に失う操作にならないことを確認する。
           if (targetUser.role === Role.SYSTEM_ADMIN) {
             await assertCanRemoveSystemAdminAccess({
               db: tx,

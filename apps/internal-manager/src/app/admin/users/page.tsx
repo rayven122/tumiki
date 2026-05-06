@@ -150,9 +150,11 @@ const AdminUsersPage = () => {
 
     return sectionUsers.map((user) => {
       const role = ROLE_STYLES[user.role] ?? DEFAULT_ROLE_STYLE;
-      const isSelf =
-        sessionStatus !== "authenticated" || user.id === session?.user?.id;
+      const isSessionReady = sessionStatus === "authenticated";
+      const isSelf = isSessionReady && user.id === session?.user?.id;
       const canDelete = !user.isActive && user._count.externalIdentities === 0;
+      const isAccessActionDisabled =
+        isMutating || !isSessionReady || (isSelf && user.isActive);
       const syncSource = user.externalIdentities[0]?.provider;
       const syncSourceLabel = syncSource
         ? (SYNC_SOURCE_LABELS[syncSource.toLowerCase()] ?? syncSource)
@@ -160,8 +162,9 @@ const AdminUsersPage = () => {
       const accessTooltipId = `${user.id}-access`;
       const deleteTooltipId = `${user.id}-delete`;
       const roleLabel = ROLE_STYLES[user.role]?.label ?? user.role;
-      const accessActionTooltip =
-        isSelf && user.isActive
+      const accessActionTooltip = !isSessionReady
+        ? "セッション確認中です。確認後に操作できます。"
+        : isSelf && user.isActive
           ? "自分自身のアクセスは停止できません。別の管理者に操作してもらってください。"
           : user.isActive
             ? "このユーザーの internal-manager と Tumiki Desktop の利用を停止します。IdP 側のユーザーは削除されません。"
@@ -197,7 +200,7 @@ const AdminUsersPage = () => {
             <ShieldCheck size={13} className={role.text} />
             <select
               value={user.role}
-              disabled={isMutating || isSelf}
+              disabled={isMutating || !isSessionReady || isSelf}
               onChange={(e) => {
                 const nextRole = e.target.value as Role;
                 if (nextRole === user.role) {
@@ -224,11 +227,11 @@ const AdminUsersPage = () => {
           <div className="flex justify-end gap-1.5">
             <span
               className="group relative inline-flex"
-              tabIndex={isMutating || (isSelf && user.isActive) ? 0 : undefined}
+              tabIndex={isAccessActionDisabled ? 0 : undefined}
             >
               <button
                 type="button"
-                disabled={isMutating || (isSelf && user.isActive)}
+                disabled={isAccessActionDisabled}
                 onClick={() =>
                   updateActive.mutate({
                     userId: user.id,
