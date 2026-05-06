@@ -141,12 +141,41 @@ ALTER TABLE "UserCatalogToolPermission" ADD CONSTRAINT "UserCatalogToolPermissio
 ALTER TABLE "UserCatalogToolPermission" ADD CONSTRAINT "UserCatalogToolPermission_catalogId_fkey" FOREIGN KEY ("catalogId") REFERENCES "McpCatalog"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "UserCatalogToolPermission" ADD CONSTRAINT "UserCatalogToolPermission_toolId_fkey" FOREIGN KEY ("toolId") REFERENCES "McpCatalogTool"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
+CREATE OR REPLACE FUNCTION "check_mcp_catalog_tool_permission_catalog"()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM "McpCatalogTool" tool
+    WHERE tool."id" = NEW."toolId"
+      AND tool."catalogId" = NEW."catalogId"
+  ) THEN
+    RAISE EXCEPTION 'MCP tool permission catalogId (%) does not match toolId (%)', NEW."catalogId", NEW."toolId";
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER "OrgUnitToolPermission_catalog_match"
+BEFORE INSERT OR UPDATE OF "catalogId", "toolId" ON "OrgUnitToolPermission"
+FOR EACH ROW EXECUTE FUNCTION "check_mcp_catalog_tool_permission_catalog"();
+
+CREATE TRIGGER "GroupCatalogToolPermission_catalog_match"
+BEFORE INSERT OR UPDATE OF "catalogId", "toolId" ON "GroupCatalogToolPermission"
+FOR EACH ROW EXECUTE FUNCTION "check_mcp_catalog_tool_permission_catalog"();
+
+CREATE TRIGGER "UserCatalogToolPermission_catalog_match"
+BEFORE INSERT OR UPDATE OF "catalogId", "toolId" ON "UserCatalogToolPermission"
+FOR EACH ROW EXECUTE FUNCTION "check_mcp_catalog_tool_permission_catalog"();
+
 DO $$
 DECLARE
   unmatched_group_server_count INTEGER;
   unmatched_individual_server_count INTEGER;
   ambiguous_group_server_count INTEGER;
   ambiguous_individual_server_count INTEGER;
+  unmatched_group_tool_count INTEGER;
+  unmatched_user_tool_count INTEGER;
 BEGIN
   SELECT COUNT(*) INTO unmatched_group_server_count
   FROM "GroupToolPermission" gtp
@@ -202,6 +231,30 @@ BEGIN
 
   IF ambiguous_individual_server_count > 0 THEN
     RAISE EXCEPTION 'Cannot migrate approved IndividualPermission rows because % mcpServerId values match multiple McpCatalog rows by id/slug', ambiguous_individual_server_count;
+  END IF;
+
+  SELECT COUNT(*) INTO unmatched_group_tool_count
+  FROM "GroupMcpToolPermission" gmtp
+  WHERE NOT EXISTS (
+    SELECT 1
+    FROM "McpCatalogTool" tool
+    WHERE tool."id" = gmtp."mcpToolId"
+  );
+
+  IF unmatched_group_tool_count > 0 THEN
+    RAISE EXCEPTION 'Cannot migrate % GroupMcpToolPermission rows because mcpToolId does not match McpCatalogTool.id', unmatched_group_tool_count;
+  END IF;
+
+  SELECT COUNT(*) INTO unmatched_user_tool_count
+  FROM "UserMcpToolPermission" umtp
+  WHERE NOT EXISTS (
+    SELECT 1
+    FROM "McpCatalogTool" tool
+    WHERE tool."id" = umtp."mcpToolId"
+  );
+
+  IF unmatched_user_tool_count > 0 THEN
+    RAISE EXCEPTION 'Cannot migrate % UserMcpToolPermission rows because mcpToolId does not match McpCatalogTool.id', unmatched_user_tool_count;
   END IF;
 END $$;
 

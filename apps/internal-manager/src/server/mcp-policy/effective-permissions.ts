@@ -103,19 +103,54 @@ export const getPolicyOrgUnitsForMemberships = async (
 ) => {
   if (memberships.length === 0) return [];
 
-  const orgUnits = await client.orgUnit.findMany({
-    select: { id: true, parentId: true, updatedAt: true },
-    orderBy: { id: "asc" },
-    take: POLICY_CONTEXT_ORG_UNIT_LIMIT + 1,
-  });
-  if (orgUnits.length > POLICY_CONTEXT_ORG_UNIT_LIMIT) {
-    throw new Error(
-      `OrgUnit count exceeded the policy context limit (${POLICY_CONTEXT_ORG_UNIT_LIMIT}); refusing incomplete MCP policy evaluation.`,
+  const orgUnitsById = new Map(
+    memberships.map((membership) => [
+      membership.orgUnit.id,
+      {
+        id: membership.orgUnit.id,
+        parentId: membership.orgUnit.parentId,
+        updatedAt: membership.orgUnit.updatedAt,
+      },
+    ]),
+  );
+  const pendingParentIds = new Set(
+    memberships
+      .map((membership) => membership.orgUnit.parentId)
+      .filter((parentId): parentId is string => parentId !== null),
+  );
+
+  while (pendingParentIds.size > 0) {
+    const parentIds = [...pendingParentIds].filter(
+      (parentId) => !orgUnitsById.has(parentId),
     );
+    pendingParentIds.clear();
+    if (parentIds.length === 0) break;
+
+    if (orgUnitsById.size + parentIds.length > POLICY_CONTEXT_ORG_UNIT_LIMIT) {
+      throw new Error(
+        `OrgUnit ancestor count exceeded the policy context limit (${POLICY_CONTEXT_ORG_UNIT_LIMIT}); refusing incomplete MCP policy evaluation.`,
+      );
+    }
+
+    const parents = await client.orgUnit.findMany({
+      where: { id: { in: parentIds } },
+      select: { id: true, parentId: true, updatedAt: true },
+    });
+    for (const parent of parents) {
+      if (orgUnitsById.has(parent.id)) continue;
+      orgUnitsById.set(parent.id, parent);
+      if (orgUnitsById.size > POLICY_CONTEXT_ORG_UNIT_LIMIT) {
+        throw new Error(
+          `OrgUnit ancestor count exceeded the policy context limit (${POLICY_CONTEXT_ORG_UNIT_LIMIT}); refusing incomplete MCP policy evaluation.`,
+        );
+      }
+      if (parent.parentId && !orgUnitsById.has(parent.parentId)) {
+        pendingParentIds.add(parent.parentId);
+      }
+    }
   }
 
-  const orgUnitIds = collectPolicyOrgUnitIds(memberships, orgUnits);
-  return orgUnits.filter((unit) => orgUnitIds.has(unit.id));
+  return [...orgUnitsById.values()];
 };
 
 export const evaluateCatalogPermissions = (
@@ -142,6 +177,8 @@ export const evaluateCatalogPermissions = (
     .map((permission) => permission.effect);
 
   const tools = catalog.tools.map((tool) => {
+    // 優先順: DENY(user > group > orgUnit) > ALLOW(user > group > orgUnit) > defaultAllowed。
+    // ユーザー個別ALLOWは未設定状態への例外であり、部署/グループDENYを上書きしない。
     // カタログ単位の権限は、そのカタログ内の全ツールに適用する。
     // ツール単位の権限はカタログ単位の権限と合算し、下の優先順で最終判定する。
     const userEffects = [
@@ -164,7 +201,6 @@ export const evaluateCatalogPermissions = (
     ];
 
     // 明示DENYは安全側のガードレールとして扱うため、sourceに関わらずALLOWより優先する。
-    // ユーザー個別ALLOWは未設定状態への例外であり、部署/グループDENYの解除には使わない。
     if (userEffects.includes(PolicyEffect.DENY)) {
       return [
         tool.id,
