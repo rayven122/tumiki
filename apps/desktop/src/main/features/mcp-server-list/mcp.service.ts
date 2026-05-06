@@ -10,7 +10,6 @@ import {
   VIRTUAL_SERVER_MAX_CONNECTIONS,
 } from "../../../shared/mcp.constants";
 import { encryptToken } from "../../utils/encryption";
-import { decryptCredentials } from "../../utils/credentials";
 import type {
   CreateFromCatalogInput,
   CreateFromManagerCatalogInput,
@@ -453,37 +452,31 @@ export const getToolsForConnections = async (
   return { items };
 };
 
-// IPC 戻り値は従来どおり復号後 credentials を含める（McpSecret 経由で取得）
-// 内部キー（secretId, secret, _count）は明示的に除外し、フィールドが増えても漏れない構成にする
+// 内部キー（secretId, _count）は明示的に除外し、フィールドが増えても漏れない構成にする
 export const getAllServers = async () => {
   const db = await getDb();
   const servers = await mcpRepository.findAllWithConnections(db);
-  return Promise.all(
-    servers.map(async (server) => ({
-      ...server,
-      connections: await Promise.all(
-        server.connections.map(async (conn) => ({
-          id: conn.id,
-          name: conn.name,
-          slug: conn.slug,
-          transportType: conn.transportType,
-          command: conn.command,
-          args: conn.args,
-          url: conn.url,
-          authType: conn.authType,
-          isEnabled: conn.isEnabled,
-          displayOrder: conn.displayOrder,
-          serverId: conn.serverId,
-          catalogId: conn.catalogId,
-          createdAt: conn.createdAt,
-          updatedAt: conn.updatedAt,
-          catalog: conn.catalog,
-          credentials: await decryptCredentials(conn.secret.credentials),
-          toolCount: conn._count.tools,
-        })),
-      ),
+  return servers.map((server) => ({
+    ...server,
+    connections: server.connections.map((conn) => ({
+      id: conn.id,
+      name: conn.name,
+      slug: conn.slug,
+      transportType: conn.transportType,
+      command: conn.command,
+      args: conn.args,
+      url: conn.url,
+      authType: conn.authType,
+      isEnabled: conn.isEnabled,
+      displayOrder: conn.displayOrder,
+      serverId: conn.serverId,
+      catalogId: conn.catalogId,
+      createdAt: conn.createdAt,
+      updatedAt: conn.updatedAt,
+      catalog: conn.catalog,
+      toolCount: conn._count.tools,
     })),
-  );
+  }));
 };
 
 /**

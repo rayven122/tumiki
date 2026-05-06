@@ -41,6 +41,7 @@ export type CreateMcpToolInput = {
 };
 
 // 一覧表示の負荷削減のため、ツール本体はロードせず `_count.tools` で件数のみ取得する。
+// credentials は renderer に返さないため secret は include しない。
 export const findAllWithConnections = async (db: DbClient) => {
   return db.mcpServer.findMany({
     include: {
@@ -48,9 +49,6 @@ export const findAllWithConnections = async (db: DbClient) => {
         include: {
           catalog: {
             select: { id: true, name: true, description: true, iconPath: true },
-          },
-          secret: {
-            select: { credentials: true },
           },
           _count: {
             select: { tools: true },

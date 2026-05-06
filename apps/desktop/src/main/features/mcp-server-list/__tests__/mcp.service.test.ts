@@ -1301,49 +1301,7 @@ describe("mcp.service", () => {
       expect(mcpRepository.findAllWithConnections).toHaveBeenCalledWith(mockDb);
     });
 
-    test("McpSecret 経由の暗号化済み credentials を復号して返す", async () => {
-      const mockServers = [
-        {
-          id: 1,
-          name: "Server A",
-          connections: [
-            {
-              id: 1,
-              secret: { credentials: "safe:encrypted-data" },
-              _count: { tools: 0 },
-            },
-            {
-              id: 2,
-              secret: { credentials: "fallback:encrypted-data" },
-              _count: { tools: 0 },
-            },
-          ],
-        },
-      ];
-      vi.mocked(mcpRepository.findAllWithConnections).mockResolvedValue(
-        mockServers as unknown as Awaited<
-          ReturnType<typeof mcpRepository.findAllWithConnections>
-        >,
-      );
-      vi.mocked(decryptCredentials).mockResolvedValue(
-        '{"API_KEY":"decrypted"}',
-      );
-
-      const result = await mcpService.getAllServers();
-
-      expect(decryptCredentials).toHaveBeenCalledTimes(2);
-      expect(result[0]?.connections[0]?.credentials).toBe(
-        '{"API_KEY":"decrypted"}',
-      );
-      expect(result[0]?.connections[1]?.credentials).toBe(
-        '{"API_KEY":"decrypted"}',
-      );
-      // secret / secretId は内部キーのため IPC 戻り値から除去される
-      expect(result[0]?.connections[0]).not.toHaveProperty("secret");
-      expect(result[0]?.connections[0]).not.toHaveProperty("secretId");
-    });
-
-    test("secretId は IPC 戻り値に含めない（内部キーは renderer に公開しない）", async () => {
+    test("credentials / secretId は IPC 戻り値に含めない（内部キーは renderer に公開しない）", async () => {
       const mockServers = [
         {
           id: 1,
@@ -1352,7 +1310,6 @@ describe("mcp.service", () => {
             {
               id: 10,
               secretId: 99,
-              secret: { credentials: "safe:abc" },
               _count: { tools: 0 },
             },
           ],
@@ -1363,38 +1320,13 @@ describe("mcp.service", () => {
           ReturnType<typeof mcpRepository.findAllWithConnections>
         >,
       );
-      vi.mocked(decryptCredentials).mockResolvedValue("{}");
 
       const result = await mcpService.getAllServers();
 
       expect(result[0]?.connections[0]).not.toHaveProperty("secretId");
-    });
-
-    test("平文の既存credentialsはそのまま返す（マイグレーション互換）", async () => {
-      const plainCredentials = '{"API_KEY":"plain-text-key"}';
-      const mockServers = [
-        {
-          id: 1,
-          name: "Server A",
-          connections: [
-            {
-              id: 1,
-              secret: { credentials: plainCredentials },
-              _count: { tools: 0 },
-            },
-          ],
-        },
-      ];
-      vi.mocked(mcpRepository.findAllWithConnections).mockResolvedValue(
-        mockServers as unknown as Awaited<
-          ReturnType<typeof mcpRepository.findAllWithConnections>
-        >,
-      );
-      vi.mocked(decryptCredentials).mockImplementation(async (v) => v);
-
-      const result = await mcpService.getAllServers();
-
-      expect(result[0]?.connections[0]?.credentials).toBe(plainCredentials);
+      expect(result[0]?.connections[0]).not.toHaveProperty("credentials");
+      // 復号はそもそも呼ばれない（secret を include していないため）
+      expect(decryptCredentials).not.toHaveBeenCalled();
     });
 
     test("Prisma の _count.tools を toolCount に平坦化する（_count は除去される）", async () => {
@@ -1403,16 +1335,8 @@ describe("mcp.service", () => {
           id: 1,
           name: "Server A",
           connections: [
-            {
-              id: 10,
-              secret: { credentials: "{}" },
-              _count: { tools: 3 },
-            },
-            {
-              id: 11,
-              secret: { credentials: "{}" },
-              _count: { tools: 0 },
-            },
+            { id: 10, _count: { tools: 3 } },
+            { id: 11, _count: { tools: 0 } },
           ],
         },
       ];

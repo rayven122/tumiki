@@ -22,7 +22,8 @@ export type McpServerItem = Omit<McpServer, "createdAt" | "updatedAt"> & {
 /**
  * MCP接続情報型（IPC通信用）
  * Prisma型を起点に、Date→stringへ変換 + catalog を付与
- * `secretId` は内部キーのため renderer に公開しない
+ * `secretId` は内部キーのため renderer に公開しない。
+ * credentials は IPC 戻り値に含めない（入力時のフォーム以外で renderer に渡す要件はないため）
  */
 export type McpConnectionItem = Omit<
   McpConnection,
