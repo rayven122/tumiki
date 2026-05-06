@@ -48,17 +48,23 @@ enum McpToolRiskLevel {
   HIGH
 }
 
+/// 部署情報の取得元
 /// @namespace McpCatalog
 enum OrgUnitSource {
+  /// SCIM の department / organization 情報から同期した部署
   SCIM
   /// SCIM department がない IdP 向けに、SCIM Group から部署候補を作る将来拡張用。
   GROUP
+  /// internal-manager 上で手動作成した部署
   MANUAL
 }
 
+/// 部署単位のツール権限効果
 /// @namespace McpCatalog
 enum PolicyEffect {
+  /// 対象部署にツール利用を許可する
   ALLOW
+  /// 対象部署にツール利用を拒否する
   DENY
 }
 
@@ -67,36 +73,21 @@ enum PolicyEffect {
 /// @namespace McpCatalog
 model McpCatalog {
   id             String                  @id @default(cuid())
-  /// Desktop API 上の安定 ID として返す識別子
   slug           String                  @unique
-  /// カタログ表示名
   name           String
-  /// カタログ説明
   description    String?
-  /// 接続方式
   transportType  McpCatalogTransportType @default(STDIO)
-  /// 認証方式
   authType       McpCatalogAuthType      @default(NONE)
-  /// カタログの公開状態
   status         McpCatalogStatus        @default(ACTIVE)
-  /// Desktop で表示するアイコンパスまたは URL
   iconPath       String?
-  /// STDIO 接続で起動するコマンド
   command        String?
-  /// STDIO 接続で command に渡す引数
   args           String[]                @default([])
-  /// SSE / Streamable HTTP 接続先 URL
   url            String?
-  /// Desktop で入力を促す credential 名
-  /// STDIO では環境変数名、SSE / Streamable HTTP ではヘッダーまたは token 入力キーとして使う
   credentialKeys String[]                @default([])
-  /// カタログを作成した internal-manager ユーザー
   createdBy      String?
   creator        User?                   @relation(fields: [createdBy], references: [id], onDelete: SetNull)
 
-  /// このカタログに属する MCP ツール定義
   tools              McpCatalogTool[]
-  /// カタログ単位の部署権限
   orgUnitPermissions OrgUnitToolPermission[]
 
   createdAt DateTime  @default(now())
@@ -113,18 +104,12 @@ model McpCatalogTool {
   id             String           @id @default(cuid())
   catalogId      String
   catalog        McpCatalog       @relation(fields: [catalogId], references: [id], onDelete: Cascade)
-  /// MCP サーバーが公開するツール名
   name           String
-  /// ツール説明
   description    String?
-  /// ツールの入力スキーマ（JSON Schema 形式）
   inputSchema    Json             @default("{}")
-  /// 個別ポリシーがない場合に Desktop へ許可扱いで返すか
   defaultAllowed Boolean          @default(false)
-  /// 管理画面で権限判断に使うリスク分類
   riskLevel      McpToolRiskLevel @default(MEDIUM)
 
-  /// 部署別のツール許可 / 拒否設定
   orgUnitPermissions OrgUnitToolPermission[]
 
   createdAt DateTime  @default(now())
@@ -135,11 +120,12 @@ model McpCatalogTool {
   @@index([deletedAt])
 }
 
+/// SCIM / IdP / 手動管理から得た組織部署
+/// MCP カタログ・ツールの許可範囲を部署単位で評価するために使う
 /// @namespace McpCatalog
 model OrgUnit {
   id           String        @id @default(cuid())
   name         String
-  /// SCIM/GROUP では外部識別子、MANUAL では作成API側で生成する安定識別子を入れる。
   externalId   String
   source       OrgUnitSource @default(SCIM)
   path         String
@@ -159,6 +145,8 @@ model OrgUnit {
   @@index([path])
 }
 
+/// ユーザーと部署の所属関係
+/// Desktop API の権限評価で、ユーザーがどの部署ポリシーを受けるかを決める
 /// @namespace McpCatalog
 model UserOrgUnitMembership {
   id        String  @id @default(cuid())
@@ -175,12 +163,13 @@ model UserOrgUnitMembership {
   @@index([orgUnitId])
 }
 
+/// 部署ごとの MCP ツール許可 / 拒否ポリシー
+/// カタログ単位の絞り込みとツール単位の判定を効率化するため catalogId と toolId を保持する
 /// @namespace McpCatalog
 model OrgUnitToolPermission {
   id        String         @id @default(cuid())
   orgUnitId String
   orgUnit   OrgUnit        @relation(fields: [orgUnitId], references: [id], onDelete: Cascade)
-  /// 権限マトリクス取得時のcatalog単位絞り込み用に非正規化して保持する。
   catalogId String
   catalog   McpCatalog     @relation(fields: [catalogId], references: [id], onDelete: Cascade)
   toolId    String
