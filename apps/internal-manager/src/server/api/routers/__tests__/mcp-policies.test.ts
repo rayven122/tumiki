@@ -71,12 +71,18 @@ type MatrixCatalogFindManyArgs = {
 type EffectiveCatalogFindManyArgs = {
   include: {
     userCatalogPermissions: {
-      where: { OR: [{ expiresAt: null }, { expiresAt: { gt: Date } }] };
+      where: {
+        userId: string;
+        OR: [{ expiresAt: null }, { expiresAt: { gt: Date } }];
+      };
     };
     tools: {
       include: {
         userPermissions: {
-          where: { OR: [{ expiresAt: null }, { expiresAt: { gt: Date } }] };
+          where: {
+            userId: string;
+            OR: [{ expiresAt: null }, { expiresAt: { gt: Date } }];
+          };
         };
       };
     };
@@ -176,6 +182,12 @@ describe("mcpPoliciesRouter", () => {
       findManyArgs.include.tools.include.userPermissions.where.OR[1].expiresAt
         .gt;
     expect(toolNow).toBe(catalogNow);
+    expect(findManyArgs.include.userCatalogPermissions.where.userId).toBe(
+      "user-001",
+    );
+    expect(
+      findManyArgs.include.tools.include.userPermissions.where.userId,
+    ).toBe("user-001");
   });
 
   test.each([

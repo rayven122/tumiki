@@ -216,6 +216,7 @@ export const mcpPoliciesRouter = createTRPCRouter({
             groupCatalogPermissions: true,
             userCatalogPermissions: {
               where: {
+                userId: input.userId,
                 OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
               },
             },
@@ -226,6 +227,7 @@ export const mcpPoliciesRouter = createTRPCRouter({
                 groupPermissions: true,
                 userPermissions: {
                   where: {
+                    userId: input.userId,
                     OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
                   },
                 },
