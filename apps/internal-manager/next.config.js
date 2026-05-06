@@ -12,7 +12,9 @@ const config = {
   // saml-jackson 内部の Function 動的 import 経由でしか参照されないため明示的に含める必要がある。
   // pnpm の仮想ストア構造をそのまま include する。
   outputFileTracingIncludes: {
-    "*": ["../../node_modules/.pnpm/openid-client@*/node_modules/openid-client/**/*"],
+    "*": [
+      "../../node_modules/.pnpm/openid-client@*/node_modules/openid-client/**/*",
+    ],
   },
   // Docker ビルド時にテスト関連ファイルを除外した tsconfig.build.json を使用
   typescript: {
