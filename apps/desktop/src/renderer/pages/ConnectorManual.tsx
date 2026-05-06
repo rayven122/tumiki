@@ -33,7 +33,7 @@ const flattenSelectableConnectors = (
   servers
     .filter((server) => server.serverType === "OFFICIAL" && server.isEnabled)
     .flatMap((server) => {
-      // 公式コネクタは1接続前提だが、防御として最初の有効な接続のみを採用する
+      // 公式コネクタは1接続前提だが、複数接続の防御として最初の接続が有効な場合のみ採用する
       const connection = server.connections[0];
       if (!connection) return [];
       // 接続自体が無効化されている場合は除外

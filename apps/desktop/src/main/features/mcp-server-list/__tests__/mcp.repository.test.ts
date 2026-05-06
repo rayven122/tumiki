@@ -403,6 +403,24 @@ describe("mcp.repository（実DB）", () => {
       expect(result).toHaveLength(1);
       expect(result[0]!.id).toBe(connection.id);
     });
+
+    test("server.serverType が取得される（仮想MCP再ネスト判定で参照されるため）", async () => {
+      const server = await mcpRepository.createServer(db, {
+        ...serverData,
+        slug: "virtual-server",
+        serverType: "CUSTOM",
+      });
+      const connection = await mcpRepository.createConnection(
+        db,
+        buildConnectionData(server.id),
+      );
+
+      const result = await mcpRepository.findConnectionsByIdsWithTools(db, [
+        connection.id,
+      ]);
+
+      expect(result[0]!.server.serverType).toBe("CUSTOM");
+    });
   });
 
   describe("toggleServerEnabled", () => {
