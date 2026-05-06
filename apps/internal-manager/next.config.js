@@ -8,6 +8,12 @@ const config = {
   // Next.js のバンドルトレースに引っかからず standalone 出力から漏れる。
   // serverExternalPackages 指定で外部パッケージ扱いとし、standalone の node_modules にコピーさせる。
   serverExternalPackages: ["@boxyhq/saml-jackson", "jose", "openid-client"],
+  // jose は src/lib/auth で直接 import されているため NFT が拾うが、openid-client は
+  // saml-jackson 内部の Function 動的 import 経由でしか参照されないため明示的に含める必要がある。
+  // pnpm の仮想ストア構造をそのまま include する。
+  outputFileTracingIncludes: {
+    "*": ["../../node_modules/.pnpm/openid-client@*/node_modules/openid-client/**/*"],
+  },
   // Docker ビルド時にテスト関連ファイルを除外した tsconfig.build.json を使用
   typescript: {
     tsconfigPath: "./tsconfig.build.json",
