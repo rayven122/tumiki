@@ -222,6 +222,21 @@ export const updateIsPiiMaskingEnabled = async (
 };
 
 /**
+ * サーバーのTOON変換（レスポンス圧縮）有効状態を切り替え
+ * 反映は次回プロキシ起動時（再起動必要）
+ */
+export const updateIsToonConversionEnabled = async (
+  db: DbClient,
+  id: number,
+  enabled: boolean,
+) => {
+  return db.mcpServer.update({
+    where: { id },
+    data: { isToonConversionEnabled: enabled },
+  });
+};
+
+/**
  * サーバーの稼働状態を更新（CLIモードからのステータス同期用）
  */
 export const updateServerStatus = async (

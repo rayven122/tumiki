@@ -449,6 +449,18 @@ export const updateIsPiiMaskingEnabled = async (
 };
 
 /**
+ * サーバーのTOON変換（レスポンス圧縮）有効状態を更新
+ * UI トグル → DB 永続化のみ。実プロキシへは次回 spawn 時に DB から読み込まれて反映される。
+ */
+export const updateIsToonConversionEnabled = async (
+  id: number,
+  enabled: boolean,
+) => {
+  const db = await getDb();
+  return mcpRepository.updateIsToonConversionEnabled(db, id, enabled);
+};
+
+/**
  * サーバーの稼働状態を更新（CLIモードからのステータス同期用）
  */
 export const updateServerStatus = async (

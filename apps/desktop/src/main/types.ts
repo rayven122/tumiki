@@ -15,6 +15,7 @@ export type {
   DeleteServerInput,
   ToggleServerInput,
   UpdatePiiMaskingInput,
+  UpdateToonConversionInput,
 } from "./features/mcp-server-list/mcp.types";
 
 // OAuth feature

@@ -103,6 +103,15 @@ export type UpdatePiiMaskingInput = {
 };
 
 /**
+ * TOON変換（レスポンス圧縮）有効状態の更新入力型（renderer → main）
+ * 反映は次回プロキシ起動時。即時反映はしない。
+ */
+export type UpdateToonConversionInput = {
+  serverId: number;
+  enabled: boolean;
+};
+
+/**
  * STDIO通信のカスタムMCPサーバー入力型
  * OAuthは不可（ローカルプロセスのため）
  */

@@ -238,11 +238,23 @@ if (isMcpProxyMode) {
         );
       }
 
+      // TOON 変換: --server <slug> 指定時のみ DB の McpServer.isToonConversionEnabled を反映する。
+      // ⚠️ --server 省略時（全サーバー集約モード）はサーバーが特定できないため、UI のトグルが ON でも常に OFF になる。
+      // この制限は ToolDetail.tsx の圧縮トグルツールチップにも明記しているが、UI からの切替が反映されないことに注意。
+      const enableToonConversion =
+        serverRecord?.isToonConversionEnabled ?? false;
+      if (enableToonConversion) {
+        process.stderr.write(
+          `[tumiki-mcp-proxy] レスポンス圧縮（TOON 変換）が有効です (server="${serverSlug}")\n`,
+        );
+      }
+
       await mod.runMcpProxy(configs, {
         onToolCall,
         onStatusChange,
         resolveAllowedTools,
         disableDefaultFilter,
+        enableToonConversion,
         onShutdown: async () => {
           await stopAuditLogManagerSyncScheduler();
           await resetAllServerStatus().catch(() => {});

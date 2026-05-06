@@ -42,6 +42,9 @@ export { startStdioInbound } from "./inbound/stdio-inbound.js";
 // Logger
 export { stderrLogger } from "./stderr-logger.js";
 
+// TOON (Token-Oriented Object Notation) 変換
+export { applyToonConversion } from "./toon/toonConverter.js";
+
 // PII マスキングフィルタ
 export { createRedactionFilter } from "./security/redaction-filter.js";
 export type {

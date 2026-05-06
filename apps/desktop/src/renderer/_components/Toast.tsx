@@ -1,17 +1,20 @@
 import type { JSX } from "react";
 import { toast as sonnerToast } from "sonner";
-import { CheckCircle, AlertCircle } from "lucide-react";
+import { CheckCircle, AlertCircle, AlertTriangle } from "lucide-react";
 
-const iconsByType: Record<"success" | "error", JSX.Element> = {
+const iconsByType: Record<"success" | "error" | "warning", JSX.Element> = {
   success: (
     <CheckCircle size={16} style={{ color: "var(--badge-success-text)" }} />
   ),
   error: <AlertCircle size={16} style={{ color: "var(--badge-error-text)" }} />,
+  warning: (
+    <AlertTriangle size={16} style={{ color: "var(--badge-warn-text)" }} />
+  ),
 };
 
 type ToastProps = {
   id: string | number;
-  type: "success" | "error";
+  type: "success" | "error" | "warning";
   description: string;
 };
 
@@ -42,5 +45,9 @@ export const toast = {
   error: (description: string) =>
     sonnerToast.custom((id) => (
       <Toast id={id} type="error" description={description} />
+    )),
+  warning: (description: string) =>
+    sonnerToast.custom((id) => (
+      <Toast id={id} type="warning" description={description} />
     )),
 };

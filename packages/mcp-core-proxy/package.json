@@ -24,6 +24,7 @@
   "dependencies": {
     "@iarna/toml": "^2.2.5",
     "@modelcontextprotocol/sdk": "^1.26.0",
+    "@toon-format/toon": "^2.1.0",
     "openredaction": "^1.1.2"
   },
   "devDependencies": {
