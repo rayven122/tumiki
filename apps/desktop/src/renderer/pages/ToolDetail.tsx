@@ -631,7 +631,7 @@ export const ToolDetail = (): JSX.Element => {
                   />
                 </div>
                 <div
-                  title="レスポンスを TOON 形式へ変換しトークン使用量を削減します（再起動後に反映）"
+                  title="レスポンスを TOON 形式へ変換しトークン使用量を削減します（再起動後に反映 / 単体サーバー起動時のみ有効）"
                   className="flex items-center justify-between gap-2 rounded-lg bg-[var(--bg-card-hover)] px-3 py-2"
                 >
                   <div className="flex min-w-0 items-center gap-2">

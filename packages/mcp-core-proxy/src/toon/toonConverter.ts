@@ -28,6 +28,18 @@ const encodeText = (text: string): string => {
   return encode(parsed);
 };
 
+// CallToolResult.content[] が text タイプかどうかを判定する型ガード
+// content は MCP SDK 都合で unknown[] 型のため、ここで text タイプに絞り込む
+type TextContentItem = { type: "text"; text: string } & Record<string, unknown>;
+
+const isTextContent = (item: unknown): item is TextContentItem =>
+  typeof item === "object" &&
+  item !== null &&
+  "type" in item &&
+  (item as { type: unknown }).type === "text" &&
+  "text" in item &&
+  typeof (item as { text: unknown }).text === "string";
+
 /**
  * CallToolResult.content[].text を TOON 形式に変換する
  *
@@ -38,22 +50,11 @@ const encodeText = (text: string): string => {
 export const applyToonConversion = (result: CallToolResult): CallToolResult => {
   try {
     const convertedContent = result.content.map((item) => {
-      if (
-        typeof item !== "object" ||
-        item === null ||
-        !("type" in item) ||
-        (item as { type: unknown }).type !== "text" ||
-        !("text" in item) ||
-        typeof (item as { text: unknown }).text !== "string"
-      ) {
+      if (!isTextContent(item)) {
         return item;
       }
 
-      const textItem = item as { type: "text"; text: string } & Record<
-        string,
-        unknown
-      >;
-      const original = textItem.text;
+      const original = item.text;
       const encoded = encodeText(original);
 
       // 圧縮効率が悪い（同じか膨張する）場合は元の text を維持する
@@ -61,7 +62,7 @@ export const applyToonConversion = (result: CallToolResult): CallToolResult => {
         return item;
       }
 
-      return { ...textItem, text: encoded };
+      return { ...item, text: encoded };
     });
 
     return {

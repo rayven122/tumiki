@@ -120,7 +120,8 @@ export const startStdioInbound = async (
       }
 
       // TOON 変換: マスキング復号後に適用することで、マスクトークンが TOON 化されないようにする
-      // isError=true のレスポンスは監査ログの可読性を優先し、変換対象から除外する
+      // isError=true のレスポンスは変換対象から除外する（エラーメッセージは通常短く、圧縮効果が見込めないため）
+      // なお `resultContent` は TOON 変換 *後* の content を保持するため、監査ログの outputBytes は圧縮後サイズを反映する
       if (hooks?.enableToonConversion && !finalResult.isError) {
         finalResult = applyToonConversion(finalResult);
       }
