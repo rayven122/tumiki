@@ -468,6 +468,22 @@ describe("setupMcpIpc", () => {
         handler!({} as IpcMainInvokeEvent, { connectionIds: [1, "x"] }),
       ).rejects.toThrow("ツール一覧の取得に失敗しました");
     });
+
+    test("connectionIds に 0 が含まれる場合はエラーになる（positive制約）", async () => {
+      const handler = mockIpcHandlers.get("mcp:getToolsForConnections");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, { connectionIds: [0] }),
+      ).rejects.toThrow("ツール一覧の取得に失敗しました");
+    });
+
+    test("connectionIds に負の値が含まれる場合はエラーになる（positive制約）", async () => {
+      const handler = mockIpcHandlers.get("mcp:getToolsForConnections");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, { connectionIds: [-1] }),
+      ).rejects.toThrow("ツール一覧の取得に失敗しました");
+    });
   });
 
   describe("mcp:updatePiiMasking", () => {

@@ -83,8 +83,7 @@ export const ConnectorManual = (): JSX.Element => {
       .then((servers) => {
         setConnectors(flattenSelectableConnectors(servers));
       })
-      .catch((e: unknown) => {
-        console.error("コネクタの読み込みに失敗しました:", e);
+      .catch(() => {
         setConnectors([]);
         toast.error("コネクタの読み込みに失敗しました");
       })

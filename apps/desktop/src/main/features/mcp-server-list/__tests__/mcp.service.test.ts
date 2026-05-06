@@ -595,6 +595,8 @@ describe("mcp.service", () => {
         serverId: 1,
         catalogId: 1,
         tools: [],
+        // findConnectionsByIdsWithTools が include する親サーバーの有効状態
+        server: { isEnabled: true },
         ...overrides,
       }) as ConnectionWithTools;
 
@@ -905,6 +907,29 @@ describe("mcp.service", () => {
           connections: [{ connectionId: 1 }],
         }),
       ).rejects.toThrow("コネクタ「GitHub」は無効化されています");
+      expect(mcpRepository.createServer).not.toHaveBeenCalled();
+      expect(mcpRepository.createConnection).not.toHaveBeenCalled();
+    });
+
+    test("コネクタが属するサーバーが無効化されている場合はエラーを投げる（書き込みI/Oは起きない）", async () => {
+      vi.mocked(mcpRepository.findConnectionsByIdsWithTools).mockResolvedValue([
+        // 接続は有効でも、UIフィルタ後にサーバーが無効化された競合状態を再現
+        buildSourceConnection({
+          id: 1,
+          name: "GitHub",
+          isEnabled: true,
+          server: { isEnabled: false },
+        }),
+      ]);
+
+      await expect(
+        mcpService.createVirtualServer({
+          ...baseInput,
+          connections: [{ connectionId: 1 }],
+        }),
+      ).rejects.toThrow(
+        "コネクタ「GitHub」が属するサーバーは無効化されています",
+      );
       expect(mcpRepository.createServer).not.toHaveBeenCalled();
       expect(mcpRepository.createConnection).not.toHaveBeenCalled();
     });

@@ -130,6 +130,8 @@ export const findConnectionsByIdsWithTools = async (
   return db.mcpConnection.findMany({
     where: { id: { in: connectionIds } },
     include: {
+      // 接続が属するサーバーが無効化されていないかを呼び出し側で検証するため有効状態を含める
+      server: { select: { isEnabled: true } },
       tools: {
         select: {
           name: true,

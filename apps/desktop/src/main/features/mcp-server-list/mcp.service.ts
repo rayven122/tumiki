@@ -312,6 +312,12 @@ export const createVirtualServer = async (
     if (!source.isEnabled) {
       throw new Error(`コネクタ「${source.name}」は無効化されています`);
     }
+    // UIフィルタ後にサーバーが無効化された競合状態でも、無効サーバー配下の接続を仮想MCPへ取り込まないよう保証
+    if (!source.server.isEnabled) {
+      throw new Error(
+        `コネクタ「${source.name}」が属するサーバーは無効化されています`,
+      );
+    }
     return { source, input: connection, index };
   });
 
