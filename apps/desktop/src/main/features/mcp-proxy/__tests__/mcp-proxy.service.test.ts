@@ -79,12 +79,18 @@ describe("mcp-proxy.service", () => {
       ...overrides,
     });
 
+    /**
+     * テスト用 EnabledConnection ビルダー。
+     * `credentials` は便宜上トップレベルで受け取り、内部で `secret.credentials` に詰め替える
+     * （DEV-1624 で credentials は McpSecret 経由で保持される構造に変更）。
+     */
     const buildConnection = (
-      overrides: Partial<Omit<EnabledConnection, "server">> & {
+      overrides: Partial<Omit<EnabledConnection, "server" | "secret">> & {
+        credentials?: string;
         server?: Partial<EnabledServer>;
       },
     ): EnabledConnection => {
-      const { server: serverOverrides, ...rest } = overrides;
+      const { server: serverOverrides, credentials, ...rest } = overrides;
       return {
         id: 1,
         name: "Conn",
@@ -93,15 +99,16 @@ describe("mcp-proxy.service", () => {
         command: "echo",
         args: "[]",
         url: null,
-        credentials: "{}",
         authType: "NONE",
         isEnabled: true,
         displayOrder: 0,
         serverId: 1,
         catalogId: null,
+        secretId: 1,
         createdAt: new Date(),
         updatedAt: new Date(),
         tools: [],
+        secret: { credentials: credentials ?? "{}" },
         server: buildServer(serverOverrides ?? {}),
         ...rest,
       };
@@ -384,6 +391,8 @@ describe("mcp-proxy.service", () => {
     test("OAuth接続でトークンリフレッシュが実行された場合、新しいトークンが使われる", async () => {
       vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([
         buildConnection({
+          // DEV-1624: リフレッシュは secretId 単位で行われるため、テストでも明示的に渡す
+          secretId: 42,
           name: "OAuth Expired",
           slug: "oauth-expired",
           transportType: "SSE",
@@ -413,8 +422,9 @@ describe("mcp-proxy.service", () => {
           headers: { Authorization: "Bearer refreshed-token" },
         },
       ]);
+      // 第1引数は connectionId ではなく secretId（共有 secret 単位でトークン更新）
       expect(refreshOAuthTokenIfNeeded).toHaveBeenCalledWith(
-        expect.any(Number),
+        42,
         "https://api.figma.com/sse",
         expect.objectContaining({ access_token: "expired" }),
       );
@@ -426,40 +436,51 @@ describe("mcp-proxy.service", () => {
       Awaited<ReturnType<typeof mcpRepository.findConnectionByIdWithServer>>
     >;
 
+    /**
+     * テスト用 ConnectionWithServer ビルダー。
+     * `credentials` は便宜上トップレベルで受け取り、内部で `secret.credentials` に詰め替える
+     * （DEV-1624 で credentials は McpSecret 経由で保持される構造に変更）。
+     */
     const buildConnectionWithServer = (
-      overrides: Partial<ConnectionWithServer> = {},
-    ): ConnectionWithServer => ({
-      id: 100,
-      name: "Conn",
-      slug: "conn",
-      transportType: "STDIO",
-      command: "echo",
-      args: "[]",
-      url: null,
-      credentials: "{}",
-      authType: "NONE",
-      isEnabled: true,
-      displayOrder: 0,
-      serverId: 1,
-      catalogId: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      server: {
-        id: 1,
-        name: "Srv",
-        slug: "srv",
-        description: "",
-        serverType: "OFFICIAL",
-        serverStatus: "STOPPED",
+      overrides: Partial<Omit<ConnectionWithServer, "secret">> & {
+        credentials?: string;
+      } = {},
+    ): ConnectionWithServer => {
+      const { credentials, ...rest } = overrides;
+      return {
+        id: 100,
+        name: "Conn",
+        slug: "conn",
+        transportType: "STDIO",
+        command: "echo",
+        args: "[]",
+        url: null,
+        authType: "NONE",
         isEnabled: true,
-        isPiiMaskingEnabled: true,
-        isToonConversionEnabled: false,
         displayOrder: 0,
+        serverId: 1,
+        catalogId: null,
+        secretId: 1,
         createdAt: new Date(),
         updatedAt: new Date(),
-      },
-      ...overrides,
-    });
+        secret: { credentials: credentials ?? "{}" },
+        server: {
+          id: 1,
+          name: "Srv",
+          slug: "srv",
+          description: "",
+          serverType: "OFFICIAL",
+          serverStatus: "STOPPED",
+          isEnabled: true,
+          isPiiMaskingEnabled: true,
+          isToonConversionEnabled: false,
+          displayOrder: 0,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        ...rest,
+      };
+    };
 
     /** SDK Client / Transport の最小モック */
     const createMockClient = (overrides?: {

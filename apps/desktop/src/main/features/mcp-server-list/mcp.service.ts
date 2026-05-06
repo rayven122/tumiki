@@ -152,6 +152,12 @@ export const createFromCatalog = async (
     serverType: ServerType.OFFICIAL,
   });
 
+  // 暗号化済み credentials を保持する McpSecret を新規作成（カスタム/カタログ系は 1接続=1secret）
+  const secret = await mcpRepository.createSecret(
+    db,
+    await encryptToken(JSON.stringify(input.credentials)),
+  );
+
   // MCP接続作成
   const connection = await mcpRepository.createConnection(db, {
     name: uniqueName,
@@ -160,7 +166,7 @@ export const createFromCatalog = async (
     command: input.command,
     args: input.args,
     url: input.url,
-    credentials: await encryptToken(JSON.stringify(input.credentials)),
+    secretId: secret.id,
     authType: input.authType,
     serverId: server.id,
     catalogId: input.catalogId,
@@ -197,6 +203,12 @@ export const createFromManagerCatalog = async (
     serverType: ServerType.OFFICIAL,
   });
 
+  // 暗号化済み credentials を保持する McpSecret を新規作成（Manager カタログ系も 1接続=1secret）
+  const secret = await mcpRepository.createSecret(
+    db,
+    await encryptToken(JSON.stringify(input.credentials)),
+  );
+
   const connection = await mcpRepository.createConnection(db, {
     name: uniqueName,
     slug,
@@ -204,7 +216,7 @@ export const createFromManagerCatalog = async (
     command: template.transportType === "STDIO" ? template.command : null,
     args: JSON.stringify(template.args),
     url: template.transportType !== "STDIO" ? template.url : null,
-    credentials: await encryptToken(JSON.stringify(input.credentials)),
+    secretId: secret.id,
     authType: template.authType,
     serverId: server.id,
     catalogId: null,
@@ -243,6 +255,11 @@ export const createCustomServer = async (
   const command = input.transportType === "STDIO" ? input.command : null;
   const args = input.transportType === "STDIO" ? (input.args ?? "[]") : "[]";
   const url = input.transportType !== "STDIO" ? input.url : null;
+  // 暗号化済み credentials を保持する McpSecret を新規作成（カスタム入力系も 1接続=1secret）
+  const secret = await mcpRepository.createSecret(
+    db,
+    await encryptToken(JSON.stringify(input.credentials)),
+  );
   const connection = await mcpRepository.createConnection(db, {
     name: uniqueName,
     slug,
@@ -250,7 +267,7 @@ export const createCustomServer = async (
     command,
     args,
     url,
-    credentials: await encryptToken(JSON.stringify(input.credentials)),
+    secretId: secret.id,
     authType: input.authType,
     serverId: server.id,
     catalogId: null,
@@ -274,10 +291,10 @@ export const createCustomServer = async (
  * - 接続0件は不正入力として拒否（最低1接続必須）
  * - 各接続のslugはサーバー内で一意（接続名 + 必要に応じてサフィックス）
  *
- * 【既知の制限 / DEV-1624 で対処予定】
- * 現状は credentials を行ごとコピーしているため、OAuth コネクタを含めるとトークンが
- * 元コネクタと仮想MCP配下で独立し、refresh_token ローテーション系IdP では衝突しうる。
- * プレリリース段階では許容し、後続で McpSecret テーブル経由の共有に切り替える。
+ * DEV-1624: 仮想MCPは元コネクタの `secretId` を共有することで、暗号化済み credentials を
+ * 単一情報源化する。OAuth トークンドリフト・refresh_token ローテーション衝突・APIキー更新の
+ * 伝播漏れがこれにより解消される。元コネクタが削除されても secret は参照カウント運用で
+ * 保持されるため、仮想MCP単独でも引き続きトークンを利用できる。
  *
  * SQLite $transaction タイムアウト回避のため、接続取得（findConnectionsByIdsWithTools）と
  * 接続 slug 計算は tx 外で先行実行する。サーバー名/slug の一意性チェックは名前重複時の
@@ -371,7 +388,9 @@ export const createVirtualServer = async (
       index,
       connectionSlug,
     } of connectionsWithSlug) {
-      // 暗号化済み credentials はそのまま（再入力なし）コピーする
+      // 元コネクタの secretId を共有する（DEV-1624: トークン単一情報源化）。
+      // 元コネクタを削除しても、仮想MCP配下の接続が同じ secret を参照している間は
+      // onDelete: Restrict + 参照カウントで secret は保持される。
       const newConnection = await mcpRepository.createConnection(tx, {
         name: source.name,
         slug: connectionSlug,
@@ -379,7 +398,7 @@ export const createVirtualServer = async (
         command: source.command,
         args: source.args,
         url: source.url,
-        credentials: source.credentials,
+        secretId: source.secretId,
         authType: source.authType,
         serverId: server.id,
         catalogId: source.catalogId,
@@ -460,7 +479,8 @@ export const getToolsForConnections = async (
 
 /**
  * 登録済みMCPサーバー一覧を取得
- * 接続ごとに Prisma の `_count.tools` を平坦化した `toolCount` を付与する
+ * 接続ごとに Prisma の `_count.tools` を平坦化した `toolCount` を付与する。
+ * DEV-1624: credentials は McpSecret 経由で取得し、IPC 戻り値は従来どおり復号後の credentials を含める。
  */
 export const getAllServers = async () => {
   const db = await getDb();
@@ -470,12 +490,12 @@ export const getAllServers = async () => {
       ...server,
       connections: await Promise.all(
         server.connections.map(async (conn) => {
-          const { _count, ...rest } = conn;
+          const { _count, secret, ...rest } = conn;
           return {
             ...rest,
-            credentials: conn.credentials
-              ? await decryptCredentials(conn.credentials)
-              : conn.credentials,
+            credentials: secret.credentials
+              ? await decryptCredentials(secret.credentials)
+              : secret.credentials,
             toolCount: _count.tools,
           };
         }),
@@ -497,10 +517,23 @@ export const updateServer = async (
 
 /**
  * サーバーを削除
+ *
+ * DEV-1624: 仮想MCPと元コネクタが同じ secret を共有するため、削除時は参照カウント運用で
+ * 孤立した secret を後始末する。サーバー削除（cascade で接続削除）→ 参照カウント0 の secret 削除。
+ * onDelete: Restrict のため、まだ別サーバー配下の接続が参照している secret は誤って削除されない。
  */
 export const deleteServer = async (id: number) => {
   const db = await getDb();
-  return mcpRepository.deleteServer(db, id);
+  // cascade 削除前に対象 secretId 一覧を取得（重複は Set で除去）
+  const secretIds = Array.from(
+    new Set(await mcpRepository.findSecretIdsByServerId(db, id)),
+  );
+  const result = await mcpRepository.deleteServer(db, id);
+  // cascade で接続が消えた後、他に参照が残っていない secret を削除
+  for (const secretId of secretIds) {
+    await mcpRepository.deleteSecretIfOrphaned(db, secretId);
+  }
+  return result;
 };
 
 /**

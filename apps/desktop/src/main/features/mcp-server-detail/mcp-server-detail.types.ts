@@ -17,10 +17,12 @@ export type McpToolItem = Omit<McpTool, "createdAt" | "updatedAt"> & {
 /**
  * MCP接続詳細情報型（IPC通信用）
  * 接続情報 + カタログ参照 + ツール一覧を含む
+ *
+ * `secretId` は McpSecret テーブル（DEV-1624）への参照 ID で、UI には公開しない。
  */
 export type McpConnectionDetailItem = Omit<
   McpConnection,
-  "createdAt" | "updatedAt" | "serverId" | "displayOrder" | "credentials"
+  "createdAt" | "updatedAt" | "serverId" | "displayOrder" | "secretId"
 > & {
   createdAt: string;
   updatedAt: string;

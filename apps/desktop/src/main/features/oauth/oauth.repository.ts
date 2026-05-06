@@ -108,15 +108,18 @@ export const upsertOAuthClient = async (
 };
 
 /**
- * 接続のcredentialsを更新（OAuthトークンリフレッシュ後のDB保存用）
+ * McpSecret の credentials を更新（OAuthトークンリフレッシュ後のDB保存用）
+ *
+ * DEV-1624: 仮想MCPと元コネクタが同じ secret を共有するため、トークン更新は secretId 単位で行う。
+ * 同じ secret を指す全コネクションが自動的に最新トークンを参照するようになる。
  */
-export const updateConnectionCredentials = async (
+export const updateSecretCredentials = async (
   db: PrismaClient,
-  connectionId: number,
+  secretId: number,
   credentials: string,
 ) => {
-  return db.mcpConnection.update({
-    where: { id: connectionId },
+  return db.mcpSecret.update({
+    where: { id: secretId },
     data: { credentials },
   });
 };

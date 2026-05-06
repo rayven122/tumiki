@@ -42,7 +42,7 @@ export type McpOAuthSession = {
   createdAt: Date;
 };
 
-/** OAuthトークンデータ（McpConnection.credentialsに格納） */
+/** OAuthトークンデータ（McpSecret.credentials に格納し、対応する McpConnection から secretId 経由で参照） */
 export type McpOAuthTokenData = {
   access_token: string;
   token_type?: string;

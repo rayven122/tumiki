@@ -136,8 +136,6 @@ model McpConnection {
   args          String        @default("[]")
   /// SSE/Streamable HTTP用URL
   url           String?
-  /// 接続設定値（STDIO: 環境変数 / SSE・Streamable HTTP: HTTPヘッダー）
-  credentials   String        @default("{}")
   /// 認証タイプ
   authType      AuthType      @default(NONE)
   /// 有効/無効フラグ
@@ -153,11 +151,31 @@ model McpConnection {
   /// カタログ参照（カタログから登録した場合）
   catalogId Int?
   catalog   McpCatalog? @relation(fields: [catalogId], references: [id], onDelete: SetNull)
+  /// 暗号化済み credentials の格納先（仮想MCPは元コネクタと同じ secretId を共有してトークンを単一情報源化する）
+  /// onDelete: Restrict により、まだ参照している接続が存在する secret は誤って削除されない。
+  /// 仮想MCP/元コネクタが全て削除された後にアプリ側で参照カウント0判定して削除する運用。
+  secretId  Int
+  secret    McpSecret   @relation(fields: [secretId], references: [id], onDelete: Restrict)
 
   /// この接続が提供するツール一覧
   tools McpTool[]
 
   @@unique([serverId, slug])
+}
+
+/// MCP接続の認証情報（暗号化済み credentials を保持し、複数の McpConnection から共有される）
+/// 仮想MCP（CUSTOM）作成時は元コネクタと同じ secret を共有することで、OAuth トークンの
+/// 単一情報源化（トークンドリフト・refresh_token ローテーション衝突・APIキー更新の伝播漏れの解消）を実現する。
+/// @namespace McpServer
+model McpSecret {
+  id           Int             @id @default(autoincrement())
+  /// 暗号化済み credentials JSON（STDIO: 環境変数 / SSE・Streamable HTTP: HTTPヘッダー / OAuth: トークン）
+  credentials  String          @default("{}")
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  /// この secret を参照している接続一覧（参照カウント0で削除可能）
+  connections McpConnection[]
 }
 
 /// MCPツール（接続が提供するツールの定義・権限管理）

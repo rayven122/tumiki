@@ -72,12 +72,15 @@ const loadOAuthClientBundle = async (
 /**
  * 必要に応じてOAuthトークンをリフレッシュし、新しいcredentialsを返す。
  *
+ * DEV-1624: 仮想MCPと元コネクタが同じ secret を共有するため、リフレッシュは secretId 単位で行う。
+ * 同じ secret を指す全コネクションは更新後の credentials を自動的に参照する。
+ *
  * - リフレッシュ不要（期限に余裕がある）→ null
  * - リフレッシュ成功 → 新しい復号済みcredentials
  * - リフレッシュ失敗（refresh_tokenなし、OAuthClient未登録、API エラー等）→ null
  */
 export const refreshOAuthTokenIfNeeded = async (
-  connectionId: number,
+  secretId: number,
   serverUrl: string,
   credentials: Record<string, string>,
 ): Promise<Record<string, string> | null> => {
@@ -89,7 +92,7 @@ export const refreshOAuthTokenIfNeeded = async (
   if (!refreshToken) {
     logger.warn(
       "OAuthトークンが期限切れですが refresh_token がないためリフレッシュできません",
-      { connectionId, serverUrl },
+      { secretId, serverUrl },
     );
     return null;
   }
@@ -98,8 +101,8 @@ export const refreshOAuthTokenIfNeeded = async (
     const bundle = await loadOAuthClientBundle(serverUrl);
     if (!bundle) return null;
 
-    logger.info("OAuthトークン���リフレッシュします", {
-      connectionId,
+    logger.info("OAuthトークンをリフレッシュします", {
+      secretId,
       serverUrl,
     });
 
@@ -111,17 +114,13 @@ export const refreshOAuthTokenIfNeeded = async (
 
     const newCredentials = credentialsPayloadFromTokenData(tokenData);
 
-    // 暗号化してDBに保存
+    // 暗号化してDBに保存（McpSecret を更新することで全共有コネクションに反映される）
     const db = await getDb();
     const encrypted = await encryptToken(JSON.stringify(newCredentials));
-    await oauthRepository.updateConnectionCredentials(
-      db,
-      connectionId,
-      encrypted,
-    );
+    await oauthRepository.updateSecretCredentials(db, secretId, encrypted);
 
     logger.info("OAuthトークンのリフレッシュが完了しました", {
-      connectionId,
+      secretId,
       serverUrl,
       expiresAt: newCredentials["expires_at"],
     });
@@ -130,7 +129,7 @@ export const refreshOAuthTokenIfNeeded = async (
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logger.error("OAuthトークンのリフレッシュに失敗しました", {
-      connectionId,
+      secretId,
       serverUrl,
       error: message,
     });

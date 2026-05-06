@@ -32,7 +32,7 @@ export type McpConnectionMeta = {
 // McpConnection.args のバリデーション（string[] としてJSON.parse可能）
 const connectionArgsSchema = z.array(z.string());
 
-// McpConnection.credentials（復号後）の env バリデーション
+// McpSecret.credentials（復号後）の env バリデーション
 // 値は string のみ受け付ける（環境変数は文字列のため）
 const connectionEnvSchema = z.record(z.string(), z.string());
 
@@ -101,6 +101,8 @@ const toProxyAuthType = (prismaAuthType: string): AuthType => {
 type EnabledConnection = Awaited<
   ReturnType<typeof mcpRepository.findEnabledConnections>
 >[number];
+// findConnectionByIdWithServer は tools を持たないため optional にする。
+// secret は両 finder 共通で include されるため EnabledConnection から継承する。
 type ConnectionForConfig = Omit<EnabledConnection, "tools"> & {
   tools?: Array<{ name: string; isAllowed: boolean }>;
 };
@@ -129,7 +131,8 @@ const buildConfigFromConnection = async (
   const connLabel = `${conn.server.slug}/${conn.slug}`;
   const name = `${conn.server.slug}-${conn.slug}`;
 
-  const plainCredentials = await decryptCredentials(conn.credentials);
+  // DEV-1624: credentials は McpSecret 経由で取得（仮想MCPは元コネクタと secret を共有）
+  const plainCredentials = await decryptCredentials(conn.secret.credentials);
   let credentials = parseAndValidate(
     plainCredentials,
     connectionEnvSchema,
@@ -138,8 +141,9 @@ const buildConfigFromConnection = async (
 
   // OAuth接続: トークンの期限チェック & 必要ならリフレッシュ
   if (conn.authType === "OAUTH" && conn.url) {
+    // 同じ secret を指す全コネクションでトークンを共有するため、リフレッシュは secretId 単位で行う
     const refreshed = await refreshOAuthTokenIfNeeded(
-      conn.id,
+      conn.secretId,
       conn.url,
       credentials,
     );

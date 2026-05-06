@@ -50,7 +50,7 @@ describe("mcp-server-detail.service", () => {
             command: "npx",
             args: '["test"]',
             url: null,
-            credentials: "{}",
+            secretId: 1,
             authType: "NONE",
             isEnabled: true,
             displayOrder: 0,

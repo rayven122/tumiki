@@ -142,9 +142,9 @@ describe("oauth.refresh", () => {
         expires_at: newExpiresAt,
       });
 
-      vi.mocked(oauthRepository.updateConnectionCredentials).mockResolvedValue(
+      vi.mocked(oauthRepository.updateSecretCredentials).mockResolvedValue(
         {} as Awaited<
-          ReturnType<typeof oauthRepository.updateConnectionCredentials>
+          ReturnType<typeof oauthRepository.updateSecretCredentials>
         >,
       );
 
@@ -157,7 +157,7 @@ describe("oauth.refresh", () => {
       });
 
       expect(encryptToken).toHaveBeenCalled();
-      expect(oauthRepository.updateConnectionCredentials).toHaveBeenCalledWith(
+      expect(oauthRepository.updateSecretCredentials).toHaveBeenCalledWith(
         mockDb,
         1,
         expect.stringContaining("encrypted:"),
