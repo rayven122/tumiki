@@ -9,7 +9,7 @@ import {
 
 const POLICY_MATRIX_ORG_UNIT_LIMIT = 1000;
 const POLICY_MATRIX_CATALOG_LIMIT = 200;
-const UNSELECTED_ORG_UNIT_ID = "";
+const UNSELECTED_ORG_UNIT_ID = "__UNSELECTED_ORG_UNIT__";
 
 export const mcpPoliciesRouter = createTRPCRouter({
   getMatrix: adminProcedure
@@ -30,6 +30,17 @@ export const mcpPoliciesRouter = createTRPCRouter({
         ctx.db.mcpCatalog.findMany({
           where: { deletedAt: null },
           include: {
+            orgUnitCatalogPermissions: {
+              // orgUnit未選択時は存在しないIDで絞り込み、全権限データのロードを避ける。
+              where: {
+                orgUnitId: selectedOrgUnitId ?? UNSELECTED_ORG_UNIT_ID,
+              },
+              select: {
+                orgUnitId: true,
+                catalogId: true,
+                effect: true,
+              },
+            },
             tools: {
               where: { deletedAt: null },
               include: {
@@ -54,6 +65,70 @@ export const mcpPoliciesRouter = createTRPCRouter({
       ]);
 
       return { orgUnits, catalogs };
+    }),
+
+  updateCatalogPermission: adminProcedure
+    .input(
+      z.object({
+        orgUnitId: z.string().min(1),
+        catalogId: z.string().min(1),
+        effect: z.nativeEnum(PolicyEffect).nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.$transaction(async (tx) => {
+        const [catalog, orgUnit] = await Promise.all([
+          tx.mcpCatalog.findFirst({
+            where: { id: input.catalogId, deletedAt: null },
+            select: { id: true },
+          }),
+          tx.orgUnit.findUnique({
+            where: { id: input.orgUnitId },
+            select: { id: true },
+          }),
+        ]);
+        if (!orgUnit) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "部署が見つかりません",
+          });
+        }
+        if (!catalog) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "カタログが見つかりません",
+          });
+        }
+
+        if (input.effect === null) {
+          await tx.orgUnitCatalogPermission.deleteMany({
+            where: {
+              orgUnitId: input.orgUnitId,
+              catalogId: input.catalogId,
+            },
+          });
+          return { ok: true };
+        }
+        const effect = input.effect;
+
+        await tx.orgUnitCatalogPermission.upsert({
+          where: {
+            orgUnitId_catalogId: {
+              orgUnitId: input.orgUnitId,
+              catalogId: input.catalogId,
+            },
+          },
+          create: {
+            orgUnitId: input.orgUnitId,
+            catalogId: input.catalogId,
+            effect,
+          },
+          update: {
+            effect,
+          },
+        });
+        return { ok: true };
+      });
     }),
 
   updateToolPermission: adminProcedure
@@ -131,6 +206,7 @@ export const mcpPoliciesRouter = createTRPCRouter({
   getEffectivePermissions: adminProcedure
     .input(z.object({ userId: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
+      const now = new Date();
       const [{ user, orgUnits }, catalogs] = await Promise.all([
         getPolicyContextForUser(input.userId, ctx.db),
         ctx.db.mcpCatalog.findMany({
@@ -140,7 +216,7 @@ export const mcpPoliciesRouter = createTRPCRouter({
             groupCatalogPermissions: true,
             userCatalogPermissions: {
               where: {
-                OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+                OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
               },
             },
             tools: {
@@ -150,10 +226,7 @@ export const mcpPoliciesRouter = createTRPCRouter({
                 groupPermissions: true,
                 userPermissions: {
                   where: {
-                    OR: [
-                      { expiresAt: null },
-                      { expiresAt: { gt: new Date() } },
-                    ],
+                    OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
                   },
                 },
               },

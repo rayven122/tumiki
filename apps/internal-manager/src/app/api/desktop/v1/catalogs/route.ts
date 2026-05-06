@@ -13,6 +13,7 @@ import {
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
 const TOOL_PREVIEW_LIMIT = 10;
+const NO_GROUP_PERMISSION_ID = "__NO_GROUP_PERMISSION__";
 
 const cursorSchema = z.object({
   id: z.string().min(1),
@@ -176,7 +177,8 @@ export const GET = async (request: NextRequest) => {
   );
   const now = new Date();
   // Prisma の in: [] は provider 差分を避けるため、未所属時は存在しないIDで空結果を強制する。
-  const groupPermissionIds = groupIds.length > 0 ? groupIds : [""];
+  const groupPermissionIds =
+    groupIds.length > 0 ? groupIds : [NO_GROUP_PERMISSION_ID];
 
   let catalogs: CatalogRow[];
   try {

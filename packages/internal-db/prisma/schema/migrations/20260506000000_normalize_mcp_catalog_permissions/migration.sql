@@ -133,6 +133,7 @@ SELECT DISTINCT ON (gtp."groupId", catalog."id")
 FROM "GroupToolPermission" gtp
 JOIN "McpCatalog" catalog ON catalog."id" = gtp."mcpServerId" OR catalog."slug" = gtp."mcpServerId"
 WHERE gtp."read" OR gtp."write" OR gtp."execute"
+ORDER BY gtp."groupId", catalog."id"
 ON CONFLICT ("groupId", "catalogId") DO NOTHING;
 
 INSERT INTO "GroupCatalogToolPermission" ("id", "groupId", "catalogId", "toolId", "effect", "createdAt", "updatedAt")
