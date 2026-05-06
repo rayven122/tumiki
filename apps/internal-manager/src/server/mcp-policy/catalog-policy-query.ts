@@ -3,7 +3,7 @@ type BuildCatalogPolicySelectInput = {
   groupPermissionIds: string[];
   orgUnitPermissionIds: string[];
   now: Date;
-  toolTake?: number;
+  toolTake: number;
 };
 
 export const buildCatalogPolicySelect = ({
@@ -74,6 +74,6 @@ export const buildCatalogPolicySelect = ({
       },
     },
     orderBy: { name: "asc" as const },
-    ...(toolTake === undefined ? {} : { take: toolTake }),
+    take: toolTake,
   },
 });

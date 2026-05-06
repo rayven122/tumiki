@@ -267,6 +267,7 @@ export const evaluateCatalogPermissions = (
   return {
     permissions: {
       // v1 はカタログ閲覧とツール実行を同じ許可状態として扱う。
+      // ツール未登録のカタログは実行対象がないため、カタログ単位ALLOWがあってもDesktopでは利用不可にする。
       read: anyAllowed,
       // v1 はツール実行可否のみを扱うため、書き込み権限は常に無効にする。
       write: false,

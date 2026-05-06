@@ -88,6 +88,8 @@ export const GET = async (request: NextRequest) => {
     );
     const groupPermissionIds =
       groupIds.length > 0 ? groupIds : [NO_GROUP_PERMISSION_ID];
+    // sessionはユーザー/所属情報も同時に返すため、詳細なuser取得後に部署祖先を解決する。
+    // 祖先取得は深い階層で複数クエリになり得るが、POLICY_CONTEXT_ORG_UNIT_LIMITで不完全な評価を防ぐ。
     const policyOrgUnits = await getPolicyOrgUnitsForMemberships(
       user.orgUnitMemberships,
       db,

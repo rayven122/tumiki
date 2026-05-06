@@ -403,6 +403,7 @@ SELECT DISTINCT ON (gtp."groupId", catalog."id")
 FROM "GroupToolPermission" gtp
 JOIN "McpCatalog" catalog ON catalog."id" = gtp."mcpServerId" OR catalog."slug" = gtp."mcpServerId"
 WHERE (gtp."read" OR gtp."write" OR gtp."execute")
+  -- 論理削除済みカタログへの旧権限は新モデルへ移行しない。
   AND catalog."deletedAt" IS NULL
 ORDER BY gtp."groupId", catalog."id";
 

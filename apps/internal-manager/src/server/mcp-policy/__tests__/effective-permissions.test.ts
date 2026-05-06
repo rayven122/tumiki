@@ -127,6 +127,27 @@ describe("evaluateCatalogPermissions", () => {
     expect(result.permissions.execute).toStrictEqual(false);
   });
 
+  test("ツール未登録のカタログはカタログ単位ALLOWがあっても利用不可にする", () => {
+    const result = evaluateCatalogPermissions(
+      buildUser(),
+      {
+        ...buildCatalog([]),
+        orgUnitCatalogPermissions: [
+          { orgUnitId: "child", effect: PolicyEffect.ALLOW, updatedAt: now },
+        ],
+        tools: [],
+      },
+      orgUnits,
+    );
+
+    expect(result.permissions).toStrictEqual({
+      read: false,
+      write: false,
+      execute: false,
+    });
+    expect([...result.tools.entries()]).toStrictEqual([]);
+  });
+
   test("部署ポリシー未設定でもグループ権限があれば許可される", () => {
     const result = evaluateCatalogPermissions(
       buildUser({

@@ -154,6 +154,7 @@ model OrgUnit {
 }
 
 /// 部署ごとの MCP カタログ許可 / 拒否ポリシー
+/// 1部署と1カタログに対して1効果のみを保持し、ツール単位の例外は OrgUnitToolPermission で表す
 /// @namespace McpCatalog
 model OrgUnitCatalogPermission {
   id        String       @id @default(cuid())
@@ -191,6 +192,7 @@ model UserOrgUnitMembership {
 
 /// 部署ごとの MCP ツール許可 / 拒否ポリシー
 /// カタログ単位の絞り込みとツール単位の判定を効率化するため catalogId と toolId を保持する
+/// catalogId と toolId.catalogId の一致はDBトリガーで保証する
 /// @namespace McpCatalog
 model OrgUnitToolPermission {
   id        String         @id @default(cuid())
@@ -210,6 +212,8 @@ model OrgUnitToolPermission {
   @@index([effect])
 }
 
+/// グループごとの MCP カタログ許可 / 拒否ポリシー
+/// 1グループと1カタログに対して1効果のみを保持し、ツール単位の例外は GroupCatalogToolPermission で表す
 /// @namespace McpCatalog
 model GroupCatalogPermission {
   id        String       @id @default(cuid())
@@ -227,6 +231,8 @@ model GroupCatalogPermission {
   @@index([effect])
 }
 
+/// グループごとの MCP ツール許可 / 拒否ポリシー
+/// catalogId と toolId.catalogId の一致はDBトリガーで保証する
 /// @namespace McpCatalog
 model GroupCatalogToolPermission {
   id        String         @id @default(cuid())
@@ -246,6 +252,8 @@ model GroupCatalogToolPermission {
   @@index([effect])
 }
 
+/// 管理者が設定するユーザー個別の MCP カタログ許可 / 拒否例外
+/// 1ユーザーと1カタログに対して1効果のみを保持し、ツール単位の例外は UserCatalogToolPermission で表す
 /// @namespace McpCatalog
 model UserCatalogPermission {
   id        String       @id @default(cuid())
@@ -266,6 +274,8 @@ model UserCatalogPermission {
   @@index([expiresAt])
 }
 
+/// 管理者が設定するユーザー個別の MCP ツール許可 / 拒否例外
+/// catalogId と toolId.catalogId の一致はDBトリガーで保証する
 /// @namespace McpCatalog
 model UserCatalogToolPermission {
   id        String         @id @default(cuid())
