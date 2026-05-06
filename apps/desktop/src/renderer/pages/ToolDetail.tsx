@@ -12,6 +12,7 @@ import {
   SearchCode,
   ChevronRight,
   Plug,
+  AlertTriangle,
 } from "lucide-react";
 import { themeAtom } from "../store/atoms";
 import { AI_CLIENTS, type AiClient } from "../data/ai-clients";
@@ -324,34 +325,37 @@ export const ToolDetail = (): JSX.Element => {
     [maskingEnabled, serverId],
   );
 
+  // 仮想MCPサーバー（複数接続）では `--server <slug>` が解決できず TOON 変換は常に OFF になる
+  // （main/index.ts の制限）。設定保存自体は成功するため、UI 上で常時警告を出してユーザー混乱を防ぐ。
+  const isMultiConnectionServer = (server?.connections.length ?? 0) > 1;
+
   // レスポンス圧縮（TOON 変換）切替: DB 更新（即時反映）。実プロキシへは次回 spawn 時に反映される。
   // 失敗時は state をロールバックして元に戻す。
-  // 注意: 複数接続を持つ仮想MCPサーバーでは `--server <slug>` が解決できず TOON 変換は常に OFF になる
-  // （main/index.ts の制限）。設定保存自体は成功するため、ユーザー混乱を避けて警告トーストを表示する。
+  // functional update により compressionEnabled を依存配列から外し、不要な再生成を回避する。
   const updateCompression = useCallback(
     (value: boolean): void => {
-      const previous = compressionEnabled;
-      setCompressionEnabled(value);
-      const isMultiConnection = (server?.connections.length ?? 0) > 1;
-      window.electronAPI.mcp
-        .updateToonConversion({ serverId, enabled: value })
-        .then(() => {
-          if (value && isMultiConnection) {
-            toast.warning(
-              "設定を保存しましたが、複数接続を持つ仮想MCPサーバーではレスポンス圧縮は機能しません。単体サーバーとして起動した場合のみ有効です",
+      setCompressionEnabled((previous) => {
+        window.electronAPI.mcp
+          .updateToonConversion({ serverId, enabled: value })
+          .then(() => {
+            if (value && isMultiConnectionServer) {
+              toast.warning(
+                "設定を保存しましたが、複数接続を持つ仮想MCPサーバーではレスポンス圧縮は機能しません。単体サーバーとして起動した場合のみ有効です",
+              );
+              return;
+            }
+            toast.success(
+              "レスポンス圧縮設定を更新しました。MCPサーバーの再起動後に反映されます",
             );
-            return;
-          }
-          toast.success(
-            "レスポンス圧縮設定を更新しました。MCPサーバーの再起動後に反映されます",
-          );
-        })
-        .catch(() => {
-          setCompressionEnabled(previous);
-          toast.error("レスポンス圧縮設定の更新に失敗しました");
-        });
+          })
+          .catch(() => {
+            setCompressionEnabled(previous);
+            toast.error("レスポンス圧縮設定の更新に失敗しました");
+          });
+        return value;
+      });
     },
-    [compressionEnabled, serverId, server?.connections.length],
+    [serverId, isMultiConnectionServer],
   );
 
   // ツール on/off（即時反映、失敗時はロールバック。サンプルID は IPC スキップ）
@@ -656,6 +660,21 @@ export const ToolDetail = (): JSX.Element => {
                     onChange={updateCompression}
                   />
                 </div>
+                {isMultiConnectionServer && (
+                  <div
+                    role="alert"
+                    className="flex items-start gap-2 rounded-lg bg-[var(--badge-warn-bg)] px-3 py-2 text-xs text-[var(--badge-warn-text)] md:col-span-3"
+                  >
+                    <AlertTriangle
+                      size={13}
+                      className="mt-0.5 shrink-0"
+                      aria-hidden
+                    />
+                    <span>
+                      このサーバーは複数のMCPサーバーを集約した仮想サーバーのため、レスポンス圧縮は適用されません（単体サーバー起動時のみ有効）
+                    </span>
+                  </div>
+                )}
                 {[
                   {
                     key: "dynamicSearch" as const,

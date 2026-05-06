@@ -1,5 +1,5 @@
 import { encode } from "@toon-format/toon";
-import { describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { applyToonConversion } from "../toon/toonConverter.js";
 
@@ -8,6 +8,11 @@ import { applyToonConversion } from "../toon/toonConverter.js";
 vi.mock("@toon-format/toon", { spy: true });
 
 describe("applyToonConversion", () => {
+  beforeEach(() => {
+    // spy の呼び出し履歴をクリア（toHaveBeenCalledWith のテスト間干渉を防ぐ）
+    vi.mocked(encode).mockClear();
+  });
+
   test("text content の JSON 文字列を TOON 形式へ変換する", () => {
     const original = JSON.stringify({
       users: [
@@ -82,6 +87,18 @@ describe("applyToonConversion", () => {
     });
 
     expect(result.isError).toBe(true);
+  });
+
+  test("非 JSON プレーンテキストは JSON.parse 失敗を経て encode へそのまま渡される", () => {
+    // JSON としてパースできないプレーンテキストでは encodeText の catch 分岐が選ばれる
+    const plainText = "this is not json {invalid syntax";
+
+    applyToonConversion({
+      content: [{ type: "text", text: plainText }],
+    });
+
+    // JSON.parse 失敗後、encode は元の文字列でそのまま呼ばれる
+    expect(vi.mocked(encode)).toHaveBeenCalledWith(plainText);
   });
 
   test("encode が例外をスローした場合は元の result をそのまま返す（fail-open）", () => {
