@@ -104,14 +104,14 @@ export const jwtCallback = async ({
     token.refreshToken = account.refresh_token;
 
     const keycloakProfile = profile as KeycloakJWTPayload;
-    token.sub = keycloakProfile.sub;
     token.email = keycloakProfile.email ?? null;
     token.name = keycloakProfile.name ?? null;
 
     // DBから最新のtumikiクレームを取得（group_rolesから組織別ロールを解析）
+    // token.sub は同時発火する `if (user)` ブロックで user.id! として設定済み
     const updatedTumiki = await getTumikiClaims(
       db,
-      token.sub,
+      token.sub!,
       keycloakProfile.tumiki?.group_roles,
     );
 
