@@ -113,8 +113,9 @@ const toCatalogItem = (
     { allowed: boolean; deniedReason: string | null }
   >,
 ) => {
+  const catalogDisabled = catalog.status !== McpCatalogStatus.ACTIVE;
   const status: CatalogStatus =
-    catalog.status === McpCatalogStatus.ACTIVE && hasAnyPermission(permissions)
+    !catalogDisabled && hasAnyPermission(permissions)
       ? "available"
       : "disabled";
 
@@ -129,14 +130,17 @@ const toCatalogItem = (
     authType: catalog.authType,
     requiredCredentialKeys: catalog.credentialKeys,
     connectionTemplate: toConnectionTemplate(catalog),
-    tools: catalog.tools.slice(0, TOOL_PREVIEW_LIMIT).map((tool) => ({
-      name: tool.name,
-      description: tool.description ?? "",
-      allowed:
-        catalog.status === McpCatalogStatus.ACTIVE &&
-        (toolPermissions.get(tool.id)?.allowed ?? false),
-      deniedReason: toolPermissions.get(tool.id)?.deniedReason ?? null,
-    })),
+    tools: catalog.tools.slice(0, TOOL_PREVIEW_LIMIT).map((tool) => {
+      const toolPermission = toolPermissions.get(tool.id);
+      return {
+        name: tool.name,
+        description: tool.description ?? "",
+        allowed: !catalogDisabled && (toolPermission?.allowed ?? false),
+        deniedReason: catalogDisabled
+          ? "catalog_disabled"
+          : (toolPermission?.deniedReason ?? null),
+      };
+    }),
   };
 };
 

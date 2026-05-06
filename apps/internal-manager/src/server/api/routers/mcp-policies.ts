@@ -227,7 +227,7 @@ export const mcpPoliciesRouter = createTRPCRouter({
           },
           create: {
             orgUnitId: input.orgUnitId,
-            catalogId: input.catalogId,
+            catalogId: tool.catalogId,
             toolId: input.toolId,
             effect,
           },

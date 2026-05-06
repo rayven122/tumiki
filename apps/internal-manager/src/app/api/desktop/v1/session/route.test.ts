@@ -362,7 +362,7 @@ describe("GET /api/desktop/v1/session", () => {
     ).toBeInstanceOf(Date);
     expect(
       findPolicyCatalogsArgs.select.userCatalogPermissions.orderBy,
-    ).toStrictEqual([{ userId: "asc" }]);
+    ).toStrictEqual([{ id: "asc" }]);
     expect(
       findPolicyCatalogsArgs.select.tools.select.groupPermissions.orderBy,
     ).toStrictEqual([{ groupId: "asc" }]);
@@ -393,7 +393,7 @@ describe("GET /api/desktop/v1/session", () => {
     ).toStrictEqual([{ orgUnitId: "asc" }]);
     expect(
       findPolicyCatalogsArgs.select.tools.select.userPermissions.orderBy,
-    ).toStrictEqual([{ userId: "asc" }]);
+    ).toStrictEqual([{ id: "asc" }]);
   });
 
   test("policyVersion対象カタログが上限を超えた場合は不完全なhashを返さない", async () => {

@@ -96,6 +96,7 @@ type EffectiveCatalogFindManyArgs = {
         OR: [{ expiresAt: null }, { expiresAt: { gt: Date } }];
       };
       select: {
+        id: true;
         userId: true;
         effect: true;
         reason: true;
@@ -123,6 +124,7 @@ type EffectiveCatalogFindManyArgs = {
             OR: [{ expiresAt: null }, { expiresAt: { gt: Date } }];
           };
           select: {
+            id: true;
             userId: true;
             effect: true;
             reason: true;

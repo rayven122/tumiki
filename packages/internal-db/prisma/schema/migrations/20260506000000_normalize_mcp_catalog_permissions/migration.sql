@@ -389,6 +389,8 @@ BEGIN
 END $$;
 
 INSERT INTO "GroupCatalogPermission" ("id", "groupId", "catalogId", "effect", "createdAt", "updatedAt")
+-- GroupToolPermission has no createdAt/updatedAt columns, so these catalog-level
+-- ALLOW rows are synthetic and intentionally use the migration timestamp.
 SELECT DISTINCT ON (gtp."groupId", catalog."id")
   gen_random_uuid()::TEXT,
   gtp."groupId",

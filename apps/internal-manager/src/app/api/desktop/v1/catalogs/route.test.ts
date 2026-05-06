@@ -319,9 +319,14 @@ describe("GET /api/desktop/v1/catalogs", () => {
     mockFindCatalogs.mockResolvedValue([buildCatalog({ status: "DISABLED" })]);
 
     const response = await GET(buildRequest());
-    const body = (await response.json()) as { items: [{ status: string }] };
+    const body = (await response.json()) as {
+      items: [{ status: string; tools: [{ deniedReason: string }] }];
+    };
 
     expect(body.items[0].status).toStrictEqual("disabled");
+    expect(body.items[0].tools[0].deniedReason).toStrictEqual(
+      "catalog_disabled",
+    );
   });
 
   test("limitを検証し、最大件数を超える場合は400を返す", async () => {
