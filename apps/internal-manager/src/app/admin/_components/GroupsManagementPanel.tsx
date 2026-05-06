@@ -1,8 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Search, Shield, UserPlus } from "lucide-react";
+import {
+  Pencil,
+  Plus,
+  Search,
+  Shield,
+  Trash2,
+  UserMinus,
+  UserPlus,
+  X,
+} from "lucide-react";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/react";
 
@@ -23,7 +32,9 @@ type SyncTriggerValue = (typeof SyncTrigger)[keyof typeof SyncTrigger];
 
 type GroupListItem = RouterOutputs["groups"]["list"][number];
 type SyncLog = RouterOutputs["groups"]["getSyncLogs"][number];
+type UserListItem = RouterOutputs["users"]["list"][number];
 
+// サーバー側 GROUP_LIST_LIMIT と同じ値。client bundle への server module 混入を避けるため複製する。
 const GROUP_DISPLAY_LIMIT = 200;
 
 /* ===== グループカラー（IDから決定論的に導出） ===== */
@@ -104,6 +115,10 @@ const getSyncStatusKey = (group: GroupListItem): SyncStatusKey => {
   if (group.source === GroupSource.TUMIKI) return "pending";
   return group.lastSyncedAt !== null ? "synced" : "pending";
 };
+
+const getMembershipSourceLabel = (
+  source: (typeof GroupSource)[keyof typeof GroupSource],
+) => (source === GroupSource.TUMIKI ? "手動" : "IdP同期");
 
 /* ===== タブ定義 ===== */
 
@@ -301,7 +316,54 @@ export const GroupsManagementPanel = ({
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<GroupTab>("members");
   const [idpGroupMap, setIdpGroupMap] = useState<Record<string, string>>({});
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createName, setCreateName] = useState("");
+  const [createDescription, setCreateDescription] = useState("");
+  const [editOpen, setEditOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [addMemberOpen, setAddMemberOpen] = useState(false);
+  const [memberSearch, setMemberSearch] = useState("");
+  const [deleteConfirmGroupId, setDeleteConfirmGroupId] = useState<
+    string | null
+  >(null);
   const utils = api.useUtils();
+  const createTumikiGroup = api.groups.createTumikiGroup.useMutation({
+    onSuccess: async (createdGroup) => {
+      setCreateOpen(false);
+      setCreateName("");
+      setCreateDescription("");
+      setSelectedGroupId(createdGroup.id);
+      setActiveTab("members");
+      await utils.groups.list.invalidate();
+    },
+  });
+  const updateTumikiGroup = api.groups.updateTumikiGroup.useMutation({
+    onSuccess: async () => {
+      setEditOpen(false);
+      await utils.groups.list.invalidate();
+    },
+  });
+  const deleteTumikiGroup = api.groups.deleteTumikiGroup.useMutation({
+    onSuccess: async () => {
+      setSelectedGroupId(null);
+      setEditOpen(false);
+      setAddMemberOpen(false);
+      setDeleteConfirmGroupId(null);
+      await utils.groups.list.invalidate();
+    },
+  });
+  const addMember = api.groups.addMember.useMutation({
+    onSuccess: async () => {
+      setMemberSearch("");
+      await utils.groups.list.invalidate();
+    },
+  });
+  const removeMember = api.groups.removeMember.useMutation({
+    onSuccess: async () => {
+      await utils.groups.list.invalidate();
+    },
+  });
   const updateIdpMapping = api.groups.updateIdpMapping.useMutation({
     onSuccess: async (updatedGroup) => {
       setIdpGroupMap((prev) => ({
@@ -311,8 +373,6 @@ export const GroupsManagementPanel = ({
       await utils.groups.list.invalidate();
     },
   });
-  const mutationError = updateIdpMapping.error;
-
   const groupsQuery = api.groups.list.useQuery();
   const groups = groupsQuery.data ?? [];
   const hasMoreGroups = groups.length > GROUP_DISPLAY_LIMIT;
@@ -324,6 +384,42 @@ export const GroupsManagementPanel = ({
   /* 選択中グループのオブジェクトを取得 */
   const selectedGroup =
     visibleGroups.find((g) => g.id === selectedGroupId) ?? null;
+  const isTumikiGroup = selectedGroup?.source === GroupSource.TUMIKI;
+  const selectedMemberUserIds = new Set(
+    selectedGroup?.memberships.map((membership) => membership.userId) ?? [],
+  );
+  const usersQuery = api.users.list.useQuery(
+    {
+      search: memberSearch.trim() || undefined,
+      role: "all",
+      isActive: "true",
+    },
+    { enabled: addMemberOpen && isTumikiGroup },
+  );
+  const memberCandidates: UserListItem[] = (usersQuery.data ?? []).filter(
+    (user) => !selectedMemberUserIds.has(user.id),
+  );
+  const mutationError =
+    createTumikiGroup.error ??
+    updateTumikiGroup.error ??
+    deleteTumikiGroup.error ??
+    addMember.error ??
+    removeMember.error ??
+    updateIdpMapping.error;
+
+  useEffect(() => {
+    if (!selectedGroup) return;
+    setEditOpen(false);
+    setAddMemberOpen(false);
+    setDeleteConfirmGroupId(null);
+    setMemberSearch("");
+  }, [selectedGroup?.id]);
+
+  useEffect(() => {
+    if (!selectedGroup) return;
+    setEditName(selectedGroup.name);
+    setEditDescription(selectedGroup.description ?? "");
+  }, [selectedGroup?.name, selectedGroup?.description]);
 
   /* グループ一覧フィルタリング */
   const filteredGroups = visibleGroups.filter(
@@ -336,6 +432,11 @@ export const GroupsManagementPanel = ({
   /* グループ選択ハンドラ */
   const handleSelectGroup = (group: GroupListItem) => {
     setSelectedGroupId(group.id);
+    createTumikiGroup.reset();
+    updateTumikiGroup.reset();
+    deleteTumikiGroup.reset();
+    addMember.reset();
+    removeMember.reset();
     updateIdpMapping.reset();
     setIdpGroupMap((prev) => {
       if (prev[group.id] !== undefined) return prev;
@@ -355,6 +456,40 @@ export const GroupsManagementPanel = ({
     });
   };
 
+  const handleCreateGroup = () => {
+    const name = createName.trim();
+    if (!name) return;
+    createTumikiGroup.mutate({
+      name,
+      description: createDescription.trim() || null,
+    });
+  };
+
+  const handleUpdateGroup = () => {
+    if (!selectedGroup) return;
+    const name = editName.trim();
+    if (!name) return;
+    updateTumikiGroup.mutate({
+      groupId: selectedGroup.id,
+      name,
+      description: editDescription.trim() || null,
+    });
+  };
+
+  const handleDeleteGroup = () => {
+    if (!selectedGroup) return;
+    if (deleteConfirmGroupId !== selectedGroup.id) {
+      setDeleteConfirmGroupId(selectedGroup.id);
+      return;
+    }
+    deleteTumikiGroup.mutate({ groupId: selectedGroup.id });
+  };
+
+  const handleAddMember = (userId: string) => {
+    if (!selectedGroup) return;
+    addMember.mutate({ groupId: selectedGroup.id, userId });
+  };
+
   return (
     <div
       className={
@@ -372,13 +507,39 @@ export const GroupsManagementPanel = ({
           </span>
           <button
             type="button"
-            disabled
-            className="bg-btn-primary-bg text-btn-primary-text flex min-h-[44px] cursor-not-allowed items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-medium opacity-50"
+            onClick={() => setCreateOpen((open) => !open)}
+            className="bg-btn-primary-bg text-btn-primary-text flex min-h-[44px] items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-opacity hover:opacity-80"
           >
-            <Plus size={11} />
-            追加
+            {createOpen ? <X size={11} /> : <Plus size={11} />}
+            {createOpen ? "閉じる" : "追加"}
           </button>
         </div>
+
+        {createOpen && (
+          <div className="border-b-border-default space-y-2 border-b px-3 py-3">
+            <input
+              type="text"
+              placeholder="グループ名"
+              value={createName}
+              onChange={(e) => setCreateName(e.target.value)}
+              className="bg-bg-active border-border-default text-text-secondary w-full rounded-lg border px-3 py-2 text-xs outline-none"
+            />
+            <textarea
+              placeholder="説明"
+              value={createDescription}
+              onChange={(e) => setCreateDescription(e.target.value)}
+              className="bg-bg-active border-border-default text-text-secondary min-h-[68px] w-full resize-none rounded-lg border px-3 py-2 text-xs outline-none"
+            />
+            <button
+              type="button"
+              onClick={handleCreateGroup}
+              disabled={createTumikiGroup.isPending || !createName.trim()}
+              className="bg-btn-primary-bg text-btn-primary-text min-h-[44px] w-full rounded-lg px-3 py-2 text-xs font-medium transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {createTumikiGroup.isPending ? "作成中" : "作成"}
+            </button>
+          </div>
+        )}
 
         {/* 検索 */}
         <div className="border-b-border-default border-b px-3 py-2.5">
@@ -484,25 +645,108 @@ export const GroupsManagementPanel = ({
           <>
             {/* 詳細ヘッダー */}
             <div className="border-b-border-default border-b px-6 py-4">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex min-w-0 items-center gap-3">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex min-w-0 flex-1 items-start gap-3">
                   <span
-                    className={`h-3.5 w-3.5 shrink-0 rounded-full ${getGroupColorClass(selectedGroup.id)}`}
+                    className={`mt-1 h-3.5 w-3.5 shrink-0 rounded-full ${getGroupColorClass(selectedGroup.id)}`}
                   />
-                  <Heading className="text-text-primary truncate text-base font-semibold">
-                    {selectedGroup.name}
-                  </Heading>
-                  <span className="text-text-muted truncate text-xs">
-                    {selectedGroup.description ?? ""}
-                  </span>
+                  {editOpen && isTumikiGroup ? (
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="bg-bg-active border-border-default text-text-primary w-full rounded-lg border px-3 py-2 text-sm font-semibold outline-none"
+                      />
+                      <textarea
+                        value={editDescription}
+                        onChange={(e) => setEditDescription(e.target.value)}
+                        placeholder="説明"
+                        className="bg-bg-active border-border-default text-text-secondary min-h-[68px] w-full resize-none rounded-lg border px-3 py-2 text-xs outline-none"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={handleUpdateGroup}
+                          disabled={
+                            updateTumikiGroup.isPending || !editName.trim()
+                          }
+                          className="bg-btn-primary-bg text-btn-primary-text min-h-[44px] rounded-lg px-3 py-1.5 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {updateTumikiGroup.isPending ? "保存中" : "保存"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditOpen(false)}
+                          className="bg-bg-active text-text-secondary min-h-[44px] rounded-lg px-3 py-1.5 text-xs"
+                        >
+                          キャンセル
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="min-w-0">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Heading className="text-text-primary truncate text-base font-semibold">
+                          {selectedGroup.name}
+                        </Heading>
+                        <span
+                          className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                            isTumikiGroup
+                              ? "bg-sky-500/15 text-sky-300"
+                              : "bg-emerald-500/15 text-emerald-300"
+                          }`}
+                        >
+                          {isTumikiGroup ? "Tumiki" : "IdP"}
+                        </span>
+                      </div>
+                      <span className="text-text-muted mt-1 block truncate text-xs">
+                        {selectedGroup.description ?? ""}
+                      </span>
+                    </div>
+                  )}
                 </div>
-                <Link
-                  href="/admin/roles"
-                  className="bg-bg-active text-text-secondary flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
-                >
-                  <Shield size={12} />
-                  権限管理へ
-                </Link>
+                <div className="flex shrink-0 items-center gap-2">
+                  {isTumikiGroup && !editOpen && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setEditOpen(true)}
+                        className="bg-bg-active text-text-secondary flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
+                      >
+                        <Pencil size={12} />
+                        編集
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDeleteGroup}
+                        disabled={deleteTumikiGroup.isPending}
+                        className="flex min-h-[44px] items-center gap-1.5 rounded-lg bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-300 transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <Trash2 size={12} />
+                        {deleteConfirmGroupId === selectedGroup.id
+                          ? "削除を確定"
+                          : "削除"}
+                      </button>
+                      {deleteConfirmGroupId === selectedGroup.id && (
+                        <button
+                          type="button"
+                          onClick={() => setDeleteConfirmGroupId(null)}
+                          className="bg-bg-active text-text-secondary flex min-h-[44px] items-center rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
+                        >
+                          キャンセル
+                        </button>
+                      )}
+                    </>
+                  )}
+                  <Link
+                    href="/admin/roles"
+                    className="bg-bg-active text-text-secondary flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
+                  >
+                    <Shield size={12} />
+                    権限管理へ
+                  </Link>
+                </div>
               </div>
             </div>
 
@@ -531,6 +775,11 @@ export const GroupsManagementPanel = ({
 
             {/* タブコンテンツ */}
             <div className="flex-1 overflow-y-auto p-6">
+              {mutationError && (
+                <div className="mb-4 rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                  {mutationError.message}
+                </div>
+              )}
               {/* メンバータブ */}
               {activeTab === "members" && (
                 <div className="space-y-3">
@@ -538,20 +787,89 @@ export const GroupsManagementPanel = ({
                     <span className="text-text-secondary text-xs">
                       {selectedGroup.memberships.length}名のメンバー
                     </span>
-                    <button
-                      type="button"
-                      disabled
-                      className="bg-btn-primary-bg text-btn-primary-text flex min-h-[44px] cursor-not-allowed items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium opacity-50"
-                    >
-                      <UserPlus size={12} />
-                      メンバー追加
-                    </button>
+                    {isTumikiGroup ? (
+                      <button
+                        type="button"
+                        onClick={() => setAddMemberOpen((open) => !open)}
+                        className="bg-btn-primary-bg text-btn-primary-text flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
+                      >
+                        {addMemberOpen ? (
+                          <X size={12} />
+                        ) : (
+                          <UserPlus size={12} />
+                        )}
+                        {addMemberOpen ? "閉じる" : "メンバー追加"}
+                      </button>
+                    ) : (
+                      <span className="text-text-muted text-[11px]">
+                        IdP同期グループはreadonlyです
+                      </span>
+                    )}
                   </div>
+                  {addMemberOpen && isTumikiGroup && (
+                    <div className="bg-bg-card border-border-default space-y-3 rounded-xl border p-4">
+                      <div className="relative">
+                        <Search
+                          size={12}
+                          className="text-text-muted absolute top-1/2 left-2.5 -translate-y-1/2"
+                        />
+                        <input
+                          type="text"
+                          placeholder="追加するユーザーを検索"
+                          value={memberSearch}
+                          onChange={(e) => setMemberSearch(e.target.value)}
+                          className="bg-bg-active border-border-default text-text-secondary w-full rounded-lg border py-2 pr-3 pl-7 text-xs outline-none"
+                        />
+                      </div>
+                      <div className="max-h-[220px] overflow-y-auto">
+                        {usersQuery.isLoading && (
+                          <div className="text-text-muted px-4 py-6 text-center text-xs">
+                            読み込み中...
+                          </div>
+                        )}
+                        {usersQuery.isError && (
+                          <div className="px-4 py-6 text-center text-xs text-red-400">
+                            ユーザーの読み込みに失敗しました
+                          </div>
+                        )}
+                        {!usersQuery.isLoading &&
+                          !usersQuery.isError &&
+                          memberCandidates.length === 0 && (
+                            <div className="text-text-muted px-4 py-6 text-center text-xs">
+                              追加できるユーザーがいません
+                            </div>
+                          )}
+                        {memberCandidates.map((user) => (
+                          <button
+                            key={user.id}
+                            type="button"
+                            onClick={() => handleAddMember(user.id)}
+                            disabled={addMember.isPending}
+                            className="border-b-border-subtle hover:bg-bg-card-hover flex min-h-[44px] w-full items-center justify-between border-b px-2 py-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <span className="min-w-0">
+                              <span className="text-text-primary block truncate text-xs font-medium">
+                                {user.name ?? user.email ?? "—"}
+                              </span>
+                              <span className="text-text-muted block truncate font-mono text-[10px]">
+                                {user.email ?? "—"}
+                              </span>
+                            </span>
+                            <span className="text-text-secondary text-[11px]">
+                              追加
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {/* メンバーテーブル */}
                   <div className="bg-bg-card border-border-default overflow-hidden rounded-xl border">
-                    <div className="border-b-border-default text-text-subtle grid grid-cols-[1fr_200px] items-center gap-3 border-b px-5 py-2.5 text-[10px]">
+                    <div className="border-b-border-default text-text-subtle grid grid-cols-[minmax(180px,1fr)_200px_90px_76px] items-center gap-3 border-b px-5 py-2.5 text-[10px]">
                       <span>ユーザー</span>
                       <span>メールアドレス</span>
+                      <span>由来</span>
+                      <span className="text-right">操作</span>
                     </div>
                     {selectedGroup.memberships.length === 0 && (
                       <div className="text-text-muted px-5 py-6 text-center text-xs">
@@ -561,7 +879,7 @@ export const GroupsManagementPanel = ({
                     {selectedGroup.memberships.map((membership) => (
                       <div
                         key={membership.id}
-                        className="border-b-border-subtle hover:bg-bg-card-hover grid grid-cols-[1fr_200px] items-center gap-3 border-b px-5 py-3 text-xs transition-colors"
+                        className="border-b-border-subtle hover:bg-bg-card-hover grid grid-cols-[minmax(180px,1fr)_200px_90px_76px] items-center gap-3 border-b px-5 py-3 text-xs transition-colors"
                       >
                         <div className="flex items-center gap-2.5">
                           <div className="bg-bg-active text-text-secondary flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium">
@@ -580,6 +898,37 @@ export const GroupsManagementPanel = ({
                         <span className="text-text-muted font-mono text-[11px]">
                           {membership.user.email}
                         </span>
+                        <span
+                          className={`w-fit rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                            membership.source === GroupSource.TUMIKI
+                              ? "bg-sky-500/15 text-sky-300"
+                              : "bg-emerald-500/15 text-emerald-300"
+                          }`}
+                        >
+                          {getMembershipSourceLabel(membership.source)}
+                        </span>
+                        <div className="text-right">
+                          {isTumikiGroup &&
+                          membership.source === GroupSource.TUMIKI ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                removeMember.mutate({
+                                  membershipId: membership.id,
+                                })
+                              }
+                              disabled={removeMember.isPending}
+                              className="inline-flex min-h-[44px] items-center gap-1 rounded-md bg-red-500/10 px-2 text-[10px] font-medium text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              <UserMinus size={11} />
+                              削除
+                            </button>
+                          ) : (
+                            <span className="text-text-muted text-[10px]">
+                              readonly
+                            </span>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -596,11 +945,6 @@ export const GroupsManagementPanel = ({
                     onSaveIdpMapping={handleSaveIdpMapping}
                     isSaving={updateIdpMapping.isPending}
                   />
-                  {mutationError && (
-                    <div className="rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-300">
-                      {mutationError.message}
-                    </div>
-                  )}
                 </div>
               )}
             </div>
