@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   X,
   Info,
@@ -52,7 +52,12 @@ export const AiClientAutoWriteModal = ({
   );
   const [writing, setWriting] = useState(false);
 
-  // プレビュー取得
+  // servers はポーリングで頻繁に参照が更新されるため、effect の再実行トリガーにはせず
+  // ref 経由で最新値を読み取る
+  const serversRef = useRef(servers);
+  serversRef.current = servers;
+
+  // プレビュー取得（モーダルを開いた時の1回のみ実行し、ポーリングで再読込しない）
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -61,7 +66,7 @@ export const AiClientAutoWriteModal = ({
         if (cancelled) return;
         setPreview(result);
         // orphan は初期状態で全て「保持」
-        const tumikiSlugs = new Set(servers.map((s) => s.slug));
+        const tumikiSlugs = new Set(serversRef.current.map((s) => s.slug));
         const orphans = result.existingServerSlugs.filter(
           (slug) => !tumikiSlugs.has(slug),
         );
@@ -74,7 +79,7 @@ export const AiClientAutoWriteModal = ({
     return () => {
       cancelled = true;
     };
-  }, [client.id, servers]);
+  }, [client.id]);
 
   // Escape で閉じる
   useEffect(() => {
