@@ -429,6 +429,105 @@ describe("mcp-proxy.service", () => {
         expect.objectContaining({ access_token: "expired" }),
       );
     });
+
+    test("同一 secretId を共有する複数の OAuth 接続でリフレッシュは1回しか走らない（refresh_token rotation 衝突防止）", async () => {
+      // 仮想MCPで同じ secret を共有する接続を2件作る
+      const sharedCredentials =
+        '{"access_token":"expired","refresh_token":"rt","expires_at":"1000"}';
+      vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([
+        buildConnection({
+          id: 100,
+          secretId: 42,
+          name: "Source",
+          slug: "source",
+          transportType: "SSE",
+          command: null,
+          url: "https://api.figma.com/sse",
+          credentials: sharedCredentials,
+          authType: "OAUTH",
+          server: { slug: "figma" },
+        }),
+        buildConnection({
+          id: 200,
+          secretId: 42,
+          name: "Virtual",
+          slug: "virtual",
+          transportType: "SSE",
+          command: null,
+          url: "https://api.figma.com/sse",
+          credentials: sharedCredentials,
+          authType: "OAUTH",
+          server: { slug: "virtual-figma" },
+        }),
+      ]);
+      vi.mocked(refreshOAuthTokenIfNeeded).mockResolvedValue({
+        access_token: "refreshed",
+        refresh_token: "new-rt",
+        expires_at: "9999999999",
+      });
+
+      const result = await mcpProxyService.getEnabledConfigs();
+
+      // 1件目で取得した新トークンを2件目も使う（古い refresh_token で再叩きしない）
+      expect(refreshOAuthTokenIfNeeded).toHaveBeenCalledTimes(1);
+      expect(result).toStrictEqual([
+        {
+          name: "figma-source",
+          transportType: "SSE",
+          url: "https://api.figma.com/sse",
+          authType: "BEARER",
+          headers: { Authorization: "Bearer refreshed" },
+        },
+        {
+          name: "virtual-figma-virtual",
+          transportType: "SSE",
+          url: "https://api.figma.com/sse",
+          authType: "BEARER",
+          headers: { Authorization: "Bearer refreshed" },
+        },
+      ]);
+    });
+
+    test("異なる secretId の OAuth 接続はそれぞれ独立してリフレッシュされる", async () => {
+      vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([
+        buildConnection({
+          id: 100,
+          secretId: 42,
+          name: "Figma",
+          slug: "figma",
+          transportType: "SSE",
+          command: null,
+          url: "https://api.figma.com/sse",
+          credentials:
+            '{"access_token":"a","refresh_token":"rta","expires_at":"1000"}',
+          authType: "OAUTH",
+          server: { slug: "figma" },
+        }),
+        buildConnection({
+          id: 200,
+          secretId: 99,
+          name: "Notion",
+          slug: "notion",
+          transportType: "STREAMABLE_HTTP",
+          command: null,
+          url: "https://api.notion.com/mcp",
+          credentials:
+            '{"access_token":"b","refresh_token":"rtb","expires_at":"1000"}',
+          authType: "OAUTH",
+          server: { slug: "notion" },
+        }),
+      ]);
+      vi.mocked(refreshOAuthTokenIfNeeded).mockResolvedValue({
+        access_token: "x",
+        refresh_token: "y",
+        expires_at: "9999999999",
+      });
+
+      await mcpProxyService.getEnabledConfigs();
+
+      // secretId が違えば各接続でリフレッシュ判定が走る
+      expect(refreshOAuthTokenIfNeeded).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe("fetchToolsForConnection", () => {

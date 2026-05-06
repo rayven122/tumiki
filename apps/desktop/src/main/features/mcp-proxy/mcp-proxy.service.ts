@@ -124,9 +124,14 @@ const withAllowedTools = <T extends McpServerConfig>(
  * 単一接続からMcpServerConfigを生成する共通ヘルパー。
  * credentials復号 → Zodバリデーション → OAuthリフレッシュ → config組み立て。
  * 生成不可（urlなし等）の場合は null を返す。
+ *
+ * `oauthCache` は同一 secretId を共有する複数接続のリフレッシュを冪等化するための
+ * 接続ループ単位の状態。同じ secret を指す2件目以降は1件目で得た新トークンを参照し、
+ * 古い refresh_token で再叩きして refresh_token rotation で `invalid_grant` を起こすのを防ぐ。
  */
 const buildConfigFromConnection = async (
   conn: ConnectionForConfig,
+  oauthCache: Map<number, Record<string, string>> = new Map(),
 ): Promise<{ config: McpServerConfig; meta: McpConnectionMeta } | null> => {
   const connLabel = `${conn.server.slug}/${conn.slug}`;
   const name = `${conn.server.slug}-${conn.slug}`;
@@ -138,16 +143,20 @@ const buildConfigFromConnection = async (
     `connection(${connLabel}).credentials`,
   );
 
-  // OAuth接続: トークンの期限チェック & 必要ならリフレッシュ
+  // OAuth接続: トークンの期限チェック & 必要ならリフレッシュ（secretId 単位で冪等化）
   if (conn.authType === "OAUTH" && conn.url) {
-    // 同じ secret を指す全コネクションでトークンを共有するため secretId 単位でリフレッシュ
-    const refreshed = await refreshOAuthTokenIfNeeded(
-      conn.secretId,
-      conn.url,
-      credentials,
-    );
-    if (refreshed) {
-      credentials = refreshed;
+    const cached = oauthCache.get(conn.secretId);
+    if (cached) {
+      credentials = cached;
+    } else {
+      const refreshed = await refreshOAuthTokenIfNeeded(
+        conn.secretId,
+        conn.url,
+        credentials,
+      );
+      if (refreshed) credentials = refreshed;
+      // リフレッシュ実行後・スキップ後どちらでも、後続接続が古いスナップショットで再叩きしないようキャッシュ
+      oauthCache.set(conn.secretId, credentials);
     }
   }
 
@@ -258,9 +267,11 @@ const buildConfigsFromConnections = async (
 
   const configs: McpServerConfig[] = [];
   const meta: McpConnectionMeta[] = [];
+  // 同じ secretId を共有する複数接続でのリフレッシュ重複を防ぐ（refresh_token rotation 衝突対策）
+  const oauthCache = new Map<number, Record<string, string>>();
   for (const conn of connections) {
     try {
-      const result = await buildConfigFromConnection(conn);
+      const result = await buildConfigFromConnection(conn, oauthCache);
       if (result) {
         configs.push(result.config);
         meta.push(result.meta);
