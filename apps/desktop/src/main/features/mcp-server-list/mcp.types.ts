@@ -22,10 +22,11 @@ export type McpServerItem = Omit<McpServer, "createdAt" | "updatedAt"> & {
 /**
  * MCP接続情報型（IPC通信用）
  * Prisma型を起点に、Date→stringへ変換 + catalog を付与
+ * `secretId` は内部キーのため renderer に公開しない
  */
 export type McpConnectionItem = Omit<
   McpConnection,
-  "createdAt" | "updatedAt" | "serverId" | "displayOrder"
+  "createdAt" | "updatedAt" | "serverId" | "displayOrder" | "secretId"
 > & {
   createdAt: string;
   updatedAt: string;

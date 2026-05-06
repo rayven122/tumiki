@@ -51,6 +51,8 @@ DROP TABLE "McpConnection";
 ALTER TABLE "new_McpConnection" RENAME TO "McpConnection";
 
 CREATE UNIQUE INDEX "McpConnection_serverId_slug_key" ON "McpConnection"("serverId", "slug");
+-- 参照カウント運用（deleteSecretIfOrphaned の COUNT）と FK 整合性のため secretId に索引を張る
+CREATE INDEX "McpConnection_secretId_idx" ON "McpConnection"("secretId");
 
 PRAGMA foreign_keys=ON;
 PRAGMA defer_foreign_keys=OFF;

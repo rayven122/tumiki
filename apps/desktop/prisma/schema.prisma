@@ -160,6 +160,8 @@ model McpConnection {
   tools McpTool[]
 
   @@unique([serverId, slug])
+  /// 参照カウント運用（deleteSecretIfOrphaned の COUNT）と FK 整合性のための索引
+  @@index([secretId])
 }
 
 /// MCP接続の認証情報（暗号化済み credentials を保持し、複数の McpConnection から共有される）

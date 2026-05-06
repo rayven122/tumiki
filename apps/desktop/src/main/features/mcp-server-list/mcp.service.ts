@@ -454,6 +454,7 @@ export const getToolsForConnections = async (
 };
 
 // IPC 戻り値は従来どおり復号後 credentials を含める（McpSecret 経由で取得）
+// 内部キー（secretId, secret, _count）は明示的に除外し、フィールドが増えても漏れない構成にする
 export const getAllServers = async () => {
   const db = await getDb();
   const servers = await mcpRepository.findAllWithConnections(db);
@@ -461,16 +462,25 @@ export const getAllServers = async () => {
     servers.map(async (server) => ({
       ...server,
       connections: await Promise.all(
-        server.connections.map(async (conn) => {
-          // secretId は内部キーのため IPC 戻り値から除外する
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { _count, secret, secretId, ...rest } = conn;
-          return {
-            ...rest,
-            credentials: await decryptCredentials(secret.credentials),
-            toolCount: _count.tools,
-          };
-        }),
+        server.connections.map(async (conn) => ({
+          id: conn.id,
+          name: conn.name,
+          slug: conn.slug,
+          transportType: conn.transportType,
+          command: conn.command,
+          args: conn.args,
+          url: conn.url,
+          authType: conn.authType,
+          isEnabled: conn.isEnabled,
+          displayOrder: conn.displayOrder,
+          serverId: conn.serverId,
+          catalogId: conn.catalogId,
+          createdAt: conn.createdAt,
+          updatedAt: conn.updatedAt,
+          catalog: conn.catalog,
+          credentials: await decryptCredentials(conn.secret.credentials),
+          toolCount: conn._count.tools,
+        })),
       ),
     })),
   );
