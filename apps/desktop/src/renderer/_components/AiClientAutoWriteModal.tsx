@@ -52,8 +52,7 @@ export const AiClientAutoWriteModal = ({
   );
   const [writing, setWriting] = useState(false);
 
-  // servers はポーリングで頻繁に参照が更新されるため、effect の再実行トリガーにはせず
-  // ref 経由で最新値を読み取る
+  // ポーリングによる effect 再実行を避けるため ref 経由で参照
   const serversRef = useRef(servers);
   serversRef.current = servers;
 
