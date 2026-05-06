@@ -207,37 +207,56 @@ export const mcpPoliciesRouter = createTRPCRouter({
     .input(z.object({ userId: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       const now = new Date();
-      const [{ user, orgUnits }, catalogs] = await Promise.all([
-        getPolicyContextForUser(input.userId, ctx.db),
-        ctx.db.mcpCatalog.findMany({
-          where: { deletedAt: null },
-          include: {
-            orgUnitCatalogPermissions: true,
-            groupCatalogPermissions: true,
-            userCatalogPermissions: {
-              where: {
-                userId: input.userId,
-                OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-              },
+      const { user, orgUnits } = await getPolicyContextForUser(
+        input.userId,
+        ctx.db,
+      );
+      if (!user) return null;
+
+      const groupIds = user.groupMemberships.map(
+        (membership) => membership.group.id,
+      );
+      const groupPermissionIds =
+        groupIds.length > 0 ? groupIds : ["__NO_GROUP_PERMISSION__"];
+      const orgUnitIds = orgUnits.map((orgUnit) => orgUnit.id);
+      const orgUnitPermissionIds =
+        orgUnitIds.length > 0 ? orgUnitIds : [UNSELECTED_ORG_UNIT_ID];
+
+      const catalogs = await ctx.db.mcpCatalog.findMany({
+        where: { deletedAt: null },
+        include: {
+          orgUnitCatalogPermissions: {
+            where: { orgUnitId: { in: orgUnitPermissionIds } },
+          },
+          groupCatalogPermissions: {
+            where: { groupId: { in: groupPermissionIds } },
+          },
+          userCatalogPermissions: {
+            where: {
+              userId: input.userId,
+              OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
             },
-            tools: {
-              where: { deletedAt: null },
-              include: {
-                orgUnitPermissions: true,
-                groupPermissions: true,
-                userPermissions: {
-                  where: {
-                    userId: input.userId,
-                    OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-                  },
+          },
+          tools: {
+            where: { deletedAt: null },
+            include: {
+              orgUnitPermissions: {
+                where: { orgUnitId: { in: orgUnitPermissionIds } },
+              },
+              groupPermissions: {
+                where: { groupId: { in: groupPermissionIds } },
+              },
+              userPermissions: {
+                where: {
+                  userId: input.userId,
+                  OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
                 },
               },
             },
           },
-          take: POLICY_MATRIX_CATALOG_LIMIT,
-        }),
-      ]);
-      if (!user) return null;
+        },
+        take: POLICY_MATRIX_CATALOG_LIMIT,
+      });
 
       return catalogs.map((catalog) => {
         const effective = evaluateCatalogPermissions(user, catalog, orgUnits);

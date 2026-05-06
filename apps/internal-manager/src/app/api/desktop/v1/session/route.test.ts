@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server";
 import { GroupSource, PolicyEffect, Role } from "@tumiki/internal-db";
 
 const mockFindUnique = vi.hoisted(() => vi.fn());
+const mockOrgUnitFindMany = vi.hoisted(() => vi.fn());
 const mockMcpCatalogFindMany = vi.hoisted(() => vi.fn());
 const mockFindSettings = vi.hoisted(() => vi.fn());
 const mockVerifyDesktopJwt = vi.hoisted(() => vi.fn());
@@ -12,6 +13,9 @@ vi.mock("@tumiki/internal-db/server", () => ({
   db: {
     user: {
       findUnique: mockFindUnique,
+    },
+    orgUnit: {
+      findMany: mockOrgUnitFindMany,
     },
     mcpCatalog: {
       findMany: mockMcpCatalogFindMany,
@@ -63,7 +67,10 @@ type FindUniqueArgs = {
 type FindPolicyCatalogsArgs = {
   take: number;
   select: {
-    orgUnitCatalogPermissions: { orderBy: [{ orgUnitId: "asc" }] };
+    orgUnitCatalogPermissions: {
+      where: { orgUnitId: { in: string[] } };
+      orderBy: [{ orgUnitId: "asc" }];
+    };
     groupCatalogPermissions: {
       where: { groupId: { in: string[] } };
       orderBy: [{ groupId: "asc" }];
@@ -80,6 +87,10 @@ type FindPolicyCatalogsArgs = {
         groupPermissions: {
           where: { groupId: { in: string[] } };
           orderBy: [{ groupId: "asc" }];
+        };
+        orgUnitPermissions: {
+          where: { orgUnitId: { in: string[] } };
+          orderBy: [{ orgUnitId: "asc" }];
         };
         userPermissions: {
           where: {
@@ -175,6 +186,14 @@ const expectedGroups = [
 
 const expectedPermissions = [
   {
+    source: "ORG_UNIT",
+    scope: "TOOL",
+    orgUnitId: "org-001",
+    catalogId: "catalog-001",
+    toolId: "tool-001",
+    effect: PolicyEffect.ALLOW,
+  },
+  {
     source: "GROUP",
     scope: "CATALOG",
     groupId: "group-001",
@@ -263,6 +282,9 @@ describe("GET /api/desktop/v1/session", () => {
       userId: "user-001",
     });
     mockFindUnique.mockResolvedValue(activeUser);
+    mockOrgUnitFindMany.mockResolvedValue([
+      { id: "org-001", parentId: null, updatedAt: orgUnitUpdatedAt },
+    ]);
     mockMcpCatalogFindMany.mockResolvedValue(expectedPolicyCatalogs);
     mockFindSettings.mockResolvedValue({
       organizationName: "Rayven",
@@ -336,6 +358,10 @@ describe("GET /api/desktop/v1/session", () => {
       findPolicyCatalogsArgs.select.orgUnitCatalogPermissions.orderBy,
     ).toStrictEqual([{ orgUnitId: "asc" }]);
     expect(
+      findPolicyCatalogsArgs.select.orgUnitCatalogPermissions.where.orgUnitId
+        .in,
+    ).toStrictEqual(["org-001"]);
+    expect(
       findPolicyCatalogsArgs.select.groupCatalogPermissions.orderBy,
     ).toStrictEqual([{ groupId: "asc" }]);
     expect(
@@ -357,6 +383,13 @@ describe("GET /api/desktop/v1/session", () => {
     expect(
       findPolicyCatalogsArgs.select.tools.select.userPermissions.where.userId,
     ).toStrictEqual("user-001");
+    expect(
+      findPolicyCatalogsArgs.select.tools.select.orgUnitPermissions.where
+        .orgUnitId.in,
+    ).toStrictEqual(["org-001"]);
+    expect(
+      findPolicyCatalogsArgs.select.tools.select.orgUnitPermissions.orderBy,
+    ).toStrictEqual([{ orgUnitId: "asc" }]);
     expect(
       findPolicyCatalogsArgs.select.tools.select.userPermissions.orderBy,
     ).toStrictEqual([{ userId: "asc" }]);
@@ -401,6 +434,30 @@ describe("GET /api/desktop/v1/session", () => {
       findPolicyCatalogsArgs.select.tools.select.groupPermissions.where.groupId
         .in,
     ).toStrictEqual(["__NO_GROUP_PERMISSION__"]);
+    expect(
+      findPolicyCatalogsArgs.select.orgUnitCatalogPermissions.where.orgUnitId
+        .in,
+    ).toStrictEqual(["org-001"]);
+  });
+
+  test("所属部署がない場合は存在しないIDで部署権限を空に絞る", async () => {
+    mockFindUnique.mockResolvedValue({ ...activeUser, orgUnitMemberships: [] });
+
+    const response = await GET(buildRequest());
+
+    expect(response.status).toStrictEqual(200);
+    expect(mockOrgUnitFindMany).not.toHaveBeenCalled();
+    const [findPolicyCatalogsArgs] = mockMcpCatalogFindMany.mock.calls[0] as [
+      FindPolicyCatalogsArgs,
+    ];
+    expect(
+      findPolicyCatalogsArgs.select.orgUnitCatalogPermissions.where.orgUnitId
+        .in,
+    ).toStrictEqual(["__NO_ORG_UNIT_PERMISSION__"]);
+    expect(
+      findPolicyCatalogsArgs.select.tools.select.orgUnitPermissions.where
+        .orgUnitId.in,
+    ).toStrictEqual(["__NO_ORG_UNIT_PERMISSION__"]);
   });
 
   test("Desktop API設定が未作成の場合はデフォルト値を返す", async () => {

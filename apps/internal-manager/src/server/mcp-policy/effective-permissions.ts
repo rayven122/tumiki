@@ -76,9 +76,9 @@ export type CatalogPolicyInput = {
   }[];
 };
 
-const POLICY_CONTEXT_ORG_UNIT_LIMIT = 2000;
+export const POLICY_CONTEXT_ORG_UNIT_LIMIT = 2000;
 
-const collectOrgUnitIds = (
+export const collectPolicyOrgUnitIds = (
   memberships: PolicyUser["orgUnitMemberships"],
   allOrgUnits: { id: string; parentId: string | null }[],
 ) => {
@@ -97,12 +97,36 @@ const collectOrgUnitIds = (
   return ids;
 };
 
+export const getPolicyOrgUnitsForMemberships = async (
+  memberships: PolicyUser["orgUnitMemberships"],
+  client: PrismaTransactionClient = db,
+) => {
+  if (memberships.length === 0) return [];
+
+  const orgUnits = await client.orgUnit.findMany({
+    select: { id: true, parentId: true, updatedAt: true },
+    orderBy: { id: "asc" },
+    take: POLICY_CONTEXT_ORG_UNIT_LIMIT + 1,
+  });
+  if (orgUnits.length > POLICY_CONTEXT_ORG_UNIT_LIMIT) {
+    throw new Error(
+      `OrgUnit count exceeded the policy context limit (${POLICY_CONTEXT_ORG_UNIT_LIMIT}); refusing incomplete MCP policy evaluation.`,
+    );
+  }
+
+  const orgUnitIds = collectPolicyOrgUnitIds(memberships, orgUnits);
+  return orgUnits.filter((unit) => orgUnitIds.has(unit.id));
+};
+
 export const evaluateCatalogPermissions = (
   user: PolicyUser,
   catalog: CatalogPolicyInput,
   allOrgUnits: { id: string; parentId: string | null }[],
 ): EffectiveCatalogPermissions => {
-  const orgUnitIds = collectOrgUnitIds(user.orgUnitMemberships, allOrgUnits);
+  const orgUnitIds = collectPolicyOrgUnitIds(
+    user.orgUnitMemberships,
+    allOrgUnits,
+  );
   const groupIds = new Set(
     user.groupMemberships.map((membership) => membership.group.id),
   );
@@ -137,7 +161,8 @@ export const evaluateCatalogPermissions = (
         .map((permission) => permission.effect),
     ];
 
-    // 明示DENYは source に関わらず ALLOW より優先する。
+    // 明示DENYは安全側のガードレールとして扱うため、sourceに関わらずALLOWより優先する。
+    // ユーザー個別ALLOWは未設定状態への例外であり、部署/グループDENYの解除には使わない。
     if (userEffects.includes(PolicyEffect.DENY)) {
       return [
         tool.id,
@@ -235,52 +260,10 @@ export const getPolicyContextForUser = async (
 
   if (!user) return { user, orgUnits: [] };
 
-  const orgUnitsById = new Map(
-    user.orgUnitMemberships.map((membership) => [
-      membership.orgUnit.id,
-      {
-        id: membership.orgUnit.id,
-        parentId: membership.orgUnit.parentId,
-        updatedAt: membership.orgUnit.updatedAt,
-      },
-    ]),
-  );
-  const pendingParentIds = new Set(
-    user.orgUnitMemberships
-      .map((membership) => membership.orgUnit.parentId)
-      .filter((parentId): parentId is string => parentId !== null),
+  const orgUnits = await getPolicyOrgUnitsForMemberships(
+    user.orgUnitMemberships,
+    client,
   );
 
-  while (pendingParentIds.size > 0) {
-    const parentIds = [...pendingParentIds].filter(
-      (parentId) => !orgUnitsById.has(parentId),
-    );
-    pendingParentIds.clear();
-    if (parentIds.length === 0) break;
-
-    if (orgUnitsById.size + parentIds.length > POLICY_CONTEXT_ORG_UNIT_LIMIT) {
-      throw new Error(
-        `OrgUnit ancestor count exceeded the policy context limit (${POLICY_CONTEXT_ORG_UNIT_LIMIT}); refusing incomplete MCP policy evaluation.`,
-      );
-    }
-
-    const parents = await client.orgUnit.findMany({
-      where: { id: { in: parentIds } },
-      select: { id: true, parentId: true, updatedAt: true },
-    });
-    for (const parent of parents) {
-      if (orgUnitsById.has(parent.id)) continue;
-      orgUnitsById.set(parent.id, parent);
-      if (orgUnitsById.size > POLICY_CONTEXT_ORG_UNIT_LIMIT) {
-        throw new Error(
-          `OrgUnit ancestor count exceeded the policy context limit (${POLICY_CONTEXT_ORG_UNIT_LIMIT}); refusing incomplete MCP policy evaluation.`,
-        );
-      }
-      if (parent.parentId && !orgUnitsById.has(parent.parentId)) {
-        pendingParentIds.add(parent.parentId);
-      }
-    }
-  }
-
-  return { user, orgUnits: [...orgUnitsById.values()] };
+  return { user, orgUnits };
 };

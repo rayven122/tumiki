@@ -126,6 +126,8 @@ DO $$
 DECLARE
   unmatched_group_server_count INTEGER;
   unmatched_individual_server_count INTEGER;
+  ambiguous_group_server_count INTEGER;
+  ambiguous_individual_server_count INTEGER;
 BEGIN
   SELECT COUNT(*) INTO unmatched_group_server_count
   FROM "GroupToolPermission" gtp
@@ -140,6 +142,20 @@ BEGIN
     RAISE EXCEPTION 'Cannot migrate % GroupToolPermission rows because mcpServerId does not match McpCatalog.id or McpCatalog.slug', unmatched_group_server_count;
   END IF;
 
+  SELECT COUNT(*) INTO ambiguous_group_server_count
+  FROM (
+    SELECT gtp."mcpServerId"
+    FROM "GroupToolPermission" gtp
+    JOIN "McpCatalog" catalog ON catalog."id" = gtp."mcpServerId" OR catalog."slug" = gtp."mcpServerId"
+    WHERE gtp."read" OR gtp."write" OR gtp."execute"
+    GROUP BY gtp."mcpServerId"
+    HAVING COUNT(DISTINCT catalog."id") > 1
+  ) ambiguous_group_servers;
+
+  IF ambiguous_group_server_count > 0 THEN
+    RAISE EXCEPTION 'Cannot migrate GroupToolPermission rows because % mcpServerId values match multiple McpCatalog rows by id/slug', ambiguous_group_server_count;
+  END IF;
+
   SELECT COUNT(*) INTO unmatched_individual_server_count
   FROM "IndividualPermission" ip
   WHERE ip."status" = 'APPROVED'
@@ -152,6 +168,21 @@ BEGIN
 
   IF unmatched_individual_server_count > 0 THEN
     RAISE EXCEPTION 'Cannot migrate % approved IndividualPermission rows because mcpServerId does not match McpCatalog.id or McpCatalog.slug', unmatched_individual_server_count;
+  END IF;
+
+  SELECT COUNT(*) INTO ambiguous_individual_server_count
+  FROM (
+    SELECT ip."mcpServerId"
+    FROM "IndividualPermission" ip
+    JOIN "McpCatalog" catalog ON catalog."id" = ip."mcpServerId" OR catalog."slug" = ip."mcpServerId"
+    WHERE ip."status" = 'APPROVED'
+      AND (ip."expiresAt" IS NULL OR ip."expiresAt" > CURRENT_TIMESTAMP)
+    GROUP BY ip."mcpServerId"
+    HAVING COUNT(DISTINCT catalog."id") > 1
+  ) ambiguous_individual_servers;
+
+  IF ambiguous_individual_server_count > 0 THEN
+    RAISE EXCEPTION 'Cannot migrate approved IndividualPermission rows because % mcpServerId values match multiple McpCatalog rows by id/slug', ambiguous_individual_server_count;
   END IF;
 END $$;
 

@@ -70,6 +70,12 @@ type MatrixCatalogFindManyArgs = {
 
 type EffectiveCatalogFindManyArgs = {
   include: {
+    orgUnitCatalogPermissions: {
+      where: { orgUnitId: { in: string[] } };
+    };
+    groupCatalogPermissions: {
+      where: { groupId: { in: string[] } };
+    };
     userCatalogPermissions: {
       where: {
         userId: string;
@@ -78,6 +84,12 @@ type EffectiveCatalogFindManyArgs = {
     };
     tools: {
       include: {
+        orgUnitPermissions: {
+          where: { orgUnitId: { in: string[] } };
+        };
+        groupPermissions: {
+          where: { groupId: { in: string[] } };
+        };
         userPermissions: {
           where: {
             userId: string;
@@ -91,6 +103,14 @@ type EffectiveCatalogFindManyArgs = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+const buildPolicyUser = () => ({
+  id: "user-001",
+  isActive: true,
+  updatedAt: new Date("2026-05-04T00:00:00.000Z"),
+  orgUnitMemberships: [],
+  groupMemberships: [],
 });
 
 describe("mcpPoliciesRouter", () => {
@@ -149,14 +169,14 @@ describe("mcpPoliciesRouter", () => {
   test("getEffectivePermissionsはカタログクエリに上限を設定する", async () => {
     const findCatalogs = vi.fn().mockResolvedValue([]);
     const caller = buildCaller({
-      user: { findUnique: vi.fn().mockResolvedValue(null) },
+      user: { findUnique: vi.fn().mockResolvedValue(buildPolicyUser()) },
       orgUnit: { findMany: vi.fn().mockResolvedValue([]) },
       mcpCatalog: { findMany: findCatalogs },
     } as unknown as Context["db"]);
 
     await expect(
       caller.getEffectivePermissions({ userId: "user-001" }),
-    ).resolves.toBeNull();
+    ).resolves.toStrictEqual([]);
     expect(findCatalogs).toHaveBeenCalledWith(
       expect.objectContaining({ take: 200 }),
     );
@@ -165,14 +185,14 @@ describe("mcpPoliciesRouter", () => {
   test("getEffectivePermissionsは期限付きユーザー権限の基準時刻を揃える", async () => {
     const findCatalogs = vi.fn().mockResolvedValue([]);
     const caller = buildCaller({
-      user: { findUnique: vi.fn().mockResolvedValue(null) },
+      user: { findUnique: vi.fn().mockResolvedValue(buildPolicyUser()) },
       orgUnit: { findMany: vi.fn().mockResolvedValue([]) },
       mcpCatalog: { findMany: findCatalogs },
     } as unknown as Context["db"]);
 
     await expect(
       caller.getEffectivePermissions({ userId: "user-001" }),
-    ).resolves.toBeNull();
+    ).resolves.toStrictEqual([]);
     const [findManyArgs] = findCatalogs.mock.calls[0] as [
       EffectiveCatalogFindManyArgs,
     ];
@@ -188,6 +208,63 @@ describe("mcpPoliciesRouter", () => {
     expect(
       findManyArgs.include.tools.include.userPermissions.where.userId,
     ).toBe("user-001");
+  });
+
+  test("getEffectivePermissionsは所属グループと部署の権限だけを取得する", async () => {
+    const user = {
+      id: "user-001",
+      isActive: true,
+      updatedAt: new Date("2026-05-04T00:00:00.000Z"),
+      orgUnitMemberships: [
+        {
+          updatedAt: new Date("2026-05-04T00:00:00.000Z"),
+          orgUnit: {
+            id: "org-child",
+            parentId: "org-parent",
+            updatedAt: new Date("2026-05-04T00:00:00.000Z"),
+          },
+        },
+      ],
+      groupMemberships: [{ group: { id: "group-001" } }],
+    };
+    const findCatalogs = vi.fn().mockResolvedValue([]);
+    const caller = buildCaller({
+      user: { findUnique: vi.fn().mockResolvedValue(user) },
+      orgUnit: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: "org-child",
+            parentId: "org-parent",
+            updatedAt: new Date("2026-05-04T00:00:00.000Z"),
+          },
+          {
+            id: "org-parent",
+            parentId: null,
+            updatedAt: new Date("2026-05-04T00:00:00.000Z"),
+          },
+        ]),
+      },
+      mcpCatalog: { findMany: findCatalogs },
+    } as unknown as Context["db"]);
+
+    await expect(
+      caller.getEffectivePermissions({ userId: "user-001" }),
+    ).resolves.toStrictEqual([]);
+    const [findManyArgs] = findCatalogs.mock.calls[0] as [
+      EffectiveCatalogFindManyArgs,
+    ];
+    expect(
+      findManyArgs.include.orgUnitCatalogPermissions.where.orgUnitId.in,
+    ).toStrictEqual(["org-child", "org-parent"]);
+    expect(
+      findManyArgs.include.tools.include.orgUnitPermissions.where.orgUnitId.in,
+    ).toStrictEqual(["org-child", "org-parent"]);
+    expect(
+      findManyArgs.include.groupCatalogPermissions.where.groupId.in,
+    ).toStrictEqual(["group-001"]);
+    expect(
+      findManyArgs.include.tools.include.groupPermissions.where.groupId.in,
+    ).toStrictEqual(["group-001"]);
   });
 
   test.each([

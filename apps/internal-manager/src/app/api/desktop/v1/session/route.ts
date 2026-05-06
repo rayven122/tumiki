@@ -6,9 +6,14 @@ import {
   DESKTOP_API_SETTINGS_ID,
 } from "~/lib/desktop-api-settings/constants";
 import { verifyDesktopJwt } from "~/lib/auth/verify-desktop-jwt";
-import { buildPolicyVersion } from "~/server/mcp-policy/effective-permissions";
+import {
+  buildPolicyVersion,
+  getPolicyOrgUnitsForMemberships,
+} from "~/server/mcp-policy/effective-permissions";
 
 const POLICY_VERSION_CATALOG_LIMIT = 500;
+const NO_ORG_UNIT_PERMISSION_ID = "__NO_ORG_UNIT_PERMISSION__";
+const NO_GROUP_PERMISSION_ID = "__NO_GROUP_PERMISSION__";
 
 export const GET = async (request: NextRequest) => {
   let verifiedUser: Awaited<ReturnType<typeof verifyDesktopJwt>>;
@@ -122,7 +127,14 @@ export const GET = async (request: NextRequest) => {
       (membership) => membership.group.id,
     );
     const groupPermissionIds =
-      groupIds.length > 0 ? groupIds : ["__NO_GROUP_PERMISSION__"];
+      groupIds.length > 0 ? groupIds : [NO_GROUP_PERMISSION_ID];
+    const policyOrgUnits = await getPolicyOrgUnitsForMemberships(
+      user.orgUnitMemberships,
+      db,
+    );
+    const orgUnitIds = policyOrgUnits.map((orgUnit) => orgUnit.id);
+    const orgUnitPermissionIds =
+      orgUnitIds.length > 0 ? orgUnitIds : [NO_ORG_UNIT_PERMISSION_ID];
     const [policyCatalogs, settings] = await Promise.all([
       db.mcpCatalog.findMany({
         where: { deletedAt: null },
@@ -132,6 +144,7 @@ export const GET = async (request: NextRequest) => {
           status: true,
           updatedAt: true,
           orgUnitCatalogPermissions: {
+            where: { orgUnitId: { in: orgUnitPermissionIds } },
             select: {
               orgUnitId: true,
               effect: true,
@@ -168,6 +181,7 @@ export const GET = async (request: NextRequest) => {
               defaultAllowed: true,
               updatedAt: true,
               orgUnitPermissions: {
+                where: { orgUnitId: { in: orgUnitPermissionIds } },
                 select: {
                   orgUnitId: true,
                   effect: true,
@@ -257,6 +271,27 @@ export const GET = async (request: NextRequest) => {
       })),
     );
 
+    const orgUnitCatalogPermissions = policyCatalogs.flatMap((catalog) =>
+      catalog.orgUnitCatalogPermissions.map((permission) => ({
+        source: "ORG_UNIT" as const,
+        scope: "CATALOG" as const,
+        orgUnitId: permission.orgUnitId,
+        catalogId: catalog.id,
+        effect: permission.effect,
+      })),
+    );
+    const orgUnitToolPermissions = policyCatalogs.flatMap((catalog) =>
+      catalog.tools.flatMap((tool) =>
+        tool.orgUnitPermissions.map((permission) => ({
+          source: "ORG_UNIT" as const,
+          scope: "TOOL" as const,
+          orgUnitId: permission.orgUnitId,
+          catalogId: catalog.id,
+          toolId: tool.id,
+          effect: permission.effect,
+        })),
+      ),
+    );
     const userCatalogPermissions = user.catalogPermissions.map(
       (permission) => ({
         source: "USER" as const,
@@ -279,6 +314,8 @@ export const GET = async (request: NextRequest) => {
       }),
     );
     const permissions = [
+      ...orgUnitCatalogPermissions,
+      ...orgUnitToolPermissions,
       ...groupCatalogPermissions,
       ...groupToolPermissions,
       ...userCatalogPermissions,
