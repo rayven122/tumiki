@@ -11,10 +11,10 @@ import {
   NO_ORG_UNIT_PERMISSION_ID,
 } from "~/server/mcp-policy/constants";
 import { buildCatalogPolicySelect } from "~/server/mcp-policy/catalog-policy-query";
+import { POLICY_TOOL_LIMIT } from "~/server/mcp-policy/limits";
 
 const POLICY_MATRIX_ORG_UNIT_LIMIT = 1000;
 const POLICY_MATRIX_CATALOG_LIMIT = 200;
-const POLICY_EFFECTIVE_TOOL_LIMIT = 500;
 
 const ensureWithinLimit = <T>(rows: T[], limit: number, label: string): T[] => {
   if (rows.length <= limit) return rows;
@@ -266,7 +266,7 @@ export const mcpPoliciesRouter = createTRPCRouter({
           groupPermissionIds,
           orgUnitPermissionIds,
           now,
-          toolTake: POLICY_EFFECTIVE_TOOL_LIMIT + 1,
+          toolTake: POLICY_TOOL_LIMIT + 1,
         }),
         take: POLICY_MATRIX_CATALOG_LIMIT + 1,
       });
@@ -277,12 +277,12 @@ export const mcpPoliciesRouter = createTRPCRouter({
         "カタログ数",
       );
       const toolOverflowCatalog = limitedCatalogs.find(
-        (catalog) => catalog.tools.length > POLICY_EFFECTIVE_TOOL_LIMIT,
+        (catalog) => catalog.tools.length > POLICY_TOOL_LIMIT,
       );
       if (toolOverflowCatalog) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: `ツール数が上限(${POLICY_EFFECTIVE_TOOL_LIMIT})を超えました。カタログを分割してください。`,
+          message: `ツール数が上限(${POLICY_TOOL_LIMIT})を超えました。カタログを分割してください。`,
         });
       }
 

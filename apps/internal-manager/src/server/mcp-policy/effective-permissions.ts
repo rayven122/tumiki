@@ -214,7 +214,8 @@ export const evaluateCatalogPermissions = (
     .map((permission) => permission.effect);
 
   const tools = catalog.tools.map((tool) => {
-    // 優先順: DENY(user > group > orgUnit) > ALLOW(user > group > orgUnit) > defaultAllowed。
+    // 優先順: DENY(user_catalog > user_tool > group_catalog > group_tool > orgUnit_catalog > orgUnit_tool)
+    // > ALLOW(user catalog/tool > group catalog/tool > orgUnit catalog/tool) > defaultAllowed。
     // ユーザー個別ALLOWは未設定状態への例外であり、部署/グループDENYを上書きしない。
     // カタログ単位の権限は、そのカタログ内の全ツールに適用する。
     // ツール単位の権限はカタログ単位の権限と合算し、下の優先順で最終判定する。

@@ -221,20 +221,27 @@ DECLARE
   orphaned_group_tool_allow_count INTEGER;
   conflicting_group_tool_deny_with_individual_count INTEGER;
   conflicting_user_tool_deny_with_individual_count INTEGER;
+  missing_legacy_permission_tables TEXT[];
 BEGIN
   -- 旧権限テーブルからのbackfillを行うため、このマイグレーション単体を空DBへ適用することはサポートしない。
-  IF (
-    SELECT COUNT(*)
-    FROM information_schema.tables
-    WHERE table_schema = current_schema()
-      AND table_name IN (
-        'GroupToolPermission',
-        'GroupMcpToolPermission',
-        'UserMcpToolPermission',
-        'IndividualPermission'
-      )
-  ) <> 4 THEN
-    RAISE EXCEPTION 'Cannot backfill MCP permissions because one or more legacy permission tables are missing';
+  SELECT ARRAY_AGG(required_table.table_name ORDER BY required_table.table_name)
+  INTO missing_legacy_permission_tables
+  FROM (
+    VALUES
+      ('GroupToolPermission'),
+      ('GroupMcpToolPermission'),
+      ('UserMcpToolPermission'),
+      ('IndividualPermission')
+  ) AS required_table(table_name)
+  WHERE NOT EXISTS (
+    SELECT 1
+    FROM information_schema.tables existing_table
+    WHERE existing_table.table_schema = current_schema()
+      AND existing_table.table_name = required_table.table_name
+  );
+
+  IF missing_legacy_permission_tables IS NOT NULL THEN
+    RAISE EXCEPTION 'Cannot backfill MCP permissions because legacy permission tables are missing: %', array_to_string(missing_legacy_permission_tables, ', ');
   END IF;
 
   SELECT COUNT(*) INTO unmatched_group_server_count
@@ -307,11 +314,12 @@ BEGIN
 
   SELECT COUNT(*) INTO unmatched_user_tool_count
   FROM "UserMcpToolPermission" umtp
-  WHERE NOT EXISTS (
-    SELECT 1
-    FROM "McpCatalogTool" tool
-    WHERE tool."id" = umtp."mcpToolId"
-  );
+  WHERE (umtp."expiresAt" IS NULL OR umtp."expiresAt" > CURRENT_TIMESTAMP)
+    AND NOT EXISTS (
+      SELECT 1
+      FROM "McpCatalogTool" tool
+      WHERE tool."id" = umtp."mcpToolId"
+    );
 
   IF unmatched_user_tool_count > 0 THEN
     RAISE EXCEPTION 'Cannot migrate % UserMcpToolPermission rows because mcpToolId does not match McpCatalogTool.id', unmatched_user_tool_count;
@@ -333,6 +341,7 @@ BEGIN
   FROM (
     SELECT umtp."userId", umtp."mcpToolId"
     FROM "UserMcpToolPermission" umtp
+    WHERE umtp."expiresAt" IS NULL OR umtp."expiresAt" > CURRENT_TIMESTAMP
     GROUP BY umtp."userId", umtp."mcpToolId"
     HAVING COUNT(*) > 1
   ) duplicate_user_tools;
@@ -384,6 +393,7 @@ BEGIN
   JOIN "McpCatalog" catalog ON catalog."id" = tool."catalogId"
   JOIN "IndividualPermission" ip ON ip."userId" = umtp."userId"
   WHERE NOT umtp."canUse"
+    AND (umtp."expiresAt" IS NULL OR umtp."expiresAt" > CURRENT_TIMESTAMP)
     AND ip."status" = 'APPROVED'
     AND (ip."expiresAt" IS NULL OR ip."expiresAt" > CURRENT_TIMESTAMP)
     AND (catalog."id" = ip."mcpServerId" OR catalog."slug" = ip."mcpServerId");
@@ -439,7 +449,8 @@ SELECT
   umtp."createdAt",
   umtp."updatedAt"
 FROM "UserMcpToolPermission" umtp
-JOIN "McpCatalogTool" tool ON tool."id" = umtp."mcpToolId";
+JOIN "McpCatalogTool" tool ON tool."id" = umtp."mcpToolId"
+WHERE umtp."expiresAt" IS NULL OR umtp."expiresAt" > CURRENT_TIMESTAMP;
 
 INSERT INTO "UserCatalogPermission" ("id", "userId", "catalogId", "effect", "reason", "expiresAt", "createdAt", "updatedAt")
 SELECT DISTINCT ON (ip."userId", catalog."id")

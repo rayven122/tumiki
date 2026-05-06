@@ -199,6 +199,7 @@ export const mcpCatalogRouter = createTRPCRouter({
         });
         const toolIdsToDelete = toolsToDelete.map((tool) => tool.id);
         if (toolIdsToDelete.length > 0) {
+          // ツールは監査用に論理削除し、権限行は復活時の意図しない再有効化を避けるため同一transactionで削除する。
           await tx.mcpCatalogTool.updateMany({
             where: {
               id: { in: toolIdsToDelete },

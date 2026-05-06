@@ -15,11 +15,11 @@ import {
   NO_ORG_UNIT_PERMISSION_ID,
 } from "~/server/mcp-policy/constants";
 import { buildCatalogPolicySelect } from "~/server/mcp-policy/catalog-policy-query";
+import { POLICY_TOOL_LIMIT } from "~/server/mcp-policy/limits";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
 const TOOL_PREVIEW_LIMIT = 10;
-const CATALOG_TOOL_LIMIT = 500;
 
 const cursorSchema = z.object({
   id: z.string().min(1),
@@ -202,7 +202,7 @@ export const GET = async (request: NextRequest) => {
     groupPermissionIds,
     orgUnitPermissionIds,
     now,
-    toolTake: CATALOG_TOOL_LIMIT + 1,
+    toolTake: POLICY_TOOL_LIMIT + 1,
   });
 
   let catalogs: CatalogRow[];
@@ -249,7 +249,7 @@ export const GET = async (request: NextRequest) => {
     );
   }
 
-  if (catalogs.some((catalog) => catalog.tools.length > CATALOG_TOOL_LIMIT)) {
+  if (catalogs.some((catalog) => catalog.tools.length > POLICY_TOOL_LIMIT)) {
     console.error("Desktop MCP catalog tool count exceeded limit");
     return NextResponse.json(
       { error: "Internal Server Error" },
