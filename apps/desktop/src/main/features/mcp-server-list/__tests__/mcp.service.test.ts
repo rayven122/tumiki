@@ -595,8 +595,10 @@ describe("mcp.service", () => {
         serverId: 1,
         catalogId: 1,
         tools: [],
-        // findConnectionsByIdsWithTools が include する親サーバーの有効状態
-        server: { isEnabled: true },
+        // findConnectionsByIdsWithTools が include する親サーバーの有効状態。
+        // _count.connections は仮想MCP（複数接続を束ねたサーバー）かを判定するため取得しており、
+        // デフォルトは単一接続コネクタ（=1）として扱う。
+        server: { isEnabled: true, _count: { connections: 1 } },
         ...overrides,
       }) as ConnectionWithTools;
 
@@ -918,7 +920,7 @@ describe("mcp.service", () => {
           id: 1,
           name: "GitHub",
           isEnabled: true,
-          server: { isEnabled: false },
+          server: { isEnabled: false, _count: { connections: 1 } },
         }),
       ]);
 
@@ -929,6 +931,29 @@ describe("mcp.service", () => {
         }),
       ).rejects.toThrow(
         "コネクタ「GitHub」が属するサーバーは無効化されています",
+      );
+      expect(mcpRepository.createServer).not.toHaveBeenCalled();
+      expect(mcpRepository.createConnection).not.toHaveBeenCalled();
+    });
+
+    test("仮想MCP配下の接続を含む場合はエラーを投げる（書き込みI/Oは起きない）", async () => {
+      // UI フィルタ後（または IPC を直接呼ぶ経路）で複数接続を持つサーバーが選ばれた場合の防御層
+      vi.mocked(mcpRepository.findConnectionsByIdsWithTools).mockResolvedValue([
+        buildSourceConnection({
+          id: 1,
+          name: "GitHub",
+          // _count.connections >= 2 → 元サーバーが既に仮想MCP（複数接続を束ねた）であることを示す
+          server: { isEnabled: true, _count: { connections: 2 } },
+        }),
+      ]);
+
+      await expect(
+        mcpService.createVirtualServer({
+          ...baseInput,
+          connections: [{ connectionId: 1 }],
+        }),
+      ).rejects.toThrow(
+        "コネクタ「GitHub」は仮想MCPに含まれるため、新しい仮想MCPの構成要素にできません",
       );
       expect(mcpRepository.createServer).not.toHaveBeenCalled();
       expect(mcpRepository.createConnection).not.toHaveBeenCalled();

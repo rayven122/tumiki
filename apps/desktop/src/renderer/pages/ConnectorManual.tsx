@@ -182,6 +182,20 @@ export const ConnectorManual = (): JSX.Element => {
       setSelectedConnectionIds((prev) =>
         prev.filter((x) => x !== connectionId),
       );
+      // 選択解除時に当該接続のロード/失敗状態もクリアする
+      // （残したままだと canSubmit が永続的に false になり再送信できなくなる）
+      setFailedToolLoads((prev) => {
+        if (!prev.has(connectionId)) return prev;
+        const next = new Set(prev);
+        next.delete(connectionId);
+        return next;
+      });
+      setLoadingToolsFor((prev) => {
+        if (!prev.has(connectionId)) return prev;
+        const next = new Set(prev);
+        next.delete(connectionId);
+        return next;
+      });
       return;
     }
     if (selectedConnectionIds.length >= VIRTUAL_SERVER_MAX_CONNECTIONS) {
@@ -215,11 +229,12 @@ export const ConnectorManual = (): JSX.Element => {
   // ツール一覧フェッチ中は allowedMap が未初期化のため送信を抑止する
   // （空の allowedToolNames=[] が渡るとサービス層で全ツール非公開扱いになる）
   // 取得失敗中も同様に抑止し、ユーザーに再試行を促す
+  // 選択中の接続のみを評価対象とする（解除済みコネクタの過去の失敗で永続ブロックされないよう）
   const canSubmit =
     serverName.trim() !== "" &&
     selectedConnectionIds.length > 0 &&
-    loadingToolsFor.size === 0 &&
-    failedToolLoads.size === 0 &&
+    selectedConnectionIds.every((id) => !loadingToolsFor.has(id)) &&
+    selectedConnectionIds.every((id) => !failedToolLoads.has(id)) &&
     !submitting;
 
   const handleSubmit = async (): Promise<void> => {

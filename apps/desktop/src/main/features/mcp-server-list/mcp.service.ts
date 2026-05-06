@@ -276,7 +276,9 @@ export const createCustomServer = async (
  * 元コネクタと仮想MCP配下で独立し、refresh_token ローテーション系IdP では衝突しうる。
  * プレリリース段階では許容し、後続で McpSecret テーブル経由の共有に切り替える。
  *
- * SQLite $transaction タイムアウト回避のため、書き込み以外（接続取得・slug計算）は全て tx 外で先に実行する。
+ * SQLite $transaction タイムアウト回避のため、接続取得（findConnectionsByIdsWithTools）と
+ * 接続 slug 計算は tx 外で先行実行する。サーバー名/slug の一意性チェックは名前重複時の
+ * サフィックス付与に DB 参照が必要なため tx 内に残す。
  */
 export const createVirtualServer = async (
   input: CreateVirtualServerInput,
@@ -316,6 +318,14 @@ export const createVirtualServer = async (
     if (!source.server.isEnabled) {
       throw new Error(
         `コネクタ「${source.name}」が属するサーバーは無効化されています`,
+      );
+    }
+    // 仮想MCP（複数接続を束ねたサーバー）配下の接続を再ネストして取り込まないことを保証する。
+    // UI でも `connections.length === 1` で同等のフィルタをかけているが、IPCを直接呼ぶ
+    // 経路（テストや将来のAPI拡張）の防御層として残す。
+    if (source.server._count.connections !== 1) {
+      throw new Error(
+        `コネクタ「${source.name}」は仮想MCPに含まれるため、新しい仮想MCPの構成要素にできません`,
       );
     }
     return { source, input: connection, index };
