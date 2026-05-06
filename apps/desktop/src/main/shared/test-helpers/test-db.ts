@@ -18,18 +18,7 @@ import { PrismaClient } from "@prisma/desktop-client";
 const DESKTOP_ROOT = join(__dirname, "../../../..");
 const MIGRATIONS_DIR = join(DESKTOP_ROOT, "prisma/migrations");
 
-/**
- * テスト用SQLite DBを作成し、全マイグレーション適用済みのPrismaClientを返す
- *
- * 以前は migration.sql を `;` で分割して `$executeRawUnsafe` していたが、
- * CREATE 文と CREATE INDEX が 1 ステートメントとして結合されるなど環境依存で壊れ、
- * UNIQUE インデックス未作成のままになり `upsert` が失敗することがあった。
- * `prisma db execute --file` はスクリプト全文を一度に送るため分割不要。
- *
- * さらに、マイグレーションごとに `pnpm exec prisma` を spawn すると
- * テストファイル並列実行時に `beforeAll` が hookTimeout (30s) を超過していた。
- * 全マイグレーションを一時ファイルに連結して 1 回の spawn にまとめる。
- */
+// 全マイグレーション SQL を一時ファイルへ連結して prisma db execute を 1 回だけ呼ぶ。
 export const createTestDb = async (dbPath: string): Promise<PrismaClient> => {
   if (existsSync(dbPath)) {
     unlinkSync(dbPath);
@@ -58,7 +47,7 @@ export const createTestDb = async (dbPath: string): Promise<PrismaClient> => {
     const tmpDir = mkdtempSync(join(tmpdir(), "tumiki-desktop-test-db-"));
     const combinedSqlPath = join(tmpDir, "combined-migrations.sql");
     try {
-      writeFileSync(combinedSqlPath, combinedSql);
+      writeFileSync(combinedSqlPath, combinedSql, "utf8");
 
       execFileSync(
         "pnpm",
