@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import { applyToonConversion } from "../toon/toonConverter.js";
 
@@ -77,5 +77,33 @@ describe("applyToonConversion", () => {
     });
 
     expect(result.isError).toBe(true);
+  });
+
+  test("encode が例外をスローした場合は元の result をそのまま返す（fail-open）", async () => {
+    // encode を一時的に例外スローへ差し替え、変換例外時のフェイルオープン挙動を検証する
+    vi.resetModules();
+    vi.doMock("@toon-format/toon", () => ({
+      encode: vi.fn(() => {
+        throw new Error("encode failed");
+      }),
+    }));
+
+    try {
+      const { applyToonConversion: applyWithFailingEncode } =
+        await import("../toon/toonConverter.js");
+
+      const original = {
+        content: [{ type: "text" as const, text: '{"key":"value"}' }],
+        isError: false,
+      };
+
+      const result = applyWithFailingEncode(original);
+
+      // 例外が外側 try-catch で捕捉され、元の result がそのまま返される
+      expect(result).toStrictEqual(original);
+    } finally {
+      vi.doUnmock("@toon-format/toon");
+      vi.resetModules();
+    }
   });
 });

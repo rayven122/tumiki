@@ -13,14 +13,19 @@ import type { CallToolResult } from "../types.js";
 /**
  * 個別 text を TOON にエンコードする
  * JSON 文字列はパースしてからエンコード、それ以外は文字列そのままエンコード
+ *
+ * 注: JSON パース失敗のみをここで握りつぶす。`encode()` 自体の例外は
+ * 呼び出し側（applyToonConversion）の try-catch でフェイルオープンとして扱う。
  */
 const encodeText = (text: string): string => {
+  let parsed: unknown;
   try {
-    const parsed: unknown = JSON.parse(text);
-    return encode(parsed);
+    parsed = JSON.parse(text);
   } catch {
+    // JSON 以外のプレーンテキストはそのまま文字列としてエンコード
     return encode(text);
   }
+  return encode(parsed);
 };
 
 /**
