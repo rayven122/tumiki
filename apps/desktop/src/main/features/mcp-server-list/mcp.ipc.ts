@@ -110,7 +110,10 @@ const createVirtualServerSchema = z.object({
     .array(
       z.object({
         connectionId: z.number().int().positive(),
-        // 公開ツール名一覧。省略可（省略時は元コネクタの isAllowed を継承）
+        // 公開ツール名一覧。
+        // - undefined（未指定）: 元コネクタの isAllowed をそのまま継承する
+        // - []（空配列）: サービス層で全ツール isAllowed=false として扱う（全ツール非公開）
+        // - 配列に含まれる名前のみ isAllowed=true となる
         allowedToolNames: z.array(z.string()).optional(),
       }),
     )

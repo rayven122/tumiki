@@ -343,7 +343,7 @@ describe("setupMcpIpc", () => {
       expect(mcpService.createVirtualServer).toHaveBeenCalledWith(validInput);
     });
 
-    test("allowedToolNames は省略可能（後方互換）", async () => {
+    test("allowedToolNames を省略した場合は元コネクタの isAllowed を継承する", async () => {
       vi.mocked(mcpService.createVirtualServer).mockResolvedValue({
         serverId: 11,
         serverName: "X",

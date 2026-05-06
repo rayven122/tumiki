@@ -65,6 +65,10 @@ export const ConnectorManual = (): JSX.Element => {
   const [loadingToolsFor, setLoadingToolsFor] = useState<Set<number>>(
     () => new Set(),
   );
+  // ツール一覧フェッチに失敗した接続ID集合。インラインの再試行ボタン表示に使用
+  const [failedToolLoads, setFailedToolLoads] = useState<Set<number>>(
+    () => new Set(),
+  );
   // connectionId → toolName → 公開可否（true=公開）
   const [allowedMap, setAllowedMap] = useState<
     Record<number, Record<string, boolean>>
@@ -126,6 +130,13 @@ export const ConnectorManual = (): JSX.Element => {
       next.add(connectionId);
       return next;
     });
+    // 再試行のため、既存の失敗フラグはクリアする
+    setFailedToolLoads((prev) => {
+      if (!prev.has(connectionId)) return prev;
+      const next = new Set(prev);
+      next.delete(connectionId);
+      return next;
+    });
     try {
       const result = await window.electronAPI.mcp.getToolsForConnections({
         connectionIds: [connectionId],
@@ -148,6 +159,11 @@ export const ConnectorManual = (): JSX.Element => {
       const message =
         e instanceof Error ? e.message : "ツール一覧の取得に失敗しました";
       toast.error(message);
+      setFailedToolLoads((prev) => {
+        const next = new Set(prev);
+        next.add(connectionId);
+        return next;
+      });
     } finally {
       inflightLoadsRef.current.delete(connectionId);
       setLoadingToolsFor((prev) => {
@@ -375,6 +391,7 @@ export const ConnectorManual = (): JSX.Element => {
                   .filter((tool) => perTool[tool.name])
                   .map((tool) => tool.name);
                 const isLoading = loadingToolsFor.has(connectionId);
+                const hasFailed = failedToolLoads.has(connectionId);
                 const iconPath = connector.connection.catalog?.iconPath;
                 return (
                   <div
@@ -411,6 +428,21 @@ export const ConnectorManual = (): JSX.Element => {
                         <p className="py-2 text-[9px] text-[var(--text-subtle)]">
                           ツール一覧を取得中...
                         </p>
+                      ) : hasFailed ? (
+                        <div className="flex items-center gap-2 py-2">
+                          <p className="text-[9px] text-[var(--badge-error-text)]">
+                            ツール一覧の取得に失敗しました
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void loadToolsForConnection(connectionId)
+                            }
+                            className="inline-flex min-h-[44px] items-center rounded border border-[var(--border)] px-2 py-1 text-[9px] text-[var(--text-secondary)] transition-colors hover:opacity-80"
+                          >
+                            再試行
+                          </button>
+                        </div>
                       ) : tools.length === 0 ? (
                         <p className="py-2 text-[9px] text-[var(--text-subtle)]">
                           このコネクタにはツールがありません
@@ -484,7 +516,7 @@ export const ConnectorManual = (): JSX.Element => {
         <div className="flex items-center justify-end gap-3 border-t border-t-[var(--border)] pt-4">
           <Link
             to="/tools"
-            className="rounded-lg border border-[var(--border)] px-4 py-2 text-xs text-[var(--text-muted)] transition-colors hover:opacity-80"
+            className="inline-flex min-h-[44px] items-center rounded-lg border border-[var(--border)] px-4 py-2 text-xs text-[var(--text-muted)] transition-colors hover:opacity-80"
           >
             キャンセル
           </Link>
@@ -492,7 +524,7 @@ export const ConnectorManual = (): JSX.Element => {
             type="button"
             onClick={() => void handleSubmit()}
             disabled={!canSubmit}
-            className="flex items-center gap-1.5 rounded-lg bg-[var(--btn-primary-bg)] px-4 py-2 text-xs font-medium text-[var(--btn-primary-text)] transition-colors hover:opacity-90 disabled:opacity-50"
+            className="flex min-h-[44px] items-center gap-1.5 rounded-lg bg-[var(--btn-primary-bg)] px-4 py-2 text-xs font-medium text-[var(--btn-primary-text)] transition-colors hover:opacity-90 disabled:opacity-50"
           >
             <Plus size={14} />
             {submitting ? "作成中..." : "仮想MCPを作成"}
