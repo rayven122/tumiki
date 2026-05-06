@@ -592,7 +592,7 @@ describe("getPolicyContextForUser", () => {
           select: {
             updatedAt: true,
             orgUnit: {
-              select: { id: true, parentId: true, updatedAt: true },
+              select: { id: true, parentId: true, path: true, updatedAt: true },
             },
           },
         },

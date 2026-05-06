@@ -39,7 +39,12 @@ export type PolicyUser = {
   updatedAt: Date;
   orgUnitMemberships: {
     updatedAt: Date;
-    orgUnit: { id: string; parentId: string | null; updatedAt: Date };
+    orgUnit: {
+      id: string;
+      parentId: string | null;
+      path?: string;
+      updatedAt: Date;
+    };
   }[];
   groupMemberships: {
     group: { id: string };
@@ -119,6 +124,28 @@ export const getPolicyOrgUnitsForMemberships = async (
   client: PrismaTransactionClient = db,
 ) => {
   if (memberships.length === 0) return [];
+
+  if (memberships.every((membership) => membership.orgUnit.path)) {
+    const ancestorPaths = new Set<string>();
+    for (const membership of memberships) {
+      const segments =
+        membership.orgUnit.path?.split("/").filter(Boolean) ?? [];
+      for (let index = 0; index < segments.length; index += 1) {
+        ancestorPaths.add(`/${segments.slice(0, index + 1).join("/")}`);
+      }
+    }
+
+    if (ancestorPaths.size > POLICY_CONTEXT_ORG_UNIT_LIMIT) {
+      throw new Error(
+        `OrgUnit ancestor count exceeded the policy context limit (${POLICY_CONTEXT_ORG_UNIT_LIMIT}); refusing incomplete MCP policy evaluation.`,
+      );
+    }
+
+    return client.orgUnit.findMany({
+      where: { path: { in: [...ancestorPaths] } },
+      select: { id: true, parentId: true, updatedAt: true },
+    });
+  }
 
   const orgUnitsById = new Map(
     memberships.map((membership) => [
@@ -358,7 +385,7 @@ export const getPolicyContextForUser = async (
         select: {
           updatedAt: true,
           orgUnit: {
-            select: { id: true, parentId: true, updatedAt: true },
+            select: { id: true, parentId: true, path: true, updatedAt: true },
           },
         },
       },

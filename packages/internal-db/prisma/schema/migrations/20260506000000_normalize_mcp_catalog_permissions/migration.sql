@@ -193,6 +193,7 @@ BEGIN
   END IF;
 END $$;
 
+-- OrgUnit/Group/Userのツール権限で共有する整合性チェック。変更時は3テーブルのトリガー定義も同時に確認する。
 CREATE OR REPLACE FUNCTION "check_mcp_catalog_tool_permission_catalog"()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -240,6 +241,7 @@ DECLARE
   duplicate_user_tool_count INTEGER;
   orphaned_group_tool_allow_count INTEGER;
   orphaned_group_tool_deny_count INTEGER;
+  orphaned_deny_overrides_default_allowed_count INTEGER;
   conflicting_group_tool_deny_with_individual_count INTEGER;
   orphaned_group_tool_deny_with_org_unit_allow_count INTEGER;
   conflicting_user_tool_deny_with_individual_count INTEGER;
@@ -410,6 +412,26 @@ BEGIN
 
   IF orphaned_group_tool_deny_count > 0 THEN
     RAISE NOTICE '% GroupMcpToolPermission deny rows without catalog permission will become active DENY rows in GroupCatalogToolPermission', orphaned_group_tool_deny_count;
+  END IF;
+
+  SELECT COUNT(*) INTO orphaned_deny_overrides_default_allowed_count
+  FROM "GroupMcpToolPermission" gmtp
+  JOIN "McpCatalogTool" tool ON tool."id" = gmtp."mcpToolId"
+  JOIN "McpCatalog" catalog ON catalog."id" = tool."catalogId"
+  WHERE NOT gmtp."canUse"
+    AND tool."defaultAllowed"
+    AND tool."deletedAt" IS NULL
+    AND catalog."deletedAt" IS NULL
+    AND NOT EXISTS (
+      SELECT 1
+      FROM "GroupToolPermission" gtp
+      WHERE gtp."groupId" = gmtp."groupId"
+        AND (gtp."read" OR gtp."write" OR gtp."execute")
+        AND (catalog."id" = gtp."mcpServerId" OR catalog."slug" = gtp."mcpServerId")
+    );
+
+  IF orphaned_deny_overrides_default_allowed_count > 0 THEN
+    RAISE EXCEPTION 'Cannot migrate % GroupMcpToolPermission deny rows without catalog permission because they would override defaultAllowed tools', orphaned_deny_overrides_default_allowed_count;
   END IF;
 
   -- 旧canUse=falseは新モデルで明示DENYにするため、既存の有効な個人承認を上書きするデータは移行前に止める。

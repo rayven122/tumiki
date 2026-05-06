@@ -26,7 +26,7 @@ const TOOL_PREVIEW_LIMIT = 10;
 
 const cursorSchema = z.object({
   id: z.string().min(1),
-  name: z.string().max(120),
+  name: z.string().min(1).max(120),
 });
 
 const querySchema = z.object({

@@ -59,9 +59,34 @@ export const mcpCatalogRouter = createTRPCRouter({
   list: adminProcedure.query(async ({ ctx }) => {
     const catalogs = await ctx.db.mcpCatalog.findMany({
       where: { deletedAt: null },
-      include: {
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        description: true,
+        transportType: true,
+        authType: true,
+        status: true,
+        iconPath: true,
+        command: true,
+        args: true,
+        url: true,
+        credentialKeys: true,
+        createdAt: true,
+        updatedAt: true,
         tools: {
           where: { deletedAt: null },
+          select: {
+            id: true,
+            catalogId: true,
+            name: true,
+            description: true,
+            defaultAllowed: true,
+            riskLevel: true,
+            createdAt: true,
+            updatedAt: true,
+            deletedAt: true,
+          },
           orderBy: { name: "asc" },
         },
       },
