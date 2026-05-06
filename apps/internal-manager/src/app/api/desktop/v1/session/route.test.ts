@@ -241,6 +241,19 @@ const expectedPolicyCatalogs = [
 const expectedPolicyCatalogsForVersion = JSON.parse(
   JSON.stringify(expectedPolicyCatalogs),
 ) as unknown;
+const expectedGroupsForVersion = [
+  {
+    id: "group-001",
+    updatedAt: groupUpdatedAt.toISOString(),
+  },
+];
+const expectedOrgUnitsForVersion = [
+  {
+    id: "org-001",
+    updatedAt: orgUnitUpdatedAt.toISOString(),
+    membershipUpdatedAt: membershipUpdatedAt.toISOString(),
+  },
+];
 
 const expectedPolicyVersion = `pol_v1_${createHash("sha256")
   .update(
@@ -255,8 +268,8 @@ const expectedPolicyVersion = `pol_v1_${createHash("sha256")
         organizationLogoUrl:
           "http://localhost:9000/tumiki-assets/org-assets/organization-logo.png",
       },
-      groups: expectedGroups,
-      orgUnits: expectedOrgUnits,
+      groups: expectedGroupsForVersion,
+      orgUnits: expectedOrgUnitsForVersion,
       catalogs: expectedPolicyCatalogsForVersion,
     }),
   )

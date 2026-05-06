@@ -13,6 +13,7 @@ import {
   NO_GROUP_PERMISSION_ID,
   NO_ORG_UNIT_PERMISSION_ID,
 } from "~/server/mcp-policy/constants";
+import { buildCatalogPolicySelect } from "~/server/mcp-policy/catalog-policy-query";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
@@ -195,6 +196,13 @@ export const GET = async (request: NextRequest) => {
     orgUnitIds.length > 0 ? orgUnitIds : [NO_ORG_UNIT_PERMISSION_ID];
   const groupPermissionIds =
     groupIds.length > 0 ? groupIds : [NO_GROUP_PERMISSION_ID];
+  const policySelect = buildCatalogPolicySelect({
+    userId: policyUser.id,
+    groupPermissionIds,
+    orgUnitPermissionIds,
+    now,
+    toolTake: CATALOG_TOOL_LIMIT + 1,
+  });
 
   let catalogs: CatalogRow[];
   try {
@@ -212,97 +220,22 @@ export const GET = async (request: NextRequest) => {
       },
       orderBy: [{ name: "asc" }, { id: "asc" }],
       take: parsedQuery.data.limit + 1,
-      // 権限関連のwhere/selectはsession APIのbuildCatalogPolicySelectと同期する。
       select: {
-        id: true,
-        slug: true,
+        ...policySelect,
         name: true,
         description: true,
         iconPath: true,
-        status: true,
         transportType: true,
         authType: true,
         command: true,
         args: true,
         url: true,
         credentialKeys: true,
-        updatedAt: true,
-        orgUnitCatalogPermissions: {
-          where: {
-            orgUnitId: { in: orgUnitPermissionIds },
-          },
-          select: {
-            orgUnitId: true,
-            effect: true,
-            updatedAt: true,
-          },
-        },
-        groupCatalogPermissions: {
-          where: {
-            groupId: { in: groupPermissionIds },
-          },
-          select: {
-            groupId: true,
-            effect: true,
-            updatedAt: true,
-          },
-        },
-        userCatalogPermissions: {
-          where: {
-            userId: policyUser.id,
-            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-          },
-          select: {
-            userId: true,
-            effect: true,
-            reason: true,
-            expiresAt: true,
-            updatedAt: true,
-          },
-        },
         tools: {
-          where: { deletedAt: null },
-          orderBy: { name: "asc" },
-          take: CATALOG_TOOL_LIMIT + 1,
+          ...policySelect.tools,
           select: {
-            id: true,
-            name: true,
+            ...policySelect.tools.select,
             description: true,
-            defaultAllowed: true,
-            updatedAt: true,
-            orgUnitPermissions: {
-              where: {
-                orgUnitId: { in: orgUnitPermissionIds },
-              },
-              select: {
-                orgUnitId: true,
-                effect: true,
-                updatedAt: true,
-              },
-            },
-            groupPermissions: {
-              where: {
-                groupId: { in: groupPermissionIds },
-              },
-              select: {
-                groupId: true,
-                effect: true,
-                updatedAt: true,
-              },
-            },
-            userPermissions: {
-              where: {
-                userId: policyUser.id,
-                OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-              },
-              select: {
-                userId: true,
-                effect: true,
-                reason: true,
-                expiresAt: true,
-                updatedAt: true,
-              },
-            },
           },
         },
       },
