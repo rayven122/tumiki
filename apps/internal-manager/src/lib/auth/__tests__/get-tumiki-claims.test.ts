@@ -31,6 +31,7 @@ const expectArrayContaining = <T>(value: T[]): T[] => {
 
 const mockDb = {
   user: {
+    findUnique: fn(),
     update: fn(),
   },
   externalIdentity: {
@@ -51,7 +52,8 @@ const mockDb = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockDb.user.update.mockResolvedValue(mockUser);
+  mockDb.user.findUnique.mockResolvedValue(mockUser);
+  mockDb.user.update.mockResolvedValue({ id: mockUser.id });
   mockDb.externalIdentity.upsert.mockResolvedValue({});
   mockDb.group.findMany.mockResolvedValue([]);
   mockDb.userGroupMembership.findMany.mockResolvedValue([]);
@@ -71,7 +73,7 @@ describe("getTumikiClaims", () => {
       const consoleError = vi
         .spyOn(console, "error")
         .mockImplementation(() => undefined);
-      mockDb.user.update.mockRejectedValue(error);
+      mockDb.user.findUnique.mockRejectedValue(error);
 
       const result = await getTumikiClaims(
         buildDb(),
@@ -83,13 +85,16 @@ describe("getTumikiClaims", () => {
 
       expect(result).toBeNull();
       expect(consoleError).toHaveBeenCalledWith(
-        "[getTumikiClaims] user.update failed:",
+        "[getTumikiClaims] user.findUnique failed:",
         error,
       );
     });
 
     test("無効化されたユーザーはnullを返す", async () => {
-      mockDb.user.update.mockResolvedValue({ ...mockUser, isActive: false });
+      mockDb.user.findUnique.mockResolvedValue({
+        ...mockUser,
+        isActive: false,
+      });
 
       const result = await getTumikiClaims(
         buildDb(),
@@ -100,6 +105,7 @@ describe("getTumikiClaims", () => {
       );
 
       expect(result).toBeNull();
+      expect(mockDb.user.update).not.toHaveBeenCalled();
       expect(mockDb.externalIdentity.upsert).not.toHaveBeenCalled();
       expect(mockDb.idpSyncLog.create).not.toHaveBeenCalled();
     });
@@ -180,15 +186,19 @@ describe("getTumikiClaims", () => {
   });
 
   describe("lastLoginAt更新", () => {
-    test("User.updateにlastLoginAtのみが渡される", async () => {
+    test("有効ユーザーのみUser.updateにlastLoginAtが渡される", async () => {
       await getTumikiClaims(buildDb(), mockUser.id, "oidc", mockUser.id, []);
 
+      expect(mockDb.user.findUnique).toHaveBeenCalledWith({
+        where: { id: mockUser.id },
+        select: { id: true, role: true, isActive: true },
+      });
       expect(mockDb.user.update).toHaveBeenCalledWith({
         where: { id: mockUser.id },
         data: expectObjectContaining({
           lastLoginAt: expect.any(Date) as Date,
         }),
-        select: { id: true, role: true, isActive: true },
+        select: { id: true },
       });
       expect(mockDb.user.update).not.toHaveBeenCalledWith(
         expectObjectContaining({

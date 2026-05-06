@@ -3,6 +3,18 @@
 import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import type { Role } from "@tumiki/internal-db";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@tumiki/ui/alert-dialog";
 import {
   Search,
   ShieldCheck,
@@ -36,6 +48,7 @@ const DEFAULT_ROLE_STYLE = {
   text: "text-amber-400",
   label: "メンバー",
 };
+const TOOLTIP_ID = "admin-user-action-tooltip";
 
 const SYNC_SOURCE_LABELS: Record<string, string | undefined> = {
   entra: "Entra ID",
@@ -54,7 +67,7 @@ type UserListItem = {
   id: string;
   name: string | null;
   email: string | null;
-  role: "SYSTEM_ADMIN" | "USER";
+  role: Role;
   isActive: boolean;
   lastLoginAt: Date | string | null;
   lastUsedAt: Date | string | null;
@@ -76,6 +89,7 @@ const AdminUsersPage = () => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [tooltip, setTooltip] = useState<{
+    id: string;
     left: number;
     text: string;
     top: number;
@@ -120,9 +134,14 @@ const AdminUsersPage = () => {
   const suspendedUsers = users.filter((user) => !user.isActive);
   const shouldShowActiveUsers = statusFilter !== "false";
   const shouldShowSuspendedUsers = statusFilter !== "true";
-  const showActionTooltip = (element: HTMLElement, text: string) => {
+  const showActionTooltip = (
+    element: HTMLElement,
+    text: string,
+    id: string,
+  ) => {
     const rect = element.getBoundingClientRect();
     setTooltip({
+      id,
       left: rect.left - 8,
       text,
       top: rect.top + rect.height / 2,
@@ -146,6 +165,8 @@ const AdminUsersPage = () => {
       const syncSourceLabel = syncSource
         ? (SYNC_SOURCE_LABELS[syncSource.toLowerCase()] ?? syncSource)
         : "Tumiki";
+      const accessTooltipId = `${user.id}-access`;
+      const deleteTooltipId = `${user.id}-delete`;
       const accessActionTooltip =
         isSelf && user.isActive
           ? "自分自身のアクセスは停止できません。別の管理者に操作してもらってください。"
@@ -187,7 +208,7 @@ const AdminUsersPage = () => {
               onChange={(e) =>
                 updateRole.mutate({
                   userId: user.id,
-                  role: e.target.value as "SYSTEM_ADMIN" | "USER",
+                  role: e.target.value as Role,
                 })
               }
               className={`border-border-default bg-bg-card w-[120px] rounded-md border px-2 py-1 text-[11px] outline-none disabled:cursor-not-allowed disabled:opacity-50 ${role.text}`}
@@ -210,13 +231,24 @@ const AdminUsersPage = () => {
               className="inline-flex"
               onBlur={() => setTooltip(null)}
               onFocus={(event) =>
-                showActionTooltip(event.currentTarget, accessActionTooltip)
+                showActionTooltip(
+                  event.currentTarget,
+                  accessActionTooltip,
+                  accessTooltipId,
+                )
               }
               onMouseEnter={(event) =>
-                showActionTooltip(event.currentTarget, accessActionTooltip)
+                showActionTooltip(
+                  event.currentTarget,
+                  accessActionTooltip,
+                  accessTooltipId,
+                )
               }
               onMouseLeave={() => setTooltip(null)}
-              tabIndex={isSelf && user.isActive ? 0 : undefined}
+              tabIndex={isMutating || (isSelf && user.isActive) ? 0 : undefined}
+              aria-describedby={
+                tooltip?.id === accessTooltipId ? TOOLTIP_ID : undefined
+              }
             >
               <button
                 type="button"
@@ -244,31 +276,68 @@ const AdminUsersPage = () => {
                 className="inline-flex"
                 onBlur={() => setTooltip(null)}
                 onFocus={(event) =>
-                  showActionTooltip(event.currentTarget, deleteTooltip)
+                  showActionTooltip(
+                    event.currentTarget,
+                    deleteTooltip,
+                    deleteTooltipId,
+                  )
                 }
                 onMouseEnter={(event) =>
-                  showActionTooltip(event.currentTarget, deleteTooltip)
+                  showActionTooltip(
+                    event.currentTarget,
+                    deleteTooltip,
+                    deleteTooltipId,
+                  )
                 }
                 onMouseLeave={() => setTooltip(null)}
                 tabIndex={!canDelete ? 0 : undefined}
+                aria-describedby={
+                  tooltip?.id === deleteTooltipId ? TOOLTIP_ID : undefined
+                }
               >
-                <button
-                  type="button"
-                  disabled={isMutating || !canDelete}
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        `${user.name ?? user.email ?? "ユーザー"}を削除します。この操作は取り消せません。`,
-                      )
-                    ) {
-                      deleteUser.mutate({ userId: user.id });
-                    }
-                  }}
-                  className="border-border-default bg-bg-card text-text-muted flex min-h-[44px] w-11 items-center justify-center rounded-md border transition-colors hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
-                  aria-label={`${user.name ?? user.email ?? "ユーザー"}を削除`}
-                >
-                  <Trash2 size={12} />
-                </button>
+                {canDelete ? (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <button
+                        type="button"
+                        disabled={isMutating}
+                        className="border-border-default bg-bg-card text-text-muted flex min-h-[44px] w-11 items-center justify-center rounded-md border transition-colors hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+                        aria-label={`${user.name ?? user.email ?? "ユーザー"}を削除`}
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          ユーザーを削除しますか？
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {user.name ?? user.email ?? "ユーザー"}を削除します。
+                          この操作は取り消せません。
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>キャンセル</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => deleteUser.mutate({ userId: user.id })}
+                          className="bg-red-600 text-white hover:bg-red-500"
+                        >
+                          削除
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    className="border-border-default bg-bg-card text-text-muted flex min-h-[44px] w-11 items-center justify-center rounded-md border transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                    aria-label={`${user.name ?? user.email ?? "ユーザー"}を削除`}
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                )}
               </span>
             )}
           </div>
@@ -431,6 +500,7 @@ const AdminUsersPage = () => {
       )}
       {tooltip && (
         <div
+          id={TOOLTIP_ID}
           role="tooltip"
           className="bg-bg-card border-border-default text-text-secondary pointer-events-none fixed top-[var(--tooltip-top)] left-[var(--tooltip-left)] z-[100] w-72 -translate-x-full -translate-y-1/2 rounded-md border px-2.5 py-2 text-left text-[11px] leading-relaxed shadow-lg"
           style={

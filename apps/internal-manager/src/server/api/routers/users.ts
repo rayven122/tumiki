@@ -226,42 +226,45 @@ export const usersRouter = createTRPCRouter({
         });
       }
 
-      return ctx.db.$transaction(async (tx) => {
-        const targetUser = await tx.user.findUnique({
-          where: { id: input.userId },
-          select: {
-            id: true,
-            isActive: true,
-            _count: { select: { externalIdentities: true } },
-          },
-        });
-
-        if (!targetUser) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "ユーザーが見つかりません",
+      return ctx.db.$transaction(
+        async (tx) => {
+          const targetUser = await tx.user.findUnique({
+            where: { id: input.userId },
+            select: {
+              id: true,
+              isActive: true,
+              _count: { select: { externalIdentities: true } },
+            },
           });
-        }
 
-        if (targetUser.isActive) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "利用中ユーザーは削除できません",
+          if (!targetUser) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "ユーザーが見つかりません",
+            });
+          }
+
+          if (targetUser.isActive) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "利用中ユーザーは削除できません",
+            });
+          }
+
+          if (targetUser._count.externalIdentities > 0) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message:
+                "IdP/SAML/SCIMで同期されたユーザーはTumikiから削除できません",
+            });
+          }
+
+          return tx.user.delete({
+            where: { id: input.userId },
+            select: { id: true },
           });
-        }
-
-        if (targetUser._count.externalIdentities > 0) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message:
-              "IdP/SAML/SCIMで同期されたユーザーはTumikiから削除できません",
-          });
-        }
-
-        return tx.user.delete({
-          where: { id: input.userId },
-          select: { id: true },
-        });
-      });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
     }),
 });

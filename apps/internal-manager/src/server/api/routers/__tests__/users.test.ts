@@ -1,7 +1,7 @@
 import type { Session } from "next-auth";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { Role } from "@tumiki/internal-db";
+import { Prisma, Role } from "@tumiki/internal-db";
 import type { Context } from "../../trpc";
 import type * as TrpcModule from "../../trpc";
 import { usersRouter } from "../users";
@@ -84,12 +84,14 @@ const buildDb = ({
 
   const transaction = async <T>(
     callback: (transactionClient: typeof tx) => Promise<T>,
+    _options?: unknown,
   ): Promise<T> => callback(tx);
+  const transactionMock = vi.fn(transaction);
   const db = {
-    $transaction: vi.fn(transaction),
+    $transaction: transactionMock,
   } as unknown as Context["db"];
 
-  return { db, tx };
+  return { db, tx, transactionMock };
 };
 
 beforeEach(() => {
@@ -207,7 +209,7 @@ describe("usersRouter", () => {
 
   describe("updateActive", () => {
     test("ユーザーを無効化できる", async () => {
-      const { db, tx } = buildDb({
+      const { db, tx, transactionMock } = buildDb({
         targetUser: {
           id: "user-001",
           role: Role.USER,
@@ -226,6 +228,33 @@ describe("usersRouter", () => {
         expect.objectContaining({
           where: { id: "user-001" },
           data: { isActive: false },
+        }),
+      );
+      expect(transactionMock).toHaveBeenCalledWith(expect.any(Function), {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      });
+    });
+
+    test("ユーザーを再有効化できる", async () => {
+      const { db, tx } = buildDb({
+        targetUser: {
+          id: "user-001",
+          role: Role.USER,
+          isActive: false,
+        },
+      });
+      const caller = buildCaller(db);
+
+      await expect(
+        caller.updateActive({ userId: "user-001", isActive: true }),
+      ).resolves.toMatchObject({
+        id: "user-001",
+        isActive: true,
+      });
+      expect(tx.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "user-001" },
+          data: { isActive: true },
         }),
       );
     });
@@ -343,7 +372,7 @@ describe("usersRouter", () => {
 
   describe("deleteUser", () => {
     test("Tumikiで追加されたアクセス停止中ユーザーを削除できる", async () => {
-      const { db, tx } = buildDb({
+      const { db, tx, transactionMock } = buildDb({
         targetUser: {
           id: "user-001",
           role: Role.USER,
@@ -359,6 +388,9 @@ describe("usersRouter", () => {
       expect(tx.user.delete).toHaveBeenCalledWith({
         where: { id: "user-001" },
         select: { id: true },
+      });
+      expect(transactionMock).toHaveBeenCalledWith(expect.any(Function), {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
       });
     });
 
