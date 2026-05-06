@@ -141,6 +141,24 @@ ALTER TABLE "UserCatalogToolPermission" ADD CONSTRAINT "UserCatalogToolPermissio
 ALTER TABLE "UserCatalogToolPermission" ADD CONSTRAINT "UserCatalogToolPermission_catalogId_fkey" FOREIGN KEY ("catalogId") REFERENCES "McpCatalog"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "UserCatalogToolPermission" ADD CONSTRAINT "UserCatalogToolPermission_toolId_fkey" FOREIGN KEY ("toolId") REFERENCES "McpCatalogTool"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
+DO $$
+DECLARE
+  invalid_org_unit_tool_permission_count INTEGER;
+BEGIN
+  SELECT COUNT(*) INTO invalid_org_unit_tool_permission_count
+  FROM "OrgUnitToolPermission" otp
+  WHERE NOT EXISTS (
+    SELECT 1
+    FROM "McpCatalogTool" tool
+    WHERE tool."id" = otp."toolId"
+      AND tool."catalogId" = otp."catalogId"
+  );
+
+  IF invalid_org_unit_tool_permission_count > 0 THEN
+    RAISE EXCEPTION 'Cannot migrate % OrgUnitToolPermission rows because catalogId does not match toolId', invalid_org_unit_tool_permission_count;
+  END IF;
+END $$;
+
 CREATE OR REPLACE FUNCTION "check_mcp_catalog_tool_permission_catalog"()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -176,6 +194,7 @@ DECLARE
   ambiguous_individual_server_count INTEGER;
   unmatched_group_tool_count INTEGER;
   unmatched_user_tool_count INTEGER;
+  orphaned_group_tool_allow_count INTEGER;
 BEGIN
   IF (
     SELECT COUNT(*)
@@ -269,6 +288,27 @@ BEGIN
 
   IF unmatched_user_tool_count > 0 THEN
     RAISE EXCEPTION 'Cannot migrate % UserMcpToolPermission rows because mcpToolId does not match McpCatalogTool.id', unmatched_user_tool_count;
+  END IF;
+
+  SELECT COUNT(*) INTO orphaned_group_tool_allow_count
+  FROM "GroupMcpToolPermission" gmtp
+  JOIN "McpCatalogTool" tool ON tool."id" = gmtp."mcpToolId"
+  WHERE gmtp."canUse"
+    AND NOT EXISTS (
+      SELECT 1
+      FROM "GroupToolPermission" gtp
+      WHERE gtp."groupId" = gmtp."groupId"
+        AND (gtp."read" OR gtp."write" OR gtp."execute")
+        AND EXISTS (
+          SELECT 1
+          FROM "McpCatalog" catalog
+          WHERE catalog."id" = tool."catalogId"
+            AND (catalog."id" = gtp."mcpServerId" OR catalog."slug" = gtp."mcpServerId")
+        )
+    );
+
+  IF orphaned_group_tool_allow_count > 0 THEN
+    RAISE EXCEPTION 'Cannot migrate % GroupMcpToolPermission allow rows because their group has no active GroupToolPermission for the tool catalog', orphaned_group_tool_allow_count;
   END IF;
 END $$;
 

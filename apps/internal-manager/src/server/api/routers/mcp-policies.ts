@@ -14,6 +14,14 @@ import {
 const POLICY_MATRIX_ORG_UNIT_LIMIT = 1000;
 const POLICY_MATRIX_CATALOG_LIMIT = 200;
 
+const ensureWithinLimit = <T>(rows: T[], limit: number, label: string): T[] => {
+  if (rows.length <= limit) return rows;
+  throw new TRPCError({
+    code: "INTERNAL_SERVER_ERROR",
+    message: `${label}が上限(${limit})を超えました。フィルタを使用してください。`,
+  });
+};
+
 export const mcpPoliciesRouter = createTRPCRouter({
   getMatrix: adminProcedure
     .input(
@@ -28,7 +36,7 @@ export const mcpPoliciesRouter = createTRPCRouter({
       const [orgUnits, catalogs] = await Promise.all([
         ctx.db.orgUnit.findMany({
           orderBy: [{ path: "asc" }, { name: "asc" }],
-          take: POLICY_MATRIX_ORG_UNIT_LIMIT,
+          take: POLICY_MATRIX_ORG_UNIT_LIMIT + 1,
         }),
         ctx.db.mcpCatalog.findMany({
           where: { deletedAt: null },
@@ -63,11 +71,22 @@ export const mcpPoliciesRouter = createTRPCRouter({
             },
           },
           orderBy: { name: "asc" },
-          take: POLICY_MATRIX_CATALOG_LIMIT,
+          take: POLICY_MATRIX_CATALOG_LIMIT + 1,
         }),
       ]);
 
-      return { orgUnits, catalogs };
+      return {
+        orgUnits: ensureWithinLimit(
+          orgUnits,
+          POLICY_MATRIX_ORG_UNIT_LIMIT,
+          "部署数",
+        ),
+        catalogs: ensureWithinLimit(
+          catalogs,
+          POLICY_MATRIX_CATALOG_LIMIT,
+          "カタログ数",
+        ),
+      };
     }),
 
   updateCatalogPermission: adminProcedure
@@ -258,10 +277,14 @@ export const mcpPoliciesRouter = createTRPCRouter({
             },
           },
         },
-        take: POLICY_MATRIX_CATALOG_LIMIT,
+        take: POLICY_MATRIX_CATALOG_LIMIT + 1,
       });
 
-      return catalogs.map((catalog) => {
+      return ensureWithinLimit(
+        catalogs,
+        POLICY_MATRIX_CATALOG_LIMIT,
+        "カタログ数",
+      ).map((catalog) => {
         const effective = evaluateCatalogPermissions(user, catalog, orgUnits);
         return {
           catalogId: catalog.id,

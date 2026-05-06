@@ -126,8 +126,32 @@ describe("mcpPoliciesRouter", () => {
       catalogs: [],
     });
     expect(findCatalogs).toHaveBeenCalledWith(
-      expect.objectContaining({ take: 200 }),
+      expect.objectContaining({ take: 201 }),
     );
+  });
+
+  test("getMatrixはカタログ数が上限を超えたらエラーにする", async () => {
+    const findCatalogs = vi
+      .fn()
+      .mockResolvedValue(Array.from({ length: 201 }, (_, index) => index));
+    const caller = buildCaller({
+      orgUnit: { findMany: vi.fn().mockResolvedValue([]) },
+      mcpCatalog: { findMany: findCatalogs },
+    } as unknown as Context["db"]);
+
+    await expectTrpcErrorCode(caller.getMatrix(), "INTERNAL_SERVER_ERROR");
+  });
+
+  test("getMatrixは部署数が上限を超えたらエラーにする", async () => {
+    const findOrgUnits = vi
+      .fn()
+      .mockResolvedValue(Array.from({ length: 1001 }, (_, index) => index));
+    const caller = buildCaller({
+      orgUnit: { findMany: findOrgUnits },
+      mcpCatalog: { findMany: vi.fn().mockResolvedValue([]) },
+    } as unknown as Context["db"]);
+
+    await expectTrpcErrorCode(caller.getMatrix(), "INTERNAL_SERVER_ERROR");
   });
 
   test("getMatrixは選択部署の権限だけを取得する", async () => {
@@ -178,7 +202,23 @@ describe("mcpPoliciesRouter", () => {
       caller.getEffectivePermissions({ userId: "user-001" }),
     ).resolves.toStrictEqual([]);
     expect(findCatalogs).toHaveBeenCalledWith(
-      expect.objectContaining({ take: 200 }),
+      expect.objectContaining({ take: 201 }),
+    );
+  });
+
+  test("getEffectivePermissionsはカタログ数が上限を超えたらエラーにする", async () => {
+    const findCatalogs = vi
+      .fn()
+      .mockResolvedValue(Array.from({ length: 201 }, (_, index) => index));
+    const caller = buildCaller({
+      user: { findUnique: vi.fn().mockResolvedValue(buildPolicyUser()) },
+      orgUnit: { findMany: vi.fn().mockResolvedValue([]) },
+      mcpCatalog: { findMany: findCatalogs },
+    } as unknown as Context["db"]);
+
+    await expectTrpcErrorCode(
+      caller.getEffectivePermissions({ userId: "user-001" }),
+      "INTERNAL_SERVER_ERROR",
     );
   });
 
