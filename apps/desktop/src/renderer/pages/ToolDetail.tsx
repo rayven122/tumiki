@@ -347,8 +347,11 @@ export const ToolDetail = (): JSX.Element => {
             );
             return;
           }
+          // 仮想MCPサーバーでは「再起動後に反映」の文言が誤解を招くため、保存のみを伝える
           toast.success(
-            "レスポンス圧縮設定を更新しました。MCPサーバーの再起動後に反映されます",
+            isMultiConnectionServer
+              ? "レスポンス圧縮設定を保存しました"
+              : "レスポンス圧縮設定を更新しました。MCPサーバーの再起動後に反映されます",
           );
         })
         .catch(() => {

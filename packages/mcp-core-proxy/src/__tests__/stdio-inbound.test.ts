@@ -276,6 +276,33 @@ describe("stdio-inbound フック", () => {
     expect(result.content[0]!.text).toBe(longJson);
   });
 
+  test("isError=true のレスポンスは enableToonConversion=true でも TOON 変換されない", async () => {
+    const errorJson = JSON.stringify({
+      errors: Array.from({ length: 10 }, (_, i) => ({
+        code: i,
+        message: `error_${i}`,
+      })),
+    });
+    const hooks: ProxyHooks = { enableToonConversion: true };
+    const core = createMockCore({
+      callTool: vi.fn().mockResolvedValue({
+        content: [{ type: "text", text: errorJson }],
+        isError: true,
+      }),
+    });
+
+    await startStdioInbound(core, mockLogger, hooks);
+    const handler = getCallToolHandler();
+
+    const result = (await handler({
+      params: { name: "server__tool", arguments: {} },
+    })) as { content: { type: string; text: string }[]; isError: boolean };
+
+    // エラーレスポンスは TOON 変換されず元の JSON 文字列のまま返る
+    expect(result.content[0]!.text).toBe(errorJson);
+    expect(result.isError).toBe(true);
+  });
+
   test("マスキング復号 → TOON 変換 の順で適用され、マスクトークンが TOON 化されない", async () => {
     // upstream からは [EMAIL_1234] を含むマスク済みのレスポンスが返る想定
     const maskedJson = JSON.stringify({
