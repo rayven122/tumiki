@@ -20,100 +20,110 @@ export const GET = async (request: NextRequest) => {
 
   try {
     const now = new Date();
-    const [user, policyCatalogs, settings] = await Promise.all([
-      db.user.findUnique({
-        where: { id: verifiedUser.userId },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-          isActive: true,
-          updatedAt: true,
-          groupMemberships: {
-            select: {
-              source: true,
-              createdAt: true,
-              group: {
-                select: {
-                  id: true,
-                  name: true,
-                  description: true,
-                  source: true,
-                  provider: true,
-                  externalId: true,
-                  lastSyncedAt: true,
-                  updatedAt: true,
-                  catalogPermissions: {
-                    select: {
-                      catalogId: true,
-                      effect: true,
-                      updatedAt: true,
-                    },
-                    orderBy: [{ catalogId: "asc" }],
+    const user = await db.user.findUnique({
+      where: { id: verifiedUser.userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        updatedAt: true,
+        groupMemberships: {
+          select: {
+            source: true,
+            createdAt: true,
+            group: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                source: true,
+                provider: true,
+                externalId: true,
+                lastSyncedAt: true,
+                updatedAt: true,
+                catalogPermissions: {
+                  select: {
+                    catalogId: true,
+                    effect: true,
+                    updatedAt: true,
                   },
-                  catalogToolPermissions: {
-                    select: {
-                      catalogId: true,
-                      toolId: true,
-                      effect: true,
-                      updatedAt: true,
-                    },
-                    orderBy: [{ catalogId: "asc" }, { toolId: "asc" }],
+                  orderBy: [{ catalogId: "asc" }],
+                },
+                catalogToolPermissions: {
+                  select: {
+                    catalogId: true,
+                    toolId: true,
+                    effect: true,
+                    updatedAt: true,
                   },
+                  orderBy: [{ catalogId: "asc" }, { toolId: "asc" }],
                 },
               },
             },
-            orderBy: { createdAt: "asc" },
           },
-          orgUnitMemberships: {
-            select: {
-              isPrimary: true,
-              updatedAt: true,
-              orgUnit: {
-                select: {
-                  id: true,
-                  name: true,
-                  externalId: true,
-                  source: true,
-                  path: true,
-                  parentId: true,
-                  lastSyncedAt: true,
-                  updatedAt: true,
-                },
-              },
-            },
-            orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
-          },
-          catalogPermissions: {
-            where: {
-              OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-            },
-            select: {
-              catalogId: true,
-              effect: true,
-              reason: true,
-              expiresAt: true,
-              updatedAt: true,
-            },
-            orderBy: { updatedAt: "desc" },
-          },
-          catalogToolPermissions: {
-            where: {
-              OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-            },
-            select: {
-              catalogId: true,
-              toolId: true,
-              effect: true,
-              reason: true,
-              expiresAt: true,
-              updatedAt: true,
-            },
-            orderBy: { updatedAt: "desc" },
-          },
+          orderBy: { createdAt: "asc" },
         },
-      }),
+        orgUnitMemberships: {
+          select: {
+            isPrimary: true,
+            updatedAt: true,
+            orgUnit: {
+              select: {
+                id: true,
+                name: true,
+                externalId: true,
+                source: true,
+                path: true,
+                parentId: true,
+                lastSyncedAt: true,
+                updatedAt: true,
+              },
+            },
+          },
+          orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+        },
+        catalogPermissions: {
+          where: {
+            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+          },
+          select: {
+            catalogId: true,
+            effect: true,
+            reason: true,
+            expiresAt: true,
+            updatedAt: true,
+          },
+          orderBy: { updatedAt: "desc" },
+        },
+        catalogToolPermissions: {
+          where: {
+            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+          },
+          select: {
+            catalogId: true,
+            toolId: true,
+            effect: true,
+            reason: true,
+            expiresAt: true,
+            updatedAt: true,
+          },
+          orderBy: { updatedAt: "desc" },
+        },
+      },
+    });
+
+    if (!user?.isActive) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const groupIds = user.groupMemberships.map(
+      (membership) => membership.group.id,
+    );
+    const groupPermissionIds =
+      groupIds.length > 0 ? groupIds : ["__NO_GROUP_PERMISSION__"];
+    const [policyCatalogs, settings] = await Promise.all([
       db.mcpCatalog.findMany({
         where: { deletedAt: null },
         select: {
@@ -130,6 +140,7 @@ export const GET = async (request: NextRequest) => {
             orderBy: [{ orgUnitId: "asc" }],
           },
           groupCatalogPermissions: {
+            where: { groupId: { in: groupPermissionIds } },
             select: {
               groupId: true,
               effect: true,
@@ -165,6 +176,7 @@ export const GET = async (request: NextRequest) => {
                 orderBy: [{ orgUnitId: "asc" }],
               },
               groupPermissions: {
+                where: { groupId: { in: groupPermissionIds } },
                 select: {
                   groupId: true,
                   effect: true,
@@ -200,9 +212,6 @@ export const GET = async (request: NextRequest) => {
       }),
     ]);
 
-    if (!user?.isActive) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     if (policyCatalogs.length > POLICY_VERSION_CATALOG_LIMIT) {
       console.error(
         `MCP catalog count exceeded the session policy limit (${POLICY_VERSION_CATALOG_LIMIT}); refusing incomplete policyVersion.`,

@@ -137,7 +137,7 @@ BEGIN
     );
 
   IF unmatched_group_server_count > 0 THEN
-    RAISE NOTICE 'Skipped % GroupToolPermission rows because mcpServerId did not match McpCatalog.id or McpCatalog.slug', unmatched_group_server_count;
+    RAISE EXCEPTION 'Cannot migrate % GroupToolPermission rows because mcpServerId does not match McpCatalog.id or McpCatalog.slug', unmatched_group_server_count;
   END IF;
 
   SELECT COUNT(*) INTO unmatched_individual_server_count
@@ -151,7 +151,7 @@ BEGIN
     );
 
   IF unmatched_individual_server_count > 0 THEN
-    RAISE NOTICE 'Skipped % approved IndividualPermission rows because mcpServerId did not match McpCatalog.id or McpCatalog.slug', unmatched_individual_server_count;
+    RAISE EXCEPTION 'Cannot migrate % approved IndividualPermission rows because mcpServerId does not match McpCatalog.id or McpCatalog.slug', unmatched_individual_server_count;
   END IF;
 END $$;
 

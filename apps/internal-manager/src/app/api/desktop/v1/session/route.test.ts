@@ -64,7 +64,10 @@ type FindPolicyCatalogsArgs = {
   take: number;
   select: {
     orgUnitCatalogPermissions: { orderBy: [{ orgUnitId: "asc" }] };
-    groupCatalogPermissions: { orderBy: [{ groupId: "asc" }] };
+    groupCatalogPermissions: {
+      where: { groupId: { in: string[] } };
+      orderBy: [{ groupId: "asc" }];
+    };
     userCatalogPermissions: {
       where: {
         userId: string;
@@ -74,7 +77,10 @@ type FindPolicyCatalogsArgs = {
     };
     tools: {
       select: {
-        groupPermissions: { orderBy: [{ groupId: "asc" }] };
+        groupPermissions: {
+          where: { groupId: { in: string[] } };
+          orderBy: [{ groupId: "asc" }];
+        };
         userPermissions: {
           where: {
             userId: string;
@@ -333,6 +339,9 @@ describe("GET /api/desktop/v1/session", () => {
       findPolicyCatalogsArgs.select.groupCatalogPermissions.orderBy,
     ).toStrictEqual([{ groupId: "asc" }]);
     expect(
+      findPolicyCatalogsArgs.select.groupCatalogPermissions.where.groupId.in,
+    ).toStrictEqual(["group-001"]);
+    expect(
       findPolicyCatalogsArgs.select.userCatalogPermissions.where.userId,
     ).toStrictEqual("user-001");
     expect(
@@ -341,6 +350,10 @@ describe("GET /api/desktop/v1/session", () => {
     expect(
       findPolicyCatalogsArgs.select.tools.select.groupPermissions.orderBy,
     ).toStrictEqual([{ groupId: "asc" }]);
+    expect(
+      findPolicyCatalogsArgs.select.tools.select.groupPermissions.where.groupId
+        .in,
+    ).toStrictEqual(["group-001"]);
     expect(
       findPolicyCatalogsArgs.select.tools.select.userPermissions.where.userId,
     ).toStrictEqual("user-001");
@@ -370,6 +383,24 @@ describe("GET /api/desktop/v1/session", () => {
       "MCP catalog count exceeded the session policy limit (500); refusing incomplete policyVersion.",
     );
     consoleErrorSpy.mockRestore();
+  });
+
+  test("所属グループがない場合は存在しないIDでグループ権限を空に絞る", async () => {
+    mockFindUnique.mockResolvedValue({ ...activeUser, groupMemberships: [] });
+
+    const response = await GET(buildRequest());
+
+    expect(response.status).toStrictEqual(200);
+    const [findPolicyCatalogsArgs] = mockMcpCatalogFindMany.mock.calls[0] as [
+      FindPolicyCatalogsArgs,
+    ];
+    expect(
+      findPolicyCatalogsArgs.select.groupCatalogPermissions.where.groupId.in,
+    ).toStrictEqual(["__NO_GROUP_PERMISSION__"]);
+    expect(
+      findPolicyCatalogsArgs.select.tools.select.groupPermissions.where.groupId
+        .in,
+    ).toStrictEqual(["__NO_GROUP_PERMISSION__"]);
   });
 
   test("Desktop API設定が未作成の場合はデフォルト値を返す", async () => {
@@ -422,6 +453,7 @@ describe("GET /api/desktop/v1/session", () => {
       error: "Unauthorized",
     });
     expect(response.status).toStrictEqual(401);
+    expect(mockMcpCatalogFindMany).not.toHaveBeenCalled();
   });
 
   test("無効化されたユーザーは401を返す", async () => {
@@ -433,6 +465,7 @@ describe("GET /api/desktop/v1/session", () => {
       error: "Unauthorized",
     });
     expect(response.status).toStrictEqual(401);
+    expect(mockMcpCatalogFindMany).not.toHaveBeenCalled();
   });
 
   test("DBエラー時はJSONの500レスポンスを返す", async () => {
