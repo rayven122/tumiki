@@ -251,6 +251,7 @@ model GroupCatalogToolPermission {
 
   @@unique([groupId, toolId])
   @@index([catalogId])
+  @@index([toolId])
   @@index([effect])
 }
 
@@ -296,6 +297,7 @@ model UserCatalogToolPermission {
 
   @@unique([userId, toolId])
   @@index([catalogId])
+  @@index([toolId])
   @@index([effect])
   @@index([expiresAt])
 }

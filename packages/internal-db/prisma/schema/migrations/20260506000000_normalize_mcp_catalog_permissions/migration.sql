@@ -202,6 +202,8 @@ BEFORE INSERT OR UPDATE OF "catalogId", "toolId" ON "OrgUnitToolPermission"
 FOR EACH ROW EXECUTE FUNCTION "check_mcp_catalog_tool_permission_catalog"();
 
 CREATE INDEX IF NOT EXISTS "OrgUnitToolPermission_toolId_idx" ON "OrgUnitToolPermission"("toolId");
+CREATE INDEX IF NOT EXISTS "GroupCatalogToolPermission_toolId_idx" ON "GroupCatalogToolPermission"("toolId");
+CREATE INDEX IF NOT EXISTS "UserCatalogToolPermission_toolId_idx" ON "UserCatalogToolPermission"("toolId");
 CREATE INDEX IF NOT EXISTS "McpCatalog_name_id_idx" ON "McpCatalog"("name", "id");
 
 DROP TRIGGER IF EXISTS "GroupCatalogToolPermission_catalog_match" ON "GroupCatalogToolPermission";
