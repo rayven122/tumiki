@@ -84,6 +84,7 @@ erDiagram
   String name
   String slug UK
   String description
+  ServerType serverType
   ServerStatus serverStatus
   Boolean isEnabled
   Boolean isPiiMaskingEnabled
@@ -184,6 +185,9 @@ MCPサーバー（仮想・統合サーバー = Proxyエンドポイント）
   - `name`: サーバー表示名
   - `slug`: URL識別子（小文字・ハイフン区切り）
   - `description`: サーバー説明
+  - `serverType`
+    > サーバーの種類（OFFICIAL = 単独コネクタ / CUSTOM = 仮想MCP）
+    > 仮想MCP（CUSTOM）の接続を新たな仮想MCPの素材として再ネストするのを防ぐためのフラグ
   - `serverStatus`: サーバー状態
   - `isEnabled`: 有効/無効フラグ（トグル用）
   - `isPiiMaskingEnabled`: PII マスキングを有効化するか（false なら upstream に生 args をそのまま渡す）

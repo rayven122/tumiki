@@ -23,17 +23,19 @@ type SelectableConnector = {
 };
 
 /**
- * 既存の McpServer 一覧から「コネクタとして選択可能な単一接続」を平坦化して取り出す。
- * 仮想MCP（接続が複数ある）は再ネスト禁止で除外し、無効化されたものも除外する。
+ * 既存の McpServer 一覧から「コネクタとして選択可能な単独コネクタ」を平坦化して取り出す。
+ * 仮想MCP（serverType === "CUSTOM"）は再ネスト禁止で除外し、無効化されたものも除外する。
+ * 1接続の仮想MCPもこのフィルタで弾かれる（DEV-1625）。
  */
 const flattenSelectableConnectors = (
   servers: McpServerItem[],
 ): SelectableConnector[] =>
   servers
-    .filter((server) => server.connections.length === 1 && server.isEnabled)
+    .filter((server) => server.serverType === "OFFICIAL" && server.isEnabled)
     .flatMap((server) => {
-      // 上の filter で connections.length === 1 を保証済みのため非null
-      const connection = server.connections[0]!;
+      // 公式コネクタは1接続前提だが、防御として最初の有効な接続のみを採用する
+      const connection = server.connections[0];
+      if (!connection) return [];
       // 接続自体が無効化されている場合は除外
       // （サーバーが有効でも接続が無効な場合があり、サービス層でも !source.isEnabled で弾かれる）
       if (!connection.isEnabled) return [];

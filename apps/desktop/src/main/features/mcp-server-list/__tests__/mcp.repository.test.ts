@@ -35,6 +35,7 @@ const serverData: mcpRepository.CreateMcpServerInput = {
   name: "Test Server",
   slug: "test-server",
   description: "テスト用サーバー",
+  serverType: "OFFICIAL",
 };
 
 const buildConnectionData = (
@@ -61,6 +62,7 @@ describe("mcp.repository（実DB）", () => {
       expect(result.name).toBe("Test Server");
       expect(result.slug).toBe("test-server");
       expect(result.description).toBe("テスト用サーバー");
+      expect(result.serverType).toBe("OFFICIAL");
     });
 
     test("同一slugのサーバーは作成できない", async () => {
@@ -69,6 +71,16 @@ describe("mcp.repository（実DB）", () => {
       await expect(
         mcpRepository.createServer(db, serverData),
       ).rejects.toThrow();
+    });
+
+    test("serverType に CUSTOM を渡すと CUSTOM で永続化される（仮想MCP作成経路）", async () => {
+      const result = await mcpRepository.createServer(db, {
+        ...serverData,
+        slug: "virtual-server",
+        serverType: "CUSTOM",
+      });
+
+      expect(result.serverType).toBe("CUSTOM");
     });
   });
 

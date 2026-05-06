@@ -101,6 +101,7 @@ describe("mcp.service", () => {
         name: "Test MCP",
         slug: "test-mcp",
         description: "テスト用MCP",
+        serverType: "OFFICIAL",
       });
       expect(mcpRepository.createConnection).toHaveBeenCalledWith(mockDb, {
         name: "Test MCP",
@@ -413,6 +414,7 @@ describe("mcp.service", () => {
         name: "My Remote MCP",
         slug: "my-remote-mcp",
         description: "",
+        serverType: "OFFICIAL",
       });
       expect(mcpRepository.createConnection).toHaveBeenCalledWith(mockDb, {
         name: "My Remote MCP",
@@ -596,9 +598,9 @@ describe("mcp.service", () => {
         catalogId: 1,
         tools: [],
         // findConnectionsByIdsWithTools が include する親サーバーの有効状態。
-        // _count.connections は仮想MCP（複数接続を束ねたサーバー）かを判定するため取得しており、
-        // デフォルトは単一接続コネクタ（=1）として扱う。
-        server: { isEnabled: true, _count: { connections: 1 } },
+        // serverType は仮想MCP（CUSTOM）の再ネスト防止判定に使用しており、
+        // デフォルトは単独コネクタ（OFFICIAL）として扱う。
+        server: { isEnabled: true, serverType: "OFFICIAL" },
         ...overrides,
       }) as ConnectionWithTools;
 
@@ -920,7 +922,7 @@ describe("mcp.service", () => {
           id: 1,
           name: "GitHub",
           isEnabled: true,
-          server: { isEnabled: false, _count: { connections: 1 } },
+          server: { isEnabled: false, serverType: "OFFICIAL" },
         }),
       ]);
 
@@ -936,14 +938,14 @@ describe("mcp.service", () => {
       expect(mcpRepository.createConnection).not.toHaveBeenCalled();
     });
 
-    test("仮想MCP配下の接続を含む場合はエラーを投げる（書き込みI/Oは起きない）", async () => {
-      // UI フィルタ後（または IPC を直接呼ぶ経路）で複数接続を持つサーバーが選ばれた場合の防御層
+    test("仮想MCP（CUSTOM）配下の接続を含む場合はエラーを投げる（書き込みI/Oは起きない）", async () => {
+      // UI フィルタ後（または IPC を直接呼ぶ経路）で仮想MCP配下の接続が選ばれた場合の防御層
       vi.mocked(mcpRepository.findConnectionsByIdsWithTools).mockResolvedValue([
         buildSourceConnection({
           id: 1,
           name: "GitHub",
-          // _count.connections >= 2 → 元サーバーが既に仮想MCP（複数接続を束ねた）であることを示す
-          server: { isEnabled: true, _count: { connections: 2 } },
+          // serverType === "CUSTOM" → 元サーバーが既に仮想MCP であることを示す
+          server: { isEnabled: true, serverType: "CUSTOM" },
         }),
       ]);
 
@@ -957,6 +959,30 @@ describe("mcp.service", () => {
       );
       expect(mcpRepository.createServer).not.toHaveBeenCalled();
       expect(mcpRepository.createConnection).not.toHaveBeenCalled();
+    });
+
+    test("作成された仮想MCPサーバーは serverType=CUSTOM で永続化される", async () => {
+      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
+      vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
+      vi.mocked(mcpRepository.createServer).mockResolvedValue({
+        id: 10,
+      } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(mcpRepository.findConnectionsByIdsWithTools).mockResolvedValue([
+        buildSourceConnection({ id: 1 }),
+      ]);
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 100,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
+
+      await mcpService.createVirtualServer({
+        ...baseInput,
+        connections: [{ connectionId: 1 }],
+      });
+
+      expect(mcpRepository.createServer).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ serverType: "CUSTOM" }),
+      );
     });
 
     test("同一コネクタを複数追加した場合は接続slugにサフィックスを付与する", async () => {
