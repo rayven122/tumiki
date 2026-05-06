@@ -49,6 +49,10 @@ type FindUniqueArgs = {
   };
 };
 
+type FindPolicyCatalogsArgs = {
+  take: number;
+};
+
 const userUpdatedAt = new Date("2026-05-03T10:00:00.000Z");
 const groupUpdatedAt = new Date("2026-05-03T10:05:00.000Z");
 const orgUnitUpdatedAt = new Date("2026-05-03T10:06:00.000Z");
@@ -277,6 +281,33 @@ describe("GET /api/desktop/v1/session", () => {
         organizationLogoUrl: true,
       },
     });
+    const [findPolicyCatalogsArgs] = mockMcpCatalogFindMany.mock.calls[0] as [
+      FindPolicyCatalogsArgs,
+    ];
+    expect(findPolicyCatalogsArgs.take).toStrictEqual(501);
+  });
+
+  test("policyVersion対象カタログが上限を超えた場合は不完全なhashを返さない", async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    mockMcpCatalogFindMany.mockResolvedValue(
+      Array.from({ length: 501 }, (_, index) => ({
+        ...expectedPolicyCatalogs[0]!,
+        id: `catalog-${String(index).padStart(3, "0")}`,
+      })),
+    );
+
+    const response = await GET(buildRequest());
+
+    await expect(response.json()).resolves.toStrictEqual({
+      error: "Internal Server Error",
+    });
+    expect(response.status).toStrictEqual(500);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "MCP catalog count exceeded the session policy limit (500); refusing incomplete policyVersion.",
+    );
+    consoleErrorSpy.mockRestore();
   });
 
   test("Desktop API設定が未作成の場合はデフォルト値を返す", async () => {

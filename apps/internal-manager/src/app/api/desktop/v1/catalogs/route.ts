@@ -7,6 +7,7 @@ import { verifyDesktopJwt } from "~/lib/auth/verify-desktop-jwt";
 import {
   evaluateCatalogPermissions,
   getPolicyContextForUser,
+  type PermissionBits,
 } from "~/server/mcp-policy/effective-permissions";
 
 const DEFAULT_LIMIT = 50;
@@ -23,11 +24,6 @@ const querySchema = z.object({
   cursor: z.string().min(1).optional(),
 });
 
-type Permissions = {
-  read: boolean;
-  write: boolean;
-  execute: boolean;
-};
 type CatalogStatus = "available" | "disabled";
 type CatalogCursor = z.infer<typeof cursorSchema>;
 
@@ -74,7 +70,7 @@ type CatalogRow = {
 const encodeCursor = (cursor: CatalogCursor) =>
   Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
 
-const hasAnyPermission = (permissions: Permissions) =>
+const hasAnyPermission = (permissions: PermissionBits) =>
   permissions.read || permissions.write || permissions.execute;
 
 const decodeCursor = (cursor: string): CatalogCursor | null => {
@@ -102,7 +98,7 @@ const toConnectionTemplate = (catalog: CatalogRow) => {
 
 const toCatalogItem = (
   catalog: CatalogRow,
-  permissions: Permissions,
+  permissions: PermissionBits,
   toolPermissions: Map<
     string,
     { allowed: boolean; deniedReason: string | null }
@@ -178,6 +174,9 @@ export const GET = async (request: NextRequest) => {
   const groupIds = policyUser.groupMemberships.map(
     (membership) => membership.group.id,
   );
+  const now = new Date();
+  // Prisma の in: [] は provider 差分を避けるため、未所属時は存在しないIDで空結果を強制する。
+  const groupPermissionIds = groupIds.length > 0 ? groupIds : [""];
 
   let catalogs: CatalogRow[];
   try {
@@ -218,7 +217,7 @@ export const GET = async (request: NextRequest) => {
         },
         groupCatalogPermissions: {
           where: {
-            groupId: { in: groupIds.length > 0 ? groupIds : [""] },
+            groupId: { in: groupPermissionIds },
           },
           select: {
             groupId: true,
@@ -229,7 +228,7 @@ export const GET = async (request: NextRequest) => {
         userCatalogPermissions: {
           where: {
             userId: policyUser.id,
-            OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
           },
           select: {
             userId: true,
@@ -255,7 +254,7 @@ export const GET = async (request: NextRequest) => {
             },
             groupPermissions: {
               where: {
-                groupId: { in: groupIds.length > 0 ? groupIds : [""] },
+                groupId: { in: groupPermissionIds },
               },
               select: {
                 groupId: true,
@@ -266,7 +265,7 @@ export const GET = async (request: NextRequest) => {
             userPermissions: {
               where: {
                 userId: policyUser.id,
-                OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+                OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
               },
               select: {
                 userId: true,

@@ -180,7 +180,7 @@ export const GET = async (request: NextRequest) => {
           },
         },
         orderBy: [{ slug: "asc" }, { id: "asc" }],
-        take: POLICY_VERSION_CATALOG_LIMIT,
+        take: POLICY_VERSION_CATALOG_LIMIT + 1,
       }),
       db.desktopApiSettings.findUnique({
         where: { id: DESKTOP_API_SETTINGS_ID },
@@ -193,6 +193,15 @@ export const GET = async (request: NextRequest) => {
 
     if (!user?.isActive) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (policyCatalogs.length > POLICY_VERSION_CATALOG_LIMIT) {
+      console.error(
+        `MCP catalog count exceeded the session policy limit (${POLICY_VERSION_CATALOG_LIMIT}); refusing incomplete policyVersion.`,
+      );
+      return NextResponse.json(
+        { error: "Internal Server Error" },
+        { status: 500 },
+      );
     }
 
     const desktopApiSettings = settings ?? DESKTOP_API_SETTINGS_DEFAULTS;

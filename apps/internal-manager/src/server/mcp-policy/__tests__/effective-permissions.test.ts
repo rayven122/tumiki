@@ -189,6 +189,38 @@ describe("evaluateCatalogPermissions", () => {
     expect(result.permissions.execute).toStrictEqual(false);
   });
 
+  test("カタログ単位のユーザーDENYはツール単位のユーザーALLOWより優先される", () => {
+    const baseTool = buildCatalog([]).tools[0]!;
+    const result = evaluateCatalogPermissions(
+      buildUser(),
+      {
+        ...buildCatalog([]),
+        userCatalogPermissions: [
+          { userId: "user-001", effect: PolicyEffect.DENY, updatedAt: now },
+        ],
+        tools: [
+          {
+            ...baseTool,
+            userPermissions: [
+              {
+                userId: "user-001",
+                effect: PolicyEffect.ALLOW,
+                updatedAt: now,
+              },
+            ],
+          },
+        ],
+      },
+      orgUnits,
+    );
+
+    expect(result.tools.get("tool-001")).toStrictEqual({
+      allowed: false,
+      deniedReason: "user_denied",
+    });
+    expect(result.permissions.execute).toStrictEqual(false);
+  });
+
   test("カタログ単位のグループDENYは全ツールを拒否する", () => {
     const baseTool = buildCatalog([]).tools[0]!;
     const result = evaluateCatalogPermissions(
@@ -312,5 +344,14 @@ describe("buildPolicyVersion", () => {
       buildPolicyVersion(policyState),
     );
     expect(buildPolicyVersion(policyState)).toMatch(/^pol_v1_[\w-]{32}$/);
+  });
+
+  test("異なるポリシー状態から異なるhashを返す", () => {
+    const stateA = { catalogs: [{ id: "catalog-001" }] };
+    const stateB = { catalogs: [{ id: "catalog-002" }] };
+
+    expect(buildPolicyVersion(stateA)).not.toStrictEqual(
+      buildPolicyVersion(stateB),
+    );
   });
 });

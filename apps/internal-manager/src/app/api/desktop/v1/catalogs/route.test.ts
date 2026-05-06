@@ -301,6 +301,38 @@ describe("GET /api/desktop/v1/catalogs", () => {
     );
   });
 
+  test("期限付きユーザー権限の基準時刻をカタログとツールで揃える", async () => {
+    await GET(buildRequest());
+
+    const [findManyArgs] = mockFindCatalogs.mock.calls[0] as [
+      {
+        select: {
+          userCatalogPermissions: {
+            where: {
+              OR: [{ expiresAt: null }, { expiresAt: { gt: Date } }];
+            };
+          };
+          tools: {
+            select: {
+              userPermissions: {
+                where: {
+                  OR: [{ expiresAt: null }, { expiresAt: { gt: Date } }];
+                };
+              };
+            };
+          };
+        };
+      },
+    ];
+    const catalogExpiresAt =
+      findManyArgs.select.userCatalogPermissions.where.OR[1].expiresAt.gt;
+    const toolExpiresAt =
+      findManyArgs.select.tools.select.userPermissions.where.OR[1].expiresAt.gt;
+
+    expect(catalogExpiresAt).toBeInstanceOf(Date);
+    expect(toolExpiresAt).toBe(catalogExpiresAt);
+  });
+
   test("認証に失敗した場合は401を返す", async () => {
     mockVerifyDesktopJwt.mockRejectedValue(new Error("Unauthorized"));
 
