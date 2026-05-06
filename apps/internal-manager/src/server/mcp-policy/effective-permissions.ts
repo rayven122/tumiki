@@ -7,7 +7,8 @@ import { db } from "@tumiki/internal-db/server";
 
 export type PermissionBits = {
   read: boolean;
-  write: false;
+  // v1はツール実行可否だけを管理するため、レスポンス値は常にfalseにする。
+  write: boolean;
   execute: boolean;
 };
 

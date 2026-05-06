@@ -195,6 +195,8 @@ DECLARE
   unmatched_group_tool_count INTEGER;
   unmatched_user_tool_count INTEGER;
   orphaned_group_tool_allow_count INTEGER;
+  conflicting_group_tool_deny_with_individual_count INTEGER;
+  conflicting_user_tool_deny_with_individual_count INTEGER;
 BEGIN
   IF (
     SELECT COUNT(*)
@@ -309,6 +311,36 @@ BEGIN
 
   IF orphaned_group_tool_allow_count > 0 THEN
     RAISE EXCEPTION 'Cannot migrate % GroupMcpToolPermission allow rows because their group has no active GroupToolPermission for the tool catalog', orphaned_group_tool_allow_count;
+  END IF;
+
+  -- 旧canUse=falseは新モデルで明示DENYにするため、既存の有効な個人承認を上書きするデータは移行前に止める。
+  SELECT COUNT(*) INTO conflicting_group_tool_deny_with_individual_count
+  FROM "GroupMcpToolPermission" gmtp
+  JOIN "McpCatalogTool" tool ON tool."id" = gmtp."mcpToolId"
+  JOIN "McpCatalog" catalog ON catalog."id" = tool."catalogId"
+  JOIN "UserGroupMembership" membership ON membership."groupId" = gmtp."groupId"
+  JOIN "IndividualPermission" ip ON ip."userId" = membership."userId"
+  WHERE NOT gmtp."canUse"
+    AND ip."status" = 'APPROVED'
+    AND (ip."expiresAt" IS NULL OR ip."expiresAt" > CURRENT_TIMESTAMP)
+    AND (catalog."id" = ip."mcpServerId" OR catalog."slug" = ip."mcpServerId");
+
+  IF conflicting_group_tool_deny_with_individual_count > 0 THEN
+    RAISE EXCEPTION 'Cannot migrate % GroupMcpToolPermission deny rows because they would override active approved IndividualPermission rows', conflicting_group_tool_deny_with_individual_count;
+  END IF;
+
+  SELECT COUNT(*) INTO conflicting_user_tool_deny_with_individual_count
+  FROM "UserMcpToolPermission" umtp
+  JOIN "McpCatalogTool" tool ON tool."id" = umtp."mcpToolId"
+  JOIN "McpCatalog" catalog ON catalog."id" = tool."catalogId"
+  JOIN "IndividualPermission" ip ON ip."userId" = umtp."userId"
+  WHERE NOT umtp."canUse"
+    AND ip."status" = 'APPROVED'
+    AND (ip."expiresAt" IS NULL OR ip."expiresAt" > CURRENT_TIMESTAMP)
+    AND (catalog."id" = ip."mcpServerId" OR catalog."slug" = ip."mcpServerId");
+
+  IF conflicting_user_tool_deny_with_individual_count > 0 THEN
+    RAISE EXCEPTION 'Cannot migrate % UserMcpToolPermission deny rows because they would override active approved IndividualPermission rows', conflicting_user_tool_deny_with_individual_count;
   END IF;
 END $$;
 
