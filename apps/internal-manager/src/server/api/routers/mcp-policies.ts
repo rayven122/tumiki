@@ -246,33 +246,46 @@ export const mcpPoliciesRouter = createTRPCRouter({
 
       const catalogs = await ctx.db.mcpCatalog.findMany({
         where: { deletedAt: null },
-        include: {
+        select: {
+          id: true,
+          slug: true,
+          updatedAt: true,
           orgUnitCatalogPermissions: {
             where: { orgUnitId: { in: orgUnitPermissionIds } },
+            select: { orgUnitId: true, effect: true, updatedAt: true },
           },
           groupCatalogPermissions: {
             where: { groupId: { in: groupPermissionIds } },
+            select: { groupId: true, effect: true, updatedAt: true },
           },
           userCatalogPermissions: {
             where: {
               userId: input.userId,
               OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
             },
+            select: { userId: true, effect: true, updatedAt: true },
           },
           tools: {
             where: { deletedAt: null },
-            include: {
+            select: {
+              id: true,
+              name: true,
+              defaultAllowed: true,
+              updatedAt: true,
               orgUnitPermissions: {
                 where: { orgUnitId: { in: orgUnitPermissionIds } },
+                select: { orgUnitId: true, effect: true, updatedAt: true },
               },
               groupPermissions: {
                 where: { groupId: { in: groupPermissionIds } },
+                select: { groupId: true, effect: true, updatedAt: true },
               },
               userPermissions: {
                 where: {
                   userId: input.userId,
                   OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
                 },
+                select: { userId: true, effect: true, updatedAt: true },
               },
             },
           },

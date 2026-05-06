@@ -6,6 +6,7 @@ import {
   evaluateCatalogPermissions,
   getPolicyContextForUser,
   getPolicyOrgUnitsForMemberships,
+  POLICY_CONTEXT_ORG_UNIT_LIMIT,
   type CatalogPolicyInput,
   type PolicyUser,
 } from "../effective-permissions";
@@ -422,6 +423,23 @@ describe("getPolicyOrgUnitsForMemberships", () => {
     ).resolves.toStrictEqual([]);
     expect(findMany).not.toHaveBeenCalled();
   });
+
+  test("部署祖先数が上限を超えたらエラーを投げる", async () => {
+    const findMany = vi.fn().mockResolvedValue(
+      Array.from({ length: POLICY_CONTEXT_ORG_UNIT_LIMIT }, (_, index) => ({
+        id: `parent-${index}`,
+        parentId: null,
+        updatedAt: now,
+      })),
+    );
+    const client = {
+      orgUnit: { findMany },
+    } as unknown as Parameters<typeof getPolicyOrgUnitsForMemberships>[1];
+
+    await expect(
+      getPolicyOrgUnitsForMemberships(buildUser().orgUnitMemberships, client),
+    ).rejects.toThrow("exceeded the policy context limit");
+  });
 });
 
 describe("getPolicyContextForUser", () => {
@@ -470,6 +488,20 @@ describe("getPolicyContextForUser", () => {
         },
       },
     });
+  });
+
+  test("ユーザーが存在しない場合は部署を取得せずnullを返す", async () => {
+    const findUnique = vi.fn().mockResolvedValue(null);
+    const findMany = vi.fn();
+    const client = {
+      user: { findUnique },
+      orgUnit: { findMany },
+    } as unknown as Parameters<typeof getPolicyContextForUser>[1];
+
+    await expect(
+      getPolicyContextForUser("missing-user", client),
+    ).resolves.toStrictEqual({ user: null, orgUnits: [] });
+    expect(findMany).not.toHaveBeenCalled();
   });
 });
 

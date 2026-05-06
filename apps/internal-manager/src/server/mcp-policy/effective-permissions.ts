@@ -12,9 +12,15 @@ export type PermissionBits = {
   execute: boolean;
 };
 
+export type DeniedReason =
+  | "user_denied"
+  | "group_denied"
+  | "org_unit_denied"
+  | "not_granted";
+
 export type EffectiveToolPermission = {
   allowed: boolean;
-  deniedReason: string | null;
+  deniedReason: DeniedReason | null;
 };
 
 export type EffectiveCatalogPermissions = {

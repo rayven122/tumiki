@@ -69,32 +69,45 @@ type MatrixCatalogFindManyArgs = {
 };
 
 type EffectiveCatalogFindManyArgs = {
-  include: {
+  select: {
+    id: true;
+    slug: true;
+    updatedAt: true;
     orgUnitCatalogPermissions: {
       where: { orgUnitId: { in: string[] } };
+      select: { orgUnitId: true; effect: true; updatedAt: true };
     };
     groupCatalogPermissions: {
       where: { groupId: { in: string[] } };
+      select: { groupId: true; effect: true; updatedAt: true };
     };
     userCatalogPermissions: {
       where: {
         userId: string;
         OR: [{ expiresAt: null }, { expiresAt: { gt: Date } }];
       };
+      select: { userId: true; effect: true; updatedAt: true };
     };
     tools: {
-      include: {
+      select: {
+        id: true;
+        name: true;
+        defaultAllowed: true;
+        updatedAt: true;
         orgUnitPermissions: {
           where: { orgUnitId: { in: string[] } };
+          select: { orgUnitId: true; effect: true; updatedAt: true };
         };
         groupPermissions: {
           where: { groupId: { in: string[] } };
+          select: { groupId: true; effect: true; updatedAt: true };
         };
         userPermissions: {
           where: {
             userId: string;
             OR: [{ expiresAt: null }, { expiresAt: { gt: Date } }];
           };
+          select: { userId: true; effect: true; updatedAt: true };
         };
       };
     };
@@ -237,17 +250,16 @@ describe("mcpPoliciesRouter", () => {
       EffectiveCatalogFindManyArgs,
     ];
     const catalogNow =
-      findManyArgs.include.userCatalogPermissions.where.OR[1].expiresAt.gt;
+      findManyArgs.select.userCatalogPermissions.where.OR[1].expiresAt.gt;
     const toolNow =
-      findManyArgs.include.tools.include.userPermissions.where.OR[1].expiresAt
-        .gt;
+      findManyArgs.select.tools.select.userPermissions.where.OR[1].expiresAt.gt;
     expect(toolNow).toBe(catalogNow);
-    expect(findManyArgs.include.userCatalogPermissions.where.userId).toBe(
+    expect(findManyArgs.select.userCatalogPermissions.where.userId).toBe(
       "user-001",
     );
-    expect(
-      findManyArgs.include.tools.include.userPermissions.where.userId,
-    ).toBe("user-001");
+    expect(findManyArgs.select.tools.select.userPermissions.where.userId).toBe(
+      "user-001",
+    );
   });
 
   test("getEffectivePermissionsは所属グループと部署の権限だけを取得する", async () => {
@@ -294,16 +306,16 @@ describe("mcpPoliciesRouter", () => {
       EffectiveCatalogFindManyArgs,
     ];
     expect(
-      findManyArgs.include.orgUnitCatalogPermissions.where.orgUnitId.in,
+      findManyArgs.select.orgUnitCatalogPermissions.where.orgUnitId.in,
     ).toStrictEqual(["org-child", "org-parent"]);
     expect(
-      findManyArgs.include.tools.include.orgUnitPermissions.where.orgUnitId.in,
+      findManyArgs.select.tools.select.orgUnitPermissions.where.orgUnitId.in,
     ).toStrictEqual(["org-child", "org-parent"]);
     expect(
-      findManyArgs.include.groupCatalogPermissions.where.groupId.in,
+      findManyArgs.select.groupCatalogPermissions.where.groupId.in,
     ).toStrictEqual(["group-001"]);
     expect(
-      findManyArgs.include.tools.include.groupPermissions.where.groupId.in,
+      findManyArgs.select.tools.select.groupPermissions.where.groupId.in,
     ).toStrictEqual(["group-001"]);
   });
 
