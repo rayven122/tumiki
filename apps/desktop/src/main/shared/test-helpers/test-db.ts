@@ -18,7 +18,8 @@ import { PrismaClient } from "@prisma/desktop-client";
 const DESKTOP_ROOT = join(__dirname, "../../../..");
 const MIGRATIONS_DIR = join(DESKTOP_ROOT, "prisma/migrations");
 
-// 全マイグレーション SQL を一時ファイルへ連結して prisma db execute を 1 回だけ呼ぶ。
+// $executeRawUnsafe での `;` 分割は CREATE 文の結合で UNIQUE INDEX を取りこぼすため不採用。
+// 全マイグレーション SQL を一時ファイルへ連結し prisma db execute を 1 回だけ呼ぶ。
 export const createTestDb = async (dbPath: string): Promise<PrismaClient> => {
   if (existsSync(dbPath)) {
     unlinkSync(dbPath);
