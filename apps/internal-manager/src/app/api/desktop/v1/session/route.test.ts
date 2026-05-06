@@ -73,6 +73,7 @@ type FindPolicyCatalogsArgs = {
       orderBy: [{ userId: "asc" }];
     };
     tools: {
+      take: number;
       select: {
         groupPermissions: {
           where: { groupId: { in: string[] } };
@@ -257,7 +258,6 @@ const expectedPolicyVersion = `pol_v1_${createHash("sha256")
       groups: expectedGroups,
       orgUnits: expectedOrgUnits,
       catalogs: expectedPolicyCatalogsForVersion,
-      permissions: expectedPermissions,
     }),
   )
   .digest("base64url")
@@ -366,6 +366,7 @@ describe("GET /api/desktop/v1/session", () => {
     expect(
       findPolicyCatalogsArgs.select.tools.select.groupPermissions.orderBy,
     ).toStrictEqual([{ groupId: "asc" }]);
+    expect(findPolicyCatalogsArgs.select.tools.take).toStrictEqual(501);
     expect(
       findPolicyCatalogsArgs.select.tools.select.groupPermissions.where.groupId
         .in,
@@ -414,6 +415,32 @@ describe("GET /api/desktop/v1/session", () => {
     expect(response.status).toStrictEqual(500);
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       "MCP catalog count exceeded the session policy limit (500); refusing incomplete policyVersion.",
+    );
+    consoleErrorSpy.mockRestore();
+  });
+
+  test("policyVersion対象ツールが上限を超えた場合は不完全なhashを返さない", async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    mockMcpCatalogFindMany.mockResolvedValue([
+      {
+        ...expectedPolicyCatalogs[0]!,
+        tools: Array.from({ length: 501 }, (_, index) => ({
+          ...expectedPolicyCatalogs[0]!.tools[0]!,
+          id: `tool-${String(index).padStart(3, "0")}`,
+        })),
+      },
+    ]);
+
+    const response = await GET(buildRequest());
+
+    await expect(response.json()).resolves.toStrictEqual({
+      error: "Internal Server Error",
+    });
+    expect(response.status).toStrictEqual(500);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "MCP tool count exceeded the session policy limit (500) for catalog catalog-001; refusing incomplete policyVersion.",
     );
     consoleErrorSpy.mockRestore();
   });

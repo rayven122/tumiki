@@ -1,4 +1,7 @@
 -- Normalize MCP catalog connection templates and permissions onto McpCatalog/McpCatalogTool.
+-- WARNING: This migration is irreversible.
+-- It drops configTemplate and legacy permission tables after backfill.
+-- Ensure a full database backup exists before applying to production.
 
 ALTER TABLE "McpCatalog"
 ADD COLUMN "command" TEXT,

@@ -14,8 +14,10 @@ import {
   NO_GROUP_PERMISSION_ID,
   NO_ORG_UNIT_PERMISSION_ID,
 } from "~/server/mcp-policy/constants";
+import { buildCatalogPolicySelect } from "~/server/mcp-policy/catalog-policy-query";
 
 const POLICY_VERSION_CATALOG_LIMIT = 500;
+const POLICY_VERSION_TOOL_LIMIT = 500;
 
 export const GET = async (request: NextRequest) => {
   let verifiedUser: Awaited<ReturnType<typeof verifyDesktopJwt>>;
@@ -96,86 +98,13 @@ export const GET = async (request: NextRequest) => {
     const [policyCatalogs, settings] = await Promise.all([
       db.mcpCatalog.findMany({
         where: { deletedAt: null },
-        select: {
-          id: true,
-          slug: true,
-          status: true,
-          updatedAt: true,
-          orgUnitCatalogPermissions: {
-            where: { orgUnitId: { in: orgUnitPermissionIds } },
-            select: {
-              orgUnitId: true,
-              effect: true,
-              updatedAt: true,
-            },
-            orderBy: [{ orgUnitId: "asc" }],
-          },
-          groupCatalogPermissions: {
-            where: { groupId: { in: groupPermissionIds } },
-            select: {
-              groupId: true,
-              effect: true,
-              updatedAt: true,
-            },
-            orderBy: [{ groupId: "asc" }],
-          },
-          userCatalogPermissions: {
-            where: {
-              userId: verifiedUser.userId,
-              OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-            },
-            select: {
-              userId: true,
-              effect: true,
-              reason: true,
-              expiresAt: true,
-              updatedAt: true,
-            },
-            orderBy: [{ userId: "asc" }],
-          },
-          tools: {
-            where: { deletedAt: null },
-            select: {
-              id: true,
-              name: true,
-              defaultAllowed: true,
-              updatedAt: true,
-              orgUnitPermissions: {
-                where: { orgUnitId: { in: orgUnitPermissionIds } },
-                select: {
-                  orgUnitId: true,
-                  effect: true,
-                  updatedAt: true,
-                },
-                orderBy: [{ orgUnitId: "asc" }],
-              },
-              groupPermissions: {
-                where: { groupId: { in: groupPermissionIds } },
-                select: {
-                  groupId: true,
-                  effect: true,
-                  updatedAt: true,
-                },
-                orderBy: [{ groupId: "asc" }],
-              },
-              userPermissions: {
-                where: {
-                  userId: verifiedUser.userId,
-                  OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-                },
-                select: {
-                  userId: true,
-                  effect: true,
-                  reason: true,
-                  expiresAt: true,
-                  updatedAt: true,
-                },
-                orderBy: [{ userId: "asc" }],
-              },
-            },
-            orderBy: { name: "asc" },
-          },
-        },
+        select: buildCatalogPolicySelect({
+          userId: verifiedUser.userId,
+          groupPermissionIds,
+          orgUnitPermissionIds,
+          now,
+          toolTake: POLICY_VERSION_TOOL_LIMIT + 1,
+        }),
         orderBy: [{ slug: "asc" }, { id: "asc" }],
         take: POLICY_VERSION_CATALOG_LIMIT + 1,
       }),
@@ -191,6 +120,18 @@ export const GET = async (request: NextRequest) => {
     if (policyCatalogs.length > POLICY_VERSION_CATALOG_LIMIT) {
       console.error(
         `MCP catalog count exceeded the session policy limit (${POLICY_VERSION_CATALOG_LIMIT}); refusing incomplete policyVersion.`,
+      );
+      return NextResponse.json(
+        { error: "Internal Server Error" },
+        { status: 500 },
+      );
+    }
+    const overLimitToolCatalog = policyCatalogs.find(
+      (catalog) => catalog.tools.length > POLICY_VERSION_TOOL_LIMIT,
+    );
+    if (overLimitToolCatalog) {
+      console.error(
+        `MCP tool count exceeded the session policy limit (${POLICY_VERSION_TOOL_LIMIT}) for catalog ${overLimitToolCatalog.id}; refusing incomplete policyVersion.`,
       );
       return NextResponse.json(
         { error: "Internal Server Error" },
@@ -363,7 +304,6 @@ export const GET = async (request: NextRequest) => {
       groups,
       orgUnits,
       catalogs: policyCatalogsForVersion,
-      permissions,
     });
 
     return NextResponse.json({

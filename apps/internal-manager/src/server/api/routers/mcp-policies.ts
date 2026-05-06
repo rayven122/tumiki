@@ -10,6 +10,7 @@ import {
   NO_GROUP_PERMISSION_ID,
   NO_ORG_UNIT_PERMISSION_ID,
 } from "~/server/mcp-policy/constants";
+import { buildCatalogPolicySelect } from "~/server/mcp-policy/catalog-policy-query";
 
 const POLICY_MATRIX_ORG_UNIT_LIMIT = 1000;
 const POLICY_MATRIX_CATALOG_LIMIT = 200;
@@ -246,50 +247,12 @@ export const mcpPoliciesRouter = createTRPCRouter({
 
       const catalogs = await ctx.db.mcpCatalog.findMany({
         where: { deletedAt: null },
-        select: {
-          id: true,
-          slug: true,
-          updatedAt: true,
-          orgUnitCatalogPermissions: {
-            where: { orgUnitId: { in: orgUnitPermissionIds } },
-            select: { orgUnitId: true, effect: true, updatedAt: true },
-          },
-          groupCatalogPermissions: {
-            where: { groupId: { in: groupPermissionIds } },
-            select: { groupId: true, effect: true, updatedAt: true },
-          },
-          userCatalogPermissions: {
-            where: {
-              userId: input.userId,
-              OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-            },
-            select: { userId: true, effect: true, updatedAt: true },
-          },
-          tools: {
-            where: { deletedAt: null },
-            select: {
-              id: true,
-              name: true,
-              defaultAllowed: true,
-              updatedAt: true,
-              orgUnitPermissions: {
-                where: { orgUnitId: { in: orgUnitPermissionIds } },
-                select: { orgUnitId: true, effect: true, updatedAt: true },
-              },
-              groupPermissions: {
-                where: { groupId: { in: groupPermissionIds } },
-                select: { groupId: true, effect: true, updatedAt: true },
-              },
-              userPermissions: {
-                where: {
-                  userId: input.userId,
-                  OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-                },
-                select: { userId: true, effect: true, updatedAt: true },
-              },
-            },
-          },
-        },
+        select: buildCatalogPolicySelect({
+          userId: input.userId,
+          groupPermissionIds,
+          orgUnitPermissionIds,
+          now,
+        }),
         take: POLICY_MATRIX_CATALOG_LIMIT + 1,
       });
 
