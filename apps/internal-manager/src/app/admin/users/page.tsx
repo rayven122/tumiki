@@ -14,22 +14,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@tumiki/ui/alert-dialog";
-import {
-  Search,
-  ShieldCheck,
-  Trash2,
-  UserCheck,
-  UserX,
-  Users,
-  Users2,
-} from "lucide-react";
+import { Search, ShieldCheck, Trash2, UserCheck, UserX } from "lucide-react";
 import { USER_LIST_LIMIT } from "@/lib/user-management";
 import { api, type RouterOutputs } from "~/trpc/react";
-import { GroupsManagementPanel } from "../_components/GroupsManagementPanel";
 
 type RoleFilter = "SYSTEM_ADMIN" | "USER" | "all";
 type StatusFilter = "true" | "false" | "all";
-type DirectoryTab = "users" | "groups";
 
 const ROLE_STYLES: Partial<Record<Role, { text: string; label: string }>> = {
   SYSTEM_ADMIN: {
@@ -90,7 +80,6 @@ type PendingRoleChange = {
 const AdminUsersPage = () => {
   const { data: session, status: sessionStatus } = useSession();
   const utils = api.useUtils();
-  const [activeTab, setActiveTab] = useState<DirectoryTab>("users");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
@@ -355,175 +344,142 @@ const AdminUsersPage = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-text-primary text-lg font-semibold">
-            {activeTab === "groups" ? "グループ管理" : "ユーザー管理"}
+            ユーザー管理
           </h1>
-          {activeTab === "users" && (
-            <p className="text-text-secondary mt-1 text-xs">
-              {users.length}名を表示中
-            </p>
-          )}
+          <p className="text-text-secondary mt-1 text-xs">
+            {users.length}名を表示中
+          </p>
         </div>
       </div>
 
-      <div className="border-border-default bg-bg-card inline-flex rounded-lg border p-1">
-        {(
-          [
-            { id: "users", label: "ユーザー", icon: Users },
-            { id: "groups", label: "グループ", icon: Users2 },
-          ] as { id: DirectoryTab; label: string; icon: typeof Users }[]
-        ).map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setActiveTab(id)}
-            className={`flex min-h-[44px] items-center gap-2 rounded-md px-3 text-xs font-medium transition-colors ${
-              activeTab === id
-                ? "bg-bg-active text-text-primary"
-                : "text-text-secondary hover:text-text-primary"
-            }`}
-          >
-            <Icon size={13} />
-            {label}
-          </button>
-        ))}
+      {/* フィルタ */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative">
+          <Search
+            size={12}
+            className="text-text-muted absolute top-1/2 left-2.5 -translate-y-1/2"
+          />
+          <input
+            type="text"
+            aria-label="名前またはメールアドレスで検索"
+            placeholder="名前・メールで検索"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="bg-bg-card border-border-default text-text-secondary w-[220px] rounded-lg border py-1.5 pr-3 pl-7 text-xs outline-none"
+          />
+        </div>
+        <select
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value as RoleFilter)}
+          className="bg-bg-card border-border-default text-text-secondary rounded-lg border px-3 py-1.5 text-xs outline-none"
+          aria-label="ロールで絞り込み"
+        >
+          <option value="all">すべてのロール</option>
+          <option value="SYSTEM_ADMIN">オーナー</option>
+          <option value="USER">メンバー</option>
+        </select>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+          className="bg-bg-card border-border-default text-text-secondary rounded-lg border px-3 py-1.5 text-xs outline-none"
+          aria-label="アクセス状態で絞り込み"
+        >
+          <option value="all">すべてのアクセス状態</option>
+          <option value="true">利用中</option>
+          <option value="false">アクセス停止中</option>
+        </select>
+        <span className="text-text-subtle ml-auto text-xs">
+          {users.length} 名表示
+        </span>
       </div>
 
-      {activeTab === "groups" ? (
-        <div className="border-border-default bg-bg-card overflow-hidden rounded-xl border">
-          <GroupsManagementPanel embedded />
+      {errorMessage && (
+        <div
+          role="alert"
+          className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300"
+        >
+          {errorMessage}
+        </div>
+      )}
+
+      {isUserListAtLimit && (
+        <div
+          role="status"
+          className="border-border-default bg-bg-card text-text-secondary rounded-lg border px-3 py-2 text-xs"
+        >
+          表示上限の{USER_LIST_LIMIT}
+          名に達している可能性があります。検索またはフィルターで対象を絞り込んでください。
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="bg-bg-card border-border-default text-text-muted rounded-xl border py-12 text-center text-sm">
+          読み込み中…
+        </div>
+      ) : users.length === 0 ? (
+        <div className="bg-bg-card border-border-default text-text-muted rounded-xl border py-12 text-center text-sm">
+          該当するユーザーはいません
         </div>
       ) : (
-        <>
-          {/* フィルタ */}
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative">
-              <Search
-                size={12}
-                className="text-text-muted absolute top-1/2 left-2.5 -translate-y-1/2"
-              />
-              <input
-                type="text"
-                aria-label="名前またはメールアドレスで検索"
-                placeholder="名前・メールで検索"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="bg-bg-card border-border-default text-text-secondary w-[220px] rounded-lg border py-1.5 pr-3 pl-7 text-xs outline-none"
-              />
-            </div>
-            <select
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value as RoleFilter)}
-              className="bg-bg-card border-border-default text-text-secondary rounded-lg border px-3 py-1.5 text-xs outline-none"
-              aria-label="ロールで絞り込み"
-            >
-              <option value="all">すべてのロール</option>
-              <option value="SYSTEM_ADMIN">オーナー</option>
-              <option value="USER">メンバー</option>
-            </select>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-              className="bg-bg-card border-border-default text-text-secondary rounded-lg border px-3 py-1.5 text-xs outline-none"
-              aria-label="アクセス状態で絞り込み"
-            >
-              <option value="all">すべてのアクセス状態</option>
-              <option value="true">利用中</option>
-              <option value="false">アクセス停止中</option>
-            </select>
-            <span className="text-text-subtle ml-auto text-xs">
-              {users.length} 名表示
-            </span>
-          </div>
-
-          {errorMessage && (
-            <div
-              role="alert"
-              className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300"
-            >
-              {errorMessage}
-            </div>
-          )}
-
-          {isUserListAtLimit && (
-            <div
-              role="status"
-              className="border-border-default bg-bg-card text-text-secondary rounded-lg border px-3 py-2 text-xs"
-            >
-              表示上限の{USER_LIST_LIMIT}
-              名に達している可能性があります。検索またはフィルターで対象を絞り込んでください。
-            </div>
-          )}
-
-          {isLoading ? (
-            <div className="bg-bg-card border-border-default text-text-muted rounded-xl border py-12 text-center text-sm">
-              読み込み中…
-            </div>
-          ) : users.length === 0 ? (
-            <div className="bg-bg-card border-border-default text-text-muted rounded-xl border py-12 text-center text-sm">
-              該当するユーザーはいません
-            </div>
-          ) : (
-            <div className="space-y-5">
-              {shouldShowActiveUsers &&
-                renderUserSection({
-                  title: "利用中ユーザー",
-                  description:
-                    "internal-manager と Tumiki Desktop の利用を許可しているユーザーです。",
-                  sectionUsers: activeUsers,
-                })}
-              {shouldShowSuspendedUsers &&
-                renderUserSection({
-                  title: "アクセス停止中ユーザー",
-                  description:
-                    "IdP には存在していても、internal-manager と Tumiki Desktop の利用を停止しているユーザーです。",
-                  sectionUsers: suspendedUsers,
-                })}
-            </div>
-          )}
-
-          <AlertDialog
-            open={pendingRoleChange !== null}
-            onOpenChange={(open) => {
-              if (!open) {
-                setPendingRoleChange(null);
-              }
-            }}
-          >
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>ロールを変更しますか？</AlertDialogTitle>
-                <AlertDialogDescription>
-                  {pendingRoleChange?.user.name ??
-                    pendingRoleChange?.user.email ??
-                    "ユーザー"}
-                  のロールを
-                  {pendingRoleChange
-                    ? (ROLE_STYLES[pendingRoleChange.role]?.label ??
-                      pendingRoleChange.role)
-                    : ""}
-                  に変更します。
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>キャンセル</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => {
-                    if (!pendingRoleChange) {
-                      return;
-                    }
-                    updateRole.mutate({
-                      userId: pendingRoleChange.user.id,
-                      role: pendingRoleChange.role,
-                    });
-                  }}
-                >
-                  変更
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </>
+        <div className="space-y-5">
+          {shouldShowActiveUsers &&
+            renderUserSection({
+              title: "利用中ユーザー",
+              description:
+                "internal-manager と Tumiki Desktop の利用を許可しているユーザーです。",
+              sectionUsers: activeUsers,
+            })}
+          {shouldShowSuspendedUsers &&
+            renderUserSection({
+              title: "アクセス停止中ユーザー",
+              description:
+                "IdP には存在していても、internal-manager と Tumiki Desktop の利用を停止しているユーザーです。",
+              sectionUsers: suspendedUsers,
+            })}
+        </div>
       )}
+
+      <AlertDialog
+        open={pendingRoleChange !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingRoleChange(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ロールを変更しますか？</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingRoleChange?.user.name ??
+                pendingRoleChange?.user.email ??
+                "ユーザー"}
+              のロールを
+              {pendingRoleChange
+                ? (ROLE_STYLES[pendingRoleChange.role]?.label ??
+                  pendingRoleChange.role)
+                : ""}
+              に変更します。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!pendingRoleChange) {
+                  return;
+                }
+                updateRole.mutate({
+                  userId: pendingRoleChange.user.id,
+                  role: pendingRoleChange.role,
+                });
+              }}
+            >
+              変更
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
