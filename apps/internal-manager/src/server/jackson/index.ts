@@ -3,6 +3,12 @@ import jackson, {
   type SAMLJackson,
 } from "@boxyhq/saml-jackson";
 import { handleDirectorySyncEvent } from "~/server/scim/event-handler";
+import {
+  getJacksonEncryptionKey,
+  getJacksonOidcSigningKeys,
+  hasJacksonEncryptionKey,
+} from "~/server/secrets";
+import { runJacksonResetHooks } from "./reset-hooks";
 
 /**
  * @boxyhq/saml-jackson 初期化モジュール
@@ -28,9 +34,10 @@ let initPromise: Promise<SAMLJackson> | null = null;
 
 /**
  * 公開 URL の解決ロジック（jackson モジュールと登録スクリプトで共有）
- * - 優先: NEXTAUTH_URL_INTERNAL_MANAGER → NEXTAUTH_URL → localhost
+ * - 優先: TUMIKI_INTERNAL_MANAGER_PUBLIC_URL → NEXTAUTH_URL_INTERNAL_MANAGER → NEXTAUTH_URL → localhost
  */
 export const resolveExternalUrl = (): string =>
+  process.env.TUMIKI_INTERNAL_MANAGER_PUBLIC_URL ??
   process.env.NEXTAUTH_URL_INTERNAL_MANAGER ??
   process.env.NEXTAUTH_URL ??
   "http://localhost:3100";
@@ -45,13 +52,14 @@ const buildJacksonOption = (): JacksonOption => {
     );
   }
 
-  // jackson が DB 暗号化に使う鍵（32 文字以上）
-  const encryptionKey = process.env.JACKSON_ENCRYPTION_KEY;
-  if (!encryptionKey || encryptionKey.length < 32) {
+  // jackson が DB 暗号化に使う鍵。通常は manager root secret から用途別に導出する。
+  if (!hasJacksonEncryptionKey()) {
     throw new Error(
-      "JACKSON_ENCRYPTION_KEY must be at least 32 characters long",
+      "TUMIKI_INTERNAL_MANAGER_SECRET_KEY or JACKSON_ENCRYPTION_KEY must be at least 32 characters long",
     );
   }
+  const encryptionKey = getJacksonEncryptionKey();
+  const jwtSigningKeys = getJacksonOidcSigningKeys();
 
   return {
     externalUrl,
@@ -79,15 +87,7 @@ const buildJacksonOption = (): JacksonOption => {
       jwsAlg: "RS256",
       // Web と Desktop の redirect_uri を client ごとに厳密一致で検証する。
       redirectExactMatch: true,
-      ...(process.env.JACKSON_OIDC_PRIVATE_KEY &&
-      process.env.JACKSON_OIDC_PUBLIC_KEY
-        ? {
-            jwtSigningKeys: {
-              private: process.env.JACKSON_OIDC_PRIVATE_KEY,
-              public: process.env.JACKSON_OIDC_PUBLIC_KEY,
-            },
-          }
-        : {}),
+      ...(jwtSigningKeys ? { jwtSigningKeys } : {}),
     },
     noAnalytics: true,
     logger: {
@@ -129,9 +129,7 @@ const buildJacksonOption = (): JacksonOption => {
  * 503 を返すようにする（500 エラーで全体障害にしない）。
  */
 export const isJacksonConfigured = (): boolean =>
-  !!process.env.INTERNAL_DATABASE_URL &&
-  !!process.env.JACKSON_ENCRYPTION_KEY &&
-  process.env.JACKSON_ENCRYPTION_KEY.length >= 32;
+  !!process.env.INTERNAL_DATABASE_URL && hasJacksonEncryptionKey();
 
 /**
  * jackson インスタンスを取得（シングルトン）
@@ -175,4 +173,5 @@ export const getJackson = async (): Promise<SAMLJackson> => {
 export const resetJackson = (): void => {
   jacksonInstance = null;
   initPromise = null;
+  runJacksonResetHooks();
 };

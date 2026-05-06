@@ -1,6 +1,31 @@
-import type { PrismaTransactionClient } from "@tumiki/internal-db";
+import type {
+  PrismaClient,
+  PrismaTransactionClient,
+} from "@tumiki/internal-db";
 import { GroupSource, SyncStatus, SyncTrigger } from "@tumiki/internal-db";
 import type { TumikiClaims } from "./types";
+
+type TumikiClaimsDb = PrismaClient | PrismaTransactionClient;
+
+const runInTransaction = <T>(
+  client: TumikiClaimsDb,
+  callback: (tx: PrismaTransactionClient) => Promise<T>,
+): Promise<T> => {
+  // PrismaClient は $transaction を持ち、PrismaTransactionClient は持たない。
+  // 既存 transaction 内から呼ばれた場合は、渡された tx をそのまま使って二重ネストを避ける。
+  if ("$transaction" in client && typeof client.$transaction === "function") {
+    return client.$transaction(callback);
+  }
+  return callback(client);
+};
+
+const getMappedProviders = (provider: string): string[] => [
+  ...new Set([provider, "scim", `${provider}-map`, "scim-map"]),
+];
+
+const getJitManagedProviders = (provider: string): string[] => [
+  ...new Set([provider, `${provider}-map`, "scim-map"]),
+];
 
 /**
  * ログイン時のJITグループ同期とTumikiクレーム取得
@@ -17,7 +42,7 @@ import type { TumikiClaims } from "./types";
  * @param groupRoles OIDCトークンのグループクレーム（undefinedの場合は同期をスキップ）
  */
 export const getTumikiClaims = async (
-  db: PrismaTransactionClient,
+  db: TumikiClaimsDb,
   userId: string,
   provider: string,
   oidcSub: string,
@@ -29,7 +54,10 @@ export const getTumikiClaims = async (
       data: { lastLoginAt: new Date(), isActive: true },
       select: { id: true, role: true },
     })
-    .catch(() => null);
+    .catch((error: unknown) => {
+      console.error("[getTumikiClaims] user.update failed:", error);
+      return null;
+    });
 
   if (!user) return null;
 
@@ -46,6 +74,7 @@ export const getTumikiClaims = async (
   let added = 0;
   let removed = 0;
   let syncStatus: SyncStatus = SyncStatus.SUCCESS;
+  let syncError: string | null = null;
 
   if (groupRoles === undefined) {
     await db.idpSyncLog.create({
@@ -69,27 +98,33 @@ export const getTumikiClaims = async (
   }
 
   try {
-    // DB に登録済みの IDP グループのうち、今回のクレームに含まれるものを取得
-    const idpGroups =
+    const mappedProviders = getMappedProviders(provider);
+    const jitManagedProviders = getJitManagedProviders(provider);
+    // DB に登録済み、または Tumiki group に mapping 済みのグループを取得する。
+    // SCIM で取り込んだグループは provider=scim、Tumiki group への
+    // mapping は provider=scim-map / <provider>-map で保持する。
+    const mappedGroups =
       groupRoles.length > 0
         ? await db.group.findMany({
             where: {
-              source: GroupSource.IDP,
-              provider,
+              provider: { in: mappedProviders },
               externalId: { in: groupRoles },
             },
             select: { id: true },
           })
         : [];
 
-    const targetGroupIds = new Set(idpGroups.map((g) => g.id));
+    const targetGroupIds = new Set(mappedGroups.map((g) => g.id));
 
     // 現在の IDP 由来メンバーシップを取得
     const currentMemberships = await db.userGroupMembership.findMany({
       where: {
         userId,
         source: GroupSource.IDP,
-        group: { provider, source: GroupSource.IDP },
+        group: {
+          // provider=scim の所属はSCIMイベントが権威なので、JITログイン時の削除対象から外す。
+          provider: { in: jitManagedProviders },
+        },
       },
       select: { id: true, groupId: true },
     });
@@ -101,25 +136,30 @@ export const getTumikiClaims = async (
       (m) => !targetGroupIds.has(m.groupId),
     );
 
-    if (toAdd.length > 0) {
-      await db.userGroupMembership.createMany({
-        data: toAdd.map((groupId) => ({
-          userId,
-          groupId,
-          source: GroupSource.IDP,
-        })),
-        skipDuplicates: true,
-      });
-      added = toAdd.length;
-    }
+    if (toAdd.length > 0 || toRemove.length > 0) {
+      await runInTransaction(db, async (tx) => {
+        if (toAdd.length > 0) {
+          await tx.userGroupMembership.createMany({
+            data: toAdd.map((groupId) => ({
+              userId,
+              groupId,
+              source: GroupSource.IDP,
+            })),
+            skipDuplicates: true,
+          });
+        }
 
-    if (toRemove.length > 0) {
-      await db.userGroupMembership.deleteMany({
-        where: { id: { in: toRemove.map((m) => m.id) } },
+        if (toRemove.length > 0) {
+          await tx.userGroupMembership.deleteMany({
+            where: { id: { in: toRemove.map((m) => m.id) } },
+          });
+        }
       });
-      removed = toRemove.length;
     }
+    added = toAdd.length;
+    removed = toRemove.length;
   } catch (error) {
+    syncError = error instanceof Error ? error.message : String(error);
     console.error("[getTumikiClaims] JIT sync failed:", error);
     syncStatus = SyncStatus.FAILED;
   }
@@ -130,6 +170,8 @@ export const getTumikiClaims = async (
       status: syncStatus,
       added,
       removed,
+      errors: syncStatus === SyncStatus.FAILED ? 1 : 0,
+      detail: syncError,
       completedAt: new Date(),
     },
   });

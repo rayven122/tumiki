@@ -1281,4 +1281,42 @@ describe("mcp.service", () => {
       );
     });
   });
+
+  describe("updateIsPiiMaskingEnabled", () => {
+    test("PIIマスキングフラグを repository へ委譲する（無効化）", async () => {
+      const mockUpdated = { id: 1, isPiiMaskingEnabled: false };
+      vi.mocked(mcpRepository.updateIsPiiMaskingEnabled).mockResolvedValue(
+        mockUpdated as Awaited<
+          ReturnType<typeof mcpRepository.updateIsPiiMaskingEnabled>
+        >,
+      );
+
+      const result = await mcpService.updateIsPiiMaskingEnabled(1, false);
+
+      expect(result).toStrictEqual(mockUpdated);
+      expect(mcpRepository.updateIsPiiMaskingEnabled).toHaveBeenCalledWith(
+        mockDb,
+        1,
+        false,
+      );
+    });
+
+    test("PIIマスキングフラグを repository へ委譲する（有効化）", async () => {
+      const mockUpdated = { id: 5, isPiiMaskingEnabled: true };
+      vi.mocked(mcpRepository.updateIsPiiMaskingEnabled).mockResolvedValue(
+        mockUpdated as Awaited<
+          ReturnType<typeof mcpRepository.updateIsPiiMaskingEnabled>
+        >,
+      );
+
+      const result = await mcpService.updateIsPiiMaskingEnabled(5, true);
+
+      expect(result).toStrictEqual(mockUpdated);
+      expect(mcpRepository.updateIsPiiMaskingEnabled).toHaveBeenCalledWith(
+        mockDb,
+        5,
+        true,
+      );
+    });
+  });
 });

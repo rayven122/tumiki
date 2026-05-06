@@ -9,6 +9,8 @@ import type {
   UpdateServerInput,
   DeleteServerInput,
   ToggleServerInput,
+  UpdatePiiMaskingInput,
+  UpdateToonConversionInput,
 } from "./mcp.types";
 import * as logger from "../../shared/utils/logger";
 import { VIRTUAL_SERVER_MAX_CONNECTIONS } from "../../../shared/mcp.constants";
@@ -28,6 +30,16 @@ const toggleServerSchema = z.object({
   id: z.number().int(),
   isEnabled: z.boolean(),
 }) satisfies z.ZodType<ToggleServerInput>;
+
+const updatePiiMaskingSchema = z.object({
+  serverId: z.number().int(),
+  enabled: z.boolean(),
+}) satisfies z.ZodType<UpdatePiiMaskingInput>;
+
+const updateToonConversionSchema = z.object({
+  serverId: z.number().int(),
+  enabled: z.boolean(),
+}) satisfies z.ZodType<UpdateToonConversionInput>;
 
 const createFromCatalogSchema = z.object({
   catalogId: z.number().int(),
@@ -257,6 +269,44 @@ export const setupMcpIpc = (): void => {
         error instanceof Error ? error : { error },
       );
       throw new Error(`MCPサーバーの切り替えに失敗しました: ${message}`);
+    }
+  });
+
+  // PIIマスキング有効状態を更新（次回プロキシ起動時に反映）
+  ipcMain.handle("mcp:updatePiiMasking", async (_, input: unknown) => {
+    try {
+      const validated = updatePiiMaskingSchema.parse(input);
+      // preload 側は Promise<void> を期待するため、Prisma レコードは返さない
+      await mcpService.updateIsPiiMaskingEnabled(
+        validated.serverId,
+        validated.enabled,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "不明なエラー";
+      logger.error(
+        "Failed to update PII masking flag",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error(`PIIマスキング設定の更新に失敗しました: ${message}`);
+    }
+  });
+
+  // TOON変換（レスポンス圧縮）有効状態を更新（次回プロキシ起動時に反映）
+  ipcMain.handle("mcp:updateToonConversion", async (_, input: unknown) => {
+    try {
+      const validated = updateToonConversionSchema.parse(input);
+      // preload 側は Promise<void> を期待するため、Prisma レコードは返さない
+      await mcpService.updateIsToonConversionEnabled(
+        validated.serverId,
+        validated.enabled,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "不明なエラー";
+      logger.error(
+        "Failed to update TOON conversion flag",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error(`レスポンス圧縮設定の更新に失敗しました: ${message}`);
     }
   });
 };

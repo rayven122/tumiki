@@ -18,6 +18,8 @@ import type {
   UpdateServerInput,
   DeleteServerInput,
   ToggleServerInput,
+  UpdatePiiMaskingInput,
+  UpdateToonConversionInput,
   StartOAuthInput,
   OAuthResult,
   AuditLogListAllInput,
@@ -27,6 +29,9 @@ import type {
   DashboardResult,
   DesktopSession,
   McpProxyLaunchCommand,
+  AiClientPreview,
+  AiClientWriteRequest,
+  AiClientWriteResult,
 } from "../main/types";
 
 // Electron APIを安全に公開
@@ -112,6 +117,10 @@ const api = {
       ipcRenderer.invoke("mcp:deleteServer", input),
     toggleServer: (input: ToggleServerInput): Promise<McpServerItem> =>
       ipcRenderer.invoke("mcp:toggleServer", input),
+    updatePiiMasking: (input: UpdatePiiMaskingInput): Promise<void> =>
+      ipcRenderer.invoke("mcp:updatePiiMasking", input),
+    updateToonConversion: (input: UpdateToonConversionInput): Promise<void> =>
+      ipcRenderer.invoke("mcp:updateToonConversion", input),
     getDetail: (serverId: number): Promise<McpServerDetailItem | null> =>
       ipcRenderer.invoke("mcp-server:getDetail", serverId),
     toggleTool: (input: {
@@ -125,6 +134,16 @@ const api = {
   mcpProxy: {
     getLaunchCommand: (): Promise<McpProxyLaunchCommand> =>
       ipcRenderer.invoke("mcp-proxy:getLaunchCommand"),
+  },
+
+  // AI クライアント設定ファイルの自動書き込み
+  aiClient: {
+    getPreview: (clientId: string): Promise<AiClientPreview> =>
+      ipcRenderer.invoke("aiClient:getPreview", clientId),
+    writeConfig: (
+      request: AiClientWriteRequest,
+    ): Promise<AiClientWriteResult> =>
+      ipcRenderer.invoke("aiClient:writeConfig", request),
   },
 
   // 監査ログ API
@@ -175,7 +194,7 @@ const api = {
 
   // MCP OAuth認証 API
   oauth: {
-    startAuth: (input: StartOAuthInput): Promise<void> =>
+    startAuth: (input: StartOAuthInput): Promise<OAuthResult> =>
       ipcRenderer.invoke("oauth:startAuth", input),
     cancelAuth: (): Promise<void> => ipcRenderer.invoke("oauth:cancelAuth"),
     findManualOAuthClient: (

@@ -1,8 +1,12 @@
 /**
  * MCP OAuth サービス（オーケストレーション）
  *
- * Discovery → DCR（キャッシュ優先）→ PKCE → ブラウザ認証 → コールバック → トークン交換 → MCP登録
- * の全フローを1つのサービスで管理する。
+ * Loopback HTTP起動 → Discovery → DCR（キャッシュ優先）→ PKCE → ブラウザ認証 →
+ * ループバック受信 → トークン交換 → MCP登録 の全フローを1つのサービスで管理する。
+ *
+ * RFC 8252 (OAuth 2.0 for Native Apps) に準拠したループバックHTTP方式を採用。
+ * カスタムプロトコル（tumiki://）は廃止し、HubSpot/Asana/MoneyForward等の
+ * カスタムスキーム非対応サービスにも対応する。
  */
 
 import { shell } from "electron";
@@ -21,10 +25,11 @@ import {
   DiscoveryError,
   DISCOVERY_ERROR_CODE,
 } from "./oauth.discovery";
-import { performDCR, MCP_OAUTH_REDIRECT_URI } from "./oauth.dcr";
+import { performDCR } from "./oauth.dcr";
 import { generateAuthorizationUrl } from "./oauth.auth-url";
 import { exchangeCodeForToken } from "./oauth.token";
 import { parseOAuthCallback } from "./oauth.protocol";
+import { startLoopbackServer, type LoopbackServer } from "./oauth.loopback";
 import * as oauthRepository from "./oauth.repository";
 import {
   createFromCatalog,
@@ -46,8 +51,7 @@ export type ManualOAuthClient = {
 
 /** MCP OAuthマネージャー型 */
 export type McpOAuthManager = {
-  startAuthFlow: (input: StartOAuthInput) => Promise<void>;
-  handleCallback: (url: string) => Promise<OAuthResult>;
+  startAuthFlow: (input: StartOAuthInput) => Promise<OAuthResult>;
   cancelAuthFlow: () => void;
   getActiveSession: () => McpOAuthSession | null;
   findManualOAuthClient: (
@@ -127,12 +131,13 @@ type ClientCredentials = {
 const resolveClientCredentials = async (
   metadata: oauth.AuthorizationServer,
   serverUrl: string,
+  redirectUri: string,
   fallbackClientId?: string,
   fallbackClientSecret?: string,
 ): Promise<ClientCredentials> => {
   if (metadata.registration_endpoint) {
-    logger.info("Performing DCR", { serverUrl });
-    const { registration } = await performDCR(metadata);
+    logger.info("Performing DCR", { serverUrl, redirectUri });
+    const { registration } = await performDCR(metadata, redirectUri);
     return {
       clientId: registration.client_id,
       clientSecret:
@@ -169,6 +174,7 @@ const resolveClientCredentials = async (
 const discoverPersistAndBundle = async (
   db: Awaited<ReturnType<typeof getDb>>,
   serverUrl: string,
+  redirectUri: string,
   fallbackClientId?: string,
   fallbackClientSecret?: string,
 ): Promise<OAuthClientBundle> => {
@@ -179,6 +185,7 @@ const discoverPersistAndBundle = async (
     await resolveClientCredentials(
       metadata,
       serverUrl,
+      redirectUri,
       fallbackClientId,
       fallbackClientSecret,
     );
@@ -234,14 +241,91 @@ export const credentialsPayloadFromTokenData = (
   ...(tokenData.scope && { scope: tokenData.scope }),
 });
 
+const finalizeMcpRegistration = async (
+  session: McpOAuthSession,
+  tokenData: McpOAuthTokenData,
+): Promise<OAuthResult> => {
+  const credentials = credentialsPayloadFromTokenData(tokenData);
+
+  // カタログ情報があればプロファイルモードに応じて分岐し、
+  // それ以外はカスタムサーバーとして登録する。
+  // 個人モード: ローカル McpCatalog FK 付きで登録（追加後画面でロゴ等を解決するため）
+  // 組織モード: Manager API カタログ情報からテンプレート登録（ローカル FK は持たない）
+  if (session.managerCatalog) {
+    return resolveByProfile({
+      personal: () => {
+        const localCatalogId = Number(session.managerCatalog?.catalogId ?? "");
+        if (Number.isNaN(localCatalogId)) {
+          throw new Error("カタログIDが不正です");
+        }
+        return createFromCatalog({
+          catalogId: localCatalogId,
+          catalogName: session.catalogName,
+          description: session.description,
+          transportType: session.transportType,
+          command: session.command,
+          args: session.args,
+          url: session.url,
+          credentialKeys: [],
+          credentials,
+          authType: "OAUTH",
+        });
+      },
+      organization: () => {
+        if (!session.managerCatalog) {
+          throw new Error("Managerカタログ情報がありません");
+        }
+        return createFromManagerCatalog({
+          catalogId: session.managerCatalog.catalogId,
+          serverName: session.catalogName,
+          description: session.description,
+          status: session.managerCatalog.status,
+          permissions: session.managerCatalog.permissions,
+          connectionTemplate: session.managerCatalog.connectionTemplate,
+          tools: session.managerCatalog.tools,
+          credentials,
+        });
+      },
+    });
+  }
+
+  return createCustomServer({
+    serverName: session.catalogName,
+    url: session.url,
+    transportType:
+      session.transportType === "STDIO"
+        ? "STREAMABLE_HTTP"
+        : session.transportType,
+    authType: "OAUTH",
+    credentials,
+  });
+};
+
 /**
  * MCP OAuthマネージャーを作成
  */
 export const createMcpOAuthManager = (): McpOAuthManager => {
   let currentSession: McpOAuthSession | null = null;
+  let currentLoopback: LoopbackServer | null = null;
+
+  const cleanupSession = async (): Promise<void> => {
+    currentSession = null;
+    if (currentLoopback) {
+      const server = currentLoopback;
+      currentLoopback = null;
+      try {
+        await server.close();
+      } catch (error) {
+        logger.warn("Failed to close loopback server", {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+  };
 
   const getOrRegisterClient = async (
     serverUrl: string,
+    redirectUri: string,
     fallbackClientId?: string,
     fallbackClientSecret?: string,
   ): Promise<OAuthClientBundle> => {
@@ -253,39 +337,51 @@ export const createMcpOAuthManager = (): McpOAuthManager => {
     return discoverPersistAndBundle(
       db,
       serverUrl,
+      redirectUri,
       fallbackClientId,
       fallbackClientSecret,
     );
   };
 
-  const startAuthFlow = async (input: StartOAuthInput): Promise<void> => {
-    if (currentSession) {
+  const startAuthFlow = async (
+    input: StartOAuthInput,
+  ): Promise<OAuthResult> => {
+    if (currentSession || currentLoopback) {
       logger.info(
         "Existing MCP OAuth session found, discarding and restarting",
       );
-      currentSession = null;
+      await cleanupSession();
     }
 
+    let loopback: LoopbackServer | null = null;
     try {
+      // 1. ループバックサーバーを起動して redirect_uri を確定
+      loopback = await startLoopbackServer();
+      currentLoopback = loopback;
+      const redirectUri = loopback.redirectUri;
+
+      // 2. Discovery + DCR（または手動入力フォールバック）
       const { metadata, client } = await getOrRegisterClient(
         input.url,
+        redirectUri,
         input.oauthClientId,
         input.oauthClientSecret,
       );
 
+      // 3. PKCE / state / 認可URL生成
       const codeVerifier = generateCodeVerifier();
       const codeChallenge = generateCodeChallenge(codeVerifier);
       const state = generateState();
       const scopes = metadata.scopes_supported ?? [];
 
       const authUrl = generateAuthorizationUrl(metadata, client, {
-        redirectUri: MCP_OAUTH_REDIRECT_URI,
+        redirectUri,
         scopes,
         state,
         codeChallenge,
       });
 
-      currentSession = {
+      const session: McpOAuthSession = {
         state,
         codeVerifier,
         serverUrl: input.url,
@@ -298,98 +394,41 @@ export const createMcpOAuthManager = (): McpOAuthManager => {
         url: input.url,
         oauthClientId: input.oauthClientId,
         oauthClientSecret: input.oauthClientSecret,
+        redirectUri,
         createdAt: new Date(),
       };
+      currentSession = session;
 
+      // 4. ブラウザを開いて認証画面を表示
       await shell.openExternal(authUrl.toString());
-
       logger.info("MCP OAuth flow started, opened browser for authentication", {
         serverUrl: input.url,
+        redirectUri,
       });
-    } catch (error) {
-      currentSession = null;
-      logger.error("Failed to start MCP OAuth flow", {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
-    }
-  };
 
-  const handleCallback = async (url: string): Promise<OAuthResult> => {
-    try {
-      const { state } = parseOAuthCallback(url);
-      const session = validateCallbackSession(currentSession, state);
-      currentSession = null;
-
-      const { metadata, client } = await getOrRegisterClient(
-        session.serverUrl,
-        session.oauthClientId,
-        session.oauthClientSecret,
+      // 5. ループバックでコールバックを受信（タイムアウト付き）
+      const callbackUrl = await loopback.waitForCallback(
+        AUTH_SESSION_TIMEOUT_MS,
       );
+
+      // 6. state/code 検証 → トークン交換
+      // クロージャの currentSession は cancelAuthFlow() で null 化される可能性があるため、
+      // ローカルの session を直接検証する。cancelによる中断はloopbackのwaitForCallback
+      // 側のreject経由で自然に伝播する。
+      const { state: receivedState } = parseOAuthCallback(callbackUrl);
+      validateCallbackSession(session, receivedState);
 
       const tokenData = await exchangeCodeForToken(
         metadata,
         client,
-        new URL(url),
-        MCP_OAUTH_REDIRECT_URI,
+        new URL(callbackUrl),
+        redirectUri,
         session.codeVerifier,
         session.state,
       );
 
-      const credentials = credentialsPayloadFromTokenData(tokenData);
-
-      // カタログ情報があればプロファイルモードに応じて分岐し、
-      // それ以外はカスタムサーバーとして登録する。
-      // 個人モード: ローカル McpCatalog FK 付きで登録（追加後画面でロゴ等を解決するため）
-      // 組織モード: Manager API カタログ情報からテンプレート登録（ローカル FK は持たない）
-      const result = session.managerCatalog
-        ? await resolveByProfile({
-            personal: () => {
-              const localCatalogId = Number(
-                session.managerCatalog?.catalogId ?? "",
-              );
-              if (Number.isNaN(localCatalogId)) {
-                throw new Error("カタログIDが不正です");
-              }
-              return createFromCatalog({
-                catalogId: localCatalogId,
-                catalogName: session.catalogName,
-                description: session.description,
-                transportType: session.transportType,
-                command: session.command,
-                args: session.args,
-                url: session.url,
-                credentialKeys: [],
-                credentials,
-                authType: "OAUTH",
-              });
-            },
-            organization: () => {
-              if (!session.managerCatalog) {
-                throw new Error("Managerカタログ情報がありません");
-              }
-              return createFromManagerCatalog({
-                catalogId: session.managerCatalog.catalogId,
-                serverName: session.catalogName,
-                description: session.description,
-                status: session.managerCatalog.status,
-                permissions: session.managerCatalog.permissions,
-                connectionTemplate: session.managerCatalog.connectionTemplate,
-                tools: session.managerCatalog.tools,
-                credentials,
-              });
-            },
-          })
-        : await createCustomServer({
-            serverName: session.catalogName,
-            url: session.url,
-            transportType:
-              session.transportType === "STDIO"
-                ? "STREAMABLE_HTTP"
-                : session.transportType,
-            authType: "OAUTH",
-            credentials,
-          });
+      // 7. MCPサーバー登録
+      const result = await finalizeMcpRegistration(session, tokenData);
 
       logger.info("MCP OAuth flow completed successfully", {
         serverUrl: session.serverUrl,
@@ -398,17 +437,19 @@ export const createMcpOAuthManager = (): McpOAuthManager => {
 
       return result;
     } catch (error) {
-      logger.error("Failed to handle MCP OAuth callback", {
+      logger.error("MCP OAuth flow failed", {
         error: error instanceof Error ? error.message : String(error),
       });
       throw error;
+    } finally {
+      await cleanupSession();
     }
   };
 
   const cancelAuthFlow = (): void => {
-    if (currentSession) {
-      currentSession = null;
+    if (currentSession || currentLoopback) {
       logger.info("MCP OAuth flow cancelled");
+      void cleanupSession();
     }
   };
 
@@ -423,7 +464,6 @@ export const createMcpOAuthManager = (): McpOAuthManager => {
 
   return {
     startAuthFlow,
-    handleCallback,
     cancelAuthFlow,
     getActiveSession,
     findManualOAuthClient,

@@ -28,7 +28,7 @@ type Permissions = {
   write: boolean;
   execute: boolean;
 };
-type CatalogStatus = "available" | "request_required" | "disabled";
+type CatalogStatus = "available" | "disabled";
 type CatalogCursor = z.infer<typeof cursorSchema>;
 
 type ToolPreview = {
@@ -111,11 +111,9 @@ const toCatalogItem = (
   >,
 ) => {
   const status: CatalogStatus =
-    catalog.status !== McpCatalogStatus.ACTIVE
-      ? "disabled"
-      : hasAnyPermission(permissions)
-        ? "available"
-        : "request_required";
+    catalog.status === McpCatalogStatus.ACTIVE && hasAnyPermission(permissions)
+      ? "available"
+      : "disabled";
 
   return {
     id: catalog.slug,

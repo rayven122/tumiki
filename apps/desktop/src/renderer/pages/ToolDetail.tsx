@@ -12,6 +12,7 @@ import {
   SearchCode,
   ChevronRight,
   Plug,
+  AlertTriangle,
 } from "lucide-react";
 import { themeAtom } from "../store/atoms";
 import { AI_CLIENTS, type AiClient } from "../data/ai-clients";
@@ -61,7 +62,10 @@ const serverStatusBadge: Record<
 /** 監査ログ1ページあたりの件数 */
 const AUDIT_LOG_LIMIT = 20;
 
-/** 機能設定トグルの永続化キー（サーバーごと） */
+/**
+ * 機能設定トグル（dynamicSearch のみ）の localStorage 永続化キー。
+ * masking / compression(TOON) は DB 永続化のため対象外。
+ */
 const FEATURE_SETTINGS_KEY = (serverId: number): string =>
   `tumiki:server:${serverId}:features`;
 
@@ -184,15 +188,12 @@ const SAMPLE_TOOLS: DisplayTool[] = [
   },
 ];
 
+// masking / compression(TOON) は DB に永続化するため、本型からは除外
 type FeatureSettings = {
-  masking: boolean;
-  compression: boolean;
   dynamicSearch: boolean;
 };
 
 const DEFAULT_FEATURE_SETTINGS: FeatureSettings = {
-  masking: false,
-  compression: false,
   dynamicSearch: false,
 };
 
@@ -211,7 +212,11 @@ export const ToolDetail = (): JSX.Element => {
     {},
   );
 
-  // 機能設定トグル（localStorage 永続化、バックエンド未実装）
+  // PII マスキング: DB 永続化（McpServer.isPiiMaskingEnabled）。初期値は getDetail 取得後に上書き
+  const [maskingEnabled, setMaskingEnabled] = useState(true);
+  // レスポンス圧縮（TOON 変換）: DB 永続化（McpServer.isToonConversionEnabled）。初期値は getDetail 取得後に上書き
+  const [compressionEnabled, setCompressionEnabled] = useState(false);
+  // dynamicSearch: localStorage 永続化（バックエンド未実装、別 Issue で対応予定）
   const [featureSettings, setFeatureSettings] = useState<FeatureSettings>(
     DEFAULT_FEATURE_SETTINGS,
   );
@@ -259,6 +264,8 @@ export const ToolDetail = (): JSX.Element => {
             }
           }
           setToolAllowedMap(initialMap);
+          setMaskingEnabled(detail.isPiiMaskingEnabled);
+          setCompressionEnabled(detail.isToonConversionEnabled);
         }
       })
       .catch(() => setServer(null))
@@ -296,6 +303,64 @@ export const ToolDetail = (): JSX.Element => {
       // localStorage 書き込み失敗時は state のみ更新
     }
   };
+
+  // PII マスキング切替: DB 更新（即時反映）。実プロキシへは次回 spawn 時に反映されるため
+  // ユーザーへ「再起動後に反映」を案内する。失敗時は state をロールバック。
+  const updateMasking = useCallback(
+    (value: boolean): void => {
+      const previous = maskingEnabled;
+      setMaskingEnabled(value);
+      window.electronAPI.mcp
+        .updatePiiMasking({ serverId, enabled: value })
+        .then(() => {
+          toast.success(
+            "マスキング設定を更新しました。MCPサーバーの再起動後に反映されます",
+          );
+        })
+        .catch(() => {
+          setMaskingEnabled(previous);
+          toast.error("マスキング設定の更新に失敗しました");
+        });
+    },
+    [maskingEnabled, serverId],
+  );
+
+  // 仮想MCPサーバー（有効な接続が複数）では `--server <slug>` が解決できず TOON 変換は常に OFF になる
+  // （main/index.ts の制限）。設定保存自体は成功するため、UI 上で常時警告を出してユーザー混乱を防ぐ。
+  // ※ runtime の findEnabledConnectionsBySlug と整合させるため isEnabled な接続のみカウントする
+  const isMultiConnectionServer =
+    (server?.connections.filter((c) => c.isEnabled).length ?? 0) > 1;
+
+  // レスポンス圧縮（TOON 変換）切替: DB 更新（即時反映）。実プロキシへは次回 spawn 時に反映される。
+  // 失敗時は state をロールバックして元に戻す。
+  // updateMasking と同じクロージャパターン（setState updater 内に副作用を置かないことで Strict Mode の重複実行を回避）。
+  const updateCompression = useCallback(
+    (value: boolean): void => {
+      const previous = compressionEnabled;
+      setCompressionEnabled(value);
+      window.electronAPI.mcp
+        .updateToonConversion({ serverId, enabled: value })
+        .then(() => {
+          if (value && isMultiConnectionServer) {
+            toast.warning(
+              "設定を保存しましたが、複数接続を持つ仮想MCPサーバーではレスポンス圧縮は機能しません。単体サーバーとして起動した場合のみ有効です",
+            );
+            return;
+          }
+          // 仮想MCPサーバーでは「再起動後に反映」の文言が誤解を招くため、保存のみを伝える
+          toast.success(
+            isMultiConnectionServer
+              ? "レスポンス圧縮設定を保存しました"
+              : "レスポンス圧縮設定を更新しました。MCPサーバーの再起動後に反映されます",
+          );
+        })
+        .catch(() => {
+          setCompressionEnabled(previous);
+          toast.error("レスポンス圧縮設定の更新に失敗しました");
+        });
+    },
+    [compressionEnabled, serverId, isMultiConnectionServer],
+  );
 
   // ツール on/off（即時反映、失敗時はロールバック。サンプルID は IPC スキップ）
   const toggleTool = (toolId: number, isAllowed: boolean): void => {
@@ -564,19 +629,57 @@ export const ToolDetail = (): JSX.Element => {
                 機能設定
               </div>
               <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                {/* マスキング / 圧縮(TOON) は DB 永続化（再起動後に反映）、dynamicSearch は localStorage のみ（別 Issue で対応） */}
+                <div
+                  title="機密情報を自動マスクします（再起動後に反映）"
+                  className="flex items-center justify-between gap-2 rounded-lg bg-[var(--bg-card-hover)] px-3 py-2"
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="shrink-0 text-[var(--text-muted)]">
+                      <EyeOff size={13} />
+                    </span>
+                    <span className="truncate text-xs text-[var(--text-primary)]">
+                      マスキング
+                    </span>
+                  </div>
+                  <ToggleSwitch
+                    checked={maskingEnabled}
+                    onChange={updateMasking}
+                  />
+                </div>
+                <div
+                  title="レスポンスを TOON 形式へ変換しトークン使用量を削減します（再起動後に反映 / 単体サーバー起動時のみ有効）"
+                  className="flex items-center justify-between gap-2 rounded-lg bg-[var(--bg-card-hover)] px-3 py-2"
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="shrink-0 text-[var(--text-muted)]">
+                      <Archive size={13} />
+                    </span>
+                    <span className="truncate text-xs text-[var(--text-primary)]">
+                      レスポンス圧縮
+                    </span>
+                  </div>
+                  <ToggleSwitch
+                    checked={compressionEnabled}
+                    onChange={updateCompression}
+                  />
+                </div>
+                {isMultiConnectionServer && (
+                  <div
+                    role="alert"
+                    className="flex items-start gap-2 rounded-lg bg-[var(--badge-warn-bg)] px-3 py-2 text-xs text-[var(--badge-warn-text)] md:col-span-3"
+                  >
+                    <AlertTriangle
+                      size={13}
+                      className="mt-0.5 shrink-0"
+                      aria-hidden
+                    />
+                    <span>
+                      このサーバーは複数のMCPサーバーを集約した仮想サーバーのため、レスポンス圧縮は適用されません（単体サーバー起動時のみ有効）
+                    </span>
+                  </div>
+                )}
                 {[
-                  {
-                    key: "masking" as const,
-                    icon: <EyeOff size={13} />,
-                    label: "マスキング",
-                    desc: "機密情報を自動マスクします",
-                  },
-                  {
-                    key: "compression" as const,
-                    icon: <Archive size={13} />,
-                    label: "レスポンス圧縮",
-                    desc: "トークン使用量を削減します",
-                  },
                   {
                     key: "dynamicSearch" as const,
                     icon: <SearchCode size={13} />,

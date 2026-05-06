@@ -9,6 +9,7 @@ import {
 import { setupAuthIpc } from "./ipc/auth";
 import { setupCatalogIpc } from "./features/catalog/catalog.ipc";
 import { setupMcpProxyLaunchCommandIpc } from "./features/mcp-proxy/launch-command.ipc";
+import { setupAiClientIpc } from "./features/ai-client/ai-client.ipc";
 import { setupMcpIpc } from "./features/mcp-server-list/mcp.ipc";
 import { setupMcpServerDetailIpc } from "./features/mcp-server-detail/mcp-server-detail.ipc";
 import { setupAuditLogIpc } from "./features/audit-log/audit-log.ipc";
@@ -21,7 +22,6 @@ import { getOAuthManager, setOAuthManager } from "./auth/manager-registry";
 import { getKeycloakEnvOptional } from "./utils/env";
 import { createMcpOAuthManager } from "./features/oauth/oauth.service";
 import { setupOAuthIpc } from "./features/oauth/oauth.ipc";
-import { isMcpOAuthCallback } from "./features/oauth/oauth.protocol";
 import type { McpOAuthManager } from "./features/oauth/oauth.service";
 import { setupManagerIpc, fetchManagerOidcConfig } from "./ipc/manager";
 import { setupProfileIpc } from "./ipc/profile";
@@ -197,7 +197,7 @@ if (isMcpProxyMode) {
       // 許可ツール解決resolver（GUI のトグル変更を CLI モードに即時反映）
       // DB が0件の場合は null（フィルタ無効）を返し、起動時の挙動と整合させる。
       // 例外時は upstream-client 側で起動時設定にフォールバックされる。
-      const { findToolsByConnectionId } =
+      const { findToolsByConnectionId, findServerBySlug } =
         await import("./features/mcp-server-list/mcp.repository");
       const { getDb } = await import("./shared/db");
       // initializeDb() 完了後に1回だけ取得し、resolver 呼び出しごとの await を避ける
@@ -218,12 +218,43 @@ if (isMcpProxyMode) {
         return tools.filter((t) => t.isAllowed).map((t) => t.name);
       };
 
-      // PII マスキングは runMcpProxy 内でデフォルト有効化されるため、Desktop 側は何も指定しない
-      // （カスタマイズしたい場合のみ hooks.filter を渡す）
+      // PII マスキング: --server <slug> 指定時のみ DB の McpServer.isPiiMaskingEnabled を反映する。
+      // --server 省略時（全サーバー集約モード）はサーバーが特定できないため、安全側でデフォルト ON のまま。
+      // false 時は disableDefaultFilter=true で runMcpProxy 内のデフォルトフィルタ構築をスキップさせる。
+      const serverRecord = serverSlug
+        ? await findServerBySlug(db, serverSlug)
+        : null;
+      // slug は指定されたが DB に該当サーバーがない場合、設定ミスをログで気付けるようにする
+      if (serverSlug && serverRecord === null) {
+        process.stderr.write(
+          `[tumiki-mcp-proxy] サーバー "${serverSlug}" が DB に見つかりません。マスキングはデフォルト ON で起動します\n`,
+        );
+      }
+      const disableDefaultFilter =
+        serverRecord !== null && !serverRecord.isPiiMaskingEnabled;
+      if (disableDefaultFilter) {
+        process.stderr.write(
+          `[tumiki-mcp-proxy] PII マスキングは無効化されています (server="${serverSlug}")\n`,
+        );
+      }
+
+      // TOON 変換: --server <slug> 指定時のみ DB の McpServer.isToonConversionEnabled を反映する。
+      // ⚠️ --server 省略時（全サーバー集約モード）はサーバーが特定できないため、UI のトグルが ON でも常に OFF になる。
+      // この制限は ToolDetail.tsx の圧縮トグルツールチップにも明記しているが、UI からの切替が反映されないことに注意。
+      const enableToonConversion =
+        serverRecord?.isToonConversionEnabled ?? false;
+      if (enableToonConversion) {
+        process.stderr.write(
+          `[tumiki-mcp-proxy] レスポンス圧縮（TOON 変換）が有効です (server="${serverSlug}")\n`,
+        );
+      }
+
       await mod.runMcpProxy(configs, {
         onToolCall,
         onStatusChange,
         resolveAllowedTools,
+        disableDefaultFilter,
+        enableToonConversion,
         onShutdown: async () => {
           await stopAuditLogManagerSyncScheduler();
           await resetAllServerStatus().catch(() => {});
@@ -379,45 +410,12 @@ if (isMcpProxyMode) {
   };
 
   /**
-   * MCP OAuthコールバックを処理（tumiki://oauth/callback）
-   */
-  const handleMcpOAuthCallback = async (url: string): Promise<void> => {
-    ensureWindowAndFocus();
-
-    if (!mcpOAuthManager) {
-      logger.error("McpOAuthManager not initialized when handling callback");
-      sendToWindow(
-        "oauth:error",
-        "OAuth認証マネージャーが初期化されていません",
-      );
-      return;
-    }
-
-    try {
-      const result = await mcpOAuthManager.handleCallback(url);
-      sendToWindow("oauth:success", result);
-      logger.info("MCP OAuth callback handled successfully", {
-        serverId: result.serverId,
-      });
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "OAuth認証に失敗しました";
-      sendToWindow("oauth:error", message);
-      logger.error("MCP OAuth callback failed", { error });
-    }
-  };
-
-  /**
-   * カスタムURLスキームのコールバックを処理（ルーティング）
+   * カスタムURLスキームのコールバックを処理（Keycloak のみ）
+   *
+   * MCP OAuth は loopback HTTP（http://127.0.0.1:<port>/callback）に移行済みのため
+   * ここでは扱わない。tumiki:// は Keycloak ログインコールバック専用。
    */
   const handleDeepLink = async (url: string): Promise<void> => {
-    // MCP OAuthコールバック（tumiki://oauth/callback）
-    if (isMcpOAuthCallback(url)) {
-      await handleMcpOAuthCallback(url);
-      return;
-    }
-
-    // Keycloak認証コールバック（tumiki://auth/callback）
     let isKeycloakCallback = false;
     try {
       const parsed = new URL(url);
@@ -556,6 +554,7 @@ if (isMcpProxyMode) {
       setupAuthIpc();
       setupCatalogIpc();
       setupMcpProxyLaunchCommandIpc();
+      setupAiClientIpc();
       setupMcpIpc();
       setupMcpServerDetailIpc();
       setupAuditLogIpc();

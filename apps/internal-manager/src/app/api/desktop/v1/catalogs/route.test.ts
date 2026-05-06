@@ -215,7 +215,7 @@ describe("GET /api/desktop/v1/catalogs", () => {
     expect(body.items[0].tools).toHaveLength(10);
   });
 
-  test("権限がないカタログは申請必要として返す", async () => {
+  test("権限がないカタログはdisabledとして返す", async () => {
     mockFindUser.mockResolvedValue({
       id: "user-001",
       isActive: true,
@@ -230,7 +230,7 @@ describe("GET /api/desktop/v1/catalogs", () => {
       items: [{ status: string; permissions: Record<string, boolean> }];
     };
 
-    expect(body.items[0].status).toStrictEqual("request_required");
+    expect(body.items[0].status).toStrictEqual("disabled");
     expect(body.items[0].permissions).toStrictEqual({
       read: false,
       write: false,

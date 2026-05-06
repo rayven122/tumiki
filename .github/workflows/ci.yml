@@ -208,10 +208,12 @@ jobs:
             container_port: 3100
             health_path: /api/health
             env_file: |
-              OIDC_CLIENT_ID=test
-              OIDC_CLIENT_SECRET=test
-              OIDC_ISSUER=https://dummy.oidc.local
-              AUTH_SECRET=dummy-auth-secret-for-smoke-test
+              TUMIKI_INTERNAL_MANAGER_SECRET_KEY=dummy-internal-manager-secret-key
+              TUMIKI_INTERNAL_MANAGER_OIDC_PRIVATE_KEY=placeholder-for-healthcheck-only
+              TUMIKI_INTERNAL_MANAGER_PUBLIC_URL=http://localhost:3100
+              TUMIKI_INTERNAL_MANAGER_OIDC_DISCOVERY_URL=https://dummy.oidc.local/.well-known/openid-configuration
+              TUMIKI_INTERNAL_MANAGER_OIDC_CLIENT_ID=test
+              TUMIKI_INTERNAL_MANAGER_OIDC_CLIENT_SECRET=test
               DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
               INTERNAL_DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
               SKIP_MIGRATE=true

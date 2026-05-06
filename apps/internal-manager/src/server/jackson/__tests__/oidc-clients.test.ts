@@ -16,8 +16,20 @@ type CreateSamlArgs = {
   redirectUrl: string;
 };
 
+type CreateOidcArgs = {
+  tenant: string;
+  product: string;
+  oidcDiscoveryUrl: string;
+  oidcClientId: string;
+  oidcClientSecret: string;
+  defaultRedirectUrl: string;
+  redirectUrl: string;
+};
+
 const mockCreateSAMLConnection =
   vi.fn<(args: CreateSamlArgs) => Promise<unknown>>();
+const mockCreateOIDCConnection =
+  vi.fn<(args: CreateOidcArgs) => Promise<unknown>>();
 const mockGetJackson = vi.fn();
 const mockResolveExternalUrl = vi.fn<() => string>();
 
@@ -27,7 +39,19 @@ const envKeys = [
   "OIDC_CLIENT_SECRET",
   "OIDC_DESKTOP_CLIENT_ID",
   "INTERNAL_DATABASE_URL",
+  "TUMIKI_INTERNAL_MANAGER_SECRET_KEY",
+  "TUMIKI_INTERNAL_MANAGER_OIDC_PRIVATE_KEY",
+  "TUMIKI_INTERNAL_MANAGER_PUBLIC_URL",
+  "TUMIKI_INTERNAL_MANAGER_SAML_METADATA_XML",
+  "TUMIKI_INTERNAL_MANAGER_SAML_METADATA_PATH",
+  "TUMIKI_INTERNAL_MANAGER_OIDC_DISCOVERY_URL",
+  "TUMIKI_INTERNAL_MANAGER_OIDC_CLIENT_ID",
+  "TUMIKI_INTERNAL_MANAGER_OIDC_CLIENT_SECRET",
+  "NEXTAUTH_URL_INTERNAL_MANAGER",
+  "NEXTAUTH_URL",
   "JACKSON_ENCRYPTION_KEY",
+  "JACKSON_OIDC_PRIVATE_KEY",
+  "JACKSON_OIDC_PUBLIC_KEY",
   "JACKSON_SAML_METADATA_XML",
   "JACKSON_SAML_METADATA_PATH",
   "JACKSON_TENANT",
@@ -35,11 +59,12 @@ const envKeys = [
   "JACKSON_WEB_PRODUCT",
   "JACKSON_DESKTOP_PRODUCT",
   "JACKSON_DESKTOP_REDIRECT_URL",
-];
+] as const;
 
 const clearEnv = (): void => {
+  vi.unstubAllEnvs();
   for (const key of envKeys) {
-    vi.stubEnv(key, undefined);
+    delete process.env[key];
   }
 };
 
@@ -66,11 +91,16 @@ beforeEach(() => {
   mockGetJackson.mockResolvedValue({
     connectionAPIController: {
       createSAMLConnection: mockCreateSAMLConnection,
+      createOIDCConnection: mockCreateOIDCConnection,
     },
   });
   mockCreateSAMLConnection.mockImplementation(async (args) => ({
     clientID: `${args.product}-client`,
     clientSecret: `${args.product}-secret`,
+  }));
+  mockCreateOIDCConnection.mockImplementation(async (args) => ({
+    clientID: `${args.product}-oidc-client`,
+    clientSecret: `${args.product}-oidc-secret`,
   }));
 });
 
@@ -80,8 +110,10 @@ afterEach(() => {
 
 const configureCustomJacksonAutoEnv = (): void => {
   setEnv("INTERNAL_DATABASE_URL", "postgresql://localhost/tumiki");
-  setEnv("JACKSON_ENCRYPTION_KEY", "x".repeat(32));
-  setEnv("JACKSON_SAML_METADATA_XML", "<xml />");
+  setEnv("TUMIKI_INTERNAL_MANAGER_SECRET_KEY", "x".repeat(32));
+  setEnv("TUMIKI_INTERNAL_MANAGER_OIDC_PRIVATE_KEY", "encoded-private-key");
+  setEnv("TUMIKI_INTERNAL_MANAGER_PUBLIC_URL", "https://internal.example.com");
+  setEnv("TUMIKI_INTERNAL_MANAGER_SAML_METADATA_XML", "<xml />");
   setEnv("JACKSON_TENANT", "tenant-001");
   setEnv("JACKSON_WEB_PRODUCT", "tumiki-web");
   setEnv("JACKSON_DESKTOP_PRODUCT", "tumiki-desktop");
@@ -89,38 +121,64 @@ const configureCustomJacksonAutoEnv = (): void => {
 };
 
 describe("oidc-clients", () => {
-  test("明示的OIDC設定をJackson自動設定より優先する", async () => {
-    setEnv("OIDC_ISSUER", "https://idp.example.com");
-    setEnv("OIDC_CLIENT_ID", "web-client");
-    setEnv("OIDC_CLIENT_SECRET", "web-secret");
-    setEnv("OIDC_DESKTOP_CLIENT_ID", "desktop-client");
-    setEnv("JACKSON_SAML_METADATA_XML", "<xml />");
-    const { ensureJacksonOidcClients, isExplicitOidcConfigured } =
-      await loadModule();
-
-    await expect(ensureJacksonOidcClients()).resolves.toStrictEqual({
-      OIDC_ISSUER: "https://idp.example.com",
-      OIDC_CLIENT_ID: "web-client",
-      OIDC_CLIENT_SECRET: "web-secret",
-      OIDC_DESKTOP_CLIENT_ID: "desktop-client",
-    });
-    expect(isExplicitOidcConfigured()).toBe(true);
-    expect(mockCreateSAMLConnection).not.toHaveBeenCalled();
-  });
-
-  test("明示的OIDC設定でDesktop client ID未設定ならWeb client IDを使う", async () => {
-    setEnv("OIDC_ISSUER", "https://idp.example.com");
-    setEnv("OIDC_CLIENT_ID", "web-client");
-    setEnv("OIDC_CLIENT_SECRET", "web-secret");
+  test("旧OIDC_*設定はAuth.js直結ではなくJackson upstream OIDCとして扱う", async () => {
+    setEnv("INTERNAL_DATABASE_URL", "postgresql://localhost/tumiki");
+    setEnv("TUMIKI_INTERNAL_MANAGER_SECRET_KEY", "x".repeat(32));
+    setEnv("TUMIKI_INTERNAL_MANAGER_OIDC_PRIVATE_KEY", "encoded-private-key");
+    setEnv(
+      "TUMIKI_INTERNAL_MANAGER_PUBLIC_URL",
+      "https://internal.example.com",
+    );
+    setEnv("OIDC_ISSUER", "https://idp.example.com/realms/tumiki");
+    setEnv("OIDC_CLIENT_ID", "upstream-client");
+    setEnv("OIDC_CLIENT_SECRET", "upstream-secret");
     const { ensureJacksonOidcClients } = await loadModule();
 
     await expect(ensureJacksonOidcClients()).resolves.toStrictEqual({
-      OIDC_ISSUER: "https://idp.example.com",
-      OIDC_CLIENT_ID: "web-client",
-      OIDC_CLIENT_SECRET: "web-secret",
-      OIDC_DESKTOP_CLIENT_ID: "web-client",
+      OIDC_ISSUER: "https://internal.example.com",
+      OIDC_CLIENT_ID: "tumiki-oidc-client",
+      OIDC_CLIENT_SECRET: "tumiki-oidc-secret",
+      OIDC_DESKTOP_CLIENT_ID: "tumiki-desktop-oidc-client",
     });
     expect(mockCreateSAMLConnection).not.toHaveBeenCalled();
+    expect(mockCreateOIDCConnection).toHaveBeenCalledWith({
+      tenant: "default",
+      product: "tumiki",
+      oidcDiscoveryUrl:
+        "https://idp.example.com/realms/tumiki/.well-known/openid-configuration",
+      oidcClientId: "upstream-client",
+      oidcClientSecret: "upstream-secret",
+      defaultRedirectUrl: "https://internal.example.com/api/auth/callback/oidc",
+      redirectUrl: JSON.stringify([
+        "https://internal.example.com/api/auth/callback/oidc",
+      ]),
+    });
+  });
+
+  test("TUMIKI_INTERNAL_MANAGER_OIDC_*設定でJackson upstream OIDC connectionを生成する", async () => {
+    setEnv("INTERNAL_DATABASE_URL", "postgresql://localhost/tumiki");
+    setEnv("TUMIKI_INTERNAL_MANAGER_SECRET_KEY", "x".repeat(32));
+    setEnv("TUMIKI_INTERNAL_MANAGER_OIDC_PRIVATE_KEY", "encoded-private-key");
+    setEnv(
+      "TUMIKI_INTERNAL_MANAGER_PUBLIC_URL",
+      "https://internal.example.com",
+    );
+    setEnv(
+      "TUMIKI_INTERNAL_MANAGER_OIDC_DISCOVERY_URL",
+      "https://idp.example.com/.well-known/openid-configuration",
+    );
+    setEnv("TUMIKI_INTERNAL_MANAGER_OIDC_CLIENT_ID", "upstream-client");
+    setEnv("TUMIKI_INTERNAL_MANAGER_OIDC_CLIENT_SECRET", "upstream-secret");
+    const { ensureJacksonOidcClients } = await loadModule();
+
+    await expect(ensureJacksonOidcClients()).resolves.toStrictEqual({
+      OIDC_ISSUER: "https://internal.example.com",
+      OIDC_CLIENT_ID: "tumiki-oidc-client",
+      OIDC_CLIENT_SECRET: "tumiki-oidc-secret",
+      OIDC_DESKTOP_CLIENT_ID: "tumiki-desktop-oidc-client",
+    });
+    expect(mockCreateSAMLConnection).not.toHaveBeenCalled();
+    expect(mockCreateOIDCConnection).toHaveBeenCalledTimes(2);
   });
 
   test("Jackson自動設定が未設定ならエラーを返す", async () => {
@@ -130,6 +188,23 @@ describe("oidc-clients", () => {
     expect(isJacksonAutoOidcConfigured()).toBe(false);
     await expect(ensureJacksonOidcClients()).rejects.toThrow(
       "OIDC is not configured",
+    );
+  });
+
+  test("SAMLとOIDC upstreamが両方設定されている場合は競合エラーを返す", async () => {
+    configureCustomJacksonAutoEnv();
+    setEnv(
+      "TUMIKI_INTERNAL_MANAGER_OIDC_DISCOVERY_URL",
+      "https://idp.example.com",
+    );
+    setEnv("TUMIKI_INTERNAL_MANAGER_OIDC_CLIENT_ID", "upstream-client");
+    setEnv("TUMIKI_INTERNAL_MANAGER_OIDC_CLIENT_SECRET", "upstream-secret");
+    const { ensureJacksonOidcClients, isJacksonAutoOidcConfigured } =
+      await loadModule();
+
+    expect(isJacksonAutoOidcConfigured()).toBe(false);
+    await expect(ensureJacksonOidcClients()).rejects.toThrow(
+      "Configure either SAML upstream or OIDC upstream, not both",
     );
   });
 
@@ -152,6 +227,7 @@ describe("oidc-clients", () => {
       OIDC_DESKTOP_CLIENT_ID: "tumiki-desktop-client",
     });
     expect(mockCreateSAMLConnection).toHaveBeenCalledTimes(2);
+    expect(mockCreateOIDCConnection).not.toHaveBeenCalled();
     expect(mockCreateSAMLConnection).toHaveBeenCalledWith({
       tenant: "tenant-001",
       product: "tumiki-web",
@@ -182,22 +258,28 @@ describe("oidc-clients", () => {
 
   test("Jackson自動設定はreset後にconnection生成を再実行する", async () => {
     configureCustomJacksonAutoEnv();
-    const { ensureJacksonOidcClients } = await loadModule();
+    const { ensureJacksonOidcClients, resetOidcClients } = await loadModule();
 
     const first = await ensureJacksonOidcClients();
     expect(mockCreateSAMLConnection).toHaveBeenCalledTimes(2);
 
-    vi.resetModules();
-    const { ensureJacksonOidcClients: ensureAfterModuleReset } =
-      await loadModule();
-    await expect(ensureAfterModuleReset()).resolves.toStrictEqual(first);
+    resetOidcClients();
+    await expect(ensureJacksonOidcClients()).resolves.toStrictEqual(first);
     expect(mockCreateSAMLConnection).toHaveBeenCalledTimes(4);
   });
 
   test("Jackson自動設定はmetadata pathからXMLを読み込める", async () => {
     setEnv("INTERNAL_DATABASE_URL", "postgresql://localhost/tumiki");
-    setEnv("JACKSON_ENCRYPTION_KEY", "x".repeat(32));
-    setEnv("JACKSON_SAML_METADATA_PATH", "/tmp/idp-metadata.xml");
+    setEnv("TUMIKI_INTERNAL_MANAGER_SECRET_KEY", "x".repeat(32));
+    setEnv("TUMIKI_INTERNAL_MANAGER_OIDC_PRIVATE_KEY", "encoded-private-key");
+    setEnv(
+      "TUMIKI_INTERNAL_MANAGER_PUBLIC_URL",
+      "https://internal.example.com",
+    );
+    setEnv(
+      "TUMIKI_INTERNAL_MANAGER_SAML_METADATA_PATH",
+      "/tmp/idp-metadata.xml",
+    );
     const { ensureJacksonOidcClients } = await loadModule();
 
     await expect(ensureJacksonOidcClients()).resolves.toStrictEqual({
@@ -212,10 +294,35 @@ describe("oidc-clients", () => {
     );
   });
 
+  test("metadata pathの読み込み失敗は詳細を保持してエラーにする", async () => {
+    setEnv("INTERNAL_DATABASE_URL", "postgresql://localhost/tumiki");
+    setEnv("TUMIKI_INTERNAL_MANAGER_SECRET_KEY", "x".repeat(32));
+    setEnv("TUMIKI_INTERNAL_MANAGER_OIDC_PRIVATE_KEY", "encoded-private-key");
+    setEnv(
+      "TUMIKI_INTERNAL_MANAGER_PUBLIC_URL",
+      "https://internal.example.com",
+    );
+    setEnv(
+      "TUMIKI_INTERNAL_MANAGER_SAML_METADATA_PATH",
+      "/tmp/missing-metadata.xml",
+    );
+    mockReadFile.mockRejectedValueOnce(new Error("ENOENT metadata"));
+    const { ensureJacksonOidcClients } = await loadModule();
+
+    await expect(ensureJacksonOidcClients()).rejects.toThrow(
+      "OIDC upstream config failed: ENOENT metadata",
+    );
+  });
+
   test("Jackson自動設定の生成失敗後は次回呼び出しで再試行できる", async () => {
     setEnv("INTERNAL_DATABASE_URL", "postgresql://localhost/tumiki");
-    setEnv("JACKSON_ENCRYPTION_KEY", "x".repeat(32));
-    setEnv("JACKSON_SAML_METADATA_XML", "<xml />");
+    setEnv("TUMIKI_INTERNAL_MANAGER_SECRET_KEY", "x".repeat(32));
+    setEnv("TUMIKI_INTERNAL_MANAGER_OIDC_PRIVATE_KEY", "encoded-private-key");
+    setEnv(
+      "TUMIKI_INTERNAL_MANAGER_PUBLIC_URL",
+      "https://internal.example.com",
+    );
+    setEnv("TUMIKI_INTERNAL_MANAGER_SAML_METADATA_XML", "<xml />");
     mockCreateSAMLConnection
       .mockRejectedValueOnce(new Error("temporary failure"))
       .mockImplementation(async (args) => ({

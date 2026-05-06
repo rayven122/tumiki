@@ -7,20 +7,21 @@
 Infisical の staging 環境に以下を追加:
 
 ```env
-# DB 暗号化キー（32 文字以上、ランダム生成）
-# 生成例: openssl rand -hex 32
-JACKSON_ENCRYPTION_KEY=<32 文字以上のランダム文字列>
+# Auth.js secret / Jackson DB 暗号化キーの導出元（32 文字以上）
+TUMIKI_INTERNAL_MANAGER_SECRET_KEY=<32 文字以上のランダム文字列>
 
-# OIDC ID Token 署名鍵（任意・指定なしなら jackson が自動生成）
-# 生成例: openssl genrsa 2048
-# JACKSON_OIDC_PRIVATE_KEY=<base64 RSA private key>
-# JACKSON_OIDC_PUBLIC_KEY=<base64 RSA public key>
+# Jackson が Auth.js / Desktop 向け OIDC IdP として ID Token を署名する鍵
+# PEM 文字列をそのままではなく、PKCS8 private PEM を base64 化した値
+TUMIKI_INTERNAL_MANAGER_OIDC_PRIVATE_KEY=<base64-encoded PKCS8 private PEM>
+
+# Jackson の issuer / SAML ACS / Auth.js callback URL の基準
+TUMIKI_INTERNAL_MANAGER_PUBLIC_URL=https://stg-internal.tumiki.cloud
 ```
 
-`JACKSON_ENCRYPTION_KEY` 生成コマンド:
+生成コマンド:
 
 ```bash
-openssl rand -hex 32
+pnpm --filter @tumiki/internal-manager secrets:generate
 ```
 
 ## 2. saml-jackson 用 PostgreSQL テーブルの自動生成
@@ -45,15 +46,23 @@ XML ファイルが取得できる（`GoogleIDPMetadata-rayven.cloud.xml` のよ
 
 ## 4. SAML metadata を環境変数に設定
 
-internal-manager は起動後、Google Workspace SAML metadata から Web 用と Desktop 用の Jackson OIDC client を自動生成する。手動で `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` を発行して Infisical に転記する必要はない。
+internal-manager は起動後、upstream IdP 設定から Web 用と Desktop 用の Jackson OIDC client を自動生成する。Auth.js / Desktop 用の `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` を手動で発行して Infisical に転記する必要はない。
 
 ```env
-JACKSON_SAML_METADATA_XML=<GoogleIDPMetadata.xml の内容>
+TUMIKI_INTERNAL_MANAGER_SAML_METADATA_XML=<GoogleIDPMetadata.xml の内容>
 # または、ローカル検証のみ:
-# JACKSON_SAML_METADATA_PATH=/path/to/GoogleIDPMetadata.xml
+# TUMIKI_INTERNAL_MANAGER_SAML_METADATA_PATH=/path/to/GoogleIDPMetadata.xml
 JACKSON_WEB_PRODUCT=tumiki
 JACKSON_DESKTOP_PRODUCT=tumiki-desktop
 JACKSON_DESKTOP_REDIRECT_URL=tumiki://auth/callback
+```
+
+upstream が OIDC の場合:
+
+```env
+TUMIKI_INTERNAL_MANAGER_OIDC_DISCOVERY_URL=https://idp.example.com/.well-known/openid-configuration
+TUMIKI_INTERNAL_MANAGER_OIDC_CLIENT_ID=<upstream client id>
+TUMIKI_INTERNAL_MANAGER_OIDC_CLIENT_SECRET=<upstream client secret>
 ```
 
 自動生成された client は Jackson DB に保存され、Web ログインと `GET /api/auth/config` で利用される。
@@ -152,7 +161,7 @@ infisical run --env=staging --domain=https://secrets.rayven.cloud -- \
 
 ### saml-jackson 起動エラー
 
-- `JACKSON_ENCRYPTION_KEY must be at least 32 characters long`: env を確認
+- `TUMIKI_INTERNAL_MANAGER_SECRET_KEY or JACKSON_ENCRYPTION_KEY must be at least 32 characters long`: env を確認
 - `INTERNAL_DATABASE_URL is required`: env を確認
 
 ### SAML 認証失敗
@@ -173,7 +182,8 @@ infisical run --env=staging --domain=https://secrets.rayven.cloud -- \
 docker exec -it tumiki-db psql -U tumiki -d tumiki_internal \
   -c "DROP TABLE IF EXISTS jackson_store, jackson_index, jackson_ttl CASCADE;"
 
-# 環境変数を OIDC 直結に戻す場合は OIDC_* を設定し、JACKSON_SAML_METADATA_* を外す
+# upstream OIDC に切り替える場合は TUMIKI_INTERNAL_MANAGER_OIDC_* を設定し、
+# TUMIKI_INTERNAL_MANAGER_SAML_* を外す
 
 # ブランチをロールバック
 git revert <jackson POC のコミット>

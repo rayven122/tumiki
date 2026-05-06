@@ -17,8 +17,10 @@ vi.mock("oauth4webapi", () => ({
 }));
 
 import * as oauth from "oauth4webapi";
-import { performDCR, MCP_OAUTH_REDIRECT_URI } from "../oauth.dcr";
+import { performDCR } from "../oauth.dcr";
 import { DiscoveryError } from "../oauth.discovery";
+
+const TEST_REDIRECT_URI = "http://127.0.0.1:50123/callback";
 
 describe("oauth.dcr", () => {
   beforeEach(() => {
@@ -43,7 +45,7 @@ describe("oauth.dcr", () => {
       client_id: "abc123",
       client_secret: "secret_value",
       client_secret_expires_at: 0,
-      redirect_uris: [MCP_OAUTH_REDIRECT_URI],
+      redirect_uris: [TEST_REDIRECT_URI],
       client_name: "Claude Code",
     };
 
@@ -54,7 +56,7 @@ describe("oauth.dcr", () => {
       oauth.processDynamicClientRegistrationResponse,
     ).mockResolvedValueOnce(mockRegistration);
 
-    const result = await performDCR(metadata);
+    const result = await performDCR(metadata, TEST_REDIRECT_URI);
 
     expect(result.metadata).toStrictEqual(metadata);
     expect(result.registration).toStrictEqual(mockRegistration);
@@ -64,7 +66,7 @@ describe("oauth.dcr", () => {
       metadata,
       expect.objectContaining({
         client_name: "Claude Code",
-        redirect_uris: [MCP_OAUTH_REDIRECT_URI],
+        redirect_uris: [TEST_REDIRECT_URI],
         grant_types: ["authorization_code", "refresh_token"],
         response_types: ["code"],
         token_endpoint_auth_method: "client_secret_post",
@@ -79,12 +81,12 @@ describe("oauth.dcr", () => {
       token_endpoint: "https://example.com/token",
     };
 
-    await expect(performDCR(metadataWithoutDCR)).rejects.toThrow(
-      DiscoveryError,
-    );
-    await expect(performDCR(metadataWithoutDCR)).rejects.toThrow(
-      "does not support Dynamic Client Registration",
-    );
+    await expect(
+      performDCR(metadataWithoutDCR, TEST_REDIRECT_URI),
+    ).rejects.toThrow(DiscoveryError);
+    await expect(
+      performDCR(metadataWithoutDCR, TEST_REDIRECT_URI),
+    ).rejects.toThrow("does not support Dynamic Client Registration");
   });
 
   test("client_secret_expires_atが欠落している場合0を補完する", async () => {
@@ -92,7 +94,7 @@ describe("oauth.dcr", () => {
     const responseBody = {
       client_id: "abc123",
       client_secret: "secret_value",
-      redirect_uris: [MCP_OAUTH_REDIRECT_URI],
+      redirect_uris: [TEST_REDIRECT_URI],
     };
 
     vi.mocked(oauth.dynamicClientRegistrationRequest).mockResolvedValueOnce(
@@ -102,7 +104,7 @@ describe("oauth.dcr", () => {
       oauth.processDynamicClientRegistrationResponse,
     ).mockResolvedValueOnce(mockRegistration);
 
-    await performDCR(metadata);
+    await performDCR(metadata, TEST_REDIRECT_URI);
 
     // processDynamicClientRegistrationResponseに渡されるResponseを検証
     const call = vi.mocked(oauth.processDynamicClientRegistrationResponse).mock
@@ -130,7 +132,7 @@ describe("oauth.dcr", () => {
       oauth.processDynamicClientRegistrationResponse,
     ).mockResolvedValueOnce(mockRegistration);
 
-    await performDCR(metadata);
+    await performDCR(metadata, TEST_REDIRECT_URI);
 
     // 201に変換されていることを検証
     const call = vi.mocked(oauth.processDynamicClientRegistrationResponse).mock

@@ -27,7 +27,10 @@ const isUserWithGroup = (
 ): data is Extract<DirectorySyncEvent["data"], { group: { id: string } }> =>
   "group" in data && "email" in data;
 
-const buildDisplayName = (firstName?: string, lastName?: string) => {
+const buildDisplayName = (
+  firstName?: string,
+  lastName?: string,
+): string | null => {
   const parts = [firstName, lastName].filter(Boolean);
   return parts.length > 0 ? parts.join(" ") : null;
 };
@@ -65,6 +68,20 @@ const extractEnterpriseUserAttributes = (
 
 const normalizeExternalId = (name: string) =>
   `department:${encodeURIComponent(name.trim().toLowerCase())}`;
+
+const findMappedGroups = (
+  client: PrismaTransactionClient,
+  externalGroupId: string,
+) =>
+  client.group.findMany({
+    where: {
+      provider: `${SCIM_PROVIDER}-map`,
+      externalId: externalGroupId,
+      // Jackson SCIMグループは group.id === data.id で保存するため、同じIDのSCIMグループ自身を除外する。
+      id: { not: externalGroupId },
+    },
+    select: { id: true },
+  });
 
 const syncPrimaryOrgUnitMembership = async (
   tx: PrismaTransactionClient,
@@ -256,53 +273,71 @@ export const handleDirectorySyncEvent = async (
 
       case "group.deleted": {
         if (!isGroup(data)) break;
-        const existing = await db.group.findUnique({
-          where: { id: data.id },
-          select: { id: true, memberships: { select: { id: true } } },
+        await db.$transaction(async (tx) => {
+          const existing = await tx.group.findUnique({
+            where: { id: data.id },
+            select: { id: true, memberships: { select: { id: true } } },
+          });
+          if (existing) {
+            removed = existing.memberships.length;
+            await tx.group.delete({ where: { id: data.id } });
+            // IdpSyncLog.groupId は Group への FK のため、削除後は null にする。
+            // 監査用の削除対象 ID は detail に残す。
+            detail = `deleted group: ${data.id}`;
+          }
         });
-        if (existing) {
-          removed = existing.memberships.length;
-          await db.group.delete({ where: { id: data.id } });
-          groupId = data.id;
-        }
         break;
       }
 
       case "group.user_added": {
         if (!isUserWithGroup(data)) break;
-        await db.userGroupMembership.upsert({
-          where: {
-            userId_groupId: { userId: data.id, groupId: data.group.id },
-          },
-          create: {
-            userId: data.id,
-            groupId: data.group.id,
-            source: GroupSource.IDP,
-          },
-          update: {},
+        const result = await db.$transaction(async (tx) => {
+          const mappedGroups = await findMappedGroups(tx, data.group.id);
+          const memberships = [
+            {
+              userId: data.id,
+              groupId: data.group.id,
+              source: GroupSource.IDP,
+            },
+            ...mappedGroups.map((group) => ({
+              userId: data.id,
+              groupId: group.id,
+              source: GroupSource.IDP,
+            })),
+          ];
+          const created = await tx.userGroupMembership.createMany({
+            data: memberships,
+            skipDuplicates: true,
+          });
+          // group が削除済みでも P2025 を出さないよう updateMany を使用（冪等）
+          await tx.group.updateMany({
+            where: { id: data.group.id },
+            data: { lastSyncedAt: new Date() },
+          });
+          return created;
         });
         groupId = data.group.id;
-        added = 1;
-        // group が削除済みでも P2025 を出さないよう updateMany を使用（冪等）
-        await db.group.updateMany({
-          where: { id: data.group.id },
-          data: { lastSyncedAt: new Date() },
-        });
+        added = result.count;
         break;
       }
 
       case "group.user_removed": {
         if (!isUserWithGroup(data)) break;
-        const del = await db.userGroupMembership.deleteMany({
-          where: { userId: data.id, groupId: data.group.id },
+        const del = await db.$transaction(async (tx) => {
+          const mappedGroups = await findMappedGroups(tx, data.group.id);
+          const groupIds = [data.group.id, ...mappedGroups.map((g) => g.id)];
+          const result = await tx.userGroupMembership.deleteMany({
+            where: { userId: data.id, groupId: { in: groupIds } },
+          });
+          // group が削除済みでも P2025 を出さないよう updateMany を使用（冪等）
+          await tx.group.updateMany({
+            where: { id: data.group.id },
+            data: { lastSyncedAt: new Date() },
+          });
+          return result;
         });
         groupId = data.group.id;
         removed = del.count;
-        // group が削除済みでも P2025 を出さないよう updateMany を使用（冪等）
-        await db.group.updateMany({
-          where: { id: data.group.id },
-          data: { lastSyncedAt: new Date() },
-        });
         break;
       }
 

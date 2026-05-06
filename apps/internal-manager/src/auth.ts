@@ -5,6 +5,7 @@ import { createCustomAdapter } from "~/lib/auth/adapter";
 import { jwtCallback, sessionCallback } from "~/lib/auth/callbacks";
 import type { OidcProfile } from "~/lib/auth/types";
 import { ensureJacksonOidcClients } from "~/server/jackson/oidc-clients";
+import { getAuthSecret } from "~/server/secrets";
 
 // 型定義をインポート（モジュール拡張を有効化）
 import "~/lib/auth/types";
@@ -48,6 +49,8 @@ export const {
   async (): Promise<NextAuthConfig> => ({
     trustHost: true,
     providers: [await createOidcProvider()],
+    pages: { signIn: "/auth/signin" },
+    secret: getAuthSecret(),
     adapter: createCustomAdapter(),
     session: { strategy: "jwt" },
     callbacks: {
