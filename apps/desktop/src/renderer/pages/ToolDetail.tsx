@@ -331,31 +331,30 @@ export const ToolDetail = (): JSX.Element => {
 
   // レスポンス圧縮（TOON 変換）切替: DB 更新（即時反映）。実プロキシへは次回 spawn 時に反映される。
   // 失敗時は state をロールバックして元に戻す。
-  // functional update により compressionEnabled を依存配列から外し、不要な再生成を回避する。
+  // updateMasking と同じクロージャパターン（setState updater 内に副作用を置かないことで Strict Mode の重複実行を回避）。
   const updateCompression = useCallback(
     (value: boolean): void => {
-      setCompressionEnabled((previous) => {
-        window.electronAPI.mcp
-          .updateToonConversion({ serverId, enabled: value })
-          .then(() => {
-            if (value && isMultiConnectionServer) {
-              toast.warning(
-                "設定を保存しましたが、複数接続を持つ仮想MCPサーバーではレスポンス圧縮は機能しません。単体サーバーとして起動した場合のみ有効です",
-              );
-              return;
-            }
-            toast.success(
-              "レスポンス圧縮設定を更新しました。MCPサーバーの再起動後に反映されます",
+      const previous = compressionEnabled;
+      setCompressionEnabled(value);
+      window.electronAPI.mcp
+        .updateToonConversion({ serverId, enabled: value })
+        .then(() => {
+          if (value && isMultiConnectionServer) {
+            toast.warning(
+              "設定を保存しましたが、複数接続を持つ仮想MCPサーバーではレスポンス圧縮は機能しません。単体サーバーとして起動した場合のみ有効です",
             );
-          })
-          .catch(() => {
-            setCompressionEnabled(previous);
-            toast.error("レスポンス圧縮設定の更新に失敗しました");
-          });
-        return value;
-      });
+            return;
+          }
+          toast.success(
+            "レスポンス圧縮設定を更新しました。MCPサーバーの再起動後に反映されます",
+          );
+        })
+        .catch(() => {
+          setCompressionEnabled(previous);
+          toast.error("レスポンス圧縮設定の更新に失敗しました");
+        });
     },
-    [serverId, isMultiConnectionServer],
+    [compressionEnabled, serverId, isMultiConnectionServer],
   );
 
   // ツール on/off（即時反映、失敗時はロールバック。サンプルID は IPC スキップ）
