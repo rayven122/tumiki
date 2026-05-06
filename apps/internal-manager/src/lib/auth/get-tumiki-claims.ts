@@ -61,6 +61,7 @@ export const getTumikiClaims = async (
   if (!user) return null;
   if (!user.isActive) return null;
 
+  // グループ同期が失敗してもログイン実績は残すため、同期処理とは別に更新する。
   await db.user.update({
     where: { id: userId },
     data: { lastLoginAt: new Date() },

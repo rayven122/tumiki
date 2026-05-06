@@ -45,6 +45,9 @@ const DEFAULT_ROLE_STYLE = {
   label: "メンバー",
 };
 
+const USER_GRID_COLUMNS =
+  "grid-cols-[minmax(0,1fr)_72px] md:grid-cols-[minmax(180px,1fr)_130px_90px_100px_72px]";
+
 const ActionTooltip = ({ id, text }: { id: string; text: string }) => (
   <span
     id={id}
@@ -169,15 +172,14 @@ const AdminUsersPage = () => {
           : user.isActive
             ? "このユーザーの internal-manager と Tumiki Desktop の利用を停止します。IdP 側のユーザーは削除されません。"
             : "このユーザーの internal-manager と Tumiki Desktop の利用を再開します。";
-      const deleteTooltip = user.isActive
-        ? "利用中ユーザーは削除できません。先にアクセスを停止してください。"
-        : user._count.externalIdentities > 0
+      const deleteTooltip =
+        user._count.externalIdentities > 0
           ? "SAML/SCIM/IdPで同期されたユーザーはTumikiから削除できません。IdP側で削除してください。"
           : "Tumikiで追加されたアクセス停止中ユーザーを削除します。削除すると一覧から消え、この操作は取り消せません。";
       return (
         <div
           key={user.id}
-          className="border-b-border-subtle hover:bg-bg-card-hover grid grid-cols-[minmax(180px,1fr)_130px_90px_100px_72px] items-center gap-3 border-b px-5 py-3 text-xs transition-colors last:border-b-0"
+          className={`border-b-border-subtle hover:bg-bg-card-hover grid ${USER_GRID_COLUMNS} items-center gap-3 border-b px-5 py-3 text-xs transition-colors last:border-b-0`}
         >
           <div className="flex items-center gap-2.5">
             <div className="bg-bg-active text-text-secondary flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium">
@@ -196,7 +198,7 @@ const AdminUsersPage = () => {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="hidden items-center gap-2 md:flex">
             <ShieldCheck size={13} className={role.text} />
             <select
               value={user.role}
@@ -218,10 +220,10 @@ const AdminUsersPage = () => {
             </select>
             <span className="sr-only">現在のロール: {roleLabel}</span>
           </div>
-          <div className="text-text-secondary text-[11px]">
+          <div className="text-text-secondary hidden text-[11px] md:block">
             {syncSourceLabel}
           </div>
-          <div className="text-text-secondary font-mono text-[11px]">
+          <div className="text-text-secondary hidden font-mono text-[11px] md:block">
             {formatDate(user.lastUsedAt)}
           </div>
           <div className="flex justify-end gap-1.5">
@@ -331,11 +333,13 @@ const AdminUsersPage = () => {
         </span>
       </div>
       <div className="bg-bg-card border-border-default overflow-x-auto rounded-xl border">
-        <div className="border-b-border-default text-text-subtle grid grid-cols-[minmax(180px,1fr)_130px_90px_100px_72px] items-center gap-3 border-b px-5 py-2.5 text-[10px]">
+        <div
+          className={`border-b-border-default text-text-subtle grid ${USER_GRID_COLUMNS} items-center gap-3 border-b px-5 py-2.5 text-[10px]`}
+        >
           <span>ユーザー</span>
-          <span>ロール</span>
-          <span>同期元</span>
-          <span>最終利用</span>
+          <span className="hidden md:block">ロール</span>
+          <span className="hidden md:block">同期元</span>
+          <span className="hidden md:block">最終利用</span>
           <span className="text-right">操作</span>
         </div>
         {renderUserRows(sectionUsers)}
@@ -353,7 +357,7 @@ const AdminUsersPage = () => {
           </h1>
           {activeTab === "users" && (
             <p className="text-text-secondary mt-1 text-xs">
-              全{users.length}名のメンバー
+              {users.length}名を表示中
             </p>
           )}
         </div>
@@ -370,7 +374,7 @@ const AdminUsersPage = () => {
             key={id}
             type="button"
             onClick={() => setActiveTab(id)}
-            className={`flex min-h-[36px] items-center gap-2 rounded-md px-3 text-xs font-medium transition-colors ${
+            className={`flex min-h-[44px] items-center gap-2 rounded-md px-3 text-xs font-medium transition-colors ${
               activeTab === id
                 ? "bg-bg-active text-text-primary"
                 : "text-text-secondary hover:text-text-primary"

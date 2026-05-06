@@ -81,7 +81,7 @@ export const usersRouter = createTRPCRouter({
       const users = await ctx.db.user.findMany({
         where,
         select: userSelect,
-        orderBy: { createdAt: "asc" },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
         take: USER_LIST_LIMIT,
       });
 
