@@ -14,6 +14,8 @@
 
 この migration は、既存の有効な個人承認を上書きする `canUse=false` がある場合は事前検証で停止する。停止した場合は、該当するグループまたはユーザーの拒否設定と個人承認のどちらを残すかを運用判断してから再実行する。
 
+また、カタログ権限を持たないグループの `GroupMcpToolPermission.canUse=false` が部署単位の `OrgUnitToolPermission(ALLOW)` を遮断する場合も事前検証で停止する。旧モデルではカタログ権限のないグループツール拒否が実質無効だった可能性があるため、該当データは移行前に削除または明示的な拒否として残すかを判断する。
+
 ## OrgUnit 権限の扱い
 
 既存の `OrgUnitToolPermission` は保持する。旧モデルにはカタログ単位の部署権限に対応するデータがないため、`OrgUnitCatalogPermission` は backfill しない。

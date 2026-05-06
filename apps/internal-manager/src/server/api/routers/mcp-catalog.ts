@@ -92,7 +92,7 @@ export const mcpCatalogRouter = createTRPCRouter({
             .default(McpCatalogAuthType.NONE),
           iconPath: z.string().max(500).optional(),
           command: optionalConnectionString,
-          args: z.array(z.string().min(1).max(1000)).default([]),
+          args: z.array(z.string().min(1).max(1000)).max(100).default([]),
           url: optionalConnectionString,
           credentialKeys: z.array(z.string().min(1).max(120)).default([]),
         })
@@ -135,7 +135,7 @@ export const mcpCatalogRouter = createTRPCRouter({
           status: z.nativeEnum(McpCatalogStatus),
           iconPath: z.string().max(500).nullable(),
           command: optionalConnectionString,
-          args: z.array(z.string().min(1).max(1000)),
+          args: z.array(z.string().min(1).max(1000)).max(100),
           url: optionalConnectionString,
           credentialKeys: z.array(z.string().min(1).max(120)),
         })

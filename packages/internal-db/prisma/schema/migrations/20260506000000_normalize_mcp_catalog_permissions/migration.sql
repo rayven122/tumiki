@@ -229,6 +229,7 @@ DECLARE
   duplicate_user_tool_count INTEGER;
   orphaned_group_tool_allow_count INTEGER;
   conflicting_group_tool_deny_with_individual_count INTEGER;
+  orphaned_group_tool_deny_with_org_unit_allow_count INTEGER;
   conflicting_user_tool_deny_with_individual_count INTEGER;
   missing_legacy_permission_tables TEXT[];
 BEGIN
@@ -394,6 +395,35 @@ BEGIN
 
   IF conflicting_group_tool_deny_with_individual_count > 0 THEN
     RAISE EXCEPTION 'Cannot migrate % GroupMcpToolPermission deny rows because they would override active approved IndividualPermission rows', conflicting_group_tool_deny_with_individual_count;
+  END IF;
+
+  -- カタログ権限を持たないグループの旧canUse=falseは、旧挙動では実質無効だった可能性がある。
+  -- 新モデルでは明示DENYとして部署ALLOWより優先されるため、部署ALLOWを遮断する行は移行前に止める。
+  SELECT COUNT(*) INTO orphaned_group_tool_deny_with_org_unit_allow_count
+  FROM "GroupMcpToolPermission" gmtp
+  JOIN "McpCatalogTool" tool ON tool."id" = gmtp."mcpToolId"
+  JOIN "McpCatalog" catalog ON catalog."id" = tool."catalogId"
+  JOIN "UserGroupMembership" membership ON membership."groupId" = gmtp."groupId"
+  JOIN "UserOrgUnitMembership" org_membership ON org_membership."userId" = membership."userId"
+  JOIN "OrgUnit" member_org ON member_org."id" = org_membership."orgUnitId"
+  JOIN "OrgUnitToolPermission" otp ON otp."toolId" = gmtp."mcpToolId"
+    AND otp."effect" = 'ALLOW'
+  JOIN "OrgUnit" permission_org ON permission_org."id" = otp."orgUnitId"
+  WHERE NOT gmtp."canUse"
+    AND (
+      member_org."path" = permission_org."path"
+      OR member_org."path" LIKE permission_org."path" || '/%'
+    )
+    AND NOT EXISTS (
+      SELECT 1
+      FROM "GroupToolPermission" gtp
+      WHERE gtp."groupId" = gmtp."groupId"
+        AND (gtp."read" OR gtp."write" OR gtp."execute")
+        AND (catalog."id" = gtp."mcpServerId" OR catalog."slug" = gtp."mcpServerId")
+    );
+
+  IF orphaned_group_tool_deny_with_org_unit_allow_count > 0 THEN
+    RAISE EXCEPTION 'Cannot migrate % GroupMcpToolPermission deny rows without catalog permission because they would override OrgUnitToolPermission ALLOW rows', orphaned_group_tool_deny_with_org_unit_allow_count;
   END IF;
 
   SELECT COUNT(*) INTO conflicting_user_tool_deny_with_individual_count
