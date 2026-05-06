@@ -43,7 +43,15 @@ type UserListItem = {
   role: "SYSTEM_ADMIN" | "USER";
   isActive: boolean;
   lastLoginAt: Date | string | null;
-  _count: { externalIdentities: number; groupMemberships: number };
+  _count: {
+    desktopAuditLogs: number;
+    externalIdentities: number;
+    groupMemberships: number;
+  };
+  usage: {
+    auditLogCount: number;
+    mcpServerCount: number;
+  };
 };
 
 const AdminUsersPage = () => {
@@ -136,7 +144,7 @@ const AdminUsersPage = () => {
       return (
         <div
           key={user.id}
-          className="border-b-border-subtle hover:bg-bg-card-hover grid grid-cols-[minmax(180px,1fr)_130px_110px_72px] items-center gap-3 border-b px-5 py-3 text-xs transition-colors last:border-b-0"
+          className="border-b-border-subtle hover:bg-bg-card-hover grid grid-cols-[minmax(180px,1fr)_130px_120px_72px] items-center gap-3 border-b px-5 py-3 text-xs transition-colors last:border-b-0"
         >
           <div className="flex items-center gap-2.5">
             <div className="bg-bg-active text-text-secondary flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium">
@@ -176,16 +184,9 @@ const AdminUsersPage = () => {
               <option value="USER">USER</option>
             </select>
           </div>
-          <div>
-            <span
-              className={`inline-flex min-w-[96px] items-center justify-center rounded-md px-2 py-1 text-[11px] font-medium ${
-                user.isActive
-                  ? "bg-emerald-500/10 text-emerald-300"
-                  : "bg-zinc-700/40 text-zinc-300"
-              }`}
-            >
-              {user.isActive ? "利用中" : "アクセス停止中"}
-            </span>
+          <div className="text-text-secondary flex flex-col gap-0.5 font-mono text-[11px] leading-tight">
+            <span>MCP {user.usage.mcpServerCount}</span>
+            <span>監査 {user.usage.auditLogCount}</span>
           </div>
           <div className="flex justify-end gap-1.5">
             <span
@@ -279,10 +280,10 @@ const AdminUsersPage = () => {
         </span>
       </div>
       <div className="bg-bg-card border-border-default overflow-hidden rounded-xl border">
-        <div className="border-b-border-default text-text-subtle grid grid-cols-[minmax(180px,1fr)_130px_110px_72px] items-center gap-3 border-b px-5 py-2.5 text-[10px]">
+        <div className="border-b-border-default text-text-subtle grid grid-cols-[minmax(180px,1fr)_130px_120px_72px] items-center gap-3 border-b px-5 py-2.5 text-[10px]">
           <span>ユーザー</span>
           <span>ロール</span>
-          <span>アクセス</span>
+          <span>利用状況</span>
           <span className="text-right">操作</span>
         </div>
         {renderUserRows(sectionUsers)}

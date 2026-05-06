@@ -66,7 +66,11 @@ const buildDb = ({
           email: "target@example.com",
           lastLoginAt: null,
           createdAt: new Date("2026-05-06T00:00:00.000Z"),
-          _count: { externalIdentities: 0, groupMemberships: 0 },
+          _count: {
+            desktopAuditLogs: 0,
+            externalIdentities: 0,
+            groupMemberships: 0,
+          },
         }),
       ),
       delete: vi
@@ -92,6 +96,101 @@ beforeEach(() => {
 });
 
 describe("usersRouter", () => {
+  describe("list", () => {
+    test("ユーザーごとの監査ログ数と利用MCP数を返す", async () => {
+      const createdAt = new Date("2026-05-06T00:00:00.000Z");
+      const findMany = vi.fn().mockResolvedValue([
+        {
+          id: "user-001",
+          name: "Admin User",
+          email: "admin@example.com",
+          role: Role.SYSTEM_ADMIN,
+          isActive: true,
+          lastLoginAt: null,
+          createdAt,
+          _count: {
+            desktopAuditLogs: 3,
+            externalIdentities: 1,
+            groupMemberships: 2,
+          },
+        },
+        {
+          id: "user-002",
+          name: "Member User",
+          email: "member@example.com",
+          role: Role.USER,
+          isActive: true,
+          lastLoginAt: null,
+          createdAt,
+          _count: {
+            desktopAuditLogs: 1,
+            externalIdentities: 0,
+            groupMemberships: 0,
+          },
+        },
+      ]);
+      const groupBy = vi.fn().mockResolvedValue([
+        { userId: "user-001", mcpServerId: "github", _count: { _all: 2 } },
+        { userId: "user-001", mcpServerId: "slack", _count: { _all: 1 } },
+        { userId: "user-002", mcpServerId: "github", _count: { _all: 1 } },
+      ]);
+      const caller = buildCaller({
+        user: { findMany },
+        desktopAuditLog: { groupBy },
+      } as unknown as Context["db"]);
+
+      const result = await caller.list({ role: "all", isActive: "all" });
+
+      const [findManyArgs] = findMany.mock.calls[0] as [
+        {
+          select: {
+            _count: {
+              select: {
+                desktopAuditLogs: boolean;
+                externalIdentities: boolean;
+                groupMemberships: boolean;
+              };
+            };
+          };
+        },
+      ];
+      expect(findManyArgs.select._count.select).toStrictEqual({
+        desktopAuditLogs: true,
+        externalIdentities: true,
+        groupMemberships: true,
+      });
+      expect(groupBy).toHaveBeenCalledWith({
+        by: ["userId", "mcpServerId"],
+        where: { userId: { in: ["user-001", "user-002"] } },
+        _count: { _all: true },
+      });
+      expect(result).toMatchObject([
+        {
+          id: "user-001",
+          usage: { auditLogCount: 3, mcpServerCount: 2 },
+        },
+        {
+          id: "user-002",
+          usage: { auditLogCount: 1, mcpServerCount: 1 },
+        },
+      ]);
+    });
+
+    test("対象ユーザーがいない場合はMCP利用集計を省略する", async () => {
+      const findMany = vi.fn().mockResolvedValue([]);
+      const groupBy = vi.fn();
+      const caller = buildCaller({
+        user: { findMany },
+        desktopAuditLog: { groupBy },
+      } as unknown as Context["db"]);
+
+      await expect(
+        caller.list({ role: "USER", isActive: "true" }),
+      ).resolves.toStrictEqual([]);
+      expect(groupBy).not.toHaveBeenCalled();
+    });
+  });
+
   describe("updateActive", () => {
     test("ユーザーを無効化できる", async () => {
       const { db, tx } = buildDb({

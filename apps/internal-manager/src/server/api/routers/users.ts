@@ -11,7 +11,13 @@ const userSelect = {
   isActive: true,
   lastLoginAt: true,
   createdAt: true,
-  _count: { select: { externalIdentities: true, groupMemberships: true } },
+  _count: {
+    select: {
+      desktopAuditLogs: true,
+      externalIdentities: true,
+      groupMemberships: true,
+    },
+  },
 } as const;
 
 const assertCanRemoveSystemAdminAccess = async ({
@@ -54,7 +60,7 @@ export const usersRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      return ctx.db.user.findMany({
+      const users = await ctx.db.user.findMany({
         where: {
           ...(input.role !== "all" ? { role: input.role } : {}),
           ...(input.isActive !== "all"
@@ -73,6 +79,39 @@ export const usersRouter = createTRPCRouter({
         orderBy: { createdAt: "asc" },
         take: 200,
       });
+
+      const userIds = users.map((user) => user.id);
+      if (userIds.length === 0) {
+        return users.map((user) => ({
+          ...user,
+          usage: {
+            auditLogCount: user._count.desktopAuditLogs,
+            mcpServerCount: 0,
+          },
+        }));
+      }
+
+      const mcpUsageRows = await ctx.db.desktopAuditLog.groupBy({
+        by: ["userId", "mcpServerId"],
+        where: { userId: { in: userIds } },
+        _count: { _all: true },
+      });
+
+      const mcpServerIdsByUserId = new Map<string, Set<string>>();
+      for (const row of mcpUsageRows) {
+        const serverIds =
+          mcpServerIdsByUserId.get(row.userId) ?? new Set<string>();
+        serverIds.add(row.mcpServerId);
+        mcpServerIdsByUserId.set(row.userId, serverIds);
+      }
+
+      return users.map((user) => ({
+        ...user,
+        usage: {
+          auditLogCount: user._count.desktopAuditLogs,
+          mcpServerCount: mcpServerIdsByUserId.get(user.id)?.size ?? 0,
+        },
+      }));
     }),
 
   updateActive: adminProcedure
