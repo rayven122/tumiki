@@ -394,6 +394,34 @@ describe("evaluateCatalogPermissions", () => {
     expect(result.permissions.execute).toStrictEqual(false);
   });
 
+  test("カタログ単位の部署DENYは全ツールを拒否する", () => {
+    const baseTool = buildCatalog([]).tools[0]!;
+    const result = evaluateCatalogPermissions(
+      buildUser(),
+      {
+        ...buildCatalog([]),
+        orgUnitCatalogPermissions: [
+          { orgUnitId: "child", effect: PolicyEffect.DENY, updatedAt: now },
+        ],
+        tools: [
+          { ...baseTool, id: "tool-001", defaultAllowed: true },
+          { ...baseTool, id: "tool-002", name: "delete_issue" },
+        ],
+      },
+      orgUnits,
+    );
+
+    expect(result.tools.get("tool-001")).toStrictEqual({
+      allowed: false,
+      deniedReason: "org_unit_catalog_denied",
+    });
+    expect(result.tools.get("tool-002")).toStrictEqual({
+      allowed: false,
+      deniedReason: "org_unit_catalog_denied",
+    });
+    expect(result.permissions.execute).toStrictEqual(false);
+  });
+
   test("ツールごとの明示ポリシーで許可と拒否が混在する", () => {
     const baseTool = buildCatalog([]).tools[0]!;
     const result = evaluateCatalogPermissions(
