@@ -1,14 +1,7 @@
--- DEV-1624: McpSecret テーブルを新設し、McpConnection.credentials を secretId に置き換える
--- 仮想MCP配下の接続が元コネクタと secret を共有することで、OAuth トークンドリフト・
--- refresh_token ローテーション衝突・APIキー更新の伝播漏れを解消する。
---
--- マイグレーション戦略:
--- 1. McpSecret テーブルを作成
--- 2. 既存 McpConnection 1行ごとに 1 secret を作成（id を一致させて 1:1 対応を保証）
--- 3. McpConnection を再作成して credentials カラムを削除し secretId カラムを追加
---    （SQLite は ALTER TABLE DROP COLUMN を一部しかサポートしないため、テーブル再作成方式を採用）
--- 既存データは「1接続 = 1 secret」で取り込む。仮想MCPがあれば本マイグレーション適用以降の
--- createVirtualServer 経路で secret を共有する運用に切り替わる（既存データは安全側に倒して非共有）。
+-- McpSecret を新設し McpConnection.credentials を secretId に置き換える
+-- 仮想MCP/元コネクタは secret を共有することで credentials を単一情報源化する
+-- 既存データは「1接続 = 1 secret」で取り込む（安全側に倒して非共有）
+-- SQLite は ALTER TABLE DROP COLUMN を一部しかサポートしないためテーブル再作成方式を採用
 
 -- CreateTable
 CREATE TABLE "McpSecret" (

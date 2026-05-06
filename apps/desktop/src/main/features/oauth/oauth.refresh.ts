@@ -69,16 +69,7 @@ const loadOAuthClientBundle = async (
   };
 };
 
-/**
- * 必要に応じてOAuthトークンをリフレッシュし、新しいcredentialsを返す。
- *
- * DEV-1624: 仮想MCPと元コネクタが同じ secret を共有するため、リフレッシュは secretId 単位で行う。
- * 同じ secret を指す全コネクションは更新後の credentials を自動的に参照する。
- *
- * - リフレッシュ不要（期限に余裕がある）→ null
- * - リフレッシュ成功 → 新しい復号済みcredentials
- * - リフレッシュ失敗（refresh_tokenなし、OAuthClient未登録、API エラー等）→ null
- */
+// secretId 単位でリフレッシュ。リフレッシュ不要・refresh_token 欠如・API失敗等は null を返す。
 export const refreshOAuthTokenIfNeeded = async (
   secretId: number,
   serverUrl: string,
@@ -114,7 +105,7 @@ export const refreshOAuthTokenIfNeeded = async (
 
     const newCredentials = credentialsPayloadFromTokenData(tokenData);
 
-    // 暗号化してDBに保存（McpSecret を更新することで全共有コネクションに反映される）
+    // McpSecret を更新することで共有先の全コネクションに反映される
     const db = await getDb();
     const encrypted = await encryptToken(JSON.stringify(newCredentials));
     await oauthRepository.updateSecretCredentials(db, secretId, encrypted);

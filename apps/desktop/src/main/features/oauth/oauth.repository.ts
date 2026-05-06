@@ -107,12 +107,7 @@ export const upsertOAuthClient = async (
   });
 };
 
-/**
- * McpSecret の credentials を更新（OAuthトークンリフレッシュ後のDB保存用）
- *
- * DEV-1624: 仮想MCPと元コネクタが同じ secret を共有するため、トークン更新は secretId 単位で行う。
- * 同じ secret を指す全コネクションが自動的に最新トークンを参照するようになる。
- */
+// secretId 単位で更新することで、同じ secret を指す全コネクションが最新トークンを参照する
 export const updateSecretCredentials = async (
   db: PrismaClient,
   secretId: number,

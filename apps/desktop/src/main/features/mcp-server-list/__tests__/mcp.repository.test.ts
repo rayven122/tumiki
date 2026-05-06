@@ -354,7 +354,7 @@ describe("mcp.repository（実DB）", () => {
     });
   });
 
-  describe("McpSecret 関連（DEV-1624）", () => {
+  describe("McpSecret 関連", () => {
     test("createSecret は credentials を保持する McpSecret を作成する", async () => {
       const secret = await mcpRepository.createSecret(db, "encrypted:abc");
       expect(secret.id).toBeDefined();
@@ -413,7 +413,7 @@ describe("mcp.repository（実DB）", () => {
     });
   });
 
-  describe("仮想MCP の secretId 共有（DEV-1624）", () => {
+  describe("仮想MCP の secretId 共有", () => {
     test("同一 secretId を共有する接続は元コネクタ削除後も secret を保持する", async () => {
       // 元コネクタ用サーバー
       const sourceServer = await mcpRepository.createServer(db, serverData);

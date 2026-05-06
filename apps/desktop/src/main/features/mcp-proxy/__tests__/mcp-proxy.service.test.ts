@@ -82,7 +82,7 @@ describe("mcp-proxy.service", () => {
     /**
      * テスト用 EnabledConnection ビルダー。
      * `credentials` は便宜上トップレベルで受け取り、内部で `secret.credentials` に詰め替える
-     * （DEV-1624 で credentials は McpSecret 経由で保持される構造に変更）。
+     * credentials は McpSecret 経由で保持される。
      */
     const buildConnection = (
       overrides: Partial<Omit<EnabledConnection, "server" | "secret">> & {
@@ -391,7 +391,7 @@ describe("mcp-proxy.service", () => {
     test("OAuth接続でトークンリフレッシュが実行された場合、新しいトークンが使われる", async () => {
       vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([
         buildConnection({
-          // DEV-1624: リフレッシュは secretId 単位で行われるため、テストでも明示的に渡す
+          // リフレッシュは secretId 単位で行われるため、テストでも明示的に渡す
           secretId: 42,
           name: "OAuth Expired",
           slug: "oauth-expired",
@@ -439,7 +439,7 @@ describe("mcp-proxy.service", () => {
     /**
      * テスト用 ConnectionWithServer ビルダー。
      * `credentials` は便宜上トップレベルで受け取り、内部で `secret.credentials` に詰め替える
-     * （DEV-1624 で credentials は McpSecret 経由で保持される構造に変更）。
+     * credentials は McpSecret 経由で保持される。
      */
     const buildConnectionWithServer = (
       overrides: Partial<Omit<ConnectionWithServer, "secret">> & {

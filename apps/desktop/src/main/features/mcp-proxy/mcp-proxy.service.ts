@@ -131,7 +131,6 @@ const buildConfigFromConnection = async (
   const connLabel = `${conn.server.slug}/${conn.slug}`;
   const name = `${conn.server.slug}-${conn.slug}`;
 
-  // DEV-1624: credentials は McpSecret 経由で取得（仮想MCPは元コネクタと secret を共有）
   const plainCredentials = await decryptCredentials(conn.secret.credentials);
   let credentials = parseAndValidate(
     plainCredentials,
@@ -141,7 +140,7 @@ const buildConfigFromConnection = async (
 
   // OAuth接続: トークンの期限チェック & 必要ならリフレッシュ
   if (conn.authType === "OAUTH" && conn.url) {
-    // 同じ secret を指す全コネクションでトークンを共有するため、リフレッシュは secretId 単位で行う
+    // 同じ secret を指す全コネクションでトークンを共有するため secretId 単位でリフレッシュ
     const refreshed = await refreshOAuthTokenIfNeeded(
       conn.secretId,
       conn.url,

@@ -68,7 +68,7 @@ describe("mcp.service", () => {
     vi.mocked(mcpProxyService.fetchToolsForConnection).mockResolvedValue([]);
     // createTools はデフォルトで0件成功扱い
     vi.mocked(mcpRepository.createTools).mockResolvedValue({ count: 0 });
-    // createSecret はデフォルトで id=1 を返す（DEV-1624: 1接続=1secret 系の経路で使用）
+    // createSecret はデフォルトで id=1 を返す（カタログ/カスタム入力経路は 1接続=1secret）
     vi.mocked(mcpRepository.createSecret).mockResolvedValue({
       id: 1,
       credentials: "",
@@ -94,7 +94,7 @@ describe("mcp.service", () => {
       authType: "API_KEY",
     };
 
-    test("カタログからMCPサーバーと接続を作成する（DEV-1624: 1接続=1secret で新規作成）", async () => {
+    test("カタログからMCPサーバーと接続を作成する", async () => {
       vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
       vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
       vi.mocked(mcpRepository.createServer).mockResolvedValue({
@@ -375,7 +375,7 @@ describe("mcp.service", () => {
       credentials: { GITHUB_TOKEN: "test-token" },
     };
 
-    test("ManagerカタログからcatalogId nullの接続を作成する（DEV-1624: secret 経由）", async () => {
+    test("ManagerカタログからcatalogId nullの接続を作成する", async () => {
       vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
       vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
       vi.mocked(mcpRepository.createServer).mockResolvedValue({
@@ -440,7 +440,7 @@ describe("mcp.service", () => {
       credentials: {},
     };
 
-    test("カスタムURLでサーバーが作成される（NONE認証、STREAMABLE_HTTP、DEV-1624: secret 経由）", async () => {
+    test("カスタムURLでサーバーが作成される（NONE認証、STREAMABLE_HTTP）", async () => {
       vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
       vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
       vi.mocked(mcpRepository.createServer).mockResolvedValue({
@@ -486,7 +486,7 @@ describe("mcp.service", () => {
       });
     });
 
-    test("APIキー認証でサーバーが作成される（DEV-1624: secret 経由）", async () => {
+    test("APIキー認証でサーバーが作成される", async () => {
       vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
       vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
       vi.mocked(mcpRepository.createServer).mockResolvedValue({
@@ -530,7 +530,7 @@ describe("mcp.service", () => {
       );
     });
 
-    test("OAuth認証でサーバーが作成される（DEV-1624: secret 経由）", async () => {
+    test("OAuth認証でサーバーが作成される", async () => {
       vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
       vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
       vi.mocked(mcpRepository.createServer).mockResolvedValue({
@@ -664,7 +664,7 @@ describe("mcp.service", () => {
         command: "npx",
         args: '["@modelcontextprotocol/server-github"]',
         url: null,
-        // DEV-1624: 仮想MCPは元コネクタの secretId を共有して credentials を単一情報源化する
+        // 仮想MCPは元コネクタの secretId を共有して credentials を単一情報源化する
         secretId: 11,
         authType: "API_KEY",
         isEnabled: true,
@@ -687,7 +687,7 @@ describe("mcp.service", () => {
       connections: [{ connectionId: 1 }, { connectionId: 2 }],
     };
 
-    test("複数の既存コネクタを束ねた仮想MCPサーバーを作成する（DEV-1624: secretId を共有）", async () => {
+    test("複数の既存コネクタを束ねた仮想MCPサーバーを作成する", async () => {
       vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
       vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
       vi.mocked(mcpRepository.createServer).mockResolvedValue({
@@ -942,7 +942,7 @@ describe("mcp.service", () => {
       expect(mcpRepository.createConnection).not.toHaveBeenCalled();
     });
 
-    test("OAuthコネクタが含まれる場合も元コネクタの secretId を共有する（DEV-1624: トークン単一情報源化）", async () => {
+    test("OAuthコネクタが含まれる場合も元コネクタの secretId を共有する", async () => {
       vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
       vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
       vi.mocked(mcpRepository.createServer).mockResolvedValue({
@@ -1301,7 +1301,7 @@ describe("mcp.service", () => {
       expect(mcpRepository.findAllWithConnections).toHaveBeenCalledWith(mockDb);
     });
 
-    test("McpSecret 経由の暗号化済み credentials を復号して返す（DEV-1624）", async () => {
+    test("McpSecret 経由の暗号化済み credentials を復号して返す", async () => {
       const mockServers = [
         {
           id: 1,
