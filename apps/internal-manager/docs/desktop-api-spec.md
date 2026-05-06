@@ -144,6 +144,25 @@ GET /api/desktop/v1/session
 
 `features.accessRequests` は未提供機能として `false` を返す。承認・アクセス申請フローは今回の提供対象外であり、Desktop はこの feature が未返却の場合も無効として扱う。
 
+`permissions` は以下の配列として返す。Desktop v1 API では、組織・グループ・ユーザー個別の権限を同じ配列にまとめ、`source` と `scope` で由来と対象粒度を区別する。
+
+```ts
+type DesktopMcpPermission = {
+  source: "ORG_UNIT" | "GROUP" | "USER";
+  scope: "CATALOG" | "TOOL";
+  catalogId: string;
+  toolId?: string;
+  effect: "ALLOW" | "DENY";
+  orgUnitId?: string;
+  groupId?: string;
+  userId?: string;
+  reason?: string | null;
+  expiresAt?: string | null;
+};
+```
+
+`scope: "CATALOG"` は catalog 内の全 tool に適用する。`scope: "TOOL"` は特定 tool のみを対象にする。Desktop は `source` と `scope` の組み合わせを保持し、最終判定はサーバー側の優先順と同じく DENY、ALLOW、`defaultAllowed` の順で扱う。期限切れのユーザー個別権限は API レスポンスに含めない。
+
 理由:
 
 Desktop 側が「ログイン済みか」だけでなく、「このユーザーに何を見せるか」を判断できるようにするため。

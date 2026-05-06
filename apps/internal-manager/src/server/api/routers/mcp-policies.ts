@@ -40,6 +40,7 @@ export const mcpPoliciesRouter = createTRPCRouter({
       const selectedOrgUnitId = input?.orgUnitId ?? null;
       const [orgUnits, catalogs] = await Promise.all([
         ctx.db.orgUnit.findMany({
+          // OrgUnit.path はDBでindex済み。全件返却は部署セレクタ用で、上限超過時はエラーにする。
           orderBy: [{ path: "asc" }, { name: "asc" }],
           take: POLICY_MATRIX_ORG_UNIT_LIMIT + 1,
         }),

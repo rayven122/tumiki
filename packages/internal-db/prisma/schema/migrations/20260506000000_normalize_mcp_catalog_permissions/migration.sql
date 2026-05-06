@@ -5,6 +5,7 @@
 -- 既存DBへの適用はPrisma migrate deployを前提にし、db pushでは実行しません。
 -- 手動psql適用時は部分適用を避けるため、BEGIN/COMMITでこのSQL全体を囲んでください。
 -- このSQLは旧権限テーブルが存在する既存DBへの適用を前提にし、新規DBは全マイグレーション履歴またはdb pushで構築します。
+-- 旧モデルの個人承認はグループDENYより優先される場合がありましたが、新モデルではDENY優先のためグループDENYが個人ALLOWを上書きします。
 
 ALTER TABLE "McpCatalog"
 ADD COLUMN "command" TEXT,
@@ -201,6 +202,7 @@ BEFORE INSERT OR UPDATE OF "catalogId", "toolId" ON "OrgUnitToolPermission"
 FOR EACH ROW EXECUTE FUNCTION "check_mcp_catalog_tool_permission_catalog"();
 
 CREATE INDEX IF NOT EXISTS "OrgUnitToolPermission_toolId_idx" ON "OrgUnitToolPermission"("toolId");
+CREATE INDEX IF NOT EXISTS "McpCatalog_name_id_idx" ON "McpCatalog"("name", "id");
 
 DROP TRIGGER IF EXISTS "GroupCatalogToolPermission_catalog_match" ON "GroupCatalogToolPermission";
 CREATE TRIGGER "GroupCatalogToolPermission_catalog_match"
