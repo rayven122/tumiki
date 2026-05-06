@@ -7,6 +7,7 @@ import { verifyDesktopJwt } from "~/lib/auth/verify-desktop-jwt";
 import {
   evaluateCatalogPermissions,
   getPolicyContextForUser,
+  type DeniedReason,
   type PermissionBits,
 } from "~/server/mcp-policy/effective-permissions";
 import {
@@ -112,7 +113,7 @@ const toCatalogItem = (
   permissions: PermissionBits,
   toolPermissions: Map<
     string,
-    { allowed: boolean; deniedReason: string | null }
+    { allowed: boolean; deniedReason: DeniedReason | null }
   >,
 ) => {
   const catalogDisabled = catalog.status !== McpCatalogStatus.ACTIVE;

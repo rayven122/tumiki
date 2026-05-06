@@ -244,10 +244,15 @@ export const GET = async (request: NextRequest) => {
       id: membership.group.id,
       updatedAt: membership.group.updatedAt.toISOString(),
     }));
-    const orgUnitsForVersion = user.orgUnitMemberships.map((membership) => ({
-      id: membership.orgUnit.id,
-      updatedAt: membership.orgUnit.updatedAt.toISOString(),
-      membershipUpdatedAt: membership.updatedAt.toISOString(),
+    const orgUnitMembershipsForVersion = user.orgUnitMemberships.map(
+      (membership) => ({
+        id: membership.orgUnit.id,
+        membershipUpdatedAt: membership.updatedAt.toISOString(),
+      }),
+    );
+    const orgUnitsForVersion = policyOrgUnits.map((orgUnit) => ({
+      id: orgUnit.id,
+      updatedAt: orgUnit.updatedAt.toISOString(),
     }));
     const policyCatalogsForVersion = policyCatalogs.map((catalog) => ({
       id: catalog.id,
@@ -314,6 +319,7 @@ export const GET = async (request: NextRequest) => {
       },
       groups: groupsForVersion,
       orgUnits: orgUnitsForVersion,
+      orgUnitMemberships: orgUnitMembershipsForVersion,
       catalogs: policyCatalogsForVersion,
     });
 

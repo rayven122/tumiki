@@ -251,6 +251,11 @@ const expectedOrgUnitsForVersion = [
   {
     id: "org-001",
     updatedAt: orgUnitUpdatedAt.toISOString(),
+  },
+];
+const expectedOrgUnitMembershipsForVersion = [
+  {
+    id: "org-001",
     membershipUpdatedAt: membershipUpdatedAt.toISOString(),
   },
 ];
@@ -270,6 +275,7 @@ const expectedPolicyVersion = `pol_v1_${createHash("sha256")
       },
       groups: expectedGroupsForVersion,
       orgUnits: expectedOrgUnitsForVersion,
+      orgUnitMemberships: expectedOrgUnitMembershipsForVersion,
       catalogs: expectedPolicyCatalogsForVersion,
     }),
   )

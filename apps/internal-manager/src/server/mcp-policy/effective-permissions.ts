@@ -16,7 +16,8 @@ export type DeniedReason =
   | "user_denied"
   | "group_denied"
   | "org_unit_denied"
-  | "not_granted";
+  | "not_granted"
+  | "catalog_disabled";
 
 export type EffectiveToolPermission = {
   allowed: boolean;
@@ -169,7 +170,6 @@ export const evaluateCatalogPermissions = (
   catalog: CatalogPolicyInput,
   allOrgUnits: { id: string; parentId: string | null }[],
 ): EffectiveCatalogPermissions => {
-  // ユーザー/グループ単位のカタログ権限更新APIは後続UIで追加予定。
   const orgUnitIds = collectPolicyOrgUnitIds(
     user.orgUnitMemberships,
     allOrgUnits,
@@ -277,6 +277,7 @@ export const evaluateCatalogPermissions = (
   };
 };
 
+// policyVersionはDesktop向けレスポンスのキャッシュキーなので、routeごとの安定JSONだけを受け取る。
 export const buildPolicyVersion = (policyState: unknown): string =>
   `pol_v1_${createHash("sha256")
     .update(JSON.stringify(policyState))
