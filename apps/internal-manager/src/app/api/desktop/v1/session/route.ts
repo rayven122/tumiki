@@ -218,7 +218,7 @@ export const GET = async (request: NextRequest) => {
       permissions: [...groupPermissions, ...individualPermissions],
       features: {
         catalog: true,
-        accessRequests: true,
+        accessRequests: false,
         policySync: true,
         auditLogSync: true,
       },

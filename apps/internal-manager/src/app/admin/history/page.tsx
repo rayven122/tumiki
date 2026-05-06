@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { api, type RouterOutputs } from "~/trpc/react";
 
 type LogStatus = "success" | "blocked" | "error";
@@ -91,22 +91,13 @@ const AdminHistoryPage = () => {
 
   return (
     <div className="space-y-4 p-6">
-      <div className="flex items-center justify-between">
+      <div>
         <div>
           <h1 className="text-text-primary text-lg font-semibold">操作履歴</h1>
           <p className="text-text-secondary mt-1 text-xs">
             Desktopから同期されたMCPツール呼び出しの監査ログ
           </p>
         </div>
-        <button
-          type="button"
-          disabled
-          className="bg-bg-active text-text-secondary flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium opacity-60"
-          title="CSVエクスポートは未実装です"
-        >
-          <Download size={13} />
-          CSVエクスポート
-        </button>
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

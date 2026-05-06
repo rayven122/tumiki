@@ -85,6 +85,30 @@ describe("desktop-session.service", () => {
     });
   });
 
+  test("Manager APIでaccessRequestsが未返却でも無効として扱う", async () => {
+    const features: Partial<typeof validSession.features> = {
+      ...validSession.features,
+    };
+    delete features.accessRequests;
+    vi.mocked(requestManagerApi).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ...validSession,
+          features,
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await expect(getDesktopSession()).resolves.toStrictEqual({
+      ...validSession,
+      features: {
+        ...features,
+        accessRequests: false,
+      },
+    });
+  });
+
   test("Manager未接続または未ログインの場合はnullを返す", async () => {
     vi.mocked(requestManagerApi).mockResolvedValue(null);
 
