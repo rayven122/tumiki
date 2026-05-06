@@ -356,7 +356,17 @@ describe("setupMcpIpc", () => {
         connections: [{ connectionId: 1 }],
       });
 
-      expect(mcpService.createVirtualServer).toHaveBeenCalled();
+      // allowedToolNames を省略した呼び出しが、そのままサービスに伝搬していることを検証
+      expect(mcpService.createVirtualServer).toHaveBeenCalledWith({
+        name: "X",
+        description: "",
+        connections: [{ connectionId: 1 }],
+      });
+      // allowedToolNames が undefined ですらないこと（プロパティ自体が未付与）を確認
+      const callArg = vi.mocked(mcpService.createVirtualServer).mock
+        .calls[0]?.[0];
+      expect(callArg?.connections[0]).toStrictEqual({ connectionId: 1 });
+      expect(callArg?.connections[0]).not.toHaveProperty("allowedToolNames");
     });
 
     test("接続が空配列の場合はエラーになる", async () => {
@@ -591,6 +601,7 @@ describe("setupMcpIpc", () => {
       expect(mockIpcHandlers.has("mcp:deleteServer")).toBe(true);
       expect(mockIpcHandlers.has("mcp:toggleServer")).toBe(true);
       expect(mockIpcHandlers.has("mcp:updatePiiMasking")).toBe(true);
+      expect(mockIpcHandlers.has("mcp:updateToonConversion")).toBe(true);
     });
   });
 });

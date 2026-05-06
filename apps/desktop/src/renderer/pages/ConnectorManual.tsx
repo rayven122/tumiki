@@ -214,10 +214,12 @@ export const ConnectorManual = (): JSX.Element => {
 
   // ツール一覧フェッチ中は allowedMap が未初期化のため送信を抑止する
   // （空の allowedToolNames=[] が渡るとサービス層で全ツール非公開扱いになる）
+  // 取得失敗中も同様に抑止し、ユーザーに再試行を促す
   const canSubmit =
     serverName.trim() !== "" &&
     selectedConnectionIds.length > 0 &&
     loadingToolsFor.size === 0 &&
+    failedToolLoads.size === 0 &&
     !submitting;
 
   const handleSubmit = async (): Promise<void> => {
