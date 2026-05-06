@@ -7,7 +7,7 @@ import { db } from "@tumiki/internal-db/server";
 
 export type PermissionBits = {
   read: boolean;
-  write: boolean;
+  write: false;
   execute: boolean;
 };
 

@@ -297,6 +297,59 @@ export const GET = async (request: NextRequest) => {
       lastSyncedAt: membership.orgUnit.lastSyncedAt?.toISOString() ?? null,
     }));
 
+    const policyCatalogsForVersion = policyCatalogs.map((catalog) => ({
+      id: catalog.id,
+      slug: catalog.slug,
+      status: catalog.status,
+      updatedAt: catalog.updatedAt.toISOString(),
+      orgUnitCatalogPermissions: catalog.orgUnitCatalogPermissions.map(
+        (permission) => ({
+          orgUnitId: permission.orgUnitId,
+          effect: permission.effect,
+          updatedAt: permission.updatedAt.toISOString(),
+        }),
+      ),
+      groupCatalogPermissions: catalog.groupCatalogPermissions.map(
+        (permission) => ({
+          groupId: permission.groupId,
+          effect: permission.effect,
+          updatedAt: permission.updatedAt.toISOString(),
+        }),
+      ),
+      userCatalogPermissions: catalog.userCatalogPermissions.map(
+        (permission) => ({
+          userId: permission.userId,
+          effect: permission.effect,
+          reason: permission.reason,
+          expiresAt: permission.expiresAt?.toISOString() ?? null,
+          updatedAt: permission.updatedAt.toISOString(),
+        }),
+      ),
+      tools: catalog.tools.map((tool) => ({
+        id: tool.id,
+        name: tool.name,
+        defaultAllowed: tool.defaultAllowed,
+        updatedAt: tool.updatedAt.toISOString(),
+        orgUnitPermissions: tool.orgUnitPermissions.map((permission) => ({
+          orgUnitId: permission.orgUnitId,
+          effect: permission.effect,
+          updatedAt: permission.updatedAt.toISOString(),
+        })),
+        groupPermissions: tool.groupPermissions.map((permission) => ({
+          groupId: permission.groupId,
+          effect: permission.effect,
+          updatedAt: permission.updatedAt.toISOString(),
+        })),
+        userPermissions: tool.userPermissions.map((permission) => ({
+          userId: permission.userId,
+          effect: permission.effect,
+          reason: permission.reason,
+          expiresAt: permission.expiresAt?.toISOString() ?? null,
+          updatedAt: permission.updatedAt.toISOString(),
+        })),
+      })),
+    }));
+
     const policyVersion = buildPolicyVersion({
       user: {
         id: user.id,
@@ -309,7 +362,7 @@ export const GET = async (request: NextRequest) => {
       },
       groups,
       orgUnits,
-      catalogs: policyCatalogs,
+      catalogs: policyCatalogsForVersion,
       permissions,
     });
 

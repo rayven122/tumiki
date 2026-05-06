@@ -237,6 +237,9 @@ const expectedPolicyCatalogs = [
     ],
   },
 ];
+const expectedPolicyCatalogsForVersion = JSON.parse(
+  JSON.stringify(expectedPolicyCatalogs),
+) as unknown;
 
 const expectedPolicyVersion = `pol_v1_${createHash("sha256")
   .update(
@@ -253,7 +256,7 @@ const expectedPolicyVersion = `pol_v1_${createHash("sha256")
       },
       groups: expectedGroups,
       orgUnits: expectedOrgUnits,
-      catalogs: expectedPolicyCatalogs,
+      catalogs: expectedPolicyCatalogsForVersion,
       permissions: expectedPermissions,
     }),
   )
@@ -351,6 +354,13 @@ describe("GET /api/desktop/v1/session", () => {
       findPolicyCatalogsArgs.select.userCatalogPermissions.where.userId,
     ).toStrictEqual("user-001");
     expect(
+      findPolicyCatalogsArgs.select.userCatalogPermissions.where.OR[0],
+    ).toStrictEqual({ expiresAt: null });
+    expect(
+      findPolicyCatalogsArgs.select.userCatalogPermissions.where.OR[1].expiresAt
+        .gt,
+    ).toBeInstanceOf(Date);
+    expect(
       findPolicyCatalogsArgs.select.userCatalogPermissions.orderBy,
     ).toStrictEqual([{ userId: "asc" }]);
     expect(
@@ -363,6 +373,16 @@ describe("GET /api/desktop/v1/session", () => {
     expect(
       findPolicyCatalogsArgs.select.tools.select.userPermissions.where.userId,
     ).toStrictEqual("user-001");
+    expect(
+      findPolicyCatalogsArgs.select.tools.select.userPermissions.where.OR[0],
+    ).toStrictEqual({ expiresAt: null });
+    expect(
+      findPolicyCatalogsArgs.select.tools.select.userPermissions.where.OR[1]
+        .expiresAt.gt,
+    ).toBe(
+      findPolicyCatalogsArgs.select.userCatalogPermissions.where.OR[1].expiresAt
+        .gt,
+    );
     expect(
       findPolicyCatalogsArgs.select.tools.select.orgUnitPermissions.where
         .orgUnitId.in,

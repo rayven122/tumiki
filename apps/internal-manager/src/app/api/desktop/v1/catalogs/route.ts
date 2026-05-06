@@ -75,7 +75,7 @@ const encodeCursor = (cursor: CatalogCursor) =>
   Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
 
 const hasAnyPermission = (permissions: PermissionBits) =>
-  permissions.read || permissions.write || permissions.execute;
+  permissions.read || permissions.execute;
 
 const decodeCursor = (cursor: string): CatalogCursor | null => {
   try {
