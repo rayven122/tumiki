@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, RefreshCw, Search, Shield, UserPlus } from "lucide-react";
+import { Plus, Search, Shield, UserPlus } from "lucide-react";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/react";
 
@@ -190,18 +190,10 @@ const IdpTab = ({
 
       {/* 同期ステータス */}
       <div className="bg-bg-card border-border-default rounded-xl border p-4">
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex items-center">
           <h2 className="text-text-primary text-xs font-semibold">
             同期ステータス
           </h2>
-          <button
-            type="button"
-            disabled
-            className="bg-bg-active text-text-secondary flex min-h-[44px] cursor-not-allowed items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium opacity-50"
-          >
-            <RefreshCw size={11} />
-            手動同期
-          </button>
         </div>
         <div className="flex items-center gap-2">
           {syncCfg === null ? (
