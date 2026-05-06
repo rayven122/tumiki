@@ -44,7 +44,12 @@ const buildTransactionCaller = (tx: unknown) =>
   } as unknown as Context["db"]);
 
 type MatrixCatalogFindManyArgs = {
-  include: {
+  select: {
+    id: true;
+    name: true;
+    slug: true;
+    status: true;
+    updatedAt: true;
     orgUnitCatalogPermissions: {
       where: { orgUnitId: string };
       select: {
@@ -54,7 +59,11 @@ type MatrixCatalogFindManyArgs = {
       };
     };
     tools: {
-      include: {
+      select: {
+        id: true;
+        name: true;
+        defaultAllowed: true;
+        updatedAt: true;
         orgUnitPermissions: {
           where: { orgUnitId: string };
           select: {
@@ -86,7 +95,13 @@ type EffectiveCatalogFindManyArgs = {
         userId: string;
         OR: [{ expiresAt: null }, { expiresAt: { gt: Date } }];
       };
-      select: { userId: true; effect: true; updatedAt: true };
+      select: {
+        userId: true;
+        effect: true;
+        reason: true;
+        expiresAt: true;
+        updatedAt: true;
+      };
     };
     tools: {
       select: {
@@ -107,7 +122,13 @@ type EffectiveCatalogFindManyArgs = {
             userId: string;
             OR: [{ expiresAt: null }, { expiresAt: { gt: Date } }];
           };
-          select: { userId: true; effect: true; updatedAt: true };
+          select: {
+            userId: true;
+            effect: true;
+            reason: true;
+            expiresAt: true;
+            updatedAt: true;
+          };
         };
       };
     };
@@ -184,7 +205,7 @@ describe("mcpPoliciesRouter", () => {
       const [findManyArgs] = findCatalogs.mock.calls[0] as [
         MatrixCatalogFindManyArgs,
       ];
-      expect(findManyArgs.include.orgUnitCatalogPermissions).toStrictEqual({
+      expect(findManyArgs.select.orgUnitCatalogPermissions).toStrictEqual({
         where: { orgUnitId: "org-001" },
         select: {
           orgUnitId: true,
@@ -192,16 +213,16 @@ describe("mcpPoliciesRouter", () => {
           effect: true,
         },
       });
-      expect(
-        findManyArgs.include.tools.include.orgUnitPermissions,
-      ).toStrictEqual({
-        where: { orgUnitId: "org-001" },
-        select: {
-          orgUnitId: true,
-          toolId: true,
-          effect: true,
+      expect(findManyArgs.select.tools.select.orgUnitPermissions).toStrictEqual(
+        {
+          where: { orgUnitId: "org-001" },
+          select: {
+            orgUnitId: true,
+            toolId: true,
+            effect: true,
+          },
         },
-      });
+      );
     });
   });
 

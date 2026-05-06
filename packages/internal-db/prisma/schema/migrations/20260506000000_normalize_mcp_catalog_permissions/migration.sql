@@ -44,6 +44,21 @@ SET
     ELSE ARRAY[]::TEXT[]
   END;
 
+DO $$
+DECLARE
+  null_stdio_command_count INTEGER;
+BEGIN
+  SELECT COUNT(*) INTO null_stdio_command_count
+  FROM "McpCatalog" catalog
+  WHERE catalog."transportType" = 'STDIO'
+    AND catalog."deletedAt" IS NULL
+    AND catalog."command" IS NULL;
+
+  IF null_stdio_command_count > 0 THEN
+    RAISE EXCEPTION 'Cannot migrate % active STDIO McpCatalog rows because command is NULL after configTemplate backfill', null_stdio_command_count;
+  END IF;
+END $$;
+
 CREATE TABLE "OrgUnitCatalogPermission" (
   "id" TEXT NOT NULL,
   "orgUnitId" TEXT NOT NULL,
@@ -197,6 +212,8 @@ DECLARE
   ambiguous_individual_server_count INTEGER;
   unmatched_group_tool_count INTEGER;
   unmatched_user_tool_count INTEGER;
+  duplicate_group_tool_count INTEGER;
+  duplicate_user_tool_count INTEGER;
   orphaned_group_tool_allow_count INTEGER;
   conflicting_group_tool_deny_with_individual_count INTEGER;
   conflicting_user_tool_deny_with_individual_count INTEGER;
@@ -295,6 +312,30 @@ BEGIN
     RAISE EXCEPTION 'Cannot migrate % UserMcpToolPermission rows because mcpToolId does not match McpCatalogTool.id', unmatched_user_tool_count;
   END IF;
 
+  SELECT COUNT(*) INTO duplicate_group_tool_count
+  FROM (
+    SELECT gmtp."groupId", gmtp."mcpToolId"
+    FROM "GroupMcpToolPermission" gmtp
+    GROUP BY gmtp."groupId", gmtp."mcpToolId"
+    HAVING COUNT(*) > 1
+  ) duplicate_group_tools;
+
+  IF duplicate_group_tool_count > 0 THEN
+    RAISE EXCEPTION 'Cannot migrate GroupMcpToolPermission because % group/tool keys have duplicate rows', duplicate_group_tool_count;
+  END IF;
+
+  SELECT COUNT(*) INTO duplicate_user_tool_count
+  FROM (
+    SELECT umtp."userId", umtp."mcpToolId"
+    FROM "UserMcpToolPermission" umtp
+    GROUP BY umtp."userId", umtp."mcpToolId"
+    HAVING COUNT(*) > 1
+  ) duplicate_user_tools;
+
+  IF duplicate_user_tool_count > 0 THEN
+    RAISE EXCEPTION 'Cannot migrate UserMcpToolPermission because % user/tool keys have duplicate rows', duplicate_user_tool_count;
+  END IF;
+
   SELECT COUNT(*) INTO orphaned_group_tool_allow_count
   FROM "GroupMcpToolPermission" gmtp
   JOIN "McpCatalogTool" tool ON tool."id" = gmtp."mcpToolId"
@@ -358,8 +399,7 @@ SELECT DISTINCT ON (gtp."groupId", catalog."id")
 FROM "GroupToolPermission" gtp
 JOIN "McpCatalog" catalog ON catalog."id" = gtp."mcpServerId" OR catalog."slug" = gtp."mcpServerId"
 WHERE gtp."read" OR gtp."write" OR gtp."execute"
-ORDER BY gtp."groupId", catalog."id"
-ON CONFLICT ("groupId", "catalogId") DO NOTHING;
+ORDER BY gtp."groupId", catalog."id";
 
 INSERT INTO "GroupCatalogToolPermission" ("id", "groupId", "catalogId", "toolId", "effect", "createdAt", "updatedAt")
 SELECT
@@ -371,8 +411,7 @@ SELECT
   gmtp."createdAt",
   gmtp."updatedAt"
 FROM "GroupMcpToolPermission" gmtp
-JOIN "McpCatalogTool" tool ON tool."id" = gmtp."mcpToolId"
-ON CONFLICT ("groupId", "toolId") DO NOTHING;
+JOIN "McpCatalogTool" tool ON tool."id" = gmtp."mcpToolId";
 
 INSERT INTO "UserCatalogToolPermission" ("id", "userId", "catalogId", "toolId", "effect", "reason", "expiresAt", "createdAt", "updatedAt")
 SELECT
@@ -386,8 +425,7 @@ SELECT
   umtp."createdAt",
   umtp."updatedAt"
 FROM "UserMcpToolPermission" umtp
-JOIN "McpCatalogTool" tool ON tool."id" = umtp."mcpToolId"
-ON CONFLICT ("userId", "toolId") DO NOTHING;
+JOIN "McpCatalogTool" tool ON tool."id" = umtp."mcpToolId";
 
 INSERT INTO "UserCatalogPermission" ("id", "userId", "catalogId", "effect", "reason", "expiresAt", "createdAt", "updatedAt")
 SELECT DISTINCT ON (ip."userId", catalog."id")
@@ -403,8 +441,7 @@ FROM "IndividualPermission" ip
 JOIN "McpCatalog" catalog ON catalog."id" = ip."mcpServerId" OR catalog."slug" = ip."mcpServerId"
 WHERE ip."status" = 'APPROVED'
   AND (ip."expiresAt" IS NULL OR ip."expiresAt" > CURRENT_TIMESTAMP)
-ORDER BY ip."userId", catalog."id", ip."updatedAt" DESC
-ON CONFLICT ("userId", "catalogId") DO NOTHING;
+ORDER BY ip."userId", catalog."id", ip."updatedAt" DESC;
 
 ALTER TABLE "McpCatalog" DROP COLUMN "configTemplate";
 

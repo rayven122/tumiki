@@ -41,7 +41,12 @@ export const mcpPoliciesRouter = createTRPCRouter({
         }),
         ctx.db.mcpCatalog.findMany({
           where: { deletedAt: null },
-          include: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            status: true,
+            updatedAt: true,
             orgUnitCatalogPermissions: {
               // orgUnit未選択時は存在しないIDで絞り込み、全権限データのロードを避ける。
               where: {
@@ -55,7 +60,11 @@ export const mcpPoliciesRouter = createTRPCRouter({
             },
             tools: {
               where: { deletedAt: null },
-              include: {
+              select: {
+                id: true,
+                name: true,
+                defaultAllowed: true,
+                updatedAt: true,
                 orgUnitPermissions: {
                   // orgUnit未選択時は存在しないIDで絞り込み、全権限データのロードを避ける。
                   where: {
@@ -167,7 +176,11 @@ export const mcpPoliciesRouter = createTRPCRouter({
       return ctx.db.$transaction(async (tx) => {
         const [tool, orgUnit] = await Promise.all([
           tx.mcpCatalogTool.findFirst({
-            where: { id: input.toolId, deletedAt: null },
+            where: {
+              id: input.toolId,
+              deletedAt: null,
+              catalog: { deletedAt: null },
+            },
             select: { catalogId: true },
           }),
           tx.orgUnit.findUnique({
