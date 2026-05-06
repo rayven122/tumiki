@@ -48,6 +48,20 @@ beforeEach(() => {
 });
 
 describe("mcpCatalogRouter", () => {
+  test("listはカタログクエリの上限超過をエラーにする", async () => {
+    const findMany = vi
+      .fn()
+      .mockResolvedValue(Array.from({ length: 1001 }, (_, index) => index));
+    const caller = buildCaller({
+      mcpCatalog: { findMany },
+    } as unknown as Context["db"]);
+
+    await expectTrpcErrorCode(caller.list(), "INTERNAL_SERVER_ERROR");
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ take: 1001 }),
+    );
+  });
+
   test("createは末尾ハイフンのslugをBAD_REQUESTにする", async () => {
     const create = vi.fn();
     const caller = buildCaller({

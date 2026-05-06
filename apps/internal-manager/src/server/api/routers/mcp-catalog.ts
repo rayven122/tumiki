@@ -30,7 +30,7 @@ const TOOL_UPSERT_CHUNK_SIZE = 50;
 
 export const mcpCatalogRouter = createTRPCRouter({
   list: adminProcedure.query(async ({ ctx }) => {
-    return ctx.db.mcpCatalog.findMany({
+    const catalogs = await ctx.db.mcpCatalog.findMany({
       where: { deletedAt: null },
       include: {
         tools: {
@@ -39,8 +39,15 @@ export const mcpCatalogRouter = createTRPCRouter({
         },
       },
       orderBy: [{ name: "asc" }, { id: "asc" }],
-      take: MCP_CATALOG_LIST_LIMIT,
+      take: MCP_CATALOG_LIST_LIMIT + 1,
     });
+    if (catalogs.length > MCP_CATALOG_LIST_LIMIT) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: `カタログ数が上限(${MCP_CATALOG_LIST_LIMIT})を超えました。フィルタを使用してください。`,
+      });
+    }
+    return catalogs;
   }),
 
   create: adminProcedure

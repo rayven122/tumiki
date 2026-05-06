@@ -1,7 +1,8 @@
--- Normalize MCP catalog connection templates and permissions onto McpCatalog/McpCatalogTool.
--- WARNING: This migration is irreversible.
--- It drops configTemplate and legacy permission tables after backfill.
--- Ensure a full database backup exists before applying to production.
+-- McpCatalog / McpCatalogTool への接続テンプレート・権限モデル正規化マイグレーション。
+-- 警告: このマイグレーションは不可逆です。
+-- configTemplate と旧権限テーブルをバックフィル後に削除します。
+-- 本番適用前に必ずフルバックアップを取得してください。
+-- このSQLは旧権限テーブルが存在する既存DBへの適用を前提にし、新規DBは全マイグレーション履歴またはdb pushで構築します。
 
 ALTER TABLE "McpCatalog"
 ADD COLUMN "command" TEXT,
@@ -218,6 +219,7 @@ DECLARE
   conflicting_group_tool_deny_with_individual_count INTEGER;
   conflicting_user_tool_deny_with_individual_count INTEGER;
 BEGIN
+  -- 旧権限テーブルからのbackfillを行うため、このマイグレーション単体を空DBへ適用することはサポートしない。
   IF (
     SELECT COUNT(*)
     FROM information_schema.tables
