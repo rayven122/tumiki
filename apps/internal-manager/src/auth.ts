@@ -49,6 +49,7 @@ export const {
   async (): Promise<NextAuthConfig> => ({
     trustHost: true,
     providers: [await createOidcProvider()],
+    pages: { signIn: "/auth/signin" },
     secret: getAuthSecret(),
     adapter: createCustomAdapter(),
     session: { strategy: "jwt" },
