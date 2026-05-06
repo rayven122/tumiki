@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import {
-  Power,
   Search,
   ShieldCheck,
   Trash2,
+  UserCheck,
+  UserX,
   Users,
   Users2,
 } from "lucide-react";
@@ -108,6 +109,9 @@ const AdminUsersPage = () => {
       const role = ROLE_STYLES[user.role] ?? DEFAULT_ROLE_STYLE;
       const isSelf = user.id === session?.user?.id;
       const canDelete = !user.isActive && user._count.externalIdentities === 0;
+      const accessActionLabel = user.isActive
+        ? "アクセスを停止"
+        : "アクセスを再開";
       const deleteTooltip = user.isActive
         ? "利用中ユーザーは削除できません。先にアクセスを停止してください。"
         : user._count.externalIdentities > 0
@@ -171,6 +175,7 @@ const AdminUsersPage = () => {
           <div className="flex justify-end gap-1.5">
             <button
               type="button"
+              title={accessActionLabel}
               disabled={isMutating || (isSelf && user.isActive)}
               onClick={() =>
                 updateActive.mutate({
@@ -178,7 +183,7 @@ const AdminUsersPage = () => {
                   isActive: !user.isActive,
                 })
               }
-              className={`flex min-h-[28px] w-[72px] items-center justify-center gap-1.5 rounded-md border px-2 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+              className={`flex min-h-[28px] w-8 items-center justify-center rounded-md border transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                 user.isActive
                   ? "border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/15"
                   : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/15"
@@ -187,8 +192,7 @@ const AdminUsersPage = () => {
                 user.isActive ? "停止" : "再開"
               }`}
             >
-              <Power size={12} />
-              {user.isActive ? "停止" : "再開"}
+              {user.isActive ? <UserX size={13} /> : <UserCheck size={13} />}
             </button>
             {!user.isActive && (
               <span title={deleteTooltip}>
