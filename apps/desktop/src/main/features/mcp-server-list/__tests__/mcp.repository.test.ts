@@ -35,6 +35,7 @@ const serverData: mcpRepository.CreateMcpServerInput = {
   name: "Test Server",
   slug: "test-server",
   description: "テスト用サーバー",
+  serverType: "OFFICIAL",
 };
 
 const buildConnectionData = (
@@ -61,6 +62,7 @@ describe("mcp.repository（実DB）", () => {
       expect(result.name).toBe("Test Server");
       expect(result.slug).toBe("test-server");
       expect(result.description).toBe("テスト用サーバー");
+      expect(result.serverType).toBe("OFFICIAL");
     });
 
     test("同一slugのサーバーは作成できない", async () => {
@@ -69,6 +71,16 @@ describe("mcp.repository（実DB）", () => {
       await expect(
         mcpRepository.createServer(db, serverData),
       ).rejects.toThrow();
+    });
+
+    test("serverType に CUSTOM を渡すと CUSTOM で永続化される（仮想MCP作成経路）", async () => {
+      const result = await mcpRepository.createServer(db, {
+        ...serverData,
+        slug: "virtual-server",
+        serverType: "CUSTOM",
+      });
+
+      expect(result.serverType).toBe("CUSTOM");
     });
   });
 
@@ -318,6 +330,96 @@ describe("mcp.repository（実DB）", () => {
 
     test("存在しないIDの場合はエラーになる", async () => {
       await expect(mcpRepository.deleteServer(db, 99999)).rejects.toThrow();
+    });
+  });
+
+  describe("findConnectionsByIdsWithTools", () => {
+    test("複数IDで接続をtoolsと共に一括取得する", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+      const conn1 = await mcpRepository.createConnection(db, {
+        ...buildConnectionData(server.id),
+        slug: "c1",
+      });
+      const conn2 = await mcpRepository.createConnection(db, {
+        ...buildConnectionData(server.id),
+        slug: "c2",
+      });
+      await mcpRepository.createTools(db, [
+        {
+          name: "tool-a",
+          description: "desc-a",
+          inputSchema: "{}",
+          connectionId: conn1.id,
+          isAllowed: true,
+        },
+        {
+          name: "tool-b",
+          description: "desc-b",
+          inputSchema: "{}",
+          connectionId: conn1.id,
+          isAllowed: false,
+        },
+        {
+          name: "tool-c",
+          description: "desc-c",
+          inputSchema: "{}",
+          connectionId: conn2.id,
+          isAllowed: true,
+        },
+      ]);
+
+      const result = await mcpRepository.findConnectionsByIdsWithTools(db, [
+        conn1.id,
+        conn2.id,
+      ]);
+
+      expect(result).toHaveLength(2);
+      const byId = new Map(result.map((c) => [c.id, c]));
+      expect(byId.get(conn1.id)!.tools).toHaveLength(2);
+      expect(byId.get(conn1.id)!.tools[0]!.name).toBe("tool-a");
+      expect(byId.get(conn1.id)!.tools[0]!.isAllowed).toBe(true);
+      expect(byId.get(conn1.id)!.tools[1]!.name).toBe("tool-b");
+      expect(byId.get(conn1.id)!.tools[1]!.isAllowed).toBe(false);
+      expect(byId.get(conn2.id)!.tools).toHaveLength(1);
+    });
+
+    test("空配列の場合は空配列を返す（DB問い合わせをスキップ）", async () => {
+      const result = await mcpRepository.findConnectionsByIdsWithTools(db, []);
+      expect(result).toStrictEqual([]);
+    });
+
+    test("存在しないIDは結果から除外される", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+      const connection = await mcpRepository.createConnection(
+        db,
+        buildConnectionData(server.id),
+      );
+
+      const result = await mcpRepository.findConnectionsByIdsWithTools(db, [
+        connection.id,
+        99999,
+      ]);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]!.id).toBe(connection.id);
+    });
+
+    test("server.serverType が取得される（仮想MCP再ネスト判定で参照されるため）", async () => {
+      const server = await mcpRepository.createServer(db, {
+        ...serverData,
+        slug: "virtual-server",
+        serverType: "CUSTOM",
+      });
+      const connection = await mcpRepository.createConnection(
+        db,
+        buildConnectionData(server.id),
+      );
+
+      const result = await mcpRepository.findConnectionsByIdsWithTools(db, [
+        connection.id,
+      ]);
+
+      expect(result[0]!.server.serverType).toBe("CUSTOM");
     });
   });
 

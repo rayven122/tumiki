@@ -1,5 +1,7 @@
-import { GroupsManagementPanel } from "../_components/GroupsManagementPanel";
+import { redirect } from "next/navigation";
 
-const AdminGroupsPage = () => <GroupsManagementPanel />;
+const AdminGroupsPage = () => {
+  redirect("/admin/directory?tab=groups");
+};
 
 export default AdminGroupsPage;

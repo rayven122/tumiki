@@ -62,6 +62,15 @@ enum AuditLogSyncStatus {
   FAILED
 }
 
+/// サーバーの種類
+/// @namespace McpServer
+enum ServerType {
+  /// カスタムMCPサーバー（ユーザーが既存コネクタを束ねた仮想MCP）
+  CUSTOM
+  /// 公式MCPサーバー（カタログ/単体カスタム入力で登録した単独コネクタ）
+  OFFICIAL
+}
+
 /// 認証トークン
 /// @namespace Auth
 model AuthToken {
@@ -189,6 +198,9 @@ model McpServer {
   slug         String       @unique
   /// サーバー説明
   description  String       @default("")
+  /// サーバーの種類（OFFICIAL = 単独コネクタ / CUSTOM = 仮想MCP）
+  /// 仮想MCP（CUSTOM）の接続を新たな仮想MCPの素材として再ネストするのを防ぐためのフラグ
+  serverType   ServerType   @default(OFFICIAL)
   /// サーバー状態
   serverStatus ServerStatus @default(STOPPED)
   /// 有効/無効フラグ（トグル用）

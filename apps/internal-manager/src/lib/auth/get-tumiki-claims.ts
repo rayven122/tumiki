@@ -33,7 +33,7 @@ const getJitManagedProviders = (provider: string): string[] => [
  * - ExternalIdentityのupsert（provider + oidcSub → userId マッピング）
  * - IDPグループクレームに基づくUserGroupMembershipの差分更新
  * - IdpSyncLogへの記録
- * - User.lastLoginAt更新・isActive復元
+ * - User.lastLoginAt更新
  *
  * @param db Prismaクライアント（トランザクション内でも可）
  * @param userId Auth.js が生成する内部ユーザーID（User.id）
@@ -49,17 +49,24 @@ export const getTumikiClaims = async (
   groupRoles: string[] | undefined,
 ): Promise<TumikiClaims | null> => {
   const user = await db.user
-    .update({
+    .findUnique({
       where: { id: userId },
-      data: { lastLoginAt: new Date(), isActive: true },
-      select: { id: true, role: true },
+      select: { id: true, role: true, isActive: true },
     })
     .catch((error: unknown) => {
-      console.error("[getTumikiClaims] user.update failed:", error);
+      console.error("[getTumikiClaims] user.findUnique failed:", error);
       return null;
     });
 
   if (!user) return null;
+  if (!user.isActive) return null;
+
+  // グループ同期が失敗してもログイン実績は残すため、同期処理とは別に更新する。
+  await db.user.update({
+    where: { id: userId },
+    data: { lastLoginAt: new Date() },
+    select: { id: true },
+  });
 
   // ExternalIdentity の upsert（lastSyncedAt は @updatedAt で自動更新）
   if (oidcSub !== "") {
