@@ -857,7 +857,7 @@ describe("mcp.service", () => {
       expect(mcpRepository.createConnection).not.toHaveBeenCalled();
     });
 
-    test("OAuthコネクタが含まれる場合はエラーを投げる（書き込みI/Oは起きない）", async () => {
+    test("OAuthコネクタが含まれる場合も他のauthTypeと同様にコピーされる（DEV-1624 で credentials 共有化予定）", async () => {
       vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
       vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
       vi.mocked(mcpRepository.createServer).mockResolvedValue({
@@ -867,20 +867,31 @@ describe("mcp.service", () => {
         buildSourceConnection({
           id: 1,
           name: "Notion",
+          transportType: "STREAMABLE_HTTP",
+          command: null,
+          url: "https://mcp.notion.com",
           authType: "OAUTH",
+          credentials: "encrypted:notion-oauth-creds",
         }),
       ]);
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 500,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
 
-      await expect(
-        mcpService.createVirtualServer({
-          ...baseInput,
-          connections: [{ connectionId: 1 }],
+      await mcpService.createVirtualServer({
+        ...baseInput,
+        connections: [{ connectionId: 1 }],
+      });
+
+      expect(mcpRepository.createConnection).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          name: "Notion",
+          authType: "OAUTH",
+          // 暗号化済みcredentialsをそのままコピー（DEV-1624 で McpSecret 共有化予定）
+          credentials: "encrypted:notion-oauth-creds",
         }),
-      ).rejects.toThrow(
-        "OAuth認証のコネクタ「Notion」は仮想MCP作成では未対応です",
       );
-      expect(mcpRepository.createServer).not.toHaveBeenCalled();
-      expect(mcpRepository.createConnection).not.toHaveBeenCalled();
     });
 
     test("無効化されたコネクタが含まれる場合はエラーを投げる（書き込みI/Oは起きない）", async () => {

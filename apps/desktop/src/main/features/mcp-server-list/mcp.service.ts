@@ -269,8 +269,12 @@ export const createCustomServer = async (
  * 入力で `allowedToolNames` が指定された場合はその一覧で上書きする（UI のチェック編集を反映）。
  *
  * - 接続0件は不正入力として拒否（最低1接続必須）
- * - OAuth 接続は仮想MCP化未対応（一時接続のための復号など追加対応が必要なため、UI 側でも除外）
  * - 各接続のslugはサーバー内で一意（接続名 + 必要に応じてサフィックス）
+ *
+ * 【既知の制限 / DEV-1624 で対処予定】
+ * 現状は credentials を行ごとコピーしているため、OAuth コネクタを含めるとトークンが
+ * 元コネクタと仮想MCP配下で独立し、refresh_token ローテーション系IdP では衝突しうる。
+ * プレリリース段階では許容し、後続で McpSecret テーブル経由の共有に切り替える。
  *
  * SQLite $transaction タイムアウト回避のため、書き込み以外（接続取得・slug計算）は全て tx 外で先に実行する。
  */
@@ -307,11 +311,6 @@ export const createVirtualServer = async (
     }
     if (!source.isEnabled) {
       throw new Error(`コネクタ「${source.name}」は無効化されています`);
-    }
-    if (source.authType === "OAUTH") {
-      throw new Error(
-        `OAuth認証のコネクタ「${source.name}」は仮想MCP作成では未対応です`,
-      );
     }
     return { source, input: connection, index };
   });

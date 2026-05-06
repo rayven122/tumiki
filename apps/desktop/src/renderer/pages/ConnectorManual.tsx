@@ -23,7 +23,7 @@ type SelectableConnector = {
 
 /**
  * 既存の McpServer 一覧から「コネクタとして選択可能な単一接続」を平坦化して取り出す。
- * 仮想MCP（接続が複数ある）は再ネスト禁止で除外し、OAuth・無効化されたものも除外する。
+ * 仮想MCP（接続が複数ある）は再ネスト禁止で除外し、無効化されたものも除外する。
  */
 const flattenSelectableConnectors = (
   servers: McpServerItem[],
@@ -36,8 +36,6 @@ const flattenSelectableConnectors = (
       // 接続自体が無効化されている場合は除外
       // （サーバーが有効でも接続が無効な場合があり、サービス層でも !source.isEnabled で弾かれる）
       if (!connection.isEnabled) return [];
-      // OAuth は仮想MCP化未対応
-      if (connection.authType === "OAUTH") return [];
       return [
         {
           serverId: server.id,
