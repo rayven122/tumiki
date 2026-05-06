@@ -104,6 +104,7 @@ type EffectiveCatalogFindManyArgs = {
       };
     };
     tools: {
+      take: number;
       select: {
         id: true;
         name: true;
@@ -241,12 +242,49 @@ describe("mcpPoliciesRouter", () => {
       expect(findCatalogs).toHaveBeenCalledWith(
         expect.objectContaining({ take: 201 }),
       );
+      const [findManyArgs] = findCatalogs.mock.calls[0] as [
+        EffectiveCatalogFindManyArgs,
+      ];
+      expect(findManyArgs.select.tools.take).toBe(501);
     });
 
     test("getEffectivePermissionsはカタログ数が上限を超えたらエラーにする", async () => {
       const findCatalogs = vi
         .fn()
         .mockResolvedValue(Array.from({ length: 201 }, (_, index) => index));
+      const caller = buildCaller({
+        user: { findUnique: vi.fn().mockResolvedValue(buildPolicyUser()) },
+        orgUnit: { findMany: vi.fn().mockResolvedValue([]) },
+        mcpCatalog: { findMany: findCatalogs },
+      } as unknown as Context["db"]);
+
+      await expectTrpcErrorCode(
+        caller.getEffectivePermissions({ userId: "user-001" }),
+        "INTERNAL_SERVER_ERROR",
+      );
+    });
+
+    test("getEffectivePermissionsはツール数が上限を超えたらエラーにする", async () => {
+      const findCatalogs = vi.fn().mockResolvedValue([
+        {
+          id: "catalog-001",
+          slug: "catalog-001",
+          status: "ACTIVE",
+          updatedAt: new Date("2026-05-04T00:00:00.000Z"),
+          orgUnitCatalogPermissions: [],
+          groupCatalogPermissions: [],
+          userCatalogPermissions: [],
+          tools: Array.from({ length: 501 }, (_, index) => ({
+            id: `tool-${index}`,
+            name: `Tool ${index}`,
+            defaultAllowed: false,
+            updatedAt: new Date("2026-05-04T00:00:00.000Z"),
+            orgUnitPermissions: [],
+            groupPermissions: [],
+            userPermissions: [],
+          })),
+        },
+      ]);
       const caller = buildCaller({
         user: { findUnique: vi.fn().mockResolvedValue(buildPolicyUser()) },
         orgUnit: { findMany: vi.fn().mockResolvedValue([]) },

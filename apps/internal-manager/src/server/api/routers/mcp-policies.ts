@@ -14,6 +14,7 @@ import { buildCatalogPolicySelect } from "~/server/mcp-policy/catalog-policy-que
 
 const POLICY_MATRIX_ORG_UNIT_LIMIT = 1000;
 const POLICY_MATRIX_CATALOG_LIMIT = 200;
+const POLICY_EFFECTIVE_TOOL_LIMIT = 500;
 
 const ensureWithinLimit = <T>(rows: T[], limit: number, label: string): T[] => {
   if (rows.length <= limit) return rows;
@@ -265,15 +266,27 @@ export const mcpPoliciesRouter = createTRPCRouter({
           groupPermissionIds,
           orgUnitPermissionIds,
           now,
+          toolTake: POLICY_EFFECTIVE_TOOL_LIMIT + 1,
         }),
         take: POLICY_MATRIX_CATALOG_LIMIT + 1,
       });
 
-      return ensureWithinLimit(
+      const limitedCatalogs = ensureWithinLimit(
         catalogs,
         POLICY_MATRIX_CATALOG_LIMIT,
         "カタログ数",
-      ).map((catalog) => {
+      );
+      const toolOverflowCatalog = limitedCatalogs.find(
+        (catalog) => catalog.tools.length > POLICY_EFFECTIVE_TOOL_LIMIT,
+      );
+      if (toolOverflowCatalog) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `ツール数が上限(${POLICY_EFFECTIVE_TOOL_LIMIT})を超えました。カタログを分割してください。`,
+        });
+      }
+
+      return limitedCatalogs.map((catalog) => {
         const effective = evaluateCatalogPermissions(user, catalog, orgUnits);
         return {
           catalogId: catalog.id,

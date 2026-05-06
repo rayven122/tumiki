@@ -391,8 +391,8 @@ END $$;
 -- Prismaのcuid()はPostgreSQLだけでは生成しづらいため、backfill行はUUID文字列を使用する。
 -- 新規行とID形式は混在するが、主キーとしての一意性だけを要求するため機能上の影響はない。
 INSERT INTO "GroupCatalogPermission" ("id", "groupId", "catalogId", "effect", "createdAt", "updatedAt")
--- GroupToolPermission has no createdAt/updatedAt columns, so these catalog-level
--- ALLOW rows are synthetic and intentionally use the migration timestamp.
+-- GroupToolPermissionにはcreatedAt/updatedAtカラムがないため、
+-- このカタログ単位のALLOW行は合成データとしてマイグレーション実行時刻を使用する。
 SELECT DISTINCT ON (gtp."groupId", catalog."id")
   gen_random_uuid()::TEXT,
   gtp."groupId",
