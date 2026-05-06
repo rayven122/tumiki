@@ -30,6 +30,8 @@ const encodeText = (text: string): string => {
 
 // CallToolResult.content[] が text タイプかどうかを判定する型ガード
 // content は MCP SDK 都合で unknown[] 型のため、ここで text タイプに絞り込む
+// `& Record<string, unknown>` は text 以外の追加プロパティ（_meta 等）をスプレッドで保持するための交差型
+// → 型安全性は緩むが、MCP の content オブジェクトに任意拡張プロパティが混入し得る制約上やむを得ない
 type TextContentItem = { type: "text"; text: string } & Record<string, unknown>;
 
 const isTextContent = (item: unknown): item is TextContentItem =>

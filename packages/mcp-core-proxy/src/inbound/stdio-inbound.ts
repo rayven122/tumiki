@@ -119,14 +119,15 @@ export const startStdioInbound = async (
         }
       }
 
+      // 監査ログには TOON 変換 *前* の content を記録する
+      // → TOON ON/OFF を切り替えても outputBytes の意味が変わらず、時系列での比較・分析が可能
+      resultContent = finalResult.content;
+
       // TOON 変換: マスキング復号後に適用することで、マスクトークンが TOON 化されないようにする
       // isError=true のレスポンスは変換対象から除外する（エラーメッセージは通常短く、圧縮効果が見込めないため）
-      // なお `resultContent` は TOON 変換 *後* の content を保持するため、監査ログの outputBytes は圧縮後サイズを反映する
       if (hooks?.enableToonConversion && !finalResult.isError) {
         finalResult = applyToonConversion(finalResult);
       }
-
-      resultContent = finalResult.content;
 
       if (finalResult.isError) {
         isSuccess = false;

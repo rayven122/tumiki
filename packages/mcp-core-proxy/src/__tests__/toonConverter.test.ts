@@ -1,6 +1,11 @@
+import { encode } from "@toon-format/toon";
 import { describe, expect, test, vi } from "vitest";
 
 import { applyToonConversion } from "../toon/toonConverter.js";
+
+// 既定では本物の encode を使い、必要なテストだけ mockImplementationOnce で挙動を差し替える
+// （vi.resetModules + 動的 import パターンより並列テスト時の干渉リスクが小さい）
+vi.mock("@toon-format/toon", { spy: true });
 
 describe("applyToonConversion", () => {
   test("text content の JSON 文字列を TOON 形式へ変換する", () => {
@@ -79,31 +84,20 @@ describe("applyToonConversion", () => {
     expect(result.isError).toBe(true);
   });
 
-  test("encode が例外をスローした場合は元の result をそのまま返す（fail-open）", async () => {
-    // encode を一時的に例外スローへ差し替え、変換例外時のフェイルオープン挙動を検証する
-    vi.resetModules();
-    vi.doMock("@toon-format/toon", () => ({
-      encode: vi.fn(() => {
-        throw new Error("encode failed");
-      }),
-    }));
+  test("encode が例外をスローした場合は元の result をそのまま返す（fail-open）", () => {
+    // encode を一回だけ例外スローへ差し替え、変換例外時のフェイルオープン挙動を検証する
+    vi.mocked(encode).mockImplementationOnce(() => {
+      throw new Error("encode failed");
+    });
 
-    try {
-      const { applyToonConversion: applyWithFailingEncode } =
-        await import("../toon/toonConverter.js");
+    const original = {
+      content: [{ type: "text" as const, text: '{"key":"value"}' }],
+      isError: false,
+    };
 
-      const original = {
-        content: [{ type: "text" as const, text: '{"key":"value"}' }],
-        isError: false,
-      };
+    const result = applyToonConversion(original);
 
-      const result = applyWithFailingEncode(original);
-
-      // 例外が外側 try-catch で捕捉され、元の result がそのまま返される
-      expect(result).toStrictEqual(original);
-    } finally {
-      vi.doUnmock("@toon-format/toon");
-      vi.resetModules();
-    }
+    // 例外が外側 try-catch で捕捉され、元の result がそのまま返される
+    expect(result).toStrictEqual(original);
   });
 });

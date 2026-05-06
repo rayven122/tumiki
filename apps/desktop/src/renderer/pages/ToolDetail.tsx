@@ -326,13 +326,22 @@ export const ToolDetail = (): JSX.Element => {
 
   // レスポンス圧縮（TOON 変換）切替: DB 更新（即時反映）。実プロキシへは次回 spawn 時に反映される。
   // 失敗時は state をロールバックして元に戻す。
+  // 注意: 複数接続を持つ仮想MCPサーバーでは `--server <slug>` が解決できず TOON 変換は常に OFF になる
+  // （main/index.ts の制限）。設定保存自体は成功するため、ユーザー混乱を避けて警告トーストを表示する。
   const updateCompression = useCallback(
     (value: boolean): void => {
       const previous = compressionEnabled;
       setCompressionEnabled(value);
+      const isMultiConnection = (server?.connections.length ?? 0) > 1;
       window.electronAPI.mcp
         .updateToonConversion({ serverId, enabled: value })
         .then(() => {
+          if (value && isMultiConnection) {
+            toast.warning(
+              "設定を保存しましたが、複数接続を持つ仮想MCPサーバーではレスポンス圧縮は機能しません。単体サーバーとして起動した場合のみ有効です",
+            );
+            return;
+          }
           toast.success(
             "レスポンス圧縮設定を更新しました。MCPサーバーの再起動後に反映されます",
           );
@@ -342,7 +351,7 @@ export const ToolDetail = (): JSX.Element => {
           toast.error("レスポンス圧縮設定の更新に失敗しました");
         });
     },
-    [compressionEnabled, serverId],
+    [compressionEnabled, serverId, server?.connections.length],
   );
 
   // ツール on/off（即時反映、失敗時はロールバック。サンプルID は IPC スキップ）
