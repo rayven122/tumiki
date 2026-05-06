@@ -11,6 +11,11 @@ const userSelect = {
   isActive: true,
   lastLoginAt: true,
   createdAt: true,
+  externalIdentities: {
+    select: { provider: true },
+    orderBy: { lastSyncedAt: "desc" },
+    take: 1,
+  },
   _count: {
     select: {
       desktopAuditLogs: true,
@@ -84,33 +89,23 @@ export const usersRouter = createTRPCRouter({
       if (userIds.length === 0) {
         return users.map((user) => ({
           ...user,
-          usage: {
-            auditLogCount: user._count.desktopAuditLogs,
-            mcpServerCount: 0,
-          },
+          lastUsedAt: null,
         }));
       }
 
-      const mcpUsageRows = await ctx.db.desktopAuditLog.groupBy({
-        by: ["userId", "mcpServerId"],
+      const lastUsageRows = await ctx.db.desktopAuditLog.groupBy({
+        by: ["userId"],
         where: { userId: { in: userIds } },
-        _count: { _all: true },
+        _max: { occurredAt: true },
       });
 
-      const mcpServerIdsByUserId = new Map<string, Set<string>>();
-      for (const row of mcpUsageRows) {
-        const serverIds =
-          mcpServerIdsByUserId.get(row.userId) ?? new Set<string>();
-        serverIds.add(row.mcpServerId);
-        mcpServerIdsByUserId.set(row.userId, serverIds);
-      }
+      const lastUsedAtByUserId = new Map(
+        lastUsageRows.map((row) => [row.userId, row._max.occurredAt] as const),
+      );
 
       return users.map((user) => ({
         ...user,
-        usage: {
-          auditLogCount: user._count.desktopAuditLogs,
-          mcpServerCount: mcpServerIdsByUserId.get(user.id)?.size ?? 0,
-        },
+        lastUsedAt: lastUsedAtByUserId.get(user.id) ?? null,
       }));
     }),
 

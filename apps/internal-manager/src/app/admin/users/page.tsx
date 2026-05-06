@@ -36,6 +36,19 @@ const DEFAULT_ROLE_STYLE = {
   label: "メンバー",
 };
 
+const SYNC_SOURCE_LABELS: Record<string, string | undefined> = {
+  entra: "Entra ID",
+  google: "Google",
+  keycloak: "Keycloak",
+  okta: "Okta",
+  oidc: "OIDC",
+  saml: "SAML",
+  scim: "SCIM",
+};
+
+const formatDate = (value: Date | string | null) =>
+  value ? new Date(value).toLocaleDateString("ja-JP") : "—";
+
 type UserListItem = {
   id: string;
   name: string | null;
@@ -43,14 +56,12 @@ type UserListItem = {
   role: "SYSTEM_ADMIN" | "USER";
   isActive: boolean;
   lastLoginAt: Date | string | null;
+  lastUsedAt: Date | string | null;
+  externalIdentities: { provider: string }[];
   _count: {
     desktopAuditLogs: number;
     externalIdentities: number;
     groupMemberships: number;
-  };
-  usage: {
-    auditLogCount: number;
-    mcpServerCount: number;
   };
 };
 
@@ -130,6 +141,10 @@ const AdminUsersPage = () => {
       const role = ROLE_STYLES[user.role] ?? DEFAULT_ROLE_STYLE;
       const isSelf = user.id === session?.user?.id;
       const canDelete = !user.isActive && user._count.externalIdentities === 0;
+      const syncSource = user.externalIdentities[0]?.provider;
+      const syncSourceLabel = syncSource
+        ? (SYNC_SOURCE_LABELS[syncSource.toLowerCase()] ?? syncSource)
+        : "Tumiki";
       const accessActionTooltip =
         isSelf && user.isActive
           ? "自分自身のアクセスは停止できません。別の管理者に操作してもらってください。"
@@ -144,7 +159,7 @@ const AdminUsersPage = () => {
       return (
         <div
           key={user.id}
-          className="border-b-border-subtle hover:bg-bg-card-hover grid grid-cols-[minmax(180px,1fr)_130px_120px_72px] items-center gap-3 border-b px-5 py-3 text-xs transition-colors last:border-b-0"
+          className="border-b-border-subtle hover:bg-bg-card-hover grid grid-cols-[minmax(180px,1fr)_130px_90px_100px_72px] items-center gap-3 border-b px-5 py-3 text-xs transition-colors last:border-b-0"
         >
           <div className="flex items-center gap-2.5">
             <div className="bg-bg-active text-text-secondary flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium">
@@ -158,11 +173,8 @@ const AdminUsersPage = () => {
                 {user.email ?? "—"}
               </div>
               <div className="text-text-subtle mt-0.5 text-[10px]">
-                最終ログイン:{" "}
-                {user.lastLoginAt
-                  ? new Date(user.lastLoginAt).toLocaleDateString("ja-JP")
-                  : "—"}{" "}
-                / グループ: {user._count.groupMemberships}
+                最終ログイン: {formatDate(user.lastLoginAt)} / グループ:{" "}
+                {user._count.groupMemberships}
               </div>
             </div>
           </div>
@@ -186,9 +198,11 @@ const AdminUsersPage = () => {
               <option value="USER">{ROLE_STYLES.USER?.label}</option>
             </select>
           </div>
-          <div className="text-text-secondary flex flex-col gap-0.5 font-mono text-[11px] leading-tight">
-            <span>MCP {user.usage.mcpServerCount}</span>
-            <span>監査 {user.usage.auditLogCount}</span>
+          <div className="text-text-secondary text-[11px]">
+            {syncSourceLabel}
+          </div>
+          <div className="text-text-secondary font-mono text-[11px]">
+            {formatDate(user.lastUsedAt)}
           </div>
           <div className="flex justify-end gap-1.5">
             <span
@@ -282,10 +296,11 @@ const AdminUsersPage = () => {
         </span>
       </div>
       <div className="bg-bg-card border-border-default overflow-hidden rounded-xl border">
-        <div className="border-b-border-default text-text-subtle grid grid-cols-[minmax(180px,1fr)_130px_120px_72px] items-center gap-3 border-b px-5 py-2.5 text-[10px]">
+        <div className="border-b-border-default text-text-subtle grid grid-cols-[minmax(180px,1fr)_130px_90px_100px_72px] items-center gap-3 border-b px-5 py-2.5 text-[10px]">
           <span>ユーザー</span>
           <span>ロール</span>
-          <span>利用状況</span>
+          <span>同期元</span>
+          <span>最終利用</span>
           <span className="text-right">操作</span>
         </div>
         {renderUserRows(sectionUsers)}
