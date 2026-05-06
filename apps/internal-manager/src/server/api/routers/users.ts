@@ -234,6 +234,7 @@ export const usersRouter = createTRPCRouter({
             where: { id: input.userId },
             select: {
               id: true,
+              role: true,
               isActive: true,
               _count: { select: { externalIdentities: true } },
             },
@@ -258,6 +259,13 @@ export const usersRouter = createTRPCRouter({
               code: "BAD_REQUEST",
               message:
                 "IdP/SAML/SCIMで同期されたユーザーはTumikiから削除できません",
+            });
+          }
+
+          if (targetUser.role === Role.SYSTEM_ADMIN) {
+            await assertCanRemoveSystemAdminAccess({
+              db: tx,
+              targetUserId: input.userId,
             });
           }
 

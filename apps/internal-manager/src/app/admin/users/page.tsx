@@ -214,7 +214,11 @@ const AdminUsersPage = () => {
             <span
               className="group relative inline-flex"
               tabIndex={isMutating || (isSelf && user.isActive) ? 0 : undefined}
-              aria-describedby={accessTooltipId}
+              aria-describedby={
+                isMutating || (isSelf && user.isActive)
+                  ? accessTooltipId
+                  : undefined
+              }
             >
               <button
                 type="button"
@@ -243,7 +247,7 @@ const AdminUsersPage = () => {
               <span
                 className="group relative inline-flex"
                 tabIndex={!canDelete ? 0 : undefined}
-                aria-describedby={deleteTooltipId}
+                aria-describedby={!canDelete ? deleteTooltipId : undefined}
               >
                 {canDelete ? (
                   <AlertDialog>

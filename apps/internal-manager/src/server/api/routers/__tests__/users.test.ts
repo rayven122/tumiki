@@ -2,6 +2,7 @@ import type { Session } from "next-auth";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { Prisma, Role } from "@tumiki/internal-db";
+import { USER_LIST_LIMIT } from "@/lib/user-management";
 import type { Context } from "../../trpc";
 import type * as TrpcModule from "../../trpc";
 import { usersRouter } from "../users";
@@ -174,7 +175,7 @@ describe("usersRouter", () => {
         externalIdentities: true,
         groupMemberships: true,
       });
-      expect(findManyArgs.take).toBe(200);
+      expect(findManyArgs.take).toBe(USER_LIST_LIMIT);
       expect(groupBy).toHaveBeenCalledWith({
         by: ["userId"],
         where: { userId: { in: ["user-001", "user-002"] } },
@@ -471,6 +472,32 @@ describe("usersRouter", () => {
         caller.deleteUser({ userId: "user-001" }),
         "BAD_REQUEST",
       );
+      expect(tx.user.delete).not.toHaveBeenCalled();
+    });
+
+    test("最後のSYSTEM_ADMINは削除できない", async () => {
+      const { db, tx } = buildDb({
+        targetUser: {
+          id: "admin-002",
+          role: Role.SYSTEM_ADMIN,
+          isActive: false,
+          externalIdentityCount: 0,
+        },
+        remainingActiveSystemAdmins: 0,
+      });
+      const caller = buildCaller(db);
+
+      await expectTrpcErrorCode(
+        caller.deleteUser({ userId: "admin-002" }),
+        "BAD_REQUEST",
+      );
+      expect(tx.user.count).toHaveBeenCalledWith({
+        where: {
+          role: Role.SYSTEM_ADMIN,
+          isActive: true,
+          id: { not: "admin-002" },
+        },
+      });
       expect(tx.user.delete).not.toHaveBeenCalled();
     });
 
