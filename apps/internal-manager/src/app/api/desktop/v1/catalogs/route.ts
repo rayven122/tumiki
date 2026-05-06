@@ -9,12 +9,14 @@ import {
   getPolicyContextForUser,
   type PermissionBits,
 } from "~/server/mcp-policy/effective-permissions";
+import {
+  NO_GROUP_PERMISSION_ID,
+  NO_ORG_UNIT_PERMISSION_ID,
+} from "~/server/mcp-policy/constants";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
 const TOOL_PREVIEW_LIMIT = 10;
-const NO_ORG_UNIT_PERMISSION_ID = "__NO_ORG_UNIT_PERMISSION__";
-const NO_GROUP_PERMISSION_ID = "__NO_GROUP_PERMISSION__";
 
 const cursorSchema = z.object({
   id: z.string().min(1),

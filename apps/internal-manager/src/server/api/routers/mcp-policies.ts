@@ -6,11 +6,13 @@ import {
   evaluateCatalogPermissions,
   getPolicyContextForUser,
 } from "~/server/mcp-policy/effective-permissions";
+import {
+  NO_GROUP_PERMISSION_ID,
+  NO_ORG_UNIT_PERMISSION_ID,
+} from "~/server/mcp-policy/constants";
 
 const POLICY_MATRIX_ORG_UNIT_LIMIT = 1000;
 const POLICY_MATRIX_CATALOG_LIMIT = 200;
-const NO_ORG_UNIT_PERMISSION_ID = "__NO_ORG_UNIT_PERMISSION__";
-const NO_GROUP_PERMISSION_ID = "__NO_GROUP_PERMISSION__";
 
 export const mcpPoliciesRouter = createTRPCRouter({
   getMatrix: adminProcedure

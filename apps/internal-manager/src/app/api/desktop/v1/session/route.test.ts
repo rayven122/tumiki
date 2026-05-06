@@ -51,11 +51,6 @@ type FindUniqueArgs = {
         };
       };
     };
-    catalogPermissions: {
-      where: {
-        OR: [{ expiresAt: null }, { expiresAt: { gt: Date } }];
-      };
-    };
   };
 };
 
@@ -146,16 +141,6 @@ const activeUser = {
       },
     },
   ],
-  catalogPermissions: [
-    {
-      catalogId: "catalog-002",
-      effect: PolicyEffect.ALLOW,
-      reason: "Temporary support",
-      expiresAt: null,
-      updatedAt: new Date("2026-05-03T10:10:00.000Z"),
-    },
-  ],
-  catalogToolPermissions: [],
 };
 
 const expectedGroups = [
@@ -190,7 +175,7 @@ const expectedPermissions = [
   {
     source: "USER",
     scope: "CATALOG",
-    catalogId: "catalog-002",
+    catalogId: "catalog-001",
     effect: PolicyEffect.ALLOW,
     reason: "Temporary support",
     expiresAt: null,
@@ -224,7 +209,15 @@ const expectedPolicyCatalogs = [
         updatedAt: new Date("2026-05-03T09:20:00.000Z"),
       },
     ],
-    userCatalogPermissions: [],
+    userCatalogPermissions: [
+      {
+        userId: "user-001",
+        effect: PolicyEffect.ALLOW,
+        reason: "Temporary support",
+        expiresAt: null,
+        updatedAt: new Date("2026-05-03T10:10:00.000Z"),
+      },
+    ],
     tools: [
       {
         id: "tool-001",
@@ -328,12 +321,8 @@ describe("GET /api/desktop/v1/session", () => {
     expect(
       findUniqueArgs?.select.groupMemberships.select.group.select,
     ).not.toHaveProperty("catalogToolPermissions");
-    expect(findUniqueArgs?.select.catalogPermissions.where.OR[0]).toStrictEqual(
-      { expiresAt: null },
-    );
-    expect(
-      findUniqueArgs?.select.catalogPermissions.where.OR[1].expiresAt.gt,
-    ).toBeInstanceOf(Date);
+    expect(findUniqueArgs?.select).not.toHaveProperty("catalogPermissions");
+    expect(findUniqueArgs?.select).not.toHaveProperty("catalogToolPermissions");
     expect(mockFindSettings).toHaveBeenCalledWith({
       where: { id: "default" },
       select: {
@@ -407,6 +396,46 @@ describe("GET /api/desktop/v1/session", () => {
       "MCP catalog count exceeded the session policy limit (500); refusing incomplete policyVersion.",
     );
     consoleErrorSpy.mockRestore();
+  });
+
+  test("ユーザー単位のツール権限をセッション権限に含める", async () => {
+    mockMcpCatalogFindMany.mockResolvedValue([
+      {
+        ...expectedPolicyCatalogs[0]!,
+        tools: [
+          {
+            ...expectedPolicyCatalogs[0]!.tools[0]!,
+            userPermissions: [
+              {
+                userId: "user-001",
+                effect: PolicyEffect.DENY,
+                reason: "Temporary block",
+                expiresAt: null,
+                updatedAt: new Date("2026-05-03T10:20:00.000Z"),
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+
+    const response = await GET(buildRequest());
+    const body = (await response.json()) as { permissions: unknown[] };
+
+    expect(response.status).toStrictEqual(200);
+    expect(body.permissions).toStrictEqual(
+      expect.arrayContaining([
+        {
+          source: "USER",
+          scope: "TOOL",
+          catalogId: "catalog-001",
+          toolId: "tool-001",
+          effect: PolicyEffect.DENY,
+          reason: "Temporary block",
+          expiresAt: null,
+        },
+      ]),
+    );
   });
 
   test("所属グループがない場合は存在しないIDでグループ権限を空に絞る", async () => {

@@ -1,8 +1,11 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { PolicyEffect } from "@tumiki/internal-db";
 import {
   buildPolicyVersion,
+  collectPolicyOrgUnitIds,
   evaluateCatalogPermissions,
+  getPolicyContextForUser,
+  getPolicyOrgUnitsForMemberships,
   type CatalogPolicyInput,
   type PolicyUser,
 } from "../effective-permissions";
@@ -354,6 +357,118 @@ describe("evaluateCatalogPermissions", () => {
     expect(result.tools.get("tool-001")).toStrictEqual({
       allowed: true,
       deniedReason: null,
+    });
+  });
+});
+
+describe("collectPolicyOrgUnitIds", () => {
+  test("所属部署と祖先部署のIDを返す", () => {
+    const result = collectPolicyOrgUnitIds(buildUser().orgUnitMemberships, [
+      { id: "parent", parentId: null },
+      { id: "child", parentId: "parent" },
+    ]);
+
+    expect(result).toStrictEqual(new Set(["child", "parent"]));
+  });
+
+  test("部署階層が循環していても停止する", () => {
+    const result = collectPolicyOrgUnitIds(buildUser().orgUnitMemberships, [
+      { id: "parent", parentId: "child" },
+      { id: "child", parentId: "parent" },
+    ]);
+
+    expect(result).toStrictEqual(new Set(["child", "parent"]));
+  });
+
+  test("所属部署がない場合は空Setを返す", () => {
+    const result = collectPolicyOrgUnitIds(
+      [],
+      [{ id: "parent", parentId: null }],
+    );
+
+    expect(result).toStrictEqual(new Set());
+  });
+});
+
+describe("getPolicyOrgUnitsForMemberships", () => {
+  test("必要な親部署だけを取得して所属部署と一緒に返す", async () => {
+    const findMany = vi
+      .fn()
+      .mockResolvedValue([{ id: "parent", parentId: null, updatedAt: now }]);
+    const client = {
+      orgUnit: { findMany },
+    } as unknown as Parameters<typeof getPolicyOrgUnitsForMemberships>[1];
+
+    await expect(
+      getPolicyOrgUnitsForMemberships(buildUser().orgUnitMemberships, client),
+    ).resolves.toStrictEqual([
+      { id: "child", parentId: "parent", updatedAt: now },
+      { id: "parent", parentId: null, updatedAt: now },
+    ]);
+    expect(findMany).toHaveBeenCalledWith({
+      where: { id: { in: ["parent"] } },
+      select: { id: true, parentId: true, updatedAt: true },
+    });
+  });
+
+  test("所属部署がない場合はDBを読まず空配列を返す", async () => {
+    const findMany = vi.fn();
+    const client = {
+      orgUnit: { findMany },
+    } as unknown as Parameters<typeof getPolicyOrgUnitsForMemberships>[1];
+
+    await expect(
+      getPolicyOrgUnitsForMemberships([], client),
+    ).resolves.toStrictEqual([]);
+    expect(findMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("getPolicyContextForUser", () => {
+  test("ユーザーと権限評価に必要な部署祖先を返す", async () => {
+    const user = buildUser({
+      groupMemberships: [{ group: { id: "group-001" } }],
+    });
+    const findUnique = vi.fn().mockResolvedValue(user);
+    const findMany = vi
+      .fn()
+      .mockResolvedValue([{ id: "parent", parentId: null, updatedAt: now }]);
+    const client = {
+      user: { findUnique },
+      orgUnit: { findMany },
+    } as unknown as Parameters<typeof getPolicyContextForUser>[1];
+
+    await expect(
+      getPolicyContextForUser("user-001", client),
+    ).resolves.toStrictEqual({
+      user,
+      orgUnits: [
+        { id: "child", parentId: "parent", updatedAt: now },
+        { id: "parent", parentId: null, updatedAt: now },
+      ],
+    });
+    expect(findUnique).toHaveBeenCalledWith({
+      where: { id: "user-001" },
+      select: {
+        id: true,
+        isActive: true,
+        updatedAt: true,
+        orgUnitMemberships: {
+          select: {
+            updatedAt: true,
+            orgUnit: {
+              select: { id: true, parentId: true, updatedAt: true },
+            },
+          },
+        },
+        groupMemberships: {
+          select: {
+            group: {
+              select: { id: true },
+            },
+          },
+        },
+      },
     });
   });
 });

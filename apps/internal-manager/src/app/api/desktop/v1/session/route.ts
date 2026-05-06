@@ -10,10 +10,12 @@ import {
   buildPolicyVersion,
   getPolicyOrgUnitsForMemberships,
 } from "~/server/mcp-policy/effective-permissions";
+import {
+  NO_GROUP_PERMISSION_ID,
+  NO_ORG_UNIT_PERMISSION_ID,
+} from "~/server/mcp-policy/constants";
 
 const POLICY_VERSION_CATALOG_LIMIT = 500;
-const NO_ORG_UNIT_PERMISSION_ID = "__NO_ORG_UNIT_PERMISSION__";
-const NO_GROUP_PERMISSION_ID = "__NO_GROUP_PERMISSION__";
 
 export const GET = async (request: NextRequest) => {
   let verifiedUser: Awaited<ReturnType<typeof verifyDesktopJwt>>;
@@ -72,33 +74,6 @@ export const GET = async (request: NextRequest) => {
           },
           orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
         },
-        catalogPermissions: {
-          where: {
-            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-          },
-          select: {
-            catalogId: true,
-            effect: true,
-            reason: true,
-            expiresAt: true,
-            updatedAt: true,
-          },
-          orderBy: { updatedAt: "desc" },
-        },
-        catalogToolPermissions: {
-          where: {
-            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-          },
-          select: {
-            catalogId: true,
-            toolId: true,
-            effect: true,
-            reason: true,
-            expiresAt: true,
-            updatedAt: true,
-          },
-          orderBy: { updatedAt: "desc" },
-        },
       },
     });
 
@@ -152,6 +127,8 @@ export const GET = async (request: NextRequest) => {
             select: {
               userId: true,
               effect: true,
+              reason: true,
+              expiresAt: true,
               updatedAt: true,
             },
             orderBy: [{ userId: "asc" }],
@@ -189,6 +166,8 @@ export const GET = async (request: NextRequest) => {
                 select: {
                   userId: true,
                   effect: true,
+                  reason: true,
+                  expiresAt: true,
                   updatedAt: true,
                 },
                 orderBy: [{ userId: "asc" }],
@@ -275,26 +254,28 @@ export const GET = async (request: NextRequest) => {
         })),
       ),
     );
-    const userCatalogPermissions = user.catalogPermissions.map(
-      (permission) => ({
+    const userCatalogPermissions = policyCatalogs.flatMap((catalog) =>
+      catalog.userCatalogPermissions.map((permission) => ({
         source: "USER" as const,
         scope: "CATALOG" as const,
-        catalogId: permission.catalogId,
+        catalogId: catalog.id,
         effect: permission.effect,
         reason: permission.reason,
         expiresAt: permission.expiresAt?.toISOString() ?? null,
-      }),
+      })),
     );
-    const userToolPermissions = user.catalogToolPermissions.map(
-      (permission) => ({
-        source: "USER" as const,
-        scope: "TOOL" as const,
-        catalogId: permission.catalogId,
-        toolId: permission.toolId,
-        effect: permission.effect,
-        reason: permission.reason,
-        expiresAt: permission.expiresAt?.toISOString() ?? null,
-      }),
+    const userToolPermissions = policyCatalogs.flatMap((catalog) =>
+      catalog.tools.flatMap((tool) =>
+        tool.userPermissions.map((permission) => ({
+          source: "USER" as const,
+          scope: "TOOL" as const,
+          catalogId: catalog.id,
+          toolId: tool.id,
+          effect: permission.effect,
+          reason: permission.reason,
+          expiresAt: permission.expiresAt?.toISOString() ?? null,
+        })),
+      ),
     );
     const permissions = [
       ...orgUnitCatalogPermissions,
