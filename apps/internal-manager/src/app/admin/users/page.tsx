@@ -25,15 +25,15 @@ const ROLE_STYLES: Record<
   SYSTEM_ADMIN: {
     bg: "bg-emerald-500/15",
     text: "text-emerald-400",
-    label: "Admin",
+    label: "オーナー",
   },
-  USER: { bg: "bg-amber-500/15", text: "text-amber-400", label: "Member" },
+  USER: { bg: "bg-amber-500/15", text: "text-amber-400", label: "メンバー" },
 };
 
 const DEFAULT_ROLE_STYLE = {
   bg: "bg-amber-500/15",
   text: "text-amber-400",
-  label: "Member",
+  label: "メンバー",
 };
 
 type UserListItem = {
@@ -180,8 +180,10 @@ const AdminUsersPage = () => {
               className={`border-border-default bg-bg-card w-[120px] rounded-md border px-2 py-1 text-[11px] outline-none disabled:cursor-not-allowed disabled:opacity-50 ${role.text}`}
               aria-label={`${user.name ?? user.email ?? "ユーザー"}のロール`}
             >
-              <option value="SYSTEM_ADMIN">SYSTEM_ADMIN</option>
-              <option value="USER">USER</option>
+              <option value="SYSTEM_ADMIN">
+                {ROLE_STYLES.SYSTEM_ADMIN?.label}
+              </option>
+              <option value="USER">{ROLE_STYLES.USER?.label}</option>
             </select>
           </div>
           <div className="text-text-secondary flex flex-col gap-0.5 font-mono text-[11px] leading-tight">
@@ -357,8 +359,8 @@ const AdminUsersPage = () => {
               className="bg-bg-card border-border-default text-text-secondary rounded-lg border px-3 py-1.5 text-xs outline-none"
             >
               <option value="all">すべてのロール</option>
-              <option value="SYSTEM_ADMIN">Admin</option>
-              <option value="USER">Member</option>
+              <option value="SYSTEM_ADMIN">オーナー</option>
+              <option value="USER">メンバー</option>
             </select>
             <select
               value={statusFilter}
