@@ -474,7 +474,10 @@ SELECT
   gmtp."createdAt",
   gmtp."updatedAt"
 FROM "GroupMcpToolPermission" gmtp
-JOIN "McpCatalogTool" tool ON tool."id" = gmtp."mcpToolId";
+JOIN "McpCatalogTool" tool ON tool."id" = gmtp."mcpToolId"
+JOIN "McpCatalog" catalog ON catalog."id" = tool."catalogId"
+WHERE tool."deletedAt" IS NULL
+  AND catalog."deletedAt" IS NULL;
 
 INSERT INTO "UserCatalogToolPermission" ("id", "userId", "catalogId", "toolId", "effect", "reason", "expiresAt", "createdAt", "updatedAt")
 SELECT
@@ -489,7 +492,10 @@ SELECT
   umtp."updatedAt"
 FROM "UserMcpToolPermission" umtp
 JOIN "McpCatalogTool" tool ON tool."id" = umtp."mcpToolId"
-WHERE umtp."expiresAt" IS NULL OR umtp."expiresAt" > CURRENT_TIMESTAMP;
+JOIN "McpCatalog" catalog ON catalog."id" = tool."catalogId"
+WHERE (umtp."expiresAt" IS NULL OR umtp."expiresAt" > CURRENT_TIMESTAMP)
+  AND tool."deletedAt" IS NULL
+  AND catalog."deletedAt" IS NULL;
 
 INSERT INTO "UserCatalogPermission" ("id", "userId", "catalogId", "effect", "reason", "expiresAt", "createdAt", "updatedAt")
 SELECT DISTINCT ON (ip."userId", catalog."id")
