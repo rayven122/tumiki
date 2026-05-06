@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Search, UserPlus, Users, Users2 } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { Power, Search, ShieldCheck, Users, Users2 } from "lucide-react";
 import { api } from "~/trpc/react";
 import { GroupsManagementPanel } from "../_components/GroupsManagementPanel";
 
@@ -28,11 +29,14 @@ const DEFAULT_ROLE_STYLE = {
 };
 
 const AdminUsersPage = () => {
+  const { data: session } = useSession();
+  const utils = api.useUtils();
   const [activeTab, setActiveTab] = useState<DirectoryTab>("users");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300);
@@ -44,6 +48,23 @@ const AdminUsersPage = () => {
     role: roleFilter,
     isActive: statusFilter,
   });
+
+  const updateActive = api.users.updateActive.useMutation({
+    onSuccess: async () => {
+      setErrorMessage(null);
+      await utils.users.list.invalidate();
+    },
+    onError: (error) => setErrorMessage(error.message),
+  });
+  const updateRole = api.users.updateRole.useMutation({
+    onSuccess: async () => {
+      setErrorMessage(null);
+      await utils.users.list.invalidate();
+    },
+    onError: (error) => setErrorMessage(error.message),
+  });
+
+  const isMutating = updateActive.isPending || updateRole.isPending;
 
   return (
     <div className="space-y-4 p-6">
@@ -59,16 +80,6 @@ const AdminUsersPage = () => {
             </p>
           )}
         </div>
-        {activeTab === "users" && (
-          <button
-            type="button"
-            disabled
-            className="bg-btn-primary-bg text-btn-primary-text flex min-h-[44px] cursor-not-allowed items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium opacity-50"
-          >
-            <UserPlus size={13} />
-            ユーザー招待
-          </button>
-        )}
       </div>
 
       <div className="border-border-default bg-bg-card inline-flex rounded-lg border p-1">
@@ -138,10 +149,19 @@ const AdminUsersPage = () => {
             </span>
           </div>
 
+          {errorMessage && (
+            <div
+              role="alert"
+              className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300"
+            >
+              {errorMessage}
+            </div>
+          )}
+
           {/* テーブル */}
           <div className="bg-bg-card border-border-default overflow-hidden rounded-xl border">
             {/* ヘッダー行 */}
-            <div className="border-b-border-default text-text-subtle grid grid-cols-[1fr_110px_120px_130px_80px] items-center gap-3 border-b px-5 py-2.5 text-[10px]">
+            <div className="border-b-border-default text-text-subtle grid grid-cols-[minmax(220px,1fr)_150px_140px_130px_70px] items-center gap-3 border-b px-5 py-2.5 text-[10px]">
               <span>ユーザー</span>
               <span>ロール</span>
               <span>ステータス</span>
@@ -160,10 +180,11 @@ const AdminUsersPage = () => {
             ) : (
               users.map((user) => {
                 const role = ROLE_STYLES[user.role] ?? DEFAULT_ROLE_STYLE;
+                const isSelf = user.id === session?.user?.id;
                 return (
                   <div
                     key={user.id}
-                    className="border-b-border-subtle hover:bg-bg-card-hover grid grid-cols-[1fr_110px_120px_130px_80px] items-center gap-3 border-b px-5 py-3 text-xs transition-colors"
+                    className="border-b-border-subtle hover:bg-bg-card-hover grid grid-cols-[minmax(220px,1fr)_150px_140px_130px_70px] items-center gap-3 border-b px-5 py-3 text-xs transition-colors"
                   >
                     {/* ユーザー */}
                     <div className="flex items-center gap-2.5">
@@ -181,18 +202,46 @@ const AdminUsersPage = () => {
                         </div>
                       </div>
                     </div>
-                    <span
-                      className={`inline-block w-fit rounded-full px-2 py-0.5 text-[10px] font-medium ${role.bg} ${role.text}`}
-                    >
-                      {role.label}
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className={`h-1.5 w-1.5 rounded-full ${user.isActive ? "bg-emerald-400" : "bg-zinc-500"}`}
-                      />
-                      <span className="text-text-secondary">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck size={13} className={role.text} />
+                      <select
+                        value={user.role}
+                        disabled={isMutating || isSelf}
+                        onChange={(e) =>
+                          updateRole.mutate({
+                            userId: user.id,
+                            role: e.target.value as "SYSTEM_ADMIN" | "USER",
+                          })
+                        }
+                        className={`border-border-default bg-bg-card w-[120px] rounded-md border px-2 py-1 text-[11px] outline-none disabled:cursor-not-allowed disabled:opacity-50 ${role.text}`}
+                        aria-label={`${user.name ?? user.email ?? "ユーザー"}のロール`}
+                      >
+                        <option value="SYSTEM_ADMIN">SYSTEM_ADMIN</option>
+                        <option value="USER">USER</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={isMutating || (isSelf && user.isActive)}
+                        onClick={() =>
+                          updateActive.mutate({
+                            userId: user.id,
+                            isActive: !user.isActive,
+                          })
+                        }
+                        className={`flex min-h-[28px] w-[118px] items-center justify-center gap-1.5 rounded-md border px-2 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                          user.isActive
+                            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                            : "border-zinc-600 bg-zinc-700/30 text-zinc-300"
+                        }`}
+                        aria-label={`${user.name ?? user.email ?? "ユーザー"}を${
+                          user.isActive ? "無効化" : "有効化"
+                        }`}
+                      >
+                        <Power size={12} />
                         {user.isActive ? "Active" : "Inactive"}
-                      </span>
+                      </button>
                     </div>
                     <span className="text-text-muted font-mono text-[11px]">
                       {user.lastLoginAt

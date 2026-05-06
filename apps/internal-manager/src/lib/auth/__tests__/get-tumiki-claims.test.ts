@@ -8,7 +8,11 @@ const buildDb = (
   overrides: Partial<typeof mockDb> & Record<string, unknown> = {},
 ) => ({ ...mockDb, ...overrides }) as unknown as PrismaTransactionClient;
 
-const mockUser = { id: "user-sub-001", role: "USER" as const };
+const mockUser = {
+  id: "user-sub-001",
+  role: "USER" as const,
+  isActive: true,
+};
 
 const fn = <TArgs extends unknown[] = [], TReturn = unknown>() =>
   vi.fn<(...args: TArgs) => TReturn>();
@@ -82,6 +86,22 @@ describe("getTumikiClaims", () => {
         "[getTumikiClaims] user.update failed:",
         error,
       );
+    });
+
+    test("無効化されたユーザーはnullを返す", async () => {
+      mockDb.user.update.mockResolvedValue({ ...mockUser, isActive: false });
+
+      const result = await getTumikiClaims(
+        buildDb(),
+        mockUser.id,
+        "oidc",
+        mockUser.id,
+        [],
+      );
+
+      expect(result).toBeNull();
+      expect(mockDb.externalIdentity.upsert).not.toHaveBeenCalled();
+      expect(mockDb.idpSyncLog.create).not.toHaveBeenCalled();
     });
   });
 
@@ -159,18 +179,22 @@ describe("getTumikiClaims", () => {
     });
   });
 
-  describe("lastLoginAt・isActive更新", () => {
-    test("User.updateにlastLoginAtとisActive:trueが渡される", async () => {
+  describe("lastLoginAt更新", () => {
+    test("User.updateにlastLoginAtのみが渡される", async () => {
       await getTumikiClaims(buildDb(), mockUser.id, "oidc", mockUser.id, []);
 
       expect(mockDb.user.update).toHaveBeenCalledWith({
         where: { id: mockUser.id },
         data: expectObjectContaining({
-          isActive: true,
           lastLoginAt: expect.any(Date) as Date,
         }),
-        select: { id: true, role: true },
+        select: { id: true, role: true, isActive: true },
       });
+      expect(mockDb.user.update).not.toHaveBeenCalledWith(
+        expectObjectContaining({
+          data: expectObjectContaining({ isActive: true }),
+        }),
+      );
     });
   });
 
