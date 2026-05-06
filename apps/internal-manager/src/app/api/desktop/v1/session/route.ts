@@ -50,6 +50,7 @@ export const GET = async (request: NextRequest) => {
                       effect: true,
                       updatedAt: true,
                     },
+                    orderBy: [{ catalogId: "asc" }],
                   },
                   catalogToolPermissions: {
                     select: {
@@ -58,6 +59,7 @@ export const GET = async (request: NextRequest) => {
                       effect: true,
                       updatedAt: true,
                     },
+                    orderBy: [{ catalogId: "asc" }, { toolId: "asc" }],
                   },
                 },
               },
@@ -125,6 +127,7 @@ export const GET = async (request: NextRequest) => {
               effect: true,
               updatedAt: true,
             },
+            orderBy: [{ orgUnitId: "asc" }],
           },
           groupCatalogPermissions: {
             select: {
@@ -132,9 +135,11 @@ export const GET = async (request: NextRequest) => {
               effect: true,
               updatedAt: true,
             },
+            orderBy: [{ groupId: "asc" }],
           },
           userCatalogPermissions: {
             where: {
+              userId: verifiedUser.userId,
               OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
             },
             select: {
@@ -142,6 +147,7 @@ export const GET = async (request: NextRequest) => {
               effect: true,
               updatedAt: true,
             },
+            orderBy: [{ userId: "asc" }],
           },
           tools: {
             where: { deletedAt: null },
@@ -164,9 +170,11 @@ export const GET = async (request: NextRequest) => {
                   effect: true,
                   updatedAt: true,
                 },
+                orderBy: [{ groupId: "asc" }],
               },
               userPermissions: {
                 where: {
+                  userId: verifiedUser.userId,
                   OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
                 },
                 select: {
@@ -174,6 +182,7 @@ export const GET = async (request: NextRequest) => {
                   effect: true,
                   updatedAt: true,
                 },
+                orderBy: [{ userId: "asc" }],
               },
             },
             orderBy: { name: "asc" },

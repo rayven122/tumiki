@@ -40,7 +40,18 @@ type FindUniqueArgs = {
   where: { id: string };
   select: {
     id: true;
-    groupMemberships: unknown;
+    groupMemberships: {
+      select: {
+        group: {
+          select: {
+            catalogPermissions: { orderBy: [{ catalogId: "asc" }] };
+            catalogToolPermissions: {
+              orderBy: [{ catalogId: "asc" }, { toolId: "asc" }];
+            };
+          };
+        };
+      };
+    };
     catalogPermissions: {
       where: {
         OR: [{ expiresAt: null }, { expiresAt: { gt: Date } }];
@@ -51,6 +62,29 @@ type FindUniqueArgs = {
 
 type FindPolicyCatalogsArgs = {
   take: number;
+  select: {
+    orgUnitCatalogPermissions: { orderBy: [{ orgUnitId: "asc" }] };
+    groupCatalogPermissions: { orderBy: [{ groupId: "asc" }] };
+    userCatalogPermissions: {
+      where: {
+        userId: string;
+        OR: [{ expiresAt: null }, { expiresAt: { gt: Date } }];
+      };
+      orderBy: [{ userId: "asc" }];
+    };
+    tools: {
+      select: {
+        groupPermissions: { orderBy: [{ groupId: "asc" }] };
+        userPermissions: {
+          where: {
+            userId: string;
+            OR: [{ expiresAt: null }, { expiresAt: { gt: Date } }];
+          };
+          orderBy: [{ userId: "asc" }];
+        };
+      };
+    };
+  };
 };
 
 const userUpdatedAt = new Date("2026-05-03T10:00:00.000Z");
@@ -267,7 +301,14 @@ describe("GET /api/desktop/v1/session", () => {
     )[0]?.[0];
     expect(findUniqueArgs?.where).toStrictEqual({ id: "user-001" });
     expect(findUniqueArgs?.select.id).toStrictEqual(true);
-    expect(findUniqueArgs?.select.groupMemberships).toBeDefined();
+    expect(
+      findUniqueArgs?.select.groupMemberships.select.group.select
+        .catalogPermissions.orderBy,
+    ).toStrictEqual([{ catalogId: "asc" }]);
+    expect(
+      findUniqueArgs?.select.groupMemberships.select.group.select
+        .catalogToolPermissions.orderBy,
+    ).toStrictEqual([{ catalogId: "asc" }, { toolId: "asc" }]);
     expect(findUniqueArgs?.select.catalogPermissions.where.OR[0]).toStrictEqual(
       { expiresAt: null },
     );
@@ -285,6 +326,27 @@ describe("GET /api/desktop/v1/session", () => {
       FindPolicyCatalogsArgs,
     ];
     expect(findPolicyCatalogsArgs.take).toStrictEqual(501);
+    expect(
+      findPolicyCatalogsArgs.select.orgUnitCatalogPermissions.orderBy,
+    ).toStrictEqual([{ orgUnitId: "asc" }]);
+    expect(
+      findPolicyCatalogsArgs.select.groupCatalogPermissions.orderBy,
+    ).toStrictEqual([{ groupId: "asc" }]);
+    expect(
+      findPolicyCatalogsArgs.select.userCatalogPermissions.where.userId,
+    ).toStrictEqual("user-001");
+    expect(
+      findPolicyCatalogsArgs.select.userCatalogPermissions.orderBy,
+    ).toStrictEqual([{ userId: "asc" }]);
+    expect(
+      findPolicyCatalogsArgs.select.tools.select.groupPermissions.orderBy,
+    ).toStrictEqual([{ groupId: "asc" }]);
+    expect(
+      findPolicyCatalogsArgs.select.tools.select.userPermissions.where.userId,
+    ).toStrictEqual("user-001");
+    expect(
+      findPolicyCatalogsArgs.select.tools.select.userPermissions.orderBy,
+    ).toStrictEqual([{ userId: "asc" }]);
   });
 
   test("policyVersion対象カタログが上限を超えた場合は不完全なhashを返さない", async () => {
