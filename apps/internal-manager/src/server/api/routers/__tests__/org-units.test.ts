@@ -107,10 +107,13 @@ describe("orgUnitsRouter", () => {
     await expect(
       caller.updateParent({ orgUnitId: "child", parentId: "parent" }),
     ).resolves.toStrictEqual({ id: "child", path: "/parent/department:child" });
-    expect(update).toHaveBeenNthCalledWith(1, {
-      where: { id: "child" },
-      data: { parentId: "parent", path: "/parent/department:child" },
-    });
+    expect(update).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: { id: "child" },
+        data: { parentId: "parent", path: "/parent/department:child" },
+      }),
+    );
     expect(executeRaw).toHaveBeenCalledTimes(1);
   });
 
@@ -136,10 +139,12 @@ describe("orgUnitsRouter", () => {
     await expect(
       caller.updateParent({ orgUnitId: "child", parentId: null }),
     ).resolves.toStrictEqual({ id: "child", path: "/manual:child" });
-    expect(update).toHaveBeenCalledWith({
-      where: { id: "child" },
-      data: { parentId: null, path: "/manual:child" },
-    });
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "child" },
+        data: { parentId: null, path: "/manual:child" },
+      }),
+    );
     expect(executeRaw).toHaveBeenCalledTimes(1);
   });
 

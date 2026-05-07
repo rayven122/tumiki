@@ -92,6 +92,7 @@ const depthPaddingClass: Partial<Record<number, string>> = {
 };
 
 const ROOT_ORG_PARENT_KEY = "__root__";
+const GROUP_DISPLAY_LIMIT = 200;
 const tabLabel = {
   organizations: "組織",
   groups: "グループ",
@@ -172,7 +173,11 @@ export const DirectoryManagementPanel = ({
   });
 
   const orgUnits = orgUnitsQuery.data ?? [];
-  const groups = groupsQuery.data ?? [];
+  const rawGroups = groupsQuery.data ?? [];
+  const hasMoreGroups = rawGroups.length > GROUP_DISPLAY_LIMIT;
+  const groups = hasMoreGroups
+    ? rawGroups.slice(0, GROUP_DISPLAY_LIMIT)
+    : rawGroups;
   const activeUsers = usersQuery.data ?? [];
   const isLoading =
     orgUnitsQuery.isLoading || groupsQuery.isLoading || usersQuery.isLoading;
@@ -577,8 +582,11 @@ export const DirectoryManagementPanel = ({
     }
   };
 
-  const handleRemoveMember = (membershipId: string) => {
-    if (readonly || isMutating) return;
+  const handleRemoveMember = (
+    membershipId: string,
+    memberReadonly: boolean,
+  ) => {
+    if (readonly || memberReadonly || isMutating) return;
     if (selectedKind === "org") {
       removeOrgMember.mutate({ membershipId });
       return;
@@ -791,6 +799,12 @@ export const DirectoryManagementPanel = ({
                 );
               })
             )}
+            {activeTab === "groups" && hasMoreGroups ? (
+              <div className="border-border-subtle bg-bg-active text-text-muted mt-2 rounded-lg border px-3 py-2 text-[10px]">
+                グループが{GROUP_DISPLAY_LIMIT}
+                件を超えています。検索条件を絞り込んでください。
+              </div>
+            ) : null}
           </div>
         </aside>
 
@@ -1053,7 +1067,9 @@ export const DirectoryManagementPanel = ({
                         <button
                           type="button"
                           aria-label={`${member.name} をメンバーから削除`}
-                          onClick={() => handleRemoveMember(member.id)}
+                          onClick={() =>
+                            handleRemoveMember(member.id, member.readonly)
+                          }
                           disabled={member.readonly || isMutating}
                           className="text-text-muted flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-30"
                         >

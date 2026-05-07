@@ -178,9 +178,12 @@ export const orgUnitsRouter = createTRPCRouter({
             parentId: input.parentId,
             path: newPath,
           },
+          select: orgUnitSelect,
         });
 
-        await updateDescendantOrgUnitPaths(tx, current.path, newPath);
+        if (current.path !== newPath) {
+          await updateDescendantOrgUnitPaths(tx, current.path, newPath);
+        }
 
         return updated;
       });
@@ -288,7 +291,9 @@ export const orgUnitsRouter = createTRPCRouter({
           select: orgUnitSelect,
         });
 
-        await updateDescendantOrgUnitPaths(tx, current.path, newPath);
+        if (current.path !== newPath) {
+          await updateDescendantOrgUnitPaths(tx, current.path, newPath);
+        }
 
         return updated;
       });
