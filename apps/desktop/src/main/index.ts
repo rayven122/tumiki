@@ -42,8 +42,13 @@ import { ensureNodeShim } from "./runtime/path-resolver";
 // Cursor など親プロセス（Electron アプリ）が子プロセスへ ELECTRON_RUN_AS_NODE=1 を継承
 // させたケース対応。Electron が Node モードで起動すると `import { app } from "electron"` が
 // undefined になり、後段の app.whenReady() で TypeError になる。
-// env を除いて自身を Electron 主プロセスとして再起動し、その結果コードで終了する。
-// 親（MCPクライアント）から見れば、stdio を継承した単一の長時間プロセスに見える。
+// env から ELECTRON_RUN_AS_NODE を除いて自身を Electron 主プロセスとして再起動し、
+// その結果コードで終了する。親（MCPクライアント）から見れば、stdio を継承した単一の
+// 長時間プロセスに見える。
+//
+// ⚠️ 重要: このガードより上にある import がモジュール評価時に Electron API を呼び出して
+// はならない。ES Module の仕様上、import はガードより先に評価されるため、Node モードで
+// 起動した瞬間にクラッシュする。新規 import 追加時は注意すること。
 if (!app) {
   const cleanEnv = { ...process.env };
   delete cleanEnv.ELECTRON_RUN_AS_NODE;
@@ -56,7 +61,10 @@ if (!app) {
       `[tumiki-desktop] Electron 再起動に失敗しました: ${result.error.message}\n`,
     );
   }
-  process.exit(result.status ?? 1);
+  // シグナル終了（SIGTERM 等）の場合 result.status は null になる。
+  // 正常シャットダウンを exit code 1 として親に伝えると誤検知の原因になるため、
+  // signal 起因なら 0、それ以外（クラッシュ）は 1 にフォールバック。
+  process.exit(result.status ?? (result.signal ? 0 : 1));
 }
 
 // --mcp-proxy モード: GUI不要、stdioでMCPプロキシとして動作
