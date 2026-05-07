@@ -135,6 +135,7 @@ export const ToolCatalog = (): JSX.Element => {
         setCachedOAuthClient(cachedClient);
         setDcrPrefill(true);
       } else {
+        setCachedOAuthClient(null);
         setDcrPrefill(false);
       }
     } else {
