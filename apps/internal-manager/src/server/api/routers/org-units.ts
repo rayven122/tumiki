@@ -84,7 +84,7 @@ const updateDescendantOrgUnitPaths = async (
   await tx.$executeRaw`
     UPDATE "OrgUnit"
     SET
-      "path" = ${newPath} || substring("path" from ${(currentPath.length + 1).toString()}::integer),
+      "path" = ${newPath} || substring("path" from ${currentPath.length + 1}),
       "updatedAt" = NOW()
     WHERE "path" LIKE ${`${escapeLikePattern(currentPath)}/%`} ESCAPE ${"\\"}
   `;
@@ -194,35 +194,37 @@ export const orgUnitsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const parent = input.parentId
-        ? await ctx.db.orgUnit.findUnique({
-            where: { id: input.parentId },
-            select: { id: true, path: true, source: true },
-          })
-        : null;
-      if (input.parentId && !parent) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "親部署が見つかりません",
-        });
-      }
-      if (parent && parent.source !== OrgUnitSource.MANUAL) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "SCIM/IdP由来の部署配下には作成できません",
-        });
-      }
+      return ctx.db.$transaction(async (tx) => {
+        const parent = input.parentId
+          ? await tx.orgUnit.findUnique({
+              where: { id: input.parentId },
+              select: { id: true, path: true, source: true },
+            })
+          : null;
+        if (input.parentId && !parent) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "親部署が見つかりません",
+          });
+        }
+        if (parent && parent.source !== OrgUnitSource.MANUAL) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "SCIM/IdP由来の部署配下には作成できません",
+          });
+        }
 
-      const externalId = `manual:${randomUUID()}`;
-      return ctx.db.orgUnit.create({
-        data: {
-          name: input.name,
-          externalId,
-          source: OrgUnitSource.MANUAL,
-          parentId: parent?.id ?? null,
-          path: buildPath(parent?.path ?? null, externalId),
-        },
-        select: orgUnitSelect,
+        const externalId = `manual:${randomUUID()}`;
+        return tx.orgUnit.create({
+          data: {
+            name: input.name,
+            externalId,
+            source: OrgUnitSource.MANUAL,
+            parentId: parent?.id ?? null,
+            path: buildPath(parent?.path ?? null, externalId),
+          },
+          select: orgUnitSelect,
+        });
       });
     }),
 

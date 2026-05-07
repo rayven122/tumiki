@@ -307,22 +307,23 @@ export const DirectoryManagementPanel = ({
     removeGroupMember.isPending;
 
   useEffect(() => {
-    if (selectedEntry) {
-      const exists =
-        selectedEntry.kind === "org"
-          ? orgUnits.some((org) => org.id === selectedEntry.id)
-          : groups.some((group) => group.id === selectedEntry.id);
-      if (exists) return;
-    }
+    setSelectedEntry((currentEntry) => {
+      if (currentEntry) {
+        const exists =
+          currentEntry.kind === "org"
+            ? orgUnits.some((org) => org.id === currentEntry.id)
+            : groups.some((group) => group.id === currentEntry.id);
+        if (exists) return currentEntry;
+      }
 
-    if (activeTab === "organizations") {
-      const first = orgUnits[0];
-      setSelectedEntry(first ? { kind: "org", id: first.id } : null);
-      return;
-    }
-    const first = groups[0];
-    setSelectedEntry(first ? { kind: "group", id: first.id } : null);
-  }, [activeTab, groups, orgUnits, selectedEntry]);
+      if (activeTab === "organizations") {
+        const first = orgUnits[0];
+        return first ? { kind: "org", id: first.id } : null;
+      }
+      const first = groups[0];
+      return first ? { kind: "group", id: first.id } : null;
+    });
+  }, [activeTab, groups, orgUnits]);
 
   const selectedItem = selectedEntry
     ? selectedEntry.kind === "org"

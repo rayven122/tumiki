@@ -428,7 +428,10 @@ describe("groupsRouter", () => {
       const del = vi.fn().mockResolvedValue({ id: "group-001" });
       const caller = buildTransactionCaller({
         group: {
-          findUnique: vi.fn().mockResolvedValue({ source: GroupSource.TUMIKI }),
+          findUnique: vi.fn().mockResolvedValue({
+            source: GroupSource.TUMIKI,
+            _count: { memberships: 0 },
+          }),
           delete: del,
         },
       });
@@ -440,6 +443,25 @@ describe("groupsRouter", () => {
         where: { id: "group-001" },
         select: { id: true },
       });
+    });
+
+    test("メンバーが残るTumiki独自グループは削除できない", async () => {
+      const del = vi.fn();
+      const caller = buildTransactionCaller({
+        group: {
+          findUnique: vi.fn().mockResolvedValue({
+            source: GroupSource.TUMIKI,
+            _count: { memberships: 1 },
+          }),
+          delete: del,
+        },
+      });
+
+      await expectTrpcErrorCode(
+        caller.deleteTumikiGroup({ groupId: "group-001" }),
+        "BAD_REQUEST",
+      );
+      expect(del).not.toHaveBeenCalled();
     });
 
     test("IdPグループは削除できない", async () => {

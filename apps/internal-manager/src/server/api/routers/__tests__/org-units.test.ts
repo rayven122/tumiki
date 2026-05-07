@@ -48,6 +48,22 @@ beforeEach(() => {
 });
 
 describe("orgUnitsRouter", () => {
+  test("treeは部署ツリーをpath順で取得する", async () => {
+    const findMany = vi.fn().mockResolvedValue([]);
+    const caller = buildCaller({
+      orgUnit: { findMany },
+    } as unknown as Context["db"]);
+
+    await expect(caller.tree()).resolves.toStrictEqual([]);
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: expect.any(Object) as object,
+        orderBy: [{ path: "asc" }, { name: "asc" }],
+        take: 1000,
+      }),
+    );
+  });
+
   test("listUsersは取得上限を設定する", async () => {
     const findMany = vi.fn().mockResolvedValue([]);
     const caller = buildCaller({
@@ -259,7 +275,7 @@ describe("orgUnitsRouter", () => {
       memberships: [],
       permissions: [],
     });
-    const caller = buildCaller({
+    const caller = buildTransactionCaller({
       orgUnit: {
         findUnique: vi.fn().mockResolvedValue({
           id: "parent",
@@ -268,7 +284,7 @@ describe("orgUnitsRouter", () => {
         }),
         create,
       },
-    } as unknown as Context["db"]);
+    });
 
     await expect(
       caller.createManualOrgUnit({ name: " AI推進室 ", parentId: "parent" }),
@@ -294,12 +310,12 @@ describe("orgUnitsRouter", () => {
 
   test("createManualOrgUnitは存在しない親をNOT_FOUNDにする", async () => {
     const create = vi.fn();
-    const caller = buildCaller({
+    const caller = buildTransactionCaller({
       orgUnit: {
         findUnique: vi.fn().mockResolvedValue(null),
         create,
       },
-    } as unknown as Context["db"]);
+    });
 
     await expectTrpcErrorCode(
       caller.createManualOrgUnit({ name: "AI推進室", parentId: "missing" }),
@@ -318,11 +334,11 @@ describe("orgUnitsRouter", () => {
       memberships: [],
       permissions: [],
     });
-    const caller = buildCaller({
+    const caller = buildTransactionCaller({
       orgUnit: {
         create,
       },
-    } as unknown as Context["db"]);
+    });
 
     await expect(
       caller.createManualOrgUnit({ name: "AI推進室" }),
@@ -347,7 +363,7 @@ describe("orgUnitsRouter", () => {
 
   test("createManualOrgUnitはSCIM部署配下に作成できない", async () => {
     const create = vi.fn();
-    const caller = buildCaller({
+    const caller = buildTransactionCaller({
       orgUnit: {
         findUnique: vi.fn().mockResolvedValue({
           id: "scim-parent",
@@ -356,7 +372,7 @@ describe("orgUnitsRouter", () => {
         }),
         create,
       },
-    } as unknown as Context["db"]);
+    });
 
     await expectTrpcErrorCode(
       caller.createManualOrgUnit({ name: "AI推進室", parentId: "scim-parent" }),

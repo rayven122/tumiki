@@ -206,9 +206,15 @@ export const groupsRouter = createTRPCRouter({
       return ctx.db.$transaction(async (tx) => {
         const group = await tx.group.findUnique({
           where: { id: input.groupId },
-          select: { source: true },
+          select: { source: true, _count: { select: { memberships: true } } },
         });
         assertTumikiGroup(group);
+        if (group._count.memberships > 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "メンバーが残っているグループは削除できません",
+          });
+        }
 
         return tx.group.delete({
           where: { id: input.groupId },
