@@ -93,7 +93,7 @@ export const ToolCatalog = (): JSX.Element => {
     loadCatalogs();
   }, [loadCatalogs]);
 
-  // OAuth 直接フロー用のグローバルリスナー（AddMcpModal が開いている時は内部リスナーに任せる）
+  // OAuth グローバルリスナー（AddMcpModal が開いていない時のフォールバック）
   useEffect(() => {
     const unsubSuccess = window.electronAPI.oauth.onOAuthSuccess((result) => {
       if (modalOpenRef.current) return;
@@ -339,7 +339,7 @@ export const ToolCatalog = (): JSX.Element => {
                   <div className="mb-3 line-clamp-2 text-[10px] leading-relaxed text-[var(--text-subtle)]">
                     {item.description}
                   </div>
-                  {/* 追加ボタン（OAuth は直接認証、それ以外はモーダル） */}
+                  {/* 追加ボタン */}
                   <button
                     type="button"
                     onClick={() => void handleAddClick(item)}
