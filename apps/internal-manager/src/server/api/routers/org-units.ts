@@ -122,7 +122,7 @@ export const orgUnitsRouter = createTRPCRouter({
       });
     }),
 
-  // Retained for callers that only move a manual org unit without renaming it.
+  // 名称変更を伴わず親のみ移動する既存呼び出し元のために残す
   updateParent: adminProcedure
     .input(
       z.object({

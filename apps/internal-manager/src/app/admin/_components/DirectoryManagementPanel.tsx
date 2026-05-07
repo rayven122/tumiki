@@ -411,7 +411,7 @@ export const DirectoryManagementPanel = ({
           userId: membership.user.id,
           name: getUserLabel(membership.user),
           email: membership.user.email ?? "—",
-          // Org memberships do not carry their own source in the current schema.
+          // 現スキーマではOrgUnitメンバーシップ自体にsourceが存在しないため、親OrgUnitのsourceを使用する。
           source: (selectedItem as OrgUnit).source,
           readonly,
           isPrimary: membership.isPrimary,

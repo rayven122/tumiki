@@ -528,6 +528,27 @@ describe("orgUnitsRouter", () => {
     expect(del).not.toHaveBeenCalled();
   });
 
+  test("deleteManualOrgUnitはSCIM部署を削除できない", async () => {
+    const del = vi.fn();
+    const tx = {
+      orgUnit: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: "scim-org",
+          source: OrgUnitSource.SCIM,
+          _count: { children: 0 },
+        }),
+        delete: del,
+      },
+    };
+    const caller = buildTransactionCaller(tx);
+
+    await expectTrpcErrorCode(
+      caller.deleteManualOrgUnit({ orgUnitId: "scim-org" }),
+      "BAD_REQUEST",
+    );
+    expect(del).not.toHaveBeenCalled();
+  });
+
   test("deleteManualOrgUnitは手動部署を削除できる", async () => {
     const del = vi.fn().mockResolvedValue({ id: "manual-org" });
     const tx = {

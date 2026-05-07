@@ -311,7 +311,7 @@ export const groupsRouter = createTRPCRouter({
       });
     }),
 
-  // Retained for callers that only update IdP mapping without changing display fields.
+  // 表示フィールドを変更せず IdP mapping のみ更新する既存呼び出し元のために残す
   updateIdpMapping: adminProcedure
     .input(
       z.object({
