@@ -64,7 +64,7 @@
 3. 既存 `~/tumiki/.env` と差分があれば置き換え（権限 600）
 4. `docker compose -f compose.production.yaml up -d` で env 変更を検知したコンテナだけ recreate
 
-`infisical login` 済みのセッションを利用するため、追加の Machine Identity 発行は不要。`infisical login` のトークンが期限切れになった場合は再ログインが必要（journal にエラーが出る）。
+認証は **Machine Identity (Universal Auth)** を使用。Client ID / Secret は `/etc/infisical/agent.env` に保存され（`root:ubuntu` 0640）、systemd unit の `EnvironmentFile=` 経由でスクリプトに注入される。スクリプトは毎回 access token を新規発行して使い切るため、token TTL の影響を受けない。
 
 ### image 自動更新（Watchtower）
 
@@ -114,15 +114,45 @@ sudo apt-get install -y docker-compose-plugin
 # 反映のため一度ログアウトして入り直す
 ```
 
-### 2. Infisical CLI 認証確認
+### 2. Infisical Machine Identity の発行と配置
+
+systemd timer は非対話セッションで動くため、ユーザーの `infisical login` セッション
+ではなく **Machine Identity (Universal Auth)** を使う。
+
+#### 2.1 Identity を発行（Web UI）
+
+1. Infisical Web (`https://secrets.rayven.cloud`) → `tumiki` プロジェクト → **Access Control → Machine Identities → Create**
+2. **Auth Method**: `Universal Auth` を選択
+3. Allowed IP: 本番 VM の egress IP（不明なら `0.0.0.0/0` で発行 → 後で絞る）
+4. **Client ID** と **Client Secret** を控える（Secret は発行直後のみ表示）
+5. 同プロジェクトの **Access Control → Identity Members** に identity を追加し、`prod` 環境への **Read 権限**を付与（最小権限）
+
+#### 2.2 認証情報を VM に配置
 
 ```bash
 ssh tumiki-sakura-prod
-infisical user        # 認証済みかチェック
-infisical export --env=prod --path=/ --format=dotenv | head  # 出力できるか確認
+sudo mkdir -p /etc/infisical
+sudo install -m 0640 -o root -g ubuntu /dev/stdin /etc/infisical/agent.env <<EOF
+INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<貼り付け>
+INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<貼り付け>
+INFISICAL_API_URL=https://secrets.rayven.cloud
+INFISICAL_PROJECT_ID=<tumiki プロジェクトの UUID>
+EOF
+
+# 権限確認 (-rw-r----- 1 root ubuntu)
+ls -la /etc/infisical/agent.env
+
+# 動作テスト
+set -a; source /etc/infisical/agent.env; set +a
+TOKEN=$(infisical login --method=universal-auth \
+  --client-id="$INFISICAL_UNIVERSAL_AUTH_CLIENT_ID" \
+  --client-secret="$INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET" \
+  --plain --silent)
+infisical export --env=prod --path=/ --format=dotenv \
+  --projectId="$INFISICAL_PROJECT_ID" --token="$TOKEN" | wc -l
 ```
 
-未認証なら `infisical login` を実行し、`tumiki` プロジェクトの `prod` 環境にアクセスできるアカウントでログインする。
+`> 0` 行が出ればOK。`Project ID is required when using machine identity` が出る場合は `INFISICAL_PROJECT_ID` の確認、`Invalid credentials` の場合は `INFISICAL_API_URL` または client-id/secret を見直す。
 
 ### 3. ディレクトリ・compose 配置
 
