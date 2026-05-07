@@ -14,18 +14,26 @@ import {
   Plug,
 } from "lucide-react";
 import { themeAtom } from "../store/atoms";
-import { MCP_CLI_COMMAND } from "../data/mock";
 import { AI_CLIENTS, type AiClient } from "../data/ai-clients";
+import { useMcpProxyLaunchCommand } from "../hooks/useMcpProxyLaunchCommand";
+import { buildMcpSnippet } from "../utils/mcp-snippet";
 import type {
   McpServerDetailItem,
   McpToolItem,
   AuditLogItem,
 } from "../../main/types";
-import { statusBadge, cardStyle, selectStyle } from "../utils/theme-styles";
+import { statusBadge, cardStyle } from "../utils/theme-styles";
 import { ClientLogo } from "../_components/ClientLogo";
 import { ToggleSwitch } from "../_components/ToggleSwitch";
 import { AiClientInstallModal } from "../_components/AiClientInstallModal";
 import { toast } from "../_components/Toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../_components/Select";
 
 /** MCPサーバーステータスバッジの表示定義 */
 const serverStatusBadge: Record<
@@ -53,21 +61,19 @@ const serverStatusBadge: Record<
 /** 監査ログ1ページあたりの件数 */
 const AUDIT_LOG_LIMIT = 20;
 
-/** 機能設定トグルの永続化キー（サーバーごと） */
+/**
+ * 機能設定トグル（dynamicSearch のみ）の localStorage 永続化キー。
+ * masking / compression(TOON) は DB 永続化のため対象外。
+ */
 const FEATURE_SETTINGS_KEY = (serverId: number): string =>
   `tumiki:server:${serverId}:features`;
-
-/** サンプル表示用: リクエスト/レスポンスプレビューを持つ拡張ログ型 */
-type DisplayAuditLog = AuditLogItem & {
-  requestPreview?: string;
-  responsePreview?: string;
-};
 
 /** 提供ツール表示用の拡張型（connectionName を含む） */
 type DisplayTool = McpToolItem & { connectionName: string };
 
-/** サンプルツール（allTools が空のときの表示用、id は負数でサンプル識別） */
-const sampleTimestamp = new Date().toISOString();
+// サンプルツール（allTools が空のときの表示用、id は負数でサンプル識別）
+// タイムスタンプは固定値（モジュールロード時の副作用回避のため）
+const SAMPLE_TIMESTAMP = "2026-01-01T00:00:00.000Z";
 const SAMPLE_TOOLS: DisplayTool[] = [
   {
     id: -1,
@@ -79,8 +85,8 @@ const SAMPLE_TOOLS: DisplayTool[] = [
     customDescription: null,
     isAllowed: true,
     connectionId: 0,
-    createdAt: sampleTimestamp,
-    updatedAt: sampleTimestamp,
+    createdAt: SAMPLE_TIMESTAMP,
+    updatedAt: SAMPLE_TIMESTAMP,
     connectionName: "sample",
   },
   {
@@ -92,8 +98,8 @@ const SAMPLE_TOOLS: DisplayTool[] = [
     customDescription: null,
     isAllowed: true,
     connectionId: 0,
-    createdAt: sampleTimestamp,
-    updatedAt: sampleTimestamp,
+    createdAt: SAMPLE_TIMESTAMP,
+    updatedAt: SAMPLE_TIMESTAMP,
     connectionName: "sample",
   },
   {
@@ -106,8 +112,8 @@ const SAMPLE_TOOLS: DisplayTool[] = [
     customDescription: null,
     isAllowed: false,
     connectionId: 0,
-    createdAt: sampleTimestamp,
-    updatedAt: sampleTimestamp,
+    createdAt: SAMPLE_TIMESTAMP,
+    updatedAt: SAMPLE_TIMESTAMP,
     connectionName: "sample",
   },
   {
@@ -120,8 +126,8 @@ const SAMPLE_TOOLS: DisplayTool[] = [
     customDescription: null,
     isAllowed: true,
     connectionId: 0,
-    createdAt: sampleTimestamp,
-    updatedAt: sampleTimestamp,
+    createdAt: SAMPLE_TIMESTAMP,
+    updatedAt: SAMPLE_TIMESTAMP,
     connectionName: "sample",
   },
   {
@@ -134,8 +140,8 @@ const SAMPLE_TOOLS: DisplayTool[] = [
     customDescription: null,
     isAllowed: true,
     connectionId: 0,
-    createdAt: sampleTimestamp,
-    updatedAt: sampleTimestamp,
+    createdAt: SAMPLE_TIMESTAMP,
+    updatedAt: SAMPLE_TIMESTAMP,
     connectionName: "sample",
   },
   {
@@ -147,8 +153,8 @@ const SAMPLE_TOOLS: DisplayTool[] = [
     customDescription: null,
     isAllowed: true,
     connectionId: 0,
-    createdAt: sampleTimestamp,
-    updatedAt: sampleTimestamp,
+    createdAt: SAMPLE_TIMESTAMP,
+    updatedAt: SAMPLE_TIMESTAMP,
     connectionName: "sample",
   },
   {
@@ -161,8 +167,8 @@ const SAMPLE_TOOLS: DisplayTool[] = [
     customDescription: null,
     isAllowed: true,
     connectionId: 0,
-    createdAt: sampleTimestamp,
-    updatedAt: sampleTimestamp,
+    createdAt: SAMPLE_TIMESTAMP,
+    updatedAt: SAMPLE_TIMESTAMP,
     connectionName: "sample",
   },
   {
@@ -175,211 +181,18 @@ const SAMPLE_TOOLS: DisplayTool[] = [
     customDescription: null,
     isAllowed: false,
     connectionId: 0,
-    createdAt: sampleTimestamp,
-    updatedAt: sampleTimestamp,
+    createdAt: SAMPLE_TIMESTAMP,
+    updatedAt: SAMPLE_TIMESTAMP,
     connectionName: "sample",
   },
 ];
 
-/** 操作履歴のサンプルデータ（auditLogs が空のときの表示用） */
-const SAMPLE_AUDIT_LOGS: DisplayAuditLog[] = [
-  {
-    id: -1,
-    toolName: "push_text_message",
-    method: "tools/call",
-    transportType: "STREAMABLE_HTTP",
-    durationMs: 123,
-    inputBytes: 256,
-    outputBytes: 512,
-    isSuccess: true,
-    errorCode: null,
-    errorSummary: null,
-    detail: "to=U12345...",
-    createdAt: new Date(Date.now() - 1000 * 60 * 2).toISOString(),
-    serverId: 0,
-    connectionName: null,
-    clientName: "Claude Desktop",
-    clientVersion: "0.12.3",
-    piiDetections: null,
-    piiPolicy: null,
-    requestPreview: `{"to":"U1234567890abc","text":"お知らせです。"}`,
-    responsePreview: `{"success":true,"messageId":"msg_01HX..."}`,
-  },
-  {
-    id: -2,
-    toolName: "broadcast_flex_message",
-    method: "tools/call",
-    transportType: "STREAMABLE_HTTP",
-    durationMs: 412,
-    inputBytes: 1024,
-    outputBytes: 256,
-    isSuccess: true,
-    errorCode: null,
-    errorSummary: null,
-    detail: null,
-    createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-    serverId: 0,
-    connectionName: null,
-    clientName: "Cursor",
-    clientVersion: "0.42.0",
-    piiDetections: null,
-    piiPolicy: null,
-    requestPreview: `{"altText":"今週のお知らせ","contents":{"type":"bubble",...}}`,
-    responsePreview: `{"success":true,"recipientCount":1245}`,
-  },
-  {
-    id: -3,
-    toolName: "get_profile",
-    method: "tools/call",
-    transportType: "STREAMABLE_HTTP",
-    durationMs: 89,
-    inputBytes: 64,
-    outputBytes: 384,
-    isSuccess: true,
-    errorCode: null,
-    errorSummary: null,
-    detail: "userId=U987...",
-    createdAt: new Date(Date.now() - 1000 * 60 * 32).toISOString(),
-    serverId: 0,
-    connectionName: null,
-    clientName: "Claude Code",
-    clientVersion: "1.2.0",
-    piiDetections: null,
-    piiPolicy: null,
-    requestPreview: `{"userId":"U987654321xyz"}`,
-    responsePreview: `{"displayName":"Tumiki User","pictureUrl":"https://..."}`,
-  },
-  {
-    id: -4,
-    toolName: "delete_rich_menu",
-    method: "tools/call",
-    transportType: "STREAMABLE_HTTP",
-    durationMs: 240,
-    inputBytes: 128,
-    outputBytes: 64,
-    isSuccess: false,
-    errorCode: -32603,
-    errorSummary: "Rich menu not found",
-    detail: null,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-    serverId: 0,
-    connectionName: null,
-    clientName: "Claude Desktop",
-    clientVersion: "0.12.3",
-    piiDetections: null,
-    piiPolicy: null,
-    requestPreview: `{"richMenuId":"richmenu-abc123"}`,
-    responsePreview: `{"error":{"code":-32603,"message":"Rich menu not found"}}`,
-  },
-  {
-    id: -5,
-    toolName: "tools/list",
-    method: "tools/list",
-    transportType: "STREAMABLE_HTTP",
-    durationMs: 45,
-    inputBytes: 0,
-    outputBytes: 2048,
-    isSuccess: true,
-    errorCode: null,
-    errorSummary: null,
-    detail: null,
-    createdAt: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
-    serverId: 0,
-    connectionName: null,
-    clientName: "Cursor",
-    clientVersion: "0.42.0",
-    piiDetections: null,
-    piiPolicy: null,
-    requestPreview: `{}`,
-    responsePreview: `{"tools":[{"name":"push_text_message",...},...]}`,
-  },
-  {
-    id: -6,
-    toolName: "get_message_quota",
-    method: "tools/call",
-    transportType: "STREAMABLE_HTTP",
-    durationMs: 156,
-    inputBytes: 32,
-    outputBytes: 192,
-    isSuccess: true,
-    errorCode: null,
-    errorSummary: null,
-    detail: null,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
-    serverId: 0,
-    connectionName: null,
-    clientName: "Windsurf",
-    clientVersion: "1.0.5",
-    piiDetections: null,
-    piiPolicy: null,
-    requestPreview: `{}`,
-    responsePreview: `{"totalLimit":500000,"used":12453,"remaining":487547}`,
-  },
-  ...Array.from({ length: 24 }, (_, i): DisplayAuditLog => {
-    const clients = [
-      "Claude Desktop",
-      "Cursor",
-      "Claude Code",
-      "Windsurf",
-      "Cline",
-      "VS Code",
-      "Zed",
-      "Continue",
-    ] as const;
-    const tools = [
-      "search_documents",
-      "read_file",
-      "list_directory",
-      "execute_query",
-      "create_issue",
-      "send_notification",
-      "get_message_quota",
-      "push_text_message",
-      "broadcast_text_message",
-      "tools/list",
-    ] as const;
-    const client = clients[i % clients.length] ?? clients[0];
-    const toolName = tools[i % tools.length] ?? tools[0];
-    const success = i % 7 !== 0;
-    const minutesAgo = 60 * 4 + i * 37;
-    const inputBytes = 64 + ((i * 53) % 1024);
-    const outputBytes = 128 + ((i * 91) % 2048);
-    return {
-      id: -100 - i,
-      toolName,
-      method: toolName.includes("/") ? toolName : "tools/call",
-      transportType: "STREAMABLE_HTTP",
-      durationMs: 40 + ((i * 31) % 520),
-      inputBytes,
-      outputBytes,
-      isSuccess: success,
-      errorCode: success ? null : -32000,
-      errorSummary: success ? null : "Simulated timeout",
-      detail: success ? null : "upstream timed out",
-      createdAt: new Date(Date.now() - 1000 * 60 * minutesAgo).toISOString(),
-      serverId: 0,
-      connectionName: null,
-      clientName: client,
-      clientVersion: "0.0.0",
-      piiDetections: null,
-      piiPolicy: null,
-      requestPreview: `{"index":${i},"tool":"${toolName}"}`,
-      responsePreview: success
-        ? `{"success":true,"bytes":${outputBytes}}`
-        : `{"error":{"code":-32000,"message":"Simulated timeout"}}`,
-    };
-  }),
-];
-
+// masking / compression(TOON) は DB に永続化するため、本型からは除外
 type FeatureSettings = {
-  masking: boolean;
-  compression: boolean;
   dynamicSearch: boolean;
 };
 
 const DEFAULT_FEATURE_SETTINGS: FeatureSettings = {
-  masking: false,
-  compression: false,
   dynamicSearch: false,
 };
 
@@ -398,7 +211,11 @@ export const ToolDetail = (): JSX.Element => {
     {},
   );
 
-  // 機能設定トグル（localStorage 永続化、バックエンド未実装）
+  // PII マスキング: DB 永続化（McpServer.isPiiMaskingEnabled）。初期値は getDetail 取得後に上書き
+  const [maskingEnabled, setMaskingEnabled] = useState(true);
+  // レスポンス圧縮（TOON 変換）: DB 永続化（McpServer.isToonConversionEnabled）。初期値は getDetail 取得後に上書き
+  const [compressionEnabled, setCompressionEnabled] = useState(false);
+  // dynamicSearch: localStorage 永続化（バックエンド未実装、別 Issue で対応予定）
   const [featureSettings, setFeatureSettings] = useState<FeatureSettings>(
     DEFAULT_FEATURE_SETTINGS,
   );
@@ -408,6 +225,9 @@ export const ToolDetail = (): JSX.Element => {
 
   // 接続先AIサイドバーから選択中のクライアント
   const [selectedClient, setSelectedClient] = useState<AiClient | null>(null);
+
+  // MCP プロキシ起動コマンド（接続スニペット生成に利用）
+  const launchCommand = useMcpProxyLaunchCommand();
 
   // 監査ログ（実データ）
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
@@ -443,6 +263,8 @@ export const ToolDetail = (): JSX.Element => {
             }
           }
           setToolAllowedMap(initialMap);
+          setMaskingEnabled(detail.isPiiMaskingEnabled);
+          setCompressionEnabled(detail.isToonConversionEnabled);
         }
       })
       .catch(() => setServer(null))
@@ -480,6 +302,48 @@ export const ToolDetail = (): JSX.Element => {
       // localStorage 書き込み失敗時は state のみ更新
     }
   };
+
+  // PII マスキング切替: DB 更新（即時反映）。実プロキシへは次回 spawn 時に反映されるため
+  // ユーザーへ「再起動後に反映」を案内する。失敗時は state をロールバック。
+  const updateMasking = useCallback(
+    (value: boolean): void => {
+      const previous = maskingEnabled;
+      setMaskingEnabled(value);
+      window.electronAPI.mcp
+        .updatePiiMasking({ serverId, enabled: value })
+        .then(() => {
+          toast.success(
+            "マスキング設定を更新しました。MCPサーバーの再起動後に反映されます",
+          );
+        })
+        .catch(() => {
+          setMaskingEnabled(previous);
+          toast.error("マスキング設定の更新に失敗しました");
+        });
+    },
+    [maskingEnabled, serverId],
+  );
+
+  // レスポンス圧縮（TOON 変換）切替: DB 更新（即時反映）。実プロキシへは次回 spawn 時に反映される。
+  // 失敗時は state をロールバックして元に戻す。
+  const updateCompression = useCallback(
+    (value: boolean): void => {
+      const previous = compressionEnabled;
+      setCompressionEnabled(value);
+      window.electronAPI.mcp
+        .updateToonConversion({ serverId, enabled: value })
+        .then(() => {
+          toast.success(
+            "レスポンス圧縮設定を更新しました。MCPサーバーの再起動後に反映されます",
+          );
+        })
+        .catch(() => {
+          setCompressionEnabled(previous);
+          toast.error("レスポンス圧縮設定の更新に失敗しました");
+        });
+    },
+    [compressionEnabled, serverId],
+  );
 
   // ツール on/off（即時反映、失敗時はロールバック。サンプルID は IPC スキップ）
   const toggleTool = (toolId: number, isAllowed: boolean): void => {
@@ -579,19 +443,11 @@ export const ToolDetail = (): JSX.Element => {
 
   /** 選択クライアント向けの MCP 設定 JSON スニペット生成 */
   const buildConfigSnippet = (): string => {
-    const parts = MCP_CLI_COMMAND.split(" ");
-    return JSON.stringify(
-      {
-        mcpServers: {
-          [server.slug]: {
-            command: parts[0] ?? "npx",
-            args: [...parts.slice(1), "--server", server.slug],
-          },
-        },
-      },
-      null,
-      2,
-    );
+    if (!launchCommand) return "起動コマンドを取得中...";
+    // claude-code のみ .mcp.json 直下にサーバー名キーを置く形式、その他は mcpServers でラップする形式
+    const format =
+      selectedClient?.id === "claude-code" ? "claude-code" : "cursor";
+    return buildMcpSnippet(launchCommand, server.slug, format, true);
   };
   const filteredTools = baseTools.filter((t) => {
     const q = toolQuery.trim().toLowerCase();
@@ -616,8 +472,8 @@ export const ToolDetail = (): JSX.Element => {
       </Link>
 
       {/* 2カラムレイアウト: メインコンテンツ + 右サイドバー（接続先AI） 高さ合わせ、両側スクロール可 */}
-      <div className="mt-4 flex max-h-[calc(100vh-10rem)] items-stretch gap-4">
-        <div className="flex min-w-0 flex-1 flex-col gap-4">
+      <div className="mt-4 flex max-h-[calc(100vh-10rem)] min-h-0 items-stretch gap-4">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
           {/* ヘッダーカード: サーバー概要 + 基本情報 + 機能設定 + 3点リーダー */}
           <div className="rounded-xl p-5" style={cardStyle}>
             {/* 上段: アイコン + 名前 + ステータス + 統計 + 3点リーダー */}
@@ -756,19 +612,42 @@ export const ToolDetail = (): JSX.Element => {
                 機能設定
               </div>
               <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                {/* マスキング / 圧縮(TOON) は DB 永続化（再起動後に反映）、dynamicSearch は localStorage のみ（別 Issue で対応） */}
+                <div
+                  title="機密情報を自動マスクします（再起動後に反映）"
+                  className="flex items-center justify-between gap-2 rounded-lg bg-[var(--bg-card-hover)] px-3 py-2"
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="shrink-0 text-[var(--text-muted)]">
+                      <EyeOff size={13} />
+                    </span>
+                    <span className="truncate text-xs text-[var(--text-primary)]">
+                      マスキング
+                    </span>
+                  </div>
+                  <ToggleSwitch
+                    checked={maskingEnabled}
+                    onChange={updateMasking}
+                  />
+                </div>
+                <div
+                  title="レスポンスを TOON 形式へ変換しトークン使用量を削減します（再起動後に反映）"
+                  className="flex items-center justify-between gap-2 rounded-lg bg-[var(--bg-card-hover)] px-3 py-2"
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="shrink-0 text-[var(--text-muted)]">
+                      <Archive size={13} />
+                    </span>
+                    <span className="truncate text-xs text-[var(--text-primary)]">
+                      レスポンス圧縮
+                    </span>
+                  </div>
+                  <ToggleSwitch
+                    checked={compressionEnabled}
+                    onChange={updateCompression}
+                  />
+                </div>
                 {[
-                  {
-                    key: "masking" as const,
-                    icon: <EyeOff size={13} />,
-                    label: "マスキング",
-                    desc: "機密情報を自動マスクします",
-                  },
-                  {
-                    key: "compression" as const,
-                    icon: <Archive size={13} />,
-                    label: "レスポンス圧縮",
-                    desc: "トークン使用量を削減します",
-                  },
                   {
                     key: "dynamicSearch" as const,
                     icon: <SearchCode size={13} />,
@@ -801,7 +680,7 @@ export const ToolDetail = (): JSX.Element => {
 
           {/* 提供ツールカード */}
           <div
-            className="flex flex-1 flex-col rounded-xl p-4"
+            className="flex min-h-0 flex-1 flex-col rounded-xl p-4"
             style={cardStyle}
           >
             <div className="mb-2 flex items-center justify-between">
@@ -939,31 +818,32 @@ export const ToolDetail = (): JSX.Element => {
                 className="w-52 rounded-lg border border-[var(--border)] bg-[var(--bg-input)] py-1 pr-2 pl-7 text-xs text-[var(--text-primary)] outline-none placeholder:text-[var(--text-subtle)]"
               />
             </div>
-            <select
+            <Select
               value={statusFilter}
-              onChange={(e) =>
-                setStatusFilter(e.target.value as "all" | "success" | "error")
+              onValueChange={(value) =>
+                setStatusFilter(value as "all" | "success" | "error")
               }
-              className="rounded-lg px-2 py-1 text-xs outline-none"
-              style={selectStyle}
             >
-              <option value="all">すべてのステータス</option>
-              <option value="success">成功</option>
-              <option value="error">エラー</option>
-            </select>
+              <SelectTrigger className="h-7 w-auto px-2 py-1 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">すべてのステータス</SelectItem>
+                <SelectItem value="success">成功</SelectItem>
+                <SelectItem value="error">エラー</SelectItem>
+              </SelectContent>
+            </Select>
             <input
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="rounded-lg px-2 py-1 text-xs outline-none"
-              style={selectStyle}
+              className="rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-2 py-1 text-xs text-[var(--text-secondary)] outline-none"
             />
             <input
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className="rounded-lg px-2 py-1 text-xs outline-none"
-              style={selectStyle}
+              className="rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-2 py-1 text-xs text-[var(--text-secondary)] outline-none"
             />
           </div>
         </div>
@@ -972,49 +852,24 @@ export const ToolDetail = (): JSX.Element => {
         ) : (
           <div className="space-y-2">
             {(() => {
-              const isSample = auditLogs.length === 0;
-              const baseLogs: DisplayAuditLog[] = isSample
-                ? SAMPLE_AUDIT_LOGS
-                : auditLogs;
+              // 自由文フィルタはクライアント側で適用（ページング・件数は API 側）
               const q = logQuery.trim().toLowerCase();
-              const filteredLogs =
+              const displayLogs =
                 q === ""
-                  ? baseLogs
-                  : baseLogs.filter(
+                  ? auditLogs
+                  : auditLogs.filter(
                       (log) =>
                         log.toolName.toLowerCase().includes(q) ||
                         (log.clientName ?? "").toLowerCase().includes(q) ||
-                        (log.detail ?? "").toLowerCase().includes(q) ||
-                        (log.requestPreview ?? "").toLowerCase().includes(q) ||
-                        (log.responsePreview ?? "").toLowerCase().includes(q),
+                        (log.detail ?? "").toLowerCase().includes(q),
                     );
-              // サンプル時はクライアント側でページング、実データ時は API 側でページング済み
-              const displayLogs = isSample
-                ? filteredLogs.slice(
-                    (auditPage - 1) * AUDIT_LOG_LIMIT,
-                    auditPage * AUDIT_LOG_LIMIT,
-                  )
-                : filteredLogs;
-              const effectiveTotalPages = isSample
-                ? Math.max(1, Math.ceil(filteredLogs.length / AUDIT_LOG_LIMIT))
-                : auditTotalPages;
               const goPage = (p: number): void => {
-                if (isSample) {
-                  setAuditPage(p);
-                } else {
-                  void loadAuditLogs(p);
-                }
+                void loadAuditLogs(p);
               };
               const formatBytes = (n: number): string =>
                 n >= 1024 ? `${(n / 1024).toFixed(1)} KB` : `${n} B`;
               return (
                 <>
-                  {isSample && filteredLogs.length > 0 && (
-                    <div className="mb-2 text-[10px] text-[var(--text-subtle)]">
-                      {filteredLogs.length.toLocaleString()}件 （{auditPage} /{" "}
-                      {effectiveTotalPages} ページ）
-                    </div>
-                  )}
                   <div className="overflow-x-auto rounded-lg border border-[var(--border-subtle)]">
                     <table className="w-full text-xs">
                       <thead className="bg-[var(--bg-card-hover)]">
@@ -1050,11 +905,8 @@ export const ToolDetail = (): JSX.Element => {
                               log.isSuccess ? "success" : "error",
                             );
                             const isLast = idx === displayLogs.length - 1;
-                            const requestText =
-                              log.requestPreview ?? formatBytes(log.inputBytes);
-                            const responseText =
-                              log.responsePreview ??
-                              formatBytes(log.outputBytes);
+                            const requestText = formatBytes(log.inputBytes);
+                            const responseText = formatBytes(log.outputBytes);
                             return (
                               <tr
                                 key={log.id}
@@ -1110,11 +962,7 @@ export const ToolDetail = (): JSX.Element => {
                                 </td>
                                 <td className="px-3 py-2 text-right whitespace-nowrap">
                                   <span
-                                    className="inline-block rounded-full px-2 py-0.5 text-[10px] font-medium"
-                                    style={{
-                                      backgroundColor: pill.bg,
-                                      color: pill.text,
-                                    }}
+                                    className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${pill.className}`}
                                   >
                                     {pill.label}
                                   </span>
@@ -1128,7 +976,7 @@ export const ToolDetail = (): JSX.Element => {
                   </div>
 
                   {/* ページネーション */}
-                  {effectiveTotalPages > 1 && (
+                  {auditTotalPages > 1 && (
                     <div className="flex items-center justify-center gap-1 pt-3">
                       <button
                         type="button"
@@ -1138,14 +986,11 @@ export const ToolDetail = (): JSX.Element => {
                       >
                         &lt;
                       </button>
-                      {Array.from(
-                        { length: effectiveTotalPages },
-                        (_, i) => i + 1,
-                      )
+                      {Array.from({ length: auditTotalPages }, (_, i) => i + 1)
                         .filter(
                           (p) =>
                             p === 1 ||
-                            p === effectiveTotalPages ||
+                            p === auditTotalPages ||
                             Math.abs(p - auditPage) <= 2,
                         )
                         .reduce<(number | "ellipsis")[]>((acc, p, i, arr) => {
@@ -1181,9 +1026,7 @@ export const ToolDetail = (): JSX.Element => {
                       <button
                         type="button"
                         onClick={() => goPage(auditPage + 1)}
-                        disabled={
-                          auditPage >= effectiveTotalPages || auditLoading
-                        }
+                        disabled={auditPage >= auditTotalPages || auditLoading}
                         className="rounded-lg px-2 py-1 text-xs text-[var(--text-muted)] transition hover:opacity-80 disabled:opacity-30"
                       >
                         &gt;

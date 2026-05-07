@@ -1,0 +1,312 @@
+import { z } from "zod";
+import { TRPCError } from "@trpc/server";
+import {
+  McpCatalogAuthType,
+  McpCatalogStatus,
+  McpCatalogTransportType,
+  McpToolRiskLevel,
+  Prisma,
+} from "@tumiki/internal-db";
+import { adminProcedure, createTRPCRouter } from "@/server/api/trpc";
+
+const slugSchema = z
+  .string()
+  .min(1)
+  .max(80)
+  .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/);
+
+const jsonRecordSchema = z.record(z.string(), z.unknown());
+const toInputJson = (value: Record<string, unknown>): Prisma.InputJsonValue =>
+  value as Prisma.InputJsonValue;
+const optionalConnectionString = z
+  .string()
+  .max(1000)
+  .nullable()
+  .optional()
+  .transform((value) => (value && value.length > 0 ? value : null));
+const validateConnectionTemplate = (
+  value: {
+    transportType: McpCatalogTransportType;
+    command: string | null;
+    url: string | null;
+  },
+  ctx: z.RefinementCtx,
+) => {
+  if (value.transportType === McpCatalogTransportType.STDIO && !value.command) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["command"],
+      message: "STDIOはcommandが必須です",
+    });
+  }
+  if (
+    (value.transportType === McpCatalogTransportType.SSE ||
+      value.transportType === McpCatalogTransportType.STREAMABLE_HTTP) &&
+    !value.url
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["url"],
+      message: "HTTP系transportはurlが必須です",
+    });
+  }
+};
+
+const MCP_CATALOG_LIST_LIMIT = 1000;
+const TOOL_UPSERT_CHUNK_SIZE = 50;
+
+export const mcpCatalogRouter = createTRPCRouter({
+  list: adminProcedure.query(async ({ ctx }) => {
+    const catalogs = await ctx.db.mcpCatalog.findMany({
+      where: { deletedAt: null },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        description: true,
+        transportType: true,
+        authType: true,
+        status: true,
+        iconPath: true,
+        command: true,
+        args: true,
+        url: true,
+        credentialKeys: true,
+        createdAt: true,
+        updatedAt: true,
+        tools: {
+          where: { deletedAt: null },
+          select: {
+            id: true,
+            catalogId: true,
+            name: true,
+            description: true,
+            defaultAllowed: true,
+            riskLevel: true,
+            createdAt: true,
+            updatedAt: true,
+            deletedAt: true,
+          },
+          orderBy: { name: "asc" },
+        },
+      },
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+      take: MCP_CATALOG_LIST_LIMIT + 1,
+    });
+    if (catalogs.length > MCP_CATALOG_LIST_LIMIT) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: `カタログ数が上限(${MCP_CATALOG_LIST_LIMIT})を超えました。フィルタを使用してください。`,
+      });
+    }
+    return catalogs;
+  }),
+
+  create: adminProcedure
+    .input(
+      z
+        .object({
+          slug: slugSchema,
+          name: z.string().min(1).max(120),
+          description: z.string().max(1000).optional(),
+          transportType: z
+            .nativeEnum(McpCatalogTransportType)
+            .default(McpCatalogTransportType.STDIO),
+          authType: z
+            .nativeEnum(McpCatalogAuthType)
+            .default(McpCatalogAuthType.NONE),
+          iconPath: z.string().max(500).optional(),
+          command: optionalConnectionString,
+          args: z.array(z.string().min(1).max(1000)).max(100).default([]),
+          url: optionalConnectionString,
+          credentialKeys: z.array(z.string().min(1).max(120)).default([]),
+        })
+        .superRefine(validateConnectionTemplate),
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await ctx.db.mcpCatalog.create({
+          data: {
+            ...input,
+            description: input.description ?? null,
+            iconPath: input.iconPath ?? null,
+            createdBy: ctx.session.user.id,
+          },
+          include: { tools: true },
+        });
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === "P2002"
+        ) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "このslugは既に使用されています",
+          });
+        }
+        throw error;
+      }
+    }),
+
+  update: adminProcedure
+    .input(
+      z
+        .object({
+          id: z.string().min(1),
+          name: z.string().min(1).max(120),
+          description: z.string().max(1000).nullable(),
+          transportType: z.nativeEnum(McpCatalogTransportType),
+          authType: z.nativeEnum(McpCatalogAuthType),
+          status: z.nativeEnum(McpCatalogStatus),
+          iconPath: z.string().max(500).nullable(),
+          command: optionalConnectionString,
+          args: z.array(z.string().min(1).max(1000)).max(100),
+          url: optionalConnectionString,
+          credentialKeys: z.array(z.string().min(1).max(120)),
+        })
+        .superRefine(validateConnectionTemplate),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...data } = input;
+      const catalog = await ctx.db.mcpCatalog.findFirst({
+        where: { id, deletedAt: null },
+        select: { id: true },
+      });
+      if (!catalog) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "カタログが見つかりません",
+        });
+      }
+
+      return ctx.db.mcpCatalog.update({
+        where: { id },
+        data,
+        include: { tools: { where: { deletedAt: null } } },
+      });
+    }),
+
+  delete: adminProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const catalog = await ctx.db.mcpCatalog.findFirst({
+        where: { id: input.id, deletedAt: null },
+        select: { id: true },
+      });
+      if (!catalog) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "カタログが見つかりません",
+        });
+      }
+
+      await ctx.db.mcpCatalog.update({
+        where: { id: input.id },
+        data: { deletedAt: new Date(), status: McpCatalogStatus.DISABLED },
+      });
+      return { ok: true };
+    }),
+
+  refreshTools: adminProcedure
+    .input(
+      z.object({
+        catalogId: z.string().min(1),
+        tools: z
+          .array(
+            z.object({
+              name: z.string().min(1).max(180),
+              description: z.string().max(1000).optional(),
+              inputSchema: jsonRecordSchema.default({}),
+              defaultAllowed: z.boolean().default(false),
+              riskLevel: z
+                .nativeEnum(McpToolRiskLevel)
+                .default(McpToolRiskLevel.MEDIUM),
+            }),
+          )
+          .max(500)
+          .refine(
+            (tools) =>
+              new Set(tools.map((tool) => tool.name)).size === tools.length,
+            { message: "ツール名が重複しています" },
+          ),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.$transaction(async (tx) => {
+        const catalog = await tx.mcpCatalog.findFirst({
+          where: { id: input.catalogId, deletedAt: null },
+          select: { id: true },
+        });
+        if (!catalog) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "カタログが見つかりません",
+          });
+        }
+
+        const seenNames = new Set(input.tools.map((tool) => tool.name));
+        const toolsToDelete = await tx.mcpCatalogTool.findMany({
+          where: {
+            catalogId: input.catalogId,
+            name: { notIn: [...seenNames] },
+            deletedAt: null,
+          },
+          select: { id: true },
+        });
+        const toolIdsToDelete = toolsToDelete.map((tool) => tool.id);
+        if (toolIdsToDelete.length > 0) {
+          // ツールは監査用に論理削除し、権限行は復活時の意図しない再有効化を避けるため同一transactionで削除する。
+          await tx.mcpCatalogTool.updateMany({
+            where: {
+              id: { in: toolIdsToDelete },
+            },
+            data: { deletedAt: new Date() },
+          });
+          await Promise.all([
+            tx.orgUnitToolPermission.deleteMany({
+              where: { toolId: { in: toolIdsToDelete } },
+            }),
+            tx.groupCatalogToolPermission.deleteMany({
+              where: { toolId: { in: toolIdsToDelete } },
+            }),
+            tx.userCatalogToolPermission.deleteMany({
+              where: { toolId: { in: toolIdsToDelete } },
+            }),
+          ]);
+        }
+        for (let i = 0; i < input.tools.length; i += TOOL_UPSERT_CHUNK_SIZE) {
+          await Promise.all(
+            input.tools.slice(i, i + TOOL_UPSERT_CHUNK_SIZE).map((tool) =>
+              tx.mcpCatalogTool.upsert({
+                where: {
+                  catalogId_name: {
+                    catalogId: input.catalogId,
+                    name: tool.name,
+                  },
+                },
+                create: {
+                  catalogId: input.catalogId,
+                  name: tool.name,
+                  description: tool.description ?? null,
+                  inputSchema: toInputJson(tool.inputSchema),
+                  defaultAllowed: tool.defaultAllowed,
+                  riskLevel: tool.riskLevel,
+                },
+                update: {
+                  description: tool.description ?? null,
+                  inputSchema: toInputJson(tool.inputSchema),
+                  defaultAllowed: tool.defaultAllowed,
+                  riskLevel: tool.riskLevel,
+                  deletedAt: null,
+                },
+              }),
+            ),
+          );
+        }
+        return tx.mcpCatalog.findUniqueOrThrow({
+          where: { id: input.catalogId },
+          include: { tools: { where: { deletedAt: null } } },
+        });
+      });
+    }),
+});

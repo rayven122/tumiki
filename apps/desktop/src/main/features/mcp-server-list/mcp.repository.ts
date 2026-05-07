@@ -1,13 +1,16 @@
-import type { ServerStatus } from "@prisma/desktop-client";
+import type { ServerStatus, ServerType } from "@prisma/desktop-client";
 import type { DbClient } from "../../shared/db";
 
 /**
  * MCPサーバー作成時の入力データ型
+ * `serverType` は呼び出し元（カタログ/カスタム入力経路は OFFICIAL、仮想MCP作成経路は CUSTOM）が
+ * 明示的に渡すことで「どの経路で生成されたサーバーか」をDBレベルで保持する。
  */
 export type CreateMcpServerInput = {
   name: string;
   slug: string;
   description: string;
+  serverType: ServerType;
 };
 
 /**
@@ -29,7 +32,19 @@ export type CreateMcpConnectionInput = {
 };
 
 /**
+ * MCPツール作成時の入力データ型（接続単位で一括投入する）
+ */
+export type CreateMcpToolInput = {
+  name: string;
+  description: string;
+  inputSchema: string;
+  connectionId: number;
+  isAllowed?: boolean;
+};
+
+/**
  * MCPサーバーを接続情報付きで全件取得
+ * 接続ごとのツール数は `_count.tools` で取得し、ツール本体はロードしない（一覧表示の負荷削減）
  */
 export const findAllWithConnections = async (db: DbClient) => {
   return db.mcpServer.findMany({
@@ -38,6 +53,9 @@ export const findAllWithConnections = async (db: DbClient) => {
         include: {
           catalog: {
             select: { id: true, name: true, description: true, iconPath: true },
+          },
+          _count: {
+            select: { tools: true },
           },
         },
       },
@@ -67,6 +85,76 @@ export const createConnection = async (
 };
 
 /**
+ * 指定接続のツールを一括作成（接続新規登録直後のツール初期投入用）
+ */
+export const createTools = async (db: DbClient, data: CreateMcpToolInput[]) => {
+  if (data.length === 0) return { count: 0 };
+  return db.mcpTool.createMany({ data });
+};
+
+/**
+ * 指定接続のツール名と許可状態を取得（CLI モードの動的フィルタ resolver 用）
+ */
+export const findToolsByConnectionId = async (
+  db: DbClient,
+  connectionId: number,
+) => {
+  return db.mcpTool.findMany({
+    where: { connectionId },
+    select: { name: true, isAllowed: true },
+  });
+};
+
+/**
+ * 接続をIDで取得（ツール取得時のconfig生成用にserver情報を含める）
+ */
+export const findConnectionByIdWithServer = async (
+  db: DbClient,
+  connectionId: number,
+) => {
+  return db.mcpConnection.findUnique({
+    where: { id: connectionId },
+    include: { server: true },
+  });
+};
+
+/**
+ * 仮想MCP作成のための既存接続一括取得（接続情報 + 提供ツール一覧）
+ *
+ * 仮想MCPは「コネクト画面で追加済みコネクタ」を束ねる仕様（DEV-1581）に変更されており、
+ * 接続設定（transportType / command / args / url / 暗号化済み credentials / authType / catalogId）と
+ * 提供ツール一覧（name / description / isAllowed）を一括で読み出してコピー作成に利用する。
+ */
+export const findConnectionsByIdsWithTools = async (
+  db: DbClient,
+  connectionIds: number[],
+) => {
+  if (connectionIds.length === 0) return [];
+  return db.mcpConnection.findMany({
+    where: { id: { in: connectionIds } },
+    include: {
+      // サーバーの有効状態に加え、serverType を取得することで「仮想MCP（CUSTOM）配下の接続を
+      // 新しい仮想MCPの素材として再ネストしない」ことをサービス層でDBレベルに依拠して保証する
+      server: {
+        select: {
+          isEnabled: true,
+          serverType: true,
+        },
+      },
+      tools: {
+        select: {
+          name: true,
+          description: true,
+          inputSchema: true,
+          isAllowed: true,
+        },
+        orderBy: { name: "asc" },
+      },
+    },
+  });
+};
+
+/**
  * slugでサーバーを検索
  */
 export const findServerBySlug = async (db: DbClient, slug: string) => {
@@ -89,7 +177,12 @@ export const findEnabledConnections = async (db: DbClient) => {
       isEnabled: true,
       server: { isEnabled: true },
     },
-    include: { server: true },
+    include: {
+      server: true,
+      tools: {
+        select: { name: true, isAllowed: true },
+      },
+    },
     orderBy: { displayOrder: "asc" },
   });
 };
@@ -106,7 +199,12 @@ export const findEnabledConnectionsBySlug = async (
       isEnabled: true,
       server: { isEnabled: true, slug: serverSlug },
     },
-    include: { server: true },
+    include: {
+      server: true,
+      tools: {
+        select: { name: true, isAllowed: true },
+      },
+    },
     orderBy: { displayOrder: "asc" },
   });
 };
@@ -145,6 +243,36 @@ export const toggleServerEnabled = async (
   isEnabled: boolean,
 ) => {
   return db.mcpServer.update({ where: { id }, data: { isEnabled } });
+};
+
+/**
+ * サーバーのPIIマスキング有効状態を切り替え
+ * 反映は次回プロキシ起動時（再起動必要）
+ */
+export const updateIsPiiMaskingEnabled = async (
+  db: DbClient,
+  id: number,
+  enabled: boolean,
+) => {
+  return db.mcpServer.update({
+    where: { id },
+    data: { isPiiMaskingEnabled: enabled },
+  });
+};
+
+/**
+ * サーバーのTOON変換（レスポンス圧縮）有効状態を切り替え
+ * 反映は次回プロキシ起動時（再起動必要）
+ */
+export const updateIsToonConversionEnabled = async (
+  db: DbClient,
+  id: number,
+  enabled: boolean,
+) => {
+  return db.mcpServer.update({
+    where: { id },
+    data: { isToonConversionEnabled: enabled },
+  });
 };
 
 /**

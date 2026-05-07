@@ -279,13 +279,56 @@ describe("setupMcpIpc", () => {
     });
   });
 
+  describe("mcp:createFromManagerCatalog", () => {
+    const validInput = {
+      catalogId: "github",
+      serverName: "GitHub",
+      description: "GitHub MCP",
+      status: "available" as const,
+      permissions: { read: true, write: false, execute: true },
+      connectionTemplate: {
+        transportType: "STREAMABLE_HTTP" as const,
+        command: null,
+        args: [],
+        url: "https://api.githubcopilot.com/mcp/",
+        authType: "BEARER" as const,
+        credentialKeys: ["GITHUB_TOKEN"],
+      },
+      tools: [{ name: "list_repos", allowed: true }],
+      credentials: { GITHUB_TOKEN: "token" },
+    };
+
+    test("有効な入力でManagerカタログからサーバーを作成する", async () => {
+      const mockResult = { serverId: 1, serverName: "GitHub" };
+      vi.mocked(mcpService.createFromManagerCatalog).mockResolvedValue(
+        mockResult,
+      );
+      const handler = mockIpcHandlers.get("mcp:createFromManagerCatalog");
+
+      const result = await handler!({} as IpcMainInvokeEvent, validInput);
+
+      expect(result).toStrictEqual(mockResult);
+      expect(mcpService.createFromManagerCatalog).toHaveBeenCalledWith(
+        validInput,
+      );
+    });
+
+    test("catalogIdが空の場合はエラーになる", async () => {
+      const handler = mockIpcHandlers.get("mcp:createFromManagerCatalog");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, { ...validInput, catalogId: "" }),
+      ).rejects.toThrow("MCPサーバーの登録に失敗しました");
+    });
+  });
+
   describe("mcp:createVirtualServer", () => {
     const validInput = {
       name: "週次レポート",
-      description: "GitHubとSlackを束ねた仮想MCP",
+      description: "既存コネクタを束ねた仮想MCP",
       connections: [
-        { catalogId: 1, credentials: { GITHUB_TOKEN: "a" } },
-        { catalogId: 2, credentials: { SLACK_TOKEN: "b" } },
+        { connectionId: 1, allowedToolNames: ["a", "b"] },
+        { connectionId: 2 },
       ],
     };
 
@@ -298,6 +341,32 @@ describe("setupMcpIpc", () => {
 
       expect(result).toStrictEqual(mockResult);
       expect(mcpService.createVirtualServer).toHaveBeenCalledWith(validInput);
+    });
+
+    test("allowedToolNames を省略した場合は元コネクタの isAllowed を継承する", async () => {
+      vi.mocked(mcpService.createVirtualServer).mockResolvedValue({
+        serverId: 11,
+        serverName: "X",
+      });
+      const handler = mockIpcHandlers.get("mcp:createVirtualServer");
+
+      await handler!({} as IpcMainInvokeEvent, {
+        name: "X",
+        description: "",
+        connections: [{ connectionId: 1 }],
+      });
+
+      // allowedToolNames を省略した呼び出しが、そのままサービスに伝搬していることを検証
+      expect(mcpService.createVirtualServer).toHaveBeenCalledWith({
+        name: "X",
+        description: "",
+        connections: [{ connectionId: 1 }],
+      });
+      // allowedToolNames が undefined ですらないこと（プロパティ自体が未付与）を確認
+      const callArg = vi.mocked(mcpService.createVirtualServer).mock
+        .calls[0]?.[0];
+      expect(callArg?.connections[0]).toStrictEqual({ connectionId: 1 });
+      expect(callArg?.connections[0]).not.toHaveProperty("allowedToolNames");
     });
 
     test("接続が空配列の場合はエラーになる", async () => {
@@ -319,24 +388,24 @@ describe("setupMcpIpc", () => {
       ).rejects.toThrow("仮想MCPサーバーの登録に失敗しました");
     });
 
-    test("catalogIdが文字列の場合はエラーになる", async () => {
+    test("connectionIdが文字列の場合はエラーになる", async () => {
       const handler = mockIpcHandlers.get("mcp:createVirtualServer");
 
       await expect(
         handler!({} as IpcMainInvokeEvent, {
           ...validInput,
-          connections: [{ catalogId: "invalid", credentials: {} }],
+          connections: [{ connectionId: "invalid" }],
         }),
       ).rejects.toThrow("仮想MCPサーバーの登録に失敗しました");
     });
 
-    test("catalogIdが0以下の場合はエラーになる", async () => {
+    test("connectionIdが0以下の場合はエラーになる", async () => {
       const handler = mockIpcHandlers.get("mcp:createVirtualServer");
 
       await expect(
         handler!({} as IpcMainInvokeEvent, {
           ...validInput,
-          connections: [{ catalogId: 0, credentials: {} }],
+          connections: [{ connectionId: 0 }],
         }),
       ).rejects.toThrow("仮想MCPサーバーの登録に失敗しました");
     });
@@ -344,8 +413,7 @@ describe("setupMcpIpc", () => {
     test("接続が11件以上の場合はエラーになる（上限10件）", async () => {
       const handler = mockIpcHandlers.get("mcp:createVirtualServer");
       const tooManyConnections = Array.from({ length: 11 }, (_, i) => ({
-        catalogId: i + 1,
-        credentials: {},
+        connectionId: i + 1,
       }));
 
       await expect(
@@ -358,26 +426,182 @@ describe("setupMcpIpc", () => {
 
     test("サービスがエラーを投げた場合はラップして再スローする", async () => {
       vi.mocked(mcpService.createVirtualServer).mockRejectedValue(
-        new Error("カタログ(id=99)が見つかりません"),
+        new Error("コネクタ(id=99)が見つかりません"),
       );
       const handler = mockIpcHandlers.get("mcp:createVirtualServer");
 
       await expect(
         handler!({} as IpcMainInvokeEvent, validInput),
       ).rejects.toThrow(
-        "仮想MCPサーバーの登録に失敗しました: カタログ(id=99)が見つかりません",
+        "仮想MCPサーバーの登録に失敗しました: コネクタ(id=99)が見つかりません",
       );
+    });
+  });
+
+  describe("mcp:getToolsForConnections", () => {
+    test("有効な入力でサービスに委譲する", async () => {
+      const mockResult = {
+        items: [
+          {
+            connectionId: 1,
+            tools: [{ name: "a", description: "", isAllowed: true }],
+          },
+        ],
+      };
+      vi.mocked(mcpService.getToolsForConnections).mockResolvedValue(
+        mockResult,
+      );
+      const handler = mockIpcHandlers.get("mcp:getToolsForConnections");
+
+      const result = await handler!({} as IpcMainInvokeEvent, {
+        connectionIds: [1],
+      });
+
+      expect(result).toStrictEqual(mockResult);
+      expect(mcpService.getToolsForConnections).toHaveBeenCalledWith({
+        connectionIds: [1],
+      });
+    });
+
+    test("connectionIds が空配列の場合はバリデーションエラー", async () => {
+      const handler = mockIpcHandlers.get("mcp:getToolsForConnections");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, { connectionIds: [] }),
+      ).rejects.toThrow("ツール一覧の取得に失敗しました");
+    });
+
+    test("connectionIds に文字列が混じる場合はエラーになる", async () => {
+      const handler = mockIpcHandlers.get("mcp:getToolsForConnections");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, { connectionIds: [1, "x"] }),
+      ).rejects.toThrow("ツール一覧の取得に失敗しました");
+    });
+
+    test("connectionIds に 0 が含まれる場合はエラーになる（positive制約）", async () => {
+      const handler = mockIpcHandlers.get("mcp:getToolsForConnections");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, { connectionIds: [0] }),
+      ).rejects.toThrow("ツール一覧の取得に失敗しました");
+    });
+
+    test("connectionIds に負の値が含まれる場合はエラーになる（positive制約）", async () => {
+      const handler = mockIpcHandlers.get("mcp:getToolsForConnections");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, { connectionIds: [-1] }),
+      ).rejects.toThrow("ツール一覧の取得に失敗しました");
+    });
+  });
+
+  describe("mcp:updatePiiMasking", () => {
+    test("PIIマスキングを無効化する", async () => {
+      vi.mocked(mcpService.updateIsPiiMaskingEnabled).mockResolvedValue({
+        id: 1,
+        isPiiMaskingEnabled: false,
+      } as Awaited<ReturnType<typeof mcpService.updateIsPiiMaskingEnabled>>);
+      const handler = mockIpcHandlers.get("mcp:updatePiiMasking");
+
+      const result = await handler!({} as IpcMainInvokeEvent, {
+        serverId: 1,
+        enabled: false,
+      });
+
+      // preload は Promise<void> を期待するためハンドラは undefined を返す
+      expect(result).toBeUndefined();
+      expect(mcpService.updateIsPiiMaskingEnabled).toHaveBeenCalledWith(
+        1,
+        false,
+      );
+    });
+
+    test("PIIマスキングを再度有効化する", async () => {
+      vi.mocked(mcpService.updateIsPiiMaskingEnabled).mockResolvedValue({
+        id: 2,
+        isPiiMaskingEnabled: true,
+      } as Awaited<ReturnType<typeof mcpService.updateIsPiiMaskingEnabled>>);
+      const handler = mockIpcHandlers.get("mcp:updatePiiMasking");
+
+      await handler!({} as IpcMainInvokeEvent, {
+        serverId: 2,
+        enabled: true,
+      });
+
+      expect(mcpService.updateIsPiiMaskingEnabled).toHaveBeenCalledWith(
+        2,
+        true,
+      );
+    });
+
+    test("serverIdが欠落している場合はZodバリデーションエラーになる", async () => {
+      const handler = mockIpcHandlers.get("mcp:updatePiiMasking");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, { enabled: true }),
+      ).rejects.toThrow("PIIマスキング設定の更新に失敗しました");
+      expect(mcpService.updateIsPiiMaskingEnabled).not.toHaveBeenCalled();
+    });
+
+    test("serverIdが文字列の場合はZodバリデーションエラーになる", async () => {
+      const handler = mockIpcHandlers.get("mcp:updatePiiMasking");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, {
+          serverId: "invalid",
+          enabled: true,
+        }),
+      ).rejects.toThrow("PIIマスキング設定の更新に失敗しました");
+      expect(mcpService.updateIsPiiMaskingEnabled).not.toHaveBeenCalled();
+    });
+
+    test("enabledが欠落している場合はZodバリデーションエラーになる", async () => {
+      const handler = mockIpcHandlers.get("mcp:updatePiiMasking");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, { serverId: 1 }),
+      ).rejects.toThrow("PIIマスキング設定の更新に失敗しました");
+      expect(mcpService.updateIsPiiMaskingEnabled).not.toHaveBeenCalled();
+    });
+
+    test("enabledが boolean 以外の場合はZodバリデーションエラーになる", async () => {
+      const handler = mockIpcHandlers.get("mcp:updatePiiMasking");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, {
+          serverId: 1,
+          enabled: "true",
+        }),
+      ).rejects.toThrow("PIIマスキング設定の更新に失敗しました");
+      expect(mcpService.updateIsPiiMaskingEnabled).not.toHaveBeenCalled();
+    });
+
+    test("サービスがエラーを投げた場合はラップして再スローする", async () => {
+      vi.mocked(mcpService.updateIsPiiMaskingEnabled).mockRejectedValue(
+        new Error("DB接続エラー"),
+      );
+      const handler = mockIpcHandlers.get("mcp:updatePiiMasking");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, { serverId: 1, enabled: false }),
+      ).rejects.toThrow("PIIマスキング設定の更新に失敗しました: DB接続エラー");
     });
   });
 
   describe("ハンドラー登録", () => {
     test("全てのIPCハンドラーが登録される", () => {
       expect(mockIpcHandlers.has("mcp:createFromCatalog")).toBe(true);
+      expect(mockIpcHandlers.has("mcp:createFromManagerCatalog")).toBe(true);
+      expect(mockIpcHandlers.has("mcp:createCustomServer")).toBe(true);
       expect(mockIpcHandlers.has("mcp:createVirtualServer")).toBe(true);
+      expect(mockIpcHandlers.has("mcp:getToolsForConnections")).toBe(true);
       expect(mockIpcHandlers.has("mcp:getAll")).toBe(true);
       expect(mockIpcHandlers.has("mcp:updateServer")).toBe(true);
       expect(mockIpcHandlers.has("mcp:deleteServer")).toBe(true);
       expect(mockIpcHandlers.has("mcp:toggleServer")).toBe(true);
+      expect(mockIpcHandlers.has("mcp:updatePiiMasking")).toBe(true);
+      expect(mockIpcHandlers.has("mcp:updateToonConversion")).toBe(true);
     });
   });
 });

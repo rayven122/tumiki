@@ -20,7 +20,7 @@
     "typecheck": "tsc --noEmit",
     "with-env": "infisical run --env=dev --",
     "with-env:prod": "infisical run --env=prod --",
-    "lint": "eslint",
+    "lint": "pnpm db:generate && eslint",
     "format": "prettier --check . --ignore-path ../../.gitignore --ignore-path ../../.prettierignore --write",
     "db:generate": "prisma generate",
     "db:migrate": "pnpm with-env prisma migrate dev",

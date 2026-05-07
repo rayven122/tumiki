@@ -35,6 +35,7 @@ const serverData: mcpRepository.CreateMcpServerInput = {
   name: "Test Server",
   slug: "test-server",
   description: "テスト用サーバー",
+  serverType: "OFFICIAL",
 };
 
 const buildConnectionData = (
@@ -61,6 +62,7 @@ describe("mcp.repository（実DB）", () => {
       expect(result.name).toBe("Test Server");
       expect(result.slug).toBe("test-server");
       expect(result.description).toBe("テスト用サーバー");
+      expect(result.serverType).toBe("OFFICIAL");
     });
 
     test("同一slugのサーバーは作成できない", async () => {
@@ -69,6 +71,16 @@ describe("mcp.repository（実DB）", () => {
       await expect(
         mcpRepository.createServer(db, serverData),
       ).rejects.toThrow();
+    });
+
+    test("serverType に CUSTOM を渡すと CUSTOM で永続化される（仮想MCP作成経路）", async () => {
+      const result = await mcpRepository.createServer(db, {
+        ...serverData,
+        slug: "virtual-server",
+        serverType: "CUSTOM",
+      });
+
+      expect(result.serverType).toBe("CUSTOM");
     });
   });
 
@@ -117,6 +129,32 @@ describe("mcp.repository（実DB）", () => {
       expect(result).toHaveLength(1);
       expect(result[0]!.connections).toHaveLength(1);
       expect(result[0]!.connections[0]!.name).toBe("Test Connection");
+    });
+
+    test("各接続に _count.tools が付与される（一覧画面のサマリ用）", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+      const connection = await mcpRepository.createConnection(
+        db,
+        buildConnectionData(server.id),
+      );
+      await mcpRepository.createTools(db, [
+        {
+          name: "tool-a",
+          description: "",
+          inputSchema: "{}",
+          connectionId: connection.id,
+        },
+        {
+          name: "tool-b",
+          description: "",
+          inputSchema: "{}",
+          connectionId: connection.id,
+        },
+      ]);
+
+      const result = await mcpRepository.findAllWithConnections(db);
+
+      expect(result[0]!.connections[0]!._count.tools).toBe(2);
     });
 
     test("作成日時の降順で取得する", async () => {
@@ -295,6 +333,96 @@ describe("mcp.repository（実DB）", () => {
     });
   });
 
+  describe("findConnectionsByIdsWithTools", () => {
+    test("複数IDで接続をtoolsと共に一括取得する", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+      const conn1 = await mcpRepository.createConnection(db, {
+        ...buildConnectionData(server.id),
+        slug: "c1",
+      });
+      const conn2 = await mcpRepository.createConnection(db, {
+        ...buildConnectionData(server.id),
+        slug: "c2",
+      });
+      await mcpRepository.createTools(db, [
+        {
+          name: "tool-a",
+          description: "desc-a",
+          inputSchema: "{}",
+          connectionId: conn1.id,
+          isAllowed: true,
+        },
+        {
+          name: "tool-b",
+          description: "desc-b",
+          inputSchema: "{}",
+          connectionId: conn1.id,
+          isAllowed: false,
+        },
+        {
+          name: "tool-c",
+          description: "desc-c",
+          inputSchema: "{}",
+          connectionId: conn2.id,
+          isAllowed: true,
+        },
+      ]);
+
+      const result = await mcpRepository.findConnectionsByIdsWithTools(db, [
+        conn1.id,
+        conn2.id,
+      ]);
+
+      expect(result).toHaveLength(2);
+      const byId = new Map(result.map((c) => [c.id, c]));
+      expect(byId.get(conn1.id)!.tools).toHaveLength(2);
+      expect(byId.get(conn1.id)!.tools[0]!.name).toBe("tool-a");
+      expect(byId.get(conn1.id)!.tools[0]!.isAllowed).toBe(true);
+      expect(byId.get(conn1.id)!.tools[1]!.name).toBe("tool-b");
+      expect(byId.get(conn1.id)!.tools[1]!.isAllowed).toBe(false);
+      expect(byId.get(conn2.id)!.tools).toHaveLength(1);
+    });
+
+    test("空配列の場合は空配列を返す（DB問い合わせをスキップ）", async () => {
+      const result = await mcpRepository.findConnectionsByIdsWithTools(db, []);
+      expect(result).toStrictEqual([]);
+    });
+
+    test("存在しないIDは結果から除外される", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+      const connection = await mcpRepository.createConnection(
+        db,
+        buildConnectionData(server.id),
+      );
+
+      const result = await mcpRepository.findConnectionsByIdsWithTools(db, [
+        connection.id,
+        99999,
+      ]);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]!.id).toBe(connection.id);
+    });
+
+    test("server.serverType が取得される（仮想MCP再ネスト判定で参照されるため）", async () => {
+      const server = await mcpRepository.createServer(db, {
+        ...serverData,
+        slug: "virtual-server",
+        serverType: "CUSTOM",
+      });
+      const connection = await mcpRepository.createConnection(
+        db,
+        buildConnectionData(server.id),
+      );
+
+      const result = await mcpRepository.findConnectionsByIdsWithTools(db, [
+        connection.id,
+      ]);
+
+      expect(result[0]!.server.serverType).toBe("CUSTOM");
+    });
+  });
+
   describe("toggleServerEnabled", () => {
     test("サーバーを無効化する", async () => {
       const server = await mcpRepository.createServer(db, serverData);
@@ -324,6 +452,100 @@ describe("mcp.repository（実DB）", () => {
     test("存在しないIDの場合はエラーになる", async () => {
       await expect(
         mcpRepository.toggleServerEnabled(db, 99999, false),
+      ).rejects.toThrow();
+    });
+  });
+
+  describe("updateIsPiiMaskingEnabled", () => {
+    test("PIIマスキングを無効化する（デフォルト true から false へ）", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+
+      const result = await mcpRepository.updateIsPiiMaskingEnabled(
+        db,
+        server.id,
+        false,
+      );
+
+      expect(result.isPiiMaskingEnabled).toBe(false);
+    });
+
+    test("PIIマスキングを再度有効化する", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+      await mcpRepository.updateIsPiiMaskingEnabled(db, server.id, false);
+
+      const result = await mcpRepository.updateIsPiiMaskingEnabled(
+        db,
+        server.id,
+        true,
+      );
+
+      expect(result.isPiiMaskingEnabled).toBe(true);
+    });
+
+    test("isEnabled など他のフィールドは変更しない", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+      await mcpRepository.toggleServerEnabled(db, server.id, false);
+
+      const result = await mcpRepository.updateIsPiiMaskingEnabled(
+        db,
+        server.id,
+        false,
+      );
+
+      expect(result.isEnabled).toBe(false);
+      expect(result.isPiiMaskingEnabled).toBe(false);
+    });
+
+    test("存在しないIDの場合はエラーになる", async () => {
+      await expect(
+        mcpRepository.updateIsPiiMaskingEnabled(db, 99999, false),
+      ).rejects.toThrow();
+    });
+  });
+
+  describe("updateIsToonConversionEnabled", () => {
+    test("TOON変換を有効化する（デフォルト false から true へ）", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+
+      const result = await mcpRepository.updateIsToonConversionEnabled(
+        db,
+        server.id,
+        true,
+      );
+
+      expect(result.isToonConversionEnabled).toBe(true);
+    });
+
+    test("TOON変換を再度無効化する", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+      await mcpRepository.updateIsToonConversionEnabled(db, server.id, true);
+
+      const result = await mcpRepository.updateIsToonConversionEnabled(
+        db,
+        server.id,
+        false,
+      );
+
+      expect(result.isToonConversionEnabled).toBe(false);
+    });
+
+    test("isPiiMaskingEnabled など他のフィールドは変更しない", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+      await mcpRepository.updateIsPiiMaskingEnabled(db, server.id, false);
+
+      const result = await mcpRepository.updateIsToonConversionEnabled(
+        db,
+        server.id,
+        true,
+      );
+
+      expect(result.isPiiMaskingEnabled).toBe(false);
+      expect(result.isToonConversionEnabled).toBe(true);
+    });
+
+    test("存在しないIDの場合はエラーになる", async () => {
+      await expect(
+        mcpRepository.updateIsToonConversionEnabled(db, 99999, false),
       ).rejects.toThrow();
     });
   });

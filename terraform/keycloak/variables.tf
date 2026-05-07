@@ -1,11 +1,11 @@
 # Keycloak Terraform変数定義
 
 # Keycloak接続設定
-# 本番環境: Terraform Cloud ワークスペース変数 TF_VAR_keycloak_url で設定
+# 本番環境: Infisical 経由の TF_VAR_keycloak_url 環境変数で設定
 variable "keycloak_url" {
-  description = "Keycloak サーバーURL（本番: Terraform Cloud変数で上書き）"
+  description = "Keycloak サーバーURL（本番: TF_VAR_keycloak_url 環境変数で上書き）"
   type        = string
-  default     = "http://localhost:8443"
+  default     = "http://localhost:8080"
 }
 
 variable "keycloak_admin_username" {
@@ -46,6 +46,18 @@ variable "manager_client_secret" {
   sensitive   = true
 }
 
+variable "internal_manager_client_id" {
+  description = "Internal Manager クライアントID"
+  type        = string
+  default     = "tumiki-internal-manager"
+}
+
+variable "internal_manager_client_secret" {
+  description = "Internal Manager クライアントシークレット（環境変数 TF_VAR_internal_manager_client_secret で設定）"
+  type        = string
+  sensitive   = true
+}
+
 variable "proxy_client_id" {
   description = "MCP Proxy クライアントID"
   type        = string
@@ -78,6 +90,24 @@ variable "manager_web_origins" {
     "https://localhost:3000",
     "http://localhost:3001",
     "https://manager.tumiki.cloud"
+  ]
+}
+
+variable "internal_manager_redirect_uris" {
+  description = "Internal Manager リダイレクトURI一覧"
+  type        = list(string)
+  default = [
+    "http://localhost:3100/api/auth/callback/oidc",
+    "http://localhost:3101/api/auth/callback/oidc"
+  ]
+}
+
+variable "internal_manager_web_origins" {
+  description = "Internal Manager Web Origins一覧"
+  type        = list(string)
+  default = [
+    "http://localhost:3100",
+    "http://localhost:3101"
   ]
 }
 
@@ -115,13 +145,15 @@ variable "ssl_required" {
 variable "login_theme" {
   description = "ログイン画面テーマ"
   type        = string
+  nullable    = false
   default     = "tumiki"
 }
 
 variable "account_theme" {
   description = "アカウント管理画面テーマ"
   type        = string
-  default     = "tumiki"
+  nullable    = false
+  default     = "keycloak.v3"
 }
 
 # テストユーザー設定

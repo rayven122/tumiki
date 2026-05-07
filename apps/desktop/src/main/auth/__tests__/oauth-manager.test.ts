@@ -11,7 +11,7 @@ vi.mock("../../shared/db");
 vi.mock("../../utils/encryption");
 vi.mock("../../shared/utils/logger");
 
-// KeycloakClientのモック（vi.hoistedでvi.mock factory内から参照可能にする）
+// OidcClientのモック（vi.hoistedでvi.mock factory内から参照可能にする）
 const {
   mockExchangeCodeForToken,
   mockRefreshToken,
@@ -26,8 +26,8 @@ const {
     .mockReturnValue("https://keycloak.example.com/auth"),
 }));
 
-vi.mock("../keycloak", () => ({
-  createKeycloakClient: vi.fn().mockReturnValue({
+vi.mock("../oidc-client", () => ({
+  createOidcClient: vi.fn().mockReturnValue({
     generateAuthUrl: mockGenerateAuthUrl,
     exchangeCodeForToken: mockExchangeCodeForToken,
     refreshToken: mockRefreshToken,
@@ -36,7 +36,7 @@ vi.mock("../keycloak", () => ({
 }));
 
 import { shell } from "electron";
-import { createKeycloakClient } from "../keycloak";
+import { createOidcClient } from "../oidc-client";
 import { createOAuthManager } from "../oauth-manager";
 import type { OAuthManager } from "../oauth-manager";
 import { getDb } from "../../shared/db";
@@ -61,8 +61,8 @@ describe("OAuthManager", () => {
     vi.clearAllMocks();
     vi.useFakeTimers({ shouldAdvanceTime: false });
 
-    // vi.clearAllMocks()でcreateKeycloakClientのmockReturnValueがリセットされるため再設定
-    vi.mocked(createKeycloakClient).mockReturnValue({
+    // vi.clearAllMocks()でcreateOidcClientのmockReturnValueがリセットされるため再設定
+    vi.mocked(createOidcClient).mockReturnValue({
       generateAuthUrl: mockGenerateAuthUrl,
       exchangeCodeForToken: mockExchangeCodeForToken,
       refreshToken: mockRefreshToken,
@@ -160,6 +160,41 @@ describe("OAuthManager", () => {
         }),
       );
       expect(mockDbAuthToken.create).toHaveBeenCalled();
+    });
+
+    test("refresh tokenが返らないOIDCレスポンスでもトークンを保存する", async () => {
+      const tokenResponse = {
+        access_token: "access-token",
+        expires_in: 300,
+        token_type: "Bearer",
+      };
+      mockExchangeCodeForToken.mockResolvedValue(tokenResponse);
+      mockDbAuthToken.create.mockResolvedValue({
+        id: 1,
+        createdAt: new Date(),
+      });
+      mockDbAuthToken.deleteMany.mockResolvedValue({ count: 0 });
+
+      const manager = createTestOAuthManager();
+      await manager.startAuthFlow();
+
+      const authUrlCallArgs = mockGenerateAuthUrl.mock.calls[0]?.[0] as
+        | { state: string }
+        | undefined;
+      const state = authUrlCallArgs?.state ?? "";
+
+      await manager.handleAuthCallback(
+        `tumiki://auth/callback?code=auth-code&state=${state}`,
+      );
+
+      expect(mockDbAuthToken.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          accessToken: "encrypted:access-token",
+          refreshToken: null,
+          idToken: null,
+        }),
+      });
+      expect(mockRefreshToken).not.toHaveBeenCalled();
     });
 
     test("OAuthエラーレスポンスの場合はエラーをスローする", async () => {
@@ -260,7 +295,7 @@ describe("OAuthManager", () => {
   });
 
   describe("logout", () => {
-    test("Keycloakとローカルの両方からログアウトする", async () => {
+    test("OIDCプロバイダーとローカルの両方からログアウトする", async () => {
       const mockToken = {
         id: 1,
         refreshToken: "encrypted:refresh-token",
@@ -413,7 +448,7 @@ describe("OAuthManager", () => {
   });
 
   describe("logout - エッジケース", () => {
-    test("Keycloakログアウト失敗時もローカルトークンは削除される", async () => {
+    test("OIDCログアウト失敗時もローカルトークンは削除される", async () => {
       const mockToken = {
         id: 1,
         refreshToken: "encrypted:refresh-token",
@@ -421,13 +456,13 @@ describe("OAuthManager", () => {
       };
       mockDbAuthToken.findFirst.mockResolvedValue(mockToken);
       mockDbAuthToken.deleteMany.mockResolvedValue({ count: 1 });
-      mockLogout.mockRejectedValue(new Error("Keycloak logout failed"));
+      mockLogout.mockRejectedValue(new Error("OIDC logout failed"));
 
       const manager = createTestOAuthManager();
-      // Keycloak側の失敗は警告のみでresolveする（ローカルクリーンアップ優先）
+      // OIDC側の失敗は警告のみでresolveする（ローカルクリーンアップ優先）
       await expect(manager.logout()).resolves.toBeUndefined();
 
-      // Keycloakログアウトが失敗しても、finallyブロックでローカルトークンは削除される
+      // OIDCログアウトが失敗しても、finallyブロックでローカルトークンは削除される
       expect(mockDbAuthToken.deleteMany).toHaveBeenCalledWith({});
     });
   });

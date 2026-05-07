@@ -1,59 +1,100 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+/* packages/ui のコンポーネントで使われている Tailwind クラスを検出させる（本番ビルドの dist と開発時の src 両方） */
+@source "../../../../packages/ui/dist/**/*.js";
+@source "../../../../packages/ui/src/**/*.tsx";
 
 @theme {
   --font-sans: "Inter", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
   /* ===== 管理画面カラートークン（Tailwindユーティリティクラス用） ===== */
-  --color-bg-app: #0a0a0a;
-  --color-bg-main: #111111;
-  --color-bg-card: #18181b;
-  --color-bg-card-hover: rgba(255, 255, 255, 0.04);
-  --color-bg-active: rgba(255, 255, 255, 0.08);
-  --color-bg-input: rgba(255, 255, 255, 0.03);
-  --color-border-default: rgba(255, 255, 255, 0.08);
-  --color-border-subtle: rgba(255, 255, 255, 0.03);
-  --color-text-primary: #ffffff;
-  --color-text-secondary: #a1a1aa;
-  --color-text-muted: #71717a;
-  --color-text-subtle: #52525b;
-  --color-badge-success-bg: rgba(52, 211, 153, 0.1);
-  --color-badge-success-text: #34d399;
-  --color-badge-warn-bg: rgba(251, 191, 36, 0.1);
-  --color-badge-warn-text: #fbbf24;
-  --color-badge-error-bg: rgba(248, 113, 113, 0.1);
-  --color-badge-error-text: #f87171;
-  --color-badge-info-bg: rgba(96, 165, 250, 0.1);
-  --color-badge-info-text: #60a5fa;
-  --color-btn-primary-bg: #ffffff;
-  --color-btn-primary-text: #000000;
+  --color-bg-app: var(--admin-bg-app);
+  --color-bg-main: var(--admin-bg-main);
+  --color-bg-card: var(--admin-bg-card);
+  --color-bg-card-hover: var(--admin-bg-card-hover);
+  --color-bg-active: var(--admin-bg-active);
+  --color-bg-input: var(--admin-bg-input);
+  --color-border-default: var(--admin-border-default);
+  --color-border-subtle: var(--admin-border-subtle);
+  --color-text-primary: var(--admin-text-primary);
+  --color-text-secondary: var(--admin-text-secondary);
+  --color-text-muted: var(--admin-text-muted);
+  --color-text-subtle: var(--admin-text-subtle);
+  --color-badge-success-bg: var(--admin-badge-success-bg);
+  --color-badge-success-text: var(--admin-badge-success-text);
+  --color-badge-warn-bg: var(--admin-badge-warn-bg);
+  --color-badge-warn-text: var(--admin-badge-warn-text);
+  --color-badge-error-bg: var(--admin-badge-error-bg);
+  --color-badge-error-text: var(--admin-badge-error-text);
+  --color-badge-info-bg: var(--admin-badge-info-bg);
+  --color-badge-info-text: var(--admin-badge-info-text);
+  --color-btn-primary-bg: var(--admin-btn-primary-bg);
+  --color-btn-primary-text: var(--admin-btn-primary-text);
+  /* ===== shadcn/ui (Dialog 等) 用カラートークン（ダークテーマ） ===== */
+  --color-background: var(--admin-bg-app);
+  --color-foreground: var(--admin-text-primary);
+  --color-border: var(--admin-border-default);
+  --color-ring: var(--admin-text-secondary);
+  --color-muted: var(--admin-bg-card);
+  --color-muted-foreground: var(--admin-text-muted);
+  --color-accent: var(--admin-bg-active);
+  --color-accent-foreground: var(--admin-text-primary);
 }
 
 /* ===== 管理画面テーマCSS変数（rechartsのSVG props用） ===== */
 :root {
-  --color-bg-app: #0a0a0a;
-  --color-bg-main: #111111;
-  --color-bg-card: #18181b;
-  --color-bg-card-hover: rgba(255, 255, 255, 0.04);
-  --color-bg-active: rgba(255, 255, 255, 0.08);
-  --color-bg-input: rgba(255, 255, 255, 0.03);
-  --color-border-default: rgba(255, 255, 255, 0.08);
-  --color-border-subtle: rgba(255, 255, 255, 0.03);
-  --color-text-primary: #ffffff;
-  --color-text-secondary: #a1a1aa;
-  --color-text-muted: #71717a;
-  --color-text-subtle: #52525b;
-  --color-badge-success-bg: rgba(52, 211, 153, 0.1);
-  --color-badge-success-text: #34d399;
-  --color-badge-warn-bg: rgba(251, 191, 36, 0.1);
-  --color-badge-warn-text: #fbbf24;
-  --color-badge-error-bg: rgba(248, 113, 113, 0.1);
-  --color-badge-error-text: #f87171;
-  --color-badge-info-bg: rgba(96, 165, 250, 0.1);
-  --color-badge-info-text: #60a5fa;
-  --color-btn-primary-bg: #ffffff;
-  --color-btn-primary-text: #000000;
+  --admin-bg-app: #0a0a0a;
+  --admin-bg-main: #111111;
+  --admin-bg-card: #18181b;
+  --admin-bg-card-hover: rgba(255, 255, 255, 0.04);
+  --admin-bg-active: rgba(255, 255, 255, 0.08);
+  --admin-bg-input: rgba(255, 255, 255, 0.03);
+  --admin-border-default: rgba(255, 255, 255, 0.08);
+  --admin-border-subtle: rgba(255, 255, 255, 0.03);
+  --admin-text-primary: #ffffff;
+  --admin-text-secondary: #a1a1aa;
+  --admin-text-muted: #71717a;
+  --admin-text-subtle: #52525b;
+  --admin-badge-success-bg: rgba(52, 211, 153, 0.1);
+  --admin-badge-success-text: #34d399;
+  --admin-badge-warn-bg: rgba(251, 191, 36, 0.1);
+  --admin-badge-warn-text: #fbbf24;
+  --admin-badge-error-bg: rgba(248, 113, 113, 0.1);
+  --admin-badge-error-text: #f87171;
+  --admin-badge-info-bg: rgba(96, 165, 250, 0.1);
+  --admin-badge-info-text: #60a5fa;
+  --admin-btn-primary-bg: #ffffff;
+  --admin-btn-primary-text: #000000;
   --btn-primary-hover: #e4e4e7;
   --shadow-card: none;
+}
+
+:root[data-theme="light"] {
+  --admin-bg-app: #e8eaed;
+  --admin-bg-main: #f4f5f7;
+  --admin-bg-card: #ffffff;
+  --admin-bg-card-hover: rgba(0, 0, 0, 0.02);
+  --admin-bg-active: rgba(0, 0, 0, 0.06);
+  --admin-bg-input: rgba(0, 0, 0, 0.02);
+  --admin-border-default: #e5e7eb;
+  --admin-border-subtle: #f3f4f6;
+  --admin-text-primary: #111827;
+  --admin-text-secondary: #4b5563;
+  --admin-text-muted: #6b7280;
+  --admin-text-subtle: #9ca3af;
+  --admin-badge-success-bg: rgba(16, 185, 129, 0.1);
+  --admin-badge-success-text: #059669;
+  --admin-badge-warn-bg: rgba(245, 158, 11, 0.1);
+  --admin-badge-warn-text: #d97706;
+  --admin-badge-error-bg: rgba(239, 68, 68, 0.1);
+  --admin-badge-error-text: #dc2626;
+  --admin-badge-info-bg: rgba(37, 99, 235, 0.1);
+  --admin-badge-info-text: #2563eb;
+  --admin-btn-primary-bg: #111827;
+  --admin-btn-primary-text: #ffffff;
+  --btn-primary-hover: #1f2937;
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
 @layer base {
@@ -62,12 +103,16 @@
   }
 
   body {
-    @apply bg-[#0a0a0a] text-zinc-400 antialiased;
+    @apply bg-bg-main text-text-secondary antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
   ::selection {
     @apply bg-white/20 text-white;
+  }
+
+  :root[data-theme="light"] ::selection {
+    @apply bg-blue-100 text-blue-900;
   }
 }
 
@@ -265,12 +310,12 @@
   }
 }
 
-/* グレインノイズテクスチャ */
+/* グレインノイズテクスチャ: z-index: -1 で背景配置（React 19 イベント委譲誤動作対策・実機検証で z-index >= 0 ではクリック妨害が再発することを確認） */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
-  z-index: 9999;
+  z-index: -1;
   pointer-events: none;
   opacity: 0.015;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");

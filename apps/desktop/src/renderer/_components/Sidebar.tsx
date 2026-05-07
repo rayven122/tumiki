@@ -1,11 +1,11 @@
 import type { JSX } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAtom } from "jotai";
 import {
   Home,
   Wrench,
   History,
-  ShieldCheck,
   Settings,
   Moon,
   Sun,
@@ -15,6 +15,9 @@ import {
   Plug,
 } from "lucide-react";
 import { themeAtom, sidebarOpenAtom } from "../store/atoms";
+import type { ProfileState } from "../../shared/types";
+import { PROFILE_CHANGED_EVENT } from "../../shared/events";
+import type { DesktopSession } from "../../main/types";
 
 type NavItem = {
   path: string;
@@ -26,7 +29,6 @@ const mainNav: NavItem[] = [
   { path: "/", label: "ホーム", icon: <Home size={18} /> },
   { path: "/tools", label: "コネクト", icon: <Wrench size={18} /> },
   { path: "/history", label: "操作履歴", icon: <History size={18} /> },
-  { path: "/requests", label: "権限申請", icon: <ShieldCheck size={18} /> },
 ];
 
 const subNav: NavItem[] = [
@@ -37,10 +39,72 @@ export const Sidebar = (): JSX.Element => {
   const location = useLocation();
   const [theme, setTheme] = useAtom(themeAtom);
   const [isOpen, setIsOpen] = useAtom(sidebarOpenAtom);
+  const [profile, setProfile] = useState<ProfileState | null>(null);
+  const [desktopSession, setDesktopSession] = useState<DesktopSession | null>(
+    null,
+  );
+  const mountedRef = useRef(true);
 
-  const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
+  const refreshDesktopSession = useCallback((): void => {
+    window.electronAPI.desktopSession
+      .get()
+      .then((session) => {
+        if (mountedRef.current) setDesktopSession(session);
+      })
+      .catch(() => {
+        if (mountedRef.current) setDesktopSession(null);
+      });
+  }, []);
 
-  const renderLink = (item: NavItem) => {
+  const refreshProfile = useCallback((): void => {
+    window.electronAPI.profile
+      .getState()
+      .then((state) => {
+        if (!mountedRef.current) return;
+        setProfile(state);
+        if (state.activeProfile !== "organization") {
+          setDesktopSession(null);
+          return;
+        }
+        refreshDesktopSession();
+      })
+      .catch(() => {
+        if (mountedRef.current) {
+          setProfile(null);
+          setDesktopSession(null);
+        }
+      });
+  }, [refreshDesktopSession]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    refreshProfile();
+    window.addEventListener(PROFILE_CHANGED_EVENT, refreshProfile);
+    return () => {
+      mountedRef.current = false;
+      window.removeEventListener(PROFILE_CHANGED_EVENT, refreshProfile);
+    };
+  }, [refreshProfile]);
+
+  useEffect(() => {
+    if (profile?.activeProfile !== "organization") return;
+    const refresh = (): void => refreshDesktopSession();
+    window.addEventListener("focus", refresh);
+    const intervalId = window.setInterval(refresh, 30_000);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      window.clearInterval(intervalId);
+    };
+  }, [profile?.activeProfile, refreshDesktopSession]);
+
+  const toggleTheme = (): void => setTheme(theme === "dark" ? "light" : "dark");
+  const isOrganization = profile?.activeProfile === "organization";
+  const organization = isOrganization ? desktopSession?.organization : null;
+  const workspaceName =
+    isOrganization && organization?.name ? organization.name : "TUMIKI";
+  const workspaceLogoUrl = organization?.logoUrl;
+
+  const renderLink = (item: NavItem): JSX.Element => {
     const isActive =
       item.path === "/"
         ? location.pathname === "/"
@@ -72,18 +136,19 @@ export const Sidebar = (): JSX.Element => {
       <div className="mb-4 flex items-center justify-between px-3">
         <div className="flex items-center gap-2 overflow-hidden">
           <img
-            src="/rayven_white.png"
-            alt="RAYVEN"
-            className={`h-6 w-6 shrink-0 ${theme === "light" ? "invert" : ""}`}
+            src={workspaceLogoUrl ?? "/tumiki-logo.svg"}
+            alt={workspaceName}
+            className="h-6 w-6 shrink-0 object-contain"
           />
           {isOpen && (
             <span className="truncate text-sm font-semibold text-[var(--text-primary)]">
-              RAYVEN
+              {workspaceName}
             </span>
           )}
         </div>
         {isOpen && (
           <button
+            type="button"
             onClick={() => setIsOpen(false)}
             className="shrink-0 rounded-md p-1 text-[var(--text-subtle)] transition-colors hover:text-[var(--text-secondary)]"
             aria-label="サイドバーを閉じる"
@@ -97,6 +162,7 @@ export const Sidebar = (): JSX.Element => {
       {!isOpen && (
         <div className="mb-2 px-3">
           <button
+            type="button"
             onClick={() => setIsOpen(true)}
             className="flex w-full items-center justify-center rounded-md p-1.5 text-[var(--text-subtle)] transition-colors hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-secondary)]"
             aria-label="サイドバーを開く"
@@ -144,6 +210,7 @@ export const Sidebar = (): JSX.Element => {
 
           {/* テーマ切替 */}
           <button
+            type="button"
             onClick={toggleTheme}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-secondary)]"
             aria-label={

@@ -1,0 +1,92 @@
+{{- include "tumiki-cloud-api.validateRequiredValues" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tumiki-cloud-api
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "tumiki-cloud-api.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+  annotations:
+    # Reloader: tumiki-cloud-api-env Secret が更新されたときに自動再起動
+    secret.reloader.stakater.com/reload: "tumiki-cloud-api-env"
+spec:
+  revisionHistoryLimit: 3
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "tumiki-cloud-api.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      labels:
+        {{- include "tumiki-cloud-api.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: api
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      # 複数 Pod を別ノードに分散させて単一障害点を排除（マルチノード時に有効）
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    {{- include "tumiki-cloud-api.selectorLabels" . | nindent 20 }}
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: tumiki-cloud-api
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - containerPort: {{ .Values.server.port }}
+              name: http
+              protocol: TCP
+          env:
+            - name: PORT
+              value: {{ .Values.server.port | quote }}
+            - name: NODE_ENV
+              value: "production"
+          # Infisical Operator が同期した k8s Secret を環境変数として注入
+          # 必須: LICENSE_PUBLIC_KEY, AI_GATEWAY_API_KEY
+          # 任意: DYNAMIC_SEARCH_MODEL
+          envFrom:
+            - secretRef:
+                name: tumiki-cloud-api-env
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          # readOnlyRootFilesystem 有効化に伴い書き込みが必要な領域を tmpfs にマウント
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          startupProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.server.port }}
+            failureThreshold: 12
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.server.port }}
+            periodSeconds: 30
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.server.port }}
+            periodSeconds: 10
+            timeoutSeconds: 3
+      volumes:
+        - name: tmp
+          emptyDir: {}

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Activity,
-  ClipboardCheck,
+  Building2,
   ExternalLink,
   History,
   PanelLeft,
@@ -14,42 +14,64 @@ import {
   Settings,
   Shield,
   Users,
-  Users2,
 } from "lucide-react";
+import type { Theme } from "~/lib/admin-theme";
+import { api } from "~/trpc/react";
+import { ThemeToggle } from "./ThemeToggle";
 
 const NAV_ITEMS = [
   { path: "/admin", label: "ダッシュボード", icon: Activity },
   { path: "/admin/history", label: "操作履歴", icon: History },
+  { path: "/admin/directory", label: "ディレクトリ管理", icon: Building2 },
+  { path: "/admin/roles", label: "権限管理", icon: Shield },
   { path: "/admin/users", label: "ユーザー管理", icon: Users },
-  { path: "/admin/roles", label: "ロール管理", icon: Shield },
-  { path: "/admin/tools", label: "ツール管理", icon: Server },
-  { path: "/admin/groups", label: "グループ管理", icon: Users2 },
-  { path: "/admin/approvals", label: "承認管理", icon: ClipboardCheck },
+  { path: "/admin/tools", label: "カタログ管理", icon: Server },
   { path: "/admin/settings", label: "システム設定", icon: Settings },
 ] as const;
 
-export const AdminSidebar = () => {
+type Props = {
+  initialTheme: Theme;
+};
+
+export const AdminSidebar = ({ initialTheme }: Props) => {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
+  const { data: desktopSettings } = api.desktopApiSettings.get.useQuery();
+  const sidebarLogoUrl =
+    desktopSettings?.organizationLogoUrl ?? "/tumiki-logo.svg";
+  const sidebarTitle = desktopSettings?.organizationName ?? "Tumiki";
 
   return (
     <aside
-      className="bg-bg-app border-r-border-default flex min-h-screen shrink-0 flex-col border-r py-3 transition-all duration-200"
-      style={{ width: collapsed ? 56 : 220 }}
+      className={`border-r-border-default bg-bg-app flex min-h-screen shrink-0 flex-col border-r py-3 transition-all duration-200 ${collapsed ? "w-16" : "w-[236px]"}`}
     >
       {/* ロゴ + 折りたたみボタン */}
       <div className="border-b-border-default flex items-center justify-between border-b px-3 pb-3">
         {!collapsed && (
-          <span className="text-text-primary text-sm font-semibold">
-            Tumiki
-          </span>
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="border-border-default bg-bg-card flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border">
+              <img
+                src={sidebarLogoUrl}
+                alt=""
+                className="h-5 w-5 object-contain"
+              />
+            </div>
+            <div className="min-w-0">
+              <div className="text-text-primary truncate text-sm font-semibold">
+                {sidebarTitle}
+              </div>
+              <div className="text-text-subtle truncate text-[10px]">
+                Internal Manager
+              </div>
+            </div>
+          </div>
         )}
         <button
           type="button"
           aria-label={collapsed ? "サイドバーを展開" : "サイドバーを折りたたむ"}
           aria-expanded={!collapsed}
           onClick={() => setCollapsed(!collapsed)}
-          className={`text-text-muted rounded p-1 transition-opacity hover:opacity-80 ${collapsed ? "mx-auto" : "ml-auto"}`}
+          className={`text-text-muted hover:bg-bg-active hover:text-text-primary rounded-md p-1.5 transition-colors ${collapsed ? "mx-auto" : "ml-auto"}`}
         >
           {collapsed ? <PanelLeft size={16} /> : <PanelLeftClose size={16} />}
         </button>
@@ -58,13 +80,22 @@ export const AdminSidebar = () => {
       {/* ナビゲーション */}
       <nav className="flex-1 space-y-0.5 px-2 pt-2">
         {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
-          const isActive = pathname === path;
+          const isActive =
+            pathname === path ||
+            (path === "/admin/directory" &&
+              (pathname === "/admin/organizations" ||
+                pathname === "/admin/groups")) ||
+            (path === "/admin/users" && pathname.startsWith("/admin/users/"));
           return (
             <Link
               key={path}
               href={path}
               title={collapsed ? label : undefined}
-              className={`flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm transition-colors hover:opacity-90 ${isActive ? "bg-bg-active text-text-primary" : "text-text-secondary"}`}
+              className={`flex min-h-[44px] items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors hover:opacity-90 ${
+                isActive
+                  ? "bg-bg-active text-text-primary"
+                  : "text-text-secondary hover:bg-bg-card-hover hover:text-text-primary"
+              }`}
             >
               <Icon size={15} className="shrink-0" />
               {!collapsed && <span>{label}</span>}
@@ -74,19 +105,20 @@ export const AdminSidebar = () => {
       </nav>
 
       {/* フッター */}
-      <div className="border-t-border-default border-t px-3 pt-2">
+      <div className="border-t-border-default space-y-1 border-t px-2 pt-2">
+        <ThemeToggle collapsed={collapsed} initialTheme={initialTheme} />
         {collapsed ? (
           <Link
             href="/"
             title="ホームへ戻る"
-            className="text-text-subtle flex justify-center"
+            className="text-text-subtle hover:bg-bg-active hover:text-text-primary flex min-h-[44px] justify-center rounded-lg px-2.5 py-2 transition-colors"
           >
             <ExternalLink size={13} />
           </Link>
         ) : (
           <Link
             href="/"
-            className="text-text-subtle flex items-center gap-1.5 text-xs hover:opacity-80"
+            className="text-text-subtle hover:bg-bg-active hover:text-text-primary flex min-h-[44px] items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs transition-colors"
           >
             <ExternalLink size={11} />
             ホームへ戻る

@@ -20,8 +20,10 @@ vi.mock("../oauth.dcr");
 vi.mock("../oauth.auth-url");
 vi.mock("../oauth.token");
 vi.mock("../oauth.protocol");
+vi.mock("../oauth.loopback");
 vi.mock("../oauth.repository");
 vi.mock("../../mcp-server-list/mcp.service");
+vi.mock("../../../shared/profile-dispatch");
 
 import { shell } from "electron";
 import { getDb } from "../../../shared/db";
@@ -35,23 +37,55 @@ import { performDCR } from "../oauth.dcr";
 import { generateAuthorizationUrl } from "../oauth.auth-url";
 import { exchangeCodeForToken } from "../oauth.token";
 import { parseOAuthCallback } from "../oauth.protocol";
+import { startLoopbackServer, type LoopbackServer } from "../oauth.loopback";
 import * as oauthRepository from "../oauth.repository";
-import { createFromCatalog } from "../../mcp-server-list/mcp.service";
+import {
+  createFromCatalog,
+  createFromManagerCatalog,
+} from "../../mcp-server-list/mcp.service";
+import { resolveByProfile } from "../../../shared/profile-dispatch";
 import { createMcpOAuthManager } from "../oauth.service";
 import type { StartOAuthInput } from "../oauth.types";
 import type * as oauth from "oauth4webapi";
 
+const TEST_REDIRECT_URI = "http://127.0.0.1:50123/callback";
+const TEST_CALLBACK_URL = `${TEST_REDIRECT_URI}?code=auth-code&state=test-state`;
+
+const buildLoopback = (
+  callbackUrl: string = TEST_CALLBACK_URL,
+): LoopbackServer => ({
+  redirectUri: TEST_REDIRECT_URI,
+  waitForCallback: vi.fn().mockResolvedValue(callbackUrl),
+  close: vi.fn().mockResolvedValue(undefined),
+});
+
 describe("oauth.service", () => {
   const mockDb = {} as Awaited<ReturnType<typeof getDb>>;
 
+  const defaultManagerCatalog: NonNullable<StartOAuthInput["managerCatalog"]> =
+    {
+      catalogId: "1",
+      status: "available",
+      permissions: { read: true, write: true, execute: true },
+      connectionTemplate: {
+        transportType: "STREAMABLE_HTTP",
+        command: null,
+        args: [],
+        url: "https://mcp.figma.com/mcp",
+        authType: "OAUTH",
+        credentialKeys: [],
+      },
+      tools: [],
+    };
+
   const defaultInput: StartOAuthInput = {
-    catalogId: 1,
     catalogName: "Figma MCP",
     description: "Figma MCP Server",
     transportType: "STREAMABLE_HTTP",
     command: null,
     args: "[]",
     url: "https://mcp.figma.com/mcp",
+    managerCatalog: defaultManagerCatalog,
   };
 
   const mockMetadata: oauth.AuthorizationServer = {
@@ -77,11 +111,29 @@ describe("oauth.service", () => {
     vi.mocked(generateAuthorizationUrl).mockReturnValue(
       new URL("https://www.figma.com/oauth?client_id=test"),
     );
+    // 既定では個人モードとして振る舞う（テストごとに上書き可）
+    vi.mocked(resolveByProfile).mockImplementation(async (handlers) =>
+      handlers.personal(),
+    );
+    vi.mocked(parseOAuthCallback).mockReturnValue({
+      code: "auth-code",
+      state: "test-state",
+    });
+    vi.mocked(exchangeCodeForToken).mockResolvedValue({
+      access_token: "access123",
+      refresh_token: "refresh456",
+      expires_at: 1700000000,
+      scope: "files:read",
+    });
+    vi.mocked(createFromCatalog).mockResolvedValue({
+      serverId: 42,
+      serverName: "Figma MCP",
+    });
   });
 
   describe("startAuthFlow", () => {
-    test("DCRキャッシュなし時にDiscovery + DCR + ブラウザオープンする", async () => {
-      // DCRキャッシュなし
+    test("DCRキャッシュなし時にDiscovery + DCR + ループバック受信 + トークン交換まで実行する", async () => {
+      vi.mocked(startLoopbackServer).mockResolvedValueOnce(buildLoopback());
       vi.mocked(oauthRepository.findByServerUrl).mockResolvedValueOnce(null);
       vi.mocked(discoverOAuthMetadata).mockResolvedValueOnce(mockMetadata);
       vi.mocked(performDCR).mockResolvedValueOnce({
@@ -90,15 +142,14 @@ describe("oauth.service", () => {
       });
 
       const manager = createMcpOAuthManager();
-      await manager.startAuthFlow(defaultInput);
+      const result = await manager.startAuthFlow(defaultInput);
 
-      // Discovery + DCR が呼ばれる
+      expect(startLoopbackServer).toHaveBeenCalled();
       expect(discoverOAuthMetadata).toHaveBeenCalledWith(
         "https://mcp.figma.com/mcp",
       );
-      expect(performDCR).toHaveBeenCalledWith(mockMetadata);
+      expect(performDCR).toHaveBeenCalledWith(mockMetadata, TEST_REDIRECT_URI);
 
-      // DCR結果がキャッシュされる
       expect(oauthRepository.upsertOAuthClient).toHaveBeenCalledWith(
         mockDb,
         expect.objectContaining({
@@ -107,18 +158,30 @@ describe("oauth.service", () => {
         }),
       );
 
-      // ブラウザが開かれる
       expect(shell.openExternal).toHaveBeenCalledWith(
         "https://www.figma.com/oauth?client_id=test",
       );
 
-      // セッションが保存される
-      expect(manager.getActiveSession()).not.toBeNull();
-      expect(manager.getActiveSession()?.state).toBe("test-state");
+      expect(exchangeCodeForToken).toHaveBeenCalledWith(
+        mockMetadata,
+        expect.objectContaining({ client_id: "test-client-id" }),
+        new URL(TEST_CALLBACK_URL),
+        TEST_REDIRECT_URI,
+        "test-verifier",
+        "test-state",
+      );
+
+      expect(result).toStrictEqual({
+        serverId: 42,
+        serverName: "Figma MCP",
+      });
+
+      // 完了時にセッションがクリアされる
+      expect(manager.getActiveSession()).toBeNull();
     });
 
     test("DCRキャッシュあり時にDiscovery + DCRをスキップする", async () => {
-      // DCRキャッシュあり
+      vi.mocked(startLoopbackServer).mockResolvedValueOnce(buildLoopback());
       vi.mocked(oauthRepository.findByServerUrl).mockResolvedValueOnce({
         id: 1,
         serverUrl: "https://mcp.figma.com/mcp",
@@ -127,20 +190,19 @@ describe("oauth.service", () => {
         clientSecret: "cached-secret",
         tokenEndpointAuthMethod: "client_secret_post",
         authServerMetadata: JSON.stringify(mockMetadata),
+        isDcr: true,
       });
 
       const manager = createMcpOAuthManager();
       await manager.startAuthFlow(defaultInput);
 
-      // Discovery + DCR は呼ばれない
       expect(discoverOAuthMetadata).not.toHaveBeenCalled();
       expect(performDCR).not.toHaveBeenCalled();
-
-      // ブラウザが開かれる
       expect(shell.openExternal).toHaveBeenCalled();
     });
 
     test("キャッシュのメタデータが壊れている場合削除してDiscoveryし直す", async () => {
+      vi.mocked(startLoopbackServer).mockResolvedValueOnce(buildLoopback());
       vi.mocked(oauthRepository.findByServerUrl).mockResolvedValueOnce({
         id: 1,
         serverUrl: "https://mcp.figma.com/mcp",
@@ -149,44 +211,7 @@ describe("oauth.service", () => {
         clientSecret: "cached-secret",
         tokenEndpointAuthMethod: "client_secret_post",
         authServerMetadata: "{}",
-      });
-
-      vi.mocked(discoverOAuthMetadata).mockResolvedValueOnce(mockMetadata);
-      vi.mocked(performDCR).mockResolvedValueOnce({
-        metadata: mockMetadata,
-        registration: mockClient,
-      });
-
-      const manager = createMcpOAuthManager();
-      await manager.startAuthFlow(defaultInput);
-
-      expect(oauthRepository.deleteByServerUrl).toHaveBeenCalledWith(
-        mockDb,
-        "https://mcp.figma.com/mcp",
-      );
-      expect(discoverOAuthMetadata).toHaveBeenCalledWith(
-        "https://mcp.figma.com/mcp",
-      );
-      expect(performDCR).toHaveBeenCalledWith(mockMetadata);
-      expect(shell.openExternal).toHaveBeenCalled();
-      expect(manager.getActiveSession()?.state).toBe("test-state");
-    });
-
-    test("キャッシュにauthorization_endpointが無い場合削除してDiscoveryし直す", async () => {
-      const metadataWithoutAuthz = {
-        issuer: "https://www.figma.com",
-        token_endpoint: "https://www.figma.com/api/oauth/token",
-        registration_endpoint: "https://www.figma.com/api/oauth/register",
-        scopes_supported: ["files:read"],
-      };
-      vi.mocked(oauthRepository.findByServerUrl).mockResolvedValueOnce({
-        id: 1,
-        serverUrl: "https://mcp.figma.com/mcp",
-        issuer: "https://www.figma.com",
-        clientId: "cached-client-id",
-        clientSecret: "cached-secret",
-        tokenEndpointAuthMethod: "client_secret_post",
-        authServerMetadata: JSON.stringify(metadataWithoutAuthz),
+        isDcr: true,
       });
 
       vi.mocked(discoverOAuthMetadata).mockResolvedValueOnce(mockMetadata);
@@ -203,16 +228,13 @@ describe("oauth.service", () => {
         "https://mcp.figma.com/mcp",
       );
       expect(discoverOAuthMetadata).toHaveBeenCalled();
-      expect(performDCR).toHaveBeenCalled();
-      expect(shell.openExternal).toHaveBeenCalled();
-      expect(manager.getActiveSession()?.state).toBe("test-state");
+      expect(performDCR).toHaveBeenCalledWith(mockMetadata, TEST_REDIRECT_URI);
     });
 
     test("DCR非対応時にユーザー入力のclient_id/secretでフォールバックする", async () => {
-      // DCRキャッシュなし
+      vi.mocked(startLoopbackServer).mockResolvedValueOnce(buildLoopback());
       vi.mocked(oauthRepository.findByServerUrl).mockResolvedValueOnce(null);
 
-      // Discovery成功だがregistration_endpointなし
       const metadataWithoutDCR = {
         ...mockMetadata,
         registration_endpoint: undefined,
@@ -228,10 +250,7 @@ describe("oauth.service", () => {
         oauthClientSecret: "manual-secret",
       });
 
-      // DCRは呼ばれない
       expect(performDCR).not.toHaveBeenCalled();
-
-      // OAuthClientにキャッシュ保存される
       expect(oauthRepository.upsertOAuthClient).toHaveBeenCalledWith(
         mockDb,
         expect.objectContaining({
@@ -239,16 +258,13 @@ describe("oauth.service", () => {
           clientSecret: "manual-secret",
         }),
       );
-
-      // ブラウザが開かれる
       expect(shell.openExternal).toHaveBeenCalled();
     });
 
     test("DCR非対応でclient_id未入力の場合エラーをスローする", async () => {
-      // DCRキャッシュなし
+      vi.mocked(startLoopbackServer).mockResolvedValueOnce(buildLoopback());
       vi.mocked(oauthRepository.findByServerUrl).mockResolvedValueOnce(null);
 
-      // Discovery成功だがregistration_endpointなし
       const metadataWithoutDCR = {
         ...mockMetadata,
         registration_endpoint: undefined,
@@ -262,11 +278,12 @@ describe("oauth.service", () => {
         "does not support Dynamic Client Registration",
       );
     });
-  });
 
-  describe("handleCallback", () => {
-    test("コールバックでトークン交換しMCPサーバーを作成する", async () => {
-      // セッション開始
+    test("組織モードでは Manager API カタログから登録する", async () => {
+      vi.mocked(resolveByProfile).mockImplementation(async (handlers) =>
+        handlers.organization(),
+      );
+      vi.mocked(startLoopbackServer).mockResolvedValueOnce(buildLoopback());
       vi.mocked(oauthRepository.findByServerUrl).mockResolvedValue({
         id: 1,
         serverUrl: "https://mcp.figma.com/mcp",
@@ -275,67 +292,58 @@ describe("oauth.service", () => {
         clientSecret: "test-secret",
         tokenEndpointAuthMethod: "client_secret_post",
         authServerMetadata: JSON.stringify(mockMetadata),
+        isDcr: true,
+      });
+      vi.mocked(createFromManagerCatalog).mockResolvedValueOnce({
+        serverId: 99,
+        serverName: "Figma MCP",
       });
 
       const manager = createMcpOAuthManager();
-      await manager.startAuthFlow(defaultInput);
-
-      // コールバック
-      vi.mocked(parseOAuthCallback).mockReturnValueOnce({
-        code: "auth-code",
-        state: "test-state",
-      });
-      vi.mocked(exchangeCodeForToken).mockResolvedValueOnce({
-        access_token: "access123",
-        refresh_token: "refresh456",
-        expires_at: 1700000000,
-        scope: "files:read",
-      });
-      vi.mocked(createFromCatalog).mockResolvedValueOnce({
-        serverId: 42,
-        serverName: "Figma MCP",
+      await manager.startAuthFlow({
+        ...defaultInput,
+        managerCatalog: {
+          ...defaultManagerCatalog,
+          catalogId: "manager-catalog-uuid",
+        },
       });
 
-      const result = await manager.handleCallback(
-        "tumiki://oauth/callback?code=auth-code&state=test-state",
-      );
-
-      expect(result).toStrictEqual({
-        serverId: 42,
-        serverName: "Figma MCP",
-      });
-
-      // createFromCatalogにOAuthトークンが渡される
-      expect(createFromCatalog).toHaveBeenCalledWith(
+      expect(createFromManagerCatalog).toHaveBeenCalledWith(
         expect.objectContaining({
-          authType: "OAUTH",
-          credentials: expect.objectContaining({
-            access_token: "access123",
-            refresh_token: "refresh456",
-          }),
+          catalogId: "manager-catalog-uuid",
+          serverName: "Figma MCP",
         }),
       );
-
-      // セッションがクリアされる
-      expect(manager.getActiveSession()).toBeNull();
+      expect(createFromCatalog).not.toHaveBeenCalled();
     });
 
-    test("セッションが存在しない場合エラーをスローする", async () => {
-      vi.mocked(parseOAuthCallback).mockReturnValueOnce({
-        code: "auth-code",
-        state: "test-state",
+    test("個人モードで managerCatalog.catalogId が数値変換できない場合エラーをスローする", async () => {
+      vi.mocked(startLoopbackServer).mockResolvedValueOnce(buildLoopback());
+      vi.mocked(oauthRepository.findByServerUrl).mockResolvedValue({
+        id: 1,
+        serverUrl: "https://mcp.figma.com/mcp",
+        issuer: "https://www.figma.com",
+        clientId: "test-client-id",
+        clientSecret: "test-secret",
+        tokenEndpointAuthMethod: "client_secret_post",
+        authServerMetadata: JSON.stringify(mockMetadata),
+        isDcr: true,
       });
 
       const manager = createMcpOAuthManager();
-
       await expect(
-        manager.handleCallback(
-          "tumiki://oauth/callback?code=auth-code&state=test-state",
-        ),
-      ).rejects.toThrow("MCP OAuth認証セッションが存在しません");
+        manager.startAuthFlow({
+          ...defaultInput,
+          managerCatalog: {
+            ...defaultManagerCatalog,
+            catalogId: "not-a-number",
+          },
+        }),
+      ).rejects.toThrow("カタログIDが不正です");
     });
 
     test("stateが一致しない場合エラーをスローする", async () => {
+      vi.mocked(startLoopbackServer).mockResolvedValueOnce(buildLoopback());
       vi.mocked(oauthRepository.findByServerUrl).mockResolvedValue({
         id: 1,
         serverUrl: "https://mcp.figma.com/mcp",
@@ -344,24 +352,28 @@ describe("oauth.service", () => {
         clientSecret: "test-secret",
         tokenEndpointAuthMethod: "client_secret_post",
         authServerMetadata: JSON.stringify(mockMetadata),
+        isDcr: true,
       });
-
-      const manager = createMcpOAuthManager();
-      await manager.startAuthFlow(defaultInput);
-
       vi.mocked(parseOAuthCallback).mockReturnValueOnce({
         code: "auth-code",
         state: "wrong-state",
       });
 
-      await expect(
-        manager.handleCallback(
-          "tumiki://oauth/callback?code=auth-code&state=wrong-state",
-        ),
-      ).rejects.toThrow("stateパラメータが一致しません");
+      const manager = createMcpOAuthManager();
+      await expect(manager.startAuthFlow(defaultInput)).rejects.toThrow(
+        "stateパラメータが一致しません",
+      );
     });
 
-    test("セッションタイムアウトの場合エラーをスローする", async () => {
+    test("ループバックタイムアウト時にエラーが伝播する", async () => {
+      const loopback: LoopbackServer = {
+        redirectUri: TEST_REDIRECT_URI,
+        waitForCallback: vi
+          .fn()
+          .mockRejectedValue(new Error("OAuth認証がタイムアウトしました")),
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+      vi.mocked(startLoopbackServer).mockResolvedValueOnce(loopback);
       vi.mocked(oauthRepository.findByServerUrl).mockResolvedValue({
         id: 1,
         serverUrl: "https://mcp.figma.com/mcp",
@@ -370,32 +382,27 @@ describe("oauth.service", () => {
         clientSecret: "test-secret",
         tokenEndpointAuthMethod: "client_secret_post",
         authServerMetadata: JSON.stringify(mockMetadata),
+        isDcr: true,
       });
 
       const manager = createMcpOAuthManager();
-      await manager.startAuthFlow(defaultInput);
-
-      // セッション開始時刻を過去に設定
-      const session = manager.getActiveSession();
-      if (session) {
-        session.createdAt = new Date(Date.now() - 6 * 60 * 1000); // 6分前
-      }
-
-      vi.mocked(parseOAuthCallback).mockReturnValueOnce({
-        code: "auth-code",
-        state: "test-state",
-      });
-
-      await expect(
-        manager.handleCallback(
-          "tumiki://oauth/callback?code=auth-code&state=test-state",
-        ),
-      ).rejects.toThrow("有効期限が切れています");
+      await expect(manager.startAuthFlow(defaultInput)).rejects.toThrow(
+        "OAuth認証がタイムアウトしました",
+      );
+      expect(loopback.close).toHaveBeenCalled();
     });
   });
 
   describe("cancelAuthFlow", () => {
-    test("セッションをクリアする", async () => {
+    test("ループバックサーバーをクローズする", async () => {
+      const loopback = buildLoopback();
+      vi.mocked(startLoopbackServer).mockResolvedValueOnce(loopback);
+      // waitForCallback を解決させずに保留状態にする
+      vi.mocked(loopback.waitForCallback).mockReturnValue(
+        new Promise(() => {
+          /* never */
+        }),
+      );
       vi.mocked(oauthRepository.findByServerUrl).mockResolvedValue({
         id: 1,
         serverUrl: "https://mcp.figma.com/mcp",
@@ -404,14 +411,56 @@ describe("oauth.service", () => {
         clientSecret: "test-secret",
         tokenEndpointAuthMethod: "client_secret_post",
         authServerMetadata: JSON.stringify(mockMetadata),
+        isDcr: true,
       });
 
       const manager = createMcpOAuthManager();
-      await manager.startAuthFlow(defaultInput);
-      expect(manager.getActiveSession()).not.toBeNull();
+      // 開始は await しない（解決しないため）
+      void manager.startAuthFlow(defaultInput).catch(() => {
+        /* キャンセル時のエラーは無視 */
+      });
+
+      // ブラウザオープン後にセッションが立っていることを確認するため少し待つ
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       manager.cancelAuthFlow();
-      expect(manager.getActiveSession()).toBeNull();
+      // 即時に nullable とは限らないが、close が呼ばれることを期待
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(loopback.close).toHaveBeenCalled();
+    });
+  });
+
+  describe("findManualOAuthClient", () => {
+    test("キャッシュあり時に復号化済みクレデンシャルを返す", async () => {
+      vi.mocked(
+        oauthRepository.findManualClientByServerUrl,
+      ).mockResolvedValueOnce({
+        clientId: "id",
+        clientSecret: "secret",
+      });
+
+      const manager = createMcpOAuthManager();
+      const result = await manager.findManualOAuthClient("https://example.com");
+
+      expect(result).toStrictEqual({
+        clientId: "id",
+        clientSecret: "secret",
+      });
+      expect(oauthRepository.findManualClientByServerUrl).toHaveBeenCalledWith(
+        mockDb,
+        "https://example.com",
+      );
+    });
+
+    test("キャッシュなし時にnullを返す", async () => {
+      vi.mocked(
+        oauthRepository.findManualClientByServerUrl,
+      ).mockResolvedValueOnce(null);
+
+      const manager = createMcpOAuthManager();
+      const result = await manager.findManualOAuthClient("https://unknown.com");
+
+      expect(result).toStrictEqual(null);
     });
   });
 });

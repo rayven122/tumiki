@@ -51,14 +51,34 @@ enum ServerStatus {
   PENDING
 }
 
+/// 監査ログの管理サーバー同期状態
+/// @namespace McpServer
+enum AuditLogSyncStatus {
+  /// 未送信
+  PENDING
+  /// 送信済み
+  SYNCED
+  /// 送信失敗（次回以降に再試行）
+  FAILED
+}
+
+/// サーバーの種類
+/// @namespace McpServer
+enum ServerType {
+  /// カスタムMCPサーバー（ユーザーが既存コネクタを束ねた仮想MCP）
+  CUSTOM
+  /// 公式MCPサーバー（カタログ/単体カスタム入力で登録した単独コネクタ）
+  OFFICIAL
+}
+
 /// 認証トークン
 /// @namespace Auth
 model AuthToken {
   id           Int      @id @default(autoincrement())
   /// 暗号化されたアクセストークン
   accessToken  String
-  /// 暗号化されたリフレッシュトークン
-  refreshToken String
+  /// 暗号化されたリフレッシュトークン（jackson OIDC IdP は返さないため nullable）
+  refreshToken String?
   /// 暗号化されたIDトークン（OIDCログアウト用）
   idToken      String?
   /// トークンの有効期限
@@ -178,10 +198,17 @@ model McpServer {
   slug         String       @unique
   /// サーバー説明
   description  String       @default("")
+  /// サーバーの種類（OFFICIAL = 単独コネクタ / CUSTOM = 仮想MCP）
+  /// 仮想MCP（CUSTOM）の接続を新たな仮想MCPの素材として再ネストするのを防ぐためのフラグ
+  serverType   ServerType   @default(OFFICIAL)
   /// サーバー状態
   serverStatus ServerStatus @default(STOPPED)
   /// 有効/無効フラグ（トグル用）
   isEnabled    Boolean      @default(true)
+  /// PII マスキングを有効化するか（false なら upstream に生 args をそのまま渡す）
+  isPiiMaskingEnabled Boolean @default(true)
+  /// TOON 変換（レスポンス圧縮）を有効化するか（true なら tools/call の content[].text を TOON エンコードして AI クライアントに返す）
+  isToonConversionEnabled Boolean @default(false)
   /// 一覧画面での表示順序
   displayOrder Int          @default(0)
   createdAt    DateTime     @default(now())
@@ -211,6 +238,8 @@ model OAuthClient {
   tokenEndpointAuthMethod String   @default("none")
   /// Authorization Server Metadata（JSON文字列）
   authServerMetadata      String
+  /// DCRで自動登録されたクライアントかどうか（falseの場合はユーザー手動入力）
+  isDcr                   Boolean  @default(true)
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 }
@@ -247,6 +276,14 @@ model AuditLog {
   /// 検出時に適用したマスキングポリシー（mask / detect-only / block）
   /// null の場合はフィルタ無効
   piiPolicy      String?
+  /// 管理サーバーへの同期状態
+  syncStatus     AuditLogSyncStatus @default(PENDING)
+  /// 管理サーバーへの同期完了日時
+  syncedAt       DateTime?
+  /// 管理サーバーへの同期試行回数
+  retryCount     Int                @default(0)
+  /// 最後の同期試行日時
+  lastSyncTriedAt DateTime?
   createdAt      DateTime      @default(now())
 
   /// 対象MCPサーバー
@@ -261,4 +298,5 @@ model AuditLog {
 
   @@index([serverId, createdAt])
   @@index([createdAt])
+  @@index([syncStatus, createdAt])
 }

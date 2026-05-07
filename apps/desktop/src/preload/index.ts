@@ -1,14 +1,25 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { AuthTokenResult } from "../types/auth";
-import type { CatalogItem } from "../types/catalog";
+import type {
+  CatalogItem,
+  LocalCatalogItem,
+  AddFromCatalogInput,
+} from "../types/catalog";
+import type { ProfileState } from "../shared/types";
 import type {
   McpServerItem,
   McpServerDetailItem,
   CreateFromCatalogInput,
+  CreateFromManagerCatalogInput,
+  CreateCustomServerInput,
   CreateVirtualServerInput,
+  GetToolsForConnectionsInput,
+  GetToolsForConnectionsResult,
   UpdateServerInput,
   DeleteServerInput,
   ToggleServerInput,
+  UpdatePiiMaskingInput,
+  UpdateToonConversionInput,
   StartOAuthInput,
   OAuthResult,
   AuditLogListAllInput,
@@ -16,6 +27,11 @@ import type {
   AuditLogListResult,
   DashboardInput,
   DashboardResult,
+  DesktopSession,
+  McpProxyLaunchCommand,
+  AiClientPreview,
+  AiClientWriteRequest,
+  AiClientWriteResult,
 } from "../main/types";
 
 // Electron APIを安全に公開
@@ -64,6 +80,12 @@ const api = {
   // カタログ関連 API
   catalog: {
     getAll: (): Promise<CatalogItem[]> => ipcRenderer.invoke("catalog:getAll"),
+    getLocalAll: (): Promise<LocalCatalogItem[]> =>
+      ipcRenderer.invoke("catalog:getLocalAll"),
+    add: (
+      input: AddFromCatalogInput,
+    ): Promise<{ serverId: number; serverName: string }> =>
+      ipcRenderer.invoke("catalog:add", input),
   },
 
   // MCP管理 API
@@ -72,10 +94,22 @@ const api = {
       input: CreateFromCatalogInput,
     ): Promise<{ serverId: number; serverName: string }> =>
       ipcRenderer.invoke("mcp:createFromCatalog", input),
+    createFromManagerCatalog: (
+      input: CreateFromManagerCatalogInput,
+    ): Promise<{ serverId: number; serverName: string }> =>
+      ipcRenderer.invoke("mcp:createFromManagerCatalog", input),
+    createCustomServer: (
+      input: CreateCustomServerInput,
+    ): Promise<{ serverId: number; serverName: string }> =>
+      ipcRenderer.invoke("mcp:createCustomServer", input),
     createVirtualServer: (
       input: CreateVirtualServerInput,
     ): Promise<{ serverId: number; serverName: string }> =>
       ipcRenderer.invoke("mcp:createVirtualServer", input),
+    getToolsForConnections: (
+      input: GetToolsForConnectionsInput,
+    ): Promise<GetToolsForConnectionsResult> =>
+      ipcRenderer.invoke("mcp:getToolsForConnections", input),
     getAll: (): Promise<McpServerItem[]> => ipcRenderer.invoke("mcp:getAll"),
     updateServer: (input: UpdateServerInput): Promise<McpServerItem> =>
       ipcRenderer.invoke("mcp:updateServer", input),
@@ -83,6 +117,10 @@ const api = {
       ipcRenderer.invoke("mcp:deleteServer", input),
     toggleServer: (input: ToggleServerInput): Promise<McpServerItem> =>
       ipcRenderer.invoke("mcp:toggleServer", input),
+    updatePiiMasking: (input: UpdatePiiMaskingInput): Promise<void> =>
+      ipcRenderer.invoke("mcp:updatePiiMasking", input),
+    updateToonConversion: (input: UpdateToonConversionInput): Promise<void> =>
+      ipcRenderer.invoke("mcp:updateToonConversion", input),
     getDetail: (serverId: number): Promise<McpServerDetailItem | null> =>
       ipcRenderer.invoke("mcp-server:getDetail", serverId),
     toggleTool: (input: {
@@ -90,6 +128,22 @@ const api = {
       isAllowed: boolean;
     }): Promise<void> =>
       ipcRenderer.invoke("mcp-server:toggleTool", input).then(() => undefined),
+  },
+
+  // MCP プロキシ起動コマンド（接続スニペット生成に利用）
+  mcpProxy: {
+    getLaunchCommand: (): Promise<McpProxyLaunchCommand> =>
+      ipcRenderer.invoke("mcp-proxy:getLaunchCommand"),
+  },
+
+  // AI クライアント設定ファイルの自動書き込み
+  aiClient: {
+    getPreview: (clientId: string): Promise<AiClientPreview> =>
+      ipcRenderer.invoke("aiClient:getPreview", clientId),
+    writeConfig: (
+      request: AiClientWriteRequest,
+    ): Promise<AiClientWriteResult> =>
+      ipcRenderer.invoke("aiClient:writeConfig", request),
   },
 
   // 監査ログ API
@@ -107,11 +161,46 @@ const api = {
       ipcRenderer.invoke("dashboard:get", input),
   },
 
+  // 管理サーバー連携 API
+  manager: {
+    getUrl: (): Promise<string | null> => ipcRenderer.invoke("manager:getUrl"),
+    connect: (url: string): Promise<void> =>
+      ipcRenderer.invoke("manager:connect", url),
+  },
+
+  // Desktopセッション API
+  desktopSession: {
+    get: (): Promise<DesktopSession | null> =>
+      ipcRenderer.invoke("desktopSession:get"),
+  },
+
+  // プロファイル管理 API
+  profile: {
+    getState: (): Promise<ProfileState> =>
+      ipcRenderer.invoke("profile:getState"),
+    selectPersonal: (): Promise<ProfileState> =>
+      ipcRenderer.invoke("profile:selectPersonal"),
+    cancelOrganizationSetup: (): Promise<ProfileState> =>
+      ipcRenderer.invoke("profile:cancelOrganizationSetup"),
+    disconnectOrganization: (): Promise<ProfileState> =>
+      ipcRenderer.invoke("profile:disconnectOrganization"),
+  },
+
+  // 外部URLを既定ブラウザで開くシェル API
+  shell: {
+    openExternal: (url: string): Promise<void> =>
+      ipcRenderer.invoke("shell:openExternal", url),
+  },
+
   // MCP OAuth認証 API
   oauth: {
-    startAuth: (input: StartOAuthInput): Promise<void> =>
+    startAuth: (input: StartOAuthInput): Promise<OAuthResult> =>
       ipcRenderer.invoke("oauth:startAuth", input),
     cancelAuth: (): Promise<void> => ipcRenderer.invoke("oauth:cancelAuth"),
+    findManualOAuthClient: (
+      serverUrl: string,
+    ): Promise<{ clientId: string; clientSecret: string | null } | null> =>
+      ipcRenderer.invoke("oauth:findManualOAuthClient", serverUrl),
     onOAuthSuccess: (callback: (result: OAuthResult) => void): (() => void) => {
       const listener = (
         _event: Electron.IpcRendererEvent,

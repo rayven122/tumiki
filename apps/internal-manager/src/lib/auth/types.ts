@@ -6,8 +6,8 @@ import type { Role } from "@tumiki/internal-db/server";
  * （Keycloak: Protocol Mapper / Entra ID: optional claims / Okta: claim policy）
  */
 export type TumikiIdpClaims = {
-  group_roles: string[]; // ユーザーが所属する組織グループのリスト
-  roles: string[]; // アプリケーションロールのリスト
+  group_roles?: string[]; // ユーザーが所属する組織グループのリスト
+  roles?: string[]; // アプリケーションロールのリスト
 };
 
 /**
@@ -49,7 +49,6 @@ declare module "next-auth" {
       tumiki: TumikiClaims | null;
     };
     expires: string;
-    accessToken?: string;
   }
 }
 

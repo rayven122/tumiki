@@ -12,8 +12,8 @@ locals {
     "roles",
   ]
 
-  # Manager クライアント用デフォルトスコープ
-  manager_default_scopes = concat(local.base_scopes, [
+  # 認証アプリ共通のデフォルトスコープ
+  authenticated_app_default_scopes = concat(local.base_scopes, [
     "profile",
     "email",
     keycloak_openid_client_scope.tumiki_claims.name,
@@ -22,13 +22,6 @@ locals {
   # Proxy クライアント用デフォルトスコープ
   proxy_default_scopes = concat(local.base_scopes, [
     keycloak_openid_client_scope.mcp_access.name,
-    keycloak_openid_client_scope.tumiki_claims.name,
-  ])
-
-  # Desktop クライアント用デフォルトスコープ
-  desktop_default_scopes = concat(local.base_scopes, [
-    "profile",
-    "email",
     keycloak_openid_client_scope.tumiki_claims.name,
   ])
 
@@ -74,7 +67,46 @@ resource "keycloak_openid_client" "manager" {
 resource "keycloak_openid_client_default_scopes" "manager_default_scopes" {
   realm_id       = keycloak_realm.tumiki.id
   client_id      = keycloak_openid_client.manager.id
-  default_scopes = local.manager_default_scopes
+  default_scopes = local.authenticated_app_default_scopes
+}
+
+# =============================================================================
+# tumiki-internal-manager クライアント
+# =============================================================================
+
+# Internal Manager 用のOIDCクライアント
+resource "keycloak_openid_client" "internal_manager" {
+  realm_id    = keycloak_realm.tumiki.id
+  client_id   = var.internal_manager_client_id
+  name        = "Tumiki Internal Manager"
+  description = "Tumiki Internal Manager Application"
+
+  enabled       = true
+  access_type   = "CONFIDENTIAL"
+  client_secret = var.internal_manager_client_secret
+
+  # 認証フロー設定
+  standard_flow_enabled        = true
+  implicit_flow_enabled        = false
+  direct_access_grants_enabled = false
+  service_accounts_enabled     = false
+
+  # PKCE設定
+  pkce_code_challenge_method = "S256"
+
+  # リダイレクトURI設定
+  valid_redirect_uris = var.internal_manager_redirect_uris
+  web_origins         = var.internal_manager_web_origins
+
+  # ログイン設定
+  login_theme = ""
+}
+
+# Internal Manager クライアントのデフォルトスコープ設定
+resource "keycloak_openid_client_default_scopes" "internal_manager_default_scopes" {
+  realm_id       = keycloak_realm.tumiki.id
+  client_id      = keycloak_openid_client.internal_manager.id
+  default_scopes = local.authenticated_app_default_scopes
 }
 
 # =============================================================================
@@ -174,5 +206,5 @@ resource "keycloak_openid_client" "desktop" {
 resource "keycloak_openid_client_default_scopes" "desktop_default_scopes" {
   realm_id       = keycloak_realm.tumiki.id
   client_id      = keycloak_openid_client.desktop.id
-  default_scopes = local.desktop_default_scopes
+  default_scopes = local.authenticated_app_default_scopes
 }

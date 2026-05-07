@@ -1,4 +1,9 @@
-import type { AuthType, McpServerConfig } from "@tumiki/mcp-core-proxy";
+import type {
+  AuthType,
+  McpServerConfig,
+  McpToolInfo,
+} from "@tumiki/mcp-core-proxy";
+import { createMcpClient } from "@tumiki/mcp-core-proxy";
 import type { TransportType } from "@prisma/desktop-client";
 import { z } from "zod";
 import { getDb } from "../../shared/db";
@@ -6,11 +11,20 @@ import * as mcpRepository from "../mcp-server-list/mcp.repository";
 import * as logger from "../../shared/utils/logger";
 import { decryptCredentials } from "../../utils/credentials";
 import { refreshOAuthTokenIfNeeded } from "../oauth/oauth.refresh";
+import {
+  buildChildEnv,
+  resolveArgs,
+  resolveValue,
+} from "../../runtime/path-resolver";
+
+/** ツール一覧取得のデフォルトタイムアウト（npx の初回ダウンロードを考慮し30秒） */
+const DEFAULT_TOOL_FETCH_TIMEOUT_MS = 30_000;
 
 /** CLI監査ログ用: configName → DB情報のマッピング */
 export type McpConnectionMeta = {
   configName: string;
   serverId: number;
+  connectionId: number;
   connectionName: string;
   transportType: TransportType;
 };
@@ -87,6 +101,22 @@ const toProxyAuthType = (prismaAuthType: string): AuthType => {
 type EnabledConnection = Awaited<
   ReturnType<typeof mcpRepository.findEnabledConnections>
 >[number];
+type ConnectionForConfig = Omit<EnabledConnection, "tools"> & {
+  tools?: Array<{ name: string; isAllowed: boolean }>;
+};
+
+const getAllowedToolNames = (conn: ConnectionForConfig) =>
+  conn.tools && conn.tools.length > 0
+    ? conn.tools.filter((tool) => tool.isAllowed).map((tool) => tool.name)
+    : undefined;
+
+const withAllowedTools = <T extends McpServerConfig>(
+  config: T,
+  conn: ConnectionForConfig,
+): T => {
+  const allowedTools = getAllowedToolNames(conn);
+  return allowedTools ? { ...config, allowedTools } : config;
+};
 
 /**
  * 単一接続からMcpServerConfigを生成する共通ヘルパー。
@@ -94,7 +124,7 @@ type EnabledConnection = Awaited<
  * 生成不可（urlなし等）の場合は null を返す。
  */
 const buildConfigFromConnection = async (
-  conn: EnabledConnection,
+  conn: ConnectionForConfig,
 ): Promise<{ config: McpServerConfig; meta: McpConnectionMeta } | null> => {
   const connLabel = `${conn.server.slug}/${conn.slug}`;
   const name = `${conn.server.slug}-${conn.slug}`;
@@ -132,13 +162,18 @@ const buildConfigFromConnection = async (
         connectionArgsSchema,
         `connection(${connLabel}).args`,
       );
-      config = {
-        name,
-        transportType: "STDIO",
-        command: conn.command,
-        args,
-        env: credentials,
-      };
+      // バンドル済みランタイム (Node.js / uv) を解決し、PATHにバンドルbinを差し込む
+      // これによりユーザーPCに npx / uvx が無くても MCP コネクタが起動できる
+      config = withAllowedTools(
+        {
+          name,
+          transportType: "STDIO",
+          command: resolveValue(conn.command),
+          args: resolveArgs(args),
+          env: buildChildEnv(process.env, credentials),
+        },
+        conn,
+      );
       break;
     }
     case "SSE": {
@@ -149,13 +184,16 @@ const buildConfigFromConnection = async (
         return null;
       }
       const sseAuthType = toProxyAuthType(conn.authType);
-      config = {
-        name,
-        transportType: "SSE",
-        url: conn.url,
-        authType: sseAuthType,
-        headers: buildHeaders(sseAuthType, credentials),
-      };
+      config = withAllowedTools(
+        {
+          name,
+          transportType: "SSE",
+          url: conn.url,
+          authType: sseAuthType,
+          headers: buildHeaders(sseAuthType, credentials),
+        },
+        conn,
+      );
       break;
     }
     case "STREAMABLE_HTTP": {
@@ -166,13 +204,16 @@ const buildConfigFromConnection = async (
         return null;
       }
       const httpAuthType = toProxyAuthType(conn.authType);
-      config = {
-        name,
-        transportType: "STREAMABLE_HTTP",
-        url: conn.url,
-        authType: httpAuthType,
-        headers: buildHeaders(httpAuthType, credentials),
-      };
+      config = withAllowedTools(
+        {
+          name,
+          transportType: "STREAMABLE_HTTP",
+          url: conn.url,
+          authType: httpAuthType,
+          headers: buildHeaders(httpAuthType, credentials),
+        },
+        conn,
+      );
       break;
     }
     default:
@@ -188,6 +229,7 @@ const buildConfigFromConnection = async (
     meta: {
       configName: name,
       serverId: conn.server.id,
+      connectionId: conn.id,
       connectionName: conn.name,
       transportType: conn.transportType,
     },
@@ -249,4 +291,80 @@ export const getEnabledConfigsWithMeta = async (
   serverSlug?: string,
 ): Promise<{ configs: McpServerConfig[]; meta: McpConnectionMeta[] }> => {
   return buildConfigsFromConnections(serverSlug);
+};
+
+/**
+ * 単一接続に対して `tools/list` を呼び出してツール一覧を取得する。
+ * カタログ登録直後など「接続情報は保存済みだがプロキシは起動していない」状態で使用する。
+ *
+ * - タイムアウトを過ぎた場合は失敗扱いにし、Client/Transport を確実にcloseする
+ * - isEnabled / authType の制限はかけない（OAUTH接続も登録時に1度はツール取得を試みる）
+ *
+ * @throws 接続不存在 / config組み立て失敗 / 接続/ツール取得タイムアウト等
+ */
+export const fetchToolsForConnection = async (
+  connectionId: number,
+  options?: { timeoutMs?: number },
+): Promise<McpToolInfo[]> => {
+  const db = await getDb();
+  const conn = await mcpRepository.findConnectionByIdWithServer(
+    db,
+    connectionId,
+  );
+  if (!conn) {
+    throw new Error(`接続(id=${String(connectionId)})が見つかりません`);
+  }
+
+  const built = await buildConfigFromConnection(conn);
+  if (!built) {
+    throw new Error(
+      `接続(id=${String(connectionId)})の設定組み立てに失敗しました`,
+    );
+  }
+
+  const timeoutMs = options?.timeoutMs ?? DEFAULT_TOOL_FETCH_TIMEOUT_MS;
+  const { client, transport } = createMcpClient(built.config);
+
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(
+        new Error(
+          `MCP接続 "${built.meta.configName}" のツール取得がタイムアウト (${String(timeoutMs)}ms) しました`,
+        ),
+      );
+    }, timeoutMs);
+  });
+
+  try {
+    // タイムアウト時、内部の async IIFE は Promise.race の解決後も継続実行される。
+    // STDIO の場合、connect 中だった子プロセスは finally の client.close() に
+    // よって停止するが、その挙動は SDK の実装に依存するため完全な保証ではない。
+    // 現状の MCP SDK では transport.close() がプロセスに SIGTERM を送るため、
+    // タイムアウト後でもプロセスリークは発生しない想定。
+    const tools = await Promise.race([
+      (async (): Promise<McpToolInfo[]> => {
+        await client.connect(transport);
+        const result = await client.listTools();
+        return result.tools.map((tool) => ({
+          name: tool.name,
+          description: tool.description,
+          inputSchema: tool.inputSchema,
+        }));
+      })(),
+      timeoutPromise,
+    ]);
+    return tools;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+    try {
+      await client.close();
+    } catch (closeError) {
+      // close失敗は警告のみ（既にツール取得結果は確定しているため致命傷ではない）
+      logger.warn(`MCP接続 "${built.meta.configName}" の終了処理でエラー`, {
+        error:
+          closeError instanceof Error ? closeError.message : String(closeError),
+      });
+    }
+  }
 };

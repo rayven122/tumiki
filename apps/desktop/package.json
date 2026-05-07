@@ -21,8 +21,10 @@
     "db:reset": "pnpm with-env prisma migrate reset",
     "db:push": "pnpm with-env prisma db push",
     "db:studio": "pnpm with-env prisma studio",
-    "postinstall": "pnpm db:generate",
-    "build:release": "electron-builder --config electron-builder.yml --publish never"
+    "postinstall": "pnpm db:generate && node scripts/download-runtimes.mjs",
+    "runtimes:download": "node scripts/download-runtimes.mjs",
+    "runtimes:download:all": "node scripts/download-runtimes.mjs --all",
+    "build:release": "node scripts/download-runtimes.mjs --all && electron-builder --config electron-builder.yml --publish never"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
@@ -36,12 +38,14 @@
     "electron-store": "^11.0.2",
     "electron-updater": "^6.3.9",
     "jotai": "^2.18.0",
+    "jsonc-parser": "^3.3.1",
     "lucide-react": "^0.486.0",
     "oauth4webapi": "^3.8.3",
     "react": "catalog:react19",
     "react-dom": "catalog:react19",
     "react-router-dom": "^7.5.0",
     "recharts": "3.8.0",
+    "smol-toml": "^1.6.1",
     "sonner": "^1.7.4",
     "superjson": "^2.2.6",
     "tailwind-merge": "^3.4.0",

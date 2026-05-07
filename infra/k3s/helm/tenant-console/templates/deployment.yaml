@@ -1,0 +1,116 @@
+{{- include "tenant-console.validateRequiredValues" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tenant-console
+  namespace: tenant-console
+  labels:
+    {{- include "tenant-console.labels" . | nindent 4 }}
+    app.kubernetes.io/component: app
+  annotations:
+    secret.reloader.stakater.com/reload: "tenant-console-env"
+spec:
+  revisionHistoryLimit: 3
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tenant-console
+      app.kubernetes.io/component: app
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tenant-console
+        app.kubernetes.io/component: app
+    spec:
+      serviceAccountName: tenant-console
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        # DB マイグレーション: prisma schema から SQL 生成 → psql で適用
+        # 既存スキーマと一致していれば no-op（idempotent）
+        - name: db-migrate
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              cd /app/apps/tenant-console
+              prisma migrate diff \
+                --from-url "$TENANT_DATABASE_URL" \
+                --to-schema-datamodel ./prisma/schema \
+                --script > /tmp/migration.sql
+              if [ -s /tmp/migration.sql ] && grep -qv '^-- This is an empty migration' /tmp/migration.sql; then
+                echo "Applying schema changes..."
+                psql "$TENANT_DATABASE_URL" -f /tmp/migration.sql
+                echo "Schema sync completed."
+              else
+                echo "No schema changes; skipping migration."
+              fi
+          env:
+            - name: TENANT_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: tenant-console-env
+                  key: TENANT_DATABASE_URL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      containers:
+        - name: tenant-console
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - containerPort: 3200
+              name: http
+          envFrom:
+            - secretRef:
+                name: tenant-console-env
+          env:
+            - name: PORT
+              value: "3200"
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: nextjs-cache
+              mountPath: /app/.next/cache
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: 3200
+            failureThreshold: 12
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3200
+            periodSeconds: 30
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3200
+            periodSeconds: 10
+            timeoutSeconds: 3
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: nextjs-cache
+          emptyDir: {}

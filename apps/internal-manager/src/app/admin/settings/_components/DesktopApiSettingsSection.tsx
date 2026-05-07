@@ -1,0 +1,285 @@
+"use client";
+
+import type { JSX } from "react";
+import { useEffect, useRef, useState } from "react";
+import {
+  ALLOWED_OBJECT_STORAGE_IMAGE_TYPES,
+  MAX_OBJECT_STORAGE_IMAGE_SIZE_BYTES,
+} from "~/lib/object-storage/constants";
+import { api } from "~/trpc/react";
+import { Field } from "./Field";
+
+const inputCls =
+  "bg-bg-app border-border-default text-text-secondary w-full rounded-lg border px-3 py-2 text-xs outline-none";
+const maxLogoFileSizeKb = MAX_OBJECT_STORAGE_IMAGE_SIZE_BYTES / 1024;
+
+type SettingsFormState = {
+  organizationName: string;
+  organizationLogoUrl: string;
+};
+
+export const DesktopApiSettingsSection = (): JSX.Element => {
+  const utils = api.useUtils();
+  const settingsQuery = api.desktopApiSettings.get.useQuery();
+  const objectStorageQuery = api.objectStorageSettings.get.useQuery();
+  const [savedMessage, setSavedMessage] = useState<string | null>(null);
+  const [logoError, setLogoError] = useState<string | null>(null);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const savedMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [form, setForm] = useState<SettingsFormState>({
+    organizationName: "",
+    organizationLogoUrl: "",
+  });
+  const formRef = useRef(form);
+  const updateMutation = api.desktopApiSettings.update.useMutation({
+    onSuccess: async () => {
+      await utils.desktopApiSettings.get.invalidate();
+      if (savedMessageTimerRef.current) {
+        clearTimeout(savedMessageTimerRef.current);
+      }
+      setSavedMessage("保存しました");
+      savedMessageTimerRef.current = setTimeout(() => {
+        setSavedMessage(null);
+        savedMessageTimerRef.current = null;
+      }, 3000);
+    },
+  });
+
+  useEffect(() => {
+    return () => {
+      if (savedMessageTimerRef.current) {
+        clearTimeout(savedMessageTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    formRef.current = form;
+  }, [form]);
+
+  useEffect(() => {
+    const data = settingsQuery.data;
+    if (!data) return;
+    setForm({
+      organizationName: data.organizationName ?? "",
+      organizationLogoUrl: data.organizationLogoUrl ?? "",
+    });
+  }, [settingsQuery.data]);
+
+  const save = (): void => {
+    setSavedMessage(null);
+    updateMutation.mutate({
+      organizationName: form.organizationName,
+      organizationLogoUrl: form.organizationLogoUrl,
+    });
+  };
+
+  const saveForm = (nextForm: SettingsFormState): void => {
+    setSavedMessage(null);
+    setForm(nextForm);
+    updateMutation.mutate({
+      organizationName: nextForm.organizationName,
+      organizationLogoUrl: nextForm.organizationLogoUrl,
+    });
+  };
+
+  const handleLogoUpload = async (file: File | undefined): Promise<void> => {
+    setLogoError(null);
+    if (!file) return;
+    if (!objectStorageQuery.data?.isConfigured) {
+      setLogoError(
+        "画像アップロードにはS3互換ストレージ設定が必要です。先にオブジェクトストレージ設定を保存してください。",
+      );
+      return;
+    }
+    if (
+      !ALLOWED_OBJECT_STORAGE_IMAGE_TYPES.includes(
+        file.type as (typeof ALLOWED_OBJECT_STORAGE_IMAGE_TYPES)[number],
+      )
+    ) {
+      setLogoError("PNG / JPG / WebP の画像ファイルを選択してください");
+      return;
+    }
+    if (file.size > MAX_OBJECT_STORAGE_IMAGE_SIZE_BYTES) {
+      setLogoError(`ロゴ画像は${maxLogoFileSizeKb}KB以下にしてください`);
+      return;
+    }
+
+    setIsUploadingLogo(true);
+    try {
+      const uploadForm = new FormData();
+      uploadForm.set("file", file);
+      uploadForm.set("purpose", "org-logo");
+
+      const response = await fetch("/api/admin/object-storage/upload", {
+        method: "POST",
+        body: uploadForm,
+      });
+      const result = (await response.json()) as {
+        url?: string;
+        error?: string;
+      };
+
+      if (!response.ok || !result.url) {
+        setLogoError(result.error ?? "ロゴ画像のアップロードに失敗しました");
+        return;
+      }
+
+      const organizationLogoUrl = result.url;
+      const nextForm = { ...formRef.current, organizationLogoUrl };
+      saveForm(nextForm);
+    } catch {
+      setLogoError("ロゴ画像のアップロードに失敗しました");
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
+
+  const openFileDialog = (): void => {
+    fileInputRef.current?.click();
+  };
+
+  const removeLogo = (): void => {
+    saveForm({ ...formRef.current, organizationLogoUrl: "" });
+  };
+
+  const initial = form.organizationName.trim().charAt(0).toUpperCase();
+
+  return (
+    <div className="border-border-default bg-bg-card rounded-xl border p-5">
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-text-primary text-sm font-semibold">組織情報</h2>
+          <p className="text-text-secondary mt-1 text-xs">
+            Desktop のサイドバーに表示する組織プロファイルを管理
+          </p>
+        </div>
+        {settingsQuery.isLoading && (
+          <span className="text-text-muted text-[10px]">読み込み中</span>
+        )}
+        {settingsQuery.error && (
+          <span className="text-xs text-red-400">
+            設定の読み込みに失敗しました
+          </span>
+        )}
+      </div>
+
+      {/* 隠しファイル入力。プレビュー or アップロードボタンから呼び出す */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        disabled={isUploadingLogo}
+        onChange={(e) => {
+          void handleLogoUpload(e.currentTarget.files?.[0]);
+          e.currentTarget.value = "";
+        }}
+        className="hidden"
+      />
+
+      <div className="flex items-start gap-4">
+        {/* ロゴ（クリックで変更、右上の × で削除） */}
+        {/* pt-[18px] は組織名の Field ラベル（text-[11px] + mb-1）の高さ分のオフセット。ロゴと右側のインプットの上端を揃える */}
+        <div className="relative shrink-0 pt-[18px]">
+          <button
+            type="button"
+            onClick={openFileDialog}
+            disabled={isUploadingLogo}
+            aria-label="ロゴを変更"
+            className="border-border-default bg-bg-app hover:border-text-secondary group/logo relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-lg border transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {form.organizationLogoUrl ? (
+              <img
+                src={form.organizationLogoUrl}
+                alt=""
+                className="h-full w-full object-contain"
+              />
+            ) : (
+              <span className="text-text-secondary text-2xl font-semibold">
+                {initial || "?"}
+              </span>
+            )}
+            {/* オーバーレイ: モバイル(<sm)はタップ手掛かりとして常時薄く表示 */}
+            <span className="absolute inset-0 flex items-center justify-center bg-black/35 text-[10px] text-white sm:hidden">
+              {isUploadingLogo ? "アップロード中..." : "変更"}
+            </span>
+            {/* オーバーレイ: デスクトップ(sm以上)はホバー時のみ濃く表示 */}
+            <span className="absolute inset-0 hidden items-center justify-center bg-black/55 text-[10px] text-white sm:group-hover/logo:flex">
+              {isUploadingLogo ? "アップロード中..." : "変更"}
+            </span>
+          </button>
+          {form.organizationLogoUrl && !isUploadingLogo && (
+            <button
+              type="button"
+              onClick={removeLogo}
+              aria-label="ロゴを削除"
+              // ::after 擬似要素で 44x44 のヒット領域を確保（モバイル最小タップターゲット規約）。視覚的なボタンは h-5 w-5 のまま
+              className="border-border-default bg-bg-card text-text-secondary absolute top-3 -right-2 flex h-5 w-5 items-center justify-center rounded-full border text-xs leading-none transition-colors after:absolute after:inset-[-12px] after:content-[''] hover:border-red-400 hover:text-red-400 focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:outline-none"
+            >
+              ×
+            </button>
+          )}
+        </div>
+
+        {/* 右: 組織名 + 補助テキスト */}
+        <div className="flex-1 space-y-1.5">
+          <Field label="組織名">
+            <input
+              type="text"
+              value={form.organizationName}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  organizationName: e.target.value,
+                }))
+              }
+              placeholder="Rayven株式会社"
+              className={`${inputCls} max-w-sm`}
+            />
+          </Field>
+          <p
+            className={`text-[10px] ${isUploadingLogo ? "text-text-secondary" : "text-text-muted"}`}
+          >
+            {isUploadingLogo
+              ? "ロゴ画像をアップロード中..."
+              : `ロゴをクリックで画像を変更、× で削除（PNG / JPG / WebP、${maxLogoFileSizeKb}KBまで）`}
+          </p>
+          {logoError && (
+            <p className="rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">
+              {logoError}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {updateMutation.error && (
+        <p className="mt-3 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">
+          {updateMutation.error.message}
+        </p>
+      )}
+      {savedMessage && (
+        <p className="mt-3 rounded-lg bg-emerald-500/10 px-3 py-2 text-xs text-emerald-400">
+          {savedMessage}
+        </p>
+      )}
+
+      <div className="mt-5 flex justify-end">
+        <button
+          type="button"
+          onClick={save}
+          disabled={
+            updateMutation.isPending ||
+            isUploadingLogo ||
+            Boolean(settingsQuery.error)
+          }
+          className="bg-btn-primary-bg text-btn-primary-text rounded-lg px-4 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {updateMutation.isPending ? "保存中..." : "保存"}
+        </button>
+      </div>
+    </div>
+  );
+};

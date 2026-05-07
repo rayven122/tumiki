@@ -1,3 +1,7 @@
 .serena/
 *.db
 *.db-journal
+
+# DEV-1597: scripts/download-runtimes.mjs で取得するバンドル済みランタイム
+# サイズが大きく（~50MB/platform）、CIでは別途取得する想定なので git管理しない
+resources/runtime/

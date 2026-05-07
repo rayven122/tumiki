@@ -13,9 +13,6 @@ import {
 } from "oauth4webapi";
 import { DiscoveryError, DISCOVERY_ERROR_CODE } from "./oauth.discovery";
 
-/** DCRリダイレクトURI（カスタムプロトコル） */
-export const MCP_OAUTH_REDIRECT_URI = "tumiki://oauth/callback";
-
 /**
  * DCRクライアント名
  * 変更禁止: Figma等一部サーバーはこの値でDCR登録をホワイトリスト制御しており、
@@ -27,10 +24,11 @@ const CLIENT_NAME = "Claude Code";
  * DCR統合関数: メタデータからクライアント登録を実行
  *
  * @param metadata - discoverOAuthMetadataで取得したAuthorizationServer
- * @returns DCR結果（metadata + registration）
+ * @param redirectUri - フロー開始時に決定したredirect_uri（loopback HTTP）
  */
 export const performDCR = async (
   metadata: AuthorizationServer,
+  redirectUri: string,
 ): Promise<{
   metadata: AuthorizationServer;
   registration: Client;
@@ -44,7 +42,7 @@ export const performDCR = async (
 
   const clientMetadata: Partial<Client> = {
     client_name: CLIENT_NAME,
-    redirect_uris: [MCP_OAUTH_REDIRECT_URI],
+    redirect_uris: [redirectUri],
     grant_types: ["authorization_code", "refresh_token"],
     response_types: ["code"],
     token_endpoint_auth_method: "client_secret_post",

@@ -1,34 +1,14 @@
 /**
- * MCP OAuthカスタムプロトコルハンドラー
+ * OAuthコールバックURLパーサー
  *
- * tumiki://oauth/callback?code=xxx&state=yyy のURLを解析する。
- * tumiki://auth/callback (Keycloak用) とはホスト名で区別される。
+ * RFC 8252（OAuth 2.0 for Native Apps）準拠のループバックHTTP方式に移行済み。
+ * ループバックサーバーが受信した `http://127.0.0.1:<port>/callback?code=...&state=...` を解析する。
  */
-
-const MCP_OAUTH_PROTOCOL = "tumiki:";
-const MCP_OAUTH_HOST = "oauth";
-const MCP_OAUTH_PATHNAME = "/callback";
 
 /** コールバックURLの解析結果 */
 export type OAuthCallbackParams = {
   code: string;
   state: string;
-};
-
-/**
- * URLがMCP OAuthコールバックかどうか判定
- */
-export const isMcpOAuthCallback = (url: string): boolean => {
-  try {
-    const parsed = new URL(url);
-    return (
-      parsed.protocol === MCP_OAUTH_PROTOCOL &&
-      parsed.hostname === MCP_OAUTH_HOST &&
-      parsed.pathname === MCP_OAUTH_PATHNAME
-    );
-  } catch {
-    return false;
-  }
 };
 
 /**

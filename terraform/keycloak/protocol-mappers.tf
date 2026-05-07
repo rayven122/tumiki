@@ -108,6 +108,37 @@ resource "keycloak_openid_group_membership_protocol_mapper" "manager_group_roles
 }
 
 # =============================================================================
+# Internal Manager クライアント固有のプロトコルマッパー
+# =============================================================================
+
+# Tumiki Organization Roles マッパー
+resource "keycloak_openid_user_realm_role_protocol_mapper" "internal_manager_org_roles" {
+  realm_id  = keycloak_realm.tumiki.id
+  client_id = keycloak_openid_client.internal_manager.id
+  name      = "Tumiki Organization Roles"
+
+  claim_name          = "tumiki.roles"
+  claim_value_type    = "String"
+  multivalued         = true
+  add_to_id_token     = true
+  add_to_access_token = true
+  add_to_userinfo     = true
+}
+
+# Tumiki Group Roles マッパー
+resource "keycloak_openid_group_membership_protocol_mapper" "internal_manager_group_roles" {
+  realm_id  = keycloak_realm.tumiki.id
+  client_id = keycloak_openid_client.internal_manager.id
+  name      = "Tumiki Group Roles"
+
+  claim_name          = "tumiki.group_roles"
+  full_path           = true
+  add_to_id_token     = true
+  add_to_access_token = true
+  add_to_userinfo     = true
+}
+
+# =============================================================================
 # Proxy クライアント固有のプロトコルマッパー
 # =============================================================================
 

@@ -12,3 +12,15 @@ export const DISCOVERY_ERROR_CODE = {
 
 export type DiscoveryErrorCode =
   (typeof DISCOVERY_ERROR_CODE)[keyof typeof DISCOVERY_ERROR_CODE];
+
+/** エラーメッセージから "[CODE] message" 形式のコードと表示メッセージを抽出 */
+export const extractOAuthErrorCode = (
+  message: string,
+): { code: string | null; displayMessage: string } => {
+  const codeMatch = message.match(/\[(\w+)]\s/);
+  if (!codeMatch) return { code: null, displayMessage: message };
+  return {
+    code: codeMatch[1] ?? null,
+    displayMessage: message.slice((codeMatch.index ?? 0) + codeMatch[0].length),
+  };
+};

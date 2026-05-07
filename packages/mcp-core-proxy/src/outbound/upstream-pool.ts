@@ -24,10 +24,22 @@ export type UpstreamPool = {
   ) => void;
 };
 
+/** サーバー名から許可ツールを解決する resolver（listTools/callTool の都度呼ばれて DB から最新値を取得する） */
+export type ResolveAllowedToolsByName = (
+  serverName: string,
+) => Promise<string[] | null>;
+
+export type CreateUpstreamPoolOptions = {
+  resolveAllowedTools?: ResolveAllowedToolsByName;
+};
+
 /**
  * UpstreamClientのライフサイクルを管理するプールを作成
  */
-export const createUpstreamPool = (logger: Logger): UpstreamPool => {
+export const createUpstreamPool = (
+  logger: Logger,
+  options?: CreateUpstreamPoolOptions,
+): UpstreamPool => {
   const clients = new Map<string, UpstreamClient>();
   const statusChangeCallbacks: Array<
     (name: string, status: ServerStatus, error?: string) => void
@@ -52,7 +64,12 @@ export const createUpstreamPool = (logger: Logger): UpstreamPool => {
       throw new Error(`サーバー "${config.name}" は既に登録されています`);
     }
 
-    const client = createUpstreamClient(config, logger);
+    // pool 共通の resolver をサーバー名で部分適用して client 毎の resolver にする
+    const poolResolver = options?.resolveAllowedTools;
+    const clientOptions = poolResolver
+      ? { resolveAllowedTools: () => poolResolver(config.name) }
+      : undefined;
+    const client = createUpstreamClient(config, logger, clientOptions);
     client.onStatusChange((name, status, error) => {
       for (const cb of statusChangeCallbacks) {
         try {

@@ -7,11 +7,18 @@ export type {
   McpServerItem,
   McpConnectionItem,
   CreateFromCatalogInput,
+  CreateFromManagerCatalogInput,
+  CreateCustomServerInput,
   CreateVirtualServerInput,
   VirtualServerConnectionInput,
+  GetToolsForConnectionsInput,
+  GetToolsForConnectionsResult,
+  ConnectionToolsResult,
   UpdateServerInput,
   DeleteServerInput,
   ToggleServerInput,
+  UpdatePiiMaskingInput,
+  UpdateToonConversionInput,
 } from "./features/mcp-server-list/mcp.types";
 
 // OAuth feature
@@ -48,3 +55,24 @@ export type {
   DashboardInput,
   DashboardResult,
 } from "./features/dashboard/dashboard.types";
+
+// Desktop セッション機能
+export type {
+  DesktopSession,
+  DesktopSessionFeatures,
+  DesktopSessionGroup,
+  DesktopSessionOrganization,
+  DesktopSessionPermission,
+  DesktopSessionUser,
+} from "./features/desktop-session/desktop-session.types";
+
+// MCP プロキシ起動コマンド
+export type { McpProxyLaunchCommand } from "./features/mcp-proxy/launch-command";
+
+// AI クライアント設定書き込み
+export type {
+  McpEntry,
+  AiClientPreview,
+  AiClientWriteRequest,
+  AiClientWriteResult,
+} from "./features/ai-client/ai-client.types";

@@ -1,12 +1,14 @@
 name: Deploy Keycloak Staging
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'docker/keycloak-staging/**'
+      - 'docker/keycloak/themes/**'
+      - 'docker/keycloak/install-themes.sh'
+      - 'docker/keycloak/validate-themes.sh'
   workflow_dispatch:
-    inputs:
-      image_tag:
-        description: 'Keycloakイメージタグ（省略時は 26.4）'
-        type: string
-        default: "26.4"
 
 concurrency:
   group: deploy-keycloak-staging
@@ -20,63 +22,141 @@ jobs:
     name: 🔑 Deploy Keycloak to Staging
     runs-on: ubuntu-latest
     environment: staging
+    timeout-minutes: 30
+
+    env:
+      CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+      CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+      # Cloudflare tunnel 経由で到達する staging VM のホスト名（変数化不要・固定値）
+      STAGING_SSH_HOST: stg-ssh.tumiki.cloud
+      # staging VM から ProxyJump で到達する Keycloak VM のプライベート IP
+      KEYCLOAK_HOST: 10.11.0.15
+      SSH_USER: ${{ vars.KEYCLOAK_DEPLOY_USER }}
 
     steps:
       - name: 📥 Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - name: 🔑 Configure SSH (Cloudflare Tunnel)
+      - name: 🌐 Setup Cloudflare SSH
         uses: ./.github/actions/setup-cloudflare-ssh
         with:
-          tunnel-hostname: ${{ vars.KEYCLOAK_TUNNEL_HOSTNAME }}
+          ssh-host: ${{ env.STAGING_SSH_HOST }}
           cf-access-client-id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           cf-access-client-secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          ssh-private-key: ${{ secrets.KEYCLOAK_DEPLOY_SSH_PRIVATE_KEY }}
+
+      - name: 🔧 Configure ProxyJump for Keycloak VM
+        run: |
+          # staging-deploy ユーザーで staging VM を踏み台に Keycloak VM へ ProxyJump
+          # staging-deploy は sudo・docker 権限なし（ProxyJump 踏み台専用）
+          cat >> ~/.ssh/config << CONFIG
+          Host ${KEYCLOAK_HOST}
+            ProxyJump staging-deploy@${STAGING_SSH_HOST}
+            StrictHostKeyChecking accept-new
+          CONFIG
+
+      - name: 🔐 Fetch secrets from Infisical
+        uses: Infisical/secrets-action@77ab1f4ccd183a543cb5b42435fbd181189f4995 # v1.0.16
+        with:
+          method: universal
+          client-id: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
+          client-secret: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
+          domain: https://secrets.rayven.cloud
+          project-slug: tumiki
+          env-slug: staging
+          secret-path: /
+          recursive: true
+          export-type: file
+          # file-output-path は ${GITHUB_WORKSPACE} と単純連結される仕様（先頭 / は連結区切り扱い）
+          # /tmp など絶対パスは使えず、ワークスペース直下にのみ書き込み可能
+          file-output-path: /keycloak.env
+
+      - name: 🔒 Restrict secrets file permissions
+        run: chmod 600 keycloak.env
+
+      - name: 🎨 Build parent theme
+        run: |
+          bash docker/keycloak/install-themes.sh
+          KEYCLOAK_THEMES_DIR=docker/keycloak/themes bash docker/keycloak/validate-themes.sh
 
       - name: 📤 Transfer files
-        env:
-          DEPLOY_USER: ${{ vars.KEYCLOAK_DEPLOY_USER }}
-          DEPLOY_TUNNEL_HOSTNAME: ${{ vars.KEYCLOAK_TUNNEL_HOSTNAME }}
         run: |
-          SSH_TARGET="${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}"
-          ssh "$SSH_TARGET" "mkdir -p ~/keycloak/themes"
-          scp docker/keycloak-staging/compose.yaml "$SSH_TARGET:~/keycloak/compose.yaml"
-          scp -r docker/keycloak/themes/tumiki "$SSH_TARGET:~/keycloak/themes/tumiki"
-          scp -r docker/keycloak/themes/keywind "$SSH_TARGET:~/keycloak/themes/keywind"
+          # 前回 cleanup が失敗していた場合に備えて既存 .env を削除（リカバリ）
+          ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" \
+            "mkdir -p ~/keycloak && rm -f ~/keycloak/.env"
+          scp -i ~/.ssh/id_ed25519 \
+            docker/keycloak-staging/compose.yaml \
+            "${SSH_USER}@${KEYCLOAK_HOST}:~/keycloak/compose.yaml"
+          tar -czf - -C docker/keycloak/themes . | ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" \
+            'rm -rf ~/keycloak/themes.next && mkdir -p ~/keycloak/themes.next && tar -xzf - -C ~/keycloak/themes.next'
+          # install -m 600 でファイル作成と権限設定をアトミックに実施（scp + chmod のウィンドウを排除）
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" \
+            'install -m 600 /dev/stdin ~/keycloak/.env' < keycloak.env
 
-      - name: 🐳 Deploy Keycloak container
-        env:
-          DEPLOY_USER: ${{ vars.KEYCLOAK_DEPLOY_USER }}
-          DEPLOY_TUNNEL_HOSTNAME: ${{ vars.KEYCLOAK_TUNNEL_HOSTNAME }}
+      - name: 🧪 Validate transferred themes
         run: |
-          SSH_TARGET="${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}"
-          ssh "$SSH_TARGET" bash -l << 'REMOTE_SCRIPT'
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" \
+            'KEYCLOAK_THEMES_DIR=~/keycloak/themes.next bash -s' < docker/keycloak/validate-themes.sh
+
+      - name: 🐳 Deploy Keycloak
+        run: |
+          # ヒアドキュメントは quoted で runner 側変数の意図しない展開を防ぐ
+          # docker compose は同ディレクトリの .env を自動読み込みする
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" bash -l << 'REMOTE_SCRIPT'
             set -euo pipefail
+            set +o history
             cd ~/keycloak
-            infisical export --env=staging --format=dotenv > .env
-            docker compose pull
-            docker compose up -d --remove-orphans
+            docker compose pull keycloak
+            rm -rf themes.previous
+            if [ -d themes ]; then
+              mv themes themes.previous
+            fi
+            mv themes.next themes
+            # --remove-orphans: compose.yaml から削除されたサービスのコンテナを合わせてクリーンアップ
+            if ! docker compose up -d --force-recreate --remove-orphans keycloak; then
+              echo "Deploy failed, rolling back themes..." >&2
+              mv themes themes.broken || true
+              if [ -d themes.previous ]; then
+                mv themes.previous themes
+                docker compose up -d --force-recreate --remove-orphans keycloak || true
+              fi
+              rm -f .env
+              exit 1
+            fi
+            rm -rf themes.previous
             rm -f .env
           REMOTE_SCRIPT
 
       - name: ✅ Verify Keycloak health
-        env:
-          DEPLOY_USER: ${{ vars.KEYCLOAK_DEPLOY_USER }}
-          DEPLOY_TUNNEL_HOSTNAME: ${{ vars.KEYCLOAK_TUNNEL_HOSTNAME }}
         run: |
-          SSH_TARGET="${DEPLOY_USER}@${DEPLOY_TUNNEL_HOSTNAME}"
-          ssh "$SSH_TARGET" bash << 'HEALTHCHECK'
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" bash -l << 'HEALTHCHECK'
+            set -euo pipefail
             for i in $(seq 1 30); do
-              if curl -sf http://localhost:9000/health/ready > /dev/null 2>&1; then
-                echo "=== Keycloak ===" && curl -sf http://localhost:9000/health/ready | jq .
+              cd ~/keycloak
+              CONTAINER_ID=$(docker compose ps -q keycloak 2>/dev/null || true)
+              STATUS=$(if [ -n "${CONTAINER_ID}" ]; then docker inspect --format='{{.State.Health.Status}}' "${CONTAINER_ID}" 2>/dev/null || echo "unknown"; else echo "unknown"; fi)
+              if [ "${STATUS}" = "healthy" ]; then
+                echo "Keycloak is healthy"
                 exit 0
               fi
-              echo "Waiting... ($i/30)" && sleep 10
+              echo "Waiting... ($i/30) Status: ${STATUS}" && sleep 10
             done
             echo "Timeout: Keycloakが起動しませんでした"
-            docker compose logs --tail=50
+            cd ~/keycloak && docker compose logs keycloak --tail=50
             exit 1
           HEALTHCHECK
 
+      - name: 🎨 Apply staging theme settings
+        run: |
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${KEYCLOAK_HOST}" \
+            'docker exec -i tumiki-keycloak bash -s' < docker/keycloak-staging/apply-theme-settings.sh
+
       - name: 🧹 Cleanup
         if: always()
-        run: rm -f ~/.ssh/config /tmp/cloudflared.deb
+        run: |
+          # デプロイ失敗時に Keycloak VM 上に .env が残らないよう SSH 越しに確実に削除
+          # SSH 鍵・設定を削除する前に実行する必要がある
+          # 削除失敗時は warning を出して運用側で検知できるようにする（cleanup の失敗で job 自体は失敗扱いにしない）
+          ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=10 "${SSH_USER}@${KEYCLOAK_HOST}" 'rm -f ~/keycloak/.env' \
+            || echo "::warning::Keycloak VM上の .env 削除に失敗しました。手動確認が必要です"
+          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh keycloak.env ~/.ssh/id_ed25519 ~/.ssh/config

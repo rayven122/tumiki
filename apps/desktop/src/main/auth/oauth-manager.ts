@@ -1,10 +1,10 @@
 import { shell } from "electron";
 import {
-  createKeycloakClient,
-  type KeycloakClient,
-  type KeycloakConfig,
+  createOidcClient,
+  type OidcClient,
+  type OidcClientConfig,
   type TokenResponse,
-} from "./keycloak";
+} from "./oidc-client";
 import {
   generateCodeVerifier,
   generateCodeChallenge,
@@ -53,13 +53,13 @@ const AUTO_REFRESH_RETRY = {
 
 /**
  * OAuth認証マネージャーを作成
- * Keycloak認証フローを管理
+ * OIDC認証フローを管理（Keycloak・jackson・Dex 等に対応）
  */
 export const createOAuthManager = (
-  config: KeycloakConfig,
+  config: OidcClientConfig,
   options: OAuthManagerOptions = {},
 ): OAuthManager => {
-  const keycloakClient: KeycloakClient = createKeycloakClient(config);
+  const keycloakClient: OidcClient = createOidcClient(config);
   let currentSession: OAuthSession | null = null;
   let refreshTimerId: NodeJS.Timeout | null = null;
   let refreshPromise: Promise<void> | null = null;
@@ -77,9 +77,9 @@ export const createOAuthManager = (
 
     // トークンを暗号化（トランザクション外で実行し、タイムアウトを回避）
     const encryptedAccessToken = await encryptToken(tokenResponse.access_token);
-    const encryptedRefreshToken = await encryptToken(
-      tokenResponse.refresh_token,
-    );
+    const encryptedRefreshToken = tokenResponse.refresh_token
+      ? await encryptToken(tokenResponse.refresh_token)
+      : null;
     const encryptedIdToken = tokenResponse.id_token
       ? await encryptToken(tokenResponse.id_token)
       : null;
@@ -182,6 +182,12 @@ export const createOAuthManager = (
 
     if (!token) {
       throw new Error("リフレッシュ対象のトークンが存在しません");
+    }
+
+    if (!token.refreshToken) {
+      throw new Error(
+        "リフレッシュトークンがありません。再ログインが必要です。",
+      );
     }
 
     // リフレッシュトークンを復号化（失敗時はエラーをスロー）
@@ -341,8 +347,15 @@ export const createOAuthManager = (
       // トークンを暗号化して保存
       await saveToken(tokenResponse);
 
-      // 自動リフレッシュを開始
-      startAutoRefresh(tokenResponse.expires_in);
+      // refresh_token がある場合のみ自動リフレッシュを開始
+      // jackson OIDC は refresh_token を返さないため、トークン失効時は再ログインが必要
+      if (tokenResponse.refresh_token) {
+        startAutoRefresh(tokenResponse.expires_in);
+      } else {
+        logger.info(
+          "No refresh token received (jackson OIDC). Re-login required on token expiry.",
+        );
+      }
 
       logger.info("Auth callback handled successfully");
     } catch (error) {
@@ -369,12 +382,18 @@ export const createOAuthManager = (
 
       if (token) {
         try {
-          // トークンを復号化してKeycloakからログアウト
-          const refreshToken = await decryptToken(token.refreshToken);
-          const idToken = token.idToken
-            ? await decryptToken(token.idToken)
-            : undefined;
-          await keycloakClient.logout({ refreshToken, idToken });
+          if (!token.refreshToken) {
+            // refresh_token なし（jackson OIDC）はローカルクリーンアップのみ
+            logger.info(
+              "No refresh token, skipping Keycloak server-side logout",
+            );
+          } else {
+            const refreshToken = await decryptToken(token.refreshToken);
+            const idToken = token.idToken
+              ? await decryptToken(token.idToken)
+              : undefined;
+            await keycloakClient.logout({ refreshToken, idToken });
+          }
         } catch (error) {
           // 復号化・Keycloak通信の失敗はローカルクリーンアップを優先して警告のみ
           // Keycloak側のセッションは有効期限で自然失効する
@@ -480,11 +499,18 @@ export const createOAuthManager = (
         return;
       }
 
-      // 有効なトークンがある場合、自動リフレッシュを開始
+      // 有効なトークンがある場合、refresh_token があれば自動リフレッシュを開始
+      // jackson OIDC は refresh_token を返さないため null の場合はスキップ
       const expiresIn = Math.floor(
         (token.expiresAt.getTime() - Date.now()) / 1000,
       );
-      startAutoRefresh(expiresIn);
+      if (token.refreshToken) {
+        startAutoRefresh(expiresIn);
+      } else {
+        logger.info(
+          "No refresh token (jackson OIDC). Token will expire naturally without auto-refresh.",
+        );
+      }
 
       logger.info("OAuth manager initialized with existing token");
     } catch (error) {

@@ -28,6 +28,7 @@ export const connectToMcpServer = async (
   mcpConfig: DbMcpConfig | null,
 ): Promise<Client> => {
   const { transportType, name, authType } = mcpServerTemplate;
+  // core proxy では OAuth 接続を Bearer ヘッダーとして扱う。
   const mappedAuthType: AuthType =
     mcpServerTemplate.authType === "OAUTH"
       ? "BEARER"

@@ -123,19 +123,22 @@ pnpm keycloak:prod:apply
 
 `terraform/keycloak/terraform.tfvars.production`:
 ```hcl
-keycloak_url = "https://auth.tumiki.cloud"
+# Terraform は Keycloak VM 上で実行されるため localhost を指定
+keycloak_url = "http://localhost:8080"
 realm_name = "tumiki"
 
 manager_redirect_uris = [
   "https://manager.tumiki.cloud/*",
-  "https://tumiki-*.vercel.app/*"
+  "https://tumiki-*-rayven-38d708d3.vercel.app/*"
 ]
 
 manager_web_origins = [
   "https://manager.tumiki.cloud",
-  "https://tumiki-*.vercel.app"
+  "https://tumiki-*-rayven-38d708d3.vercel.app"
 ]
 ```
+
+`rayven-38d708d3` は Vercel の Project URL に含まれる team scope です。Vercel 側のプロジェクト URL が変わった場合は、`terraform.tfvars.production` とこの例を同時に更新してください。
 
 ## トラブルシューティング
 

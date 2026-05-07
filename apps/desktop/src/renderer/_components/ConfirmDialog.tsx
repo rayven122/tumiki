@@ -1,12 +1,12 @@
 import type { JSX } from "react";
 import { useEffect, useId } from "react";
-import { cardStyle } from "../utils/theme-styles";
 
 type ConfirmDialogProps = {
   open: boolean;
   title: string;
   message: string;
   confirmLabel?: string;
+  confirmDisabled?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 };
@@ -16,6 +16,7 @@ export const ConfirmDialog = ({
   title,
   message,
   confirmLabel = "削除",
+  confirmDisabled = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps): JSX.Element | null => {
@@ -40,7 +41,7 @@ export const ConfirmDialog = ({
       aria-labelledby={titleId}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
     >
-      <div className="w-full max-w-sm rounded-xl p-6" style={cardStyle}>
+      <div className="w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">
         <h3
           id={titleId}
           className="text-base font-semibold text-[var(--text-primary)]"
@@ -59,7 +60,8 @@ export const ConfirmDialog = ({
           <button
             type="button"
             onClick={onConfirm}
-            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+            disabled={confirmDisabled}
+            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {confirmLabel}
           </button>

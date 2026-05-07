@@ -1,61 +1,101 @@
 import type { JSX } from "react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Plus, ArrowLeft, Wrench } from "lucide-react";
+import { Search, Plus, ArrowLeft, RefreshCcw } from "lucide-react";
 import type { CatalogItem } from "../../types/catalog";
 import { AddMcpModal } from "../_components/AddMcpModal";
-import { CatalogToolsModal } from "../_components/CatalogToolsModal";
+import { AddCustomMcpModal } from "../_components/AddCustomMcpModal";
 import { toast } from "../_components/Toast";
 import { cardStyle } from "../utils/theme-styles";
 import { authTypeLabel } from "../../shared/catalog.helpers";
-import { CATALOG_TOOLS_MOCK } from "../data/catalog-tools-mock";
-import { DISCOVERY_ERROR_CODE } from "../../shared/oauth/discovery-error-codes";
+import {
+  DISCOVERY_ERROR_CODE,
+  extractOAuthErrorCode,
+} from "../../shared/oauth/discovery-error-codes";
 
 /** 認証種別バッジスタイル */
-const authBadgeColor: Record<
-  CatalogItem["authType"],
-  { bg: string; text: string }
-> = {
-  NONE: { bg: "var(--badge-success-bg)", text: "var(--badge-success-text)" },
-  BEARER: { bg: "var(--badge-warn-bg)", text: "var(--badge-warn-text)" },
-  API_KEY: { bg: "var(--badge-warn-bg)", text: "var(--badge-warn-text)" },
-  OAUTH: { bg: "var(--badge-info-bg)", text: "var(--badge-info-text)" },
+const authBadgeClass: Record<CatalogItem["authType"], string> = {
+  NONE: "bg-[var(--badge-success-bg)] text-[var(--badge-success-text)]",
+  BEARER: "bg-[var(--badge-warn-bg)] text-[var(--badge-warn-text)]",
+  API_KEY: "bg-[var(--badge-warn-bg)] text-[var(--badge-warn-text)]",
+  OAUTH: "bg-[var(--badge-info-bg)] text-[var(--badge-info-text)]",
+};
+
+/** フィルター用の認証種別定義 */
+const AUTH_TYPE_FILTERS = [
+  { value: "OAUTH", label: "OAuth" },
+  { value: "API_KEY", label: "API Key" },
+  { value: "BEARER", label: "Bearer" },
+  { value: "NONE", label: "設定不要" },
+] as const;
+
+const statusLabel: Record<CatalogItem["status"], string> = {
+  available: "利用可能",
+  request_required: "申請が必要",
+  disabled: "利用不可",
+};
+
+const statusBadgeClass: Record<CatalogItem["status"], string> = {
+  available: "bg-[var(--badge-success-bg)] text-[var(--badge-success-text)]",
+  request_required: "bg-[var(--badge-warn-bg)] text-[var(--badge-warn-text)]",
+  disabled: "bg-[var(--badge-error-bg)] text-[var(--badge-error-text)]",
+};
+
+const canAddCatalog = (item: CatalogItem) =>
+  item.status === "available" && item.permissions.execute;
+
+const addButtonLabel = (item: CatalogItem) => {
+  if (item.status === "request_required") return "申請が必要";
+  if (item.status === "disabled") return "利用不可";
+  if (!item.permissions.execute) return "実行権限なし";
+  return "追加";
 };
 
 export const ToolCatalog = (): JSX.Element => {
   const navigate = useNavigate();
   const [catalogs, setCatalogs] = useState<CatalogItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [selectedAuthTypes, setSelectedAuthTypes] = useState<
+    CatalogItem["authType"][]
+  >([]);
   const [selectedCatalog, setSelectedCatalog] = useState<CatalogItem | null>(
     null,
   );
   const [dcrPrefill, setDcrPrefill] = useState(false);
-  const [toolsModalCatalog, setToolsModalCatalog] =
-    useState<CatalogItem | null>(null);
+  const [cachedOAuthClient, setCachedOAuthClient] = useState<{
+    clientId: string;
+    clientSecret: string | null;
+  } | null>(null);
+  const [showCustomModal, setShowCustomModal] = useState(false);
 
-  // OAuth 直接フロー時のイベントリスナーがモーダル表示中の AddMcpModal と二重発火しないよう参照で最新状態を保持
+  // OAuth 直接フロー時のイベントリスナーがモーダル表示中の AddMcpModal / AddCustomMcpModal と二重発火しないよう参照で最新状態を保持
   const modalOpenRef = useRef(false);
   useEffect(() => {
-    modalOpenRef.current = selectedCatalog !== null;
-  }, [selectedCatalog]);
+    modalOpenRef.current = selectedCatalog !== null || showCustomModal;
+  }, [selectedCatalog, showCustomModal]);
 
-  useEffect(() => {
+  const loadCatalogs = useCallback((): void => {
+    setLoading(true);
+    setLoadError(null);
     window.electronAPI.catalog
       .getAll()
-      .then((items) =>
-        // モック由来のツール情報を注入（将来 Prisma 拡張で不要化）
-        items.map((item) => {
-          const tools = CATALOG_TOOLS_MOCK[item.name];
-          return tools
-            ? { ...item, tools, toolCount: tools.length }
-            : { ...item, toolCount: 0 };
-        }),
-      )
       .then(setCatalogs)
-      .catch(() => setCatalogs([]))
+      .catch((err: unknown) => {
+        setCatalogs([]);
+        setLoadError(
+          err instanceof Error
+            ? err.message
+            : "カタログ一覧の取得に失敗しました",
+        );
+      })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    loadCatalogs();
+  }, [loadCatalogs]);
 
   // OAuth 直接フロー用のグローバルリスナー（AddMcpModal が開いている時は内部リスナーに任せる）
   useEffect(() => {
@@ -75,20 +115,23 @@ export const ToolCatalog = (): JSX.Element => {
   }, [navigate]);
 
   const handleAddClick = async (item: CatalogItem): Promise<void> => {
+    if (!canAddCatalog(item)) return;
+    const template = item.connectionTemplate;
     // 認証なしは直接コネクタへ追加
-    if (item.authType === "NONE") {
+    if (template.authType === "NONE") {
       try {
-        const result = await window.electronAPI.mcp.createFromCatalog({
+        const result = await window.electronAPI.catalog.add({
           catalogId: item.id,
-          catalogName: item.name,
+          serverName: item.name,
           description: item.description,
-          transportType: item.transportType,
-          command: item.command,
-          args: item.args,
-          url: item.url,
-          credentialKeys: [],
+          status: item.status,
+          permissions: item.permissions,
+          connectionTemplate: template,
+          tools: item.tools.map((tool) => ({
+            name: tool.name,
+            allowed: tool.allowed,
+          })),
           credentials: {},
-          authType: item.authType,
         });
         toast.success(`${result.serverName}が正常に追加されました。`);
         navigate("/tools");
@@ -98,57 +141,120 @@ export const ToolCatalog = (): JSX.Element => {
       return;
     }
     // API Key / Bearer はモーダルで入力
-    if (item.authType !== "OAUTH") {
+    if (template.authType !== "OAUTH") {
       setDcrPrefill(false);
       setSelectedCatalog(item);
       return;
     }
-    if (!item.url) {
+    if (!template.url) {
       toast.error("このカタログには認証先URLが設定されていません");
       return;
     }
+    // 手動入力済みクライアントのキャッシュがあればプリフィルしてモーダル表示
+    // キャッシュ取得失敗時は通常のOAuthフローへフォールバック（onClickのvoidに例外が握りつぶされるのを防ぐ）
+    let cachedClient: { clientId: string; clientSecret: string | null } | null =
+      null;
+    try {
+      cachedClient = await window.electronAPI.oauth.findManualOAuthClient(
+        template.url,
+      );
+    } catch {
+      // 黙ってフォールバック（後続の startAuth へ）
+    }
+    if (cachedClient) {
+      setCachedOAuthClient(cachedClient);
+      setDcrPrefill(true);
+      setSelectedCatalog(item);
+      return;
+    }
+
     // OAuth は認証ページへ直接リダイレクト
     try {
       await window.electronAPI.oauth.startAuth({
-        catalogId: item.id,
         catalogName: item.name,
         description: item.description,
-        transportType: item.transportType,
-        command: item.command,
-        args: item.args,
-        url: item.url,
+        transportType: template.transportType,
+        command: template.command,
+        args: JSON.stringify(template.args),
+        url: template.url,
+        managerCatalog: {
+          catalogId: item.id,
+          status: item.status,
+          permissions: item.permissions,
+          connectionTemplate: template,
+          tools: item.tools.map((tool) => ({
+            name: tool.name,
+            allowed: tool.allowed,
+          })),
+        },
       });
       toast.success(`${item.name}の認証をブラウザで開始しました。`);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "OAuth認証の開始に失敗しました";
-      const codeMatch = message.match(/\[(\w+)]\s/);
-      const code = codeMatch?.[1];
-      // DCR 非対応サーバー: モーダルを開いて Client ID/Secret 手動入力
+      const { code, displayMessage } = extractOAuthErrorCode(message);
       if (code === DISCOVERY_ERROR_CODE.DCR_NOT_SUPPORTED) {
         setDcrPrefill(true);
         setSelectedCatalog(item);
         return;
       }
-      const displayMessage = codeMatch
-        ? message.slice((codeMatch.index ?? 0) + codeMatch[0].length)
-        : message;
       toast.error(displayMessage);
     }
   };
 
+  const toggleAuthType = (authType: CatalogItem["authType"]): void => {
+    setSelectedAuthTypes((prev) =>
+      prev.includes(authType)
+        ? prev.filter((t) => t !== authType)
+        : [...prev, authType],
+    );
+  };
+
+  const clearAllFilters = (): void => {
+    setQuery("");
+    setSelectedAuthTypes([]);
+  };
+
+  const hasActiveFilters = query !== "" || selectedAuthTypes.length > 0;
+
   const lowerQuery = query.toLowerCase();
-  const filtered = catalogs.filter(
-    (c) =>
+  const filtered = catalogs.filter((c) => {
+    const matchesSearch =
       query === "" ||
       c.name.toLowerCase().includes(lowerQuery) ||
-      c.description.includes(query),
-  );
+      c.description.toLowerCase().includes(lowerQuery);
+
+    const matchesAuthType =
+      selectedAuthTypes.length === 0 || selectedAuthTypes.includes(c.authType);
+
+    return matchesSearch && matchesAuthType;
+  });
 
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-[var(--text-subtle)]">
         読み込み中...
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex h-full items-center justify-center p-6">
+        <div className="max-w-md rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 text-center shadow-[var(--shadow-card)]">
+          <h1 className="text-base font-semibold text-[var(--text-primary)]">
+            カタログの取得に失敗しました
+          </h1>
+          <p className="mt-2 text-sm text-[var(--text-muted)]">{loadError}</p>
+          <button
+            type="button"
+            onClick={loadCatalogs}
+            className="mt-4 inline-flex items-center gap-2 rounded-md bg-[var(--text-primary)] px-4 py-2 text-sm font-medium text-[var(--bg-card)] transition hover:opacity-90"
+          >
+            <RefreshCcw size={14} />
+            再読み込み
+          </button>
+        </div>
       </div>
     );
   }
@@ -175,8 +281,8 @@ export const ToolCatalog = (): JSX.Element => {
       </div>
 
       {/* 検索バー */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative min-w-[200px] flex-1">
+      <div className="space-y-3">
+        <div className="relative min-w-[200px]">
           <Search
             size={14}
             className="absolute top-1/2 left-3 -translate-y-1/2 text-[var(--text-subtle)]"
@@ -188,6 +294,37 @@ export const ToolCatalog = (): JSX.Element => {
             onChange={(e) => setQuery(e.target.value)}
             className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] py-2 pr-3 pl-9 text-sm text-[var(--text-primary)] outline-none"
           />
+        </div>
+
+        {/* 認証種別フィルター */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] text-[var(--text-subtle)]">
+            認証種別:
+          </span>
+          {AUTH_TYPE_FILTERS.map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={selectedAuthTypes.includes(value)}
+              onClick={() => toggleAuthType(value)}
+              className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-colors ${
+                selectedAuthTypes.includes(value)
+                  ? `${authBadgeClass[value]} ring-1 ring-[var(--text-muted)]`
+                  : "bg-[var(--bg-card)] text-[var(--text-muted)] ring-1 ring-[var(--border)] hover:ring-[var(--text-subtle)]"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={clearAllFilters}
+              className="ml-1 text-[10px] text-[var(--text-muted)] transition-opacity hover:opacity-70"
+            >
+              クリア
+            </button>
+          )}
         </div>
       </div>
 
@@ -203,101 +340,127 @@ export const ToolCatalog = (): JSX.Element => {
             </span>
           </div>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-            {filtered.map((item) => (
-              <div
-                key={item.id}
-                className="flex flex-col rounded-xl p-4 transition-all hover:-translate-y-0.5 hover:shadow-lg"
-                style={cardStyle}
-              >
-                {/* アイコン + 認証種別 */}
-                <div className="mb-3 flex items-start justify-between">
-                  {item.iconPath ? (
-                    <img
-                      src={item.iconPath}
-                      alt={item.name}
-                      className="h-8 w-8 rounded-lg"
-                    />
-                  ) : (
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-700 text-xs text-gray-400">
-                      MCP
-                    </div>
-                  )}
-                  <span
-                    className="rounded-full px-2 py-0.5 text-[9px] font-medium"
-                    style={{
-                      backgroundColor: authBadgeColor[item.authType].bg,
-                      color: authBadgeColor[item.authType].text,
-                    }}
+            {/* カスタムMCPを追加カード */}
+            <button
+              type="button"
+              onClick={() => setShowCustomModal(true)}
+              className="flex min-h-[180px] flex-col items-center justify-center rounded-xl border-2 border-dashed border-[var(--border)] p-4 transition-all hover:-translate-y-0.5 hover:border-[var(--text-muted)] hover:shadow-lg"
+            >
+              <Plus size={28} className="mb-2 text-[var(--text-subtle)]" />
+              <span className="text-sm font-medium text-[var(--text-secondary)]">
+                カスタムMCPを追加
+              </span>
+              <span className="mt-1 text-[10px] text-[var(--text-subtle)]">
+                URLを指定してリモートMCPを登録
+              </span>
+            </button>
+            {filtered.map((item) => {
+              const template = item.connectionTemplate;
+              const addable = canAddCatalog(item);
+              return (
+                <div
+                  key={item.id}
+                  className="flex flex-col rounded-xl p-4 transition-all hover:-translate-y-0.5 hover:shadow-lg"
+                  style={cardStyle}
+                >
+                  {/* アイコン + 認証種別 */}
+                  <div className="mb-3 flex items-start justify-between">
+                    {item.iconUrl ? (
+                      <img
+                        src={item.iconUrl}
+                        alt={item.name}
+                        className="h-8 w-8 rounded-lg"
+                      />
+                    ) : (
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-700 text-xs text-gray-400">
+                        MCP
+                      </div>
+                    )}
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[9px] font-medium ${authBadgeClass[template.authType]}`}
+                    >
+                      {authTypeLabel[template.authType]}
+                    </span>
+                  </div>
+                  <div className="mb-2">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[9px] font-medium ${statusBadgeClass[item.status]}`}
+                    >
+                      {statusLabel[item.status]}
+                    </span>
+                  </div>
+                  {/* 名前 */}
+                  <div className="mb-2 text-sm font-medium text-[var(--text-primary)]">
+                    {item.name}
+                  </div>
+                  {/* 説明 */}
+                  <div className="mb-3 line-clamp-2 text-[10px] leading-relaxed text-[var(--text-subtle)]">
+                    {item.description}
+                  </div>
+                  {/* 追加ボタン（OAuth は直接認証、それ以外はモーダル） */}
+                  <button
+                    type="button"
+                    onClick={() => void handleAddClick(item)}
+                    disabled={!addable}
+                    className="mt-auto flex w-full items-center justify-center gap-1 rounded-md bg-[var(--text-primary)] py-1.5 text-[10px] font-medium text-[var(--bg-card)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {authTypeLabel[item.authType]}
-                  </span>
+                    {addable && <Plus size={10} />}
+                    {addButtonLabel(item)}
+                  </button>
                 </div>
-                {/* 名前 */}
-                <div className="mb-2 text-sm font-medium text-[var(--text-primary)]">
-                  {item.name}
-                </div>
-                {/* 利用可能なツール バッジ（クリックでモーダル） */}
-                <button
-                  type="button"
-                  onClick={() => setToolsModalCatalog(item)}
-                  disabled={!item.tools || item.tools.length === 0}
-                  className="mb-3 flex items-center justify-between rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-input)] px-3 py-2 text-[10px] text-[var(--text-muted)] transition hover:border-[var(--border)] hover:text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:text-[var(--text-muted)]"
-                >
-                  <span className="flex items-center gap-1.5">
-                    <Wrench size={12} />
-                    利用可能なツール
-                  </span>
-                  <span className="font-mono">{item.toolCount ?? 0}</span>
-                </button>
-                {/* 説明 */}
-                <div className="mb-3 line-clamp-2 text-[10px] leading-relaxed text-[var(--text-subtle)]">
-                  {item.description}
-                </div>
-                {/* 追加ボタン（OAuth は直接認証、それ以外はモーダル） */}
-                <button
-                  type="button"
-                  onClick={() => void handleAddClick(item)}
-                  className="mt-auto flex w-full items-center justify-center gap-1 rounded-md bg-[var(--text-primary)] py-1.5 text-[10px] font-medium text-[var(--bg-card)] transition hover:opacity-90"
-                >
-                  <Plus size={10} />
-                  追加
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
 
       {filtered.length === 0 && (
         <div className="py-12 text-center text-sm text-[var(--text-subtle)]">
-          条件に一致するツールが見つかりません
+          <p>条件に一致するツールが見つかりません</p>
+          <button
+            type="button"
+            onClick={() => setShowCustomModal(true)}
+            className="mt-4 inline-flex items-center gap-1 rounded-md bg-[var(--text-primary)] px-4 py-2 text-sm font-medium text-[var(--bg-card)] transition hover:opacity-90"
+          >
+            <Plus size={14} />
+            カスタムMCPを追加
+          </button>
         </div>
       )}
 
-      {/* 追加モーダル */}
-      {selectedCatalog && (
-        <AddMcpModal
-          catalog={selectedCatalog}
-          initialNeedsManualOAuthClient={dcrPrefill}
-          onClose={() => {
-            setSelectedCatalog(null);
-            setDcrPrefill(false);
-          }}
+      {/* リモートMCP追加モーダル */}
+      {showCustomModal && (
+        <AddCustomMcpModal
+          onClose={() => setShowCustomModal(false)}
           onSuccess={(serverName) => {
-            setSelectedCatalog(null);
-            setDcrPrefill(false);
+            setShowCustomModal(false);
             toast.success(`${serverName}が正常に追加されました。`);
             navigate("/tools");
           }}
         />
       )}
 
-      {/* 利用可能ツールモーダル */}
-      {toolsModalCatalog && toolsModalCatalog.tools && (
-        <CatalogToolsModal
-          catalogName={toolsModalCatalog.name}
-          tools={toolsModalCatalog.tools}
-          onClose={() => setToolsModalCatalog(null)}
+      {/* カタログからの追加モーダル */}
+      {selectedCatalog && (
+        <AddMcpModal
+          catalog={selectedCatalog}
+          initialNeedsManualOAuthClient={dcrPrefill}
+          initialOAuthClientId={cachedOAuthClient?.clientId}
+          initialOAuthClientSecret={
+            cachedOAuthClient?.clientSecret ?? undefined
+          }
+          onClose={() => {
+            setSelectedCatalog(null);
+            setDcrPrefill(false);
+            setCachedOAuthClient(null);
+          }}
+          onSuccess={(serverName) => {
+            setSelectedCatalog(null);
+            setDcrPrefill(false);
+            setCachedOAuthClient(null);
+            toast.success(`${serverName}が正常に追加されました。`);
+            navigate("/tools");
+          }}
         />
       )}
     </div>

@@ -83,6 +83,7 @@ describe("runMcpProxy", () => {
     expect(mocks.mockCreateProxyCore).toHaveBeenCalledWith(
       [],
       expect.any(Object),
+      expect.any(Object),
     );
     expect(mocks.mockStartAll).toHaveBeenCalledOnce();
     // PII マスキングフィルタが runMcpProxy 内で自動構築されるため、3引数目には常に filter が含まれる
@@ -111,6 +112,7 @@ describe("runMcpProxy", () => {
     expect(mocks.mockCreateProxyCore).toHaveBeenCalledWith(
       configs,
       expect.any(Object),
+      expect.any(Object),
     );
   });
 
@@ -124,6 +126,18 @@ describe("runMcpProxy", () => {
     expect(mocks.mockCreateProxyCore).toHaveBeenCalledWith(
       configs,
       expect.any(Object),
+      expect.any(Object),
+    );
+  });
+
+  test("hooks.resolveAllowedTools を createProxyCore に伝播する", async () => {
+    const resolveAllowedTools = vi.fn();
+    await runMcpProxy([], { resolveAllowedTools });
+
+    expect(mocks.mockCreateProxyCore).toHaveBeenCalledWith(
+      [],
+      expect.any(Object),
+      expect.objectContaining({ resolveAllowedTools }),
     );
   });
 
@@ -155,6 +169,45 @@ describe("runMcpProxy", () => {
       mocks.mockCore,
       expect.any(Object),
       expect.objectContaining({ filter: customFilter }),
+    );
+  });
+
+  test("disableDefaultFilter=true で filter が undefined になる（サーバー単位 OFF）", async () => {
+    await runMcpProxy([], { disableDefaultFilter: true });
+
+    expect(mocks.mockStartStdioInbound).toHaveBeenCalledOnce();
+    const passedHooks = mocks.mockStartStdioInbound.mock.calls[0]?.[2] as
+      | { filter?: unknown }
+      | undefined;
+    expect(passedHooks).toBeDefined();
+    expect(passedHooks?.filter).toBeUndefined();
+  });
+
+  test("disableDefaultFilter=true でも hooks.filter があればそちらが優先される", async () => {
+    const customFilter = {
+      beforeCall: vi.fn(),
+      afterCall: vi.fn(),
+    };
+
+    await runMcpProxy([], {
+      disableDefaultFilter: true,
+      filter: customFilter,
+    });
+
+    expect(mocks.mockStartStdioInbound).toHaveBeenCalledWith(
+      mocks.mockCore,
+      expect.any(Object),
+      expect.objectContaining({ filter: customFilter }),
+    );
+  });
+
+  test("disableDefaultFilter=false ならデフォルト filter が構築される（既存挙動）", async () => {
+    await runMcpProxy([], { disableDefaultFilter: false });
+
+    expect(mocks.mockStartStdioInbound).toHaveBeenCalledWith(
+      mocks.mockCore,
+      expect.any(Object),
+      expect.objectContaining({ filter: expect.any(Object) as unknown }),
     );
   });
 });

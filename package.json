@@ -13,15 +13,17 @@
       "tar": ">=7.5.7",
       "undici": ">=6.23.0",
       "fast-xml-parser": ">=5.4.1"
+    },
+    "patchedDependencies": {
+      "zod-prisma-types@3.3.10": "patches/zod-prisma-types@3.3.10.patch"
     }
   },
   "scripts": {
     "build": "turbo run build",
     "clean": "git clean -xdf node_modules",
     "clean:workspaces": "turbo run clean",
-    "dev": "turbo watch dev --filter=@tumiki/mcp-proxy --filter=@tumiki/manager --filter=@tumiki/desktop --continue",
-    "dev:internal-manager": "turbo watch dev --filter=@tumiki/internal-manager --continue",
-    "start": "turbo run start --filter=@tumiki/mcp-proxy --filter=@tumiki/manager --filter=@tumiki/desktop --continue",
+    "dev": "turbo watch dev --filter=@tumiki/mcp-proxy --filter=@tumiki/manager --filter=@tumiki/desktop --filter=@tumiki/internal-manager --continue",
+    "start": "turbo run start --filter=@tumiki/mcp-proxy --filter=@tumiki/manager --filter=@tumiki/desktop --filter=@tumiki/internal-manager --continue",
     "format": "turbo run format --continue -- --cache --cache-location .cache/.prettiercache",
     "format:fix": "turbo run format --continue -- --write --cache --cache-location .cache/.prettiercache",
     "typecheck": "turbo run typecheck",
@@ -35,6 +37,7 @@
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
     "check": "concurrently --kill-others-on-fail --names \"lint,format,typecheck\" \"pnpm run lint\" \"pnpm run format\" \"pnpm run typecheck\"",
+    "db:deploy": "pnpm --filter @tumiki/internal-db exec prisma migrate deploy && pnpm --filter @tumiki/db exec prisma migrate deploy",
     "docker:up": "docker compose -f docker/local/compose.yaml up -d",
     "docker:stop": "docker compose -f docker/local/compose.yaml stop",
     "docker:down": "docker compose -f docker/local/compose.yaml down",

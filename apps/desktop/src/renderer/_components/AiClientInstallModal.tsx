@@ -39,6 +39,15 @@ export const AiClientInstallModal = ({
     [],
   );
 
+  // Escape キーでモーダルを閉じる（キーボードユーザーのアクセシビリティ対応）
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   const handleCopy = () => {
     void navigator.clipboard.writeText(configSnippet).then(() => {
       setCopied(true);
@@ -56,8 +65,7 @@ export const AiClientInstallModal = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={onClose}
     >
       <div
@@ -129,14 +137,7 @@ export const AiClientInstallModal = ({
         </div>
 
         {/* 区切り */}
-        <div
-          className="mb-5"
-          style={{
-            borderTopWidth: 1,
-            borderTopStyle: "solid",
-            borderTopColor: "var(--border)",
-          }}
-        />
+        <div className="mb-5 border-t border-[var(--border)]" />
 
         {/* ボタン */}
         <div className="flex justify-end gap-3">

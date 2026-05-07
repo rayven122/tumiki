@@ -3,9 +3,11 @@ import { defineWorkspace } from "vitest/config";
 export default defineWorkspace([
   // Apps
   "apps/manager/vitest.config.ts",
+  "apps/tenant-console/vitest.config.ts",
   "apps/mcp-proxy/vitest.config.ts",
   "apps/desktop/vitest.config.ts",
   "apps/internal-manager/vitest.config.ts",
+  "apps/tumiki-cloud-api/vitest.config.ts",
 
   // Packages
   // TODO: packages/dbのテストにはPostgreSQL(db-test)コンテナが必要なため除外

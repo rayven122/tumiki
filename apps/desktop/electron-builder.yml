@@ -18,6 +18,14 @@ files:
   - "!.turbo/**"
   - "!.cache/**"
 
+# バンドル済みランタイム (Node.js / uv) を <App>.app/Contents/Resources/runtime/<platform>/ に配置
+# DEV-1597: ユーザーPCに npx / uvx が無くてもMCPコネクタが起動できるようにする
+extraResources:
+  - from: resources/runtime/${platform}-${arch}
+    to: runtime/${platform}-${arch}
+    filter:
+      - "**/*"
+
 # 依存関係を自動的にバンドル
 # Prismaクライアントとネイティブモジュール、レンダラーファイルをasarから除外
 asarUnpack:

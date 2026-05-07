@@ -1,15 +1,24 @@
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
+import { cookies } from "next/headers";
+import { Role } from "@tumiki/internal-db";
 import { auth } from "~/auth";
+import { THEME_STORAGE_KEY, type Theme } from "~/lib/admin-theme";
 import { AdminSidebar } from "./_components/AdminSidebar";
 
 const AdminLayout = async ({ children }: { children: ReactNode }) => {
   const session = await auth();
-  if (!session) redirect("/");
+  if (!session) redirect("/api/auth/signin?callbackUrl=/admin");
+  // proxy通過後もRSC側で再確認し、middleware対象外の追加ルートにも備える。
+  // 管理画面の存在を非管理者へ露出しないため、layout側では404にする。
+  if (session.user.role !== Role.SYSTEM_ADMIN) notFound();
+  const cookieStore = await cookies();
+  const initialTheme: Theme =
+    cookieStore.get(THEME_STORAGE_KEY)?.value === "light" ? "light" : "dark";
 
   return (
     <div className="bg-bg-main flex h-screen">
-      <AdminSidebar />
+      <AdminSidebar initialTheme={initialTheme} />
       <main className="flex-1 overflow-y-auto">{children}</main>
     </div>
   );

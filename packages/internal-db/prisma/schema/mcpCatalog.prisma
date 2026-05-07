@@ -1,0 +1,303 @@
+/**
+ * @namespace McpCatalog
+ * internal-manager が管理する社内 MCP カタログとツール単位ポリシー
+ */
+
+/// MCP カタログの接続方式
+/// @namespace McpCatalog
+enum McpCatalogTransportType {
+  /// ローカルプロセスを標準入出力で起動して接続する
+  STDIO
+  /// Server-Sent Events でリモート MCP サーバーへ接続する
+  SSE
+  /// Streamable HTTP でリモート MCP サーバーへ接続する
+  STREAMABLE_HTTP
+}
+
+/// MCP カタログから接続を作成する際の認証方式
+/// @namespace McpCatalog
+enum McpCatalogAuthType {
+  /// 認証不要
+  NONE
+  /// API キーを credentialKeys で指定した環境変数またはヘッダーとして渡す
+  API_KEY
+  /// 手動入力した token を Authorization: Bearer <token> として渡す
+  /// OAuth フローで取得する access token は OAUTH として管理し、接続時に Bearer として送出する
+  BEARER
+  /// Desktop 側で OAuth フローを実行して access token を取得する
+  OAUTH
+}
+
+/// MCP カタログの公開状態
+/// @namespace McpCatalog
+enum McpCatalogStatus {
+  /// Desktop API のカタログ一覧で利用可能として扱う
+  ACTIVE
+  /// Desktop API では disabled として返し、追加対象から外す
+  DISABLED
+}
+
+/// MCP ツールの管理者向けリスク分類
+/// @namespace McpCatalog
+enum McpToolRiskLevel {
+  /// 読み取りや参照中心の低リスクツール
+  LOW
+  /// 外部サービス操作や軽微な変更を含む標準リスクツール
+  MEDIUM
+  /// 書き込み、削除、権限変更など影響が大きい高リスクツール
+  HIGH
+}
+
+/// 部署情報の取得元
+/// @namespace McpCatalog
+enum OrgUnitSource {
+  /// SCIM の department / organization 情報から同期した部署
+  SCIM
+  /// SCIM department がない IdP 向けに、SCIM Group から部署候補を作る将来拡張用。
+  GROUP
+  /// internal-manager 上で手動作成した部署
+  MANUAL
+}
+
+/// 部署単位のツール権限効果
+/// @namespace McpCatalog
+enum PolicyEffect {
+  /// 対象部署にツール利用を許可する
+  ALLOW
+  /// 対象部署にツール利用を拒否する
+  DENY
+}
+
+/// internal-manager が配布する MCP サーバーカタログ
+/// Desktop はこの定義から connectionTemplate を受け取り、ローカル MCP 接続を作成する
+/// @namespace McpCatalog
+model McpCatalog {
+  id             String                  @id @default(cuid())
+  slug           String                  @unique
+  name           String
+  description    String?
+  transportType  McpCatalogTransportType @default(STDIO)
+  authType       McpCatalogAuthType      @default(NONE)
+  status         McpCatalogStatus        @default(ACTIVE)
+  iconPath       String?
+  command        String?
+  args           String[]                @default([])
+  url            String?
+  credentialKeys String[]                @default([])
+  createdBy      String?
+  creator        User?                   @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+
+  tools                     McpCatalogTool[]
+  orgUnitCatalogPermissions OrgUnitCatalogPermission[]
+  orgUnitToolPermissions    OrgUnitToolPermission[]
+  groupCatalogPermissions   GroupCatalogPermission[]
+  groupToolPermissions      GroupCatalogToolPermission[]
+  userCatalogPermissions    UserCatalogPermission[]
+  userToolPermissions       UserCatalogToolPermission[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([deletedAt])
+  @@index([name, id])
+  @@index([status])
+}
+
+/// MCP カタログ内のツール定義と初期許可設定
+/// @namespace McpCatalog
+model McpCatalogTool {
+  id             String           @id @default(cuid())
+  catalogId      String
+  catalog        McpCatalog       @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  name           String
+  description    String?
+  inputSchema    Json             @default("{}")
+  defaultAllowed Boolean          @default(false)
+  riskLevel      McpToolRiskLevel @default(MEDIUM)
+
+  orgUnitPermissions OrgUnitToolPermission[]
+  groupPermissions   GroupCatalogToolPermission[]
+  userPermissions    UserCatalogToolPermission[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([catalogId, name])
+  @@index([deletedAt])
+}
+
+/// SCIM / IdP / 手動管理から得た組織部署
+/// MCP カタログ・ツールの許可範囲を部署単位で評価するために使う
+/// @namespace McpCatalog
+model OrgUnit {
+  id           String        @id @default(cuid())
+  name         String
+  externalId   String
+  source       OrgUnitSource @default(SCIM)
+  path         String
+  parentId     String?
+  parent       OrgUnit?      @relation("OrgUnitHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children     OrgUnit[]     @relation("OrgUnitHierarchy")
+  lastSyncedAt DateTime?
+
+  memberships UserOrgUnitMembership[]
+  catalogPermissions OrgUnitCatalogPermission[]
+  permissions        OrgUnitToolPermission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([source, externalId])
+  @@index([parentId])
+  @@index([path])
+}
+
+/// 部署ごとの MCP カタログ許可 / 拒否ポリシー
+/// 1部署と1カタログに対して1効果のみを保持し、ツール単位の例外は OrgUnitToolPermission で表す
+/// @namespace McpCatalog
+model OrgUnitCatalogPermission {
+  id        String       @id @default(cuid())
+  orgUnitId String
+  orgUnit   OrgUnit      @relation(fields: [orgUnitId], references: [id], onDelete: Cascade)
+  catalogId String
+  catalog   McpCatalog   @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  effect    PolicyEffect
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([orgUnitId, catalogId])
+  @@index([catalogId])
+  @@index([effect])
+}
+
+/// ユーザーと部署の所属関係
+/// Desktop API の権限評価で、ユーザーがどの部署ポリシーを受けるかを決める
+/// @namespace McpCatalog
+model UserOrgUnitMembership {
+  id        String  @id @default(cuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orgUnitId String
+  orgUnit   OrgUnit @relation(fields: [orgUnitId], references: [id], onDelete: Cascade)
+  isPrimary Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, orgUnitId])
+  @@index([orgUnitId])
+}
+
+/// 部署ごとの MCP ツール許可 / 拒否ポリシー
+/// カタログ単位の絞り込みとツール単位の判定を効率化するため catalogId と toolId を保持する
+/// catalogId と toolId.catalogId の一致はDBトリガーで保証する
+/// @namespace McpCatalog
+model OrgUnitToolPermission {
+  id        String         @id @default(cuid())
+  orgUnitId String
+  orgUnit   OrgUnit        @relation(fields: [orgUnitId], references: [id], onDelete: Cascade)
+  catalogId String
+  catalog   McpCatalog     @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  toolId    String
+  tool      McpCatalogTool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  effect    PolicyEffect
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([orgUnitId, toolId])
+  @@index([catalogId])
+  @@index([toolId])
+  @@index([effect])
+}
+
+/// グループごとの MCP カタログ許可 / 拒否ポリシー
+/// 1グループと1カタログに対して1効果のみを保持し、ツール単位の例外は GroupCatalogToolPermission で表す
+/// @namespace McpCatalog
+model GroupCatalogPermission {
+  id        String       @id @default(cuid())
+  groupId   String
+  group     Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  catalogId String
+  catalog   McpCatalog   @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  effect    PolicyEffect
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([groupId, catalogId])
+  @@index([catalogId])
+  @@index([effect])
+}
+
+/// グループごとの MCP ツール許可 / 拒否ポリシー
+/// catalogId と toolId.catalogId の一致はDBトリガーで保証する
+/// @namespace McpCatalog
+model GroupCatalogToolPermission {
+  id        String         @id @default(cuid())
+  groupId   String
+  group     Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  catalogId String
+  catalog   McpCatalog     @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  toolId    String
+  tool      McpCatalogTool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  effect    PolicyEffect
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([groupId, toolId])
+  @@index([catalogId])
+  @@index([toolId])
+  @@index([effect])
+}
+
+/// 管理者が設定するユーザー個別の MCP カタログ許可 / 拒否例外
+/// 1ユーザーと1カタログに対して1効果のみを保持し、ツール単位の例外は UserCatalogToolPermission で表す
+/// @namespace McpCatalog
+model UserCatalogPermission {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  catalogId String
+  catalog   McpCatalog   @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  effect    PolicyEffect
+  reason    String?
+  expiresAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, catalogId])
+  @@index([catalogId])
+  @@index([effect])
+  @@index([expiresAt])
+}
+
+/// 管理者が設定するユーザー個別の MCP ツール許可 / 拒否例外
+/// catalogId と toolId.catalogId の一致はDBトリガーで保証する
+/// @namespace McpCatalog
+model UserCatalogToolPermission {
+  id        String         @id @default(cuid())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  catalogId String
+  catalog   McpCatalog     @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  toolId    String
+  tool      McpCatalogTool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  effect    PolicyEffect
+  reason    String?
+  expiresAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, toolId])
+  @@index([catalogId])
+  @@index([toolId])
+  @@index([effect])
+  @@index([expiresAt])
+}

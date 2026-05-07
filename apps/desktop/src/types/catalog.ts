@@ -1,29 +1,74 @@
-/** カタログが提供するツールの定義（UI表示用、モックで注入される暫定データ） */
-export type CatalogTool = {
+export type CatalogAuthType = "NONE" | "BEARER" | "API_KEY" | "OAUTH";
+export type CatalogTransportType = "STDIO" | "SSE" | "STREAMABLE_HTTP";
+export type CatalogStatus = "available" | "request_required" | "disabled";
+
+export type CatalogConnectionTemplate = {
+  transportType: CatalogTransportType;
+  command: string | null;
+  args: string[];
+  url: string | null;
+  authType: CatalogAuthType;
+  credentialKeys: string[];
+};
+
+export type CatalogPermissions = {
+  read: boolean;
+  write: boolean;
+  execute: boolean;
+};
+
+export type CatalogToolPreview = {
+  id?: string;
   name: string;
   description: string;
+  allowed: boolean;
+  reviewStatus?: string;
 };
 
 /**
- * MCPカタログアイテム型（IPC通信用）
- * Prisma McpCatalog モデルのシリアライズ版
+ * Manager API由来のMCPカタログアイテム型（IPC通信用）
  */
 export type CatalogItem = {
+  id: string;
+  name: string;
+  description: string;
+  iconUrl: string | null;
+  status: CatalogStatus;
+  permissions: CatalogPermissions;
+  transportType: CatalogTransportType;
+  authType: CatalogAuthType;
+  requiredCredentialKeys: string[];
+  tools: CatalogToolPreview[];
+  connectionTemplate: CatalogConnectionTemplate;
+};
+
+/**
+ * Desktop SQLite上のローカルカタログ型。
+ * 仮想MCP作成など、既存のローカルMcpCatalog参照が必要な画面だけで使う。
+ */
+export type LocalCatalogItem = {
   id: number;
   name: string;
   description: string;
   iconPath: string | null;
-  transportType: "STDIO" | "SSE" | "STREAMABLE_HTTP";
+  transportType: CatalogTransportType;
   command: string | null;
   args: string;
   url: string | null;
   credentialKeys: string;
-  authType: "NONE" | "BEARER" | "API_KEY" | "OAUTH";
+  authType: CatalogAuthType;
   isOfficial: boolean;
   createdAt: string;
   updatedAt: string;
-  /** ツール件数（モック注入、将来 Prisma 拡張で正規化予定） */
-  toolCount?: number;
-  /** ツール一覧（モック注入、将来 Prisma 拡張で正規化予定） */
-  tools?: CatalogTool[];
+};
+
+export type AddFromCatalogInput = {
+  catalogId: string;
+  serverName: string;
+  description: string;
+  status: CatalogStatus;
+  permissions: CatalogPermissions;
+  connectionTemplate: CatalogConnectionTemplate;
+  tools: Array<{ name: string; allowed: boolean }>;
+  credentials: Record<string, string>;
 };

@@ -290,6 +290,161 @@ describe("UpstreamClient", () => {
     });
   });
 
+  describe("resolveAllowedTools（動的ツールフィルタ）", () => {
+    const buildToolsResponse = () => ({
+      tools: [
+        { name: "read_file", description: "読み取り", inputSchema: {} },
+        { name: "write_file", description: "書き込み", inputSchema: {} },
+        { name: "delete_file", description: "削除", inputSchema: {} },
+      ],
+    });
+
+    test("resolverの結果でlistToolsの結果がフィルタされる", async () => {
+      mockConnect.mockResolvedValue(undefined);
+      mockListTools.mockResolvedValue(buildToolsResponse());
+
+      const resolveAllowedTools = vi
+        .fn()
+        .mockResolvedValue(["read_file", "write_file"]);
+      const dynamicClient = createUpstreamClient(
+        createTestConfig(),
+        mockLogger,
+        { resolveAllowedTools },
+      );
+      await dynamicClient.connect();
+
+      const tools = await dynamicClient.listTools();
+
+      expect(resolveAllowedTools).toHaveBeenCalledOnce();
+      expect(tools.map((t) => t.name)).toStrictEqual([
+        "read_file",
+        "write_file",
+      ]);
+    });
+
+    test("resolverはlistToolsの都度呼ばれ、戻り値が変わると次回フィルタも変わる", async () => {
+      mockConnect.mockResolvedValue(undefined);
+      mockListTools.mockResolvedValue(buildToolsResponse());
+
+      const resolveAllowedTools = vi
+        .fn()
+        .mockResolvedValueOnce(["read_file"])
+        .mockResolvedValueOnce(["write_file", "delete_file"]);
+      const dynamicClient = createUpstreamClient(
+        createTestConfig(),
+        mockLogger,
+        { resolveAllowedTools },
+      );
+      await dynamicClient.connect();
+
+      const first = await dynamicClient.listTools();
+      const second = await dynamicClient.listTools();
+
+      expect(resolveAllowedTools).toHaveBeenCalledTimes(2);
+      expect(first.map((t) => t.name)).toStrictEqual(["read_file"]);
+      expect(second.map((t) => t.name)).toStrictEqual([
+        "write_file",
+        "delete_file",
+      ]);
+    });
+
+    test("resolverがnullを返すと全ツール許可される（フィルタ無効）", async () => {
+      mockConnect.mockResolvedValue(undefined);
+      mockListTools.mockResolvedValue(buildToolsResponse());
+
+      const dynamicClient = createUpstreamClient(
+        createTestConfig(),
+        mockLogger,
+        { resolveAllowedTools: vi.fn().mockResolvedValue(null) },
+      );
+      await dynamicClient.connect();
+
+      const tools = await dynamicClient.listTools();
+      expect(tools.map((t) => t.name)).toStrictEqual([
+        "read_file",
+        "write_file",
+        "delete_file",
+      ]);
+    });
+
+    test("callToolも都度resolverを参照し、許可外はエラーになる", async () => {
+      mockConnect.mockResolvedValue(undefined);
+      mockCallTool.mockResolvedValue({ content: [], isError: false });
+
+      const resolveAllowedTools = vi.fn().mockResolvedValue(["read_file"]);
+      const dynamicClient = createUpstreamClient(
+        createTestConfig(),
+        mockLogger,
+        { resolveAllowedTools },
+      );
+      await dynamicClient.connect();
+
+      await expect(dynamicClient.callTool("write_file", {})).rejects.toThrow(
+        'ツール "write_file" は許可されていません',
+      );
+      expect(mockCallTool).not.toHaveBeenCalled();
+
+      await dynamicClient.callTool("read_file", { path: "/x" });
+      expect(mockCallTool).toHaveBeenCalledWith({
+        name: "read_file",
+        arguments: { path: "/x" },
+      });
+    });
+
+    test("resolver例外時はconfig.allowedToolsにフォールバックする", async () => {
+      mockConnect.mockResolvedValue(undefined);
+      mockListTools.mockResolvedValue(buildToolsResponse());
+
+      const resolveAllowedTools = vi
+        .fn()
+        .mockRejectedValue(new Error("DB unavailable"));
+      const configWithStaticAllow: McpServerConfig = {
+        ...createTestConfig(),
+        allowedTools: ["read_file"],
+      };
+      const dynamicClient = createUpstreamClient(
+        configWithStaticAllow,
+        mockLogger,
+        { resolveAllowedTools },
+      );
+      await dynamicClient.connect();
+
+      const tools = await dynamicClient.listTools();
+      expect(tools.map((t) => t.name)).toStrictEqual(["read_file"]);
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining("許可ツール解決に失敗しました"),
+        expect.objectContaining({ error: "DB unavailable" }),
+      );
+    });
+
+    test("resolver例外時にconfig.allowedToolsが未設定なら全ツール許可にフォールバックする", async () => {
+      mockConnect.mockResolvedValue(undefined);
+      mockListTools.mockResolvedValue(buildToolsResponse());
+
+      const resolveAllowedTools = vi
+        .fn()
+        .mockRejectedValue(new Error("DB unavailable"));
+      const dynamicClient = createUpstreamClient(
+        createTestConfig(),
+        mockLogger,
+        { resolveAllowedTools },
+      );
+      await dynamicClient.connect();
+
+      const tools = await dynamicClient.listTools();
+      // staticAllowedToolNames が null のため全ツール許可（フィルタ無効）扱いになる
+      expect(tools.map((t) => t.name)).toStrictEqual([
+        "read_file",
+        "write_file",
+        "delete_file",
+      ]);
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining("許可ツール解決に失敗しました"),
+        expect.objectContaining({ error: "DB unavailable" }),
+      );
+    });
+  });
+
   describe("createTransport（トランスポート生成）", () => {
     test("STDIO設定でStdioClientTransportが生成される", async () => {
       mockConnect.mockResolvedValue(undefined);

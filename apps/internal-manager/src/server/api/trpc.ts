@@ -4,7 +4,7 @@ import { TRPCError, initTRPC } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
-import { db } from "@tumiki/internal-db/server";
+import { db, Role } from "@tumiki/internal-db/server";
 import { auth } from "~/auth";
 
 /**
@@ -103,6 +103,27 @@ const timingMiddleware = t.middleware(async ({ next, path }) => {
  */
 export const publicProcedure = t.procedure.use(timingMiddleware);
 
+const enforceUserIsAuthed = t.middleware(({ ctx, next }) => {
+  const session = ctx.session;
+  if (!session?.user?.sub) {
+    throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      // sessionをnon-nullableとして推論
+      session: {
+        ...session,
+        user: {
+          ...session.user,
+          id: session.user.sub,
+        },
+      },
+    },
+  });
+});
+
 /**
  * 保護されたプロシージャ（認証必須）
  *
@@ -116,25 +137,43 @@ export const publicProcedure = t.procedure.use(timingMiddleware);
  */
 export const protectedProcedure = t.procedure
   .use(timingMiddleware)
-  .use(async ({ ctx, next }) => {
-    if (!ctx.session?.user?.sub) {
-      throw new TRPCError({ code: "UNAUTHORIZED" });
-    }
+  .use(enforceUserIsAuthed);
 
-    return next({
-      ctx: {
-        ...ctx,
-        // sessionをnon-nullableとして推論
-        session: {
-          ...ctx.session,
-          user: {
-            ...ctx.session.user,
-            id: ctx.session.user.sub,
-          },
-        },
+/**
+ * 管理者専用プロシージャ
+ *
+ * SYSTEM_ADMIN のみアクセス可能な管理系 API で使用します。
+ */
+const enforceUserIsAdmin = t.middleware(({ ctx, next }) => {
+  const session = ctx.session;
+  if (!session?.user?.sub) {
+    throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+
+  const protectedCtx: ProtectedContext = {
+    ...ctx,
+    session: {
+      ...session,
+      user: {
+        ...session.user,
+        id: session.user.sub,
       },
+    },
+  };
+  if (protectedCtx.session.user.role !== Role.SYSTEM_ADMIN) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "SYSTEM_ADMINのみ操作できます",
     });
+  }
+
+  // 直前のロールチェックでSYSTEM_ADMINが保証済みのため安全なキャスト。
+  return next({
+    ctx: protectedCtx as AdminContext,
   });
+});
+
+export const adminProcedure = protectedProcedure.use(enforceUserIsAdmin);
 
 export type Context = Awaited<ReturnType<typeof createTRPCContext>>;
 
@@ -142,6 +181,21 @@ export type Context = Awaited<ReturnType<typeof createTRPCContext>>;
  * protectedProcedureのコンテキスト型
  * 認証済みが保証されている状態
  */
-export type ProtectedContext = {
-  session: NonNullable<Context["session"]>;
-} & Context;
+export type ProtectedContext = Omit<Context, "session"> & {
+  session: NonNullable<Context["session"]> & {
+    user: NonNullable<Context["session"]>["user"] & {
+      id: string;
+    };
+  };
+};
+
+/**
+ * 管理者権限が保証されているコンテキスト型
+ */
+export type AdminContext = ProtectedContext & {
+  session: ProtectedContext["session"] & {
+    user: ProtectedContext["session"]["user"] & {
+      role: typeof Role.SYSTEM_ADMIN;
+    };
+  };
+};

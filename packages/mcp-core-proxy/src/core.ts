@@ -1,3 +1,4 @@
+import type { ResolveAllowedToolsByName } from "./outbound/upstream-pool.js";
 import type {
   CallToolResult,
   Logger,
@@ -26,6 +27,10 @@ export type ProxyCore = {
   ) => void;
 };
 
+export type CreateProxyCoreOptions = {
+  resolveAllowedTools?: ResolveAllowedToolsByName;
+};
+
 /**
  * 単一サーバー用ProxyCoreを生成（--server指定時のCLIモードで使用）
  * ToolAggregatorを使わず、UpstreamClientに直接委譲する（prefixなし）
@@ -33,8 +38,14 @@ export type ProxyCore = {
 export const createSingleServerCore = (
   config: McpServerConfig,
   logger: Logger,
+  options?: CreateProxyCoreOptions,
 ): ProxyCore => {
-  const client = createUpstreamClient(config, logger);
+  // ResolveAllowedToolsByName は server 名を受け取るため、単一サーバー向けに部分適用する
+  const byNameResolver = options?.resolveAllowedTools;
+  const clientOptions = byNameResolver
+    ? { resolveAllowedTools: () => byNameResolver(config.name) }
+    : undefined;
+  const client = createUpstreamClient(config, logger, clientOptions);
 
   return {
     startAll: () => client.connect(),
@@ -82,8 +93,9 @@ export const createSingleServerCore = (
 export const createProxyCore = (
   configs: McpServerConfig[],
   logger: Logger,
+  options?: CreateProxyCoreOptions,
 ): ProxyCore => {
-  const pool = createUpstreamPool(logger);
+  const pool = createUpstreamPool(logger, options);
   for (const config of configs) {
     pool.addServer(config);
   }

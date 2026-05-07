@@ -8,6 +8,8 @@
 terraform {
   required_version = ">= 1.9.0"
 
+  backend "local" {}
+
   required_providers {
     keycloak = {
       source  = "keycloak/keycloak"
@@ -19,6 +21,7 @@ terraform {
 # Keycloak Provider設定
 provider "keycloak" {
   client_id = "admin-cli"
+  realm     = "master"
   username  = var.keycloak_admin_username
   password  = var.keycloak_admin_password
   url       = var.keycloak_url

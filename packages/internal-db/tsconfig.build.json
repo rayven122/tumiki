@@ -5,5 +5,5 @@
     "emitDeclarationOnly": false,
     "types": ["node"]
   },
-  "exclude": ["node_modules", "dist", "prisma.config.ts"]
+  "exclude": ["node_modules", "dist", "src/generated", "prisma.config.ts"]
 }

@@ -35,11 +35,25 @@ services:
     ports:
       - "8080:8080"
     env_file: .env
+    environment:
+      # .env.example が apps/manager/.env として Docker image に焼き込まれており、
+      # AUTH_URL="http://localhost:3000" が設定されている。
+      # AUTH_URL は NEXTAUTH_URL より優先されるため、両方を上書きする。
+      AUTH_URL: ${NEXTAUTH_URL}
+      NEXTAUTH_URL: ${NEXTAUTH_URL}
     depends_on:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/api/health",
+        ]
       interval: 30s
       timeout: 10s
       start_period: 30s
@@ -58,7 +72,15 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/health",
+        ]
       interval: 30s
       timeout: 10s
       start_period: 30s
@@ -71,11 +93,25 @@ services:
     ports:
       - "3100:3100"
     env_file: .env
+    environment:
+      # Auth.js は trustHost: true だが、standalone の HOSTNAME=0.0.0.0 が
+      # 干渉する環境があるため互換用に NEXTAUTH_URL も上書きする。
+      # Jackson の issuer / SAML ACS / Auth.js callback の基準 URL は
+      # TUMIKI_INTERNAL_MANAGER_PUBLIC_URL を .env で設定する。
+      NEXTAUTH_URL: ${NEXTAUTH_URL_INTERNAL_MANAGER}
     depends_on:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3100/api/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3100/api/health",
+        ]
       interval: 30s
       timeout: 10s
       start_period: 30s

@@ -24,6 +24,7 @@ WORKDIR /app
 FROM base AS build
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY patches ./patches
 COPY .npmrc ./
 COPY tooling ./tooling
 COPY packages/db ./packages/db
@@ -46,6 +47,18 @@ RUN pnpm turbo run build --filter=@tumiki/internal-manager^...
 # Next.js standalone モードでビルド（build:bare はinfisical不使用）
 RUN pnpm --filter @tumiki/internal-manager run build:bare
 
+# saml-jackson が動的 import で jose / openid-client を読み込む際、Node.js は node_modules/<pkg> を探す。
+# pnpm の standalone コピーは .pnpm 仮想ストア形式になるためルートリンクが作られない。
+# 相対パスで symlink を作成して、production stage へ COPY 後も解決できるようにする。
+# パッケージが見つからない場合はビルドを失敗させ、壊れた symlink が staging まで届かないようにする。
+RUN cd /app/apps/internal-manager/.next/standalone/node_modules && \
+    jose_pkg=$(ls .pnpm/ | grep '^jose@' | sort -V | tail -1) && \
+    [ -n "$jose_pkg" ] || { echo "ERROR: jose package not found in .pnpm/"; exit 1; } && \
+    ln -s ".pnpm/${jose_pkg}/node_modules/jose" jose && \
+    oidc_pkg=$(ls .pnpm/ | grep '^openid-client@' | sort -V | tail -1) && \
+    [ -n "$oidc_pkg" ] || { echo "ERROR: openid-client package not found in .pnpm/"; exit 1; } && \
+    ln -s ".pnpm/${oidc_pkg}/node_modules/openid-client" openid-client
+
 # ========================================
 # Stage 3: Production
 # ========================================
@@ -53,6 +66,11 @@ FROM node:24-alpine AS production
 
 # dumb-init: シグナル伝播、wget: ヘルスチェック
 RUN apk add --no-cache dumb-init wget
+
+# Prisma CLI（起動時 migrate deploy 用）
+# - standalone build には devDependency の prisma が含まれないため global install
+# - バージョンは packages/internal-db の prisma と揃える
+RUN npm install -g prisma@6.19.0 && npm cache clean --force
 
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
@@ -66,6 +84,13 @@ COPY --from=build --chown=nodejs:nodejs /app/apps/internal-manager/.next/standal
 COPY --from=build --chown=nodejs:nodejs /app/apps/internal-manager/.next/static ./apps/internal-manager/.next/static
 COPY --from=build --chown=nodejs:nodejs /app/apps/internal-manager/public ./apps/internal-manager/public
 
+# Prisma schema（起動時 migrate deploy で参照）
+COPY --from=build --chown=nodejs:nodejs /app/packages/internal-db/prisma ./packages/internal-db/prisma
+
+# Entrypoint（起動時に prisma migrate deploy → node server.js）
+COPY --chown=nodejs:nodejs apps/internal-manager/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 USER nodejs
 
 ENV NODE_ENV=production
@@ -74,8 +99,9 @@ ENV HOSTNAME=0.0.0.0
 
 EXPOSE 3100
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+# migration 実行のため start_period を 30s → 60s に延長
+HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3100/api/health || exit 1
 
-ENTRYPOINT ["dumb-init", "--"]
+ENTRYPOINT ["dumb-init", "--", "/usr/local/bin/docker-entrypoint.sh"]
 CMD ["node", "apps/internal-manager/server.js"]

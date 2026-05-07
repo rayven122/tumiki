@@ -1,20 +1,37 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { describe, test, expect, vi, beforeEach } from "vitest";
 import { GroupSource, SyncStatus, SyncTrigger } from "@tumiki/internal-db";
 import { getTumikiClaims } from "../get-tumiki-claims";
 import type { PrismaTransactionClient } from "@tumiki/internal-db";
 
 // PrismaTransactionClient のモック
-const buildDb = (overrides: Partial<typeof mockDb> = {}) =>
-  ({ ...mockDb, ...overrides }) as unknown as PrismaTransactionClient;
+const buildDb = (
+  overrides: Partial<typeof mockDb> & Record<string, unknown> = {},
+) => ({ ...mockDb, ...overrides }) as unknown as PrismaTransactionClient;
 
-const mockUser = { id: "user-sub-001", role: "USER" as const };
+const mockUser = {
+  id: "user-sub-001",
+  role: "USER" as const,
+  isActive: true,
+};
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const fn = () => vi.fn<any>();
+const fn = <TArgs extends unknown[] = [], TReturn = unknown>() =>
+  vi.fn<(...args: TArgs) => TReturn>();
+
+const expectObjectContaining = <T extends Record<string, unknown>>(
+  value: T,
+): T => {
+  // @ts-expect-error Vitest の asymmetric matcher 型は Prisma mock の部分一致と相性が悪い。
+  return expect.objectContaining(value) as T;
+};
+
+const expectArrayContaining = <T>(value: T[]): T[] => {
+  // @ts-expect-error Vitest の asymmetric matcher 型は Prisma mock の部分一致と相性が悪い。
+  return expect.arrayContaining(value) as T[];
+};
 
 const mockDb = {
   user: {
+    findUnique: fn(),
     update: fn(),
   },
   externalIdentity: {
@@ -35,7 +52,8 @@ const mockDb = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockDb.user.update.mockResolvedValue(mockUser);
+  mockDb.user.findUnique.mockResolvedValue(mockUser);
+  mockDb.user.update.mockResolvedValue({ id: mockUser.id });
   mockDb.externalIdentity.upsert.mockResolvedValue({});
   mockDb.group.findMany.mockResolvedValue([]);
   mockDb.userGroupMembership.findMany.mockResolvedValue([]);
@@ -47,7 +65,11 @@ beforeEach(() => {
 describe("getTumikiClaims", () => {
   describe("ユーザーが存在しない場合", () => {
     test("nullを返す", async () => {
-      mockDb.user.update.mockRejectedValue(new Error("not found"));
+      const error = new Error("not found");
+      const consoleError = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => undefined);
+      mockDb.user.findUnique.mockRejectedValue(error);
 
       const result = await getTumikiClaims(
         buildDb(),
@@ -58,6 +80,31 @@ describe("getTumikiClaims", () => {
       );
 
       expect(result).toBeNull();
+      expect(consoleError).toHaveBeenCalledWith(
+        "[getTumikiClaims] user.findUnique failed:",
+        error,
+      );
+      consoleError.mockRestore();
+    });
+
+    test("無効化されたユーザーはnullを返す", async () => {
+      mockDb.user.findUnique.mockResolvedValue({
+        ...mockUser,
+        isActive: false,
+      });
+
+      const result = await getTumikiClaims(
+        buildDb(),
+        mockUser.id,
+        "oidc",
+        mockUser.id,
+        [],
+      );
+
+      expect(result).toBeNull();
+      expect(mockDb.user.update).not.toHaveBeenCalled();
+      expect(mockDb.externalIdentity.upsert).not.toHaveBeenCalled();
+      expect(mockDb.idpSyncLog.create).not.toHaveBeenCalled();
     });
   });
 
@@ -80,7 +127,7 @@ describe("getTumikiClaims", () => {
       });
 
       expect(mockDb.idpSyncLog.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
+        data: expectObjectContaining({
           trigger: SyncTrigger.JIT,
           status: SyncStatus.SUCCESS,
           added: 0,
@@ -97,18 +144,64 @@ describe("getTumikiClaims", () => {
     });
   });
 
-  describe("lastLoginAt・isActive更新", () => {
-    test("User.updateにlastLoginAtとisActive:trueが渡される", async () => {
+  describe("グループクレームが未設定の場合", () => {
+    test("IDPメンバーシップ同期をスキップして既存所属を削除しない", async () => {
+      mockDb.userGroupMembership.findMany.mockResolvedValue([
+        { id: "mem-1", groupId: "group-a" },
+      ]);
+
+      const result = await getTumikiClaims(
+        buildDb(),
+        mockUser.id,
+        "oidc",
+        mockUser.id,
+        undefined,
+      );
+
+      expect(result).toStrictEqual({
+        org_slugs: [],
+        org_id: null,
+        org_slug: null,
+        roles: [mockUser.role],
+        group_roles: undefined,
+      });
+      expect(mockDb.group.findMany).not.toHaveBeenCalled();
+      expect(mockDb.userGroupMembership.findMany).not.toHaveBeenCalled();
+      expect(mockDb.userGroupMembership.createMany).not.toHaveBeenCalled();
+      expect(mockDb.userGroupMembership.deleteMany).not.toHaveBeenCalled();
+      expect(mockDb.idpSyncLog.create).toHaveBeenCalledWith({
+        data: expectObjectContaining({
+          trigger: SyncTrigger.JIT,
+          status: SyncStatus.SUCCESS,
+          added: 0,
+          removed: 0,
+          detail:
+            "Skipped because the OIDC group_roles claim was not returned.",
+        }),
+      });
+    });
+  });
+
+  describe("lastLoginAt更新", () => {
+    test("有効ユーザーのみUser.updateにlastLoginAtが渡される", async () => {
       await getTumikiClaims(buildDb(), mockUser.id, "oidc", mockUser.id, []);
 
+      expect(mockDb.user.findUnique).toHaveBeenCalledWith({
+        where: { id: mockUser.id },
+        select: { id: true, role: true, isActive: true },
+      });
       expect(mockDb.user.update).toHaveBeenCalledWith({
         where: { id: mockUser.id },
-        data: expect.objectContaining({
-          isActive: true,
-          lastLoginAt: expect.any(Date),
+        data: expectObjectContaining({
+          lastLoginAt: expect.any(Date) as Date,
         }),
-        select: { id: true, role: true },
+        select: { id: true },
       });
+      expect(mockDb.user.update).not.toHaveBeenCalledWith(
+        expectObjectContaining({
+          data: expectObjectContaining({ isActive: true }),
+        }),
+      );
     });
   });
 
@@ -121,6 +214,12 @@ describe("getTumikiClaims", () => {
         create: { userId: mockUser.id, provider: "oidc", sub: mockUser.id },
         update: {},
       });
+    });
+
+    test("oidcSubが空文字の場合はupsertを呼ばない", async () => {
+      await getTumikiClaims(buildDb(), mockUser.id, "oidc", "", []);
+
+      expect(mockDb.externalIdentity.upsert).not.toHaveBeenCalled();
     });
   });
 
@@ -141,7 +240,7 @@ describe("getTumikiClaims", () => {
       );
 
       expect(mockDb.userGroupMembership.createMany).toHaveBeenCalledWith({
-        data: expect.arrayContaining([
+        data: expectArrayContaining([
           { userId: mockUser.id, groupId: "group-a", source: GroupSource.IDP },
           { userId: mockUser.id, groupId: "group-b", source: GroupSource.IDP },
         ]),
@@ -151,7 +250,7 @@ describe("getTumikiClaims", () => {
       expect(result?.group_roles).toStrictEqual(["/GroupA", "/GroupB"]);
 
       expect(mockDb.idpSyncLog.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
+        data: expectObjectContaining({
           status: SyncStatus.SUCCESS,
           added: 2,
           removed: 0,
@@ -177,6 +276,33 @@ describe("getTumikiClaims", () => {
         skipDuplicates: true,
       });
     });
+
+    test("mappingされたTumikiグループもJITメンバーシップ対象にする", async () => {
+      mockDb.group.findMany.mockResolvedValue([{ id: "tumiki-group-a" }]);
+      mockDb.userGroupMembership.findMany.mockResolvedValue([]);
+
+      await getTumikiClaims(buildDb(), mockUser.id, "oidc", mockUser.id, [
+        "/GroupA",
+      ]);
+
+      expect(mockDb.group.findMany).toHaveBeenCalledWith({
+        where: {
+          provider: { in: ["oidc", "scim", "oidc-map", "scim-map"] },
+          externalId: { in: ["/GroupA"] },
+        },
+        select: { id: true },
+      });
+      expect(mockDb.userGroupMembership.createMany).toHaveBeenCalledWith({
+        data: [
+          {
+            userId: mockUser.id,
+            groupId: "tumiki-group-a",
+            source: GroupSource.IDP,
+          },
+        ],
+        skipDuplicates: true,
+      });
+    });
   });
 
   describe("グループ削除（脱退したメンバーシップ）", () => {
@@ -197,7 +323,7 @@ describe("getTumikiClaims", () => {
       });
 
       expect(mockDb.idpSyncLog.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
+        data: expectObjectContaining({
           status: SyncStatus.SUCCESS,
           added: 0,
           removed: 1,
@@ -217,6 +343,27 @@ describe("getTumikiClaims", () => {
       expect(mockDb.userGroupMembership.deleteMany).toHaveBeenCalledWith({
         where: { id: { in: ["mem-1", "mem-2"] } },
       });
+    });
+
+    test("SCIMでプロビジョニングされたメンバーシップはJIT削除対象に含めない", async () => {
+      mockDb.group.findMany.mockResolvedValue([]);
+      mockDb.userGroupMembership.findMany.mockResolvedValue([]);
+
+      await getTumikiClaims(buildDb(), mockUser.id, "oidc", mockUser.id, [
+        "/GroupA",
+      ]);
+
+      expect(mockDb.userGroupMembership.findMany).toHaveBeenCalledWith({
+        where: {
+          userId: mockUser.id,
+          source: GroupSource.IDP,
+          group: {
+            provider: { in: ["oidc", "oidc-map", "scim-map"] },
+          },
+        },
+        select: { id: true, groupId: true },
+      });
+      expect(mockDb.userGroupMembership.deleteMany).not.toHaveBeenCalled();
     });
   });
 
@@ -249,12 +396,35 @@ describe("getTumikiClaims", () => {
       });
 
       expect(mockDb.idpSyncLog.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
+        data: expectObjectContaining({
           status: SyncStatus.SUCCESS,
           added: 1,
           removed: 1,
         }),
       });
+    });
+
+    test("通常Prisma clientでは追加と削除をtransaction内で実行する", async () => {
+      mockDb.group.findMany.mockResolvedValue([{ id: "group-c" }]);
+      mockDb.userGroupMembership.findMany.mockResolvedValue([
+        { id: "mem-1", groupId: "group-b" },
+      ]);
+      const transaction = vi.fn(
+        async <T>(callback: (tx: typeof mockDb) => Promise<T>) =>
+          callback(mockDb),
+      );
+
+      await getTumikiClaims(
+        buildDb({ $transaction: transaction }),
+        mockUser.id,
+        "oidc",
+        mockUser.id,
+        ["/GroupC"],
+      );
+
+      expect(transaction).toHaveBeenCalledTimes(1);
+      expect(mockDb.userGroupMembership.createMany).toHaveBeenCalledTimes(1);
+      expect(mockDb.userGroupMembership.deleteMany).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -275,11 +445,13 @@ describe("getTumikiClaims", () => {
       expect(result?.group_roles).toStrictEqual(["/GroupA"]);
 
       expect(mockDb.idpSyncLog.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
+        data: expectObjectContaining({
           trigger: SyncTrigger.JIT,
           status: SyncStatus.FAILED,
           added: 0,
           removed: 0,
+          errors: 1,
+          detail: "DB connection error",
         }),
       });
     });
@@ -291,16 +463,25 @@ describe("getTumikiClaims", () => {
       mockDb.userGroupMembership.findMany.mockResolvedValue([
         { id: "mem-1", groupId: "group-a" },
       ]);
+      const transaction = vi.fn(
+        async <T>(callback: (tx: typeof mockDb) => Promise<T>) =>
+          callback(mockDb),
+      );
 
-      await getTumikiClaims(buildDb(), mockUser.id, "oidc", mockUser.id, [
-        "/GroupA",
-      ]);
+      await getTumikiClaims(
+        buildDb({ $transaction: transaction }),
+        mockUser.id,
+        "oidc",
+        mockUser.id,
+        ["/GroupA"],
+      );
 
+      expect(transaction).not.toHaveBeenCalled();
       expect(mockDb.userGroupMembership.createMany).not.toHaveBeenCalled();
       expect(mockDb.userGroupMembership.deleteMany).not.toHaveBeenCalled();
 
       expect(mockDb.idpSyncLog.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
+        data: expectObjectContaining({
           status: SyncStatus.SUCCESS,
           added: 0,
           removed: 0,

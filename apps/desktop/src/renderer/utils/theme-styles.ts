@@ -1,53 +1,52 @@
 import type { CSSProperties } from "react";
 
-/** ステータスバッジの設定を返す */
-export const statusBadge = (
-  status: string,
-): { bg: string; text: string; label: string } => {
-  const config: Record<string, { bg: string; text: string; label: string }> = {
-    success: {
-      bg: "var(--badge-success-bg)",
-      text: "var(--badge-success-text)",
-      label: "成功",
-    },
-    timeout: {
-      bg: "var(--badge-warn-bg)",
-      text: "var(--badge-warn-text)",
-      label: "タイムアウト",
-    },
-    blocked: {
-      bg: "var(--badge-error-bg)",
-      text: "var(--badge-error-text)",
-      label: "ブロック",
-    },
-    error: {
-      bg: "var(--badge-error-bg)",
-      text: "var(--badge-error-text)",
-      label: "エラー",
-    },
-    pending: {
-      bg: "var(--badge-warn-bg)",
-      text: "var(--badge-warn-text)",
-      label: "審査中",
-    },
-    approved: {
-      bg: "var(--badge-success-bg)",
-      text: "var(--badge-success-text)",
-      label: "承認済み",
-    },
-    rejected: {
-      bg: "var(--badge-error-bg)",
-      text: "var(--badge-error-text)",
-      label: "却下",
-    },
-  };
-  return (
-    config[status] ?? {
-      bg: "var(--badge-error-bg)",
-      text: "var(--badge-error-text)",
-      label: "不明",
-    }
-  );
+type BadgeVariant = "success" | "warn" | "error";
+
+type BadgeConfig = {
+  bg: string;
+  text: string;
+  className: string;
+  label: string;
+};
+
+const BADGE_VARIANT: Record<
+  BadgeVariant,
+  Pick<BadgeConfig, "bg" | "text" | "className">
+> = {
+  success: {
+    bg: "var(--badge-success-bg)",
+    text: "var(--badge-success-text)",
+    className: "bg-[var(--badge-success-bg)] text-[var(--badge-success-text)]",
+  },
+  warn: {
+    bg: "var(--badge-warn-bg)",
+    text: "var(--badge-warn-text)",
+    className: "bg-[var(--badge-warn-bg)] text-[var(--badge-warn-text)]",
+  },
+  error: {
+    bg: "var(--badge-error-bg)",
+    text: "var(--badge-error-text)",
+    className: "bg-[var(--badge-error-bg)] text-[var(--badge-error-text)]",
+  },
+};
+
+const BADGE_LABEL: Record<string, { variant: BadgeVariant; label: string }> = {
+  success: { variant: "success", label: "成功" },
+  timeout: { variant: "warn", label: "タイムアウト" },
+  blocked: { variant: "error", label: "ブロック" },
+  error: { variant: "error", label: "エラー" },
+  pending: { variant: "warn", label: "審査中" },
+  approved: { variant: "success", label: "承認済み" },
+  rejected: { variant: "error", label: "却下" },
+};
+
+/** ステータスバッジの設定を返す（className は Tailwind 任意値、bg/text は style フォールバック用） */
+export const statusBadge = (status: string): BadgeConfig => {
+  const entry = BADGE_LABEL[status];
+  if (!entry) {
+    return { ...BADGE_VARIANT.error, label: "不明" };
+  }
+  return { ...BADGE_VARIANT[entry.variant], label: entry.label };
 };
 
 /** エラー系ステータスかどうか */

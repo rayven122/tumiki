@@ -2,8 +2,7 @@ import type * as React from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
 
-/** shadcn/ui と同じ API シグネチャで、desktop の CSS 変数テーマに合わせた Select。
- * 将来 packages/ui に寄せる時は import パス差し替えのみで済む。 */
+// shadcn/ui 互換 API の desktop 向け Select（CSS 変数テーマ対応）
 const Select = SelectPrimitive.Root;
 const SelectGroup = SelectPrimitive.Group;
 const SelectValue = SelectPrimitive.Value;
@@ -16,7 +15,7 @@ export const SelectTrigger = ({
   ...props
 }: TriggerProps): React.JSX.Element => (
   <SelectPrimitive.Trigger
-    className={`flex h-10 w-full items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] transition-colors outline-none hover:bg-[var(--bg-card-hover)] focus-visible:border-[var(--text-muted)] disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-[var(--text-subtle)] ${className}`}
+    className={`flex h-10 items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] transition-colors outline-none hover:bg-[var(--bg-card-hover)] focus-visible:border-[var(--text-muted)] disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-[var(--text-subtle)] ${className}`}
     {...props}
   >
     {children}

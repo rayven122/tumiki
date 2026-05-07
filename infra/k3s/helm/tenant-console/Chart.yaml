@@ -1,0 +1,6 @@
+apiVersion: v2
+name: tenant-console
+description: tumiki tenant-console (テナント管理UI) Helm chart
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

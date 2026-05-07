@@ -1,4 +1,20 @@
 import type { McpConnection } from "@prisma/desktop-client";
+import type {
+  CatalogConnectionTemplate,
+  CatalogPermissions,
+  CatalogStatus,
+} from "../../../types/catalog";
+
+export type ManagerCatalogOAuthContext = {
+  catalogId: string;
+  status: CatalogStatus;
+  permissions: CatalogPermissions;
+  connectionTemplate: CatalogConnectionTemplate;
+  tools: Array<{
+    name: string;
+    allowed: boolean;
+  }>;
+};
 
 /** MCP OAuth認証セッション（インメモリ管理） */
 export type McpOAuthSession = {
@@ -8,18 +24,20 @@ export type McpOAuthSession = {
   codeVerifier: string;
   /** MCPサーバーURL */
   serverUrl: string;
-  /** カタログ情報（MCP登録用） */
-  catalogId: number;
+  /** カタログ情報（MCP登録用、カスタムURLの場合はnull） */
+  managerCatalog: ManagerCatalogOAuthContext | null;
   catalogName: string;
   description: string;
   transportType: McpConnection["transportType"];
   command: string | null;
   args: string;
-  url: string | null;
+  url: string;
   /** DCR非対応サーバー用: ユーザーが手動入力したOAuthクライアントID */
   oauthClientId?: string;
   /** DCR非対応サーバー用: ユーザーが手動入力したOAuthクライアントシークレット */
   oauthClientSecret?: string;
+  /** このセッションで使うループバックredirect_uri（http://127.0.0.1:<port>/callback） */
+  redirectUri: string;
   /** セッション開始時刻 */
   createdAt: Date;
 };
@@ -36,7 +54,7 @@ export type McpOAuthTokenData = {
 
 /** OAuthフロー開始の入力型（renderer → main） */
 export type StartOAuthInput = {
-  catalogId: number;
+  managerCatalog?: ManagerCatalogOAuthContext;
   catalogName: string;
   description: string;
   transportType: McpConnection["transportType"];

@@ -1,0 +1,567 @@
+import { beforeEach, describe, expect, test, vi } from "vitest";
+import type { NextRequest } from "next/server";
+
+const mockFindCatalogs = vi.hoisted(() => vi.fn());
+const mockFindUser = vi.hoisted(() => vi.fn());
+const mockFindOrgUnits = vi.hoisted(() => vi.fn());
+const mockVerifyDesktopJwt = vi.hoisted(() => vi.fn());
+
+vi.mock("@tumiki/internal-db/server", () => ({
+  db: {
+    user: {
+      findUnique: mockFindUser,
+    },
+    orgUnit: {
+      findMany: mockFindOrgUnits,
+    },
+    mcpCatalog: {
+      findMany: mockFindCatalogs,
+    },
+  },
+}));
+
+vi.mock("~/lib/auth/verify-desktop-jwt", () => ({
+  verifyDesktopJwt: mockVerifyDesktopJwt,
+}));
+
+import { GET } from "./route";
+
+const buildRequest = (search = "") =>
+  new Request(`https://manager.example.com/api/desktop/v1/catalogs${search}`, {
+    headers: {
+      Authorization: "Bearer access-token",
+    },
+  }) as NextRequest;
+
+const buildCatalog = (overrides: Record<string, unknown> = {}) => ({
+  id: "server-github",
+  slug: "github",
+  name: "GitHub",
+  description: "GitHub MCP",
+  iconPath: "https://example.com/github.svg",
+  status: "ACTIVE",
+  transportType: "STREAMABLE_HTTP",
+  authType: "OAUTH",
+  command: null,
+  args: ["--stdio"],
+  url: "https://api.githubcopilot.com/mcp/",
+  credentialKeys: ["GITHUB_TOKEN"],
+  updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+  orgUnitCatalogPermissions: [],
+  groupCatalogPermissions: [],
+  userCatalogPermissions: [],
+  tools: [
+    {
+      id: "tool-list-repos",
+      name: "list_repos",
+      description: "List repositories",
+      defaultAllowed: false,
+      updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+      orgUnitPermissions: [
+        {
+          orgUnitId: "org-001",
+          effect: "ALLOW",
+          updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+        },
+      ],
+      groupPermissions: [],
+      userPermissions: [],
+    },
+  ],
+  ...overrides,
+});
+
+describe("GET /api/desktop/v1/catalogs", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockVerifyDesktopJwt.mockResolvedValue({ userId: "user-001" });
+    mockFindUser.mockResolvedValue({
+      id: "user-001",
+      isActive: true,
+      updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+      orgUnitMemberships: [
+        {
+          updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+          orgUnit: {
+            id: "org-001",
+            parentId: null,
+            updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+          },
+        },
+      ],
+      groupMemberships: [
+        {
+          group: {
+            id: "group-001",
+          },
+        },
+      ],
+    });
+    mockFindOrgUnits.mockResolvedValue([
+      {
+        id: "org-001",
+        parentId: null,
+        updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+      },
+    ]);
+    mockFindCatalogs.mockResolvedValue([buildCatalog()]);
+  });
+
+  test("認証ユーザーが利用可能なカタログ一覧を返す", async () => {
+    const response = await GET(buildRequest());
+
+    await expect(response.json()).resolves.toStrictEqual({
+      items: [
+        {
+          id: "github",
+          name: "GitHub",
+          description: "GitHub MCP",
+          iconUrl: "https://example.com/github.svg",
+          status: "available",
+          permissions: { read: true, write: false, execute: true },
+          transportType: "STREAMABLE_HTTP",
+          authType: "OAUTH",
+          requiredCredentialKeys: ["GITHUB_TOKEN"],
+          connectionTemplate: {
+            transportType: "STREAMABLE_HTTP",
+            command: null,
+            args: ["--stdio"],
+            url: "https://api.githubcopilot.com/mcp/",
+            authType: "OAUTH",
+            credentialKeys: ["GITHUB_TOKEN"],
+          },
+          tools: [
+            {
+              name: "list_repos",
+              description: "List repositories",
+              allowed: true,
+              deniedReason: null,
+            },
+          ],
+        },
+      ],
+      nextCursor: null,
+    });
+    expect(response.status).toStrictEqual(200);
+    expect(mockVerifyDesktopJwt).toHaveBeenCalledWith("Bearer access-token");
+  });
+
+  test("所属部署と親部署の権限だけを取得する", async () => {
+    mockFindUser.mockResolvedValue({
+      id: "user-001",
+      isActive: true,
+      updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+      orgUnitMemberships: [
+        {
+          updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+          orgUnit: {
+            id: "org-child",
+            parentId: "org-parent",
+            updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+          },
+        },
+      ],
+      groupMemberships: [],
+    });
+    mockFindOrgUnits.mockResolvedValue([
+      {
+        id: "org-child",
+        parentId: "org-parent",
+        updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+      },
+      {
+        id: "org-parent",
+        parentId: null,
+        updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+      },
+    ]);
+
+    const response = await GET(buildRequest());
+
+    expect(response.status).toStrictEqual(200);
+    const [findManyArgs] = mockFindCatalogs.mock.calls[0] as [
+      {
+        select: {
+          orgUnitCatalogPermissions: {
+            where: { orgUnitId: { in: string[] } };
+          };
+          tools: {
+            select: {
+              orgUnitPermissions: {
+                where: { orgUnitId: { in: string[] } };
+              };
+            };
+          };
+        };
+      },
+    ];
+    expect(
+      findManyArgs.select.orgUnitCatalogPermissions.where.orgUnitId.in,
+    ).toStrictEqual(["org-child", "org-parent"]);
+    expect(
+      findManyArgs.select.tools.select.orgUnitPermissions.where.orgUnitId.in,
+    ).toStrictEqual(["org-child", "org-parent"]);
+  });
+
+  test("接続テンプレートのnullableフィールドをそのまま返す", async () => {
+    mockFindCatalogs.mockResolvedValue([
+      buildCatalog({ command: "${runtime:npx}", args: [], url: null }),
+    ]);
+
+    const response = await GET(buildRequest());
+    const body = (await response.json()) as {
+      items: [{ connectionTemplate: unknown }];
+    };
+
+    expect(body.items[0].connectionTemplate).toStrictEqual({
+      transportType: "STREAMABLE_HTTP",
+      command: "${runtime:npx}",
+      args: [],
+      url: null,
+      authType: "OAUTH",
+      credentialKeys: ["GITHUB_TOKEN"],
+    });
+  });
+
+  test("権限評価はツール表示上限ではなく全ツールを対象にする", async () => {
+    const tools = Array.from({ length: 11 }, (_, index) => ({
+      id: `tool-${String(index + 1).padStart(2, "0")}`,
+      name: `tool_${String(index + 1).padStart(2, "0")}`,
+      description: `Tool ${index + 1}`,
+      defaultAllowed: false,
+      updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+      orgUnitPermissions:
+        index === 10
+          ? [
+              {
+                orgUnitId: "org-001",
+                effect: "ALLOW",
+                updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+              },
+            ]
+          : [],
+      groupPermissions: [],
+      userPermissions: [],
+    }));
+    mockFindCatalogs.mockImplementationOnce((args: unknown) => {
+      const toolSelect =
+        typeof args === "object" &&
+        args !== null &&
+        "select" in args &&
+        typeof args.select === "object" &&
+        args.select !== null &&
+        "tools" in args.select &&
+        typeof args.select.tools === "object" &&
+        args.select.tools !== null
+          ? args.select.tools
+          : {};
+      const selectedTools =
+        "take" in toolSelect && typeof toolSelect.take === "number"
+          ? tools.slice(0, toolSelect.take)
+          : tools;
+      return Promise.resolve([buildCatalog({ tools: selectedTools })]);
+    });
+
+    const response = await GET(buildRequest());
+    const body = (await response.json()) as {
+      items: [{ status: string; tools: unknown[] }];
+    };
+
+    expect(body.items[0].status).toStrictEqual("available");
+    expect(body.items[0].tools).toHaveLength(10);
+    const [findManyArgs] = mockFindCatalogs.mock.calls[0] as [
+      { select: { tools: { take: number } } },
+    ];
+    expect(findManyArgs.select.tools.take).toStrictEqual(501);
+  });
+
+  test("カタログ内ツールが上限を超える場合は500を返す", async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const tools = Array.from({ length: 501 }, (_, index) => ({
+      id: `tool-${String(index + 1).padStart(3, "0")}`,
+      name: `tool_${String(index + 1).padStart(3, "0")}`,
+      description: `Tool ${index + 1}`,
+      defaultAllowed: false,
+      updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+      orgUnitPermissions: [],
+      groupPermissions: [],
+      userPermissions: [],
+    }));
+    mockFindCatalogs.mockResolvedValue([buildCatalog({ tools })]);
+
+    const response = await GET(buildRequest());
+
+    await expect(response.json()).resolves.toStrictEqual({
+      error: "Internal Server Error",
+    });
+    expect(response.status).toStrictEqual(500);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "MCP tool count exceeded the catalog policy limit (500) for catalog server-github",
+    );
+    consoleErrorSpy.mockRestore();
+  });
+
+  test("権限がないカタログはdisabledとして返す", async () => {
+    mockFindUser.mockResolvedValue({
+      id: "user-001",
+      isActive: true,
+      updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+      groupMemberships: [],
+      orgUnitMemberships: [],
+    });
+
+    const response = await GET(buildRequest());
+    const body = (await response.json()) as {
+      items: [{ status: string; permissions: Record<string, boolean> }];
+    };
+
+    expect(body.items[0].status).toStrictEqual("disabled");
+    expect(body.items[0].permissions).toStrictEqual({
+      read: false,
+      write: false,
+      execute: false,
+    });
+    const [findManyArgs] = mockFindCatalogs.mock.calls[0] as [
+      {
+        select: {
+          orgUnitCatalogPermissions: {
+            where: { orgUnitId: { in: string[] } };
+          };
+          tools: {
+            select: {
+              orgUnitPermissions: {
+                where: { orgUnitId: { in: string[] } };
+              };
+            };
+          };
+        };
+      },
+    ];
+    expect(
+      findManyArgs.select.orgUnitCatalogPermissions.where.orgUnitId.in,
+    ).toStrictEqual(["__NO_ORG_UNIT_PERMISSION__"]);
+    expect(
+      findManyArgs.select.tools.select.orgUnitPermissions.where.orgUnitId.in,
+    ).toStrictEqual(["__NO_ORG_UNIT_PERMISSION__"]);
+  });
+
+  test("停止中のカタログはdisabledとして返す", async () => {
+    mockFindCatalogs.mockResolvedValue([buildCatalog({ status: "DISABLED" })]);
+
+    const response = await GET(buildRequest());
+    const body = (await response.json()) as {
+      items: [{ status: string; tools: [{ deniedReason: string }] }];
+    };
+
+    expect(body.items[0].status).toStrictEqual("disabled");
+    expect(body.items[0].tools[0].deniedReason).toStrictEqual(
+      "catalog_disabled",
+    );
+  });
+
+  test("limitを検証し、最大件数を超える場合は400を返す", async () => {
+    const response = await GET(buildRequest("?limit=201"));
+    const body = (await response.json()) as {
+      error: string;
+      details: unknown;
+    };
+
+    expect(body.error).toStrictEqual("Invalid query");
+    expect(body.details).toStrictEqual(expect.any(Object));
+    expect(response.status).toStrictEqual(400);
+    expect(mockFindCatalogs).not.toHaveBeenCalled();
+  });
+
+  test("不正なcursorは400を返す", async () => {
+    const response = await GET(buildRequest("?cursor=invalid"));
+
+    await expect(response.json()).resolves.toStrictEqual({
+      error: "Invalid cursor",
+    });
+    expect(response.status).toStrictEqual(400);
+    expect(mockFindCatalogs).not.toHaveBeenCalled();
+  });
+
+  test("次ページがある場合はopaque cursorを返す", async () => {
+    mockFindCatalogs.mockResolvedValue([
+      buildCatalog({ id: "server-github", slug: "github", name: "GitHub" }),
+      buildCatalog({ id: "server-slack", slug: "slack", name: "Slack" }),
+    ]);
+
+    const response = await GET(buildRequest("?limit=1"));
+    const body = (await response.json()) as { nextCursor: string | null };
+
+    expect(body.nextCursor).toStrictEqual(expect.any(String));
+  });
+
+  test("cursor指定時は名前とIDのkeyset条件で次ページを取得する", async () => {
+    const cursor = Buffer.from(
+      JSON.stringify({ id: "server-github", name: "GitHub" }),
+      "utf8",
+    ).toString("base64url");
+
+    await GET(buildRequest(`?cursor=${cursor}`));
+
+    expect(mockFindCatalogs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          deletedAt: null,
+          OR: [
+            { name: { gt: "GitHub" } },
+            { name: "GitHub", id: { gt: "server-github" } },
+          ],
+        },
+      }),
+    );
+  });
+
+  test("期限付きユーザー権限の基準時刻をカタログとツールで揃える", async () => {
+    await GET(buildRequest());
+
+    const [findManyArgs] = mockFindCatalogs.mock.calls[0] as [
+      {
+        select: {
+          userCatalogPermissions: {
+            where: {
+              OR: [{ expiresAt: null }, { expiresAt: { gt: Date } }];
+            };
+          };
+          tools: {
+            select: {
+              userPermissions: {
+                where: {
+                  OR: [{ expiresAt: null }, { expiresAt: { gt: Date } }];
+                };
+              };
+            };
+          };
+        };
+      },
+    ];
+    const catalogExpiresAt =
+      findManyArgs.select.userCatalogPermissions.where.OR[1].expiresAt.gt;
+    const toolExpiresAt =
+      findManyArgs.select.tools.select.userPermissions.where.OR[1].expiresAt.gt;
+
+    expect(catalogExpiresAt).toBeInstanceOf(Date);
+    expect(toolExpiresAt).toBe(catalogExpiresAt);
+  });
+
+  test("期限切れユーザー権限を除外するDB条件を渡す", async () => {
+    const expiredDate = new Date("2026-05-02T00:00:00.000Z");
+
+    await GET(buildRequest());
+
+    const [findManyArgs] = mockFindCatalogs.mock.calls[0] as [
+      {
+        select: {
+          userCatalogPermissions: {
+            where: {
+              OR: [{ expiresAt: null }, { expiresAt: { gt: Date } }];
+            };
+          };
+          tools: {
+            select: {
+              userPermissions: {
+                where: {
+                  OR: [{ expiresAt: null }, { expiresAt: { gt: Date } }];
+                };
+              };
+            };
+          };
+        };
+      },
+    ];
+    const catalogExpiresAt =
+      findManyArgs.select.userCatalogPermissions.where.OR[1].expiresAt.gt;
+    const toolExpiresAt =
+      findManyArgs.select.tools.select.userPermissions.where.OR[1].expiresAt.gt;
+
+    expect(catalogExpiresAt > expiredDate).toStrictEqual(true);
+    expect(toolExpiresAt).toBe(catalogExpiresAt);
+  });
+
+  test("認証に失敗した場合は401を返す", async () => {
+    mockVerifyDesktopJwt.mockRejectedValue(new Error("Unauthorized"));
+
+    const response = await GET(buildRequest());
+
+    await expect(response.json()).resolves.toStrictEqual({
+      error: "Unauthorized",
+    });
+    expect(response.status).toStrictEqual(401);
+    expect(mockFindUser).not.toHaveBeenCalled();
+    expect(mockFindCatalogs).not.toHaveBeenCalled();
+  });
+
+  test("認証成功後にユーザーが存在しない場合は401を返す", async () => {
+    mockFindUser.mockResolvedValue(null);
+
+    const response = await GET(buildRequest());
+
+    await expect(response.json()).resolves.toStrictEqual({
+      error: "Unauthorized",
+    });
+    expect(response.status).toStrictEqual(401);
+    expect(mockFindCatalogs).not.toHaveBeenCalled();
+  });
+
+  test("認証成功後にユーザーが無効化済みの場合は401を返す", async () => {
+    mockFindUser.mockResolvedValue({
+      id: "user-001",
+      isActive: false,
+      updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+      groupMemberships: [],
+      orgUnitMemberships: [],
+    });
+
+    const response = await GET(buildRequest());
+
+    await expect(response.json()).resolves.toStrictEqual({
+      error: "Unauthorized",
+    });
+    expect(response.status).toStrictEqual(401);
+    expect(mockFindCatalogs).not.toHaveBeenCalled();
+  });
+
+  test("ポリシーコンテキスト取得でDBエラーが発生した場合は500を返す", async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    mockFindUser.mockRejectedValue(new Error("DB error"));
+
+    const response = await GET(buildRequest());
+
+    await expect(response.json()).resolves.toStrictEqual({
+      error: "Internal Server Error",
+    });
+    expect(response.status).toStrictEqual(500);
+    expect(mockFindCatalogs).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "Failed to fetch desktop MCP policy context",
+      expect.any(Error),
+    );
+    consoleErrorSpy.mockRestore();
+  });
+
+  test("カタログ取得でDBエラーが発生した場合は500を返す", async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    mockFindCatalogs.mockRejectedValue(new Error("DB error"));
+
+    const response = await GET(buildRequest());
+
+    await expect(response.json()).resolves.toStrictEqual({
+      error: "Internal Server Error",
+    });
+    expect(response.status).toStrictEqual(500);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "Failed to fetch desktop MCP catalogs",
+      expect.any(Error),
+    );
+    consoleErrorSpy.mockRestore();
+  });
+});

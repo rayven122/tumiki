@@ -24,6 +24,7 @@ WORKDIR /app
 FROM base AS build
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY patches ./patches
 COPY .npmrc ./
 COPY tooling ./tooling
 COPY packages/db ./packages/db
@@ -76,6 +77,7 @@ RUN addgroup -g 1001 -S nodejs && \
 WORKDIR /app
 
 COPY --chown=nodejs:nodejs package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY --chown=nodejs:nodejs patches ./patches
 COPY --chown=nodejs:nodejs .npmrc ./
 COPY --chown=nodejs:nodejs packages/db/package.json ./packages/db/
 COPY --chown=nodejs:nodejs packages/license/package.json ./packages/license/

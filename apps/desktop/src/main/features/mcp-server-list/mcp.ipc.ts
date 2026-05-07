@@ -3,10 +3,14 @@ import { z } from "zod";
 import * as mcpService from "./mcp.service";
 import type {
   CreateFromCatalogInput,
+  CreateFromManagerCatalogInput,
   CreateVirtualServerInput,
+  GetToolsForConnectionsInput,
   UpdateServerInput,
   DeleteServerInput,
   ToggleServerInput,
+  UpdatePiiMaskingInput,
+  UpdateToonConversionInput,
 } from "./mcp.types";
 import * as logger from "../../shared/utils/logger";
 import { VIRTUAL_SERVER_MAX_CONNECTIONS } from "../../../shared/mcp.constants";
@@ -27,6 +31,16 @@ const toggleServerSchema = z.object({
   isEnabled: z.boolean(),
 }) satisfies z.ZodType<ToggleServerInput>;
 
+const updatePiiMaskingSchema = z.object({
+  serverId: z.number().int(),
+  enabled: z.boolean(),
+}) satisfies z.ZodType<UpdatePiiMaskingInput>;
+
+const updateToonConversionSchema = z.object({
+  serverId: z.number().int(),
+  enabled: z.boolean(),
+}) satisfies z.ZodType<UpdateToonConversionInput>;
+
 const createFromCatalogSchema = z.object({
   catalogId: z.number().int(),
   catalogName: z.string().min(1),
@@ -40,19 +54,76 @@ const createFromCatalogSchema = z.object({
   authType: z.enum(["NONE", "BEARER", "API_KEY", "OAUTH"]),
 }) satisfies z.ZodType<CreateFromCatalogInput>;
 
+const createFromManagerCatalogSchema = z.object({
+  catalogId: z.string().min(1),
+  serverName: z.string().min(1),
+  description: z.string(),
+  status: z.enum(["available", "request_required", "disabled"]),
+  permissions: z.object({
+    read: z.boolean(),
+    write: z.boolean(),
+    execute: z.boolean(),
+  }),
+  connectionTemplate: z.object({
+    transportType: z.enum(["STDIO", "SSE", "STREAMABLE_HTTP"]),
+    command: z.string().nullable(),
+    args: z.array(z.string()),
+    url: z.string().nullable(),
+    authType: z.enum(["NONE", "BEARER", "API_KEY", "OAUTH"]),
+    credentialKeys: z.array(z.string()),
+  }),
+  tools: z.array(
+    z.object({
+      name: z.string().min(1),
+      allowed: z.boolean(),
+    }),
+  ),
+  credentials: z.record(z.string(), z.string()),
+}) satisfies z.ZodType<CreateFromManagerCatalogInput>;
+
+// .refine()でZodEffectsになるためsatisfies制約は除外（型の整合性はCreateCustomServerInputを参照）
+const createCustomServerSchema = z
+  .object({
+    serverName: z.string().min(1),
+    transportType: z.enum(["STDIO", "SSE", "STREAMABLE_HTTP"]),
+    authType: z.enum(["NONE", "BEARER", "API_KEY", "OAUTH"]),
+    credentials: z.record(z.string(), z.string()),
+    url: z.string().url({ message: "有効なURLを入力してください" }).optional(),
+    command: z.string().min(1).optional(),
+    args: z.string().optional(),
+  })
+  .refine(
+    (data) =>
+      data.transportType === "STDIO"
+        ? Boolean(data.command)
+        : Boolean(data.url),
+    {
+      message:
+        "STDIOの場合はコマンド、SSE/Streamable HTTPの場合はURLが必要です",
+    },
+  );
+
 const createVirtualServerSchema = z.object({
   name: z.string().min(1),
   description: z.string(),
   connections: z
     .array(
       z.object({
-        catalogId: z.number().int().positive(),
-        credentials: z.record(z.string(), z.string()),
+        connectionId: z.number().int().positive(),
+        // 公開ツール名一覧。
+        // - undefined（未指定）: 元コネクタの isAllowed をそのまま継承する
+        // - []（空配列）: サービス層で全ツール isAllowed=false として扱う（全ツール非公開）
+        // - 配列に含まれる名前のみ isAllowed=true となる
+        allowedToolNames: z.array(z.string()).optional(),
       }),
     )
     .min(1)
     .max(VIRTUAL_SERVER_MAX_CONNECTIONS),
 }) satisfies z.ZodType<CreateVirtualServerInput>;
+
+const getToolsForConnectionsSchema = z.object({
+  connectionIds: z.array(z.number().int().positive()).min(1),
+}) satisfies z.ZodType<GetToolsForConnectionsInput>;
 
 /**
  * MCP関連の IPC ハンドラーを設定
@@ -73,7 +144,46 @@ export const setupMcpIpc = (): void => {
     }
   });
 
-  // 仮想MCPサーバーを登録（複数接続を1サーバーに束ねる）
+  ipcMain.handle("mcp:createFromManagerCatalog", async (_, input: unknown) => {
+    try {
+      const validated = createFromManagerCatalogSchema.parse(input);
+      return await mcpService.createFromManagerCatalog(validated);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "不明なエラー";
+      logger.error(
+        "Failed to create MCP server from manager catalog",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error(`MCPサーバーの登録に失敗しました: ${message}`);
+    }
+  });
+
+  // カスタムURLでリモートMCPサーバーを登録
+  ipcMain.handle("mcp:createCustomServer", async (_, input: unknown) => {
+    try {
+      // refineでSTDIO/リモートの条件バリデーション済みのため安全にキャスト
+      const validated = createCustomServerSchema.parse(
+        input,
+      ) as mcpService.CreateCustomServerInput;
+      return await mcpService.createCustomServer(validated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const firstIssue = error.issues[0];
+        const field = firstIssue?.path.join(".") ?? "入力";
+        throw new Error(
+          `入力内容に問題があります: ${field} - ${firstIssue?.message ?? "不正な値"}`,
+        );
+      }
+      const message = error instanceof Error ? error.message : "不明なエラー";
+      logger.error(
+        "Failed to create custom MCP server",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error(`カスタムMCPサーバーの登録に失敗しました: ${message}`);
+    }
+  });
+
+  // 仮想MCPサーバーを登録（複数の既存コネクタを1サーバーに束ねる）
   ipcMain.handle("mcp:createVirtualServer", async (_, input: unknown) => {
     try {
       const validated = createVirtualServerSchema.parse(input);
@@ -85,6 +195,21 @@ export const setupMcpIpc = (): void => {
         error instanceof Error ? error : { error },
       );
       throw new Error(`仮想MCPサーバーの登録に失敗しました: ${message}`);
+    }
+  });
+
+  // 仮想MCP作成時のツール選択UIから呼ばれる: 選択中コネクタのツール一覧をまとめて返す
+  ipcMain.handle("mcp:getToolsForConnections", async (_, input: unknown) => {
+    try {
+      const validated = getToolsForConnectionsSchema.parse(input);
+      return await mcpService.getToolsForConnections(validated);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "不明なエラー";
+      logger.error(
+        "Failed to get tools for connections",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error(`ツール一覧の取得に失敗しました: ${message}`);
     }
   });
 
@@ -147,6 +272,44 @@ export const setupMcpIpc = (): void => {
         error instanceof Error ? error : { error },
       );
       throw new Error(`MCPサーバーの切り替えに失敗しました: ${message}`);
+    }
+  });
+
+  // PIIマスキング有効状態を更新（次回プロキシ起動時に反映）
+  ipcMain.handle("mcp:updatePiiMasking", async (_, input: unknown) => {
+    try {
+      const validated = updatePiiMaskingSchema.parse(input);
+      // preload 側は Promise<void> を期待するため、Prisma レコードは返さない
+      await mcpService.updateIsPiiMaskingEnabled(
+        validated.serverId,
+        validated.enabled,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "不明なエラー";
+      logger.error(
+        "Failed to update PII masking flag",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error(`PIIマスキング設定の更新に失敗しました: ${message}`);
+    }
+  });
+
+  // TOON変換（レスポンス圧縮）有効状態を更新（次回プロキシ起動時に反映）
+  ipcMain.handle("mcp:updateToonConversion", async (_, input: unknown) => {
+    try {
+      const validated = updateToonConversionSchema.parse(input);
+      // preload 側は Promise<void> を期待するため、Prisma レコードは返さない
+      await mcpService.updateIsToonConversionEnabled(
+        validated.serverId,
+        validated.enabled,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "不明なエラー";
+      logger.error(
+        "Failed to update TOON conversion flag",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error(`レスポンス圧縮設定の更新に失敗しました: ${message}`);
     }
   });
 };

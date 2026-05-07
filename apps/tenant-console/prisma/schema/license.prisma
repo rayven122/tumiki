@@ -1,0 +1,67 @@
+/// ライセンス発行履歴
+/// Tumiki Cloud API の JWT を発行・管理する
+model License {
+  id String @id @default(cuid())
+
+  /// ライセンスタイプ（個人/テナント）
+  type LicenseType
+
+  /// 識別子
+  /// - PERSONAL: 顧客のメールアドレス
+  /// - TENANT:   tenantId と同じ値
+  subject String
+
+  /// テナント紐付け（type=TENANT の場合のみ）
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  /// 有効な EE 機能
+  /// 例: ["dynamic-search"]
+  features String[]
+
+  /// プラン種別（任意・表示用ラベル）
+  /// 例: "pro", "enterprise"
+  plan String?
+
+  /// JWT の jti クレーム（失効リスト用の一意 ID）。issueLicense で常に明示セットする
+  jti String @unique
+
+  /// 発行日時 / 有効期限
+  issuedAt  DateTime @default(now())
+  expiresAt DateTime
+
+  /// ステータス
+  status        LicenseStatus @default(ACTIVE)
+  revokedAt     DateTime?
+  revokedReason String?
+
+  /// 発行時のメモ（顧客名、契約番号など）
+  notes String?
+
+  /// 発行操作者（将来 Auth が入った時用、null 許容で先行追加）
+  issuedByEmail String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([status, expiresAt])
+  @@index([type, status])
+  @@index([subject])
+}
+
+/// ライセンスタイプ
+enum LicenseType {
+  /// 個人 Pro ユーザー
+  PERSONAL
+  /// 法人テナント
+  TENANT
+}
+
+/// ライセンスステータス
+enum LicenseStatus {
+  /// 有効
+  ACTIVE
+  /// 失効済み
+  REVOKED
+}

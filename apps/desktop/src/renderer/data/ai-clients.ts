@@ -24,7 +24,7 @@ export const AI_CLIENTS: AiClient[] = [
       t === "dark"
         ? "/logos/ai-clients/claude.webp"
         : "/logos/ai-clients/claude.svg",
-    configTargetPath: "<プロジェクトルート>/.mcp.json",
+    configTargetPath: "~/.claude.json",
   },
   {
     id: "cursor",
@@ -42,7 +42,7 @@ export const AI_CLIENTS: AiClient[] = [
       t === "dark"
         ? "/logos/ai-clients/copilot.webp"
         : "/logos/ai-clients/copilot.svg",
-    configTargetPath: "~/Library/Application Support/Code/User/settings.json",
+    configTargetPath: "~/Library/Application Support/Code/User/mcp.json",
   },
   {
     id: "windsurf",

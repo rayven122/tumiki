@@ -1,0 +1,89 @@
+import type { AuthToken } from "@prisma/desktop-client";
+import { decryptToken } from "../utils/encryption";
+import { getAppStore } from "./app-store";
+import { getDb } from "./db";
+
+type ManagerRequestOptions = Omit<RequestInit, "headers"> & {
+  headers?: HeadersInit;
+};
+
+const findValidAuthToken = async (): Promise<AuthToken | null> => {
+  const db = await getDb();
+  const token = await db.authToken.findFirst({
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (!token) return null;
+
+  const now = new Date();
+  if (now > token.expiresAt) {
+    await db.authToken.deleteMany({
+      where: { expiresAt: { lte: now } },
+    });
+    return null;
+  }
+
+  return token;
+};
+
+const getApiBearerToken = async (token: AuthToken): Promise<string | null> => {
+  // Jackson の access_token は opaque のため、internal-manager がJWT検証できる id_token を優先する。
+  // JWT access_token 対応に切り替えた場合は、この優先順も見直す。
+  const encryptedBearerToken = token.idToken ?? token.accessToken;
+  if (!encryptedBearerToken) return null;
+  const bearerToken = await decryptToken(encryptedBearerToken);
+  return bearerToken || null;
+};
+
+const buildManagerUrl = async (path: string): Promise<string | null> => {
+  const store = await getAppStore();
+  const managerUrl = store.get("managerUrl");
+  if (!managerUrl) return null;
+
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${managerUrl.replace(/\/$/, "")}${normalizedPath}`;
+};
+
+/**
+ * Manager連携済み・認証済みの場合だけ、internal-manager APIへ認証付きリクエストする。
+ *
+ * Manager URL未設定、未ログイン、期限切れトークンの場合はnullを返す。
+ * fetch自体の通信エラーは呼び出し元で扱えるようにthrowさせる。
+ */
+export const requestManagerApi = async (
+  path: string,
+  options: ManagerRequestOptions = {},
+): Promise<Response | null> => {
+  const url = await buildManagerUrl(path);
+  if (!url) return null;
+
+  const token = await findValidAuthToken();
+  if (!token) return null;
+
+  const bearerToken = await getApiBearerToken(token);
+  if (!bearerToken) return null;
+
+  const headers = new Headers(options.headers);
+  headers.set("Authorization", `Bearer ${bearerToken}`);
+
+  return fetch(url, {
+    ...options,
+    headers,
+  });
+};
+
+export const postManagerApi = async (
+  path: string,
+  body: unknown,
+  options: ManagerRequestOptions = {},
+): Promise<Response | null> => {
+  const headers = new Headers(options.headers);
+  headers.set("Content-Type", "application/json");
+
+  return requestManagerApi(path, {
+    ...options,
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  });
+};
