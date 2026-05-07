@@ -113,6 +113,8 @@ export const RoleEditorPanel = ({ mode, role }: RoleEditorPanelProps) => {
               <button
                 type="button"
                 disabled
+                aria-disabled="true"
+                title="モック UI のため未実装"
                 className="bg-bg-active flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 text-xs text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Trash2 size={13} />
