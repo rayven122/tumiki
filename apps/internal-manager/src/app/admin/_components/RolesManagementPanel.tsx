@@ -123,6 +123,7 @@ export const RolesManagementPanel = ({
     effect: PermissionState,
   ) => {
     if (!selectedOrgUnitId || isMutating) return;
+    updateToolPermission.reset();
     updateCatalogPermission.mutate({
       orgUnitId: selectedOrgUnitId,
       catalogId: catalog.id,
@@ -136,6 +137,7 @@ export const RolesManagementPanel = ({
     effect: PermissionState,
   ) => {
     if (!selectedOrgUnitId || isMutating) return;
+    updateCatalogPermission.reset();
     updateToolPermission.mutate({
       orgUnitId: selectedOrgUnitId,
       catalogId: catalog.id,
@@ -471,3 +473,5 @@ const EffectControl = memo(
     </div>
   ),
 );
+
+EffectControl.displayName = "EffectControl";

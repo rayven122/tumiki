@@ -8,12 +8,6 @@ import {
   type MatrixTool,
 } from "./roles-management-helpers";
 
-const expectRoleDate = (value: string) => {
-  expect(value).toMatch(/2026/);
-  expect(value).toMatch(/5/);
-  expect(value).toMatch(/7/);
-};
-
 const buildTool = (
   id: string,
   effect: "ALLOW" | "DENY" | null,
@@ -90,9 +84,11 @@ describe("roles-management-helpers", () => {
   });
 
   test("formatRolePermissionDate は日付と空値を表示用に整形する", () => {
-    expectRoleDate(formatRolePermissionDate("2026-05-07T12:00:00.000Z"));
-    expectRoleDate(
-      formatRolePermissionDate(new Date("2026-05-07T12:00:00.000Z")),
+    expect(formatRolePermissionDate("2026-05-07T12:00:00.000Z")).toBe(
+      "2026/5/7",
+    );
+    expect(formatRolePermissionDate(new Date("2026-05-07T12:00:00.000Z"))).toBe(
+      "2026/5/7",
     );
     expect(formatRolePermissionDate(null)).toBe("-");
     expect(formatRolePermissionDate(undefined)).toBe("-");

@@ -17,7 +17,10 @@ export type PermissionCounts = {
 
 export const formatRolePermissionDate = (
   value: Date | string | null | undefined,
-) => (value ? new Date(value).toLocaleDateString("ja-JP") : "-");
+) =>
+  value
+    ? new Date(value).toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" })
+    : "-";
 
 export const getCatalogEffect = (catalog: MatrixCatalog): PermissionState =>
   catalog.orgUnitCatalogPermissions[0]?.effect ?? null;
