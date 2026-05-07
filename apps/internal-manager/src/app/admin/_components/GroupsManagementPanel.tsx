@@ -190,7 +190,7 @@ export const GroupsManagementPanel = ({
                 削除
               </button>
               <Link
-                href={`/admin/roles?targetType=group&targetId=${selectedGroup.id}`}
+                href="/admin/roles"
                 className="bg-btn-primary-bg text-btn-primary-text flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 text-xs font-medium"
               >
                 <Shield size={12} />

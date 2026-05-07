@@ -256,6 +256,7 @@ export const RolesManagementPanel = ({
               </h2>
               <p className="text-text-secondary mt-2 text-xs">
                 指定された部署 ID は現在の組織データに存在しません。
+                部署データが未同期の場合は、先に組織データを同期してください。
               </p>
               <Link
                 href="/admin/roles"

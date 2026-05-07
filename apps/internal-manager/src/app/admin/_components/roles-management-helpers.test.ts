@@ -102,5 +102,6 @@ describe("roles-management-helpers", () => {
     );
     expect(formatRolePermissionDate(null)).toBe("-");
     expect(formatRolePermissionDate(undefined)).toBe("-");
+    expect(formatRolePermissionDate("invalid")).toBe("-");
   });
 });

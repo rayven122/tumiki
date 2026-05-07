@@ -198,7 +198,7 @@ export const OrgManagementPanel = ({
             </p>
           </div>
           <Link
-            href={`/admin/roles?targetType=org&targetId=${selectedOrg.id}`}
+            href="/admin/roles"
             className="bg-btn-primary-bg text-btn-primary-text inline-flex min-h-[44px] items-center gap-2 rounded-lg px-3 text-xs font-medium"
           >
             <Shield size={13} />

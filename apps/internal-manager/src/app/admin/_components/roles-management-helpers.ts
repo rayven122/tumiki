@@ -19,12 +19,16 @@ const ROLE_PERMISSION_DATE_TIME_ZONE = "Asia/Tokyo";
 
 export const formatRolePermissionDate = (
   value: Date | string | null | undefined,
-) =>
-  value
-    ? new Date(value).toLocaleDateString("ja-JP", {
-        timeZone: ROLE_PERMISSION_DATE_TIME_ZONE,
-      })
-    : "-";
+) => {
+  if (!value) return "-";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+
+  return date.toLocaleDateString("ja-JP", {
+    timeZone: ROLE_PERMISSION_DATE_TIME_ZONE,
+  });
+};
 
 export const getCatalogEffect = (catalog: MatrixCatalog): PermissionState =>
   catalog.orgUnitCatalogPermissions[0]?.effect ?? null;
