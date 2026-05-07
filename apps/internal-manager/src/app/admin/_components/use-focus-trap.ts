@@ -3,6 +3,42 @@ import { useEffect, type RefObject } from "react";
 const FOCUSABLE_SELECTORS =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+export const setupFocusTrap = (
+  container: HTMLElement,
+  doc: Document = document,
+): (() => void) => {
+  const previouslyFocused = doc.activeElement as HTMLElement | null;
+  const queryFocusable = () =>
+    Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTORS));
+
+  queryFocusable()[0]?.focus();
+
+  const handleTab = (event: KeyboardEvent) => {
+    if (event.key !== "Tab") return;
+    const focusable = queryFocusable();
+    if (focusable.length === 0) {
+      event.preventDefault();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = doc.activeElement;
+    if (event.shiftKey && active === first) {
+      event.preventDefault();
+      last?.focus();
+    } else if (!event.shiftKey && active === last) {
+      event.preventDefault();
+      first?.focus();
+    }
+  };
+
+  doc.addEventListener("keydown", handleTab);
+  return () => {
+    doc.removeEventListener("keydown", handleTab);
+    previouslyFocused?.focus();
+  };
+};
+
 export const useFocusTrap = (
   containerRef: RefObject<HTMLElement | null>,
   isOpen: boolean,
@@ -11,36 +47,6 @@ export const useFocusTrap = (
     if (!isOpen) return;
     const container = containerRef.current;
     if (!container) return;
-
-    const previouslyFocused = document.activeElement as HTMLElement | null;
-
-    const focusable = Array.from(
-      container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTORS),
-    );
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    first?.focus();
-
-    const handleTab = (event: KeyboardEvent) => {
-      if (event.key !== "Tab") return;
-      if (focusable.length === 0) {
-        event.preventDefault();
-        return;
-      }
-      const active = document.activeElement;
-      if (event.shiftKey && active === first) {
-        event.preventDefault();
-        last?.focus();
-      } else if (!event.shiftKey && active === last) {
-        event.preventDefault();
-        first?.focus();
-      }
-    };
-
-    document.addEventListener("keydown", handleTab);
-    return () => {
-      document.removeEventListener("keydown", handleTab);
-      previouslyFocused?.focus();
-    };
+    return setupFocusTrap(container);
   }, [containerRef, isOpen]);
 };

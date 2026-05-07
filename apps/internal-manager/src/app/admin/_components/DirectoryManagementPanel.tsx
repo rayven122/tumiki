@@ -86,10 +86,16 @@ const syncLabel = {
   pending: "未同期",
 } as const;
 
-const getInitialSelection = (initialTab: DirectoryTab): SelectedEntry =>
-  initialTab === "groups"
-    ? { kind: "group", id: "ai-program" }
-    : { kind: "org", id: "platform" };
+const getInitialSelection = (
+  initialTab: DirectoryTab,
+): SelectedEntry | null => {
+  if (initialTab === "groups") {
+    const first = mockGroups[0];
+    return first ? { kind: "group", id: first.id } : null;
+  }
+  const first = mockOrgUnits[0];
+  return first ? { kind: "org", id: first.id } : null;
+};
 
 export const DirectoryManagementPanel = ({
   initialTab,
@@ -97,7 +103,7 @@ export const DirectoryManagementPanel = ({
   initialTab: DirectoryTab;
 }) => {
   const [search, setSearch] = useState("");
-  const [selectedEntry, setSelectedEntry] = useState<SelectedEntry>(() =>
+  const [selectedEntry, setSelectedEntry] = useState<SelectedEntry | null>(() =>
     getInitialSelection(initialTab),
   );
   const [expandedOrgIds, setExpandedOrgIds] = useState<Set<string>>(
@@ -126,15 +132,16 @@ export const DirectoryManagementPanel = ({
   useFocusTrap(rolePickerRef, showRolePicker);
   useFocusTrap(resolvedPermissionsRef, showResolvedPermissions);
 
-  const selectedKind = selectedEntry.kind;
-  const selectedItem: MockOrgUnit | MockGroup | null =
-    selectedKind === "org"
+  const selectedKind: DirectoryEntry["kind"] = selectedEntry?.kind ?? "org";
+  const selectedItem: MockOrgUnit | MockGroup | null = selectedEntry
+    ? selectedKind === "org"
       ? (mockOrgUnits.find((org) => org.id === selectedEntry.id) ??
         mockOrgUnits[0] ??
         null)
       : (mockGroups.find((group) => group.id === selectedEntry.id) ??
         mockGroups[0] ??
-        null);
+        null)
+    : null;
   const readonly = selectedItem?.readonly ?? false;
   const memberIds = selectedItem
     ? selectedKind === "org"
@@ -286,8 +293,8 @@ export const DirectoryManagementPanel = ({
               const isOrg = entry.kind === "org";
               const item = entry.item;
               const isSelected =
-                selectedEntry.kind === entry.kind &&
-                selectedEntry.id === item.id;
+                selectedEntry?.kind === entry.kind &&
+                selectedEntry?.id === item.id;
               const hasChildren =
                 isOrg && Boolean(childCountByParent[(item as MockOrgUnit).id]);
               const isExpanded = isOrg && expandedOrgIds.has(item.id);
