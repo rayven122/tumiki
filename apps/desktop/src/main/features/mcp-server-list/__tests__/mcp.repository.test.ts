@@ -39,14 +39,13 @@ const serverData: mcpRepository.CreateMcpServerInput = {
   serverType: "OFFICIAL",
 };
 
-/**
- * 接続作成用テストヘルパー: 1接続=1secret で新規作成し、CreateMcpConnectionInput を返す
- * （新スキーマでは secretId が必須のため、毎回 secret を先に作る）
- */
+// secretId 省略時は secret を新規作成（1接続=1secret）。共有テストでは呼び出し側から secretId を渡す。
 const buildConnectionData = async (
   serverId: number,
+  secretId?: number,
 ): Promise<mcpRepository.CreateMcpConnectionInput> => {
-  const secret = await mcpRepository.createSecret(db, "{}");
+  const resolvedSecretId =
+    secretId ?? (await mcpRepository.createSecret(db, "{}")).id;
   return {
     name: "Test Connection",
     slug: "test-connection",
@@ -54,7 +53,7 @@ const buildConnectionData = async (
     command: "npx",
     args: '["test-server"]',
     url: null,
-    secretId: secret.id,
+    secretId: resolvedSecretId,
     authType: "NONE",
     serverId,
     catalogId: null,
@@ -367,19 +366,16 @@ describe("mcp.repository（実DB）", () => {
       const shared = await mcpRepository.createSecret(db, "shared");
       const other = await mcpRepository.createSecret(db, "other");
       await mcpRepository.createConnection(db, {
-        ...(await buildConnectionData(server.id)),
+        ...(await buildConnectionData(server.id, shared.id)),
         slug: "c1",
-        secretId: shared.id,
       });
       await mcpRepository.createConnection(db, {
-        ...(await buildConnectionData(server.id)),
+        ...(await buildConnectionData(server.id, shared.id)),
         slug: "c2",
-        secretId: shared.id,
       });
       await mcpRepository.createConnection(db, {
-        ...(await buildConnectionData(server.id)),
+        ...(await buildConnectionData(server.id, other.id)),
         slug: "c3",
-        secretId: other.id,
       });
 
       const result = await mcpRepository.findSecretIdsByServerId(db, server.id);
@@ -405,9 +401,8 @@ describe("mcp.repository（実DB）", () => {
       const shared = await mcpRepository.createSecret(db, "shared");
       // 1接続だけ残った状態で deleteSecretIfOrphaned を呼ぶ → 削除されない
       await mcpRepository.createConnection(db, {
-        ...(await buildConnectionData(server.id)),
+        ...(await buildConnectionData(server.id, shared.id)),
         slug: "still-referencing",
-        secretId: shared.id,
       });
 
       await mcpRepository.deleteSecretIfOrphaned(db, shared.id);
@@ -425,9 +420,8 @@ describe("mcp.repository（実DB）", () => {
       const sourceServer = await mcpRepository.createServer(db, serverData);
       const shared = await mcpRepository.createSecret(db, "shared-creds");
       const sourceConn = await mcpRepository.createConnection(db, {
-        ...(await buildConnectionData(sourceServer.id)),
+        ...(await buildConnectionData(sourceServer.id, shared.id)),
         slug: "source",
-        secretId: shared.id,
       });
 
       // 仮想MCP用サーバー（同じ secret を共有する接続）
@@ -438,9 +432,8 @@ describe("mcp.repository（実DB）", () => {
         serverType: "CUSTOM",
       });
       await mcpRepository.createConnection(db, {
-        ...(await buildConnectionData(virtualServer.id)),
+        ...(await buildConnectionData(virtualServer.id, shared.id)),
         slug: "virtual-conn",
-        secretId: shared.id,
       });
 
       // 元コネクタ単体だけ削除

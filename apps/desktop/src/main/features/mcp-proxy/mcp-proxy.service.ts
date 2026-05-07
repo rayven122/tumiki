@@ -101,8 +101,8 @@ const toProxyAuthType = (prismaAuthType: string): AuthType => {
 type EnabledConnection = Awaited<
   ReturnType<typeof mcpRepository.findEnabledConnections>
 >[number];
-// findConnectionByIdWithServer は tools を持たないため optional にする。
-// secret は両 finder 共通で include されるため EnabledConnection から継承する。
+// findEnabledConnections（tools あり）と findConnectionByIdWithServer（tools なし）を共通で受ける型。
+// secret はどちらの finder も include しているため EnabledConnection から継承する。
 type ConnectionForConfig = Omit<EnabledConnection, "tools"> & {
   tools?: Array<{ name: string; isAllowed: boolean }>;
 };
