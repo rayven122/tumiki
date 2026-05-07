@@ -77,10 +77,9 @@ test("末尾以外で Tab を押した場合はラップせずブラウザに委
   });
   document.dispatchEvent(event);
   expect(event.defaultPrevented).toStrictEqual(false);
-  // ブラウザが自動でフォーカス移動するわけではないため、active は変わらない
+  // jsdom はブラウザのフォーカス遷移を再現しないため、フックが余計に動かしていないことを確認する
   expect(document.activeElement).toStrictEqual(buttonA);
-  // 余分な要素が触られていないことを確認
-  expect(buttonB).toStrictEqual(buttonB);
+  expect(document.activeElement).not.toStrictEqual(buttonB);
 });
 
 test("Tab 以外のキーは無視する", () => {

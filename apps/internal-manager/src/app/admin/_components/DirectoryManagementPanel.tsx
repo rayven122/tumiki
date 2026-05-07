@@ -135,12 +135,8 @@ export const DirectoryManagementPanel = ({
   const selectedKind: DirectoryEntry["kind"] = selectedEntry?.kind ?? "org";
   const selectedItem: MockOrgUnit | MockGroup | null = selectedEntry
     ? selectedKind === "org"
-      ? (mockOrgUnits.find((org) => org.id === selectedEntry.id) ??
-        mockOrgUnits[0] ??
-        null)
-      : (mockGroups.find((group) => group.id === selectedEntry.id) ??
-        mockGroups[0] ??
-        null)
+      ? (mockOrgUnits.find((org) => org.id === selectedEntry.id) ?? null)
+      : (mockGroups.find((group) => group.id === selectedEntry.id) ?? null)
     : null;
   const readonly = selectedItem?.readonly ?? false;
   const memberIds = selectedItem

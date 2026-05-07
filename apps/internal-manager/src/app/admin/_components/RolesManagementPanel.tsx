@@ -108,7 +108,10 @@ export const RolesManagementPanel = () => {
           </div>
         </div>
 
-        <section className="bg-bg-card border-border-default overflow-hidden rounded-xl border">
+        <section
+          aria-label="ロール一覧"
+          className="bg-bg-card border-border-default overflow-hidden rounded-xl border"
+        >
           <div className="border-b-border-default text-text-subtle hidden grid-cols-[1fr_120px_140px_120px_44px] items-center gap-3 border-b px-5 py-3 text-[10px] sm:grid">
             <span>ロール</span>
             <span>種別</span>

@@ -112,7 +112,10 @@ export const AssignmentsManagementPanel = () => {
           </div>
         </div>
 
-        <section className="bg-bg-card border-border-default overflow-hidden rounded-xl border">
+        <section
+          aria-label="割り当て一覧"
+          className="bg-bg-card border-border-default overflow-hidden rounded-xl border"
+        >
           <div className="border-b-border-default text-text-subtle hidden grid-cols-[1fr_1fr_140px_160px] items-center gap-3 border-b px-5 py-3 text-[10px] sm:grid">
             <span>ロール</span>
             <span>対象</span>

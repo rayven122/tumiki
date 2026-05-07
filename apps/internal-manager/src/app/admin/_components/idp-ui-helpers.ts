@@ -75,7 +75,9 @@ export const getAssignmentTargetName = (
 ): string | null => {
   if (type === "org") return getOrgById(id)?.name ?? null;
   if (type === "group") return getGroupById(id)?.name ?? null;
-  return getUserById(id)?.name ?? null;
+  if (type === "user") return getUserById(id)?.name ?? null;
+  const exhaustive: never = type;
+  return exhaustive;
 };
 
 export const getAssignmentTargetSource = (
@@ -84,5 +86,7 @@ export const getAssignmentTargetSource = (
 ): IdpSource | null => {
   if (type === "org") return getOrgById(id)?.source ?? null;
   if (type === "group") return getGroupById(id)?.source ?? null;
-  return getUserById(id)?.source ?? null;
+  if (type === "user") return getUserById(id)?.source ?? null;
+  const exhaustive: never = type;
+  return exhaustive;
 };

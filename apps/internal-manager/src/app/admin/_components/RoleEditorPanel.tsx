@@ -148,7 +148,10 @@ export const RoleEditorPanel = ({ mode, role }: RoleEditorPanelProps) => {
                     type="text"
                     value={state.name}
                     onChange={(event) =>
-                      setState({ ...state, name: event.target.value })
+                      setState((prev) => ({
+                        ...prev,
+                        name: event.target.value,
+                      }))
                     }
                     disabled={readonly}
                     placeholder="例: AI 推進メンバー"
@@ -160,7 +163,10 @@ export const RoleEditorPanel = ({ mode, role }: RoleEditorPanelProps) => {
                   <textarea
                     value={state.description}
                     onChange={(event) =>
-                      setState({ ...state, description: event.target.value })
+                      setState((prev) => ({
+                        ...prev,
+                        description: event.target.value,
+                      }))
                     }
                     disabled={readonly}
                     rows={3}
