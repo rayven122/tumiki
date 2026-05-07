@@ -114,10 +114,11 @@ export const updateSecretCredentials = async (
   db: DbClient,
   secretId: number,
   credentials: string,
-) => {
-  return db.mcpSecret.update({
+): Promise<void> => {
+  await db.mcpSecret.update({
     where: { id: secretId },
     data: { credentials },
+    select: { id: true },
   });
 };
 

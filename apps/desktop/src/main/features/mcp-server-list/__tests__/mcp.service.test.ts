@@ -1376,15 +1376,15 @@ describe("mcp.service", () => {
       vi.mocked(mcpRepository.deleteServer).mockResolvedValue(
         {} as Awaited<ReturnType<typeof mcpRepository.deleteServer>>,
       );
-      // 配下接続が secretId=11, 12, 11 を参照しており、Set 化で重複は除去される
+      // findSecretIdsByServerId は distinct 済みの secretId を返す（repository 側で重複除去）
       vi.mocked(mcpRepository.findSecretIdsByServerId).mockResolvedValue([
-        11, 12, 11,
+        11, 12,
       ]);
 
       await mcpService.deleteServer(1);
 
       expect(mcpRepository.deleteServer).toHaveBeenCalledWith(mockDb, 1);
-      // 重複除去後、各 secretId について参照カウント判定が呼ばれる
+      // 各 secretId について参照カウント判定が呼ばれる
       expect(mcpRepository.deleteSecretIfOrphaned).toHaveBeenCalledTimes(2);
       expect(mcpRepository.deleteSecretIfOrphaned).toHaveBeenCalledWith(
         mockDb,

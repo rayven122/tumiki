@@ -142,11 +142,7 @@ describe("oauth.refresh", () => {
         expires_at: newExpiresAt,
       });
 
-      vi.mocked(oauthRepository.updateSecretCredentials).mockResolvedValue(
-        {} as Awaited<
-          ReturnType<typeof oauthRepository.updateSecretCredentials>
-        >,
-      );
+      vi.mocked(oauthRepository.updateSecretCredentials).mockResolvedValue();
 
       const result = await refreshOAuthTokenIfNeeded(1, serverUrl, credentials);
 

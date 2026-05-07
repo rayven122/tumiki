@@ -360,8 +360,8 @@ describe("mcp.repository（実DB）", () => {
       expect(secret.credentials).toBe("encrypted:abc");
     });
 
-    test("findSecretIdsByServerId は配下接続ごとの secretId を返す（共有時の重複を含む）", async () => {
-      // service 層は new Set() で重複除去するため、repository は重複ありで返す前提
+    test("findSecretIdsByServerId は配下接続の secretId 一覧を重複なしで返す", async () => {
+      // 共有 secret を持つ複数接続があっても repository 側で distinct し、呼び出し側に重複除去を委ねない
       const server = await mcpRepository.createServer(db, serverData);
       const shared = await mcpRepository.createSecret(db, "shared");
       const other = await mcpRepository.createSecret(db, "other");
@@ -380,9 +380,9 @@ describe("mcp.repository（実DB）", () => {
 
       const result = await mcpRepository.findSecretIdsByServerId(db, server.id);
 
-      expect(result).toHaveLength(3);
-      expect(result.filter((id) => id === shared.id)).toHaveLength(2);
-      expect(result.filter((id) => id === other.id)).toHaveLength(1);
+      expect(result).toHaveLength(2);
+      expect(result).toContain(shared.id);
+      expect(result).toContain(other.id);
     });
 
     test("deleteSecretIfOrphaned は参照が残っていなければ削除する", async () => {

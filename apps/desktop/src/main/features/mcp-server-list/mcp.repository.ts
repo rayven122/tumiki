@@ -235,6 +235,7 @@ export const deleteServer = async (db: DbClient, id: number) => {
   return db.mcpServer.delete({ where: { id } });
 };
 
+// distinct を使って重複は repository 側で除去する（呼び出し側で Set 化する責務を寄せない）
 export const findSecretIdsByServerId = async (
   db: DbClient,
   serverId: number,
@@ -242,6 +243,7 @@ export const findSecretIdsByServerId = async (
   const connections = await db.mcpConnection.findMany({
     where: { serverId },
     select: { secretId: true },
+    distinct: ["secretId"],
   });
   return connections.map((c) => c.secretId);
 };

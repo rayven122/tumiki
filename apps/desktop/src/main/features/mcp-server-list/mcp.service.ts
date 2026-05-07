@@ -494,9 +494,7 @@ export const updateServer = async (
 export const deleteServer = async (id: number) => {
   const db = await getDb();
   return db.$transaction(async (tx) => {
-    const secretIds = Array.from(
-      new Set(await mcpRepository.findSecretIdsByServerId(tx, id)),
-    );
+    const secretIds = await mcpRepository.findSecretIdsByServerId(tx, id);
     const result = await mcpRepository.deleteServer(tx, id);
     for (const secretId of secretIds) {
       await mcpRepository.deleteSecretIfOrphaned(tx, secretId);
