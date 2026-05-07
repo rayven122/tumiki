@@ -135,9 +135,6 @@ export const AdminSidebar = ({ initialTheme }: Props) => {
               {section.items.map(({ path, label, icon: Icon }) => {
                 const isActive =
                   pathname === path ||
-                  (path === "/admin/directory" &&
-                    (pathname === "/admin/organizations" ||
-                      pathname === "/admin/groups")) ||
                   (path === "/admin/roles" &&
                     pathname.startsWith("/admin/roles/")) ||
                   (path === "/admin/assignments" &&

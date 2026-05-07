@@ -2,54 +2,23 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Building2, Link2, Plus, Search, User, Users } from "lucide-react";
+import { Link2, Plus, Search } from "lucide-react";
 import {
-  getGroupById,
-  getOrgById,
   getRoleById,
-  getUserById,
   mockRoleAssignments,
   roleTypeBadgeClass,
   roleTypeLabel,
   sourceBadgeClass,
   sourceLabel,
   type AssignmentTargetType,
-  type IdpSource,
-  type MockRole,
 } from "./idp-ui-mock-data";
-
-const targetLabel: Record<AssignmentTargetType, string> = {
-  org: "階層組織",
-  group: "横断グループ",
-  user: "ユーザー例外",
-};
-
-const targetIcon = (type: AssignmentTargetType) =>
-  type === "org" ? Building2 : type === "group" ? Users : User;
-
-const getTargetName = (
-  type: AssignmentTargetType,
-  id: string,
-): string | null => {
-  if (type === "org") return getOrgById(id)?.name ?? null;
-  if (type === "group") return getGroupById(id)?.name ?? null;
-  return getUserById(id)?.name ?? null;
-};
-
-const getTargetSource = (
-  type: AssignmentTargetType,
-  id: string,
-): IdpSource | null => {
-  if (type === "org") return getOrgById(id)?.source ?? null;
-  if (type === "group") return getGroupById(id)?.source ?? null;
-  return getUserById(id)?.source ?? null;
-};
-
-const formatPermissionSummary = (role: MockRole) => {
-  const allow = role.permissions.filter((p) => p.effect === "allow").length;
-  const deny = role.permissions.filter((p) => p.effect === "deny").length;
-  return `許可 ${allow} / 拒否 ${deny}`;
-};
+import {
+  formatPermissionSummary,
+  getAssignmentTargetName,
+  getAssignmentTargetSource,
+  targetIcon,
+  targetLabel,
+} from "./idp-ui-helpers";
 
 export const AssignmentsManagementPanel = () => {
   const [filter, setFilter] = useState<"all" | AssignmentTargetType>("all");
@@ -61,7 +30,7 @@ export const AssignmentsManagementPanel = () => {
       if (filter !== "all" && assignment.targetType !== filter) return false;
       if (!normalized) return true;
       const role = getRoleById(assignment.roleId);
-      const targetName = getTargetName(
+      const targetName = getAssignmentTargetName(
         assignment.targetType,
         assignment.targetId,
       );
@@ -158,12 +127,12 @@ export const AssignmentsManagementPanel = () => {
           ) : (
             filteredAssignments.map((assignment) => {
               const role = getRoleById(assignment.roleId);
-              const targetName = getTargetName(
+              const targetName = getAssignmentTargetName(
                 assignment.targetType,
                 assignment.targetId,
               );
               const TargetIcon = targetIcon(assignment.targetType);
-              const source = getTargetSource(
+              const source = getAssignmentTargetSource(
                 assignment.targetType,
                 assignment.targetId,
               );

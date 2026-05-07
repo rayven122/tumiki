@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Building2,
@@ -41,6 +41,7 @@ import {
   type MockUser,
   type PolicyEffect,
 } from "./idp-ui-mock-data";
+import { formatPermissionSummary, riskBadgeClass } from "./idp-ui-helpers";
 
 export type DirectoryTab = "organizations" | "groups";
 
@@ -87,12 +88,6 @@ const getInitialSelection = (initialTab: DirectoryTab): SelectedEntry =>
     ? { kind: "group", id: "ai-program" }
     : { kind: "org", id: "platform" };
 
-const formatPermissionSummary = (role: MockRole) => {
-  const allow = role.permissions.filter((p) => p.effect === "allow").length;
-  const deny = role.permissions.filter((p) => p.effect === "deny").length;
-  return `許可 ${allow} / 拒否 ${deny}`;
-};
-
 const resolvedEffectConfig: Record<
   PolicyEffect,
   { label: string; icon: typeof Check; className: string }
@@ -114,12 +109,6 @@ const resolvedEffectConfig: Record<
   },
 };
 
-const riskClass = {
-  low: "bg-emerald-500/15 text-emerald-300",
-  medium: "bg-amber-500/15 text-amber-300",
-  high: "bg-red-500/15 text-red-300",
-} as const;
-
 export const DirectoryManagementPanel = ({
   initialTab,
 }: {
@@ -135,6 +124,20 @@ export const DirectoryManagementPanel = ({
 
   const [showRolePicker, setShowRolePicker] = useState(false);
   const [showResolvedPermissions, setShowResolvedPermissions] = useState(false);
+
+  useEffect(() => {
+    if (!showRolePicker && !showResolvedPermissions) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (showResolvedPermissions) {
+        setShowResolvedPermissions(false);
+        return;
+      }
+      if (showRolePicker) setShowRolePicker(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [showRolePicker, showResolvedPermissions]);
 
   const selectedOrg =
     selectedEntry.kind === "org"
@@ -635,13 +638,13 @@ export const DirectoryManagementPanel = ({
 
       {showRolePicker ? (
         <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="role-picker-title"
           className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 p-4 sm:items-center"
           onClick={() => setShowRolePicker(false)}
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="role-picker-title"
             className="bg-bg-card border-border-default flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border shadow-xl"
             onClick={(event) => event.stopPropagation()}
           >
@@ -727,13 +730,13 @@ export const DirectoryManagementPanel = ({
 
       {showResolvedPermissions ? (
         <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="resolved-permissions-title"
           className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 p-4 sm:items-center"
           onClick={() => setShowResolvedPermissions(false)}
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="resolved-permissions-title"
             className="bg-bg-card border-border-default flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border shadow-xl"
             onClick={(event) => event.stopPropagation()}
           >
@@ -789,7 +792,7 @@ export const DirectoryManagementPanel = ({
                       </div>
                     </div>
                     <span
-                      className={`w-fit rounded-full px-2 py-0.5 text-[10px] ${riskClass[tool.risk]}`}
+                      className={`w-fit rounded-full px-2 py-0.5 text-[10px] ${riskBadgeClass[tool.risk]}`}
                     >
                       {tool.risk}
                     </span>

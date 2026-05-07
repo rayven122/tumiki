@@ -4,33 +4,32 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
-  Building2,
   Check,
   Lock,
   Minus,
   Save,
   Shield,
   Trash2,
-  User,
-  Users,
   X,
 } from "lucide-react";
 import {
   effectBadgeClass,
   getAssignmentsForRole,
-  getGroupById,
-  getOrgById,
-  getUserById,
   mockTools,
   roleTypeBadgeClass,
   roleTypeLabel,
   sourceBadgeClass,
   sourceLabel,
-  type AssignmentTargetType,
-  type IdpSource,
   type MockRole,
   type RolePermission,
 } from "./idp-ui-mock-data";
+import {
+  getAssignmentTargetName,
+  getAssignmentTargetSource,
+  riskBadgeClass,
+  targetIcon,
+  targetLabel,
+} from "./idp-ui-helpers";
 
 type EditableRole = {
   name: string;
@@ -60,39 +59,6 @@ const effectConfig = {
     className: effectBadgeClass.unset,
   },
 } as const;
-
-const riskClass = {
-  low: "bg-emerald-500/15 text-emerald-300",
-  medium: "bg-amber-500/15 text-amber-300",
-  high: "bg-red-500/15 text-red-300",
-} as const;
-
-const targetIcon = (type: AssignmentTargetType) =>
-  type === "org" ? Building2 : type === "group" ? Users : User;
-
-const targetLabel: Record<AssignmentTargetType, string> = {
-  org: "階層組織",
-  group: "横断グループ",
-  user: "ユーザー例外",
-};
-
-const getAssignmentTargetName = (
-  type: AssignmentTargetType,
-  id: string,
-): string | null => {
-  if (type === "org") return getOrgById(id)?.name ?? null;
-  if (type === "group") return getGroupById(id)?.name ?? null;
-  return getUserById(id)?.name ?? null;
-};
-
-const getAssignmentTargetSource = (
-  type: AssignmentTargetType,
-  id: string,
-): IdpSource | null => {
-  if (type === "org") return getOrgById(id)?.source ?? null;
-  if (type === "group") return getGroupById(id)?.source ?? null;
-  return getUserById(id)?.source ?? null;
-};
 
 const initialState = (role?: MockRole): EditableRole => ({
   name: role?.name ?? "",
@@ -173,7 +139,7 @@ export const RoleEditorPanel = ({ mode, role }: RoleEditorPanelProps) => {
               <button
                 type="button"
                 disabled
-                className="bg-bg-active flex min-h-[44px] cursor-not-allowed items-center gap-1.5 rounded-lg px-3 text-xs text-red-300 disabled:opacity-50"
+                className="bg-bg-active flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 text-xs text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Trash2 size={13} />
                 削除
@@ -182,7 +148,7 @@ export const RoleEditorPanel = ({ mode, role }: RoleEditorPanelProps) => {
             <button
               type="button"
               disabled={readonly}
-              className="bg-btn-primary-bg text-btn-primary-text flex min-h-[44px] cursor-not-allowed items-center gap-1.5 rounded-lg px-3 text-xs font-medium disabled:opacity-50"
+              className="bg-btn-primary-bg text-btn-primary-text flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Save size={13} />
               {mode === "create" ? "作成" : "保存"}
@@ -275,7 +241,7 @@ export const RoleEditorPanel = ({ mode, role }: RoleEditorPanelProps) => {
                       </div>
                     </div>
                     <span
-                      className={`w-fit rounded-full px-2 py-0.5 text-[10px] ${riskClass[tool.risk]}`}
+                      className={`w-fit rounded-full px-2 py-0.5 text-[10px] ${riskBadgeClass[tool.risk]}`}
                     >
                       {tool.risk}
                     </span>

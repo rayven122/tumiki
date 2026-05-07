@@ -9,15 +9,9 @@ import {
   roleTypeBadgeClass,
   roleTypeLabel,
   sourceLabel,
-  type MockRole,
   type RoleType,
 } from "./idp-ui-mock-data";
-
-const formatPermissionSummary = (role: MockRole) => {
-  const allow = role.permissions.filter((p) => p.effect === "allow").length;
-  const deny = role.permissions.filter((p) => p.effect === "deny").length;
-  return `許可 ${allow} / 拒否 ${deny}`;
-};
+import { formatPermissionSummary } from "./idp-ui-helpers";
 
 export const RolesManagementPanel = () => {
   const [search, setSearch] = useState("");
