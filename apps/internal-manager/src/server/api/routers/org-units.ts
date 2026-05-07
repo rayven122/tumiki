@@ -132,7 +132,7 @@ export const orgUnitsRouter = createTRPCRouter({
         const parent = input.parentId
           ? await tx.orgUnit.findUnique({
               where: { id: input.parentId },
-              select: { id: true, path: true },
+              select: { id: true, path: true, source: true },
             })
           : null;
 
@@ -140,6 +140,12 @@ export const orgUnitsRouter = createTRPCRouter({
           throw new TRPCError({
             code: "NOT_FOUND",
             message: "移動先の部署が見つかりません",
+          });
+        }
+        if (parent && parent.source !== OrgUnitSource.MANUAL) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "SCIM/IdP由来の部署配下には移動できません",
           });
         }
         if (parent?.path.startsWith(`${current.path}/`)) {
@@ -182,13 +188,19 @@ export const orgUnitsRouter = createTRPCRouter({
       const parent = input.parentId
         ? await ctx.db.orgUnit.findUnique({
             where: { id: input.parentId },
-            select: { id: true, path: true },
+            select: { id: true, path: true, source: true },
           })
         : null;
       if (input.parentId && !parent) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "親部署が見つかりません",
+        });
+      }
+      if (parent && parent.source !== OrgUnitSource.MANUAL) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "SCIM/IdP由来の部署配下には作成できません",
         });
       }
 
@@ -224,7 +236,7 @@ export const orgUnitsRouter = createTRPCRouter({
         const parent = input.parentId
           ? await tx.orgUnit.findUnique({
               where: { id: input.parentId },
-              select: { id: true, path: true },
+              select: { id: true, path: true, source: true },
             })
           : null;
 
@@ -232,6 +244,12 @@ export const orgUnitsRouter = createTRPCRouter({
           throw new TRPCError({
             code: "NOT_FOUND",
             message: "親部署が見つかりません",
+          });
+        }
+        if (parent && parent.source !== OrgUnitSource.MANUAL) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "SCIM/IdP由来の部署配下には移動できません",
           });
         }
         if (input.orgUnitId === input.parentId) {

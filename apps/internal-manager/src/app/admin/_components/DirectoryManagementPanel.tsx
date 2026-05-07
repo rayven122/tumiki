@@ -65,6 +65,8 @@ const depthPaddingClass: Partial<Record<number, string>> = {
   3: "pl-20",
 };
 
+const ROOT_ORG_PARENT_KEY = "__root__";
+
 const sourceLabel = {
   SCIM: "SCIM",
   GROUP: "グループ由来",
@@ -109,14 +111,17 @@ const getMutationErrorMessage = (error: {
 const buildOrgDepthById = (orgUnits: OrgUnit[]) => {
   const byParent = new Map<string, OrgUnit[]>();
   for (const org of orgUnits) {
-    const parentKey = org.parentId ?? "__root__";
+    const parentKey = org.parentId ?? ROOT_ORG_PARENT_KEY;
     byParent.set(parentKey, [...(byParent.get(parentKey) ?? []), org]);
   }
 
   const rows: { org: OrgUnit; depth: number }[] = [];
+  const visitedIds = new Set<string>();
   const appendChildren = (parentId: string | null, depth: number) => {
-    const children = byParent.get(parentId ?? "__root__") ?? [];
+    const children = byParent.get(parentId ?? ROOT_ORG_PARENT_KEY) ?? [];
     for (const org of children) {
+      if (visitedIds.has(org.id)) continue;
+      visitedIds.add(org.id);
       rows.push({ org, depth });
       appendChildren(org.id, depth + 1);
     }
@@ -149,6 +154,7 @@ export const DirectoryManagementPanel = ({
     null,
   );
   const [memberUserId, setMemberUserId] = useState("");
+  const [memberIsPrimary, setMemberIsPrimary] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const orgUnitsQuery = api.orgUnits.tree.useQuery();
@@ -164,7 +170,8 @@ export const DirectoryManagementPanel = ({
   const activeUsers = usersQuery.data ?? [];
   const isLoading =
     orgUnitsQuery.isLoading || groupsQuery.isLoading || usersQuery.isLoading;
-  const isError = orgUnitsQuery.isError || groupsQuery.isError;
+  const isError =
+    orgUnitsQuery.isError || groupsQuery.isError || usersQuery.isError;
 
   const orgTree = useMemo(() => buildOrgDepthById(orgUnits), [orgUnits]);
   const childCountByParent = useMemo(() => {
@@ -218,6 +225,7 @@ export const DirectoryManagementPanel = ({
     onSuccess: async () => {
       setErrorMessage(null);
       setMemberUserId("");
+      setMemberIsPrimary(false);
       await invalidateDirectory();
     },
     onError: handleMutationError,
@@ -260,6 +268,7 @@ export const DirectoryManagementPanel = ({
     onSuccess: async () => {
       setErrorMessage(null);
       setMemberUserId("");
+      setMemberIsPrimary(false);
       await invalidateDirectory();
     },
     onError: handleMutationError,
@@ -362,7 +371,8 @@ export const DirectoryManagementPanel = ({
 
     const rows: DirectoryEntry[] = [];
     const appendChildren = (parentId: string | null, depth: number) => {
-      const children = orgTree.byParent.get(parentId ?? "__root__") ?? [];
+      const children =
+        orgTree.byParent.get(parentId ?? ROOT_ORG_PARENT_KEY) ?? [];
       for (const org of children) {
         rows.push({ kind: "org", item: org, depth });
         if (expandedOrgIds.has(org.id)) {
@@ -522,7 +532,7 @@ export const DirectoryManagementPanel = ({
       addOrgMember.mutate({
         orgUnitId: selectedItem.id,
         userId: memberUserId,
-        isPrimary: false,
+        isPrimary: memberIsPrimary,
       });
       return;
     }
@@ -900,6 +910,20 @@ export const DirectoryManagementPanel = ({
                           </option>
                         ))}
                       </select>
+                      {selectedKind === "org" ? (
+                        <label className="bg-bg-active border-border-default text-text-secondary flex min-h-[44px] shrink-0 items-center gap-2 rounded-lg border px-3 text-xs">
+                          <input
+                            type="checkbox"
+                            checked={memberIsPrimary}
+                            onChange={(event) =>
+                              setMemberIsPrimary(event.target.checked)
+                            }
+                            disabled={readonly || isMutating}
+                            className="h-3.5 w-3.5"
+                          />
+                          主所属
+                        </label>
+                      ) : null}
                       <button
                         type="button"
                         onClick={handleAddMember}

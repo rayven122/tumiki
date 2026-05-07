@@ -81,6 +81,7 @@ describe("orgUnitsRouter", () => {
           .mockResolvedValueOnce({
             id: "parent",
             path: "/parent",
+            source: OrgUnitSource.MANUAL,
           }),
         update,
       },
@@ -149,6 +150,7 @@ describe("orgUnitsRouter", () => {
           .mockResolvedValueOnce({
             id: "child",
             path: "/parent/child",
+            source: OrgUnitSource.MANUAL,
           }),
       },
     };
@@ -215,6 +217,38 @@ describe("orgUnitsRouter", () => {
     );
   });
 
+  test("updateParentはSCIM部署配下へ移動できない", async () => {
+    const update = vi.fn();
+    const tx = {
+      orgUnit: {
+        findUnique: vi
+          .fn()
+          .mockResolvedValueOnce({
+            id: "manual-child",
+            externalId: "manual:child",
+            path: "/child",
+            source: OrgUnitSource.MANUAL,
+          })
+          .mockResolvedValueOnce({
+            id: "scim-parent",
+            path: "/scim-parent",
+            source: OrgUnitSource.SCIM,
+          }),
+        update,
+      },
+    };
+    const caller = buildTransactionCaller(tx);
+
+    await expectTrpcErrorCode(
+      caller.updateParent({
+        orgUnitId: "manual-child",
+        parentId: "scim-parent",
+      }),
+      "BAD_REQUEST",
+    );
+    expect(update).not.toHaveBeenCalled();
+  });
+
   test("createManualOrgUnitは手動部署を作成する", async () => {
     const create = vi.fn().mockResolvedValue({
       id: "manual-org",
@@ -227,9 +261,11 @@ describe("orgUnitsRouter", () => {
     });
     const caller = buildCaller({
       orgUnit: {
-        findUnique: vi
-          .fn()
-          .mockResolvedValue({ id: "parent", path: "/parent" }),
+        findUnique: vi.fn().mockResolvedValue({
+          id: "parent",
+          path: "/parent",
+          source: OrgUnitSource.MANUAL,
+        }),
         create,
       },
     } as unknown as Context["db"]);
@@ -264,6 +300,26 @@ describe("orgUnitsRouter", () => {
     expect(create).not.toHaveBeenCalled();
   });
 
+  test("createManualOrgUnitはSCIM部署配下に作成できない", async () => {
+    const create = vi.fn();
+    const caller = buildCaller({
+      orgUnit: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: "scim-parent",
+          path: "/scim-parent",
+          source: OrgUnitSource.SCIM,
+        }),
+        create,
+      },
+    } as unknown as Context["db"]);
+
+    await expectTrpcErrorCode(
+      caller.createManualOrgUnit({ name: "AI推進室", parentId: "scim-parent" }),
+      "BAD_REQUEST",
+    );
+    expect(create).not.toHaveBeenCalled();
+  });
+
   test("updateManualOrgUnitは手動部署の名称と親を更新する", async () => {
     const update = vi.fn().mockResolvedValue({
       id: "child",
@@ -285,7 +341,11 @@ describe("orgUnitsRouter", () => {
             path: "/old/manual:child",
             source: OrgUnitSource.MANUAL,
           })
-          .mockResolvedValueOnce({ id: "parent", path: "/parent" }),
+          .mockResolvedValueOnce({
+            id: "parent",
+            path: "/parent",
+            source: OrgUnitSource.MANUAL,
+          }),
         update,
       },
     };
@@ -333,6 +393,39 @@ describe("orgUnitsRouter", () => {
         orgUnitId: "scim-child",
         name: "更新後",
         parentId: null,
+      }),
+      "BAD_REQUEST",
+    );
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  test("updateManualOrgUnitはSCIM部署配下へ移動できない", async () => {
+    const update = vi.fn();
+    const tx = {
+      orgUnit: {
+        findUnique: vi
+          .fn()
+          .mockResolvedValueOnce({
+            id: "manual-child",
+            externalId: "manual:child",
+            path: "/child",
+            source: OrgUnitSource.MANUAL,
+          })
+          .mockResolvedValueOnce({
+            id: "scim-parent",
+            path: "/scim-parent",
+            source: OrgUnitSource.SCIM,
+          }),
+        update,
+      },
+    };
+    const caller = buildTransactionCaller(tx);
+
+    await expectTrpcErrorCode(
+      caller.updateManualOrgUnit({
+        orgUnitId: "manual-child",
+        name: "更新後",
+        parentId: "scim-parent",
       }),
       "BAD_REQUEST",
     );
