@@ -130,8 +130,9 @@ jobs:
     name: 🚀 Deploy to production
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # production の image 自動更新は VM 上の Watchtower が :latest を監視して行う。
-    # このジョブは compose.production.yaml / .env が変わったときの手動再配信を担う。
+    # production では Infisical を SoT として VM 上の systemd timer
+    # (tumiki-secrets-sync) が .env を生成・更新する。image 自動更新は VM 上の Watchtower が担う。
+    # このジョブは compose.production.yaml が変わったときの転送と再同期トリガーのみを担当する。
     if: github.event_name == 'workflow_dispatch' && inputs.environment == 'production'
     environment: production
 
@@ -153,41 +154,28 @@ jobs:
           cf-access-client-secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
           ssh-private-key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
 
-      - name: 🔐 Fetch secrets from Infisical
-        uses: Infisical/secrets-action@77ab1f4ccd183a543cb5b42435fbd181189f4995 # v1.0.16
-        with:
-          method: universal
-          client-id: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_ID }}
-          client-secret: ${{ secrets.INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET }}
-          domain: https://secrets.rayven.cloud
-          project-slug: tumiki
-          env-slug: prod
-          secret-path: /
-          recursive: true
-          export-type: file
-          # file-output-path は ${GITHUB_WORKSPACE} と単純連結される仕様（先頭 / は連結区切り扱い）
-          # /tmp など絶対パスは使えず、ワークスペース直下にのみ書き込み可能
-          file-output-path: /tumiki.env
-
-      - name: 🔒 Restrict secrets file permissions
-        run: chmod 600 tumiki.env
-
-      - name: 📤 Transfer compose.production.yaml and .env
+      - name: 📤 Transfer compose.production.yaml
         run: |
-          # 前回 cleanup が失敗していた場合に備えて既存 .env を削除（リカバリ）
-          ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" "mkdir -p ~/tumiki && rm -f ~/tumiki/.env"
+          # production では .env を Actions から触らない（Infisical SoT を維持）。
+          # compose ファイルだけ転送し、シークレットの反映は VM 上の tumiki-secrets-sync に任せる。
+          ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" "mkdir -p ~/tumiki"
           scp -i ~/.ssh/id_ed25519 docker/apps/compose.production.yaml "${SSH_USER}@${SSH_HOST}:~/tumiki/compose.production.yaml"
-          # install -m 600 でファイル作成と権限設定をアトミックに実施（scp + chmod のウィンドウを排除）
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" 'install -m 600 /dev/stdin ~/tumiki/.env' < tumiki.env
 
-      - name: 🐳 Deploy containers
+      - name: 🔄 Trigger secrets sync and reconcile compose
         run: |
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -ls << 'REMOTE_SCRIPT'
+          # systemd の oneshot サービスを発火することで Infisical から最新の .env を取り込み、
+          # 必要があれば docker compose up -d を実行する。
+          # NoNewPrivileges 等の制限を尊重し、journal にログを残すため systemctl start を使用。
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash << 'REMOTE_SCRIPT'
             set -euo pipefail
-            set +o history
-            cd ~/tumiki
-            docker compose -f compose.production.yaml pull
-            docker compose -f compose.production.yaml up -d --remove-orphans
+            sudo systemctl start tumiki-secrets-sync.service
+            # 完了するまで待機（oneshot のため start は即時 return する）
+            for i in $(seq 1 30); do
+              status=$(systemctl is-active tumiki-secrets-sync.service || true)
+              [[ "$status" == "inactive" || "$status" == "failed" ]] && break
+              sleep 2
+            done
+            sudo systemctl status --no-pager tumiki-secrets-sync.service || true
           REMOTE_SCRIPT
 
       - name: ✅ Verify health endpoints
@@ -210,6 +198,5 @@ jobs:
       - name: 🧹 Cleanup
         if: always()
         run: |
-          # production では Watchtower が再起動時に .env を参照するため VM 上に永続化する
-          # secrets ファイルと SSH 鍵のみクリーンアップ
-          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh tumiki.env ~/.ssh/id_ed25519
+          # production では .env を Actions が扱わないため後始末対象は SSH 鍵のみ
+          rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh ~/.ssh/id_ed25519
