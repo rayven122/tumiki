@@ -42,6 +42,7 @@ import {
   effectConfig,
   formatPermissionSummary,
   riskBadgeClass,
+  riskLabel,
 } from "./idp-ui-helpers";
 import { useFocusTrap } from "./use-focus-trap";
 
@@ -315,7 +316,7 @@ export const DirectoryManagementPanel = ({
                       }
                       aria-expanded={isExpanded}
                       onClick={() => toggleExpanded(item.id)}
-                      className="text-text-muted hover:text-text-primary flex min-h-[32px] min-w-[32px] items-center justify-center rounded-md"
+                      className="text-text-muted hover:text-text-primary flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md"
                     >
                       {isExpanded ? (
                         <ChevronDown size={13} />
@@ -324,7 +325,7 @@ export const DirectoryManagementPanel = ({
                       )}
                     </button>
                   ) : (
-                    <span className="min-w-[32px]" />
+                    <span className="min-w-[44px]" />
                   )}
                   <button
                     type="button"
@@ -636,7 +637,6 @@ export const DirectoryManagementPanel = ({
 
       {showRolePicker ? (
         <div
-          aria-hidden="true"
           className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 p-4 sm:items-center"
           onClick={() => setShowRolePicker(false)}
         >
@@ -730,7 +730,6 @@ export const DirectoryManagementPanel = ({
 
       {showResolvedPermissions ? (
         <div
-          aria-hidden="true"
           className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 p-4 sm:items-center"
           onClick={() => setShowResolvedPermissions(false)}
         >
@@ -796,7 +795,7 @@ export const DirectoryManagementPanel = ({
                     <span
                       className={`w-fit rounded-full px-2 py-0.5 text-[10px] ${riskBadgeClass[tool.risk]}`}
                     >
-                      {tool.risk}
+                      {riskLabel[tool.risk]}
                     </span>
                     <div className="col-span-2 flex justify-end sm:col-span-1">
                       <span

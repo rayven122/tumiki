@@ -87,7 +87,7 @@ export const RolesManagementPanel = () => {
                     type="button"
                     aria-pressed={isActive}
                     onClick={() => setFilterType(value)}
-                    className={`min-h-[32px] rounded-md px-2.5 ${
+                    className={`min-h-[44px] rounded-md px-2.5 ${
                       isActive
                         ? "bg-bg-card text-text-primary"
                         : "text-text-muted"

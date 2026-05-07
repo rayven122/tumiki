@@ -42,6 +42,12 @@ export const riskBadgeClass = {
   high: "bg-red-500/15 text-red-300",
 } as const;
 
+export const riskLabel = {
+  low: "低",
+  medium: "中",
+  high: "高",
+} as const;
+
 export const effectConfig: Record<
   PolicyEffect,
   { label: string; icon: LucideIcon; className: string }

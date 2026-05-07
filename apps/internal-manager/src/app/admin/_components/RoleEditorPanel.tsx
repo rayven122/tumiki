@@ -18,6 +18,7 @@ import {
   getAssignmentTargetName,
   getAssignmentTargetSource,
   riskBadgeClass,
+  riskLabel,
   targetIcon,
   targetLabel,
 } from "./idp-ui-helpers";
@@ -216,7 +217,7 @@ export const RoleEditorPanel = ({ mode, role }: RoleEditorPanelProps) => {
                     <span
                       className={`w-fit rounded-full px-2 py-0.5 text-[10px] ${riskBadgeClass[tool.risk]}`}
                     >
-                      {tool.risk}
+                      {riskLabel[tool.risk]}
                     </span>
                     <div className="col-span-2 flex justify-end gap-1 sm:col-span-1">
                       {(["allow", "deny", "unset"] as const).map(

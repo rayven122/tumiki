@@ -6,6 +6,7 @@ import {
   getAssignmentTargetName,
   getAssignmentTargetSource,
   riskBadgeClass,
+  riskLabel,
   targetIcon,
   targetLabel,
 } from "./idp-ui-helpers";
@@ -59,6 +60,14 @@ test("riskBadgeClass はリスクレベルごとの Tailwind クラスを返す"
     low: "bg-emerald-500/15 text-emerald-300",
     medium: "bg-amber-500/15 text-amber-300",
     high: "bg-red-500/15 text-red-300",
+  });
+});
+
+test("riskLabel はリスクレベルを日本語ラベルに変換する", () => {
+  expect(riskLabel).toStrictEqual({
+    low: "低",
+    medium: "中",
+    high: "高",
   });
 });
 
