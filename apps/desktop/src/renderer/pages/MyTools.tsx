@@ -11,25 +11,21 @@ import { cardStyle } from "../utils/theme-styles";
 /** MCPサーバーステータス表示（CLIモードがDB上のserverStatusを更新する） */
 const STATUS_CONFIG: Record<
   McpServerWithRuntime["serverStatus"],
-  { dotClass: string; badgeClass: string; label: string }
+  { badgeClass: string; label: string }
 > = {
   RUNNING: {
-    dotClass: "bg-emerald-400",
     badgeClass: "bg-emerald-400/10 text-emerald-300",
     label: "稼働中",
   },
   STOPPED: {
-    dotClass: "bg-gray-400",
     badgeClass: "bg-gray-400/10 text-gray-400",
     label: "停止中",
   },
   ERROR: {
-    dotClass: "bg-red-400",
     badgeClass: "bg-red-400/10 text-red-300",
     label: "エラー",
   },
   PENDING: {
-    dotClass: "bg-amber-400",
     badgeClass: "bg-amber-400/10 text-amber-300",
     label: "接続中",
   },
@@ -180,7 +176,10 @@ const ServerCard = ({
           <span
             className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-medium ${status.badgeClass}`}
           >
-            <span className={`h-1.5 w-1.5 rounded-full ${status.dotClass}`} />
+            <span
+              aria-hidden="true"
+              className="h-1.5 w-1.5 rounded-full bg-current"
+            />
             {status.label}
           </span>
         </div>
@@ -207,11 +206,7 @@ const ServerCard = ({
       <div className="flex items-center justify-end gap-2 border-t border-t-[var(--border-subtle)] px-4 py-3">
         <button
           type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setShowDeleteConfirm(true);
-          }}
+          onClick={() => setShowDeleteConfirm(true)}
           className="rounded p-1 text-[var(--text-subtle)] transition hover:text-red-400"
           title="削除"
         >
