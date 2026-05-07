@@ -11,6 +11,10 @@
     "./server": {
       "types": "./dist/server.d.ts",
       "default": "./dist/server.js"
+    },
+    "./client": {
+      "types": "./generated/client/index.d.ts",
+      "default": "./generated/client/index.js"
     }
   },
   "scripts": {

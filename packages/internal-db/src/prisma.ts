@@ -1,12 +1,13 @@
-import { PrismaClient } from "../generated/client/index.js";
+import { PrismaClient } from "@tumiki/internal-db/client";
 
-const createPrismaClient = () => new PrismaClient();
+const createPrismaClient = (): PrismaClient => new PrismaClient();
 
 const globalForPrisma = globalThis as unknown as {
   internalDb: PrismaClient | undefined;
 };
 
-export const db = globalForPrisma.internalDb ?? createPrismaClient();
+export const db: PrismaClient =
+  globalForPrisma.internalDb ?? createPrismaClient();
 
 export type { PrismaClient };
 export type PrismaTransactionClient = Parameters<
