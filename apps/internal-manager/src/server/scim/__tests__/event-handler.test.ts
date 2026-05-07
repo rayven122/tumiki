@@ -273,14 +273,27 @@ describe("handleDirectorySyncEvent", () => {
       expect(args.update.email).toBeNull();
     });
 
-    test("first_nameもlast_nameも空の場合はnameをnullにする", async () => {
+    test("first_nameもlast_nameも空の場合は新規作成時だけnameをnullにし、既存名は消さない", async () => {
       await handleDirectorySyncEvent(
         buildUserEvent("user.created", { first_name: "", last_name: "" }),
       );
 
       const args = getFirstCallArg(mockDb.user.upsert);
       expect(args.create.name).toBeNull();
-      expect(args.update.name).toBeNull();
+      expect(args.update).not.toHaveProperty("name");
+    });
+
+    test("first_nameとlast_nameをtrimして結合する", async () => {
+      await handleDirectorySyncEvent(
+        buildUserEvent("user.created", {
+          first_name: " Alice ",
+          last_name: " Anderson ",
+        }),
+      );
+
+      const args = getFirstCallArg(mockDb.user.upsert);
+      expect(args.create.name).toStrictEqual("Alice Anderson");
+      expect(args.update.name).toStrictEqual("Alice Anderson");
     });
 
     test("同じidで2回呼ばれてもupsertで冪等に処理される", async () => {
@@ -390,6 +403,32 @@ describe("handleDirectorySyncEvent", () => {
       expect(log.added).toStrictEqual(0);
       expect(log.removed).toStrictEqual(0);
       expect(log.status).toStrictEqual(SyncStatus.SUCCESS);
+    });
+
+    test("SCIM更新で名前が空の場合は既存のUser.nameを上書きしない", async () => {
+      await handleDirectorySyncEvent(
+        buildUserEvent("user.updated", {
+          first_name: "",
+          last_name: "",
+        }),
+      );
+
+      const args = getFirstCallArg(mockDb.user.upsert);
+      expect(args.create.name).toBeNull();
+      expect(args.update).not.toHaveProperty("name");
+    });
+
+    test("SCIM更新で名前が空白のみの場合も既存のUser.nameを上書きしない", async () => {
+      await handleDirectorySyncEvent(
+        buildUserEvent("user.updated", {
+          first_name: "  ",
+          last_name: " ",
+        }),
+      );
+
+      const args = getFirstCallArg(mockDb.user.upsert);
+      expect(args.create.name).toBeNull();
+      expect(args.update).not.toHaveProperty("name");
     });
   });
 
