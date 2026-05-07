@@ -624,7 +624,7 @@ describe("groupsRouter", () => {
 
     test("Tumiki由来メンバーシップを削除できる", async () => {
       const del = vi.fn().mockResolvedValue({ id: "membership-001" });
-      const caller = buildCaller({
+      const caller = buildTransactionCaller({
         userGroupMembership: {
           findUnique: vi.fn().mockResolvedValue({
             id: "membership-001",
@@ -633,7 +633,7 @@ describe("groupsRouter", () => {
           }),
           delete: del,
         },
-      } as unknown as Context["db"]);
+      });
 
       await expect(
         caller.removeMember({ membershipId: "membership-001" }),
@@ -646,12 +646,12 @@ describe("groupsRouter", () => {
 
     test("存在しないメンバーシップは削除できない", async () => {
       const del = vi.fn();
-      const caller = buildCaller({
+      const caller = buildTransactionCaller({
         userGroupMembership: {
           findUnique: vi.fn().mockResolvedValue(null),
           delete: del,
         },
-      } as unknown as Context["db"]);
+      });
 
       await expectTrpcErrorCode(
         caller.removeMember({ membershipId: "missing-membership" }),
@@ -662,7 +662,7 @@ describe("groupsRouter", () => {
 
     test("IdP由来メンバーシップは削除できない", async () => {
       const del = vi.fn();
-      const caller = buildCaller({
+      const caller = buildTransactionCaller({
         userGroupMembership: {
           findUnique: vi.fn().mockResolvedValue({
             id: "membership-idp",
@@ -671,7 +671,7 @@ describe("groupsRouter", () => {
           }),
           delete: del,
         },
-      } as unknown as Context["db"]);
+      });
 
       await expectTrpcErrorCode(
         caller.removeMember({ membershipId: "membership-idp" }),
@@ -682,7 +682,7 @@ describe("groupsRouter", () => {
 
     test("IdPグループのTumiki由来メンバーシップも削除できない", async () => {
       const del = vi.fn();
-      const caller = buildCaller({
+      const caller = buildTransactionCaller({
         userGroupMembership: {
           findUnique: vi.fn().mockResolvedValue({
             id: "membership-tumiki",
@@ -691,7 +691,7 @@ describe("groupsRouter", () => {
           }),
           delete: del,
         },
-      } as unknown as Context["db"]);
+      });
 
       await expectTrpcErrorCode(
         caller.removeMember({ membershipId: "membership-tumiki" }),

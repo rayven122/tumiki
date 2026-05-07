@@ -279,9 +279,17 @@ describe("orgUnitsRouter", () => {
       }),
     );
     expect(create).toHaveBeenCalledTimes(1);
-    expect(JSON.stringify(create.mock.calls)).toContain('"name":"AI推進室"');
-    expect(JSON.stringify(create.mock.calls)).toContain('"source":"MANUAL"');
-    expect(JSON.stringify(create.mock.calls)).toContain('"parentId":"parent"');
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          name: "AI推進室",
+          externalId: expect.stringMatching(/^manual:/) as string,
+          source: OrgUnitSource.MANUAL,
+          parentId: "parent",
+          path: expect.stringMatching(/^\/parent\/manual:/) as string,
+        },
+      }),
+    );
   });
 
   test("createManualOrgUnitは存在しない親をNOT_FOUNDにする", async () => {

@@ -76,6 +76,20 @@ const assertManualOrgUnit: AssertManualOrgUnit = (orgUnit) => {
   }
 };
 
+const updateDescendantOrgUnitPaths = async (
+  tx: Pick<Prisma.TransactionClient, "$executeRaw">,
+  currentPath: string,
+  newPath: string,
+) => {
+  await tx.$executeRaw`
+    UPDATE "OrgUnit"
+    SET
+      "path" = ${newPath} || substring("path" from ${(currentPath.length + 1).toString()}::integer),
+      "updatedAt" = NOW()
+    WHERE "path" LIKE ${`${escapeLikePattern(currentPath)}/%`} ESCAPE ${"\\"}
+  `;
+};
+
 export const orgUnitsRouter = createTRPCRouter({
   tree: adminProcedure.query(async ({ ctx }) => {
     return ctx.db.orgUnit.findMany({
@@ -165,13 +179,7 @@ export const orgUnitsRouter = createTRPCRouter({
           },
         });
 
-        await tx.$executeRaw`
-          UPDATE "OrgUnit"
-          SET
-            "path" = ${newPath} || substring("path" from ${(current.path.length + 1).toString()}::integer),
-            "updatedAt" = NOW()
-          WHERE "path" LIKE ${`${escapeLikePattern(current.path)}/%`} ESCAPE ${"\\"}
-        `;
+        await updateDescendantOrgUnitPaths(tx, current.path, newPath);
 
         return updated;
       });
@@ -276,13 +284,7 @@ export const orgUnitsRouter = createTRPCRouter({
           select: orgUnitSelect,
         });
 
-        await tx.$executeRaw`
-          UPDATE "OrgUnit"
-          SET
-            "path" = ${newPath} || substring("path" from ${(current.path.length + 1).toString()}::integer),
-            "updatedAt" = NOW()
-          WHERE "path" LIKE ${`${escapeLikePattern(current.path)}/%`} ESCAPE ${"\\"}
-        `;
+        await updateDescendantOrgUnitPaths(tx, current.path, newPath);
 
         return updated;
       });

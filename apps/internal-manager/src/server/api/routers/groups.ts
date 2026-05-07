@@ -75,7 +75,7 @@ export const groupsRouter = createTRPCRouter({
   }),
 
   getMembers: adminProcedure
-    .input(z.object({ groupId: z.string() }))
+    .input(z.object({ groupId: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       return ctx.db.userGroupMembership.findMany({
         where: { groupId: input.groupId },
@@ -84,7 +84,7 @@ export const groupsRouter = createTRPCRouter({
     }),
 
   getSyncLogs: adminProcedure
-    .input(z.object({ groupId: z.string() }))
+    .input(z.object({ groupId: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       return ctx.db.idpSyncLog.findMany({
         where: { groupId: input.groupId },
@@ -274,34 +274,36 @@ export const groupsRouter = createTRPCRouter({
   removeMember: adminProcedure
     .input(z.object({ membershipId: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
-      const membership = await ctx.db.userGroupMembership.findUnique({
-        where: { id: input.membershipId },
-        select: {
-          id: true,
-          source: true,
-          group: { select: { source: true } },
-        },
-      });
-      if (!membership) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "メンバーシップが見つかりません",
+      return ctx.db.$transaction(async (tx) => {
+        const membership = await tx.userGroupMembership.findUnique({
+          where: { id: input.membershipId },
+          select: {
+            id: true,
+            source: true,
+            group: { select: { source: true } },
+          },
         });
-      }
-      if (
-        membership.group.source !== GroupSource.TUMIKI ||
-        membership.source !== GroupSource.TUMIKI
-      ) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message:
-            "IdPグループまたはIdP由来のメンバーシップは管理画面から削除できません",
-        });
-      }
+        if (!membership) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "メンバーシップが見つかりません",
+          });
+        }
+        if (
+          membership.group.source !== GroupSource.TUMIKI ||
+          membership.source !== GroupSource.TUMIKI
+        ) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "IdPグループまたはIdP由来のメンバーシップは管理画面から削除できません",
+          });
+        }
 
-      return ctx.db.userGroupMembership.delete({
-        where: { id: input.membershipId },
-        select: { id: true },
+        return tx.userGroupMembership.delete({
+          where: { id: input.membershipId },
+          select: { id: true },
+        });
       });
     }),
 

@@ -43,16 +43,29 @@ type DeleteConfirmState = SelectedEntry & {
 
 type EntryFormState =
   | {
-      mode: "create" | "edit";
+      mode: "create";
       kind: "org";
-      id?: string;
       name: string;
       parentId: string;
     }
   | {
-      mode: "create" | "edit";
+      mode: "edit";
+      kind: "org";
+      id: string;
+      name: string;
+      parentId: string;
+    }
+  | {
+      mode: "create";
       kind: "group";
-      id?: string;
+      name: string;
+      description: string;
+      externalId: string;
+    }
+  | {
+      mode: "edit";
+      kind: "group";
+      id: string;
       name: string;
       description: string;
       externalId: string;
@@ -186,7 +199,6 @@ export const DirectoryManagementPanel = ({
     await Promise.all([
       utils.orgUnits.tree.invalidate(),
       utils.groups.list.invalidate(),
-      utils.users.list.invalidate(),
     ]);
   };
 
@@ -481,7 +493,7 @@ export const DirectoryManagementPanel = ({
         return;
       }
       updateOrg.mutate({
-        orgUnitId: entryForm.id ?? "",
+        orgUnitId: entryForm.id,
         name: entryForm.name,
         parentId: entryForm.parentId || null,
       });
@@ -497,7 +509,7 @@ export const DirectoryManagementPanel = ({
     }
 
     updateGroup.mutate({
-      groupId: entryForm.id ?? "",
+      groupId: entryForm.id,
       name: entryForm.name,
       description: entryForm.description,
       externalId: entryForm.externalId || null,
@@ -585,7 +597,9 @@ export const DirectoryManagementPanel = ({
   const parentOptions = orgTree.rows.filter(
     ({ org }) =>
       org.source === "MANUAL" &&
-      (entryForm?.kind !== "org" || org.id !== entryForm.id),
+      (entryForm?.kind !== "org" ||
+        entryForm.mode === "create" ||
+        org.id !== entryForm.id),
   );
 
   return (
