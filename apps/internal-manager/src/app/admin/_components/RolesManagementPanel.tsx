@@ -16,7 +16,6 @@ import { api, type RouterInputs, type RouterOutputs } from "~/trpc/react";
 type MatrixData = RouterOutputs["mcpPolicies"]["getMatrix"];
 type MatrixCatalog = MatrixData["catalogs"][number];
 type MatrixTool = MatrixCatalog["tools"][number];
-type OrgUnit = MatrixData["orgUnits"][number];
 type PolicyEffectInput =
   RouterInputs["mcpPolicies"]["updateToolPermission"]["effect"];
 type ConcretePolicyEffect = NonNullable<PolicyEffectInput>;
@@ -57,11 +56,6 @@ const effectLabel = {
   DENY: "拒否",
 } satisfies Record<ConcretePolicyEffect, string>;
 
-const effectBadgeClass = {
-  ALLOW: "bg-emerald-500/15 text-emerald-300",
-  DENY: "bg-red-500/15 text-red-300",
-} satisfies Record<ConcretePolicyEffect, string>;
-
 const formatDate = (value: Date | string | null | undefined) =>
   value ? new Date(value).toLocaleDateString("ja-JP") : "-";
 
@@ -88,9 +82,6 @@ const countEffects = (catalogs: MatrixCatalog[]) =>
     },
     { allow: 0, deny: 0 },
   );
-
-const getOrgUnitDisplayPath = (orgUnit: OrgUnit) =>
-  orgUnit.path === "/" ? "/" : orgUnit.path;
 
 export const RolesManagementPanel = ({
   initialOrgUnitId,
@@ -124,7 +115,10 @@ export const RolesManagementPanel = ({
   const selectedOrgUnit =
     orgUnits.find((orgUnit) => orgUnit.id === selectedOrgUnitId) ?? null;
   const isUnknownOrgUnit =
-    Boolean(selectedOrgUnitId) && !matrixQuery.isLoading && !selectedOrgUnit;
+    Boolean(selectedOrgUnitId) &&
+    !matrixQuery.isLoading &&
+    !matrixQuery.isError &&
+    !selectedOrgUnit;
   const isMutating =
     updateCatalogPermission.isPending || updateToolPermission.isPending;
   const mutationError =
@@ -247,7 +241,7 @@ export const RolesManagementPanel = ({
                       {orgUnit.name}
                     </div>
                     <div className="text-text-muted mt-1 truncate font-mono text-[10px]">
-                      {getOrgUnitDisplayPath(orgUnit)}
+                      {orgUnit.path}
                     </div>
                     <div className="text-text-subtle mt-1 text-[10px]">
                       {orgUnit.source} / {orgUnit.externalId}
@@ -303,7 +297,7 @@ export const RolesManagementPanel = ({
                       {selectedOrgUnit.name}
                     </h2>
                     <p className="text-text-muted mt-1 font-mono text-[11px]">
-                      {getOrgUnitDisplayPath(selectedOrgUnit)}
+                      {selectedOrgUnit.path}
                     </p>
                     <p className="text-text-subtle mt-1 text-[10px]">
                       source: {selectedOrgUnit.source} / externalId:{" "}
@@ -326,8 +320,19 @@ export const RolesManagementPanel = ({
                   </div>
                 </div>
                 {mutationError ? (
-                  <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
-                    保存に失敗しました: {mutationError.message}
+                  <div className="mt-4 flex items-center justify-between gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+                    <span>保存に失敗しました: {mutationError.message}</span>
+                    <button
+                      type="button"
+                      aria-label="保存エラーを閉じる"
+                      onClick={() => {
+                        updateCatalogPermission.reset();
+                        updateToolPermission.reset();
+                      }}
+                      className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-md opacity-70 hover:opacity-100"
+                    >
+                      <X size={12} />
+                    </button>
                   </div>
                 ) : null}
               </div>
@@ -459,9 +464,7 @@ const EffectControl = ({
           onClick={() => onChange(option.value)}
           className={`flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md transition-opacity disabled:cursor-not-allowed disabled:opacity-50 ${
             isActive
-              ? option.value === null
-                ? option.activeClass
-                : effectBadgeClass[option.value]
+              ? option.activeClass
               : "bg-bg-active text-text-muted opacity-60 hover:opacity-100"
           }`}
         >
