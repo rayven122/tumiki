@@ -210,6 +210,105 @@ describe("usersRouter", () => {
     });
   });
 
+  describe("getDetail", () => {
+    test("所属組織・所属グループ・同期元・最終利用日時を返す", async () => {
+      const lastUsedAt = new Date("2026-05-06T01:23:00.000Z");
+      const findUnique = vi.fn().mockResolvedValue({
+        id: "user-001",
+        name: "Member User",
+        email: "member@example.com",
+        role: Role.USER,
+        isActive: true,
+        lastLoginAt: null,
+        scimDepartment: "Platform",
+        scimManagerDisplayName: "Manager User",
+        createdAt: new Date("2026-05-06T00:00:00.000Z"),
+        externalIdentities: [
+          {
+            provider: "scim",
+            sub: "external-user-001",
+            lastSyncedAt: new Date("2026-05-06T00:00:00.000Z"),
+          },
+        ],
+        orgUnitMemberships: [
+          {
+            id: "membership-org-001",
+            isPrimary: true,
+            orgUnit: {
+              id: "org-001",
+              name: "Platform",
+              path: "/engineering/platform",
+              source: "SCIM",
+              parentId: "org-parent",
+            },
+          },
+        ],
+        groupMemberships: [
+          {
+            id: "membership-group-001",
+            source: "TUMIKI",
+            group: {
+              id: "group-001",
+              name: "AI推進",
+              description: "横断チーム",
+              source: "TUMIKI",
+              provider: null,
+              externalId: null,
+            },
+          },
+        ],
+      });
+      const findFirst = vi.fn().mockResolvedValue({ occurredAt: lastUsedAt });
+      const caller = buildCaller({
+        user: { findUnique },
+        desktopAuditLog: { findFirst },
+      } as unknown as Context["db"]);
+
+      const result = await caller.getDetail({ userId: "user-001" });
+
+      const [findUniqueArgs] = findUnique.mock.calls[0] as [
+        {
+          where: { id: string };
+          select: {
+            orgUnitMemberships: unknown;
+            groupMemberships: unknown;
+            externalIdentities: unknown;
+          };
+        },
+      ];
+      expect(findUniqueArgs.where).toStrictEqual({ id: "user-001" });
+      expect(findUniqueArgs.select.orgUnitMemberships).toBeDefined();
+      expect(findUniqueArgs.select.groupMemberships).toBeDefined();
+      expect(findUniqueArgs.select.externalIdentities).toBeDefined();
+      expect(findFirst).toHaveBeenCalledWith({
+        where: { userId: "user-001" },
+        orderBy: { occurredAt: "desc" },
+        select: { occurredAt: true },
+      });
+      expect(result).toMatchObject({
+        id: "user-001",
+        lastUsedAt,
+        externalIdentities: [{ provider: "scim" }],
+        orgUnitMemberships: [{ orgUnit: { id: "org-001", name: "Platform" } }],
+        groupMemberships: [{ group: { id: "group-001", name: "AI推進" } }],
+      });
+    });
+
+    test("存在しないユーザーはnullを返し最終利用集計を省略する", async () => {
+      const findUnique = vi.fn().mockResolvedValue(null);
+      const findFirst = vi.fn();
+      const caller = buildCaller({
+        user: { findUnique },
+        desktopAuditLog: { findFirst },
+      } as unknown as Context["db"]);
+
+      await expect(
+        caller.getDetail({ userId: "missing-user" }),
+      ).resolves.toBeNull();
+      expect(findFirst).not.toHaveBeenCalled();
+    });
+  });
+
   describe("updateActive", () => {
     test("ユーザーを無効化できる", async () => {
       const { db, tx, transactionMock } = buildDb({
