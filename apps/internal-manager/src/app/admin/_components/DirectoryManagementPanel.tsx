@@ -388,7 +388,7 @@ export const DirectoryManagementPanel = ({
                 {readonly ? (
                   <span className="bg-bg-active text-text-muted inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px]">
                     <Lock size={10} />
-                    readonly
+                    外部 IdP 由来のため編集不可
                   </span>
                 ) : (
                   <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] text-emerald-300">
@@ -419,7 +419,7 @@ export const DirectoryManagementPanel = ({
                 className="bg-btn-primary-bg text-btn-primary-text inline-flex min-h-[44px] items-center gap-2 rounded-lg px-3 text-xs font-medium"
               >
                 <Shield size={13} />
-                解決済み権限を見る
+                最終的な許可 / 拒否を見る
               </button>
             </div>
           </div>
@@ -440,7 +440,7 @@ export const DirectoryManagementPanel = ({
               },
               {
                 icon: Shield,
-                label: "割り当てロール",
+                label: "適用中のロール",
                 value: `${assignedRoles.length} 件`,
                 sub:
                   selectedKind === "org"
@@ -551,7 +551,7 @@ export const DirectoryManagementPanel = ({
                       </div>
                     </div>
                     <p className="text-text-muted text-[10px]">
-                      外部 IdP 由来の membership は readonly。Tumiki
+                      外部 IdP 由来の membership は編集不可。Tumiki
                       独自グループだけ手動編集できます。
                     </p>
                   </div>
@@ -562,7 +562,7 @@ export const DirectoryManagementPanel = ({
                 <div className="mb-3 flex items-center justify-between">
                   <h3 className="text-text-primary flex items-center gap-2 text-sm font-semibold">
                     <Shield size={14} />
-                    割り当てロール
+                    適用中のロール
                   </h3>
                   <button
                     type="button"
@@ -576,7 +576,7 @@ export const DirectoryManagementPanel = ({
                 </div>
                 {assignedRoles.length === 0 ? (
                   <div className="text-text-muted bg-bg-active rounded-lg px-3 py-4 text-center text-[11px]">
-                    割り当てられたロールはありません
+                    適用中のロールはありません
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -600,7 +600,7 @@ export const DirectoryManagementPanel = ({
                           <button
                             type="button"
                             disabled={readonly || assignment.inherited}
-                            aria-label={`${role.name} の割り当てを解除`}
+                            aria-label={`${role.name} の適用を解除`}
                             className="text-text-muted hover:text-text-primary flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-md disabled:cursor-not-allowed disabled:opacity-30"
                           >
                             <Trash2 size={12} />
@@ -660,10 +660,10 @@ export const DirectoryManagementPanel = ({
                   id="role-picker-title"
                   className="text-text-primary text-sm font-semibold"
                 >
-                  ロールを割り当てる
+                  ロールを適用
                 </h2>
                 <p className="text-text-muted mt-0.5 text-[11px]">
-                  {selectedItem.name} に追加するロールを選択
+                  {selectedItem.name} に適用するロールを選択
                 </p>
               </div>
               <button
@@ -705,7 +705,7 @@ export const DirectoryManagementPanel = ({
                         </span>
                         {isAssigned ? (
                           <span className="bg-bg-active text-text-muted rounded-full px-2 py-0.5 text-[9px]">
-                            割当済み
+                            適用済み
                           </span>
                         ) : null}
                       </span>
@@ -754,11 +754,11 @@ export const DirectoryManagementPanel = ({
                   className="text-text-primary flex items-center gap-2 text-sm font-semibold"
                 >
                   <Shield size={14} />
-                  解決済み権限
+                  最終的な許可 / 拒否
                 </h2>
                 <p className="text-text-muted mt-0.5 text-[11px]">
-                  {selectedItem.name}{" "}
-                  に割り当てられたロールから解決された最終的な権限
+                  {selectedItem.name} に適用中のロールから解決された最終的な許可
+                  / 拒否
                 </p>
               </div>
               <button
@@ -818,7 +818,7 @@ export const DirectoryManagementPanel = ({
 
             <div className="border-t-border-default bg-bg-app flex items-center justify-between gap-3 border-t px-5 py-3">
               <p className="text-text-muted text-[10px]">
-                変更するには上の「割り当てロール」セクションでロールを追加・削除するか、
+                変更するには上の「適用中のロール」セクションでロールを適用・解除するか、
                 <Link
                   href="/admin/roles"
                   className="text-text-link underline-offset-2 hover:underline"

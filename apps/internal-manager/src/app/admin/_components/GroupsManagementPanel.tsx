@@ -25,7 +25,7 @@ type GroupTab = "members" | "policies" | "sync";
 
 const GROUP_TABS = [
   { id: "members", label: "メンバー" },
-  { id: "policies", label: "割り当て権限" },
+  { id: "policies", label: "適用権限" },
   { id: "sync", label: "同期状態" },
 ] as const satisfies { id: GroupTab; label: string }[];
 
@@ -157,7 +157,7 @@ export const GroupsManagementPanel = ({
                 {selectedGroup.readonly ? (
                   <span className="bg-bg-active text-text-muted inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px]">
                     <Lock size={10} />
-                    readonly
+                    外部 IdP 由来のため編集不可
                   </span>
                 ) : (
                   <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] text-emerald-300">
@@ -333,7 +333,7 @@ export const GroupsManagementPanel = ({
                   {syncLabel[selectedGroup.syncState]}
                 </div>
                 <p className="text-text-muted mt-2 text-xs">
-                  外部 IdP 由来の membership は readonly。Tumiki
+                  外部 IdP 由来の membership は編集不可。Tumiki
                   独自グループだけ手動編集できます。
                 </p>
               </div>
