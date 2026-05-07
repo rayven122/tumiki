@@ -49,10 +49,10 @@ export const AssignmentsManagementPanel = () => {
           <div>
             <h1 className="text-text-primary flex items-center gap-2 text-lg font-semibold">
               <Link2 size={18} />
-              割り当て
+              ロール適用
             </h1>
             <p className="text-text-secondary mt-1 text-xs">
-              ディレクトリ × ロールの紐付けを一覧で管理します
+              ロールを組織・グループ・ユーザーに適用している一覧です
             </p>
           </div>
           <button
@@ -63,7 +63,7 @@ export const AssignmentsManagementPanel = () => {
             className="bg-btn-primary-bg text-btn-primary-text flex min-h-[44px] cursor-not-allowed items-center gap-1.5 rounded-lg px-3 text-xs font-medium opacity-60"
           >
             <Plus size={13} />
-            割り当てを追加
+            ロールを適用
           </button>
         </div>
       </header>
@@ -78,7 +78,7 @@ export const AssignmentsManagementPanel = () => {
               />
               <input
                 type="text"
-                aria-label="割り当て検索"
+                aria-label="ロール適用検索"
                 placeholder="ロール名・対象名・理由で検索"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
@@ -116,7 +116,7 @@ export const AssignmentsManagementPanel = () => {
         </div>
 
         <section
-          aria-label="割り当て一覧"
+          aria-label="ロール適用一覧"
           className="bg-bg-card border-border-default overflow-hidden rounded-xl border"
         >
           <div className="border-b-border-default text-text-subtle hidden grid-cols-[1fr_1fr_140px_160px] items-center gap-3 border-b px-5 py-3 text-[10px] sm:grid">
@@ -127,7 +127,7 @@ export const AssignmentsManagementPanel = () => {
           </div>
           {filteredAssignments.length === 0 ? (
             <div className="text-text-muted px-5 py-12 text-center text-xs">
-              条件に一致する割り当てはありません
+              条件に一致するロール適用はありません
             </div>
           ) : (
             filteredAssignments.map((assignment) => {

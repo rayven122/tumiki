@@ -67,7 +67,7 @@ const NAV_SECTIONS: NavSection[] = [
       },
       {
         path: "/admin/assignments",
-        label: "割り当て",
+        label: "ロール適用",
         icon: Link2,
         matchPrefix: true,
       },
