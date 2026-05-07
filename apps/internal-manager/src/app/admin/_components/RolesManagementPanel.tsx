@@ -118,7 +118,7 @@ export const RolesManagementPanel = ({
     const normalizedSearch = search.trim().toLowerCase();
     if (!normalizedSearch) return orgUnits;
     return orgUnits.filter((orgUnit) =>
-      [orgUnit.name, orgUnit.path, orgUnit.externalId, orgUnit.source]
+      [orgUnit.name, orgUnit.path, orgUnit.externalId ?? "", orgUnit.source]
         .join(" ")
         .toLowerCase()
         .includes(normalizedSearch),

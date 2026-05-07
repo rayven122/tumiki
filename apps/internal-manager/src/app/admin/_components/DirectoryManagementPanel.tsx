@@ -714,10 +714,10 @@ export const DirectoryManagementPanel = ({
 
             <div className="border-t-border-default bg-bg-app flex items-center justify-between gap-3 border-t px-4 py-3">
               <Link
-                href="/admin/roles/new"
+                href="/admin/roles"
                 className="text-text-link text-[11px] underline-offset-2 hover:underline"
               >
-                新しいロールを作成
+                部署別権限の設定へ
               </Link>
               <button
                 type="button"
