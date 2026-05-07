@@ -235,7 +235,7 @@ export const RolesManagementPanel = ({
                       {orgUnit.path}
                     </div>
                     <div className="text-text-subtle mt-1 text-[10px]">
-                      {orgUnit.source} / {orgUnit.externalId}
+                      {orgUnit.source} / {orgUnit.externalId ?? "-"}
                     </div>
                   </Link>
                 );
@@ -292,7 +292,7 @@ export const RolesManagementPanel = ({
                     </p>
                     <p className="text-text-subtle mt-1 text-[10px]">
                       source: {selectedOrgUnit.source} / externalId:{" "}
-                      {selectedOrgUnit.externalId}
+                      {selectedOrgUnit.externalId ?? "-"}
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
