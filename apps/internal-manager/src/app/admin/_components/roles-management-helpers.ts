@@ -15,11 +15,15 @@ export type PermissionCounts = {
   toolDeny: number;
 };
 
+const ROLE_PERMISSION_DATE_TIME_ZONE = "Asia/Tokyo";
+
 export const formatRolePermissionDate = (
   value: Date | string | null | undefined,
 ) =>
   value
-    ? new Date(value).toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" })
+    ? new Date(value).toLocaleDateString("ja-JP", {
+        timeZone: ROLE_PERMISSION_DATE_TIME_ZONE,
+      })
     : "-";
 
 export const getCatalogEffect = (catalog: MatrixCatalog): PermissionState =>

@@ -59,6 +59,7 @@ describe("roles-management-helpers", () => {
   });
 
   test("getToolEffect は部署のツール権限を返す", () => {
+    expect(getToolEffect(buildTool("issue-create", "ALLOW"))).toBe("ALLOW");
     expect(getToolEffect(buildTool("issue-create", "DENY"))).toBe("DENY");
     expect(getToolEffect(buildTool("pull-request", null))).toBeNull();
   });
