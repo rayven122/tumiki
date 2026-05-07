@@ -126,6 +126,7 @@ const buildOrgDepthById = (orgUnits: OrgUnit[]) => {
   return {
     rows,
     depthById: new Map(rows.map(({ org, depth }) => [org.id, depth])),
+    byParent,
   };
 };
 
@@ -174,15 +175,6 @@ export const DirectoryManagementPanel = ({
     }
     return counts;
   }, [orgUnits]);
-  const orgUnitsByParent = useMemo(() => {
-    const byParent = new Map<string, OrgUnit[]>();
-    for (const org of orgUnits) {
-      const parentKey = org.parentId ?? "__root__";
-      byParent.set(parentKey, [...(byParent.get(parentKey) ?? []), org]);
-    }
-    return byParent;
-  }, [orgUnits]);
-
   const invalidateDirectory = async () => {
     await Promise.all([
       utils.orgUnits.tree.invalidate(),
@@ -247,7 +239,7 @@ export const DirectoryManagementPanel = ({
     },
     onError: handleMutationError,
   });
-  const updateGroup = api.groups.updateTumikiGroup.useMutation({
+  const updateGroup = api.groups.updateTumikiGroupWithMapping.useMutation({
     onSuccess: async (group) => {
       setErrorMessage(null);
       setEntryForm(null);
@@ -279,14 +271,6 @@ export const DirectoryManagementPanel = ({
     },
     onError: handleMutationError,
   });
-  const updateGroupMapping = api.groups.updateIdpMapping.useMutation({
-    onSuccess: async () => {
-      setErrorMessage(null);
-      await invalidateDirectory();
-    },
-    onError: handleMutationError,
-  });
-
   const isMutating =
     createOrg.isPending ||
     updateOrg.isPending ||
@@ -297,8 +281,7 @@ export const DirectoryManagementPanel = ({
     updateGroup.isPending ||
     deleteGroup.isPending ||
     addGroupMember.isPending ||
-    removeGroupMember.isPending ||
-    updateGroupMapping.isPending;
+    removeGroupMember.isPending;
 
   useEffect(() => {
     if (selectedEntry) {
@@ -379,7 +362,7 @@ export const DirectoryManagementPanel = ({
 
     const rows: DirectoryEntry[] = [];
     const appendChildren = (parentId: string | null, depth: number) => {
-      const children = orgUnitsByParent.get(parentId ?? "__root__") ?? [];
+      const children = orgTree.byParent.get(parentId ?? "__root__") ?? [];
       for (const org of children) {
         rows.push({ kind: "org", item: org, depth });
         if (expandedOrgIds.has(org.id)) {
@@ -393,9 +376,9 @@ export const DirectoryManagementPanel = ({
     activeTab,
     expandedOrgIds,
     groups,
+    orgTree.byParent,
     orgTree.depthById,
     orgUnits,
-    orgUnitsByParent,
     search,
   ]);
 
@@ -503,14 +486,10 @@ export const DirectoryManagementPanel = ({
       return;
     }
 
-    const groupId = entryForm.id ?? "";
     updateGroup.mutate({
-      groupId,
+      groupId: entryForm.id ?? "",
       name: entryForm.name,
       description: entryForm.description,
-    });
-    updateGroupMapping.mutate({
-      groupId,
       externalId: entryForm.externalId || null,
     });
   };
@@ -594,7 +573,9 @@ export const DirectoryManagementPanel = ({
   };
 
   const parentOptions = orgTree.rows.filter(
-    ({ org }) => entryForm?.kind !== "org" || org.id !== entryForm.id,
+    ({ org }) =>
+      org.source === "MANUAL" &&
+      (entryForm?.kind !== "org" || org.id !== entryForm.id),
   );
 
   return (

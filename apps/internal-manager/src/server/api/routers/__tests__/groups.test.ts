@@ -36,6 +36,13 @@ const buildCaller = (db: Context["db"]) =>
     session: buildSession(),
   });
 
+const buildTransactionCaller = (tx: unknown) =>
+  buildCaller({
+    $transaction: vi.fn((callback: (tx: unknown) => Promise<unknown>) =>
+      callback(tx),
+    ),
+  } as unknown as Context["db"]);
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -265,6 +272,148 @@ describe("groupsRouter", () => {
         "NOT_FOUND",
       );
       expect(update).not.toHaveBeenCalled();
+    });
+
+    test("Tumiki独自グループの表示情報とIdP mappingを同時に更新できる", async () => {
+      const update = vi.fn().mockResolvedValue({
+        id: "group-001",
+        name: "更新後",
+        description: "説明更新",
+        source: GroupSource.TUMIKI,
+        provider: "scim-map",
+        externalId: "external-group-001",
+        lastSyncedAt: null,
+        createdAt: new Date("2026-05-06T00:00:00.000Z"),
+        updatedAt: new Date("2026-05-06T00:00:00.000Z"),
+        memberships: [],
+      });
+      const caller = buildTransactionCaller({
+        group: {
+          findUnique: vi.fn().mockResolvedValue({ source: GroupSource.TUMIKI }),
+          update,
+        },
+      });
+
+      await expect(
+        caller.updateTumikiGroupWithMapping({
+          groupId: "group-001",
+          name: " 更新後 ",
+          description: " 説明更新 ",
+          externalId: " external-group-001 ",
+        }),
+      ).resolves.toStrictEqual(
+        expect.objectContaining({
+          id: "group-001",
+          name: "更新後",
+          provider: "scim-map",
+          externalId: "external-group-001",
+        }),
+      );
+      expect(update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "group-001" },
+          data: {
+            name: "更新後",
+            description: "説明更新",
+            provider: "scim-map",
+            externalId: "external-group-001",
+          },
+        }),
+      );
+    });
+
+    test("Tumiki独自グループの同時更新でIdP mappingを解除できる", async () => {
+      const update = vi.fn().mockResolvedValue({
+        id: "group-001",
+        name: "更新後",
+        description: null,
+        source: GroupSource.TUMIKI,
+        provider: null,
+        externalId: null,
+        lastSyncedAt: null,
+        createdAt: new Date("2026-05-06T00:00:00.000Z"),
+        updatedAt: new Date("2026-05-06T00:00:00.000Z"),
+        memberships: [],
+      });
+      const caller = buildTransactionCaller({
+        group: {
+          findUnique: vi.fn().mockResolvedValue({ source: GroupSource.TUMIKI }),
+          update,
+        },
+      });
+
+      await expect(
+        caller.updateTumikiGroupWithMapping({
+          groupId: "group-001",
+          name: "更新後",
+          description: "",
+          externalId: "",
+        }),
+      ).resolves.toStrictEqual(
+        expect.objectContaining({
+          id: "group-001",
+          provider: null,
+          externalId: null,
+        }),
+      );
+      expect(update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: {
+            name: "更新後",
+            description: null,
+            provider: null,
+            externalId: null,
+          },
+        }),
+      );
+    });
+
+    test("同時更新はIdPグループを変更できない", async () => {
+      const update = vi.fn();
+      const caller = buildTransactionCaller({
+        group: {
+          findUnique: vi.fn().mockResolvedValue({ source: GroupSource.IDP }),
+          update,
+        },
+      });
+
+      await expectTrpcErrorCode(
+        caller.updateTumikiGroupWithMapping({
+          groupId: "group-idp",
+          name: "更新後",
+          description: null,
+          externalId: "external-group-001",
+        }),
+        "BAD_REQUEST",
+      );
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    test("同時更新のIdP mapping重複はCONFLICTを返す", async () => {
+      const caller = buildTransactionCaller({
+        group: {
+          findUnique: vi.fn().mockResolvedValue({ source: GroupSource.TUMIKI }),
+          update: vi.fn().mockRejectedValue(
+            new Prisma.PrismaClientKnownRequestError(
+              "Unique constraint failed",
+              {
+                code: "P2002",
+                clientVersion: "test",
+              },
+            ),
+          ),
+        },
+      });
+
+      await expectTrpcErrorCode(
+        caller.updateTumikiGroupWithMapping({
+          groupId: "group-001",
+          name: "更新後",
+          description: null,
+          externalId: "external-group-001",
+        }),
+        "CONFLICT",
+      );
     });
 
     test("Tumiki独自グループを削除できる", async () => {

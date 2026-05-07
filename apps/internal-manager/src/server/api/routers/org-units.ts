@@ -57,9 +57,11 @@ const membershipSelect = {
   },
 } as const;
 
-function assertManualOrgUnit(
-  orgUnit: { source: OrgUnitSource } | null,
-): asserts orgUnit is { source: OrgUnitSource } {
+type AssertManualOrgUnit = <T extends { source: OrgUnitSource }>(
+  orgUnit: T | null,
+) => asserts orgUnit is T & { source: typeof OrgUnitSource.MANUAL };
+
+const assertManualOrgUnit: AssertManualOrgUnit = (orgUnit) => {
   if (!orgUnit) {
     throw new TRPCError({
       code: "NOT_FOUND",
@@ -72,7 +74,7 @@ function assertManualOrgUnit(
       message: "SCIM/IdP由来の部署は管理画面から変更できません",
     });
   }
-}
+};
 
 export const orgUnitsRouter = createTRPCRouter({
   tree: adminProcedure.query(async ({ ctx }) => {
@@ -208,7 +210,7 @@ export const orgUnitsRouter = createTRPCRouter({
       z.object({
         orgUnitId: z.string().min(1),
         name: orgUnitNameSchema,
-        parentId: z.string().min(1).nullable().optional(),
+        parentId: z.string().min(1).nullable(),
       }),
     )
     .mutation(async ({ ctx, input }) => {

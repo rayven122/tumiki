@@ -236,10 +236,12 @@ describe("orgUnitsRouter", () => {
 
     await expect(
       caller.createManualOrgUnit({ name: " AI推進室 ", parentId: "parent" }),
-    ).resolves.toMatchObject({
-      id: "manual-org",
-      source: OrgUnitSource.MANUAL,
-    });
+    ).resolves.toStrictEqual(
+      expect.objectContaining({
+        id: "manual-org",
+        source: OrgUnitSource.MANUAL,
+      }),
+    );
     expect(create).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(create.mock.calls)).toContain('"name":"AI推進室"');
     expect(JSON.stringify(create.mock.calls)).toContain('"source":"MANUAL"');
@@ -295,7 +297,9 @@ describe("orgUnitsRouter", () => {
         name: "更新後",
         parentId: "parent",
       }),
-    ).resolves.toMatchObject({ id: "child", name: "更新後" });
+    ).resolves.toStrictEqual(
+      expect.objectContaining({ id: "child", name: "更新後" }),
+    );
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "child" },
@@ -403,13 +407,64 @@ describe("orgUnitsRouter", () => {
 
     await expect(
       caller.addMember({ orgUnitId: "manual-org", userId: "user-001" }),
-    ).resolves.toMatchObject({ id: "membership-001" });
+    ).resolves.toStrictEqual(expect.objectContaining({ id: "membership-001" }));
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: {
           orgUnitId: "manual-org",
           userId: "user-001",
           isPrimary: false,
+        },
+      }),
+    );
+  });
+
+  test("addMemberはprimary指定時に既存primaryを解除して追加する", async () => {
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const create = vi.fn().mockResolvedValue({
+      id: "membership-001",
+      isPrimary: true,
+      user: { id: "user-001", name: "User", email: "user@example.com" },
+    });
+    const tx = {
+      orgUnit: {
+        findUnique: vi.fn().mockResolvedValue({ source: OrgUnitSource.MANUAL }),
+      },
+      user: {
+        findUnique: vi
+          .fn()
+          .mockResolvedValue({ id: "user-001", isActive: true }),
+      },
+      userOrgUnitMembership: {
+        create,
+        updateMany,
+      },
+    };
+    const caller = buildTransactionCaller(tx);
+
+    await expect(
+      caller.addMember({
+        orgUnitId: "manual-org",
+        userId: "user-001",
+        isPrimary: true,
+      }),
+    ).resolves.toStrictEqual(
+      expect.objectContaining({ id: "membership-001", isPrimary: true }),
+    );
+    expect(updateMany).toHaveBeenCalledWith({
+      where: {
+        userId: "user-001",
+        isPrimary: true,
+        orgUnitId: { not: "manual-org" },
+      },
+      data: { isPrimary: false },
+    });
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          orgUnitId: "manual-org",
+          userId: "user-001",
+          isPrimary: true,
         },
       }),
     );
@@ -484,6 +539,45 @@ describe("orgUnitsRouter", () => {
     await expectTrpcErrorCode(
       caller.removeMember({ membershipId: "membership-001" }),
       "BAD_REQUEST",
+    );
+    expect(del).not.toHaveBeenCalled();
+  });
+
+  test("removeMemberは手動部署のmembershipを削除できる", async () => {
+    const del = vi.fn().mockResolvedValue({ id: "membership-001" });
+    const tx = {
+      userOrgUnitMembership: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: "membership-001",
+          orgUnit: { source: OrgUnitSource.MANUAL },
+        }),
+        delete: del,
+      },
+    };
+    const caller = buildTransactionCaller(tx);
+
+    await expect(
+      caller.removeMember({ membershipId: "membership-001" }),
+    ).resolves.toStrictEqual({ id: "membership-001" });
+    expect(del).toHaveBeenCalledWith({
+      where: { id: "membership-001" },
+      select: { id: true },
+    });
+  });
+
+  test("removeMemberは存在しないmembershipをNOT_FOUNDにする", async () => {
+    const del = vi.fn();
+    const tx = {
+      userOrgUnitMembership: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        delete: del,
+      },
+    };
+    const caller = buildTransactionCaller(tx);
+
+    await expectTrpcErrorCode(
+      caller.removeMember({ membershipId: "missing-membership" }),
+      "NOT_FOUND",
     );
     expect(del).not.toHaveBeenCalled();
   });

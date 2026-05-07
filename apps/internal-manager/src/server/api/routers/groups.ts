@@ -150,6 +150,53 @@ export const groupsRouter = createTRPCRouter({
       });
     }),
 
+  /** Tumiki独自グループの表示情報とIdP mappingを同一transactionで更新する */
+  updateTumikiGroupWithMapping: adminProcedure
+    .input(
+      z.object({
+        groupId: z.string().min(1),
+        name: groupNameSchema,
+        description: groupDescriptionSchema,
+        // 管理UIの手動mappingはSCIM/JIT共通のTumiki group mappingとして扱う。
+        provider: z.literal("scim-map").default("scim-map"),
+        externalId: idpExternalIdSchema,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.$transaction(async (tx) => {
+        const group = await tx.group.findUnique({
+          where: { id: input.groupId },
+          select: { source: true },
+        });
+        assertTumikiGroup(group);
+
+        try {
+          return await tx.group.update({
+            where: { id: input.groupId },
+            data: {
+              name: input.name,
+              description: input.description ?? null,
+              provider: input.externalId ? input.provider : null,
+              externalId: input.externalId,
+            },
+            select: groupListSelect,
+          });
+        } catch (error) {
+          if (
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error.code === "P2002"
+          ) {
+            throw new TRPCError({
+              code: "CONFLICT",
+              message:
+                "そのIdPグループ識別子は既に別のグループに使用されています",
+            });
+          }
+          throw error;
+        }
+      });
+    }),
+
   /** Tumiki独自グループを削除する */
   deleteTumikiGroup: adminProcedure
     .input(z.object({ groupId: z.string().min(1) }))
