@@ -1,0 +1,59 @@
+# 検証用 standalone compose（旧 systemd と並行稼働して動作確認するため）
+#
+# 旧 systemd は host:3000 (manager) / host:8080 (mcp-proxy) で稼働中のため、
+# 検証用は別ポート (host:3001 / host:8082) で起動する。Cloudflare Tunnel ingress
+# は触らないため外部疎通は発生しない。本番 DB / 本番 .env を共有するので、
+# entrypoint で `prisma migrate deploy` が走り未適用 migration が適用される。
+#
+# 使用方法:
+#   docker compose -f compose.production.verify.yaml up -d
+#   curl localhost:3001/api/health
+#   curl localhost:8082/health
+#   docker compose -f compose.production.verify.yaml down
+services:
+  manager:
+    image: ghcr.io/rayven122/tumiki-manager:latest
+    container_name: tumiki-manager-verify
+    restart: "no"
+    ports:
+      - "3001:8080"
+    env_file: .env
+    environment:
+      AUTH_URL: ${NEXTAUTH_URL}
+      NEXTAUTH_URL: ${NEXTAUTH_URL}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/api/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      start_period: 90s
+      retries: 5
+
+  mcp-proxy:
+    image: ghcr.io/rayven122/tumiki-mcp-proxy:latest
+    container_name: tumiki-mcp-proxy-verify
+    restart: "no"
+    ports:
+      - "8082:8080"
+    env_file: .env
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
