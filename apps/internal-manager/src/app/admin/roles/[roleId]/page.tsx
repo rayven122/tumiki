@@ -1,6 +1,4 @@
-import { notFound } from "next/navigation";
-import { RoleEditorPanel } from "../../_components/RoleEditorPanel";
-import { getRoleById } from "../../_components/idp-ui-mock-data";
+import { RolesManagementPanel } from "../../_components/RolesManagementPanel";
 
 const AdminRoleDetailPage = async ({
   params,
@@ -8,10 +6,8 @@ const AdminRoleDetailPage = async ({
   params: Promise<{ roleId: string }>;
 }) => {
   const { roleId } = await params;
-  const role = getRoleById(roleId);
-  if (!role) notFound();
 
-  return <RoleEditorPanel mode="edit" role={role} />;
+  return <RolesManagementPanel initialOrgUnitId={roleId} />;
 };
 
 export default AdminRoleDetailPage;
