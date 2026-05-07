@@ -1,40 +1,43 @@
 import type { JSX } from "react";
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  Search,
-  ArrowRight,
-  Server,
-  Plus,
-  Copy,
-  Check,
-  Trash2,
-  ChevronDown,
-} from "lucide-react";
+import { Search, ArrowRight, Server, Plus, Trash2 } from "lucide-react";
 import { ToggleSwitch } from "../_components/ToggleSwitch";
 import { ConfirmDialog } from "../_components/ConfirmDialog";
 import { useMcpServers } from "../hooks/useMcpServers";
 import type { McpServerWithRuntime } from "../hooks/useMcpServers";
-import { useMcpProxyLaunchCommand } from "../hooks/useMcpProxyLaunchCommand";
 import { cardStyle } from "../utils/theme-styles";
-import type { McpProxyLaunchCommand } from "../../main/types";
-import { AI_CLIENT_SNIPPETS, buildMcpSnippet } from "../utils/mcp-snippet";
 
 /** MCPサーバーステータス表示（CLIモードがDB上のserverStatusを更新する） */
 const STATUS_CONFIG: Record<
   McpServerWithRuntime["serverStatus"],
-  { dotClass: string; label: string }
+  { dotClass: string; badgeClass: string; label: string }
 > = {
-  RUNNING: { dotClass: "bg-emerald-400", label: "稼働中" },
-  STOPPED: { dotClass: "bg-gray-400", label: "停止中" },
-  ERROR: { dotClass: "bg-red-400", label: "エラー" },
-  PENDING: { dotClass: "bg-amber-400", label: "接続中" },
+  RUNNING: {
+    dotClass: "bg-emerald-400",
+    badgeClass: "bg-emerald-400/10 text-emerald-300",
+    label: "稼働中",
+  },
+  STOPPED: {
+    dotClass: "bg-gray-400",
+    badgeClass: "bg-gray-400/10 text-gray-400",
+    label: "停止中",
+  },
+  ERROR: {
+    dotClass: "bg-red-400",
+    badgeClass: "bg-red-400/10 text-red-300",
+    label: "エラー",
+  },
+  PENDING: {
+    dotClass: "bg-amber-400",
+    badgeClass: "bg-amber-400/10 text-amber-300",
+    label: "接続中",
+  },
 };
 
 export const MyTools = (): JSX.Element => {
   const [query, setQuery] = useState("");
   const { servers, loading, toggleServer, deleteServer } = useMcpServers();
-  const launchCommand = useMcpProxyLaunchCommand();
 
   const lowerQuery = query.toLowerCase();
   const filteredServers = servers.filter(
@@ -111,7 +114,6 @@ export const MyTools = (): JSX.Element => {
               <ServerCard
                 key={server.id}
                 server={server}
-                launchCommand={launchCommand}
                 onToggle={(isEnabled) =>
                   void toggleServer(server.id, isEnabled)
                 }
@@ -137,53 +139,18 @@ export const MyTools = (): JSX.Element => {
   );
 };
 
-/** コピーボタン */
-const CopyButton = ({ text }: { text: string }): JSX.Element => {
-  const [copied, setCopied] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(
-    () => () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    },
-    [],
-  );
-
-  const handleCopy = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    void navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      timerRef.current = setTimeout(() => setCopied(false), 1500);
-    });
-  };
-  return (
-    <button
-      type="button"
-      onClick={handleCopy}
-      className="shrink-0 rounded p-0.5 text-[var(--text-subtle)] transition hover:text-[var(--text-muted)]"
-      title="コピー"
-    >
-      {copied ? <Check size={10} /> : <Copy size={10} />}
-    </button>
-  );
-};
-
 /** サーバーカードコンポーネント */
 const ServerCard = ({
   server,
-  launchCommand,
   onToggle,
   onDelete,
 }: {
   server: McpServerWithRuntime;
-  launchCommand: McpProxyLaunchCommand | null;
   onToggle: (isEnabled: boolean) => void;
   onDelete: () => void;
 }): JSX.Element => {
   const status = STATUS_CONFIG[server.serverStatus];
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showCommands, setShowCommands] = useState(false);
 
   return (
     <div
@@ -197,8 +164,8 @@ const ServerCard = ({
         to={`/tools/${String(server.id)}`}
         className="flex flex-col p-4 transition-all hover:-translate-y-0.5"
       >
-        {/* アイコン + ステータスドット */}
-        <div className="mb-3 flex items-start justify-between">
+        {/* アイコン + ステータスバッジ */}
+        <div className="mb-3 flex items-start justify-between gap-2">
           {server.connections[0]?.catalog?.iconPath ? (
             <img
               src={server.connections[0].catalog.iconPath}
@@ -211,8 +178,11 @@ const ServerCard = ({
             </div>
           )}
           <span
-            className={`h-2 w-2 rounded-full ${server.isEnabled ? "bg-emerald-400" : "bg-gray-400"}`}
-          />
+            className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-medium ${status.badgeClass}`}
+          >
+            <span className={`h-1.5 w-1.5 rounded-full ${status.dotClass}`} />
+            {status.label}
+          </span>
         </div>
 
         {/* サーバー名 */}
@@ -225,88 +195,32 @@ const ServerCard = ({
           {server.description || server.slug}
         </div>
 
-        {/* ツール数 + ステータス */}
-        <div className="flex items-center justify-between">
+        {/* ツール数 */}
+        <div className="flex items-center">
           <span className="font-mono text-[9px] text-[var(--text-subtle)]">
             {`${String(server.toolCount)} tools`}
-          </span>
-          <span className="rounded bg-[var(--bg-card-hover)] px-1.5 py-0.5 text-[8px] font-medium text-[var(--text-muted)]">
-            {status.label}
           </span>
         </div>
       </Link>
 
-      {/* フッター: トグル + 接続コマンド */}
-      <div className="border-t border-t-[var(--border-subtle)] px-4 py-3">
-        {/* トグルスイッチ + 削除 */}
-        <div className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setShowCommands((prev) => !prev);
-            }}
-            className="flex items-center gap-1 text-[10px] text-[var(--text-muted)] transition hover:text-[var(--text-primary)]"
-            aria-expanded={showCommands}
-          >
-            <ChevronDown
-              size={12}
-              className={`transition-transform ${showCommands ? "rotate-180" : ""}`}
-            />
-            接続コマンド
-          </button>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setShowDeleteConfirm(true);
-              }}
-              className="rounded p-1 text-[var(--text-subtle)] transition hover:text-red-400"
-              title="削除"
-            >
-              <Trash2 size={12} />
-            </button>
-            <span className="text-[10px] text-[var(--text-subtle)]">
-              {server.isEnabled ? "有効" : "無効"}
-            </span>
-            <ToggleSwitch checked={server.isEnabled} onChange={onToggle} />
-          </div>
-        </div>
-
-        {/* 接続コマンド一覧（折りたたみ） */}
-        {showCommands && (
-          <div className="mt-2 space-y-1.5">
-            {launchCommand === null ? (
-              <p className="text-[9px] text-[var(--text-subtle)]">
-                起動コマンドを取得中...
-              </p>
-            ) : (
-              AI_CLIENT_SNIPPETS.map((ai) => {
-                const snippet = buildMcpSnippet(
-                  launchCommand,
-                  server.slug,
-                  ai.format,
-                );
-                return (
-                  <div key={ai.name} className="text-[9px]">
-                    <span className="mb-0.5 block text-[var(--text-subtle)]">
-                      {ai.name}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <code className="flex-1 rounded bg-[var(--bg-input)] px-1.5 py-1 font-mono break-all text-[var(--text-secondary)]">
-                        {snippet}
-                      </code>
-                      <CopyButton text={snippet} />
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        )}
+      {/* フッター: 削除 + 有効/無効トグル */}
+      <div className="flex items-center justify-end gap-2 border-t border-t-[var(--border-subtle)] px-4 py-3">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setShowDeleteConfirm(true);
+          }}
+          className="rounded p-1 text-[var(--text-subtle)] transition hover:text-red-400"
+          title="削除"
+        >
+          <Trash2 size={12} />
+        </button>
+        <span className="text-[10px] text-[var(--text-subtle)]">
+          {server.isEnabled ? "有効" : "無効"}
+        </span>
+        <ToggleSwitch checked={server.isEnabled} onChange={onToggle} />
       </div>
 
       {/* 削除確認モーダル */}
