@@ -98,6 +98,7 @@ export const RolesManagementPanel = ({
   const { reset: resetToolPermission } = updateToolPermission;
 
   useEffect(() => {
+    setSearch("");
     resetCatalogPermission();
     resetToolPermission();
   }, [resetCatalogPermission, resetToolPermission, selectedOrgUnitId]);
@@ -130,6 +131,7 @@ export const RolesManagementPanel = ({
     effect: PermissionState,
   ) => {
     if (!selectedOrgUnitId || isMutating) return;
+    if (getCatalogEffect(catalog) === effect) return;
     updateToolPermission.reset();
     updateCatalogPermission.mutate({
       orgUnitId: selectedOrgUnitId,
@@ -144,6 +146,7 @@ export const RolesManagementPanel = ({
     effect: PermissionState,
   ) => {
     if (!selectedOrgUnitId || isMutating) return;
+    if (getToolEffect(tool) === effect) return;
     updateCatalogPermission.reset();
     updateToolPermission.mutate({
       orgUnitId: selectedOrgUnitId,
