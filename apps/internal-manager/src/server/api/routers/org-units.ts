@@ -280,7 +280,7 @@ export const orgUnitsRouter = createTRPCRouter({
           where: { id: current.id },
           data: {
             name: input.name,
-            parentId: input.parentId ?? null,
+            parentId: input.parentId,
             path: newPath,
           },
           select: orgUnitSelect,
@@ -301,7 +301,7 @@ export const orgUnitsRouter = createTRPCRouter({
           select: {
             id: true,
             source: true,
-            _count: { select: { children: true } },
+            _count: { select: { children: true, memberships: true } },
           },
         });
         assertManualOrgUnit(orgUnit);
@@ -309,6 +309,13 @@ export const orgUnitsRouter = createTRPCRouter({
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: "子部署がある部署は削除できません",
+          });
+        }
+        if (orgUnit._count.memberships > 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "メンバーがいる部署は削除できません。先にメンバーを削除してください",
           });
         }
 

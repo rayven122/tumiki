@@ -322,38 +322,40 @@ export const groupsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const group = await ctx.db.group.findUnique({
-        where: { id: input.groupId },
-        select: { source: true },
-      });
-      assertTumikiGroup(group);
-
-      try {
-        return await ctx.db.group.update({
+      return ctx.db.$transaction(async (tx) => {
+        const group = await tx.group.findUnique({
           where: { id: input.groupId },
-          data: {
-            provider: input.externalId ? input.provider : null,
-            externalId: input.externalId,
-          },
-          select: {
-            id: true,
-            provider: true,
-            externalId: true,
-            updatedAt: true,
-          },
+          select: { source: true },
         });
-      } catch (error) {
-        if (
-          error instanceof Prisma.PrismaClientKnownRequestError &&
-          error.code === "P2002"
-        ) {
-          throw new TRPCError({
-            code: "CONFLICT",
-            message:
-              "そのIdPグループ識別子は既に別のグループに使用されています",
+        assertTumikiGroup(group);
+
+        try {
+          return await tx.group.update({
+            where: { id: input.groupId },
+            data: {
+              provider: input.externalId ? input.provider : null,
+              externalId: input.externalId,
+            },
+            select: {
+              id: true,
+              provider: true,
+              externalId: true,
+              updatedAt: true,
+            },
           });
+        } catch (error) {
+          if (
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error.code === "P2002"
+          ) {
+            throw new TRPCError({
+              code: "CONFLICT",
+              message:
+                "そのIdPグループ識別子は既に別のグループに使用されています",
+            });
+          }
+          throw error;
         }
-        throw error;
-      }
+      });
     }),
 });

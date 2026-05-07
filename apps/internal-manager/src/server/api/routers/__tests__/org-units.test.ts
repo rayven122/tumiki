@@ -431,6 +431,35 @@ describe("orgUnitsRouter", () => {
     );
   });
 
+  test("updateManualOrgUnitは存在しない親をNOT_FOUNDにする", async () => {
+    const update = vi.fn();
+    const tx = {
+      orgUnit: {
+        findUnique: vi
+          .fn()
+          .mockResolvedValueOnce({
+            id: "child",
+            externalId: "manual:child",
+            path: "/child",
+            source: OrgUnitSource.MANUAL,
+          })
+          .mockResolvedValueOnce(null),
+        update,
+      },
+    };
+    const caller = buildTransactionCaller(tx);
+
+    await expectTrpcErrorCode(
+      caller.updateManualOrgUnit({
+        orgUnitId: "child",
+        name: "更新後",
+        parentId: "missing-parent",
+      }),
+      "NOT_FOUND",
+    );
+    expect(update).not.toHaveBeenCalled();
+  });
+
   test("updateManualOrgUnitはSCIM部署を変更できない", async () => {
     const update = vi.fn();
     const tx = {
@@ -497,7 +526,7 @@ describe("orgUnitsRouter", () => {
         findUnique: vi.fn().mockResolvedValue({
           id: "parent",
           source: OrgUnitSource.MANUAL,
-          _count: { children: 1 },
+          _count: { children: 1, memberships: 0 },
         }),
         delete: del,
       },
@@ -535,7 +564,7 @@ describe("orgUnitsRouter", () => {
         findUnique: vi.fn().mockResolvedValue({
           id: "scim-org",
           source: OrgUnitSource.SCIM,
-          _count: { children: 0 },
+          _count: { children: 0, memberships: 0 },
         }),
         delete: del,
       },
@@ -556,7 +585,7 @@ describe("orgUnitsRouter", () => {
         findUnique: vi.fn().mockResolvedValue({
           id: "manual-org",
           source: OrgUnitSource.MANUAL,
-          _count: { children: 0 },
+          _count: { children: 0, memberships: 0 },
         }),
         delete: del,
       },
@@ -570,6 +599,27 @@ describe("orgUnitsRouter", () => {
       where: { id: "manual-org" },
       select: { id: true },
     });
+  });
+
+  test("deleteManualOrgUnitはメンバーがいる部署を削除できない", async () => {
+    const del = vi.fn();
+    const tx = {
+      orgUnit: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: "manual-org",
+          source: OrgUnitSource.MANUAL,
+          _count: { children: 0, memberships: 1 },
+        }),
+        delete: del,
+      },
+    };
+    const caller = buildTransactionCaller(tx);
+
+    await expectTrpcErrorCode(
+      caller.deleteManualOrgUnit({ orgUnitId: "manual-org" }),
+      "BAD_REQUEST",
+    );
+    expect(del).not.toHaveBeenCalled();
   });
 
   test("addMemberは手動部署に有効ユーザーを追加できる", async () => {
@@ -606,6 +656,31 @@ describe("orgUnitsRouter", () => {
         },
       }),
     );
+  });
+
+  test("addMemberは存在しない部署をNOT_FOUNDにする", async () => {
+    const create = vi.fn();
+    const tx = {
+      orgUnit: {
+        findUnique: vi.fn().mockResolvedValue(null),
+      },
+      user: {
+        findUnique: vi
+          .fn()
+          .mockResolvedValue({ id: "user-001", isActive: true }),
+      },
+      userOrgUnitMembership: {
+        create,
+        updateMany: vi.fn(),
+      },
+    };
+    const caller = buildTransactionCaller(tx);
+
+    await expectTrpcErrorCode(
+      caller.addMember({ orgUnitId: "missing-org", userId: "user-001" }),
+      "NOT_FOUND",
+    );
+    expect(create).not.toHaveBeenCalled();
   });
 
   test("addMemberはprimary指定時に既存primaryを解除して追加する", async () => {

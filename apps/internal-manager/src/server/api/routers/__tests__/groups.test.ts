@@ -712,9 +712,9 @@ describe("groupsRouter", () => {
         externalId: "external-group-001",
         updatedAt: new Date("2026-05-05T00:00:00.000Z"),
       });
-      const caller = buildCaller({
+      const caller = buildTransactionCaller({
         group: { findUnique, update },
-      } as unknown as Context["db"]);
+      });
 
       await expect(
         caller.updateIdpMapping({
@@ -752,9 +752,9 @@ describe("groupsRouter", () => {
         externalId: null,
         updatedAt: new Date("2026-05-05T00:00:00.000Z"),
       });
-      const caller = buildCaller({
+      const caller = buildTransactionCaller({
         group: { findUnique, update },
-      } as unknown as Context["db"]);
+      });
 
       await expect(
         caller.updateIdpMapping({
@@ -784,12 +784,12 @@ describe("groupsRouter", () => {
 
     test("SCIMグループにはIdP mappingを設定できない", async () => {
       const update = vi.fn();
-      const caller = buildCaller({
+      const caller = buildTransactionCaller({
         group: {
           findUnique: vi.fn().mockResolvedValue({ source: GroupSource.IDP }),
           update,
         },
-      } as unknown as Context["db"]);
+      });
 
       await expectTrpcErrorCode(
         caller.updateIdpMapping({
@@ -802,12 +802,12 @@ describe("groupsRouter", () => {
     });
 
     test("存在しないグループはNOT_FOUNDを返す", async () => {
-      const caller = buildCaller({
+      const caller = buildTransactionCaller({
         group: {
           findUnique: vi.fn().mockResolvedValue(null),
           update: vi.fn(),
         },
-      } as unknown as Context["db"]);
+      });
 
       await expectTrpcErrorCode(
         caller.updateIdpMapping({
@@ -819,7 +819,7 @@ describe("groupsRouter", () => {
     });
 
     test("IdP mappingの重複はCONFLICTを返す", async () => {
-      const caller = buildCaller({
+      const caller = buildTransactionCaller({
         group: {
           findUnique: vi.fn().mockResolvedValue({ source: GroupSource.TUMIKI }),
           update: vi.fn().mockRejectedValue(
@@ -832,7 +832,7 @@ describe("groupsRouter", () => {
             ),
           ),
         },
-      } as unknown as Context["db"]);
+      });
 
       await expectTrpcErrorCode(
         caller.updateIdpMapping({

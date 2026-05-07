@@ -229,6 +229,7 @@ export const DirectoryManagementPanel = ({
     onSuccess: async () => {
       setErrorMessage(null);
       setSelectedEntry(null);
+      setDeleteConfirm(null);
       await invalidateDirectory();
     },
     onError: handleMutationError,
@@ -272,6 +273,7 @@ export const DirectoryManagementPanel = ({
     onSuccess: async () => {
       setErrorMessage(null);
       setSelectedEntry(null);
+      setDeleteConfirm(null);
       await invalidateDirectory();
     },
     onError: handleMutationError,
@@ -530,12 +532,10 @@ export const DirectoryManagementPanel = ({
     if (!deleteConfirm || isMutating) return;
     if (deleteConfirm.kind === "org") {
       deleteOrg.mutate({ orgUnitId: deleteConfirm.id });
-      setDeleteConfirm(null);
       return;
     }
     if (deleteConfirm.kind === "group") {
       deleteGroup.mutate({ groupId: deleteConfirm.id });
-      setDeleteConfirm(null);
     }
   };
 
