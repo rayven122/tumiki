@@ -85,6 +85,7 @@ export const createSecret = async (db: DbClient, credentials: string) => {
 };
 
 // 参照カウント0なら secret 削除。参照中は onDelete: Restrict が DB レベルでガードする。
+// count→delete 間に新しい参照が入ると P2003 で失敗するため $transaction 内から呼ぶこと。
 export const deleteSecretIfOrphaned = async (
   db: DbClient,
   secretId: number,
