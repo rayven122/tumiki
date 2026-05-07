@@ -29,16 +29,24 @@ export const countEffects = (catalogs: MatrixCatalog[]): PermissionCounts =>
   catalogs.reduce(
     (counts, catalog) => {
       const catalogEffect = getCatalogEffect(catalog);
-      if (catalogEffect === "ALLOW") counts.catalogAllow += 1;
-      if (catalogEffect === "DENY") counts.catalogDeny += 1;
+      const toolCounts = catalog.tools.reduce(
+        (current, tool) => {
+          const toolEffect = getToolEffect(tool);
 
-      for (const tool of catalog.tools) {
-        const toolEffect = getToolEffect(tool);
-        if (toolEffect === "ALLOW") counts.toolAllow += 1;
-        if (toolEffect === "DENY") counts.toolDeny += 1;
-      }
+          return {
+            toolAllow: current.toolAllow + (toolEffect === "ALLOW" ? 1 : 0),
+            toolDeny: current.toolDeny + (toolEffect === "DENY" ? 1 : 0),
+          };
+        },
+        { toolAllow: 0, toolDeny: 0 },
+      );
 
-      return counts;
+      return {
+        catalogAllow: counts.catalogAllow + (catalogEffect === "ALLOW" ? 1 : 0),
+        catalogDeny: counts.catalogDeny + (catalogEffect === "DENY" ? 1 : 0),
+        toolAllow: counts.toolAllow + toolCounts.toolAllow,
+        toolDeny: counts.toolDeny + toolCounts.toolDeny,
+      };
     },
     { catalogAllow: 0, catalogDeny: 0, toolAllow: 0, toolDeny: 0 },
   );

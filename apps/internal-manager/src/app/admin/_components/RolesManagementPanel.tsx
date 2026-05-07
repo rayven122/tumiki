@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -312,6 +312,12 @@ export const RolesManagementPanel = ({
                       </span>
                     </div>
                   </div>
+                  {isMutating ? (
+                    <div className="text-text-muted flex items-center gap-1.5 text-xs">
+                      <Loader2 size={12} className="animate-spin" />
+                      保存中...
+                    </div>
+                  ) : null}
                 </div>
                 {mutationError ? (
                   <div className="mt-4 flex items-center justify-between gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
@@ -428,41 +434,40 @@ export const RolesManagementPanel = ({
   );
 };
 
-const EffectControl = ({
-  label,
-  value,
-  disabled,
-  onChange,
-}: EffectControlProps) => (
-  <div
-    className="flex gap-1"
-    role="group"
-    aria-label={label}
-    aria-disabled={disabled}
-  >
-    {effectOptions.map((option) => {
-      const Icon = option.icon;
-      const isActive = value === option.value;
-      const title =
-        option.value === null ? "未設定" : `${effectLabel[option.value]}に設定`;
-      return (
-        <button
-          key={option.label}
-          type="button"
-          disabled={disabled}
-          aria-pressed={isActive}
-          aria-label={`${label}: ${option.label}`}
-          title={title}
-          onClick={() => onChange(option.value)}
-          className={`flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md transition-opacity disabled:cursor-not-allowed disabled:opacity-50 ${
-            isActive
-              ? option.activeClass
-              : "bg-bg-active text-text-muted opacity-60 hover:opacity-100"
-          }`}
-        >
-          <Icon size={13} />
-        </button>
-      );
-    })}
-  </div>
+const EffectControl = memo(
+  ({ label, value, disabled, onChange }: EffectControlProps) => (
+    <div
+      className="flex gap-1"
+      role="group"
+      aria-label={label}
+      aria-disabled={disabled}
+    >
+      {effectOptions.map((option) => {
+        const Icon = option.icon;
+        const isActive = value === option.value;
+        const title =
+          option.value === null
+            ? "未設定"
+            : `${effectLabel[option.value]}に設定`;
+        return (
+          <button
+            key={option.label}
+            type="button"
+            disabled={disabled}
+            aria-pressed={isActive}
+            aria-label={`${label}: ${option.label}`}
+            title={title}
+            onClick={() => onChange(option.value)}
+            className={`flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md transition-opacity disabled:cursor-not-allowed disabled:opacity-50 ${
+              isActive
+                ? option.activeClass
+                : "bg-bg-active text-text-muted opacity-60 hover:opacity-100"
+            }`}
+          >
+            <Icon size={13} />
+          </button>
+        );
+      })}
+    </div>
+  ),
 );
