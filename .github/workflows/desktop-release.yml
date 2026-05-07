@@ -53,6 +53,11 @@ jobs:
       - name: 🔧 Build database package
         run: pnpm --filter @tumiki/db build
 
+      - name: 🔧 Build mcp-core-proxy package
+        # Desktop が require する @tumiki/mcp-core-proxy/dist/index.js を生成する。
+        # 抜けると配布バイナリで "Cannot find module" になる
+        run: pnpm --filter @tumiki/mcp-core-proxy build
+
       - name: 🔧 Generate Prisma client for desktop
         run: |
           cd apps/desktop
