@@ -547,8 +547,7 @@ if (isMcpProxyMode) {
         }
       } else {
         // 後方互換: Keycloak環境変数フォールバック
-        // OIDC Discoveryが失敗しても起動を継続するためtry/catchで保護
-        // （Keycloak未起動時にfetch例外でアプリが起動できない問題を防ぐ）
+        // Keycloak issuerが不到達でもアプリ起動を継続させるためtry/catchで保護
         const keycloakEnv = getKeycloakEnvOptional();
         if (keycloakEnv) {
           try {
