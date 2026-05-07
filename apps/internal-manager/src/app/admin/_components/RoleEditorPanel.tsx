@@ -291,7 +291,7 @@ export const RoleEditorPanel = ({ mode, role }: RoleEditorPanelProps) => {
                 ) : (
                   <div className="space-y-2">
                     {assignments.map((assignment) => {
-                      const TargetIcon = targetIcon(assignment.targetType);
+                      const TargetIcon = targetIcon[assignment.targetType];
                       const targetName = getAssignmentTargetName(
                         assignment.targetType,
                         assignment.targetId,

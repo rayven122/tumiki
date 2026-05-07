@@ -12,6 +12,8 @@ export const useFocusTrap = (
     const container = containerRef.current;
     if (!container) return;
 
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+
     const focusable = Array.from(
       container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTORS),
     );
@@ -36,6 +38,9 @@ export const useFocusTrap = (
     };
 
     document.addEventListener("keydown", handleTab);
-    return () => document.removeEventListener("keydown", handleTab);
+    return () => {
+      document.removeEventListener("keydown", handleTab);
+      previouslyFocused?.focus();
+    };
   }, [containerRef, isOpen]);
 };

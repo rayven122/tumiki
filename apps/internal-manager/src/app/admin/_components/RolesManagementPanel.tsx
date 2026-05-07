@@ -19,15 +19,20 @@ export const RolesManagementPanel = () => {
 
   const filteredRoles = useMemo(() => {
     const normalized = search.trim();
-    return mockRoles.filter((role) => {
-      if (filterType !== "all" && role.type !== filterType) return false;
-      if (!normalized) return true;
-      return (
-        role.name.includes(normalized) ||
-        role.description.includes(normalized) ||
-        sourceLabel[role.source].includes(normalized)
-      );
-    });
+    return mockRoles
+      .filter((role) => {
+        if (filterType !== "all" && role.type !== filterType) return false;
+        if (!normalized) return true;
+        return (
+          role.name.includes(normalized) ||
+          role.description.includes(normalized) ||
+          sourceLabel[role.source].includes(normalized)
+        );
+      })
+      .map((role) => ({
+        role,
+        assignmentCount: getAssignmentsForRole(role.id).length,
+      }));
   }, [filterType, search]);
 
   return (
@@ -116,8 +121,7 @@ export const RolesManagementPanel = () => {
               条件に一致するロールはありません
             </div>
           ) : (
-            filteredRoles.map((role) => {
-              const assignments = getAssignmentsForRole(role.id);
+            filteredRoles.map(({ role, assignmentCount }) => {
               return (
                 <Link
                   key={role.id}
@@ -132,7 +136,7 @@ export const RolesManagementPanel = () => {
                       {role.description}
                     </div>
                     <div className="text-text-subtle mt-1 text-[10px]">
-                      割り当て {assignments.length} 件
+                      割り当て {assignmentCount} 件
                     </div>
                   </div>
                   <span

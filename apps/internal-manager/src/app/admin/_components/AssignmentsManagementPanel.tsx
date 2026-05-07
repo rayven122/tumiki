@@ -130,7 +130,7 @@ export const AssignmentsManagementPanel = () => {
                 assignment.targetType,
                 assignment.targetId,
               );
-              const TargetIcon = targetIcon(assignment.targetType);
+              const TargetIcon = targetIcon[assignment.targetType];
               const source = getAssignmentTargetSource(
                 assignment.targetType,
                 assignment.targetId,

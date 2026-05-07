@@ -38,16 +38,12 @@ test("formatPermissionSummary は権限が空でも 0 件として整形する",
   );
 });
 
-test("targetIcon は組織には Building2 を返す", () => {
-  expect(targetIcon("org")).toStrictEqual(Building2);
-});
-
-test("targetIcon はグループには Users を返す", () => {
-  expect(targetIcon("group")).toStrictEqual(Users);
-});
-
-test("targetIcon はユーザーには User を返す", () => {
-  expect(targetIcon("user")).toStrictEqual(User);
+test("targetIcon は対象種別ごとに対応するアイコンを返す", () => {
+  expect(targetIcon).toStrictEqual({
+    org: Building2,
+    group: Users,
+    user: User,
+  });
 });
 
 test("targetLabel は対象種別ごとに日本語ラベルを返す", () => {

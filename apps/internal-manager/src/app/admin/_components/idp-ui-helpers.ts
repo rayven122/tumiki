@@ -24,8 +24,11 @@ export const formatPermissionSummary = (role: MockRole) => {
   return `許可 ${allow} / 拒否 ${deny}`;
 };
 
-export const targetIcon = (type: AssignmentTargetType): LucideIcon =>
-  type === "org" ? Building2 : type === "group" ? Users : User;
+export const targetIcon: Record<AssignmentTargetType, LucideIcon> = {
+  org: Building2,
+  group: Users,
+  user: User,
+};
 
 export const targetLabel: Record<AssignmentTargetType, string> = {
   org: "階層組織",

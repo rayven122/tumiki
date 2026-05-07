@@ -160,6 +160,7 @@ export const AdminSidebar = ({ initialTheme }: Props) => {
                     key={path}
                     href={path}
                     title={collapsed ? label : undefined}
+                    aria-current={isActive ? "page" : undefined}
                     className={`flex min-h-[44px] items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors hover:opacity-90 ${
                       isActive
                         ? "bg-bg-active text-text-primary"

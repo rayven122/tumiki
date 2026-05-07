@@ -561,7 +561,7 @@ export const DirectoryManagementPanel = ({
                     type="button"
                     onClick={() => setShowRolePicker(true)}
                     disabled={readonly}
-                    className="bg-btn-primary-bg text-btn-primary-text flex min-h-[36px] items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-medium disabled:cursor-not-allowed disabled:opacity-50"
+                    className="bg-btn-primary-bg text-btn-primary-text flex min-h-[44px] items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-medium disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <ShieldPlus size={12} />
                     追加
@@ -636,6 +636,7 @@ export const DirectoryManagementPanel = ({
 
       {showRolePicker ? (
         <div
+          aria-hidden="true"
           className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 p-4 sm:items-center"
           onClick={() => setShowRolePicker(false)}
         >
@@ -663,7 +664,7 @@ export const DirectoryManagementPanel = ({
                 type="button"
                 aria-label="閉じる"
                 onClick={() => setShowRolePicker(false)}
-                className="text-text-muted hover:text-text-primary flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md"
+                className="text-text-muted hover:text-text-primary flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md"
               >
                 <X size={14} />
               </button>
@@ -718,7 +719,7 @@ export const DirectoryManagementPanel = ({
               <button
                 type="button"
                 onClick={() => setShowRolePicker(false)}
-                className="bg-bg-active text-text-secondary min-h-[36px] rounded-lg px-3 text-[11px]"
+                className="bg-bg-active text-text-secondary min-h-[44px] rounded-lg px-3 text-[11px]"
               >
                 閉じる
               </button>
@@ -729,6 +730,7 @@ export const DirectoryManagementPanel = ({
 
       {showResolvedPermissions ? (
         <div
+          aria-hidden="true"
           className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 p-4 sm:items-center"
           onClick={() => setShowResolvedPermissions(false)}
         >
@@ -758,7 +760,7 @@ export const DirectoryManagementPanel = ({
                 type="button"
                 aria-label="閉じる"
                 onClick={() => setShowResolvedPermissions(false)}
-                className="text-text-muted hover:text-text-primary flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md"
+                className="text-text-muted hover:text-text-primary flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md"
               >
                 <X size={14} />
               </button>
@@ -823,7 +825,7 @@ export const DirectoryManagementPanel = ({
               <button
                 type="button"
                 onClick={() => setShowResolvedPermissions(false)}
-                className="bg-bg-active text-text-secondary min-h-[36px] shrink-0 rounded-lg px-3 text-[11px]"
+                className="bg-bg-active text-text-secondary min-h-[44px] shrink-0 rounded-lg px-3 text-[11px]"
               >
                 閉じる
               </button>
