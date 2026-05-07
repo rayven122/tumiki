@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import {
-  ApprovalStatus,
+  McpCatalogStatus,
   PolicyEffect,
   type PrismaTransactionClient,
 } from "@tumiki/internal-db";
@@ -8,13 +8,24 @@ import { db } from "@tumiki/internal-db/server";
 
 export type PermissionBits = {
   read: boolean;
-  write: boolean;
+  // v1はツール実行可否だけを管理するため、レスポンス値は常にfalseにする。
+  write: false;
   execute: boolean;
 };
 
+export type DeniedReason =
+  | "user_catalog_denied"
+  | "user_tool_denied"
+  | "group_catalog_denied"
+  | "group_tool_denied"
+  | "org_unit_catalog_denied"
+  | "org_unit_tool_denied"
+  | "not_granted"
+  | "catalog_disabled";
+
 export type EffectiveToolPermission = {
   allowed: boolean;
-  deniedReason: string | null;
+  deniedReason: DeniedReason | null;
 };
 
 export type EffectiveCatalogPermissions = {
@@ -28,52 +39,68 @@ export type PolicyUser = {
   updatedAt: Date;
   orgUnitMemberships: {
     updatedAt: Date;
-    orgUnit: { id: string; parentId: string | null; updatedAt: Date };
-  }[];
-  groupMemberships: {
-    group: {
-      permissions: {
-        mcpServerId: string;
-        read: boolean;
-        write: boolean;
-        execute: boolean;
-      }[];
+    orgUnit: {
+      id: string;
+      parentId: string | null;
+      path?: string;
+      updatedAt: Date;
     };
   }[];
-  individualPermissions: {
-    mcpServerId: string;
-    updatedAt: Date;
+  groupMemberships: {
+    group: { id: string };
   }[];
 };
 
 export type CatalogPolicyInput = {
   id: string;
   slug: string;
+  status: McpCatalogStatus;
   updatedAt: Date;
+  orgUnitCatalogPermissions: {
+    orgUnitId: string;
+    effect: PolicyEffect;
+    updatedAt: Date;
+  }[];
+  groupCatalogPermissions: {
+    groupId: string;
+    effect: PolicyEffect;
+    updatedAt: Date;
+  }[];
+  userCatalogPermissions: {
+    userId: string;
+    effect: PolicyEffect;
+    reason: string | null;
+    expiresAt: Date | null;
+    updatedAt: Date;
+  }[];
   tools: {
     id: string;
     name: string;
+    defaultAllowed: boolean;
     updatedAt: Date;
     orgUnitPermissions: {
       orgUnitId: string;
       effect: PolicyEffect;
       updatedAt: Date;
     }[];
+    groupPermissions: {
+      groupId: string;
+      effect: PolicyEffect;
+      updatedAt: Date;
+    }[];
+    userPermissions: {
+      userId: string;
+      effect: PolicyEffect;
+      reason: string | null;
+      expiresAt: Date | null;
+      updatedAt: Date;
+    }[];
   }[];
 };
 
-const emptyBits = (): PermissionBits => ({
-  read: false,
-  write: false,
-  execute: false,
-});
+export const POLICY_CONTEXT_ORG_UNIT_LIMIT = 2000;
 
-const hasAnyPermission = (permissions: PermissionBits) =>
-  permissions.read || permissions.write || permissions.execute;
-
-const POLICY_CONTEXT_ORG_UNIT_LIMIT = 2000;
-
-const collectOrgUnitIds = (
+export const collectPolicyOrgUnitIds = (
   memberships: PolicyUser["orgUnitMemberships"],
   allOrgUnits: { id: string; parentId: string | null }[],
 ) => {
@@ -92,33 +119,82 @@ const collectOrgUnitIds = (
   return ids;
 };
 
-const hasIndividualAllow = (user: PolicyUser, catalog: CatalogPolicyInput) =>
-  user.individualPermissions.some(
-    (permission) =>
-      // IndividualPermission.mcpServerId は旧McpServer ID/slug互換のため両方を許容する。
-      permission.mcpServerId === catalog.id ||
-      permission.mcpServerId === catalog.slug,
+export const getPolicyOrgUnitsForMemberships = async (
+  memberships: PolicyUser["orgUnitMemberships"],
+  client: PrismaTransactionClient = db,
+) => {
+  if (memberships.length === 0) return [];
+
+  if (memberships.every((membership) => membership.orgUnit.path)) {
+    const ancestorPaths = new Set<string>();
+    for (const membership of memberships) {
+      const segments =
+        membership.orgUnit.path?.split("/").filter(Boolean) ?? [];
+      for (let index = 0; index < segments.length; index += 1) {
+        ancestorPaths.add(`/${segments.slice(0, index + 1).join("/")}`);
+      }
+    }
+
+    if (ancestorPaths.size > POLICY_CONTEXT_ORG_UNIT_LIMIT) {
+      throw new Error(
+        `OrgUnit ancestor count exceeded the policy context limit (${POLICY_CONTEXT_ORG_UNIT_LIMIT}); refusing incomplete MCP policy evaluation.`,
+      );
+    }
+
+    return client.orgUnit.findMany({
+      where: { path: { in: [...ancestorPaths] } },
+      select: { id: true, parentId: true, updatedAt: true },
+    });
+  }
+
+  const orgUnitsById = new Map(
+    memberships.map((membership) => [
+      membership.orgUnit.id,
+      {
+        id: membership.orgUnit.id,
+        parentId: membership.orgUnit.parentId,
+        updatedAt: membership.orgUnit.updatedAt,
+      },
+    ]),
+  );
+  const pendingParentIds = new Set(
+    memberships
+      .map((membership) => membership.orgUnit.parentId)
+      .filter((parentId): parentId is string => parentId !== null),
   );
 
-const getFallbackGroupBits = (
-  user: PolicyUser,
-  catalog: CatalogPolicyInput,
-): PermissionBits => {
-  const permissions = emptyBits();
-  for (const membership of user.groupMemberships) {
-    for (const permission of membership.group.permissions) {
-      if (
-        permission.mcpServerId !== catalog.id &&
-        permission.mcpServerId !== catalog.slug
-      ) {
-        continue;
+  while (pendingParentIds.size > 0) {
+    const parentIds = [...pendingParentIds].filter(
+      (parentId) => !orgUnitsById.has(parentId),
+    );
+    pendingParentIds.clear();
+    if (parentIds.length === 0) break;
+
+    if (orgUnitsById.size + parentIds.length > POLICY_CONTEXT_ORG_UNIT_LIMIT) {
+      throw new Error(
+        `OrgUnit ancestor count exceeded the policy context limit (${POLICY_CONTEXT_ORG_UNIT_LIMIT}); refusing incomplete MCP policy evaluation.`,
+      );
+    }
+
+    const parents = await client.orgUnit.findMany({
+      where: { id: { in: parentIds } },
+      select: { id: true, parentId: true, updatedAt: true },
+    });
+    for (const parent of parents) {
+      if (orgUnitsById.has(parent.id)) continue;
+      orgUnitsById.set(parent.id, parent);
+      if (orgUnitsById.size > POLICY_CONTEXT_ORG_UNIT_LIMIT) {
+        throw new Error(
+          `OrgUnit ancestor count exceeded the policy context limit (${POLICY_CONTEXT_ORG_UNIT_LIMIT}); refusing incomplete MCP policy evaluation.`,
+        );
       }
-      permissions.read ||= permission.read;
-      permissions.write ||= permission.write;
-      permissions.execute ||= permission.execute;
+      if (parent.parentId && !orgUnitsById.has(parent.parentId)) {
+        pendingParentIds.add(parent.parentId);
+      }
     }
   }
-  return permissions;
+
+  return [...orgUnitsById.values()];
 };
 
 export const evaluateCatalogPermissions = (
@@ -126,34 +202,141 @@ export const evaluateCatalogPermissions = (
   catalog: CatalogPolicyInput,
   allOrgUnits: { id: string; parentId: string | null }[],
 ): EffectiveCatalogPermissions => {
-  const orgUnitIds = collectOrgUnitIds(user.orgUnitMemberships, allOrgUnits);
-  const individualAllow = hasIndividualAllow(user, catalog);
-  const fallbackGroupBits = getFallbackGroupBits(user, catalog);
-  const fallbackGroupAllowed = hasAnyPermission(fallbackGroupBits);
+  if (catalog.status !== McpCatalogStatus.ACTIVE) {
+    return {
+      permissions: {
+        read: false,
+        write: false,
+        execute: false,
+      },
+      tools: new Map(
+        catalog.tools.map((tool) => [
+          tool.id,
+          {
+            allowed: false,
+            deniedReason: "catalog_disabled",
+          },
+        ]),
+      ),
+    };
+  }
+
+  const orgUnitIds = collectPolicyOrgUnitIds(
+    user.orgUnitMemberships,
+    allOrgUnits,
+  );
+  const groupIds = new Set(
+    user.groupMemberships.map((membership) => membership.group.id),
+  );
+  const now = new Date();
+  const isActiveUserPermission = (permission: {
+    userId: string;
+    expiresAt: Date | null;
+  }) =>
+    permission.userId === user.id &&
+    (permission.expiresAt === null || permission.expiresAt > now);
+
+  // DB側でも対象ユーザー・所属グループ・所属部署に絞るが、呼び出し元が増えても安全側になるよう評価時にも再確認する。
+  const catalogUserEffects = catalog.userCatalogPermissions
+    .filter(isActiveUserPermission)
+    .map((permission) => permission.effect);
+  const catalogGroupEffects = catalog.groupCatalogPermissions
+    .filter((permission) => groupIds.has(permission.groupId))
+    .map((permission) => permission.effect);
+  const catalogOrgUnitEffects = catalog.orgUnitCatalogPermissions
+    .filter((permission) => orgUnitIds.has(permission.orgUnitId))
+    .map((permission) => permission.effect);
 
   const tools = catalog.tools.map((tool) => {
-    if (individualAllow) {
-      return [tool.id, { allowed: true, deniedReason: null }] as const;
-    }
+    // 優先順: DENY(user_catalog > user_tool > group_catalog > group_tool > orgUnit_catalog > orgUnit_tool)
+    // > ALLOW(user catalog/tool > group catalog/tool > orgUnit catalog/tool) > defaultAllowed。
+    // ユーザー個別ALLOWは未設定状態への例外であり、部署/グループDENYを上書きしない。
+    // カタログ単位の権限は、そのカタログ内の全ツールに適用する。
+    // ツール単位の権限はカタログ単位の権限と合算し、下の優先順で最終判定する。
+    const toolUserEffects = tool.userPermissions
+      .filter(isActiveUserPermission)
+      .map((permission) => permission.effect);
+    const toolGroupEffects = tool.groupPermissions
+      .filter((permission) => groupIds.has(permission.groupId))
+      .map((permission) => permission.effect);
+    const toolOrgUnitEffects = tool.orgUnitPermissions
+      .filter((permission) => orgUnitIds.has(permission.orgUnitId))
+      .map((permission) => permission.effect);
 
-    const relevant = tool.orgUnitPermissions.filter((permission) =>
-      orgUnitIds.has(permission.orgUnitId),
-    );
-    if (
-      relevant.some((permission) => permission.effect === PolicyEffect.DENY)
-    ) {
+    // 明示DENYは安全側のガードレールとして扱うため、sourceに関わらずALLOWより優先する。
+    if (catalogUserEffects.includes(PolicyEffect.DENY)) {
       return [
         tool.id,
         {
           allowed: false,
-          deniedReason: "org_unit_denied",
+          deniedReason: "user_catalog_denied",
+        },
+      ] as const;
+    }
+    if (toolUserEffects.includes(PolicyEffect.DENY)) {
+      return [
+        tool.id,
+        {
+          allowed: false,
+          deniedReason: "user_tool_denied",
+        },
+      ] as const;
+    }
+    if (catalogGroupEffects.includes(PolicyEffect.DENY)) {
+      return [
+        tool.id,
+        {
+          allowed: false,
+          deniedReason: "group_catalog_denied",
+        },
+      ] as const;
+    }
+    if (toolGroupEffects.includes(PolicyEffect.DENY)) {
+      return [
+        tool.id,
+        {
+          allowed: false,
+          deniedReason: "group_tool_denied",
+        },
+      ] as const;
+    }
+    if (catalogOrgUnitEffects.includes(PolicyEffect.DENY)) {
+      return [
+        tool.id,
+        {
+          allowed: false,
+          deniedReason: "org_unit_catalog_denied",
+        },
+      ] as const;
+    }
+    if (toolOrgUnitEffects.includes(PolicyEffect.DENY)) {
+      return [
+        tool.id,
+        {
+          allowed: false,
+          deniedReason: "org_unit_tool_denied",
         },
       ] as const;
     }
     if (
-      relevant.some((permission) => permission.effect === PolicyEffect.ALLOW) ||
-      fallbackGroupAllowed
+      catalogUserEffects.includes(PolicyEffect.ALLOW) ||
+      toolUserEffects.includes(PolicyEffect.ALLOW)
     ) {
+      return [tool.id, { allowed: true, deniedReason: null }] as const;
+    }
+    if (
+      catalogGroupEffects.includes(PolicyEffect.ALLOW) ||
+      toolGroupEffects.includes(PolicyEffect.ALLOW)
+    ) {
+      return [tool.id, { allowed: true, deniedReason: null }] as const;
+    }
+    if (
+      catalogOrgUnitEffects.includes(PolicyEffect.ALLOW) ||
+      toolOrgUnitEffects.includes(PolicyEffect.ALLOW)
+    ) {
+      return [tool.id, { allowed: true, deniedReason: null }] as const;
+    }
+    if (tool.defaultAllowed) {
       return [tool.id, { allowed: true, deniedReason: null }] as const;
     }
 
@@ -166,18 +349,22 @@ export const evaluateCatalogPermissions = (
     ] as const;
   });
 
+  const anyAllowed = tools.some(([, permission]) => permission.allowed);
+
   return {
     permissions: {
       // v1 はカタログ閲覧とツール実行を同じ許可状態として扱う。
-      read: tools.some(([, permission]) => permission.allowed),
+      // ツール未登録のカタログは実行対象がないため、カタログ単位ALLOWがあってもDesktopでは利用不可にする。
+      read: anyAllowed,
       // v1 はツール実行可否のみを扱うため、書き込み権限は常に無効にする。
       write: false,
-      execute: tools.some(([, permission]) => permission.allowed),
+      execute: anyAllowed,
     },
     tools: new Map<string, EffectiveToolPermission>(tools),
   };
 };
 
+// policyVersionはDesktop向けレスポンスのキャッシュキーなので、routeごとの安定JSONだけを受け取る。
 export const buildPolicyVersion = (policyState: unknown): string =>
   `pol_v1_${createHash("sha256")
     .update(JSON.stringify(policyState))
@@ -188,60 +375,36 @@ export const getPolicyContextForUser = async (
   userId: string,
   client: PrismaTransactionClient = db,
 ) => {
-  const now = new Date();
-  const [user, orgUnits] = await Promise.all([
-    client.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        isActive: true,
-        updatedAt: true,
-        orgUnitMemberships: {
-          select: {
-            updatedAt: true,
-            orgUnit: {
-              select: { id: true, parentId: true, updatedAt: true },
-            },
-          },
-        },
-        groupMemberships: {
-          select: {
-            group: {
-              select: {
-                permissions: {
-                  select: {
-                    mcpServerId: true,
-                    read: true,
-                    write: true,
-                    execute: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-        individualPermissions: {
-          where: {
-            status: ApprovalStatus.APPROVED,
-            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-          },
-          select: {
-            mcpServerId: true,
-            updatedAt: true,
+  const user = await client.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      isActive: true,
+      updatedAt: true,
+      orgUnitMemberships: {
+        select: {
+          updatedAt: true,
+          orgUnit: {
+            select: { id: true, parentId: true, path: true, updatedAt: true },
           },
         },
       },
-    }),
-    client.orgUnit.findMany({
-      select: { id: true, parentId: true, updatedAt: true },
-      take: POLICY_CONTEXT_ORG_UNIT_LIMIT,
-    }),
-  ]);
-  if (orgUnits.length >= POLICY_CONTEXT_ORG_UNIT_LIMIT) {
-    throw new Error(
-      `OrgUnit count reached the policy context limit (${POLICY_CONTEXT_ORG_UNIT_LIMIT}); refusing incomplete MCP policy evaluation.`,
-    );
-  }
+      groupMemberships: {
+        select: {
+          group: {
+            select: { id: true },
+          },
+        },
+      },
+    },
+  });
+
+  if (!user) return { user, orgUnits: [] };
+
+  const orgUnits = await getPolicyOrgUnitsForMemberships(
+    user.orgUnitMemberships,
+    client,
+  );
 
   return { user, orgUnits };
 };

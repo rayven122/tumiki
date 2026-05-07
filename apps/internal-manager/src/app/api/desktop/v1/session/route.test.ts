@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { NextRequest } from "next/server";
-import { ApprovalStatus, GroupSource, Role } from "@tumiki/internal-db";
+import { GroupSource, PolicyEffect, Role } from "@tumiki/internal-db";
 
 const mockFindUnique = vi.hoisted(() => vi.fn());
+const mockOrgUnitFindMany = vi.hoisted(() => vi.fn());
 const mockMcpCatalogFindMany = vi.hoisted(() => vi.fn());
 const mockFindSettings = vi.hoisted(() => vi.fn());
 const mockVerifyDesktopJwt = vi.hoisted(() => vi.fn());
@@ -12,6 +13,9 @@ vi.mock("@tumiki/internal-db/server", () => ({
   db: {
     user: {
       findUnique: mockFindUnique,
+    },
+    orgUnit: {
+      findMany: mockOrgUnitFindMany,
     },
     mcpCatalog: {
       findMany: mockMcpCatalogFindMany,
@@ -40,11 +44,52 @@ type FindUniqueArgs = {
   where: { id: string };
   select: {
     id: true;
-    groupMemberships: unknown;
-    individualPermissions: {
+    groupMemberships: {
+      select: {
+        group: {
+          select: Record<string, unknown>;
+        };
+      };
+    };
+  };
+};
+
+type FindPolicyCatalogsArgs = {
+  take: number;
+  select: {
+    orgUnitCatalogPermissions: {
+      where: { orgUnitId: { in: string[] } };
+      orderBy: [{ orgUnitId: "asc" }];
+    };
+    groupCatalogPermissions: {
+      where: { groupId: { in: string[] } };
+      orderBy: [{ groupId: "asc" }];
+    };
+    userCatalogPermissions: {
       where: {
-        status: ApprovalStatus;
+        userId: string;
         OR: [{ expiresAt: null }, { expiresAt: { gt: Date } }];
+      };
+      orderBy: [{ id: "asc" }];
+    };
+    tools: {
+      take: number;
+      select: {
+        groupPermissions: {
+          where: { groupId: { in: string[] } };
+          orderBy: [{ groupId: "asc" }];
+        };
+        orgUnitPermissions: {
+          where: { orgUnitId: { in: string[] } };
+          orderBy: [{ orgUnitId: "asc" }];
+        };
+        userPermissions: {
+          where: {
+            userId: string;
+            OR: [{ expiresAt: null }, { expiresAt: { gt: Date } }];
+          };
+          orderBy: [{ id: "asc" }];
+        };
       };
     };
   };
@@ -78,14 +123,6 @@ const activeUser = {
         externalId: "engineering",
         lastSyncedAt: new Date("2026-05-03T09:00:00.000Z"),
         updatedAt: groupUpdatedAt,
-        permissions: [
-          {
-            mcpServerId: "github",
-            read: true,
-            write: false,
-            execute: true,
-          },
-        ],
       },
     },
   ],
@@ -105,15 +142,6 @@ const activeUser = {
       },
     },
   ],
-  individualPermissions: [
-    {
-      mcpServerId: "slack",
-      reason: "Temporary support",
-      approvedAt: new Date("2026-05-03T09:30:00.000Z"),
-      expiresAt: null,
-      updatedAt: new Date("2026-05-03T10:10:00.000Z"),
-    },
-  ],
 };
 
 const expectedGroups = [
@@ -131,21 +159,27 @@ const expectedGroups = [
 
 const expectedPermissions = [
   {
-    source: "GROUP",
-    groupId: "group-001",
-    mcpServerId: "github",
-    read: true,
-    write: false,
-    execute: true,
+    source: "ORG_UNIT",
+    scope: "TOOL",
+    orgUnitId: "org-001",
+    catalogId: "catalog-001",
+    toolId: "tool-001",
+    effect: PolicyEffect.ALLOW,
   },
   {
-    source: "INDIVIDUAL",
-    mcpServerId: "slack",
-    read: true,
-    write: true,
-    execute: true,
+    source: "GROUP",
+    scope: "CATALOG",
+    groupId: "group-001",
+    catalogId: "catalog-001",
+    effect: PolicyEffect.ALLOW,
+  },
+  {
+    source: "USER",
+    scope: "CATALOG",
+    userId: "user-001",
+    catalogId: "catalog-001",
+    effect: PolicyEffect.ALLOW,
     reason: "Temporary support",
-    approvedAt: "2026-05-03T09:30:00.000Z",
     expiresAt: null,
   },
 ] as const;
@@ -169,6 +203,23 @@ const expectedPolicyCatalogs = [
     slug: "github",
     status: "ACTIVE",
     updatedAt: catalogUpdatedAt,
+    orgUnitCatalogPermissions: [],
+    groupCatalogPermissions: [
+      {
+        groupId: "group-001",
+        effect: PolicyEffect.ALLOW,
+        updatedAt: new Date("2026-05-03T09:20:00.000Z"),
+      },
+    ],
+    userCatalogPermissions: [
+      {
+        userId: "user-001",
+        effect: PolicyEffect.ALLOW,
+        reason: "Temporary support",
+        expiresAt: null,
+        updatedAt: new Date("2026-05-03T10:10:00.000Z"),
+      },
+    ],
     tools: [
       {
         id: "tool-001",
@@ -182,8 +233,31 @@ const expectedPolicyCatalogs = [
             updatedAt: orgUnitPermissionUpdatedAt,
           },
         ],
+        groupPermissions: [],
+        userPermissions: [],
       },
     ],
+  },
+];
+const expectedPolicyCatalogsForVersion = JSON.parse(
+  JSON.stringify(expectedPolicyCatalogs),
+) as unknown;
+const expectedGroupsForVersion = [
+  {
+    id: "group-001",
+    updatedAt: groupUpdatedAt.toISOString(),
+  },
+];
+const expectedOrgUnitsForVersion = [
+  {
+    id: "org-001",
+    updatedAt: orgUnitUpdatedAt.toISOString(),
+  },
+];
+const expectedOrgUnitMembershipsForVersion = [
+  {
+    id: "org-001",
+    membershipUpdatedAt: membershipUpdatedAt.toISOString(),
   },
 ];
 
@@ -200,10 +274,10 @@ const expectedPolicyVersion = `pol_v1_${createHash("sha256")
         organizationLogoUrl:
           "http://localhost:9000/tumiki-assets/org-assets/organization-logo.png",
       },
-      groups: expectedGroups,
-      orgUnits: expectedOrgUnits,
-      catalogs: expectedPolicyCatalogs,
-      permissions: expectedPermissions,
+      groups: expectedGroupsForVersion,
+      orgUnits: expectedOrgUnitsForVersion,
+      orgUnitMemberships: expectedOrgUnitMembershipsForVersion,
+      catalogs: expectedPolicyCatalogsForVersion,
     }),
   )
   .digest("base64url")
@@ -217,6 +291,9 @@ describe("GET /api/desktop/v1/session", () => {
       userId: "user-001",
     });
     mockFindUnique.mockResolvedValue(activeUser);
+    mockOrgUnitFindMany.mockResolvedValue([
+      { id: "org-001", parentId: null, updatedAt: orgUnitUpdatedAt },
+    ]);
     mockMcpCatalogFindMany.mockResolvedValue(expectedPolicyCatalogs);
     mockFindSettings.mockResolvedValue({
       organizationName: "Rayven",
@@ -261,16 +338,14 @@ describe("GET /api/desktop/v1/session", () => {
     )[0]?.[0];
     expect(findUniqueArgs?.where).toStrictEqual({ id: "user-001" });
     expect(findUniqueArgs?.select.id).toStrictEqual(true);
-    expect(findUniqueArgs?.select.groupMemberships).toBeDefined();
     expect(
-      findUniqueArgs?.select.individualPermissions.where.status,
-    ).toStrictEqual(ApprovalStatus.APPROVED);
+      findUniqueArgs?.select.groupMemberships.select.group.select,
+    ).not.toHaveProperty("catalogPermissions");
     expect(
-      findUniqueArgs?.select.individualPermissions.where.OR[0],
-    ).toStrictEqual({ expiresAt: null });
-    expect(
-      findUniqueArgs?.select.individualPermissions.where.OR[1].expiresAt.gt,
-    ).toBeInstanceOf(Date);
+      findUniqueArgs?.select.groupMemberships.select.group.select,
+    ).not.toHaveProperty("catalogToolPermissions");
+    expect(findUniqueArgs?.select).not.toHaveProperty("catalogPermissions");
+    expect(findUniqueArgs?.select).not.toHaveProperty("catalogToolPermissions");
     expect(mockFindSettings).toHaveBeenCalledWith({
       where: { id: "default" },
       select: {
@@ -278,6 +353,199 @@ describe("GET /api/desktop/v1/session", () => {
         organizationLogoUrl: true,
       },
     });
+    const [findPolicyCatalogsArgs] = mockMcpCatalogFindMany.mock.calls[0] as [
+      FindPolicyCatalogsArgs,
+    ];
+    expect(findPolicyCatalogsArgs.take).toStrictEqual(501);
+    expect(
+      findPolicyCatalogsArgs.select.orgUnitCatalogPermissions.orderBy,
+    ).toStrictEqual([{ orgUnitId: "asc" }]);
+    expect(
+      findPolicyCatalogsArgs.select.orgUnitCatalogPermissions.where.orgUnitId
+        .in,
+    ).toStrictEqual(["org-001"]);
+    expect(
+      findPolicyCatalogsArgs.select.groupCatalogPermissions.orderBy,
+    ).toStrictEqual([{ groupId: "asc" }]);
+    expect(
+      findPolicyCatalogsArgs.select.groupCatalogPermissions.where.groupId.in,
+    ).toStrictEqual(["group-001"]);
+    expect(
+      findPolicyCatalogsArgs.select.userCatalogPermissions.where.userId,
+    ).toStrictEqual("user-001");
+    expect(
+      findPolicyCatalogsArgs.select.userCatalogPermissions.where.OR[0],
+    ).toStrictEqual({ expiresAt: null });
+    expect(
+      findPolicyCatalogsArgs.select.userCatalogPermissions.where.OR[1].expiresAt
+        .gt,
+    ).toBeInstanceOf(Date);
+    expect(
+      findPolicyCatalogsArgs.select.userCatalogPermissions.orderBy,
+    ).toStrictEqual([{ id: "asc" }]);
+    expect(
+      findPolicyCatalogsArgs.select.tools.select.groupPermissions.orderBy,
+    ).toStrictEqual([{ groupId: "asc" }]);
+    expect(findPolicyCatalogsArgs.select.tools.take).toStrictEqual(501);
+    expect(
+      findPolicyCatalogsArgs.select.tools.select.groupPermissions.where.groupId
+        .in,
+    ).toStrictEqual(["group-001"]);
+    expect(
+      findPolicyCatalogsArgs.select.tools.select.userPermissions.where.userId,
+    ).toStrictEqual("user-001");
+    expect(
+      findPolicyCatalogsArgs.select.tools.select.userPermissions.where.OR[0],
+    ).toStrictEqual({ expiresAt: null });
+    expect(
+      findPolicyCatalogsArgs.select.tools.select.userPermissions.where.OR[1]
+        .expiresAt.gt,
+    ).toBe(
+      findPolicyCatalogsArgs.select.userCatalogPermissions.where.OR[1].expiresAt
+        .gt,
+    );
+    expect(
+      findPolicyCatalogsArgs.select.tools.select.orgUnitPermissions.where
+        .orgUnitId.in,
+    ).toStrictEqual(["org-001"]);
+    expect(
+      findPolicyCatalogsArgs.select.tools.select.orgUnitPermissions.orderBy,
+    ).toStrictEqual([{ orgUnitId: "asc" }]);
+    expect(
+      findPolicyCatalogsArgs.select.tools.select.userPermissions.orderBy,
+    ).toStrictEqual([{ id: "asc" }]);
+  });
+
+  test("policyVersion対象カタログが上限を超えた場合は不完全なhashを返さない", async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    mockMcpCatalogFindMany.mockResolvedValue(
+      Array.from({ length: 501 }, (_, index) => ({
+        ...expectedPolicyCatalogs[0]!,
+        id: `catalog-${String(index).padStart(3, "0")}`,
+      })),
+    );
+
+    const response = await GET(buildRequest());
+
+    await expect(response.json()).resolves.toStrictEqual({
+      error: "Internal Server Error",
+    });
+    expect(response.status).toStrictEqual(500);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "MCP catalog count exceeded the session policy limit (500); refusing incomplete policyVersion.",
+    );
+    consoleErrorSpy.mockRestore();
+  });
+
+  test("policyVersion対象ツールが上限を超えた場合は不完全なhashを返さない", async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    mockMcpCatalogFindMany.mockResolvedValue([
+      {
+        ...expectedPolicyCatalogs[0]!,
+        tools: Array.from({ length: 501 }, (_, index) => ({
+          ...expectedPolicyCatalogs[0]!.tools[0]!,
+          id: `tool-${String(index).padStart(3, "0")}`,
+        })),
+      },
+    ]);
+
+    const response = await GET(buildRequest());
+
+    await expect(response.json()).resolves.toStrictEqual({
+      error: "Internal Server Error",
+    });
+    expect(response.status).toStrictEqual(500);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "MCP tool count exceeded the session policy limit (500) for catalog catalog-001; refusing incomplete policyVersion.",
+    );
+    consoleErrorSpy.mockRestore();
+  });
+
+  test("ユーザー単位のツール権限をセッション権限に含める", async () => {
+    mockMcpCatalogFindMany.mockResolvedValue([
+      {
+        ...expectedPolicyCatalogs[0]!,
+        tools: [
+          {
+            ...expectedPolicyCatalogs[0]!.tools[0]!,
+            userPermissions: [
+              {
+                userId: "user-001",
+                effect: PolicyEffect.DENY,
+                reason: "Temporary block",
+                expiresAt: null,
+                updatedAt: new Date("2026-05-03T10:20:00.000Z"),
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+
+    const response = await GET(buildRequest());
+    const body = (await response.json()) as { permissions: unknown[] };
+
+    expect(response.status).toStrictEqual(200);
+    expect(body.permissions).toStrictEqual(
+      expect.arrayContaining([
+        {
+          source: "USER",
+          scope: "TOOL",
+          userId: "user-001",
+          catalogId: "catalog-001",
+          toolId: "tool-001",
+          effect: PolicyEffect.DENY,
+          reason: "Temporary block",
+          expiresAt: null,
+        },
+      ]),
+    );
+  });
+
+  test("所属グループがない場合は存在しないIDでグループ権限を空に絞る", async () => {
+    mockFindUnique.mockResolvedValue({ ...activeUser, groupMemberships: [] });
+
+    const response = await GET(buildRequest());
+
+    expect(response.status).toStrictEqual(200);
+    const [findPolicyCatalogsArgs] = mockMcpCatalogFindMany.mock.calls[0] as [
+      FindPolicyCatalogsArgs,
+    ];
+    expect(
+      findPolicyCatalogsArgs.select.groupCatalogPermissions.where.groupId.in,
+    ).toStrictEqual(["__NO_GROUP_PERMISSION__"]);
+    expect(
+      findPolicyCatalogsArgs.select.tools.select.groupPermissions.where.groupId
+        .in,
+    ).toStrictEqual(["__NO_GROUP_PERMISSION__"]);
+    expect(
+      findPolicyCatalogsArgs.select.orgUnitCatalogPermissions.where.orgUnitId
+        .in,
+    ).toStrictEqual(["org-001"]);
+  });
+
+  test("所属部署がない場合は存在しないIDで部署権限を空に絞る", async () => {
+    mockFindUnique.mockResolvedValue({ ...activeUser, orgUnitMemberships: [] });
+
+    const response = await GET(buildRequest());
+
+    expect(response.status).toStrictEqual(200);
+    expect(mockOrgUnitFindMany).not.toHaveBeenCalled();
+    const [findPolicyCatalogsArgs] = mockMcpCatalogFindMany.mock.calls[0] as [
+      FindPolicyCatalogsArgs,
+    ];
+    expect(
+      findPolicyCatalogsArgs.select.orgUnitCatalogPermissions.where.orgUnitId
+        .in,
+    ).toStrictEqual(["__NO_ORG_UNIT_PERMISSION__"]);
+    expect(
+      findPolicyCatalogsArgs.select.tools.select.orgUnitPermissions.where
+        .orgUnitId.in,
+    ).toStrictEqual(["__NO_ORG_UNIT_PERMISSION__"]);
   });
 
   test("Desktop API設定が未作成の場合はデフォルト値を返す", async () => {
@@ -330,6 +598,7 @@ describe("GET /api/desktop/v1/session", () => {
       error: "Unauthorized",
     });
     expect(response.status).toStrictEqual(401);
+    expect(mockMcpCatalogFindMany).not.toHaveBeenCalled();
   });
 
   test("無効化されたユーザーは401を返す", async () => {
@@ -341,6 +610,7 @@ describe("GET /api/desktop/v1/session", () => {
       error: "Unauthorized",
     });
     expect(response.status).toStrictEqual(401);
+    expect(mockMcpCatalogFindMany).not.toHaveBeenCalled();
   });
 
   test("DBエラー時はJSONの500レスポンスを返す", async () => {

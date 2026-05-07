@@ -47,11 +47,15 @@ const buildCatalog = (overrides: Record<string, unknown> = {}) => ({
   url: "https://api.githubcopilot.com/mcp/",
   credentialKeys: ["GITHUB_TOKEN"],
   updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+  orgUnitCatalogPermissions: [],
+  groupCatalogPermissions: [],
+  userCatalogPermissions: [],
   tools: [
     {
       id: "tool-list-repos",
       name: "list_repos",
       description: "List repositories",
+      defaultAllowed: false,
       updatedAt: new Date("2026-05-03T10:00:00.000Z"),
       orgUnitPermissions: [
         {
@@ -60,6 +64,8 @@ const buildCatalog = (overrides: Record<string, unknown> = {}) => ({
           updatedAt: new Date("2026-05-03T10:00:00.000Z"),
         },
       ],
+      groupPermissions: [],
+      userPermissions: [],
     },
   ],
   ...overrides,
@@ -86,11 +92,10 @@ describe("GET /api/desktop/v1/catalogs", () => {
       groupMemberships: [
         {
           group: {
-            permissions: [],
+            id: "group-001",
           },
         },
       ],
-      individualPermissions: [],
     });
     mockFindOrgUnits.mockResolvedValue([
       {
@@ -141,6 +146,63 @@ describe("GET /api/desktop/v1/catalogs", () => {
     expect(mockVerifyDesktopJwt).toHaveBeenCalledWith("Bearer access-token");
   });
 
+  test("所属部署と親部署の権限だけを取得する", async () => {
+    mockFindUser.mockResolvedValue({
+      id: "user-001",
+      isActive: true,
+      updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+      orgUnitMemberships: [
+        {
+          updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+          orgUnit: {
+            id: "org-child",
+            parentId: "org-parent",
+            updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+          },
+        },
+      ],
+      groupMemberships: [],
+    });
+    mockFindOrgUnits.mockResolvedValue([
+      {
+        id: "org-child",
+        parentId: "org-parent",
+        updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+      },
+      {
+        id: "org-parent",
+        parentId: null,
+        updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+      },
+    ]);
+
+    const response = await GET(buildRequest());
+
+    expect(response.status).toStrictEqual(200);
+    const [findManyArgs] = mockFindCatalogs.mock.calls[0] as [
+      {
+        select: {
+          orgUnitCatalogPermissions: {
+            where: { orgUnitId: { in: string[] } };
+          };
+          tools: {
+            select: {
+              orgUnitPermissions: {
+                where: { orgUnitId: { in: string[] } };
+              };
+            };
+          };
+        };
+      },
+    ];
+    expect(
+      findManyArgs.select.orgUnitCatalogPermissions.where.orgUnitId.in,
+    ).toStrictEqual(["org-child", "org-parent"]);
+    expect(
+      findManyArgs.select.tools.select.orgUnitPermissions.where.orgUnitId.in,
+    ).toStrictEqual(["org-child", "org-parent"]);
+  });
+
   test("接続テンプレートのnullableフィールドをそのまま返す", async () => {
     mockFindCatalogs.mockResolvedValue([
       buildCatalog({ command: "${runtime:npx}", args: [], url: null }),
@@ -166,6 +228,7 @@ describe("GET /api/desktop/v1/catalogs", () => {
       id: `tool-${String(index + 1).padStart(2, "0")}`,
       name: `tool_${String(index + 1).padStart(2, "0")}`,
       description: `Tool ${index + 1}`,
+      defaultAllowed: false,
       updatedAt: new Date("2026-05-03T10:00:00.000Z"),
       orgUnitPermissions:
         index === 10
@@ -177,6 +240,8 @@ describe("GET /api/desktop/v1/catalogs", () => {
               },
             ]
           : [],
+      groupPermissions: [],
+      userPermissions: [],
     }));
     mockFindCatalogs.mockImplementationOnce((args: unknown) => {
       const toolSelect =
@@ -204,6 +269,38 @@ describe("GET /api/desktop/v1/catalogs", () => {
 
     expect(body.items[0].status).toStrictEqual("available");
     expect(body.items[0].tools).toHaveLength(10);
+    const [findManyArgs] = mockFindCatalogs.mock.calls[0] as [
+      { select: { tools: { take: number } } },
+    ];
+    expect(findManyArgs.select.tools.take).toStrictEqual(501);
+  });
+
+  test("カタログ内ツールが上限を超える場合は500を返す", async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const tools = Array.from({ length: 501 }, (_, index) => ({
+      id: `tool-${String(index + 1).padStart(3, "0")}`,
+      name: `tool_${String(index + 1).padStart(3, "0")}`,
+      description: `Tool ${index + 1}`,
+      defaultAllowed: false,
+      updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+      orgUnitPermissions: [],
+      groupPermissions: [],
+      userPermissions: [],
+    }));
+    mockFindCatalogs.mockResolvedValue([buildCatalog({ tools })]);
+
+    const response = await GET(buildRequest());
+
+    await expect(response.json()).resolves.toStrictEqual({
+      error: "Internal Server Error",
+    });
+    expect(response.status).toStrictEqual(500);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "MCP tool count exceeded the catalog policy limit (500) for catalog server-github",
+    );
+    consoleErrorSpy.mockRestore();
   });
 
   test("権限がないカタログはdisabledとして返す", async () => {
@@ -213,7 +310,6 @@ describe("GET /api/desktop/v1/catalogs", () => {
       updatedAt: new Date("2026-05-03T10:00:00.000Z"),
       groupMemberships: [],
       orgUnitMemberships: [],
-      individualPermissions: [],
     });
 
     const response = await GET(buildRequest());
@@ -227,15 +323,42 @@ describe("GET /api/desktop/v1/catalogs", () => {
       write: false,
       execute: false,
     });
+    const [findManyArgs] = mockFindCatalogs.mock.calls[0] as [
+      {
+        select: {
+          orgUnitCatalogPermissions: {
+            where: { orgUnitId: { in: string[] } };
+          };
+          tools: {
+            select: {
+              orgUnitPermissions: {
+                where: { orgUnitId: { in: string[] } };
+              };
+            };
+          };
+        };
+      },
+    ];
+    expect(
+      findManyArgs.select.orgUnitCatalogPermissions.where.orgUnitId.in,
+    ).toStrictEqual(["__NO_ORG_UNIT_PERMISSION__"]);
+    expect(
+      findManyArgs.select.tools.select.orgUnitPermissions.where.orgUnitId.in,
+    ).toStrictEqual(["__NO_ORG_UNIT_PERMISSION__"]);
   });
 
   test("停止中のカタログはdisabledとして返す", async () => {
     mockFindCatalogs.mockResolvedValue([buildCatalog({ status: "DISABLED" })]);
 
     const response = await GET(buildRequest());
-    const body = (await response.json()) as { items: [{ status: string }] };
+    const body = (await response.json()) as {
+      items: [{ status: string; tools: [{ deniedReason: string }] }];
+    };
 
     expect(body.items[0].status).toStrictEqual("disabled");
+    expect(body.items[0].tools[0].deniedReason).toStrictEqual(
+      "catalog_disabled",
+    );
   });
 
   test("limitを検証し、最大件数を超える場合は400を返す", async () => {
@@ -294,6 +417,72 @@ describe("GET /api/desktop/v1/catalogs", () => {
     );
   });
 
+  test("期限付きユーザー権限の基準時刻をカタログとツールで揃える", async () => {
+    await GET(buildRequest());
+
+    const [findManyArgs] = mockFindCatalogs.mock.calls[0] as [
+      {
+        select: {
+          userCatalogPermissions: {
+            where: {
+              OR: [{ expiresAt: null }, { expiresAt: { gt: Date } }];
+            };
+          };
+          tools: {
+            select: {
+              userPermissions: {
+                where: {
+                  OR: [{ expiresAt: null }, { expiresAt: { gt: Date } }];
+                };
+              };
+            };
+          };
+        };
+      },
+    ];
+    const catalogExpiresAt =
+      findManyArgs.select.userCatalogPermissions.where.OR[1].expiresAt.gt;
+    const toolExpiresAt =
+      findManyArgs.select.tools.select.userPermissions.where.OR[1].expiresAt.gt;
+
+    expect(catalogExpiresAt).toBeInstanceOf(Date);
+    expect(toolExpiresAt).toBe(catalogExpiresAt);
+  });
+
+  test("期限切れユーザー権限を除外するDB条件を渡す", async () => {
+    const expiredDate = new Date("2026-05-02T00:00:00.000Z");
+
+    await GET(buildRequest());
+
+    const [findManyArgs] = mockFindCatalogs.mock.calls[0] as [
+      {
+        select: {
+          userCatalogPermissions: {
+            where: {
+              OR: [{ expiresAt: null }, { expiresAt: { gt: Date } }];
+            };
+          };
+          tools: {
+            select: {
+              userPermissions: {
+                where: {
+                  OR: [{ expiresAt: null }, { expiresAt: { gt: Date } }];
+                };
+              };
+            };
+          };
+        };
+      },
+    ];
+    const catalogExpiresAt =
+      findManyArgs.select.userCatalogPermissions.where.OR[1].expiresAt.gt;
+    const toolExpiresAt =
+      findManyArgs.select.tools.select.userPermissions.where.OR[1].expiresAt.gt;
+
+    expect(catalogExpiresAt > expiredDate).toStrictEqual(true);
+    expect(toolExpiresAt).toBe(catalogExpiresAt);
+  });
+
   test("認証に失敗した場合は401を返す", async () => {
     mockVerifyDesktopJwt.mockRejectedValue(new Error("Unauthorized"));
 
@@ -326,7 +515,6 @@ describe("GET /api/desktop/v1/catalogs", () => {
       updatedAt: new Date("2026-05-03T10:00:00.000Z"),
       groupMemberships: [],
       orgUnitMemberships: [],
-      individualPermissions: [],
     });
 
     const response = await GET(buildRequest());

@@ -7,7 +7,18 @@ import { verifyDesktopJwt } from "~/lib/auth/verify-desktop-jwt";
 import {
   evaluateCatalogPermissions,
   getPolicyContextForUser,
+  type DeniedReason,
+  type PermissionBits,
 } from "~/server/mcp-policy/effective-permissions";
+import {
+  NO_GROUP_PERMISSION_ID,
+  NO_ORG_UNIT_PERMISSION_ID,
+} from "~/server/mcp-policy/constants";
+import { buildCatalogPolicySelect } from "~/server/mcp-policy/catalog-policy-query";
+import {
+  POLICY_TOOL_LIMIT,
+  POLICY_TOOL_TAKE,
+} from "~/server/mcp-policy/limits";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
@@ -15,7 +26,7 @@ const TOOL_PREVIEW_LIMIT = 10;
 
 const cursorSchema = z.object({
   id: z.string().min(1),
-  name: z.string(),
+  name: z.string().min(1).max(120),
 });
 
 const querySchema = z.object({
@@ -23,23 +34,31 @@ const querySchema = z.object({
   cursor: z.string().min(1).optional(),
 });
 
-type Permissions = {
-  read: boolean;
-  write: boolean;
-  execute: boolean;
-};
 type CatalogStatus = "available" | "disabled";
 type CatalogCursor = z.infer<typeof cursorSchema>;
+
+type PermissionRow = {
+  effect: PolicyEffect;
+  updatedAt: Date;
+};
+
+type UserPermissionRow = { userId: string } & PermissionRow & {
+    reason: string | null;
+    expiresAt: Date | null;
+  };
 
 type ToolPreview = {
   id: string;
   name: string;
   description: string | null;
+  defaultAllowed: boolean;
   orgUnitPermissions: {
     orgUnitId: string;
     effect: PolicyEffect;
     updatedAt: Date;
   }[];
+  groupPermissions: ({ groupId: string } & PermissionRow)[];
+  userPermissions: UserPermissionRow[];
   updatedAt: Date;
 };
 
@@ -57,14 +76,17 @@ type CatalogRow = {
   url: string | null;
   credentialKeys: string[];
   updatedAt: Date;
+  orgUnitCatalogPermissions: ({ orgUnitId: string } & PermissionRow)[];
+  groupCatalogPermissions: ({ groupId: string } & PermissionRow)[];
+  userCatalogPermissions: UserPermissionRow[];
   tools: ToolPreview[];
 };
 
-const hasAnyPermission = (permissions: Permissions) =>
-  permissions.read || permissions.write || permissions.execute;
-
 const encodeCursor = (cursor: CatalogCursor) =>
   Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
+
+const hasAnyPermission = (permissions: PermissionBits) =>
+  permissions.read || permissions.execute;
 
 const decodeCursor = (cursor: string): CatalogCursor | null => {
   try {
@@ -91,14 +113,15 @@ const toConnectionTemplate = (catalog: CatalogRow) => {
 
 const toCatalogItem = (
   catalog: CatalogRow,
-  permissions: Permissions,
+  permissions: PermissionBits,
   toolPermissions: Map<
     string,
-    { allowed: boolean; deniedReason: string | null }
+    { allowed: boolean; deniedReason: DeniedReason | null }
   >,
 ) => {
+  const catalogDisabled = catalog.status !== McpCatalogStatus.ACTIVE;
   const status: CatalogStatus =
-    catalog.status === McpCatalogStatus.ACTIVE && hasAnyPermission(permissions)
+    !catalogDisabled && hasAnyPermission(permissions)
       ? "available"
       : "disabled";
 
@@ -113,14 +136,17 @@ const toCatalogItem = (
     authType: catalog.authType,
     requiredCredentialKeys: catalog.credentialKeys,
     connectionTemplate: toConnectionTemplate(catalog),
-    tools: catalog.tools.slice(0, TOOL_PREVIEW_LIMIT).map((tool) => ({
-      name: tool.name,
-      description: tool.description ?? "",
-      allowed:
-        status === "available" &&
-        (toolPermissions.get(tool.id)?.allowed ?? false),
-      deniedReason: toolPermissions.get(tool.id)?.deniedReason ?? null,
-    })),
+    tools: catalog.tools.slice(0, TOOL_PREVIEW_LIMIT).map((tool) => {
+      const toolPermission = toolPermissions.get(tool.id);
+      return {
+        name: tool.name,
+        description: tool.description ?? "",
+        allowed: !catalogDisabled && (toolPermission?.allowed ?? false),
+        deniedReason: catalogDisabled
+          ? "catalog_disabled"
+          : (toolPermission?.deniedReason ?? null),
+      };
+    }),
   };
 };
 
@@ -164,6 +190,23 @@ export const GET = async (request: NextRequest) => {
   if (!policyUser?.isActive) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const groupIds = policyUser.groupMemberships.map(
+    (membership) => membership.group.id,
+  );
+  const orgUnitIds = policyContext.orgUnits.map((orgUnit) => orgUnit.id);
+  const now = new Date();
+  // Prisma の in: [] は provider 差分を避けるため、未所属時は存在しないIDで空結果を強制する。
+  const orgUnitPermissionIds =
+    orgUnitIds.length > 0 ? orgUnitIds : [NO_ORG_UNIT_PERMISSION_ID];
+  const groupPermissionIds =
+    groupIds.length > 0 ? groupIds : [NO_GROUP_PERMISSION_ID];
+  const policySelect = buildCatalogPolicySelect({
+    userId: policyUser.id,
+    groupPermissionIds,
+    orgUnitPermissionIds,
+    now,
+    toolTake: POLICY_TOOL_TAKE,
+  });
 
   let catalogs: CatalogRow[];
   try {
@@ -182,40 +225,40 @@ export const GET = async (request: NextRequest) => {
       orderBy: [{ name: "asc" }, { id: "asc" }],
       take: parsedQuery.data.limit + 1,
       select: {
-        id: true,
-        slug: true,
+        ...policySelect,
         name: true,
         description: true,
         iconPath: true,
-        status: true,
         transportType: true,
         authType: true,
         command: true,
         args: true,
         url: true,
         credentialKeys: true,
-        updatedAt: true,
         tools: {
-          where: { deletedAt: null },
-          orderBy: { name: "asc" },
+          ...policySelect.tools,
           select: {
-            id: true,
-            name: true,
+            ...policySelect.tools.select,
             description: true,
-            updatedAt: true,
-            orgUnitPermissions: {
-              select: {
-                orgUnitId: true,
-                effect: true,
-                updatedAt: true,
-              },
-            },
           },
         },
       },
     });
   } catch (error) {
     console.error("Failed to fetch desktop MCP catalogs", error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
+  }
+
+  const overLimitToolCatalog = catalogs.find(
+    (catalog) => catalog.tools.length > POLICY_TOOL_LIMIT,
+  );
+  if (overLimitToolCatalog) {
+    console.error(
+      `MCP tool count exceeded the catalog policy limit (${POLICY_TOOL_LIMIT}) for catalog ${overLimitToolCatalog.id}`,
+    );
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 },

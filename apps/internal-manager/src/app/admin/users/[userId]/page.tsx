@@ -184,7 +184,7 @@ const UserDetailPage = async ({
               有効 MCP 権限と理由
             </h2>
             <span className="text-text-subtle text-[10px]">
-              ユーザー拒否 &gt; グループ拒否 &gt; 組織拒否 &gt; 許可
+              拒否は許可より優先。ユーザー個別許可も部署/グループ拒否を上書きしません
             </span>
           </div>
           <div className="border-b-border-default text-text-subtle grid grid-cols-[1fr_90px_180px] items-center gap-3 border-b px-5 py-2.5 text-[10px]">

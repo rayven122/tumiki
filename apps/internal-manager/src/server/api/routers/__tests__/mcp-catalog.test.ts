@@ -48,6 +48,20 @@ beforeEach(() => {
 });
 
 describe("mcpCatalogRouter", () => {
+  test("listはカタログクエリの上限超過をエラーにする", async () => {
+    const findMany = vi
+      .fn()
+      .mockResolvedValue(Array.from({ length: 1001 }, (_, index) => index));
+    const caller = buildCaller({
+      mcpCatalog: { findMany },
+    } as unknown as Context["db"]);
+
+    await expectTrpcErrorCode(caller.list(), "INTERNAL_SERVER_ERROR");
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ take: 1001 }),
+    );
+  });
+
   test("createは末尾ハイフンのslugをBAD_REQUESTにする", async () => {
     const create = vi.fn();
     const caller = buildCaller({
@@ -80,10 +94,58 @@ describe("mcpCatalogRouter", () => {
       caller.create({
         slug: "github",
         name: "GitHub",
+        command: "${runtime:npx}",
         credentialKeys: [],
       }),
       "CONFLICT",
     );
+  });
+
+  test("createはSTDIOでcommandが空ならBAD_REQUESTにする", async () => {
+    const create = vi.fn();
+    const caller = buildCaller({
+      mcpCatalog: { create },
+    } as unknown as Context["db"]);
+
+    await expectTrpcErrorCode(
+      caller.create({
+        slug: "github",
+        name: "GitHub",
+        transportType: McpCatalogTransportType.STDIO,
+        command: null,
+        credentialKeys: [],
+      }),
+      "BAD_REQUEST",
+    );
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  test("updateはHTTP系transportでurlが空ならBAD_REQUESTにする", async () => {
+    const update = vi.fn();
+    const caller = buildCaller({
+      mcpCatalog: {
+        findFirst: vi.fn(),
+        update,
+      },
+    } as unknown as Context["db"]);
+
+    await expectTrpcErrorCode(
+      caller.update({
+        id: "catalog-001",
+        name: "GitHub",
+        description: null,
+        transportType: McpCatalogTransportType.STREAMABLE_HTTP,
+        authType: McpCatalogAuthType.OAUTH,
+        status: McpCatalogStatus.ACTIVE,
+        iconPath: null,
+        command: null,
+        args: [],
+        url: null,
+        credentialKeys: [],
+      }),
+      "BAD_REQUEST",
+    );
+    expect(update).not.toHaveBeenCalled();
   });
 
   test("createは接続テンプレートを明示カラムで保存する", async () => {
@@ -212,7 +274,10 @@ describe("mcpCatalogRouter", () => {
     const updateMany = vi.fn();
     type RefreshToolsTransaction = (tx: {
       mcpCatalog: { findFirst: () => Promise<null> };
-      mcpCatalogTool: { updateMany: typeof updateMany };
+      mcpCatalogTool: {
+        findMany: () => Promise<[]>;
+        updateMany: typeof updateMany;
+      };
     }) => Promise<unknown>;
     const caller = buildCaller({
       $transaction: vi.fn((callback: RefreshToolsTransaction) =>
@@ -220,7 +285,10 @@ describe("mcpCatalogRouter", () => {
           mcpCatalog: {
             findFirst: vi.fn().mockResolvedValue(null),
           },
-          mcpCatalogTool: { updateMany },
+          mcpCatalogTool: {
+            findMany: vi.fn().mockResolvedValue([]),
+            updateMany,
+          },
         }),
       ),
     } as unknown as Context["db"]);
@@ -262,5 +330,78 @@ describe("mcpCatalogRouter", () => {
       "BAD_REQUEST",
     );
     expect(transaction).not.toHaveBeenCalled();
+  });
+
+  test("refreshToolsは論理削除したツールの権限行を削除する", async () => {
+    const findMany = vi.fn().mockResolvedValue([{ id: "tool-old" }]);
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const upsert = vi.fn().mockResolvedValue({});
+    const findUniqueOrThrow = vi.fn().mockResolvedValue({ id: "catalog-001" });
+    const deleteOrgUnitPermissions = vi.fn().mockResolvedValue({ count: 1 });
+    const deleteGroupPermissions = vi.fn().mockResolvedValue({ count: 1 });
+    const deleteUserPermissions = vi.fn().mockResolvedValue({ count: 1 });
+    type RefreshToolsTransaction = (tx: {
+      mcpCatalog: {
+        findFirst: () => Promise<{ id: string }>;
+        findUniqueOrThrow: typeof findUniqueOrThrow;
+      };
+      mcpCatalogTool: {
+        findMany: typeof findMany;
+        updateMany: typeof updateMany;
+        upsert: typeof upsert;
+      };
+      orgUnitToolPermission: { deleteMany: typeof deleteOrgUnitPermissions };
+      groupCatalogToolPermission: { deleteMany: typeof deleteGroupPermissions };
+      userCatalogToolPermission: { deleteMany: typeof deleteUserPermissions };
+    }) => Promise<unknown>;
+    const caller = buildCaller({
+      $transaction: vi.fn((callback: RefreshToolsTransaction) =>
+        callback({
+          mcpCatalog: {
+            findFirst: vi.fn().mockResolvedValue({ id: "catalog-001" }),
+            findUniqueOrThrow,
+          },
+          mcpCatalogTool: { findMany, updateMany, upsert },
+          orgUnitToolPermission: { deleteMany: deleteOrgUnitPermissions },
+          groupCatalogToolPermission: { deleteMany: deleteGroupPermissions },
+          userCatalogToolPermission: { deleteMany: deleteUserPermissions },
+        }),
+      ),
+    } as unknown as Context["db"]);
+
+    await expect(
+      caller.refreshTools({
+        catalogId: "catalog-001",
+        tools: [
+          {
+            name: "list_repos",
+            inputSchema: {},
+            defaultAllowed: false,
+            riskLevel: McpToolRiskLevel.MEDIUM,
+          },
+        ],
+      }),
+    ).resolves.toStrictEqual({ id: "catalog-001" });
+    expect(findMany).toHaveBeenCalledWith({
+      where: {
+        catalogId: "catalog-001",
+        name: { notIn: ["list_repos"] },
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ["tool-old"] } },
+      data: { deletedAt: expect.any(Date) as Date },
+    });
+    expect(deleteOrgUnitPermissions).toHaveBeenCalledWith({
+      where: { toolId: { in: ["tool-old"] } },
+    });
+    expect(deleteGroupPermissions).toHaveBeenCalledWith({
+      where: { toolId: { in: ["tool-old"] } },
+    });
+    expect(deleteUserPermissions).toHaveBeenCalledWith({
+      where: { toolId: { in: ["tool-old"] } },
+    });
   });
 });

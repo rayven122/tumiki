@@ -18,43 +18,110 @@ const slugSchema = z
 const jsonRecordSchema = z.record(z.string(), z.unknown());
 const toInputJson = (value: Record<string, unknown>): Prisma.InputJsonValue =>
   value as Prisma.InputJsonValue;
+const optionalConnectionString = z
+  .string()
+  .max(1000)
+  .nullable()
+  .optional()
+  .transform((value) => (value && value.length > 0 ? value : null));
+const validateConnectionTemplate = (
+  value: {
+    transportType: McpCatalogTransportType;
+    command: string | null;
+    url: string | null;
+  },
+  ctx: z.RefinementCtx,
+) => {
+  if (value.transportType === McpCatalogTransportType.STDIO && !value.command) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["command"],
+      message: "STDIOはcommandが必須です",
+    });
+  }
+  if (
+    (value.transportType === McpCatalogTransportType.SSE ||
+      value.transportType === McpCatalogTransportType.STREAMABLE_HTTP) &&
+    !value.url
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["url"],
+      message: "HTTP系transportはurlが必須です",
+    });
+  }
+};
 
 const MCP_CATALOG_LIST_LIMIT = 1000;
 const TOOL_UPSERT_CHUNK_SIZE = 50;
 
 export const mcpCatalogRouter = createTRPCRouter({
   list: adminProcedure.query(async ({ ctx }) => {
-    return ctx.db.mcpCatalog.findMany({
+    const catalogs = await ctx.db.mcpCatalog.findMany({
       where: { deletedAt: null },
-      include: {
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        description: true,
+        transportType: true,
+        authType: true,
+        status: true,
+        iconPath: true,
+        command: true,
+        args: true,
+        url: true,
+        credentialKeys: true,
+        createdAt: true,
+        updatedAt: true,
         tools: {
           where: { deletedAt: null },
+          select: {
+            id: true,
+            catalogId: true,
+            name: true,
+            description: true,
+            defaultAllowed: true,
+            riskLevel: true,
+            createdAt: true,
+            updatedAt: true,
+            deletedAt: true,
+          },
           orderBy: { name: "asc" },
         },
       },
       orderBy: [{ name: "asc" }, { id: "asc" }],
-      take: MCP_CATALOG_LIST_LIMIT,
+      take: MCP_CATALOG_LIST_LIMIT + 1,
     });
+    if (catalogs.length > MCP_CATALOG_LIST_LIMIT) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: `カタログ数が上限(${MCP_CATALOG_LIST_LIMIT})を超えました。フィルタを使用してください。`,
+      });
+    }
+    return catalogs;
   }),
 
   create: adminProcedure
     .input(
-      z.object({
-        slug: slugSchema,
-        name: z.string().min(1).max(120),
-        description: z.string().max(1000).optional(),
-        transportType: z
-          .nativeEnum(McpCatalogTransportType)
-          .default(McpCatalogTransportType.STDIO),
-        authType: z
-          .nativeEnum(McpCatalogAuthType)
-          .default(McpCatalogAuthType.NONE),
-        iconPath: z.string().max(500).optional(),
-        command: z.string().max(500).nullable().optional(),
-        args: z.array(z.string().max(500)).default([]),
-        url: z.string().max(1000).nullable().optional(),
-        credentialKeys: z.array(z.string().min(1).max(120)).default([]),
-      }),
+      z
+        .object({
+          slug: slugSchema,
+          name: z.string().min(1).max(120),
+          description: z.string().max(1000).optional(),
+          transportType: z
+            .nativeEnum(McpCatalogTransportType)
+            .default(McpCatalogTransportType.STDIO),
+          authType: z
+            .nativeEnum(McpCatalogAuthType)
+            .default(McpCatalogAuthType.NONE),
+          iconPath: z.string().max(500).optional(),
+          command: optionalConnectionString,
+          args: z.array(z.string().min(1).max(1000)).max(100).default([]),
+          url: optionalConnectionString,
+          credentialKeys: z.array(z.string().min(1).max(120)).default([]),
+        })
+        .superRefine(validateConnectionTemplate),
     )
     .mutation(async ({ ctx, input }) => {
       try {
@@ -63,8 +130,6 @@ export const mcpCatalogRouter = createTRPCRouter({
             ...input,
             description: input.description ?? null,
             iconPath: input.iconPath ?? null,
-            command: input.command ?? null,
-            url: input.url ?? null,
             createdBy: ctx.session.user.id,
           },
           include: { tools: true },
@@ -85,19 +150,21 @@ export const mcpCatalogRouter = createTRPCRouter({
 
   update: adminProcedure
     .input(
-      z.object({
-        id: z.string().min(1),
-        name: z.string().min(1).max(120),
-        description: z.string().max(1000).nullable(),
-        transportType: z.nativeEnum(McpCatalogTransportType),
-        authType: z.nativeEnum(McpCatalogAuthType),
-        status: z.nativeEnum(McpCatalogStatus),
-        iconPath: z.string().max(500).nullable(),
-        command: z.string().max(500).nullable(),
-        args: z.array(z.string().max(500)),
-        url: z.string().max(1000).nullable(),
-        credentialKeys: z.array(z.string().min(1).max(120)),
-      }),
+      z
+        .object({
+          id: z.string().min(1),
+          name: z.string().min(1).max(120),
+          description: z.string().max(1000).nullable(),
+          transportType: z.nativeEnum(McpCatalogTransportType),
+          authType: z.nativeEnum(McpCatalogAuthType),
+          status: z.nativeEnum(McpCatalogStatus),
+          iconPath: z.string().max(500).nullable(),
+          command: optionalConnectionString,
+          args: z.array(z.string().min(1).max(1000)).max(100),
+          url: optionalConnectionString,
+          credentialKeys: z.array(z.string().min(1).max(120)),
+        })
+        .superRefine(validateConnectionTemplate),
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
@@ -178,14 +245,35 @@ export const mcpCatalogRouter = createTRPCRouter({
         }
 
         const seenNames = new Set(input.tools.map((tool) => tool.name));
-        await tx.mcpCatalogTool.updateMany({
+        const toolsToDelete = await tx.mcpCatalogTool.findMany({
           where: {
             catalogId: input.catalogId,
             name: { notIn: [...seenNames] },
             deletedAt: null,
           },
-          data: { deletedAt: new Date() },
+          select: { id: true },
         });
+        const toolIdsToDelete = toolsToDelete.map((tool) => tool.id);
+        if (toolIdsToDelete.length > 0) {
+          // ツールは監査用に論理削除し、権限行は復活時の意図しない再有効化を避けるため同一transactionで削除する。
+          await tx.mcpCatalogTool.updateMany({
+            where: {
+              id: { in: toolIdsToDelete },
+            },
+            data: { deletedAt: new Date() },
+          });
+          await Promise.all([
+            tx.orgUnitToolPermission.deleteMany({
+              where: { toolId: { in: toolIdsToDelete } },
+            }),
+            tx.groupCatalogToolPermission.deleteMany({
+              where: { toolId: { in: toolIdsToDelete } },
+            }),
+            tx.userCatalogToolPermission.deleteMany({
+              where: { toolId: { in: toolIdsToDelete } },
+            }),
+          ]);
+        }
         for (let i = 0; i < input.tools.length; i += TOOL_UPSERT_CHUNK_SIZE) {
           await Promise.all(
             input.tools.slice(i, i + TOOL_UPSERT_CHUNK_SIZE).map((tool) =>

@@ -1,15 +1,25 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { ApprovalStatus } from "@tumiki/internal-db";
 import { db } from "@tumiki/internal-db/server";
 import {
   DESKTOP_API_SETTINGS_DEFAULTS,
   DESKTOP_API_SETTINGS_ID,
 } from "~/lib/desktop-api-settings/constants";
 import { verifyDesktopJwt } from "~/lib/auth/verify-desktop-jwt";
-import { buildPolicyVersion } from "~/server/mcp-policy/effective-permissions";
-
-const POLICY_VERSION_CATALOG_LIMIT = 500;
+import {
+  buildPolicyVersion,
+  getPolicyOrgUnitsForMemberships,
+} from "~/server/mcp-policy/effective-permissions";
+import {
+  NO_GROUP_PERMISSION_ID,
+  NO_ORG_UNIT_PERMISSION_ID,
+} from "~/server/mcp-policy/constants";
+import { buildCatalogPolicySelect } from "~/server/mcp-policy/catalog-policy-query";
+import {
+  POLICY_VERSION_CATALOG_LIMIT,
+  POLICY_TOOL_LIMIT,
+  POLICY_TOOL_TAKE,
+} from "~/server/mcp-policy/limits";
 
 export const GET = async (request: NextRequest) => {
   let verifiedUser: Awaited<ReturnType<typeof verifyDesktopJwt>>;
@@ -20,106 +30,87 @@ export const GET = async (request: NextRequest) => {
   }
 
   try {
-    const [user, policyCatalogs, settings] = await Promise.all([
-      db.user.findUnique({
-        where: { id: verifiedUser.userId },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-          isActive: true,
-          updatedAt: true,
-          groupMemberships: {
-            select: {
-              source: true,
-              createdAt: true,
-              group: {
-                select: {
-                  id: true,
-                  name: true,
-                  description: true,
-                  source: true,
-                  provider: true,
-                  externalId: true,
-                  lastSyncedAt: true,
-                  updatedAt: true,
-                  permissions: {
-                    select: {
-                      mcpServerId: true,
-                      read: true,
-                      write: true,
-                      execute: true,
-                    },
-                  },
-                },
+    const now = new Date();
+    const user = await db.user.findUnique({
+      where: { id: verifiedUser.userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        updatedAt: true,
+        groupMemberships: {
+          select: {
+            source: true,
+            createdAt: true,
+            group: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                source: true,
+                provider: true,
+                externalId: true,
+                lastSyncedAt: true,
+                updatedAt: true,
               },
             },
-            orderBy: { createdAt: "asc" },
           },
-          orgUnitMemberships: {
-            select: {
-              isPrimary: true,
-              updatedAt: true,
-              orgUnit: {
-                select: {
-                  id: true,
-                  name: true,
-                  externalId: true,
-                  source: true,
-                  path: true,
-                  parentId: true,
-                  lastSyncedAt: true,
-                  updatedAt: true,
-                },
-              },
-            },
-            orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
-          },
-          individualPermissions: {
-            where: {
-              status: ApprovalStatus.APPROVED,
-              OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-            },
-            select: {
-              mcpServerId: true,
-              reason: true,
-              approvedAt: true,
-              expiresAt: true,
-              updatedAt: true,
-            },
-            orderBy: { updatedAt: "desc" },
-          },
+          orderBy: { createdAt: "asc" },
         },
-      }),
+        orgUnitMemberships: {
+          select: {
+            isPrimary: true,
+            updatedAt: true,
+            orgUnit: {
+              select: {
+                id: true,
+                name: true,
+                externalId: true,
+                source: true,
+                path: true,
+                parentId: true,
+                lastSyncedAt: true,
+                updatedAt: true,
+              },
+            },
+          },
+          orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+        },
+      },
+    });
+
+    if (!user?.isActive) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const groupIds = user.groupMemberships.map(
+      (membership) => membership.group.id,
+    );
+    const groupPermissionIds =
+      groupIds.length > 0 ? groupIds : [NO_GROUP_PERMISSION_ID];
+    // sessionはユーザー/所属情報も同時に返すため、詳細なuser取得後に部署祖先を解決する。
+    // 祖先取得は深い階層で複数クエリになり得るが、POLICY_CONTEXT_ORG_UNIT_LIMITで不完全な評価を防ぐ。
+    const policyOrgUnits = await getPolicyOrgUnitsForMemberships(
+      user.orgUnitMemberships,
+      db,
+    );
+    const orgUnitIds = policyOrgUnits.map((orgUnit) => orgUnit.id);
+    const orgUnitPermissionIds =
+      orgUnitIds.length > 0 ? orgUnitIds : [NO_ORG_UNIT_PERMISSION_ID];
+    const [policyCatalogs, settings] = await Promise.all([
       db.mcpCatalog.findMany({
         where: { deletedAt: null },
-        select: {
-          id: true,
-          slug: true,
-          status: true,
-          updatedAt: true,
-          tools: {
-            where: { deletedAt: null },
-            select: {
-              id: true,
-              name: true,
-              defaultAllowed: true,
-              updatedAt: true,
-              orgUnitPermissions: {
-                select: {
-                  orgUnitId: true,
-                  effect: true,
-                  updatedAt: true,
-                },
-                orderBy: [{ orgUnitId: "asc" }, { toolId: "asc" }],
-              },
-            },
-            orderBy: { name: "asc" },
-          },
-        },
+        select: buildCatalogPolicySelect({
+          userId: verifiedUser.userId,
+          groupPermissionIds,
+          orgUnitPermissionIds,
+          now,
+          toolTake: POLICY_TOOL_TAKE,
+        }),
         orderBy: [{ slug: "asc" }, { id: "asc" }],
-        take: POLICY_VERSION_CATALOG_LIMIT,
+        take: POLICY_VERSION_CATALOG_LIMIT + 1,
       }),
       db.desktopApiSettings.findUnique({
         where: { id: DESKTOP_API_SETTINGS_ID },
@@ -130,8 +121,26 @@ export const GET = async (request: NextRequest) => {
       }),
     ]);
 
-    if (!user?.isActive) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (policyCatalogs.length > POLICY_VERSION_CATALOG_LIMIT) {
+      console.error(
+        `MCP catalog count exceeded the session policy limit (${POLICY_VERSION_CATALOG_LIMIT}); refusing incomplete policyVersion.`,
+      );
+      return NextResponse.json(
+        { error: "Internal Server Error" },
+        { status: 500 },
+      );
+    }
+    const overLimitToolCatalog = policyCatalogs.find(
+      (catalog) => catalog.tools.length > POLICY_TOOL_LIMIT,
+    );
+    if (overLimitToolCatalog) {
+      console.error(
+        `MCP tool count exceeded the session policy limit (${POLICY_TOOL_LIMIT}) for catalog ${overLimitToolCatalog.id}; refusing incomplete policyVersion.`,
+      );
+      return NextResponse.json(
+        { error: "Internal Server Error" },
+        { status: 500 },
+      );
     }
 
     const desktopApiSettings = settings ?? DESKTOP_API_SETTINGS_DEFAULTS;
@@ -147,30 +156,82 @@ export const GET = async (request: NextRequest) => {
       lastSyncedAt: membership.group.lastSyncedAt?.toISOString() ?? null,
     }));
 
-    const groupPermissions = user.groupMemberships.flatMap((membership) =>
-      membership.group.permissions.map((permission) => ({
+    const groupCatalogPermissions = policyCatalogs.flatMap((catalog) =>
+      catalog.groupCatalogPermissions.map((permission) => ({
         source: "GROUP" as const,
-        groupId: membership.group.id,
-        mcpServerId: permission.mcpServerId,
-        read: permission.read,
-        write: permission.write,
-        execute: permission.execute,
+        scope: "CATALOG" as const,
+        groupId: permission.groupId,
+        catalogId: catalog.id,
+        effect: permission.effect,
       })),
     );
-
-    const individualPermissions = user.individualPermissions.map(
-      (permission) => ({
-        source: "INDIVIDUAL" as const,
-        mcpServerId: permission.mcpServerId,
-        // ApprovalRequest承認は対象MCPサーバーへの全操作権限付与として扱う。
-        read: true,
-        write: true,
-        execute: true,
-        reason: permission.reason,
-        approvedAt: permission.approvedAt?.toISOString() ?? null,
-        expiresAt: permission.expiresAt?.toISOString() ?? null,
-      }),
+    const groupToolPermissions = policyCatalogs.flatMap((catalog) =>
+      catalog.tools.flatMap((tool) =>
+        tool.groupPermissions.map((permission) => ({
+          source: "GROUP" as const,
+          scope: "TOOL" as const,
+          groupId: permission.groupId,
+          catalogId: catalog.id,
+          toolId: tool.id,
+          effect: permission.effect,
+        })),
+      ),
     );
+
+    const orgUnitCatalogPermissions = policyCatalogs.flatMap((catalog) =>
+      catalog.orgUnitCatalogPermissions.map((permission) => ({
+        source: "ORG_UNIT" as const,
+        scope: "CATALOG" as const,
+        orgUnitId: permission.orgUnitId,
+        catalogId: catalog.id,
+        effect: permission.effect,
+      })),
+    );
+    const orgUnitToolPermissions = policyCatalogs.flatMap((catalog) =>
+      catalog.tools.flatMap((tool) =>
+        tool.orgUnitPermissions.map((permission) => ({
+          source: "ORG_UNIT" as const,
+          scope: "TOOL" as const,
+          orgUnitId: permission.orgUnitId,
+          catalogId: catalog.id,
+          toolId: tool.id,
+          effect: permission.effect,
+        })),
+      ),
+    );
+    const userCatalogPermissions = policyCatalogs.flatMap((catalog) =>
+      catalog.userCatalogPermissions.map((permission) => ({
+        source: "USER" as const,
+        scope: "CATALOG" as const,
+        userId: permission.userId,
+        catalogId: catalog.id,
+        effect: permission.effect,
+        reason: permission.reason,
+        expiresAt: permission.expiresAt?.toISOString() ?? null,
+      })),
+    );
+    const userToolPermissions = policyCatalogs.flatMap((catalog) =>
+      catalog.tools.flatMap((tool) =>
+        tool.userPermissions.map((permission) => ({
+          source: "USER" as const,
+          scope: "TOOL" as const,
+          userId: permission.userId,
+          catalogId: catalog.id,
+          toolId: tool.id,
+          effect: permission.effect,
+          reason: permission.reason,
+          expiresAt: permission.expiresAt?.toISOString() ?? null,
+        })),
+      ),
+    );
+    const permissions = [
+      ...orgUnitCatalogPermissions,
+      ...orgUnitToolPermissions,
+      ...groupCatalogPermissions,
+      ...groupToolPermissions,
+      ...userCatalogPermissions,
+      ...userToolPermissions,
+    ];
 
     const orgUnits = user.orgUnitMemberships.map((membership) => ({
       id: membership.orgUnit.id,
@@ -183,6 +244,73 @@ export const GET = async (request: NextRequest) => {
       lastSyncedAt: membership.orgUnit.lastSyncedAt?.toISOString() ?? null,
     }));
 
+    const groupsForVersion = user.groupMemberships.map((membership) => ({
+      id: membership.group.id,
+      updatedAt: membership.group.updatedAt.toISOString(),
+    }));
+    const orgUnitMembershipsForVersion = user.orgUnitMemberships.map(
+      (membership) => ({
+        id: membership.orgUnit.id,
+        membershipUpdatedAt: membership.updatedAt.toISOString(),
+      }),
+    );
+    const orgUnitsForVersion = policyOrgUnits.map((orgUnit) => ({
+      id: orgUnit.id,
+      updatedAt: orgUnit.updatedAt.toISOString(),
+    }));
+    const policyCatalogsForVersion = policyCatalogs.map((catalog) => ({
+      id: catalog.id,
+      slug: catalog.slug,
+      status: catalog.status,
+      updatedAt: catalog.updatedAt.toISOString(),
+      orgUnitCatalogPermissions: catalog.orgUnitCatalogPermissions.map(
+        (permission) => ({
+          orgUnitId: permission.orgUnitId,
+          effect: permission.effect,
+          updatedAt: permission.updatedAt.toISOString(),
+        }),
+      ),
+      groupCatalogPermissions: catalog.groupCatalogPermissions.map(
+        (permission) => ({
+          groupId: permission.groupId,
+          effect: permission.effect,
+          updatedAt: permission.updatedAt.toISOString(),
+        }),
+      ),
+      userCatalogPermissions: catalog.userCatalogPermissions.map(
+        (permission) => ({
+          userId: permission.userId,
+          effect: permission.effect,
+          reason: permission.reason,
+          expiresAt: permission.expiresAt?.toISOString() ?? null,
+          updatedAt: permission.updatedAt.toISOString(),
+        }),
+      ),
+      tools: catalog.tools.map((tool) => ({
+        id: tool.id,
+        name: tool.name,
+        defaultAllowed: tool.defaultAllowed,
+        updatedAt: tool.updatedAt.toISOString(),
+        orgUnitPermissions: tool.orgUnitPermissions.map((permission) => ({
+          orgUnitId: permission.orgUnitId,
+          effect: permission.effect,
+          updatedAt: permission.updatedAt.toISOString(),
+        })),
+        groupPermissions: tool.groupPermissions.map((permission) => ({
+          groupId: permission.groupId,
+          effect: permission.effect,
+          updatedAt: permission.updatedAt.toISOString(),
+        })),
+        userPermissions: tool.userPermissions.map((permission) => ({
+          userId: permission.userId,
+          effect: permission.effect,
+          reason: permission.reason,
+          expiresAt: permission.expiresAt?.toISOString() ?? null,
+          updatedAt: permission.updatedAt.toISOString(),
+        })),
+      })),
+    }));
+
     const policyVersion = buildPolicyVersion({
       user: {
         id: user.id,
@@ -193,10 +321,10 @@ export const GET = async (request: NextRequest) => {
         organizationName: desktopApiSettings.organizationName,
         organizationLogoUrl: desktopApiSettings.organizationLogoUrl,
       },
-      groups,
-      orgUnits,
-      catalogs: policyCatalogs,
-      permissions: [...groupPermissions, ...individualPermissions],
+      groups: groupsForVersion,
+      orgUnits: orgUnitsForVersion,
+      orgUnitMemberships: orgUnitMembershipsForVersion,
+      catalogs: policyCatalogsForVersion,
     });
 
     return NextResponse.json({
@@ -215,7 +343,7 @@ export const GET = async (request: NextRequest) => {
       },
       groups,
       orgUnits,
-      permissions: [...groupPermissions, ...individualPermissions],
+      permissions,
       features: {
         catalog: true,
         accessRequests: false,

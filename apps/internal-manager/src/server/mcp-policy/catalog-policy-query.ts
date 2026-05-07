@@ -1,0 +1,80 @@
+type BuildCatalogPolicySelectInput = {
+  userId: string;
+  groupPermissionIds: string[];
+  orgUnitPermissionIds: string[];
+  now: Date;
+  toolTake: number;
+};
+
+export const buildCatalogPolicySelect = ({
+  userId,
+  groupPermissionIds,
+  orgUnitPermissionIds,
+  now,
+  toolTake,
+}: BuildCatalogPolicySelectInput) => ({
+  id: true,
+  slug: true,
+  status: true,
+  updatedAt: true,
+  // policyVersionハッシュを安定させるため、権限行は常に同じ順序で取得する。
+  orgUnitCatalogPermissions: {
+    where: { orgUnitId: { in: orgUnitPermissionIds } },
+    select: { orgUnitId: true, effect: true, updatedAt: true },
+    orderBy: [{ orgUnitId: "asc" as const }],
+  },
+  groupCatalogPermissions: {
+    where: { groupId: { in: groupPermissionIds } },
+    select: { groupId: true, effect: true, updatedAt: true },
+    orderBy: [{ groupId: "asc" as const }],
+  },
+  userCatalogPermissions: {
+    where: {
+      userId,
+      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+    },
+    select: {
+      userId: true,
+      effect: true,
+      reason: true,
+      expiresAt: true,
+      updatedAt: true,
+    },
+    orderBy: [{ id: "asc" as const }],
+  },
+  tools: {
+    where: { deletedAt: null },
+    select: {
+      id: true,
+      name: true,
+      defaultAllowed: true,
+      updatedAt: true,
+      orgUnitPermissions: {
+        where: { orgUnitId: { in: orgUnitPermissionIds } },
+        select: { orgUnitId: true, effect: true, updatedAt: true },
+        orderBy: [{ orgUnitId: "asc" as const }],
+      },
+      groupPermissions: {
+        where: { groupId: { in: groupPermissionIds } },
+        select: { groupId: true, effect: true, updatedAt: true },
+        orderBy: [{ groupId: "asc" as const }],
+      },
+      userPermissions: {
+        where: {
+          userId,
+          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+        },
+        select: {
+          userId: true,
+          effect: true,
+          reason: true,
+          expiresAt: true,
+          updatedAt: true,
+        },
+        orderBy: [{ id: "asc" as const }],
+      },
+    },
+    orderBy: { name: "asc" as const },
+    take: toolTake,
+  },
+});
