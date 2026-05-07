@@ -54,10 +54,14 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
 RUN pnpm turbo run build --filter=@tumiki/manager^...
 
 # Next.js standalone モードでビルド
-# NEXT_PUBLIC_TUMIKI_EDITION はnext.config.jsより前に解決されるためプロセス環境変数として渡す
-# NEXT_PUBLIC_MCP_PROXY_URL を空に設定してビルド時バンドルへの localhost 値焼き込みを防止
-# （Next.js は NEXT_PUBLIC_* をビルド時静的展開するため、.env の値が上書きされるよう明示的に空にする）
-RUN NEXT_PUBLIC_TUMIKI_EDITION=ee NEXT_PUBLIC_MCP_PROXY_URL= \
+# Next.js は NEXT_PUBLIC_* を build 時に webpack DefinePlugin で静的展開して
+# クライアントバンドルへ焼き込む。コンテナ起動時の env では client から参照できないため、
+# build 時に最終的な値を ARG 経由で受け取って ENV にセットしてから build する。
+# - 既定値は production 用 URL。staging などで別 image を build する場合は
+#   `docker build --build-arg NEXT_PUBLIC_MCP_PROXY_URL=https://stg-server.tumiki.cloud` で上書きする。
+ARG NEXT_PUBLIC_MCP_PROXY_URL=https://server.tumiki.cloud
+RUN NEXT_PUBLIC_TUMIKI_EDITION=ee \
+    NEXT_PUBLIC_MCP_PROXY_URL="$NEXT_PUBLIC_MCP_PROXY_URL" \
   pnpm --filter @tumiki/manager run build:bare
 
 # ========================================
