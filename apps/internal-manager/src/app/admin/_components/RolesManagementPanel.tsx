@@ -71,7 +71,7 @@ export const RolesManagementPanel = () => {
             </div>
             <div
               className="bg-bg-active flex rounded-lg p-0.5 text-[11px]"
-              role="tablist"
+              role="group"
               aria-label="ロール種別フィルタ"
             >
               {(["all", "system", "custom"] as const).map((value) => {
@@ -80,8 +80,7 @@ export const RolesManagementPanel = () => {
                   <button
                     key={value}
                     type="button"
-                    role="tab"
-                    aria-selected={isActive}
+                    aria-pressed={isActive}
                     onClick={() => setFilterType(value)}
                     className={`min-h-[32px] rounded-md px-2.5 ${
                       isActive

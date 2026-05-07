@@ -25,6 +25,7 @@ type NavItem = {
   path: string;
   label: string;
   icon: LucideIcon;
+  matchPrefix?: boolean;
 };
 
 type NavSection = {
@@ -43,14 +44,29 @@ const NAV_SECTIONS: NavSection[] = [
     heading: "ディレクトリ",
     items: [
       { path: "/admin/directory", label: "組織・グループ", icon: Building2 },
-      { path: "/admin/users", label: "ユーザー", icon: User },
+      {
+        path: "/admin/users",
+        label: "ユーザー",
+        icon: User,
+        matchPrefix: true,
+      },
     ],
   },
   {
     heading: "アクセス制御",
     items: [
-      { path: "/admin/roles", label: "ロール", icon: Shield },
-      { path: "/admin/assignments", label: "割り当て", icon: Link2 },
+      {
+        path: "/admin/roles",
+        label: "ロール",
+        icon: Shield,
+        matchPrefix: true,
+      },
+      {
+        path: "/admin/assignments",
+        label: "割り当て",
+        icon: Link2,
+        matchPrefix: true,
+      },
     ],
   },
   {
@@ -61,6 +77,10 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
 ];
+
+const isItemActive = (item: NavItem, pathname: string) =>
+  pathname === item.path ||
+  (item.matchPrefix === true && pathname.startsWith(`${item.path}/`));
 
 type Props = {
   initialTheme: Theme;
@@ -132,15 +152,9 @@ export const AdminSidebar = ({ initialTheme }: Props) => {
               />
             ) : null}
             <div className="space-y-0.5">
-              {section.items.map(({ path, label, icon: Icon }) => {
-                const isActive =
-                  pathname === path ||
-                  (path === "/admin/roles" &&
-                    pathname.startsWith("/admin/roles/")) ||
-                  (path === "/admin/assignments" &&
-                    pathname.startsWith("/admin/assignments/")) ||
-                  (path === "/admin/users" &&
-                    pathname.startsWith("/admin/users/"));
+              {section.items.map((item) => {
+                const { path, label, icon: Icon } = item;
+                const isActive = isItemActive(item, pathname);
                 return (
                   <Link
                     key={path}

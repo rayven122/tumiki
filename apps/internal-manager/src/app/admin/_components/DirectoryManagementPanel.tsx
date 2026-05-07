@@ -4,14 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Building2,
-  Check,
   ChevronDown,
   ChevronRight,
   GitBranch,
   Layers3,
   Link2,
   Lock,
-  Minus,
   Plus,
   Search,
   Shield,
@@ -22,7 +20,6 @@ import {
   X,
 } from "lucide-react";
 import {
-  effectBadgeClass,
   getAssignmentsForTarget,
   getRoleById,
   getUserById,
@@ -41,7 +38,11 @@ import {
   type MockUser,
   type PolicyEffect,
 } from "./idp-ui-mock-data";
-import { formatPermissionSummary, riskBadgeClass } from "./idp-ui-helpers";
+import {
+  effectConfig,
+  formatPermissionSummary,
+  riskBadgeClass,
+} from "./idp-ui-helpers";
 
 export type DirectoryTab = "organizations" | "groups";
 
@@ -88,27 +89,6 @@ const getInitialSelection = (initialTab: DirectoryTab): SelectedEntry =>
     ? { kind: "group", id: "ai-program" }
     : { kind: "org", id: "platform" };
 
-const resolvedEffectConfig: Record<
-  PolicyEffect,
-  { label: string; icon: typeof Check; className: string }
-> = {
-  allow: {
-    label: "許可",
-    icon: Check,
-    className: effectBadgeClass.allow,
-  },
-  deny: {
-    label: "拒否",
-    icon: X,
-    className: effectBadgeClass.deny,
-  },
-  unset: {
-    label: "未設定",
-    icon: Minus,
-    className: effectBadgeClass.unset,
-  },
-};
-
 export const DirectoryManagementPanel = ({
   initialTab,
 }: {
@@ -139,16 +119,13 @@ export const DirectoryManagementPanel = ({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [showRolePicker, showResolvedPermissions]);
 
-  const selectedOrg =
-    selectedEntry.kind === "org"
-      ? mockOrgUnits.find((org) => org.id === selectedEntry.id)
-      : null;
-  const selectedGroup =
-    selectedEntry.kind === "group"
-      ? mockGroups.find((group) => group.id === selectedEntry.id)
-      : null;
-  const selectedItem = selectedOrg ?? selectedGroup ?? mockOrgUnits[0]!;
-  const selectedKind = selectedOrg ? "org" : "group";
+  const selectedKind = selectedEntry.kind;
+  const selectedItem: MockOrgUnit | MockGroup =
+    selectedKind === "org"
+      ? (mockOrgUnits.find((org) => org.id === selectedEntry.id) ??
+        mockOrgUnits[0]!)
+      : (mockGroups.find((group) => group.id === selectedEntry.id) ??
+        mockGroups[0]!);
   const readonly = selectedItem.readonly;
   const memberIds =
     selectedKind === "org"
@@ -596,7 +573,7 @@ export const DirectoryManagementPanel = ({
                             type="button"
                             disabled={readonly || assignment.inherited}
                             aria-label={`${role.name} の割り当てを解除`}
-                            className="text-text-muted hover:text-text-primary flex min-h-[28px] min-w-[28px] shrink-0 items-center justify-center rounded-md disabled:cursor-not-allowed disabled:opacity-30"
+                            className="text-text-muted hover:text-text-primary flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-md disabled:cursor-not-allowed disabled:opacity-30"
                           >
                             <Trash2 size={12} />
                           </button>
@@ -773,7 +750,7 @@ export const DirectoryManagementPanel = ({
               {mockTools.map((tool) => {
                 const effect: PolicyEffect =
                   selectedKind === "org" ? tool.orgEffect : tool.groupEffect;
-                const cfg = resolvedEffectConfig[effect];
+                const cfg = effectConfig[effect];
                 const Icon = cfg.icon;
                 return (
                   <div

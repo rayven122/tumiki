@@ -2,18 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { ArrowLeft, Check, Lock, Save, Shield, Trash2, X } from "lucide-react";
 import {
-  ArrowLeft,
-  Check,
-  Lock,
-  Minus,
-  Save,
-  Shield,
-  Trash2,
-  X,
-} from "lucide-react";
-import {
-  effectBadgeClass,
   getAssignmentsForRole,
   mockTools,
   roleTypeBadgeClass,
@@ -24,6 +14,7 @@ import {
   type RolePermission,
 } from "./idp-ui-mock-data";
 import {
+  effectConfig,
   getAssignmentTargetName,
   getAssignmentTargetSource,
   riskBadgeClass,
@@ -41,24 +32,6 @@ type RoleEditorPanelProps = {
   mode: "create" | "edit";
   role?: MockRole;
 };
-
-const effectConfig = {
-  allow: {
-    label: "許可",
-    icon: Check,
-    className: effectBadgeClass.allow,
-  },
-  deny: {
-    label: "拒否",
-    icon: X,
-    className: effectBadgeClass.deny,
-  },
-  unset: {
-    label: "未設定",
-    icon: Minus,
-    className: effectBadgeClass.unset,
-  },
-} as const;
 
 const initialState = (role?: MockRole): EditableRole => ({
   name: role?.name ?? "",
@@ -259,7 +232,7 @@ export const RoleEditorPanel = ({ mode, role }: RoleEditorPanelProps) => {
                               aria-pressed={effect === candidate}
                               aria-label={`${tool.name} を${cfg.label}`}
                               title={cfg.label}
-                              className={`flex min-h-[40px] min-w-[40px] items-center justify-center rounded-md disabled:cursor-not-allowed disabled:opacity-40 ${
+                              className={`flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md disabled:cursor-not-allowed disabled:opacity-40 ${
                                 effect === candidate
                                   ? cfg.className
                                   : "bg-bg-active text-text-muted opacity-50 hover:opacity-100"

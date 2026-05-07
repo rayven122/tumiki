@@ -1,11 +1,21 @@
-import { Building2, User, Users, type LucideIcon } from "lucide-react";
 import {
+  Building2,
+  Check,
+  Minus,
+  User,
+  Users,
+  X,
+  type LucideIcon,
+} from "lucide-react";
+import {
+  effectBadgeClass,
   getGroupById,
   getOrgById,
   getUserById,
   type AssignmentTargetType,
   type IdpSource,
   type MockRole,
+  type PolicyEffect,
 } from "./idp-ui-mock-data";
 
 export const formatPermissionSummary = (role: MockRole) => {
@@ -28,6 +38,27 @@ export const riskBadgeClass = {
   medium: "bg-amber-500/15 text-amber-300",
   high: "bg-red-500/15 text-red-300",
 } as const;
+
+export const effectConfig: Record<
+  PolicyEffect,
+  { label: string; icon: LucideIcon; className: string }
+> = {
+  allow: {
+    label: "許可",
+    icon: Check,
+    className: effectBadgeClass.allow,
+  },
+  deny: {
+    label: "拒否",
+    icon: X,
+    className: effectBadgeClass.deny,
+  },
+  unset: {
+    label: "未設定",
+    icon: Minus,
+    className: effectBadgeClass.unset,
+  },
+};
 
 export const getAssignmentTargetName = (
   type: AssignmentTargetType,

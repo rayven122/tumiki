@@ -84,7 +84,7 @@ export const AssignmentsManagementPanel = () => {
             </div>
             <div
               className="bg-bg-active flex rounded-lg p-0.5 text-[11px]"
-              role="tablist"
+              role="group"
               aria-label="対象種別フィルタ"
             >
               {(["all", "org", "group", "user"] as const).map((value) => {
@@ -93,8 +93,7 @@ export const AssignmentsManagementPanel = () => {
                   <button
                     key={value}
                     type="button"
-                    role="tab"
-                    aria-selected={isActive}
+                    aria-pressed={isActive}
                     onClick={() => setFilter(value)}
                     className={`min-h-[32px] rounded-md px-2.5 ${
                       isActive
