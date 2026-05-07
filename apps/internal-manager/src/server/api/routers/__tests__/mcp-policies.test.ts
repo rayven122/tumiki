@@ -432,6 +432,204 @@ describe("mcpPoliciesRouter", () => {
     });
   });
 
+  describe("getTargetPermissionSummary", () => {
+    test("userはユーザー個別拒否を最終的な拒否として集計する", async () => {
+      const user = {
+        id: "user-001",
+        isActive: true,
+        updatedAt: new Date("2026-05-04T00:00:00.000Z"),
+        orgUnitMemberships: [
+          {
+            updatedAt: new Date("2026-05-04T00:00:00.000Z"),
+            orgUnit: {
+              id: "org-001",
+              parentId: null,
+              path: "/engineering",
+              updatedAt: new Date("2026-05-04T00:00:00.000Z"),
+            },
+          },
+        ],
+        groupMemberships: [{ group: { id: "group-001" } }],
+      };
+      const caller = buildCaller({
+        user: { findUnique: vi.fn().mockResolvedValue(user) },
+        orgUnit: {
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: "org-001",
+              parentId: null,
+              updatedAt: new Date("2026-05-04T00:00:00.000Z"),
+            },
+          ]),
+        },
+        mcpCatalog: {
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: "catalog-001",
+              name: "GitHub",
+              slug: "github",
+              status: McpCatalogStatus.ACTIVE,
+              updatedAt: new Date("2026-05-04T00:00:00.000Z"),
+              orgUnitCatalogPermissions: [
+                {
+                  orgUnitId: "org-001",
+                  effect: PolicyEffect.ALLOW,
+                  updatedAt: new Date("2026-05-04T00:00:00.000Z"),
+                },
+              ],
+              groupCatalogPermissions: [],
+              userCatalogPermissions: [],
+              tools: [
+                {
+                  id: "tool-001",
+                  name: "Pull request 作成",
+                  defaultAllowed: false,
+                  riskLevel: "HIGH",
+                  updatedAt: new Date("2026-05-04T00:00:00.000Z"),
+                  orgUnitPermissions: [],
+                  groupPermissions: [],
+                  userPermissions: [
+                    {
+                      userId: "user-001",
+                      effect: PolicyEffect.DENY,
+                      reason: "一時停止中",
+                      expiresAt: null,
+                      updatedAt: new Date("2026-05-04T00:00:00.000Z"),
+                    },
+                  ],
+                },
+              ],
+            },
+          ]),
+        },
+      } as unknown as Context["db"]);
+
+      const result = await caller.getTargetPermissionSummary({
+        targetType: "user",
+        targetId: "user-001",
+      });
+
+      expect(result).toMatchObject({
+        summary: {
+          settingsCount: 2,
+          userOverrideCount: 1,
+          allowCount: 0,
+          denyCount: 1,
+          unsetCount: 0,
+        },
+        finalRows: [
+          {
+            toolName: "Pull request 作成",
+            riskLevel: "HIGH",
+            effect: "DENY",
+            reason: "ユーザー個別設定による拒否",
+            sourceKind: "user",
+          },
+        ],
+      });
+      expect(result?.settings).toMatchObject([
+        {
+          catalogName: "GitHub",
+          toolName: null,
+          effect: PolicyEffect.ALLOW,
+          sourceKind: "org",
+        },
+        {
+          catalogName: "GitHub",
+          toolName: "Pull request 作成",
+          effect: PolicyEffect.DENY,
+          sourceKind: "user",
+        },
+      ]);
+    });
+
+    test("orgは直接設定と未設定を同じ形式で集計する", async () => {
+      const caller = buildCaller({
+        orgUnit: { findUnique: vi.fn().mockResolvedValue({ id: "org-001" }) },
+        mcpCatalog: {
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: "catalog-001",
+              name: "Slack",
+              slug: "slack",
+              status: McpCatalogStatus.ACTIVE,
+              updatedAt: new Date("2026-05-04T00:00:00.000Z"),
+              orgUnitCatalogPermissions: [],
+              groupCatalogPermissions: [],
+              userCatalogPermissions: [],
+              tools: [
+                {
+                  id: "tool-001",
+                  name: "ワークスペース管理",
+                  defaultAllowed: false,
+                  riskLevel: "HIGH",
+                  updatedAt: new Date("2026-05-04T00:00:00.000Z"),
+                  orgUnitPermissions: [
+                    {
+                      orgUnitId: "org-001",
+                      effect: PolicyEffect.DENY,
+                      updatedAt: new Date("2026-05-04T00:00:00.000Z"),
+                    },
+                  ],
+                  groupPermissions: [],
+                  userPermissions: [],
+                },
+                {
+                  id: "tool-002",
+                  name: "チャンネル閲覧",
+                  defaultAllowed: false,
+                  riskLevel: "LOW",
+                  updatedAt: new Date("2026-05-04T00:00:00.000Z"),
+                  orgUnitPermissions: [],
+                  groupPermissions: [],
+                  userPermissions: [],
+                },
+              ],
+            },
+          ]),
+        },
+      } as unknown as Context["db"]);
+
+      const result = await caller.getTargetPermissionSummary({
+        targetType: "org",
+        targetId: "org-001",
+      });
+
+      expect(result?.summary).toStrictEqual({
+        settingsCount: 1,
+        userOverrideCount: 0,
+        allowCount: 0,
+        denyCount: 1,
+        unsetCount: 1,
+      });
+      expect(result?.settings).toMatchObject([
+        {
+          toolName: "ワークスペース管理",
+          effect: PolicyEffect.DENY,
+          sourceKind: "org",
+        },
+      ]);
+      expect(result?.finalRows).toMatchObject([
+        { toolName: "ワークスペース管理", effect: "DENY" },
+        { toolName: "チャンネル閲覧", effect: "UNSET" },
+      ]);
+    });
+
+    test("存在しないtargetはnullを返す", async () => {
+      const caller = buildCaller({
+        group: { findUnique: vi.fn().mockResolvedValue(null) },
+        mcpCatalog: { findMany: vi.fn() },
+      } as unknown as Context["db"]);
+
+      await expect(
+        caller.getTargetPermissionSummary({
+          targetType: "group",
+          targetId: "missing-group",
+        }),
+      ).resolves.toBeNull();
+    });
+  });
+
   describe("updateCatalogPermission", () => {
     test.each([
       { effect: PolicyEffect.ALLOW, label: "許可" },

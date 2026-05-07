@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
+  AlertCircle,
   Building2,
   ChevronDown,
   ChevronRight,
@@ -21,6 +22,15 @@ import {
   X,
 } from "lucide-react";
 import { api, type RouterOutputs } from "~/trpc/react";
+import {
+  getEffectBadgeClass,
+  getEffectLabel,
+  getRiskLabel,
+  getUserLabel,
+  sourceBadgeClass,
+  sourceKindLabel,
+  sourceLabel,
+} from "./permission-display-utils";
 
 export type DirectoryTab = "organizations" | "groups";
 
@@ -82,23 +92,6 @@ const depthPaddingClass: Partial<Record<number, string>> = {
 };
 
 const ROOT_ORG_PARENT_KEY = "__root__";
-
-const sourceLabel = {
-  SCIM: "SCIM",
-  GROUP: "グループ由来",
-  MANUAL: "手動",
-  IDP: "IdP",
-  TUMIKI: "Tumiki",
-} as const;
-
-const sourceBadgeClass = {
-  SCIM: "bg-sky-500/15 text-sky-300",
-  GROUP: "bg-violet-500/15 text-violet-300",
-  MANUAL: "bg-emerald-500/15 text-emerald-300",
-  IDP: "bg-sky-500/15 text-sky-300",
-  TUMIKI: "bg-emerald-500/15 text-emerald-300",
-} as const;
-
 const tabLabel = {
   organizations: "組織",
   groups: "グループ",
@@ -106,9 +99,6 @@ const tabLabel = {
 
 const isOrgEditable = (org: OrgUnit) => org.source === "MANUAL";
 const isGroupEditable = (group: Group) => group.source === "TUMIKI";
-
-const getUserLabel = (user: { name?: string | null; email?: string | null }) =>
-  user.name ?? user.email ?? "名前未設定";
 
 const getMutationErrorMessage = (error: {
   data?: { code?: string } | null;
@@ -341,6 +331,15 @@ export const DirectoryManagementPanel = ({
       : selectedKind === "group" && selectedItem
         ? !isGroupEditable(selectedItem as Group)
         : true;
+  const permissionSummaryQuery =
+    api.mcpPolicies.getTargetPermissionSummary.useQuery(
+      {
+        targetType: selectedKind === "org" ? "org" : "group",
+        targetId: selectedItem?.id ?? "__none__",
+      },
+      { enabled: Boolean(selectedItem && selectedKind) },
+    );
+  const permissionSummary = permissionSummaryQuery.data;
 
   const visibleEntries = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -831,7 +830,7 @@ export const DirectoryManagementPanel = ({
                     {readonly ? (
                       <span className="bg-bg-active text-text-muted inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px]">
                         <Lock size={10} />
-                        readonly
+                        同期元管理 / この画面では編集不可
                       </span>
                     ) : (
                       <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] text-emerald-300">
@@ -884,7 +883,7 @@ export const DirectoryManagementPanel = ({
                 </div>
               </div>
 
-              <div className="mb-4 grid gap-4 lg:grid-cols-3">
+              <div className="mb-4 grid gap-4 lg:grid-cols-4">
                 {[
                   {
                     icon: selectedKind === "org" ? GitBranch : Link2,
@@ -897,11 +896,21 @@ export const DirectoryManagementPanel = ({
                   },
                   {
                     icon: Shield,
-                    label: "権限設定",
-                    value:
-                      selectedKind === "org"
-                        ? `${(selectedItem as OrgUnit).permissions.length} 件`
-                        : "権限管理画面で設定",
+                    label: "適用中のロール / 権限設定",
+                    value: permissionSummaryQuery.isError
+                      ? "取得失敗"
+                      : permissionSummary
+                        ? `${permissionSummary.summary.settingsCount} 件`
+                        : "読み込み中",
+                  },
+                  {
+                    icon: Shield,
+                    label: "最終的な許可 / 拒否",
+                    value: permissionSummaryQuery.isError
+                      ? "取得失敗"
+                      : permissionSummary
+                        ? `許可 ${permissionSummary.summary.allowCount} / 拒否 ${permissionSummary.summary.denyCount}`
+                        : "読み込み中",
                   },
                   {
                     icon: Users,
@@ -924,7 +933,47 @@ export const DirectoryManagementPanel = ({
                 ))}
               </div>
 
-              <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
+              <div className="space-y-4">
+                <section className="bg-bg-card border-border-default rounded-xl border p-4">
+                  <h3 className="text-text-primary mb-3 flex items-center gap-2 text-sm font-semibold">
+                    <Link2 size={14} />
+                    {selectedKind === "org"
+                      ? "この組織について"
+                      : "このグループについて"}
+                  </h3>
+                  <div className="grid gap-2 md:grid-cols-3">
+                    <div className="bg-bg-active rounded-lg px-3 py-3">
+                      <div className="text-text-muted text-[10px]">同期元</div>
+                      <div className="text-text-primary mt-1 text-xs">
+                        {sourceLabel[selectedItem.source]}
+                      </div>
+                    </div>
+                    <div className="bg-bg-active rounded-lg px-3 py-3">
+                      <div className="text-text-muted text-[10px]">
+                        {selectedKind === "org" ? "path" : "provider"}
+                      </div>
+                      <div className="text-text-primary mt-1 truncate font-mono text-xs">
+                        {selectedKind === "org"
+                          ? (selectedItem as OrgUnit).path
+                          : ((selectedItem as Group).provider ?? "—")}
+                      </div>
+                    </div>
+                    <div className="bg-bg-active rounded-lg px-3 py-3">
+                      <div className="text-text-muted text-[10px]">編集</div>
+                      <div className="text-text-primary mt-1 text-xs">
+                        {readonly
+                          ? "同期元管理 / この画面では編集不可"
+                          : "この画面で編集可能"}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-text-muted mt-3 text-[10px]">
+                    SCIM/IdP 由来のデータは同期元を truth
+                    とし、ここでは参照のみです。手動作成した組織・Tumiki
+                    グループだけ編集できます。
+                  </p>
+                </section>
+
                 <section className="bg-bg-card border-border-default overflow-hidden rounded-xl border">
                   <div className="border-b-border-default flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3">
                     <h3 className="text-text-primary text-sm font-semibold">
@@ -1015,35 +1064,130 @@ export const DirectoryManagementPanel = ({
                   )}
                 </section>
 
-                <section className="bg-bg-card border-border-default rounded-xl border p-4">
-                  <h3 className="text-text-primary mb-3 flex items-center gap-2 text-sm font-semibold">
-                    <Link2 size={14} />
-                    同期と編集境界
-                  </h3>
-                  <div className="space-y-2">
-                    <div className="bg-bg-active rounded-lg px-3 py-3">
-                      <div className="text-text-muted text-[10px]">source</div>
-                      <div className="text-text-primary mt-1 text-xs">
-                        {sourceLabel[selectedItem.source]}
-                      </div>
-                    </div>
-                    {selectedKind === "group" ? (
-                      <div className="bg-bg-active rounded-lg px-3 py-3">
-                        <div className="text-text-muted text-[10px]">
-                          provider / externalId
-                        </div>
-                        <div className="text-text-primary mt-1 font-mono text-xs">
-                          {(selectedItem as Group).provider ?? "—"} /{" "}
-                          {(selectedItem as Group).externalId ?? "—"}
-                        </div>
-                      </div>
-                    ) : null}
-                    <p className="text-text-muted text-[10px]">
-                      SCIM/IdP 由来のデータは同期元を truth
-                      とし、ここでは参照のみです。 手動作成した組織・Tumiki
-                      グループだけ編集できます。
-                    </p>
+                <section className="bg-bg-card border-border-default overflow-hidden rounded-xl border">
+                  <div className="border-b-border-default flex items-center justify-between gap-3 border-b px-5 py-3">
+                    <h3 className="text-text-primary flex items-center gap-2 text-sm font-semibold">
+                      <Shield size={14} />
+                      適用中のロール / 権限設定
+                    </h3>
+                    <Link
+                      href={`/admin/roles?targetType=${
+                        selectedKind === "org" ? "org" : "group"
+                      }&targetId=${selectedItem.id}`}
+                      className="text-text-link text-[11px] underline-offset-2 hover:underline"
+                    >
+                      権限管理へ
+                    </Link>
                   </div>
+                  {permissionSummaryQuery.isLoading ? (
+                    <div className="text-text-muted px-5 py-8 text-center text-xs">
+                      権限設定を読み込み中
+                    </div>
+                  ) : permissionSummaryQuery.isError ? (
+                    <div className="text-text-muted flex items-center justify-center gap-2 px-5 py-8 text-xs">
+                      <AlertCircle size={14} />
+                      権限設定を取得できませんでした
+                    </div>
+                  ) : !permissionSummary ||
+                    permissionSummary.settings.length === 0 ? (
+                    <div className="text-text-muted px-5 py-8 text-center text-xs">
+                      適用中の権限設定はありません
+                    </div>
+                  ) : (
+                    permissionSummary.settings.map((setting) => (
+                      <div
+                        key={setting.id}
+                        className="border-b-border-subtle grid gap-2 border-b px-5 py-3 text-xs md:grid-cols-[1fr_100px_120px]"
+                      >
+                        <div className="min-w-0">
+                          <div className="text-text-primary truncate font-medium">
+                            {setting.toolName ?? setting.catalogName}
+                          </div>
+                          <div className="text-text-muted mt-1 truncate text-[10px]">
+                            {setting.toolName
+                              ? setting.catalogName
+                              : "カタログ"}
+                          </div>
+                        </div>
+                        <span
+                          className={`h-fit w-fit rounded-full px-2 py-0.5 text-[10px] ${getEffectBadgeClass(
+                            setting.effect,
+                          )}`}
+                        >
+                          {getEffectLabel(setting.effect)}
+                        </span>
+                        <span className="text-text-muted text-[10px]">
+                          {sourceKindLabel[setting.sourceKind]}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </section>
+
+                <section className="bg-bg-card border-border-default overflow-hidden rounded-xl border">
+                  <div className="border-b-border-default flex items-center justify-between gap-3 border-b px-5 py-3">
+                    <h3 className="text-text-primary flex items-center gap-2 text-sm font-semibold">
+                      <Shield size={14} />
+                      最終的な許可 / 拒否
+                    </h3>
+                    {permissionSummary ? (
+                      <span className="text-text-subtle text-[10px]">
+                        許可 {permissionSummary.summary.allowCount} / 拒否{" "}
+                        {permissionSummary.summary.denyCount} / 未設定{" "}
+                        {permissionSummary.summary.unsetCount}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="border-b-border-default text-text-subtle hidden grid-cols-[1fr_80px_80px_140px] gap-3 border-b px-5 py-2.5 text-[10px] md:grid">
+                    <span>提供ツール</span>
+                    <span>リスク</span>
+                    <span>結果</span>
+                    <span>理由</span>
+                  </div>
+                  {permissionSummaryQuery.isLoading ? (
+                    <div className="text-text-muted px-5 py-8 text-center text-xs">
+                      最終結果を読み込み中
+                    </div>
+                  ) : permissionSummaryQuery.isError ? (
+                    <div className="text-text-muted flex items-center justify-center gap-2 px-5 py-8 text-xs">
+                      <AlertCircle size={14} />
+                      権限設定を取得できませんでした
+                    </div>
+                  ) : !permissionSummary ||
+                    permissionSummary.finalRows.length === 0 ? (
+                    <div className="text-text-muted px-5 py-8 text-center text-xs">
+                      表示できるツール権限がありません
+                    </div>
+                  ) : (
+                    permissionSummary.finalRows.map((row) => (
+                      <div
+                        key={row.id}
+                        className="border-b-border-subtle hover:bg-bg-card-hover grid gap-2 border-b px-5 py-3 text-xs transition-colors md:grid-cols-[1fr_80px_80px_140px]"
+                      >
+                        <div className="min-w-0">
+                          <div className="text-text-primary truncate font-medium">
+                            {row.toolName}
+                          </div>
+                          <div className="text-text-muted mt-1 truncate font-mono text-[10px]">
+                            {row.catalogName}
+                          </div>
+                        </div>
+                        <span className="text-text-secondary text-[10px]">
+                          {getRiskLabel(row.riskLevel)}
+                        </span>
+                        <span
+                          className={`h-fit w-fit rounded-full px-2 py-0.5 text-[10px] ${getEffectBadgeClass(
+                            row.effect,
+                          )}`}
+                        >
+                          {getEffectLabel(row.effect)}
+                        </span>
+                        <span className="text-text-muted text-[10px]">
+                          {row.reason}
+                        </span>
+                      </div>
+                    ))
+                  )}
                 </section>
               </div>
             </>
