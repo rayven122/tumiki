@@ -50,7 +50,11 @@ const groupListSelect = {
   },
 } as const;
 
-const assertTumikiGroup = (group: { source: GroupSource } | null) => {
+type AssertTumikiGroup = <T extends { source: GroupSource }>(
+  group: T | null,
+) => asserts group is T & { source: typeof GroupSource.TUMIKI };
+
+const assertTumikiGroup: AssertTumikiGroup = (group) => {
   if (!group) {
     throw new TRPCError({
       code: "NOT_FOUND",
@@ -307,6 +311,7 @@ export const groupsRouter = createTRPCRouter({
       });
     }),
 
+  // Retained for callers that only update IdP mapping without changing display fields.
   updateIdpMapping: adminProcedure
     .input(
       z.object({

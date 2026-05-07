@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Building2,
@@ -195,12 +195,12 @@ export const DirectoryManagementPanel = ({
     }
     return counts;
   }, [orgUnits]);
-  const invalidateDirectory = async () => {
+  const invalidateDirectory = useCallback(async () => {
     await Promise.all([
       utils.orgUnits.tree.invalidate(),
       utils.groups.list.invalidate(),
     ]);
-  };
+  }, [utils.groups.list, utils.orgUnits.tree]);
 
   const handleMutationError = (error: {
     data?: { code?: string } | null;
@@ -411,6 +411,7 @@ export const DirectoryManagementPanel = ({
           userId: membership.user.id,
           name: getUserLabel(membership.user),
           email: membership.user.email ?? "—",
+          // Org memberships do not carry their own source in the current schema.
           source: (selectedItem as OrgUnit).source,
           readonly,
           isPrimary: membership.isPrimary,
@@ -1072,6 +1073,7 @@ export const DirectoryManagementPanel = ({
                   onChange={(event) =>
                     setEntryForm({ ...entryForm, name: event.target.value })
                   }
+                  maxLength={100}
                   className="bg-bg-active border-border-default text-text-primary mt-1 w-full rounded-lg border px-3 py-2 text-xs outline-none"
                 />
               </label>
@@ -1113,6 +1115,7 @@ export const DirectoryManagementPanel = ({
                           description: event.target.value,
                         })
                       }
+                      maxLength={500}
                       className="bg-bg-active border-border-default text-text-primary mt-1 min-h-[88px] w-full rounded-lg border px-3 py-2 text-xs outline-none"
                     />
                   </label>
@@ -1129,6 +1132,7 @@ export const DirectoryManagementPanel = ({
                             externalId: event.target.value,
                           })
                         }
+                        maxLength={200}
                         className="bg-bg-active border-border-default text-text-primary mt-1 w-full rounded-lg border px-3 py-2 font-mono text-xs outline-none"
                       />
                     </label>

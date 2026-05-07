@@ -122,6 +122,7 @@ export const orgUnitsRouter = createTRPCRouter({
       });
     }),
 
+  // Retained for callers that only move a manual org unit without renaming it.
   updateParent: adminProcedure
     .input(
       z.object({
@@ -234,6 +235,13 @@ export const orgUnitsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (input.orgUnitId === input.parentId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "部署を自分自身の配下には移動できません",
+        });
+      }
+
       return ctx.db.$transaction(async (tx) => {
         const current = await tx.orgUnit.findUnique({
           where: { id: input.orgUnitId },
@@ -258,12 +266,6 @@ export const orgUnitsRouter = createTRPCRouter({
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: "SCIM/IdP由来の部署配下には移動できません",
-          });
-        }
-        if (input.orgUnitId === input.parentId) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "部署を自分自身の配下には移動できません",
           });
         }
         if (parent?.path.startsWith(`${current.path}/`)) {

@@ -308,6 +308,43 @@ describe("orgUnitsRouter", () => {
     expect(create).not.toHaveBeenCalled();
   });
 
+  test("createManualOrgUnitは親なしでルート部署を作成できる", async () => {
+    const create = vi.fn().mockResolvedValue({
+      id: "manual-root",
+      name: "AI推進室",
+      source: OrgUnitSource.MANUAL,
+      parentId: null,
+      path: "/manual:generated",
+      memberships: [],
+      permissions: [],
+    });
+    const caller = buildCaller({
+      orgUnit: {
+        create,
+      },
+    } as unknown as Context["db"]);
+
+    await expect(
+      caller.createManualOrgUnit({ name: "AI推進室" }),
+    ).resolves.toStrictEqual(
+      expect.objectContaining({
+        id: "manual-root",
+        parentId: null,
+      }),
+    );
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          name: "AI推進室",
+          externalId: expect.stringMatching(/^manual:/) as string,
+          parentId: null,
+          source: OrgUnitSource.MANUAL,
+          path: expect.stringMatching(/^\/manual:/) as string,
+        },
+      }),
+    );
+  });
+
   test("createManualOrgUnitはSCIM部署配下に作成できない", async () => {
     const create = vi.fn();
     const caller = buildCaller({
@@ -379,6 +416,19 @@ describe("orgUnitsRouter", () => {
       }),
     );
     expect(executeRaw).toHaveBeenCalledTimes(1);
+  });
+
+  test("updateManualOrgUnitは自分自身への移動をBAD_REQUESTにする", async () => {
+    const caller = buildCaller({} as Context["db"]);
+
+    await expectTrpcErrorCode(
+      caller.updateManualOrgUnit({
+        orgUnitId: "child",
+        name: "更新後",
+        parentId: "child",
+      }),
+      "BAD_REQUEST",
+    );
   });
 
   test("updateManualOrgUnitはSCIM部署を変更できない", async () => {
@@ -457,6 +507,23 @@ describe("orgUnitsRouter", () => {
     await expectTrpcErrorCode(
       caller.deleteManualOrgUnit({ orgUnitId: "parent" }),
       "BAD_REQUEST",
+    );
+    expect(del).not.toHaveBeenCalled();
+  });
+
+  test("deleteManualOrgUnitは存在しない部署をNOT_FOUNDにする", async () => {
+    const del = vi.fn();
+    const tx = {
+      orgUnit: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        delete: del,
+      },
+    };
+    const caller = buildTransactionCaller(tx);
+
+    await expectTrpcErrorCode(
+      caller.deleteManualOrgUnit({ orgUnitId: "missing-org" }),
+      "NOT_FOUND",
     );
     expect(del).not.toHaveBeenCalled();
   });
