@@ -1,71 +1,21 @@
-import { spawnSync } from "node:child_process";
 import { app, BrowserWindow, powerMonitor } from "electron";
 import { createMainWindow } from "./window";
 import { initializeDb, closeDb } from "./shared/db";
-import {
-  registerAppProtocolSchemes,
-  handleAppProtocol,
-  getRendererRoot,
-} from "./shared/app-protocol";
 import { setupAuthIpc } from "./ipc/auth";
 import { setupCatalogIpc } from "./features/catalog/catalog.ipc";
-import { setupMcpProxyLaunchCommandIpc } from "./features/mcp-proxy/launch-command.ipc";
-import { setupAiClientIpc } from "./features/ai-client/ai-client.ipc";
 import { setupMcpIpc } from "./features/mcp-server-list/mcp.ipc";
 import { setupMcpServerDetailIpc } from "./features/mcp-server-detail/mcp-server-detail.ipc";
 import { setupAuditLogIpc } from "./features/audit-log/audit-log.ipc";
-import { setupDashboardIpc } from "./features/dashboard/dashboard.ipc";
-import { setupDesktopSessionIpc } from "./features/desktop-session/desktop-session.ipc";
 import { seedCatalogs } from "./features/catalog/catalog.seed";
 import { createOAuthManager } from "./auth/oauth-manager";
-import { resolveOidcEndpoints } from "./auth/oidc-client";
 import { getOAuthManager, setOAuthManager } from "./auth/manager-registry";
 import { getKeycloakEnvOptional } from "./utils/env";
 import { createMcpOAuthManager } from "./features/oauth/oauth.service";
 import { setupOAuthIpc } from "./features/oauth/oauth.ipc";
+import { isMcpOAuthCallback } from "./features/oauth/oauth.protocol";
 import type { McpOAuthManager } from "./features/oauth/oauth.service";
-import { setupManagerIpc, fetchManagerOidcConfig } from "./ipc/manager";
-import { setupProfileIpc } from "./ipc/profile";
-import { setupShellIpc } from "./ipc/shell";
-import {
-  startAuditLogManagerSyncScheduler,
-  stopAuditLogManagerSyncScheduler,
-  syncPendingAuditLogsToManager,
-} from "./features/audit-log-manager-sync/audit-log-manager-sync.service";
-import { getAppStore } from "./shared/app-store";
-import { activateOrganizationProfile } from "./shared/profile-store";
 import { ServerStatus } from "@prisma/desktop-client";
-import type { Prisma } from "@prisma/desktop-client";
 import * as logger from "./shared/utils/logger";
-import { ensureNodeShim } from "./runtime/path-resolver";
-
-// Cursor など親プロセス（Electron アプリ）が子プロセスへ ELECTRON_RUN_AS_NODE=1 を継承
-// させたケース対応。Electron が Node モードで起動すると `import { app } from "electron"` が
-// undefined になり、後段の app.whenReady() で TypeError になる。
-// env から ELECTRON_RUN_AS_NODE を除いて自身を Electron 主プロセスとして再起動し、
-// その結果コードで終了する。親（MCPクライアント）から見れば、stdio を継承した単一の
-// 長時間プロセスに見える。
-//
-// ⚠️ 重要: このガードより上にある import がモジュール評価時に Electron API を呼び出して
-// はならない。ES Module の仕様上、import はガードより先に評価されるため、Node モードで
-// 起動した瞬間にクラッシュする。新規 import 追加時は注意すること。
-if (!app) {
-  const cleanEnv = { ...process.env };
-  delete cleanEnv.ELECTRON_RUN_AS_NODE;
-  const result = spawnSync(process.execPath, process.argv.slice(1), {
-    env: cleanEnv,
-    stdio: "inherit",
-  });
-  if (result.error) {
-    process.stderr.write(
-      `[tumiki-desktop] Electron 再起動に失敗しました: ${result.error.message}\n`,
-    );
-  }
-  // シグナル終了（SIGTERM 等）の場合 result.status は null になる。
-  // 正常シャットダウンを exit code 1 として親に伝えると誤検知の原因になるため、
-  // signal 起因なら 0、それ以外（クラッシュ）は 1 にフォールバック。
-  process.exit(result.status ?? (result.signal ? 0 : 1));
-}
 
 // --mcp-proxy モード: GUI不要、stdioでMCPプロキシとして動作
 const isMcpProxyMode = process.argv.includes("--mcp-proxy");
@@ -76,18 +26,6 @@ if (isMcpProxyMode) {
   void app.whenReady().then(async () => {
     // macOSでDockアイコンを非表示にする（CLIモードのためGUI不要）
     app.dock?.hide();
-
-    // バンドル済みランタイムの Node shim を userData 配下に生成（DEV-1597）
-    // MCPコネクタ spawn 前に必ず存在させる必要がある。失敗してもプロキシ起動は継続
-    // （shim 不在時は MCP コネクタ spawn が後段でエラーになる）。
-    try {
-      ensureNodeShim();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      process.stderr.write(
-        `[tumiki-mcp-proxy] Node shim 生成失敗（MCP起動に影響する可能性）: ${message}\n`,
-      );
-    }
 
     try {
       // --server <slug> で起動する仮想MCPサーバーを指定（省略時は全有効サーバー）
@@ -116,10 +54,6 @@ if (isMcpProxyMode) {
           `[tumiki-mcp-proxy] 古い監査ログの削除に失敗しました（起動は継続します）: ${message}\n`,
         );
       }
-      startAuditLogManagerSyncScheduler();
-      powerMonitor.on("resume", () => {
-        void syncPendingAuditLogsToManager();
-      });
 
       // 有効なMCPサーバー設定 + 監査ログ用メタデータを取得
       const { getEnabledConfigsWithMeta } =
@@ -154,7 +88,7 @@ if (isMcpProxyMode) {
       };
 
       // 監査ログフックを構築
-      const onToolCall: import("@tumiki/mcp-core-proxy").ToolCallHook = (
+      const onToolCall: import("@tumiki/mcp-proxy-core").ToolCallHook = (
         event,
       ) => {
         const sepIdx = event.prefixedToolName.indexOf("__");
@@ -184,7 +118,7 @@ if (isMcpProxyMode) {
         const inputBytes = safeByteLength(event.args);
         const outputBytes = safeByteLength(event.resultContent);
 
-        const auditLogInput = {
+        return writeAuditLog({
           toolName,
           method: "tools/call",
           transportType: connMeta.transportType,
@@ -197,95 +131,20 @@ if (isMcpProxyMode) {
           connectionName: connMeta.connectionName,
           clientName: event.clientName?.slice(0, 100),
           clientVersion: event.clientVersion?.slice(0, 50),
-          // 検出があった時だけ { summary, maskedArgs } の階層構造で残す（NULL なら DB は NULL）
-          // - summary: type 別の件数とマスク後トークンの集計
-          // - maskedArgs: 上流 MCP に実際に渡された args 全体（生 PII を含まない）
-          // Prisma Json 型へキャスト（実値は JSON シリアライズ可能なオブジェクトのみ）
-          piiDetections: event.piiDetections
-            ? (JSON.parse(
-                JSON.stringify({
-                  summary: event.piiDetections,
-                  maskedArgs: event.maskedArgs ?? null,
-                }),
-              ) as import("@prisma/desktop-client").Prisma.InputJsonValue)
-            : undefined,
-          piiPolicy: event.piiPolicy,
-        } satisfies Prisma.AuditLogUncheckedCreateInput;
-
-        return writeAuditLog(auditLogInput);
+        });
       };
 
       const { join } = await import("path");
       const mod = (await import(join(__dirname, "mcp-cli.cjs"))) as {
         runMcpProxy: (
-          configs: import("@tumiki/mcp-core-proxy").McpServerConfig[],
-          hooks?: import("@tumiki/mcp-core-proxy").ProxyHooks,
+          configs: import("@tumiki/mcp-proxy-core").McpServerConfig[],
+          hooks?: import("@tumiki/mcp-proxy-core").ProxyHooks,
         ) => Promise<void>;
       };
-
-      // 許可ツール解決resolver（GUI のトグル変更を CLI モードに即時反映）
-      // DB が0件の場合は null（フィルタ無効）を返し、起動時の挙動と整合させる。
-      // 例外時は upstream-client 側で起動時設定にフォールバックされる。
-      const { findToolsByConnectionId, findServerBySlug } =
-        await import("./features/mcp-server-list/mcp.repository");
-      const { getDb } = await import("./shared/db");
-      // initializeDb() 完了後に1回だけ取得し、resolver 呼び出しごとの await を避ける
-      const db = await getDb();
-      const resolveAllowedTools = async (
-        serverName: string,
-      ): Promise<string[] | null> => {
-        const connMeta = metaMap.get(serverName);
-        if (!connMeta) {
-          // 未登録サーバーは全許可にせず、明示的に全拒否する（安全側にフォールバック）
-          process.stderr.write(
-            `[tumiki-mcp-proxy] 未登録サーバー "${serverName}" の resolver をスキップ\n`,
-          );
-          return [];
-        }
-        const tools = await findToolsByConnectionId(db, connMeta.connectionId);
-        if (tools.length === 0) return null;
-        return tools.filter((t) => t.isAllowed).map((t) => t.name);
-      };
-
-      // PII マスキング: --server <slug> 指定時のみ DB の McpServer.isPiiMaskingEnabled を反映する。
-      // --server 省略時（全サーバー集約モード）はサーバーが特定できないため、安全側でデフォルト ON のまま。
-      // false 時は disableDefaultFilter=true で runMcpProxy 内のデフォルトフィルタ構築をスキップさせる。
-      const serverRecord = serverSlug
-        ? await findServerBySlug(db, serverSlug)
-        : null;
-      // slug は指定されたが DB に該当サーバーがない場合、設定ミスをログで気付けるようにする
-      if (serverSlug && serverRecord === null) {
-        process.stderr.write(
-          `[tumiki-mcp-proxy] サーバー "${serverSlug}" が DB に見つかりません。マスキングはデフォルト ON で起動します\n`,
-        );
-      }
-      const disableDefaultFilter =
-        serverRecord !== null && !serverRecord.isPiiMaskingEnabled;
-      if (disableDefaultFilter) {
-        process.stderr.write(
-          `[tumiki-mcp-proxy] PII マスキングは無効化されています (server="${serverSlug}")\n`,
-        );
-      }
-
-      // TOON 変換: --server <slug> 指定時のみ DB の McpServer.isToonConversionEnabled を反映する。
-      // ⚠️ --server 省略時（全サーバー集約モード）はサーバーが特定できないため、UI のトグルが ON でも常に OFF になる。
-      // この制限は ToolDetail.tsx の圧縮トグルツールチップにも明記しているが、UI からの切替が反映されないことに注意。
-      const enableToonConversion =
-        serverRecord?.isToonConversionEnabled ?? false;
-      if (enableToonConversion) {
-        process.stderr.write(
-          `[tumiki-mcp-proxy] レスポンス圧縮（TOON 変換）が有効です (server="${serverSlug}")\n`,
-        );
-      }
-
       await mod.runMcpProxy(configs, {
         onToolCall,
         onStatusChange,
-        resolveAllowedTools,
-        disableDefaultFilter,
-        enableToonConversion,
         onShutdown: async () => {
-          await stopAuditLogManagerSyncScheduler();
           await resetAllServerStatus().catch(() => {});
           await closeDb();
         },
@@ -305,10 +164,6 @@ if (isMcpProxyMode) {
     }
   });
 } else {
-  // GUI モード: `app.ready` 前にカスタム tumiki-bundle:// スキームを privileged 登録する
-  // （Electronの仕様上、registerSchemesAsPrivileged は ready 前に呼ぶ必要がある）
-  registerAppProtocolSchemes();
-
   const PROTOCOL = "tumiki";
   const CALLBACK_HOST = "auth";
   const CALLBACK_PATHNAME = "/callback";
@@ -321,49 +176,6 @@ if (isMcpProxyMode) {
 
   let mainWindow: BrowserWindow | null = null;
   let mcpOAuthManager: McpOAuthManager | null = null;
-
-  /**
-   * 管理サーバーURLとOIDC設定からOAuthManagerを初期化（or 再初期化）
-   */
-  const initOAuthManagerFromUrl = async (
-    url: string,
-    issuer: string,
-    clientId: string,
-  ): Promise<void> => {
-    const prev = getOAuthManager();
-    prev?.stopAutoRefresh();
-
-    // OIDC Discovery でプロバイダー固有のエンドポイントを取得（Dex・Keycloak・Okta 等に対応）
-    const endpoints = await resolveOidcEndpoints(issuer);
-
-    const manager = createOAuthManager(
-      {
-        issuer,
-        clientId,
-        redirectUri: `${PROTOCOL}://${CALLBACK_HOST}${CALLBACK_PATHNAME}`,
-        endpoints,
-      },
-      {
-        onAuthExpired: () => {
-          mainWindow?.webContents.send(
-            "auth:sessionExpired",
-            "認証セッションの有効期限が切れました。再度ログインしてください。",
-          );
-        },
-      },
-    );
-    setOAuthManager(manager);
-
-    try {
-      await manager.initialize();
-      logger.info("OAuthManager initialized from manager URL", { url });
-    } catch (error) {
-      logger.error(
-        "OAuthManager initialization failed (new login still available)",
-        { error: error instanceof Error ? error.message : error },
-      );
-    }
-  };
 
   const createWindow = (): void => {
     mainWindow = createMainWindow();
@@ -421,11 +233,6 @@ if (isMcpProxyMode) {
 
     try {
       await manager.handleAuthCallback(url);
-      const store = await getAppStore();
-      const managerUrl = store.get("managerUrl");
-      if (managerUrl) {
-        await activateOrganizationProfile(managerUrl);
-      }
       sendToWindow("auth:callbackSuccess");
       logger.info("Deep link auth callback handled successfully");
     } catch (error) {
@@ -439,12 +246,45 @@ if (isMcpProxyMode) {
   };
 
   /**
-   * カスタムURLスキームのコールバックを処理（Keycloak のみ）
-   *
-   * MCP OAuth は loopback HTTP（http://127.0.0.1:<port>/callback）に移行済みのため
-   * ここでは扱わない。tumiki:// は Keycloak ログインコールバック専用。
+   * MCP OAuthコールバックを処理（tumiki://oauth/callback）
+   */
+  const handleMcpOAuthCallback = async (url: string): Promise<void> => {
+    ensureWindowAndFocus();
+
+    if (!mcpOAuthManager) {
+      logger.error("McpOAuthManager not initialized when handling callback");
+      sendToWindow(
+        "oauth:error",
+        "OAuth認証マネージャーが初期化されていません",
+      );
+      return;
+    }
+
+    try {
+      const result = await mcpOAuthManager.handleCallback(url);
+      sendToWindow("oauth:success", result);
+      logger.info("MCP OAuth callback handled successfully", {
+        serverId: result.serverId,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "OAuth認証に失敗しました";
+      sendToWindow("oauth:error", message);
+      logger.error("MCP OAuth callback failed", { error });
+    }
+  };
+
+  /**
+   * カスタムURLスキームのコールバックを処理（ルーティング）
    */
   const handleDeepLink = async (url: string): Promise<void> => {
+    // MCP OAuthコールバック（tumiki://oauth/callback）
+    if (isMcpOAuthCallback(url)) {
+      await handleMcpOAuthCallback(url);
+      return;
+    }
+
+    // Keycloak認証コールバック（tumiki://auth/callback）
     let isKeycloakCallback = false;
     try {
       const parsed = new URL(url);
@@ -503,62 +343,46 @@ if (isMcpProxyMode) {
     .whenReady()
     .then(async () => {
       // カスタムURLスキームを登録（Linuxではready後に呼ぶ必要がある）
-      // dev モードでは Electron 実行パスが起動ごとに変わる可能性があるため、
-      // 起動時に毎回上書き登録する（setAsDefaultProtocolClient は冪等）
-      app.setAsDefaultProtocolClient(PROTOCOL);
-
-      // バンドル済みランタイムの Node shim を userData 配下に生成（DEV-1597）
-      // MCPコネクタ spawn 前に必ず存在させる必要がある。失敗しても GUI 起動は継続
-      // （shim 不在時は MCP コネクタ起動のみが影響を受ける）。
-      try {
-        ensureNodeShim();
-      } catch (error) {
-        logger.error(
-          "Node shim の生成に失敗しました（MCPコネクタが起動できない可能性）",
-          { error: error instanceof Error ? error.message : String(error) },
-        );
-      }
-
-      // production 用の tumiki-bundle:// プロトコルハンドラを登録（dev では vite dev server を使うため不要）
-      // レンダラー dist の絶対パス基点で配信し、`<img src="/logos/foo.svg">` を解決可能にする
-      if (!process.env["ELECTRON_RENDERER_URL"]) {
-        handleAppProtocol(getRendererRoot(__dirname));
+      if (!app.isDefaultProtocolClient(PROTOCOL)) {
+        app.setAsDefaultProtocolClient(PROTOCOL);
       }
 
       // データベース初期化
       await initializeDb();
-      startAuditLogManagerSyncScheduler();
 
-      // OAuthManager初期化: electron-store保存済みURLを優先、フォールバックで環境変数
-      const savedManagerUrl = (await getAppStore()).get("managerUrl");
-      if (savedManagerUrl) {
+      // OAuthManager初期化（環境変数が設定されている場合のみ）
+      const keycloakEnv = getKeycloakEnvOptional();
+      if (keycloakEnv) {
+        const manager = createOAuthManager(
+          {
+            issuer: keycloakEnv.KEYCLOAK_ISSUER,
+            clientId: keycloakEnv.KEYCLOAK_DESKTOP_CLIENT_ID,
+            redirectUri: `${PROTOCOL}://${CALLBACK_HOST}${CALLBACK_PATHNAME}`,
+          },
+          {
+            onAuthExpired: () => {
+              mainWindow?.webContents.send(
+                "auth:sessionExpired",
+                "認証セッションの有効期限が切れました。再度ログインしてください。",
+              );
+            },
+          },
+        );
+        setOAuthManager(manager);
         try {
-          const config = await fetchManagerOidcConfig(savedManagerUrl);
-          await initOAuthManagerFromUrl(
-            savedManagerUrl,
-            config.issuer,
-            config.clientId,
-          );
+          await manager.initialize();
+          logger.info("OAuthManager initialized");
         } catch (error) {
-          logger.warn(
-            "Saved manager URL is unreachable, OAuth disabled until reconnect",
-            { error: error instanceof Error ? error.message : error },
+          // 既存トークンの復元に失敗しても、新規ログインフローは利用可能なためマネージャーは維持
+          logger.error(
+            "OAuthManager initialization failed (new login still available)",
+            {
+              error: error instanceof Error ? error.message : error,
+            },
           );
         }
       } else {
-        // 後方互換: Keycloak環境変数フォールバック
-        const keycloakEnv = getKeycloakEnvOptional();
-        if (keycloakEnv) {
-          await initOAuthManagerFromUrl(
-            "",
-            keycloakEnv.KEYCLOAK_ISSUER,
-            keycloakEnv.KEYCLOAK_DESKTOP_CLIENT_ID,
-          );
-        } else {
-          logger.warn(
-            "No manager URL or Keycloak env vars configured, OAuth disabled",
-          );
-        }
+        logger.warn("Keycloak environment variables not set, OAuth disabled");
       }
 
       // カタログ初期データを投入（冪等・失敗してもアプリ起動は継続）
@@ -578,24 +402,16 @@ if (isMcpProxyMode) {
       setupOAuthIpc(mcpOAuthManager);
 
       // IPC ハンドラー登録
-      setupProfileIpc();
-      setupManagerIpc(initOAuthManagerFromUrl);
       setupAuthIpc();
       setupCatalogIpc();
-      setupMcpProxyLaunchCommandIpc();
-      setupAiClientIpc();
       setupMcpIpc();
       setupMcpServerDetailIpc();
       setupAuditLogIpc();
-      setupDashboardIpc();
-      setupDesktopSessionIpc();
-      setupShellIpc();
 
       createWindow();
 
       // スリープ復帰時にトークンの有効期限を再チェック
       powerMonitor.on("resume", () => {
-        void syncPendingAuditLogsToManager();
         const manager = getOAuthManager();
         if (manager) {
           manager.initialize().catch((error) => {
@@ -640,10 +456,7 @@ if (isMcpProxyMode) {
     event.preventDefault();
     const oauthManager = getOAuthManager();
     oauthManager?.stopAutoRefresh();
-    Promise.all([
-      stopAuditLogManagerSyncScheduler(),
-      oauthManager?.waitForPendingRefresh() ?? Promise.resolve(),
-    ])
+    (oauthManager?.waitForPendingRefresh() ?? Promise.resolve())
       .then(() => closeDb())
       .then(() => {
         logger.info("Database connection closed successfully");
