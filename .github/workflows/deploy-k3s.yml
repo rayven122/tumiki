@@ -28,8 +28,6 @@ jobs:
       SSH_HOST: ssh.tumiki.cloud
       SSH_USER: deploy
       K3S_HOST: 192.168.0.20
-      CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
-      CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
 
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
