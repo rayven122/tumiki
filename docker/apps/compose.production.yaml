@@ -1,0 +1,86 @@
+# 本番環境用 Docker Compose
+#
+# 使用方法:
+#   cd ~/tumiki
+#   docker compose -f compose.production.yaml pull
+#   docker compose -f compose.production.yaml up -d
+#
+# 前提条件:
+#   - .env を同ディレクトリに配置（権限 600）
+#   - PostgreSQL は外部ホストを使用（DATABASE_URL で接続）
+#   - GHCR の :latest はリリースタグ (v*) push でのみ更新される
+#   - Watchtower が :latest の digest 変化を監視し、自動 pull + 再起動
+services:
+  manager:
+    image: ghcr.io/rayven122/tumiki-manager:latest
+    container_name: tumiki-manager
+    restart: unless-stopped
+    ports:
+      # 既存 Cloudflare Tunnel ingress (host:3000 → manager) を維持
+      - "3000:8080"
+    env_file: .env
+    environment:
+      # apps/manager/.env として image に焼き込まれた AUTH_URL=http://localhost:3000 を上書き
+      # AUTH_URL は NEXTAUTH_URL より優先されるため両方設定する
+      AUTH_URL: ${NEXTAUTH_URL}
+      NEXTAUTH_URL: ${NEXTAUTH_URL}
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/api/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+
+  mcp-proxy:
+    image: ghcr.io/rayven122/tumiki-mcp-proxy:latest
+    container_name: tumiki-mcp-proxy
+    restart: unless-stopped
+    ports:
+      # 既存 Cloudflare Tunnel ingress (host:8080 → mcp-proxy) を維持
+      - "8080:8080"
+    env_file: .env
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: tumiki-watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      # ラベル付きコンテナのみ監視対象とする
+      WATCHTOWER_LABEL_ENABLE: "true"
+      WATCHTOWER_POLL_INTERVAL: ${WATCHTOWER_POLL_INTERVAL:-300}
+      # 古い image を自動削除（ディスク逼迫対策）
+      WATCHTOWER_CLEANUP: "true"
+      WATCHTOWER_INCLUDE_RESTARTING: "true"
+      WATCHTOWER_NOTIFICATION_REPORT: "true"
+      WATCHTOWER_NOTIFICATION_TITLE_TAG: tumiki-prod
+      # Shoutrrr 形式の URL（例: slack://hook:TOKEN@channel）。空なら通知無効
+      WATCHTOWER_NOTIFICATION_URL: ${WATCHTOWER_NOTIFICATION_URL:-}
+      TZ: Asia/Tokyo

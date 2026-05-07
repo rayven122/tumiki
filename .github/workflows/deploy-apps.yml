@@ -7,12 +7,12 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: 'デプロイ先環境'
+        description: "デプロイ先環境"
         type: choice
         options: [staging, production]
         default: staging
       image_tag:
-        description: 'イメージタグ（staging: main / production: latest）'
+        description: "イメージタグ（staging: main / production は Watchtower が自動追従するため通常未指定）"
         type: string
 
 concurrency:
@@ -34,7 +34,6 @@ jobs:
        github.event.workflow_run.head_branch == 'main') ||
       (github.event_name == 'workflow_dispatch' && inputs.environment == 'staging')
     environment: staging
-
     env:
       IMAGE_TAG: ${{ inputs.image_tag || 'main' }}
       CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
@@ -131,17 +130,12 @@ jobs:
     name: 🚀 Deploy to production
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: |
-      (github.event_name == 'workflow_run' &&
-       github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.repository.full_name == github.repository &&
-       startsWith(github.event.workflow_run.head_branch, 'v') &&
-       contains(github.event.workflow_run.head_branch, '.')) ||
-      (github.event_name == 'workflow_dispatch' && inputs.environment == 'production')
+    # production の image 自動更新は VM 上の Watchtower が :latest を監視して行う。
+    # このジョブは compose.production.yaml / .env が変わったときの手動再配信を担う。
+    if: github.event_name == 'workflow_dispatch' && inputs.environment == 'production'
     environment: production
 
     env:
-      IMAGE_TAG: ${{ inputs.image_tag || 'latest' }}
       CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
       CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
       SSH_HOST: ${{ vars.DEPLOY_TUNNEL_HOSTNAME }}
@@ -178,53 +172,44 @@ jobs:
       - name: 🔒 Restrict secrets file permissions
         run: chmod 600 tumiki.env
 
-      - name: 📤 Transfer compose.yaml and .env
+      - name: 📤 Transfer compose.production.yaml and .env
         run: |
           # 前回 cleanup が失敗していた場合に備えて既存 .env を削除（リカバリ）
           ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" "mkdir -p ~/tumiki && rm -f ~/tumiki/.env"
-          scp -i ~/.ssh/id_ed25519 docker/apps/compose.yaml "${SSH_USER}@${SSH_HOST}:~/tumiki/compose.yaml"
+          scp -i ~/.ssh/id_ed25519 docker/apps/compose.production.yaml "${SSH_USER}@${SSH_HOST}:~/tumiki/compose.production.yaml"
           # install -m 600 でファイル作成と権限設定をアトミックに実施（scp + chmod のウィンドウを排除）
           ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" 'install -m 600 /dev/stdin ~/tumiki/.env' < tumiki.env
 
       - name: 🐳 Deploy containers
         run: |
-          # IMAGE_TAG はシェルインジェクション防止のため bash 引数として渡し $1 でエスケープ
-          # ヒアドキュメントは quoted で runner 側変数の意図しない展開を防ぐ
-          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -ls -- "${IMAGE_TAG}" << 'REMOTE_SCRIPT'
+          ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash -ls << 'REMOTE_SCRIPT'
             set -euo pipefail
             set +o history
-            export IMAGE_TAG="$1"
             cd ~/tumiki
-            docker compose pull
-            docker compose up -d --remove-orphans
-            rm -f .env
+            docker compose -f compose.production.yaml pull
+            docker compose -f compose.production.yaml up -d --remove-orphans
           REMOTE_SCRIPT
 
       - name: ✅ Verify health endpoints
         run: |
           ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash << 'HEALTHCHECK'
             for i in $(seq 1 20); do
-              if curl -sf http://localhost:8080/api/health > /dev/null 2>&1 && \
-                 curl -sf http://localhost:8081/health > /dev/null 2>&1 && \
-                 curl -sf http://localhost:3100/api/health > /dev/null 2>&1; then
-                echo "=== Manager ===" && curl -sf http://localhost:8080/api/health | jq .
-                echo "=== MCP Proxy ===" && curl -sf http://localhost:8081/health | jq .
-                echo "=== Internal Manager ===" && curl -sf http://localhost:3100/api/health | jq .
+              if curl -sf http://localhost:3000/api/health > /dev/null 2>&1 && \
+                 curl -sf http://localhost:8080/health > /dev/null 2>&1; then
+                echo "=== Manager ===" && curl -sf http://localhost:3000/api/health | jq .
+                echo "=== MCP Proxy ===" && curl -sf http://localhost:8080/health | jq .
                 exit 0
               fi
               echo "Waiting... ($i/20)" && sleep 5
             done
             echo "Timeout: コンテナが起動しませんでした"
-            cd ~/tumiki && docker compose logs --tail=50
+            cd ~/tumiki && docker compose -f compose.production.yaml logs --tail=50
             exit 1
           HEALTHCHECK
 
       - name: 🧹 Cleanup
         if: always()
         run: |
-          # デプロイ失敗時に VM 上に .env が残らないよう SSH 越しに確実に削除
-          # SSH 鍵を削除する前に実行する必要がある
-          # 削除失敗時は warning を出して運用側で検知できるようにする（cleanup の失敗で job 自体は失敗扱いにしない）
-          ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=10 "${SSH_USER}@${SSH_HOST}" 'rm -f ~/tumiki/.env' \
-            || echo "::warning::VM上の .env 削除に失敗しました。手動確認が必要です"
+          # production では Watchtower が再起動時に .env を参照するため VM 上に永続化する
+          # secrets ファイルと SSH 鍵のみクリーンアップ
           rm -f /tmp/cloudflared.deb /tmp/cf-proxy.sh tumiki.env ~/.ssh/id_ed25519
