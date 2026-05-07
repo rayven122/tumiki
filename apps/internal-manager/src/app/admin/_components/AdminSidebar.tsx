@@ -8,26 +8,59 @@ import {
   Building2,
   ExternalLink,
   History,
+  Link2,
   PanelLeft,
   PanelLeftClose,
   Server,
   Settings,
   Shield,
-  Users,
+  User,
+  type LucideIcon,
 } from "lucide-react";
 import type { Theme } from "~/lib/admin-theme";
 import { api } from "~/trpc/react";
 import { ThemeToggle } from "./ThemeToggle";
 
-const NAV_ITEMS = [
-  { path: "/admin", label: "ダッシュボード", icon: Activity },
-  { path: "/admin/history", label: "操作履歴", icon: History },
-  { path: "/admin/directory", label: "ディレクトリ管理", icon: Building2 },
-  { path: "/admin/roles", label: "権限管理", icon: Shield },
-  { path: "/admin/users", label: "ユーザー管理", icon: Users },
-  { path: "/admin/tools", label: "カタログ管理", icon: Server },
-  { path: "/admin/settings", label: "システム設定", icon: Settings },
-] as const;
+type NavItem = {
+  path: string;
+  label: string;
+  icon: LucideIcon;
+};
+
+type NavSection = {
+  heading?: string;
+  items: NavItem[];
+};
+
+const NAV_SECTIONS: NavSection[] = [
+  {
+    items: [
+      { path: "/admin", label: "ダッシュボード", icon: Activity },
+      { path: "/admin/history", label: "操作履歴", icon: History },
+    ],
+  },
+  {
+    heading: "ディレクトリ",
+    items: [
+      { path: "/admin/directory", label: "組織・グループ", icon: Building2 },
+      { path: "/admin/users", label: "ユーザー", icon: User },
+    ],
+  },
+  {
+    heading: "アクセス制御",
+    items: [
+      { path: "/admin/roles", label: "ロール", icon: Shield },
+      { path: "/admin/assignments", label: "割り当て", icon: Link2 },
+    ],
+  },
+  {
+    heading: "プラットフォーム",
+    items: [
+      { path: "/admin/tools", label: "カタログ管理", icon: Server },
+      { path: "/admin/settings", label: "システム設定", icon: Settings },
+    ],
+  },
+];
 
 type Props = {
   initialTheme: Theme;
@@ -61,7 +94,7 @@ export const AdminSidebar = ({ initialTheme }: Props) => {
                 {sidebarTitle}
               </div>
               <div className="text-text-subtle truncate text-[10px]">
-                Internal Manager
+                Tumiki Manager
               </div>
             </div>
           </div>
@@ -78,30 +111,58 @@ export const AdminSidebar = ({ initialTheme }: Props) => {
       </div>
 
       {/* ナビゲーション */}
-      <nav className="flex-1 space-y-0.5 px-2 pt-2">
-        {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
-          const isActive =
-            pathname === path ||
-            (path === "/admin/directory" &&
-              (pathname === "/admin/organizations" ||
-                pathname === "/admin/groups")) ||
-            (path === "/admin/users" && pathname.startsWith("/admin/users/"));
-          return (
-            <Link
-              key={path}
-              href={path}
-              title={collapsed ? label : undefined}
-              className={`flex min-h-[44px] items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors hover:opacity-90 ${
-                isActive
-                  ? "bg-bg-active text-text-primary"
-                  : "text-text-secondary hover:bg-bg-card-hover hover:text-text-primary"
-              }`}
-            >
-              <Icon size={15} className="shrink-0" />
-              {!collapsed && <span>{label}</span>}
-            </Link>
-          );
-        })}
+      <nav
+        className="flex-1 overflow-y-auto px-2 pt-2"
+        aria-label="管理画面ナビゲーション"
+      >
+        {NAV_SECTIONS.map((section, index) => (
+          <div
+            key={section.heading ?? `section-${index}`}
+            className={index === 0 ? "" : "mt-3"}
+          >
+            {section.heading && !collapsed ? (
+              <div className="text-text-subtle px-2.5 pt-1 pb-1 text-[10px] font-medium tracking-wide uppercase">
+                {section.heading}
+              </div>
+            ) : null}
+            {section.heading && collapsed ? (
+              <div
+                aria-hidden="true"
+                className="border-t-border-subtle mx-2 my-2 border-t"
+              />
+            ) : null}
+            <div className="space-y-0.5">
+              {section.items.map(({ path, label, icon: Icon }) => {
+                const isActive =
+                  pathname === path ||
+                  (path === "/admin/directory" &&
+                    (pathname === "/admin/organizations" ||
+                      pathname === "/admin/groups")) ||
+                  (path === "/admin/roles" &&
+                    pathname.startsWith("/admin/roles/")) ||
+                  (path === "/admin/assignments" &&
+                    pathname.startsWith("/admin/assignments/")) ||
+                  (path === "/admin/users" &&
+                    pathname.startsWith("/admin/users/"));
+                return (
+                  <Link
+                    key={path}
+                    href={path}
+                    title={collapsed ? label : undefined}
+                    className={`flex min-h-[44px] items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors hover:opacity-90 ${
+                      isActive
+                        ? "bg-bg-active text-text-primary"
+                        : "text-text-secondary hover:bg-bg-card-hover hover:text-text-primary"
+                    }`}
+                  >
+                    <Icon size={15} className="shrink-0" />
+                    {!collapsed && <span>{label}</span>}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* フッター */}

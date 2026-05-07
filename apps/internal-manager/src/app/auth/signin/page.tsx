@@ -81,7 +81,7 @@ const SignInPage = async ({ searchParams }: SignInPageProps) => {
           </div>
           <div>
             <p className="text-text-primary text-base font-semibold">Tumiki</p>
-            <p className="text-text-subtle text-xs">Internal Manager</p>
+            <p className="text-text-subtle text-xs">Tumiki Manager</p>
           </div>
         </div>
 
@@ -92,7 +92,7 @@ const SignInPage = async ({ searchParams }: SignInPageProps) => {
               管理者向けアクセス
             </div>
             <h1 className="text-text-primary text-xl font-semibold">
-              Internal Manager にログイン
+              Tumiki Manager にログイン
             </h1>
             <p className="text-text-secondary mt-2 text-sm leading-6">
               組織の SSO で認証して、システム設定と管理機能にアクセスします。
