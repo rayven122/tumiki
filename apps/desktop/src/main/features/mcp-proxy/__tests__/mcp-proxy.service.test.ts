@@ -82,7 +82,6 @@ describe("mcp-proxy.service", () => {
     /**
      * テスト用 EnabledConnection ビルダー。
      * `credentials` は便宜上トップレベルで受け取り、内部で `secret.credentials` に詰め替える
-     * credentials は McpSecret 経由で保持される。
      */
     const buildConnection = (
       overrides: Partial<Omit<EnabledConnection, "server" | "secret">> & {
@@ -538,7 +537,6 @@ describe("mcp-proxy.service", () => {
     /**
      * テスト用 ConnectionWithServer ビルダー。
      * `credentials` は便宜上トップレベルで受け取り、内部で `secret.credentials` に詰め替える
-     * credentials は McpSecret 経由で保持される。
      */
     const buildConnectionWithServer = (
       overrides: Partial<Omit<ConnectionWithServer, "secret">> & {

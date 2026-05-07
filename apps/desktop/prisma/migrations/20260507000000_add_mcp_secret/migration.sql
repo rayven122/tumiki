@@ -20,7 +20,6 @@ INSERT OR REPLACE INTO "sqlite_sequence" ("name", "seq")
 SELECT 'McpSecret', COALESCE(MAX("id"), 0) FROM "McpSecret";
 
 -- McpConnection を再作成して credentials → secretId へ置き換え
-PRAGMA defer_foreign_keys=ON;
 PRAGMA foreign_keys=OFF;
 
 CREATE TABLE "new_McpConnection" (
@@ -55,4 +54,3 @@ CREATE UNIQUE INDEX "McpConnection_serverId_slug_key" ON "McpConnection"("server
 CREATE INDEX "McpConnection_secretId_idx" ON "McpConnection"("secretId");
 
 PRAGMA foreign_keys=ON;
-PRAGMA defer_foreign_keys=OFF;
