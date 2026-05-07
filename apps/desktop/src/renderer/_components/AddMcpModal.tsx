@@ -399,8 +399,8 @@ export const AddMcpModal = ({
           </div>
         </div>
 
-        {/* OAuthクライアント設定（アコーディオン、OAUTH時のみ表示） */}
-        {isOAuth && (
+        {/* OAuthクライアント設定（DCR非対応時のみ表示） */}
+        {isOAuth && needsManualOAuthClient && (
           <div className="mb-6 overflow-hidden rounded-lg border border-[var(--border-subtle)]">
             <button
               type="button"
