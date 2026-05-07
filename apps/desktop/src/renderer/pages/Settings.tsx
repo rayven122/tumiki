@@ -1,12 +1,7 @@
 import { type JSX, useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Building2, Loader2, LogIn, ShieldCheck, Users2 } from "lucide-react";
-import {
-  CURRENT_USER,
-  TOOLS,
-  EMAIL_NOTIFICATIONS,
-  PORTAL_NOTIFICATIONS,
-} from "../data/mock";
+import { EMAIL_NOTIFICATIONS, PORTAL_NOTIFICATIONS } from "../data/mock";
 import type { NotificationSetting } from "../data/mock";
 import { SettingsForm } from "../_components/SettingsForm";
 import { ConfirmDialog } from "../_components/ConfirmDialog";
@@ -69,6 +64,11 @@ const NotificationSection = ({
 );
 
 const RELOGIN_TIMEOUT_MS = 120_000;
+const PERMISSION_LABELS = {
+  read: "read",
+  write: "write",
+  execute: "execute",
+} as const;
 
 export const SettingsPage = (): JSX.Element => {
   const navigate = useNavigate();
@@ -257,17 +257,6 @@ export const SettingsPage = (): JSX.Element => {
     }
   }, [isDisconnecting, navigate]);
 
-  // 権限サマリー
-  const mockApprovedTools = TOOLS.filter((t) => t.approved);
-  const mockPermissionCounts = mockApprovedTools.reduce(
-    (acc, tool) => {
-      for (const perm of tool.permissions) {
-        acc[perm] = (acc[perm] ?? 0) + 1;
-      }
-      return acc;
-    },
-    {} as Record<string, number>,
-  );
   const sessionPermissionCounts = desktopSession?.permissions.reduce(
     (acc, permission) => {
       if (permission.read) acc.read = (acc.read ?? 0) + 1;
@@ -281,8 +270,12 @@ export const SettingsPage = (): JSX.Element => {
     ? new Set(
         desktopSession.permissions.map((permission) => permission.mcpServerId),
       ).size
-    : mockApprovedTools.length;
-  const permissionCounts = sessionPermissionCounts ?? mockPermissionCounts;
+    : 0;
+  const permissionCounts = sessionPermissionCounts ?? {};
+  const permissionEntries = Object.keys(PERMISSION_LABELS).map((permission) => [
+    permission,
+    permissionCounts[permission] ?? 0,
+  ]);
 
   return (
     <div className="space-y-4 p-6">
@@ -423,20 +416,20 @@ export const SettingsPage = (): JSX.Element => {
                       </p>
                     </div>
                     <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-active)] p-3">
+                      <div className="mb-2 text-xs text-[var(--text-muted)]">
+                        部署
+                      </div>
+                      <p className="text-lg font-semibold text-[var(--text-primary)]">
+                        {desktopSession.orgUnits.length}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-active)] p-3">
                       <div className="mb-2 flex items-center gap-2 text-xs text-[var(--text-muted)]">
                         <ShieldCheck size={14} />
                         権限
                       </div>
                       <p className="text-lg font-semibold text-[var(--text-primary)]">
                         {desktopSession.permissions.length}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-active)] p-3">
-                      <div className="mb-2 text-xs text-[var(--text-muted)]">
-                        ポリシーバージョン
-                      </div>
-                      <p className="truncate font-mono text-[11px] text-[var(--text-secondary)]">
-                        {desktopSession.policyVersion}
                       </p>
                     </div>
                   </div>
@@ -484,39 +477,42 @@ export const SettingsPage = (): JSX.Element => {
 
                     <div className="rounded-lg border border-[var(--border)] p-4">
                       <h3 className="text-xs font-medium text-[var(--text-muted)]">
-                        機能フラグ
+                        組織
                       </h3>
-                      <div className="mt-3 grid grid-cols-2 gap-2">
-                        {Object.entries(desktopSession.features).map(
-                          ([key, enabled]) => (
-                            <div
-                              key={key}
-                              className="flex items-center justify-between rounded-lg bg-[var(--bg-active)] px-3 py-2"
-                            >
-                              <span className="text-xs text-[var(--text-secondary)]">
-                                {key}
-                              </span>
-                              <span
-                                className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                                  enabled
-                                    ? "bg-[var(--badge-success-bg)] text-[var(--badge-success-text)]"
-                                    : "bg-[var(--bg-card-hover)] text-[var(--text-subtle)]"
-                                }`}
-                              >
-                                {enabled ? "ON" : "OFF"}
-                              </span>
-                            </div>
-                          ),
-                        )}
+                      <div className="mt-3 grid gap-3 text-sm md:grid-cols-2">
+                        <div>
+                          <p className="text-xs text-[var(--text-subtle)]">
+                            組織名
+                          </p>
+                          <p className="mt-1 text-[var(--text-secondary)]">
+                            {desktopSession.organization.name ?? "未設定"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-[var(--text-subtle)]">
+                            slug
+                          </p>
+                          <p className="mt-1 truncate font-mono text-[11px] text-[var(--text-secondary)]">
+                            {desktopSession.organization.slug ?? "未設定"}
+                          </p>
+                        </div>
+                        <div className="md:col-span-2">
+                          <p className="text-xs text-[var(--text-subtle)]">
+                            ポリシーバージョン
+                          </p>
+                          <p className="mt-1 truncate font-mono text-[11px] text-[var(--text-secondary)]">
+                            {desktopSession.policyVersion}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  {desktopSession.groups.length > 0 && (
-                    <div className="rounded-lg border border-[var(--border)] p-4">
-                      <h3 className="text-xs font-medium text-[var(--text-muted)]">
-                        所属グループ
-                      </h3>
+                  <div className="rounded-lg border border-[var(--border)] p-4">
+                    <h3 className="text-xs font-medium text-[var(--text-muted)]">
+                      所属グループ
+                    </h3>
+                    {desktopSession.groups.length > 0 ? (
                       <div className="mt-3 grid gap-2 md:grid-cols-2">
                         {desktopSession.groups.map((group) => (
                           <div
@@ -537,8 +533,109 @@ export const SettingsPage = (): JSX.Element => {
                           </div>
                         ))}
                       </div>
+                    ) : (
+                      <p className="mt-3 rounded-lg bg-[var(--bg-active)] px-3 py-2 text-sm text-[var(--text-muted)]">
+                        所属グループなし
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="rounded-lg border border-[var(--border)] p-4">
+                    <h3 className="text-xs font-medium text-[var(--text-muted)]">
+                      部署・組織単位
+                    </h3>
+                    {desktopSession.orgUnits.length > 0 ? (
+                      <div className="mt-3 grid gap-2 md:grid-cols-2">
+                        {desktopSession.orgUnits.map((orgUnit) => (
+                          <div
+                            key={orgUnit.id}
+                            className="rounded-lg bg-[var(--bg-active)] px-3 py-2"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="truncate text-sm text-[var(--text-secondary)]">
+                                {orgUnit.name}
+                              </p>
+                              <div className="flex shrink-0 items-center gap-1">
+                                {orgUnit.isPrimary && (
+                                  <span className="rounded-full bg-[var(--badge-info-bg)] px-2 py-0.5 text-[10px] text-[var(--badge-info-text)]">
+                                    primary
+                                  </span>
+                                )}
+                                <span className="rounded-full bg-[var(--bg-card-hover)] px-2 py-0.5 text-[10px] text-[var(--text-subtle)]">
+                                  {orgUnit.source}
+                                </span>
+                              </div>
+                            </div>
+                            <p className="mt-1 truncate text-[10px] text-[var(--text-subtle)]">
+                              {orgUnit.path ?? orgUnit.externalId ?? "-"}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-3 rounded-lg bg-[var(--bg-active)] px-3 py-2 text-sm text-[var(--text-muted)]">
+                        部署情報なし
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="rounded-lg border border-[var(--border)] p-4">
+                    <h3 className="text-xs font-medium text-[var(--text-muted)]">
+                      権限サマリー
+                    </h3>
+                    <div className="mt-3 flex flex-wrap gap-3 text-sm">
+                      <div className="rounded-lg border border-[var(--border)] px-4 py-2.5">
+                        <p className="text-xs text-[var(--text-muted)]">
+                          承認済みツール
+                        </p>
+                        <p className="text-lg font-semibold text-[var(--text-primary)]">
+                          {approvedToolCount}
+                        </p>
+                      </div>
+                      {permissionEntries.map(([perm, count]) => (
+                        <div
+                          key={perm}
+                          className="rounded-lg border border-[var(--border)] px-4 py-2.5"
+                        >
+                          <p className="text-xs text-[var(--text-muted)]">
+                            {perm}
+                          </p>
+                          <p className="text-lg font-semibold text-[var(--text-primary)]">
+                            {count}
+                          </p>
+                        </div>
+                      ))}
                     </div>
-                  )}
+                  </div>
+
+                  <div className="rounded-lg border border-[var(--border)] p-4">
+                    <h3 className="text-xs font-medium text-[var(--text-muted)]">
+                      機能フラグ
+                    </h3>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      {Object.entries(desktopSession.features).map(
+                        ([key, enabled]) => (
+                          <div
+                            key={key}
+                            className="flex items-center justify-between rounded-lg bg-[var(--bg-active)] px-3 py-2"
+                          >
+                            <span className="text-xs text-[var(--text-secondary)]">
+                              {key}
+                            </span>
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                                enabled
+                                  ? "bg-[var(--badge-success-bg)] text-[var(--badge-success-text)]"
+                                  : "bg-[var(--bg-card-hover)] text-[var(--text-subtle)]"
+                              }`}
+                            >
+                              {enabled ? "ON" : "OFF"}
+                            </span>
+                          </div>
+                        ),
+                      )}
+                    </div>
+                  </div>
                 </>
               )}
             </div>
@@ -560,71 +657,6 @@ export const SettingsPage = (): JSX.Element => {
             </button>
           </div>
         )}
-      </div>
-
-      {/* プロフィール */}
-      <div className="space-y-5 rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">
-        <h2 className="text-sm font-medium text-[var(--text-primary)]">
-          プロフィール
-        </h2>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div className="space-y-1">
-            <p className="text-xs text-[var(--text-muted)]">氏名</p>
-            <p className="text-[var(--text-secondary)]">{CURRENT_USER.name}</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs text-[var(--text-muted)]">メールアドレス</p>
-            <p className="text-[var(--text-secondary)]">{CURRENT_USER.email}</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs text-[var(--text-muted)]">部署</p>
-            <p className="text-[var(--text-secondary)]">
-              {CURRENT_USER.department}
-            </p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs text-[var(--text-muted)]">ロール</p>
-            <p className="text-[var(--text-secondary)]">{CURRENT_USER.role}</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs text-[var(--text-muted)]">社員ID</p>
-            <p className="text-[var(--text-secondary)]">
-              {CURRENT_USER.employeeId}
-            </p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs text-[var(--text-muted)]">最終ログイン</p>
-            <p className="text-[var(--text-secondary)]">
-              {CURRENT_USER.lastLogin}
-            </p>
-          </div>
-        </div>
-
-        {/* 権限サマリー */}
-        <div className="space-y-3 border-t border-[var(--border)] pt-4">
-          <h3 className="text-xs font-medium text-[var(--text-muted)]">
-            権限サマリー
-          </h3>
-          <div className="flex gap-4 text-sm">
-            <div className="rounded-lg border border-[var(--border)] px-4 py-2.5">
-              <p className="text-xs text-[var(--text-muted)]">承認済みツール</p>
-              <p className="text-lg font-semibold text-[var(--text-primary)]">
-                {approvedToolCount}
-              </p>
-            </div>
-            {Object.entries(permissionCounts).map(([perm, count]) => (
-              <div
-                key={perm}
-                className="rounded-lg border border-[var(--border)] px-4 py-2.5"
-              >
-                <p className="text-xs text-[var(--text-muted)]">{perm}</p>
-                <p className="text-lg font-semibold text-[var(--text-primary)]">
-                  {count}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
 
       {/* 通知設定 */}
