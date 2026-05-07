@@ -587,12 +587,9 @@ export const DirectoryManagementPanel = ({
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
-                            <Link
-                              href={`/admin/roles/${role.id}`}
-                              className="text-text-primary hover:text-text-link block truncate text-xs font-medium"
-                            >
+                            <span className="text-text-primary block truncate text-xs font-medium">
                               {role.name}
-                            </Link>
+                            </span>
                             <p className="text-text-muted mt-1 line-clamp-2 text-[10px]">
                               {role.description}
                             </p>

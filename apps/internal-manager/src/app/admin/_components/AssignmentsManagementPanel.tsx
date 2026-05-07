@@ -148,12 +148,9 @@ export const AssignmentsManagementPanel = () => {
                 >
                   <div className="min-w-0">
                     {role ? (
-                      <Link
-                        href={`/admin/roles/${role.id}`}
-                        className="text-text-primary hover:text-text-link block truncate font-medium"
-                      >
+                      <span className="text-text-primary block truncate font-medium">
                         {role.name}
-                      </Link>
+                      </span>
                     ) : (
                       <span className="text-text-muted">不明なロール</span>
                     )}

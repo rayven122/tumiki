@@ -94,11 +94,13 @@ export const RolesManagementPanel = ({
       },
     },
   );
+  const { reset: resetCatalogPermission } = updateCatalogPermission;
+  const { reset: resetToolPermission } = updateToolPermission;
 
   useEffect(() => {
-    updateCatalogPermission.reset();
-    updateToolPermission.reset();
-  }, [selectedOrgUnitId]);
+    resetCatalogPermission();
+    resetToolPermission();
+  }, [resetCatalogPermission, resetToolPermission, selectedOrgUnitId]);
 
   const orgUnits = matrixQuery.data?.orgUnits ?? [];
   const catalogs = matrixQuery.data?.catalogs ?? [];
@@ -460,7 +462,7 @@ const EffectControl = ({
         option.value === null ? "未設定" : `${effectLabel[option.value]}に設定`;
       return (
         <button
-          key={option.label}
+          key={option.value ?? "unset"}
           type="button"
           disabled={disabled}
           aria-pressed={isActive}

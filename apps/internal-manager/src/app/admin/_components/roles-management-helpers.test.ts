@@ -84,6 +84,15 @@ describe("roles-management-helpers", () => {
     });
   });
 
+  test("countEffects は空のカタログリストに対してゼロを返す", () => {
+    expect(countEffects([])).toStrictEqual({
+      catalogAllow: 0,
+      catalogDeny: 0,
+      toolAllow: 0,
+      toolDeny: 0,
+    });
+  });
+
   test("formatRolePermissionDate は日付と空値を表示用に整形する", () => {
     expect(formatRolePermissionDate("2026-05-07T12:00:00.000Z")).toBe(
       "2026/5/7",
