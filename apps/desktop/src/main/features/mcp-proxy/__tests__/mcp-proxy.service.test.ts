@@ -79,12 +79,17 @@ describe("mcp-proxy.service", () => {
       ...overrides,
     });
 
+    /**
+     * テスト用 EnabledConnection ビルダー。
+     * `credentials` は便宜上トップレベルで受け取り、内部で `secret.credentials` に詰め替える
+     */
     const buildConnection = (
-      overrides: Partial<Omit<EnabledConnection, "server">> & {
+      overrides: Partial<Omit<EnabledConnection, "server" | "secret">> & {
+        credentials?: string;
         server?: Partial<EnabledServer>;
       },
     ): EnabledConnection => {
-      const { server: serverOverrides, ...rest } = overrides;
+      const { server: serverOverrides, credentials, ...rest } = overrides;
       return {
         id: 1,
         name: "Conn",
@@ -93,15 +98,16 @@ describe("mcp-proxy.service", () => {
         command: "echo",
         args: "[]",
         url: null,
-        credentials: "{}",
         authType: "NONE",
         isEnabled: true,
         displayOrder: 0,
         serverId: 1,
         catalogId: null,
+        secretId: 1,
         createdAt: new Date(),
         updatedAt: new Date(),
         tools: [],
+        secret: { credentials: credentials ?? "{}" },
         server: buildServer(serverOverrides ?? {}),
         ...rest,
       };
@@ -384,6 +390,8 @@ describe("mcp-proxy.service", () => {
     test("OAuth接続でトークンリフレッシュが実行された場合、新しいトークンが使われる", async () => {
       vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([
         buildConnection({
+          // リフレッシュは secretId 単位で行われるため、テストでも明示的に渡す
+          secretId: 42,
           name: "OAuth Expired",
           slug: "oauth-expired",
           transportType: "SSE",
@@ -413,11 +421,111 @@ describe("mcp-proxy.service", () => {
           headers: { Authorization: "Bearer refreshed-token" },
         },
       ]);
+      // 第1引数は connectionId ではなく secretId（共有 secret 単位でトークン更新）
       expect(refreshOAuthTokenIfNeeded).toHaveBeenCalledWith(
-        expect.any(Number),
+        42,
         "https://api.figma.com/sse",
         expect.objectContaining({ access_token: "expired" }),
       );
+    });
+
+    test("同一 secretId を共有する複数の OAuth 接続でリフレッシュは1回しか走らない（refresh_token rotation 衝突防止）", async () => {
+      // 仮想MCPで同じ secret を共有する接続を2件作る
+      const sharedCredentials =
+        '{"access_token":"expired","refresh_token":"rt","expires_at":"1000"}';
+      vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([
+        buildConnection({
+          id: 100,
+          secretId: 42,
+          name: "Source",
+          slug: "source",
+          transportType: "SSE",
+          command: null,
+          url: "https://api.figma.com/sse",
+          credentials: sharedCredentials,
+          authType: "OAUTH",
+          server: { slug: "figma" },
+        }),
+        buildConnection({
+          id: 200,
+          secretId: 42,
+          name: "Virtual",
+          slug: "virtual",
+          transportType: "SSE",
+          command: null,
+          url: "https://api.figma.com/sse",
+          credentials: sharedCredentials,
+          authType: "OAUTH",
+          server: { slug: "virtual-figma" },
+        }),
+      ]);
+      vi.mocked(refreshOAuthTokenIfNeeded).mockResolvedValue({
+        access_token: "refreshed",
+        refresh_token: "new-rt",
+        expires_at: "9999999999",
+      });
+
+      const result = await mcpProxyService.getEnabledConfigs();
+
+      // 1件目で取得した新トークンを2件目も使う（古い refresh_token で再叩きしない）
+      expect(refreshOAuthTokenIfNeeded).toHaveBeenCalledTimes(1);
+      expect(result).toStrictEqual([
+        {
+          name: "figma-source",
+          transportType: "SSE",
+          url: "https://api.figma.com/sse",
+          authType: "BEARER",
+          headers: { Authorization: "Bearer refreshed" },
+        },
+        {
+          name: "virtual-figma-virtual",
+          transportType: "SSE",
+          url: "https://api.figma.com/sse",
+          authType: "BEARER",
+          headers: { Authorization: "Bearer refreshed" },
+        },
+      ]);
+    });
+
+    test("異なる secretId の OAuth 接続はそれぞれ独立してリフレッシュされる", async () => {
+      vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([
+        buildConnection({
+          id: 100,
+          secretId: 42,
+          name: "Figma",
+          slug: "figma",
+          transportType: "SSE",
+          command: null,
+          url: "https://api.figma.com/sse",
+          credentials:
+            '{"access_token":"a","refresh_token":"rta","expires_at":"1000"}',
+          authType: "OAUTH",
+          server: { slug: "figma" },
+        }),
+        buildConnection({
+          id: 200,
+          secretId: 99,
+          name: "Notion",
+          slug: "notion",
+          transportType: "STREAMABLE_HTTP",
+          command: null,
+          url: "https://api.notion.com/mcp",
+          credentials:
+            '{"access_token":"b","refresh_token":"rtb","expires_at":"1000"}',
+          authType: "OAUTH",
+          server: { slug: "notion" },
+        }),
+      ]);
+      vi.mocked(refreshOAuthTokenIfNeeded).mockResolvedValue({
+        access_token: "x",
+        refresh_token: "y",
+        expires_at: "9999999999",
+      });
+
+      await mcpProxyService.getEnabledConfigs();
+
+      // secretId が違えば各接続でリフレッシュ判定が走る
+      expect(refreshOAuthTokenIfNeeded).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -426,40 +534,50 @@ describe("mcp-proxy.service", () => {
       Awaited<ReturnType<typeof mcpRepository.findConnectionByIdWithServer>>
     >;
 
+    /**
+     * テスト用 ConnectionWithServer ビルダー。
+     * `credentials` は便宜上トップレベルで受け取り、内部で `secret.credentials` に詰め替える
+     */
     const buildConnectionWithServer = (
-      overrides: Partial<ConnectionWithServer> = {},
-    ): ConnectionWithServer => ({
-      id: 100,
-      name: "Conn",
-      slug: "conn",
-      transportType: "STDIO",
-      command: "echo",
-      args: "[]",
-      url: null,
-      credentials: "{}",
-      authType: "NONE",
-      isEnabled: true,
-      displayOrder: 0,
-      serverId: 1,
-      catalogId: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      server: {
-        id: 1,
-        name: "Srv",
-        slug: "srv",
-        description: "",
-        serverType: "OFFICIAL",
-        serverStatus: "STOPPED",
+      overrides: Partial<Omit<ConnectionWithServer, "secret">> & {
+        credentials?: string;
+      } = {},
+    ): ConnectionWithServer => {
+      const { credentials, ...rest } = overrides;
+      return {
+        id: 100,
+        name: "Conn",
+        slug: "conn",
+        transportType: "STDIO",
+        command: "echo",
+        args: "[]",
+        url: null,
+        authType: "NONE",
         isEnabled: true,
-        isPiiMaskingEnabled: true,
-        isToonConversionEnabled: false,
         displayOrder: 0,
+        serverId: 1,
+        catalogId: null,
+        secretId: 1,
         createdAt: new Date(),
         updatedAt: new Date(),
-      },
-      ...overrides,
-    });
+        secret: { credentials: credentials ?? "{}" },
+        server: {
+          id: 1,
+          name: "Srv",
+          slug: "srv",
+          description: "",
+          serverType: "OFFICIAL",
+          serverStatus: "STOPPED",
+          isEnabled: true,
+          isPiiMaskingEnabled: true,
+          isToonConversionEnabled: false,
+          displayOrder: 0,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        ...rest,
+      };
+    };
 
     /** SDK Client / Transport の最小モック */
     const createMockClient = (overrides?: {

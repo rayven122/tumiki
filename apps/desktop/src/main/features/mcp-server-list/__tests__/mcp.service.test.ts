@@ -68,6 +68,16 @@ describe("mcp.service", () => {
     vi.mocked(mcpProxyService.fetchToolsForConnection).mockResolvedValue([]);
     // createTools はデフォルトで0件成功扱い
     vi.mocked(mcpRepository.createTools).mockResolvedValue({ count: 0 });
+    // createSecret はデフォルトで id=1 を返す（カタログ/カスタム入力経路は 1接続=1secret）
+    vi.mocked(mcpRepository.createSecret).mockResolvedValue({
+      id: 1,
+      credentials: "",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    // deleteSecretIfOrphaned / findSecretIdsByServerId はサーバー削除系で使用
+    vi.mocked(mcpRepository.deleteSecretIfOrphaned).mockResolvedValue();
+    vi.mocked(mcpRepository.findSecretIdsByServerId).mockResolvedValue([]);
   });
 
   describe("createFromCatalog", () => {
@@ -90,6 +100,12 @@ describe("mcp.service", () => {
       vi.mocked(mcpRepository.createServer).mockResolvedValue({
         id: 1,
       } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(mcpRepository.createSecret).mockResolvedValue({
+        id: 50,
+        credentials: `encrypted:${JSON.stringify({ API_KEY: "test-key" })}`,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
       vi.mocked(mcpRepository.createConnection).mockResolvedValue({
         id: 100,
       } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
@@ -103,6 +119,12 @@ describe("mcp.service", () => {
         description: "テスト用MCP",
         serverType: "OFFICIAL",
       });
+      // createSecret には暗号化済み credentials を渡す
+      expect(mcpRepository.createSecret).toHaveBeenCalledWith(
+        mockDb,
+        `encrypted:${JSON.stringify({ API_KEY: "test-key" })}`,
+      );
+      // createConnection には secretId（=50）を渡し、credentials はもう含めない
       expect(mcpRepository.createConnection).toHaveBeenCalledWith(mockDb, {
         name: "Test MCP",
         slug: "test-mcp",
@@ -110,7 +132,7 @@ describe("mcp.service", () => {
         command: "npx",
         args: '["test-server"]',
         url: null,
-        credentials: `encrypted:${JSON.stringify({ API_KEY: "test-key" })}`,
+        secretId: 50,
         authType: "API_KEY",
         serverId: 1,
         catalogId: 1,
@@ -223,12 +245,18 @@ describe("mcp.service", () => {
       );
     });
 
-    test("credentialsを暗号化してJSON文字列で保存する", async () => {
+    test("credentialsを暗号化して McpSecret に保存し、接続には secretId を渡す", async () => {
       vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
       vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
       vi.mocked(mcpRepository.createServer).mockResolvedValue({
         id: 1,
       } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(mcpRepository.createSecret).mockResolvedValue({
+        id: 99,
+        credentials: 'encrypted:{"API_KEY":"test-key"}',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
       vi.mocked(mcpRepository.createConnection).mockResolvedValue({
         id: 100,
       } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
@@ -236,11 +264,13 @@ describe("mcp.service", () => {
       await mcpService.createFromCatalog(input);
 
       expect(encryptToken).toHaveBeenCalledWith('{"API_KEY":"test-key"}');
+      expect(mcpRepository.createSecret).toHaveBeenCalledWith(
+        mockDb,
+        'encrypted:{"API_KEY":"test-key"}',
+      );
       expect(mcpRepository.createConnection).toHaveBeenCalledWith(
         mockDb,
-        expect.objectContaining({
-          credentials: 'encrypted:{"API_KEY":"test-key"}',
-        }),
+        expect.objectContaining({ secretId: 99 }),
       );
     });
 
@@ -351,6 +381,12 @@ describe("mcp.service", () => {
       vi.mocked(mcpRepository.createServer).mockResolvedValue({
         id: 10,
       } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(mcpRepository.createSecret).mockResolvedValue({
+        id: 60,
+        credentials: `encrypted:${JSON.stringify({ GITHUB_TOKEN: "test-token" })}`,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
       vi.mocked(mcpRepository.createConnection).mockResolvedValue({
         id: 101,
       } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
@@ -364,6 +400,10 @@ describe("mcp.service", () => {
         description: "GitHub MCP",
         serverType: "OFFICIAL",
       });
+      expect(mcpRepository.createSecret).toHaveBeenCalledWith(
+        mockDb,
+        `encrypted:${JSON.stringify({ GITHUB_TOKEN: "test-token" })}`,
+      );
       expect(mcpRepository.createConnection).toHaveBeenCalledWith(mockDb, {
         name: "GitHub",
         slug: "github",
@@ -371,7 +411,7 @@ describe("mcp.service", () => {
         command: null,
         args: "[]",
         url: "https://api.githubcopilot.com/mcp/",
-        credentials: `encrypted:${JSON.stringify({ GITHUB_TOKEN: "test-token" })}`,
+        secretId: 60,
         authType: "BEARER",
         serverId: 10,
         catalogId: null,
@@ -406,6 +446,12 @@ describe("mcp.service", () => {
       vi.mocked(mcpRepository.createServer).mockResolvedValue({
         id: 1,
       } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(mcpRepository.createSecret).mockResolvedValue({
+        id: 70,
+        credentials: `encrypted:${JSON.stringify({})}`,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
       vi.mocked(mcpRepository.createConnection).mockResolvedValue({
         id: 100,
       } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
@@ -422,6 +468,10 @@ describe("mcp.service", () => {
         description: "",
         serverType: "OFFICIAL",
       });
+      expect(mcpRepository.createSecret).toHaveBeenCalledWith(
+        mockDb,
+        `encrypted:${JSON.stringify({})}`,
+      );
       expect(mcpRepository.createConnection).toHaveBeenCalledWith(mockDb, {
         name: "My Remote MCP",
         slug: "my-remote-mcp",
@@ -429,7 +479,7 @@ describe("mcp.service", () => {
         command: null,
         args: "[]",
         url: "https://mcp.example.com/stream",
-        credentials: `encrypted:${JSON.stringify({})}`,
+        secretId: 70,
         authType: "NONE",
         serverId: 1,
         catalogId: null,
@@ -442,6 +492,12 @@ describe("mcp.service", () => {
       vi.mocked(mcpRepository.createServer).mockResolvedValue({
         id: 2,
       } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(mcpRepository.createSecret).mockResolvedValue({
+        id: 71,
+        credentials: `encrypted:${JSON.stringify({ API_KEY: "sk-12345" })}`,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
       vi.mocked(mcpRepository.createConnection).mockResolvedValue({
         id: 101,
       } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
@@ -461,11 +517,15 @@ describe("mcp.service", () => {
       expect(encryptToken).toHaveBeenCalledWith(
         JSON.stringify({ API_KEY: "sk-12345" }),
       );
+      expect(mcpRepository.createSecret).toHaveBeenCalledWith(
+        mockDb,
+        `encrypted:${JSON.stringify({ API_KEY: "sk-12345" })}`,
+      );
       expect(mcpRepository.createConnection).toHaveBeenCalledWith(
         mockDb,
         expect.objectContaining({
           authType: "API_KEY",
-          credentials: `encrypted:${JSON.stringify({ API_KEY: "sk-12345" })}`,
+          secretId: 71,
         }),
       );
     });
@@ -476,6 +536,12 @@ describe("mcp.service", () => {
       vi.mocked(mcpRepository.createServer).mockResolvedValue({
         id: 3,
       } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(mcpRepository.createSecret).mockResolvedValue({
+        id: 72,
+        credentials: `encrypted:${JSON.stringify({ access_token: "oauth-token-abc" })}`,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
       vi.mocked(mcpRepository.createConnection).mockResolvedValue({
         id: 102,
       } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
@@ -492,11 +558,15 @@ describe("mcp.service", () => {
         serverId: 3,
         serverName: "My Remote MCP",
       });
+      expect(mcpRepository.createSecret).toHaveBeenCalledWith(
+        mockDb,
+        `encrypted:${JSON.stringify({ access_token: "oauth-token-abc" })}`,
+      );
       expect(mcpRepository.createConnection).toHaveBeenCalledWith(
         mockDb,
         expect.objectContaining({
           authType: "OAUTH",
-          credentials: `encrypted:${JSON.stringify({ access_token: "oauth-token-abc" })}`,
+          secretId: 72,
         }),
       );
     });
@@ -594,7 +664,8 @@ describe("mcp.service", () => {
         command: "npx",
         args: '["@modelcontextprotocol/server-github"]',
         url: null,
-        credentials: "encrypted:github-creds",
+        // 仮想MCPは元コネクタの secretId を共有して credentials を単一情報源化する
+        secretId: 11,
         authType: "API_KEY",
         isEnabled: true,
         displayOrder: 0,
@@ -623,7 +694,7 @@ describe("mcp.service", () => {
         id: 10,
       } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
       vi.mocked(mcpRepository.findConnectionsByIdsWithTools).mockResolvedValue([
-        buildSourceConnection({ id: 1, name: "GitHub" }),
+        buildSourceConnection({ id: 1, name: "GitHub", secretId: 11 }),
         buildSourceConnection({
           id: 2,
           name: "Slack",
@@ -631,7 +702,7 @@ describe("mcp.service", () => {
           url: "https://slack.example.com/sse",
           transportType: "SSE",
           authType: "BEARER",
-          credentials: "encrypted:slack-creds",
+          secretId: 22,
           catalogId: 2,
         }),
       ]);
@@ -647,8 +718,10 @@ describe("mcp.service", () => {
       });
       expect(mcpRepository.createServer).toHaveBeenCalledTimes(1);
       expect(mcpRepository.createConnection).toHaveBeenCalledTimes(2);
+      // 仮想MCP作成時は新規 secret を作らず、元コネクタの secretId を共有する
+      expect(mcpRepository.createSecret).not.toHaveBeenCalled();
 
-      // 1つ目: GitHub（元コネクタの credentials をそのままコピー）
+      // 1つ目: GitHub（元コネクタの secretId=11 を共有）
       expect(mcpRepository.createConnection).toHaveBeenNthCalledWith(
         1,
         expect.anything(),
@@ -661,10 +734,10 @@ describe("mcp.service", () => {
           serverId: 10,
           catalogId: 1,
           displayOrder: 0,
-          credentials: "encrypted:github-creds",
+          secretId: 11,
         }),
       );
-      // 2つ目: Slack
+      // 2つ目: Slack（元コネクタの secretId=22 を共有）
       expect(mcpRepository.createConnection).toHaveBeenNthCalledWith(
         2,
         expect.anything(),
@@ -677,7 +750,7 @@ describe("mcp.service", () => {
           serverId: 10,
           catalogId: 2,
           displayOrder: 1,
-          credentials: "encrypted:slack-creds",
+          secretId: 22,
         }),
       );
     });
@@ -869,7 +942,7 @@ describe("mcp.service", () => {
       expect(mcpRepository.createConnection).not.toHaveBeenCalled();
     });
 
-    test("OAuthコネクタが含まれる場合も他のauthTypeと同様にコピーされる（DEV-1624 で credentials 共有化予定）", async () => {
+    test("OAuthコネクタが含まれる場合も元コネクタの secretId を共有する", async () => {
       vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
       vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
       vi.mocked(mcpRepository.createServer).mockResolvedValue({
@@ -883,7 +956,7 @@ describe("mcp.service", () => {
           command: null,
           url: "https://mcp.notion.com",
           authType: "OAUTH",
-          credentials: "encrypted:notion-oauth-creds",
+          secretId: 77,
         }),
       ]);
       vi.mocked(mcpRepository.createConnection).mockResolvedValue({
@@ -895,13 +968,13 @@ describe("mcp.service", () => {
         connections: [{ connectionId: 1 }],
       });
 
+      // OAuth トークン更新が元コネクタ・仮想MCP配下の両方に伝播するよう、secretId を共有する
       expect(mcpRepository.createConnection).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
           name: "Notion",
           authType: "OAUTH",
-          // 暗号化済みcredentialsをそのままコピー（DEV-1624 で McpSecret 共有化予定）
-          credentials: "encrypted:notion-oauth-creds",
+          secretId: 77,
         }),
       );
     });
@@ -1228,20 +1301,15 @@ describe("mcp.service", () => {
       expect(mcpRepository.findAllWithConnections).toHaveBeenCalledWith(mockDb);
     });
 
-    test("暗号化されたcredentialsを復号して返す", async () => {
+    test("credentials / secretId は IPC 戻り値に含めない（内部キーは renderer に公開しない）", async () => {
       const mockServers = [
         {
           id: 1,
           name: "Server A",
           connections: [
             {
-              id: 1,
-              credentials: "safe:encrypted-data",
-              _count: { tools: 0 },
-            },
-            {
-              id: 2,
-              credentials: "fallback:encrypted-data",
+              id: 10,
+              secretId: 99,
               _count: { tools: 0 },
             },
           ],
@@ -1252,42 +1320,13 @@ describe("mcp.service", () => {
           ReturnType<typeof mcpRepository.findAllWithConnections>
         >,
       );
-      vi.mocked(decryptCredentials).mockResolvedValue(
-        '{"API_KEY":"decrypted"}',
-      );
 
       const result = await mcpService.getAllServers();
 
-      expect(decryptCredentials).toHaveBeenCalledTimes(2);
-      expect(result[0]?.connections[0]?.credentials).toBe(
-        '{"API_KEY":"decrypted"}',
-      );
-      expect(result[0]?.connections[1]?.credentials).toBe(
-        '{"API_KEY":"decrypted"}',
-      );
-    });
-
-    test("平文の既存credentialsはそのまま返す（マイグレーション互換）", async () => {
-      const plainCredentials = '{"API_KEY":"plain-text-key"}';
-      const mockServers = [
-        {
-          id: 1,
-          name: "Server A",
-          connections: [
-            { id: 1, credentials: plainCredentials, _count: { tools: 0 } },
-          ],
-        },
-      ];
-      vi.mocked(mcpRepository.findAllWithConnections).mockResolvedValue(
-        mockServers as unknown as Awaited<
-          ReturnType<typeof mcpRepository.findAllWithConnections>
-        >,
-      );
-      vi.mocked(decryptCredentials).mockImplementation(async (v) => v);
-
-      const result = await mcpService.getAllServers();
-
-      expect(result[0]?.connections[0]?.credentials).toBe(plainCredentials);
+      expect(result[0]?.connections[0]).not.toHaveProperty("secretId");
+      expect(result[0]?.connections[0]).not.toHaveProperty("credentials");
+      // 復号はそもそも呼ばれない（secret を include していないため）
+      expect(decryptCredentials).not.toHaveBeenCalled();
     });
 
     test("Prisma の _count.tools を toolCount に平坦化する（_count は除去される）", async () => {
@@ -1296,8 +1335,8 @@ describe("mcp.service", () => {
           id: 1,
           name: "Server A",
           connections: [
-            { id: 10, credentials: "{}", _count: { tools: 3 } },
-            { id: 11, credentials: "{}", _count: { tools: 0 } },
+            { id: 10, _count: { tools: 3 } },
+            { id: 11, _count: { tools: 0 } },
           ],
         },
       ];
@@ -1333,14 +1372,55 @@ describe("mcp.service", () => {
   });
 
   describe("deleteServer", () => {
-    test("サーバーを削除する", async () => {
+    test("サーバーを削除する（参照カウント0の secret も後始末する）", async () => {
       vi.mocked(mcpRepository.deleteServer).mockResolvedValue(
         {} as Awaited<ReturnType<typeof mcpRepository.deleteServer>>,
       );
+      // findSecretIdsByServerId は distinct 済みの secretId を返す（repository 側で重複除去）
+      vi.mocked(mcpRepository.findSecretIdsByServerId).mockResolvedValue([
+        11, 12,
+      ]);
 
       await mcpService.deleteServer(1);
 
       expect(mcpRepository.deleteServer).toHaveBeenCalledWith(mockDb, 1);
+      // 各 secretId について参照カウント判定が呼ばれる
+      expect(mcpRepository.deleteSecretIfOrphaned).toHaveBeenCalledTimes(2);
+      expect(mcpRepository.deleteSecretIfOrphaned).toHaveBeenCalledWith(
+        mockDb,
+        11,
+      );
+      expect(mcpRepository.deleteSecretIfOrphaned).toHaveBeenCalledWith(
+        mockDb,
+        12,
+      );
+    });
+
+    test("仮想MCPと共有された secret は他に参照が残るため削除されない（参照カウント運用）", async () => {
+      // deleteSecretIfOrphaned は内部で count() してまだ参照があれば DELETE しない実装。
+      // ここではサービス層が secretId ごとに deleteSecretIfOrphaned を呼ぶことだけを検証する。
+      vi.mocked(mcpRepository.deleteServer).mockResolvedValue(
+        {} as Awaited<ReturnType<typeof mcpRepository.deleteServer>>,
+      );
+      vi.mocked(mcpRepository.findSecretIdsByServerId).mockResolvedValue([55]);
+
+      await mcpService.deleteServer(2);
+
+      expect(mcpRepository.deleteSecretIfOrphaned).toHaveBeenCalledWith(
+        mockDb,
+        55,
+      );
+    });
+
+    test("配下接続が0件のサーバーを削除しても deleteSecretIfOrphaned は呼ばれない", async () => {
+      vi.mocked(mcpRepository.deleteServer).mockResolvedValue(
+        {} as Awaited<ReturnType<typeof mcpRepository.deleteServer>>,
+      );
+      vi.mocked(mcpRepository.findSecretIdsByServerId).mockResolvedValue([]);
+
+      await mcpService.deleteServer(3);
+
+      expect(mcpRepository.deleteSecretIfOrphaned).not.toHaveBeenCalled();
     });
   });
 

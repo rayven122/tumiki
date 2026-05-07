@@ -24,6 +24,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await db.mcpConnection.deleteMany();
+  await db.mcpSecret.deleteMany();
   await db.mcpServer.deleteMany();
 });
 
@@ -38,20 +39,26 @@ const serverData: mcpRepository.CreateMcpServerInput = {
   serverType: "OFFICIAL",
 };
 
-const buildConnectionData = (
+// secretId 省略時は secret を新規作成（1接続=1secret）。共有テストでは呼び出し側から secretId を渡す。
+const buildConnectionData = async (
   serverId: number,
-): mcpRepository.CreateMcpConnectionInput => ({
-  name: "Test Connection",
-  slug: "test-connection",
-  transportType: "STDIO",
-  command: "npx",
-  args: '["test-server"]',
-  url: null,
-  credentials: "{}",
-  authType: "NONE",
-  serverId,
-  catalogId: null,
-});
+  secretId?: number,
+): Promise<mcpRepository.CreateMcpConnectionInput> => {
+  const resolvedSecretId =
+    secretId ?? (await mcpRepository.createSecret(db, "{}")).id;
+  return {
+    name: "Test Connection",
+    slug: "test-connection",
+    transportType: "STDIO",
+    command: "npx",
+    args: '["test-server"]',
+    url: null,
+    secretId: resolvedSecretId,
+    authType: "NONE",
+    serverId,
+    catalogId: null,
+  };
+};
 
 describe("mcp.repository（実DB）", () => {
   describe("createServer", () => {
@@ -87,7 +94,7 @@ describe("mcp.repository（実DB）", () => {
   describe("createConnection", () => {
     test("MCP接続を作成する", async () => {
       const server = await mcpRepository.createServer(db, serverData);
-      const connectionData = buildConnectionData(server.id);
+      const connectionData = await buildConnectionData(server.id);
 
       const result = await mcpRepository.createConnection(db, connectionData);
 
@@ -96,13 +103,14 @@ describe("mcp.repository（実DB）", () => {
       expect(result.transportType).toBe("STDIO");
       expect(result.command).toBe("npx");
       expect(result.serverId).toBe(server.id);
+      expect(result.secretId).toBe(connectionData.secretId);
     });
 
     test("SSEトランスポートの接続を作成する", async () => {
       const server = await mcpRepository.createServer(db, serverData);
 
       const result = await mcpRepository.createConnection(db, {
-        ...buildConnectionData(server.id),
+        ...(await buildConnectionData(server.id)),
         transportType: "SSE",
         command: null,
         url: "http://localhost:3000/sse",
@@ -122,7 +130,10 @@ describe("mcp.repository（実DB）", () => {
 
     test("接続情報付きで全サーバーを取得する", async () => {
       const server = await mcpRepository.createServer(db, serverData);
-      await mcpRepository.createConnection(db, buildConnectionData(server.id));
+      await mcpRepository.createConnection(
+        db,
+        await buildConnectionData(server.id),
+      );
 
       const result = await mcpRepository.findAllWithConnections(db);
 
@@ -135,7 +146,7 @@ describe("mcp.repository（実DB）", () => {
       const server = await mcpRepository.createServer(db, serverData);
       const connection = await mcpRepository.createConnection(
         db,
-        buildConnectionData(server.id),
+        await buildConnectionData(server.id),
       );
       await mcpRepository.createTools(db, [
         {
@@ -220,7 +231,10 @@ describe("mcp.repository（実DB）", () => {
   describe("findEnabledConnections", () => {
     test("有効なサーバーの有効な接続のみ取得する", async () => {
       const server = await mcpRepository.createServer(db, serverData);
-      await mcpRepository.createConnection(db, buildConnectionData(server.id));
+      await mcpRepository.createConnection(
+        db,
+        await buildConnectionData(server.id),
+      );
 
       const result = await mcpRepository.findEnabledConnections(db);
 
@@ -231,7 +245,10 @@ describe("mcp.repository（実DB）", () => {
 
     test("無効なサーバーの接続は除外する", async () => {
       const server = await mcpRepository.createServer(db, serverData);
-      await mcpRepository.createConnection(db, buildConnectionData(server.id));
+      await mcpRepository.createConnection(
+        db,
+        await buildConnectionData(server.id),
+      );
       // サーバーを無効化
       await mcpRepository.toggleServerEnabled(db, server.id, false);
 
@@ -244,7 +261,7 @@ describe("mcp.repository（実DB）", () => {
       const server = await mcpRepository.createServer(db, serverData);
       await db.mcpConnection.create({
         data: {
-          ...buildConnectionData(server.id),
+          ...(await buildConnectionData(server.id)),
           isEnabled: false,
         },
       });
@@ -318,7 +335,10 @@ describe("mcp.repository（実DB）", () => {
 
     test("カスケードで接続も削除される", async () => {
       const server = await mcpRepository.createServer(db, serverData);
-      await mcpRepository.createConnection(db, buildConnectionData(server.id));
+      await mcpRepository.createConnection(
+        db,
+        await buildConnectionData(server.id),
+      );
 
       await mcpRepository.deleteServer(db, server.id);
 
@@ -333,15 +353,117 @@ describe("mcp.repository（実DB）", () => {
     });
   });
 
+  describe("McpSecret 関連", () => {
+    test("createSecret は credentials を保持する McpSecret を作成する", async () => {
+      const secret = await mcpRepository.createSecret(db, "encrypted:abc");
+      expect(secret.id).toBeDefined();
+      expect(secret.credentials).toBe("encrypted:abc");
+    });
+
+    test("findSecretIdsByServerId は配下接続の secretId 一覧を重複なしで返す", async () => {
+      // 共有 secret を持つ複数接続があっても repository 側で distinct し、呼び出し側に重複除去を委ねない
+      const server = await mcpRepository.createServer(db, serverData);
+      const shared = await mcpRepository.createSecret(db, "shared");
+      const other = await mcpRepository.createSecret(db, "other");
+      await mcpRepository.createConnection(db, {
+        ...(await buildConnectionData(server.id, shared.id)),
+        slug: "c1",
+      });
+      await mcpRepository.createConnection(db, {
+        ...(await buildConnectionData(server.id, shared.id)),
+        slug: "c2",
+      });
+      await mcpRepository.createConnection(db, {
+        ...(await buildConnectionData(server.id, other.id)),
+        slug: "c3",
+      });
+
+      const result = await mcpRepository.findSecretIdsByServerId(db, server.id);
+
+      expect(result).toHaveLength(2);
+      expect(result).toContain(shared.id);
+      expect(result).toContain(other.id);
+    });
+
+    test("deleteSecretIfOrphaned は参照が残っていなければ削除する", async () => {
+      const secret = await mcpRepository.createSecret(db, "orphan");
+
+      // 本番コードと同じく $transaction 内で呼ぶ（count→delete の整合性を担保するため）
+      await db.$transaction(async (tx) => {
+        await mcpRepository.deleteSecretIfOrphaned(tx, secret.id);
+      });
+
+      const remaining = await db.mcpSecret.findUnique({
+        where: { id: secret.id },
+      });
+      expect(remaining).toBeNull();
+    });
+
+    test("deleteSecretIfOrphaned は参照が残っている場合は削除しない（仮想MCPの secret 共有保護）", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+      const shared = await mcpRepository.createSecret(db, "shared");
+      // 1接続だけ残った状態で deleteSecretIfOrphaned を呼ぶ → 削除されない
+      await mcpRepository.createConnection(db, {
+        ...(await buildConnectionData(server.id, shared.id)),
+        slug: "still-referencing",
+      });
+
+      await db.$transaction(async (tx) => {
+        await mcpRepository.deleteSecretIfOrphaned(tx, shared.id);
+      });
+
+      const remaining = await db.mcpSecret.findUnique({
+        where: { id: shared.id },
+      });
+      expect(remaining).not.toBeNull();
+    });
+  });
+
+  describe("仮想MCP の secretId 共有", () => {
+    test("同一 secretId を共有する接続は元コネクタ削除後も secret を保持する", async () => {
+      // 元コネクタ用サーバー
+      const sourceServer = await mcpRepository.createServer(db, serverData);
+      const shared = await mcpRepository.createSecret(db, "shared-creds");
+      const sourceConn = await mcpRepository.createConnection(db, {
+        ...(await buildConnectionData(sourceServer.id, shared.id)),
+        slug: "source",
+      });
+
+      // 仮想MCP用サーバー（同じ secret を共有する接続）
+      const virtualServer = await mcpRepository.createServer(db, {
+        ...serverData,
+        slug: "virtual",
+        name: "Virtual",
+        serverType: "CUSTOM",
+      });
+      await mcpRepository.createConnection(db, {
+        ...(await buildConnectionData(virtualServer.id, shared.id)),
+        slug: "virtual-conn",
+      });
+
+      // 元コネクタ単体だけ削除
+      await db.mcpConnection.delete({ where: { id: sourceConn.id } });
+
+      // 仮想MCP配下にまだ参照が残っているため、deleteSecretIfOrphaned しても消えない
+      await db.$transaction(async (tx) => {
+        await mcpRepository.deleteSecretIfOrphaned(tx, shared.id);
+      });
+      const remaining = await db.mcpSecret.findUnique({
+        where: { id: shared.id },
+      });
+      expect(remaining).not.toBeNull();
+    });
+  });
+
   describe("findConnectionsByIdsWithTools", () => {
     test("複数IDで接続をtoolsと共に一括取得する", async () => {
       const server = await mcpRepository.createServer(db, serverData);
       const conn1 = await mcpRepository.createConnection(db, {
-        ...buildConnectionData(server.id),
+        ...(await buildConnectionData(server.id)),
         slug: "c1",
       });
       const conn2 = await mcpRepository.createConnection(db, {
-        ...buildConnectionData(server.id),
+        ...(await buildConnectionData(server.id)),
         slug: "c2",
       });
       await mcpRepository.createTools(db, [
@@ -392,7 +514,7 @@ describe("mcp.repository（実DB）", () => {
       const server = await mcpRepository.createServer(db, serverData);
       const connection = await mcpRepository.createConnection(
         db,
-        buildConnectionData(server.id),
+        await buildConnectionData(server.id),
       );
 
       const result = await mcpRepository.findConnectionsByIdsWithTools(db, [
@@ -412,7 +534,7 @@ describe("mcp.repository（実DB）", () => {
       });
       const connection = await mcpRepository.createConnection(
         db,
-        buildConnectionData(server.id),
+        await buildConnectionData(server.id),
       );
 
       const result = await mcpRepository.findConnectionsByIdsWithTools(db, [

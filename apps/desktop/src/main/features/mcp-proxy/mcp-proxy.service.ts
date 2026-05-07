@@ -32,7 +32,7 @@ export type McpConnectionMeta = {
 // McpConnection.args のバリデーション（string[] としてJSON.parse可能）
 const connectionArgsSchema = z.array(z.string());
 
-// McpConnection.credentials（復号後）の env バリデーション
+// McpSecret.credentials（復号後）の env バリデーション
 // 値は string のみ受け付ける（環境変数は文字列のため）
 const connectionEnvSchema = z.record(z.string(), z.string());
 
@@ -101,6 +101,8 @@ const toProxyAuthType = (prismaAuthType: string): AuthType => {
 type EnabledConnection = Awaited<
   ReturnType<typeof mcpRepository.findEnabledConnections>
 >[number];
+// findEnabledConnections（tools あり）と findConnectionByIdWithServer（tools なし）を共通で受ける型。
+// secret はどちらの finder も include しているため EnabledConnection から継承する。
 type ConnectionForConfig = Omit<EnabledConnection, "tools"> & {
   tools?: Array<{ name: string; isAllowed: boolean }>;
 };
@@ -122,29 +124,39 @@ const withAllowedTools = <T extends McpServerConfig>(
  * 単一接続からMcpServerConfigを生成する共通ヘルパー。
  * credentials復号 → Zodバリデーション → OAuthリフレッシュ → config組み立て。
  * 生成不可（urlなし等）の場合は null を返す。
+ *
+ * `oauthCache` は同一 secretId を共有する複数接続のリフレッシュを冪等化するための
+ * 接続ループ単位の状態。同じ secret を指す2件目以降は1件目で得た新トークンを参照し、
+ * 古い refresh_token で再叩きして refresh_token rotation で `invalid_grant` を起こすのを防ぐ。
  */
 const buildConfigFromConnection = async (
   conn: ConnectionForConfig,
+  oauthCache: Map<number, Record<string, string>> = new Map(),
 ): Promise<{ config: McpServerConfig; meta: McpConnectionMeta } | null> => {
   const connLabel = `${conn.server.slug}/${conn.slug}`;
   const name = `${conn.server.slug}-${conn.slug}`;
 
-  const plainCredentials = await decryptCredentials(conn.credentials);
+  const plainCredentials = await decryptCredentials(conn.secret.credentials);
   let credentials = parseAndValidate(
     plainCredentials,
     connectionEnvSchema,
     `connection(${connLabel}).credentials`,
   );
 
-  // OAuth接続: トークンの期限チェック & 必要ならリフレッシュ
+  // OAuth接続: トークンの期限チェック & 必要ならリフレッシュ（secretId 単位で冪等化）
   if (conn.authType === "OAUTH" && conn.url) {
-    const refreshed = await refreshOAuthTokenIfNeeded(
-      conn.id,
-      conn.url,
-      credentials,
-    );
-    if (refreshed) {
-      credentials = refreshed;
+    const cached = oauthCache.get(conn.secretId);
+    if (cached) {
+      credentials = cached;
+    } else {
+      const refreshed = await refreshOAuthTokenIfNeeded(
+        conn.secretId,
+        conn.url,
+        credentials,
+      );
+      if (refreshed) credentials = refreshed;
+      // リフレッシュ実行後・スキップ後どちらでも、後続接続が古いスナップショットで再叩きしないようキャッシュ
+      oauthCache.set(conn.secretId, credentials);
     }
   }
 
@@ -255,9 +267,13 @@ const buildConfigsFromConnections = async (
 
   const configs: McpServerConfig[] = [];
   const meta: McpConnectionMeta[] = [];
+  // 同じ secretId を共有する複数接続でのリフレッシュ重複を防ぐ（refresh_token rotation 衝突対策）。
+  // 暗黙の前提: 同一 secretId の接続は同一 url を持つ（仮想MCPは元コネクタの url をコピーするため）。
+  // 将来 secret 共有ながら url が異なるケースを許容する場合は、キャッシュキーを `secretId:url` に拡張する必要がある。
+  const oauthCache = new Map<number, Record<string, string>>();
   for (const conn of connections) {
     try {
-      const result = await buildConfigFromConnection(conn);
+      const result = await buildConfigFromConnection(conn, oauthCache);
       if (result) {
         configs.push(result.config);
         meta.push(result.meta);

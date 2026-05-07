@@ -13,9 +13,7 @@ export type CreateMcpServerInput = {
   serverType: ServerType;
 };
 
-/**
- * MCP接続作成時の入力データ型
- */
+// 仮想MCPは共有元の secretId を渡す。それ以外は createSecret で先に作成した id を渡す。
 export type CreateMcpConnectionInput = {
   name: string;
   slug: string;
@@ -23,7 +21,7 @@ export type CreateMcpConnectionInput = {
   command: string | null;
   args: string;
   url: string | null;
-  credentials: string;
+  secretId: number;
   authType: "NONE" | "BEARER" | "API_KEY" | "OAUTH";
   serverId: number;
   catalogId: number | null;
@@ -42,10 +40,8 @@ export type CreateMcpToolInput = {
   isAllowed?: boolean;
 };
 
-/**
- * MCPサーバーを接続情報付きで全件取得
- * 接続ごとのツール数は `_count.tools` で取得し、ツール本体はロードしない（一覧表示の負荷削減）
- */
+// 一覧表示の負荷削減のため、ツール本体はロードせず `_count.tools` で件数のみ取得する。
+// credentials は renderer に返さないため secret は include しない。
 export const findAllWithConnections = async (db: DbClient) => {
   return db.mcpServer.findMany({
     include: {
@@ -84,6 +80,22 @@ export const createConnection = async (
   return db.mcpConnection.create({ data });
 };
 
+export const createSecret = async (db: DbClient, credentials: string) => {
+  return db.mcpSecret.create({ data: { credentials } });
+};
+
+// 参照カウント0なら secret 削除。参照中は onDelete: Restrict が DB レベルでガードする。
+// count→delete 間に新しい参照が入ると P2003 で失敗するため $transaction 内から呼ぶこと。
+export const deleteSecretIfOrphaned = async (
+  db: DbClient,
+  secretId: number,
+): Promise<void> => {
+  const remaining = await db.mcpConnection.count({ where: { secretId } });
+  if (remaining === 0) {
+    await db.mcpSecret.delete({ where: { id: secretId } });
+  }
+};
+
 /**
  * 指定接続のツールを一括作成（接続新規登録直後のツール初期投入用）
  */
@@ -105,26 +117,19 @@ export const findToolsByConnectionId = async (
   });
 };
 
-/**
- * 接続をIDで取得（ツール取得時のconfig生成用にserver情報を含める）
- */
 export const findConnectionByIdWithServer = async (
   db: DbClient,
   connectionId: number,
 ) => {
   return db.mcpConnection.findUnique({
     where: { id: connectionId },
-    include: { server: true },
+    include: {
+      server: true,
+      secret: { select: { credentials: true } },
+    },
   });
 };
 
-/**
- * 仮想MCP作成のための既存接続一括取得（接続情報 + 提供ツール一覧）
- *
- * 仮想MCPは「コネクト画面で追加済みコネクタ」を束ねる仕様（DEV-1581）に変更されており、
- * 接続設定（transportType / command / args / url / 暗号化済み credentials / authType / catalogId）と
- * 提供ツール一覧（name / description / isAllowed）を一括で読み出してコピー作成に利用する。
- */
 export const findConnectionsByIdsWithTools = async (
   db: DbClient,
   connectionIds: number[],
@@ -168,9 +173,6 @@ export const findServerByName = async (db: DbClient, name: string) => {
   return db.mcpServer.findFirst({ where: { name } });
 };
 
-/**
- * 有効なサーバーの有効な接続を全件取得（Proxy起動時のconfig生成用）
- */
 export const findEnabledConnections = async (db: DbClient) => {
   return db.mcpConnection.findMany({
     where: {
@@ -179,6 +181,7 @@ export const findEnabledConnections = async (db: DbClient) => {
     },
     include: {
       server: true,
+      secret: { select: { credentials: true } },
       tools: {
         select: { name: true, isAllowed: true },
       },
@@ -201,6 +204,7 @@ export const findEnabledConnectionsBySlug = async (
     },
     include: {
       server: true,
+      secret: { select: { credentials: true } },
       tools: {
         select: { name: true, isAllowed: true },
       },
@@ -227,11 +231,22 @@ export const updateServer = async (
   return db.mcpServer.update({ where: { id }, data });
 };
 
-/**
- * サーバーを削除（カスケードで接続も削除）
- */
+// 接続のカスケード削除に伴う孤立 secret の掃除は service 層で行う（参照カウント運用）。
 export const deleteServer = async (db: DbClient, id: number) => {
   return db.mcpServer.delete({ where: { id } });
+};
+
+// distinct を使って重複は repository 側で除去する（呼び出し側で Set 化する責務を寄せない）
+export const findSecretIdsByServerId = async (
+  db: DbClient,
+  serverId: number,
+): Promise<number[]> => {
+  const connections = await db.mcpConnection.findMany({
+    where: { serverId },
+    select: { secretId: true },
+    distinct: ["secretId"],
+  });
+  return connections.map((c) => c.secretId);
 };
 
 /**
