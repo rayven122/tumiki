@@ -267,7 +267,9 @@ const buildConfigsFromConnections = async (
 
   const configs: McpServerConfig[] = [];
   const meta: McpConnectionMeta[] = [];
-  // 同じ secretId を共有する複数接続でのリフレッシュ重複を防ぐ（refresh_token rotation 衝突対策）
+  // 同じ secretId を共有する複数接続でのリフレッシュ重複を防ぐ（refresh_token rotation 衝突対策）。
+  // 暗黙の前提: 同一 secretId の接続は同一 url を持つ（仮想MCPは元コネクタの url をコピーするため）。
+  // 将来 secret 共有ながら url が異なるケースを許容する場合は、キャッシュキーを `secretId:url` に拡張する必要がある。
   const oauthCache = new Map<number, Record<string, string>>();
   for (const conn of connections) {
     try {

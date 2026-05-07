@@ -4,9 +4,10 @@
 -- SQLite は ALTER TABLE DROP COLUMN を一部しかサポートしないためテーブル再作成方式を採用
 
 -- CreateTable
+-- credentials は必ず encryptToken で暗号化した値を渡す。DEFAULT を設けると平文 "{}" が紛れ込むためあえて指定しない
 CREATE TABLE "McpSecret" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "credentials" TEXT NOT NULL DEFAULT '{}',
+    "credentials" TEXT NOT NULL,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL
 );

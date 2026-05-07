@@ -388,7 +388,10 @@ describe("mcp.repository（実DB）", () => {
     test("deleteSecretIfOrphaned は参照が残っていなければ削除する", async () => {
       const secret = await mcpRepository.createSecret(db, "orphan");
 
-      await mcpRepository.deleteSecretIfOrphaned(db, secret.id);
+      // 本番コードと同じく $transaction 内で呼ぶ（count→delete の整合性を担保するため）
+      await db.$transaction(async (tx) => {
+        await mcpRepository.deleteSecretIfOrphaned(tx, secret.id);
+      });
 
       const remaining = await db.mcpSecret.findUnique({
         where: { id: secret.id },
@@ -405,7 +408,9 @@ describe("mcp.repository（実DB）", () => {
         slug: "still-referencing",
       });
 
-      await mcpRepository.deleteSecretIfOrphaned(db, shared.id);
+      await db.$transaction(async (tx) => {
+        await mcpRepository.deleteSecretIfOrphaned(tx, shared.id);
+      });
 
       const remaining = await db.mcpSecret.findUnique({
         where: { id: shared.id },
@@ -440,7 +445,9 @@ describe("mcp.repository（実DB）", () => {
       await db.mcpConnection.delete({ where: { id: sourceConn.id } });
 
       // 仮想MCP配下にまだ参照が残っているため、deleteSecretIfOrphaned しても消えない
-      await mcpRepository.deleteSecretIfOrphaned(db, shared.id);
+      await db.$transaction(async (tx) => {
+        await mcpRepository.deleteSecretIfOrphaned(tx, shared.id);
+      });
       const remaining = await db.mcpSecret.findUnique({
         where: { id: shared.id },
       });

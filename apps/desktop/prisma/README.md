@@ -177,7 +177,7 @@ MCP接続の認証情報（暗号化済み credentials を保持し、複数の 
   - `id`: 
   - `credentials`
     > 暗号化済み credentials JSON（STDIO: 環境変数 / SSE・Streamable HTTP: HTTPヘッダー / OAuth: トークン）
-    > 必ず encryptToken で暗号化した値を渡す。default("{}") は既存接続をマイグレーションで持ち上げる際の互換用で、新規行では必ず明示的にセットする
+    > 必ず encryptToken で暗号化した値を渡す（schema 上のデフォルトを設けると平文 "{}" が紛れ込むため）
   - `createdAt`: 
   - `updatedAt`: 
 
