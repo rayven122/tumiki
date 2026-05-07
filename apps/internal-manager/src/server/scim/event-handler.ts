@@ -31,7 +31,9 @@ const buildDisplayName = (
   firstName?: string,
   lastName?: string,
 ): string | null => {
-  const parts = [firstName, lastName].filter(Boolean);
+  const parts = [firstName, lastName]
+    .map((part) => part?.trim())
+    .filter((part): part is string => !!part);
   return parts.length > 0 ? parts.join(" ") : null;
 };
 
@@ -144,13 +146,14 @@ const syncPrimaryOrgUnitMembership = async (
 type ScimUserData = Extract<DirectorySyncEvent["data"], { email: string }>;
 const upsertScimUser = async (data: ScimUserData) => {
   const enterpriseAttributes = extractEnterpriseUserAttributes(data);
+  const displayName = buildDisplayName(data.first_name, data.last_name);
   await db.$transaction(async (tx) => {
     await tx.user.upsert({
       where: { id: data.id },
       create: {
         id: data.id,
         email: data.email || null,
-        name: buildDisplayName(data.first_name, data.last_name),
+        name: displayName,
         isActive: data.active,
         scimDepartment: enterpriseAttributes.department,
         scimManagerValue: enterpriseAttributes.managerValue,
@@ -161,7 +164,7 @@ const upsertScimUser = async (data: ScimUserData) => {
       },
       update: {
         email: data.email || null,
-        name: buildDisplayName(data.first_name, data.last_name),
+        ...(displayName ? { name: displayName } : {}),
         isActive: data.active,
         scimDepartment: enterpriseAttributes.department,
         scimManagerValue: enterpriseAttributes.managerValue,
