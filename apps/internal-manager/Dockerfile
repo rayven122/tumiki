@@ -50,6 +50,7 @@ RUN pnpm --filter @tumiki/internal-manager run build:bare
 # saml-jackson が動的 import で jose / openid-client を読み込む際、Node.js は node_modules/<pkg> を探す。
 # pnpm の standalone コピーは .pnpm 仮想ストア形式になるためルートリンクが作られない。
 # 相対パスで symlink を作成して、production stage へ COPY 後も解決できるようにする。
+# openid-client@6 は実装内部で oauth4webapi を動的 import するため、oauth4webapi も同様に symlink する。
 # パッケージが見つからない場合はビルドを失敗させ、壊れた symlink が staging まで届かないようにする。
 RUN cd /app/apps/internal-manager/.next/standalone/node_modules && \
     jose_pkg=$(ls .pnpm/ | grep '^jose@' | sort -V | tail -1) && \
@@ -57,7 +58,10 @@ RUN cd /app/apps/internal-manager/.next/standalone/node_modules && \
     ln -s ".pnpm/${jose_pkg}/node_modules/jose" jose && \
     oidc_pkg=$(ls .pnpm/ | grep '^openid-client@' | sort -V | tail -1) && \
     [ -n "$oidc_pkg" ] || { echo "ERROR: openid-client package not found in .pnpm/"; exit 1; } && \
-    ln -s ".pnpm/${oidc_pkg}/node_modules/openid-client" openid-client
+    ln -s ".pnpm/${oidc_pkg}/node_modules/openid-client" openid-client && \
+    o4w_pkg=$(ls .pnpm/ | grep '^oauth4webapi@' | sort -V | tail -1) && \
+    [ -n "$o4w_pkg" ] || { echo "ERROR: oauth4webapi package not found in .pnpm/"; exit 1; } && \
+    ln -s ".pnpm/${o4w_pkg}/node_modules/oauth4webapi" oauth4webapi
 
 # ========================================
 # Stage 3: Production
