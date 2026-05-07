@@ -22,20 +22,9 @@ const orgUnitSelect = {
   path: true,
   parentId: true,
   lastSyncedAt: true,
-  memberships: {
+  _count: {
     select: {
-      id: true,
-      isPrimary: true,
-      user: { select: { id: true, name: true, email: true, isActive: true } },
-    },
-    orderBy: { createdAt: "asc" },
-  },
-  permissions: {
-    select: {
-      id: true,
-      effect: true,
-      catalogId: true,
-      toolId: true,
+      memberships: true,
     },
   },
   createdAt: true,

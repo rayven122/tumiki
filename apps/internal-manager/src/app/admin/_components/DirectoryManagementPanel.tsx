@@ -166,11 +166,6 @@ export const DirectoryManagementPanel = ({
 
   const orgUnitsQuery = api.orgUnits.tree.useQuery();
   const groupsQuery = api.groups.list.useQuery();
-  const usersQuery = api.users.list.useQuery({
-    search: undefined,
-    role: "all",
-    isActive: "true",
-  });
 
   const orgUnits = orgUnitsQuery.data ?? [];
   const rawGroups = groupsQuery.data ?? [];
@@ -178,11 +173,8 @@ export const DirectoryManagementPanel = ({
   const groups = hasMoreGroups
     ? rawGroups.slice(0, GROUP_DISPLAY_LIMIT)
     : rawGroups;
-  const activeUsers = usersQuery.data ?? [];
-  const isLoading =
-    orgUnitsQuery.isLoading || groupsQuery.isLoading || usersQuery.isLoading;
-  const isError =
-    orgUnitsQuery.isError || groupsQuery.isError || usersQuery.isError;
+  const isLoading = orgUnitsQuery.isLoading || groupsQuery.isLoading;
+  const isError = orgUnitsQuery.isError || groupsQuery.isError;
 
   const orgTree = useMemo(() => buildOrgDepthById(orgUnits), [orgUnits]);
   const childCountByParent = useMemo(() => {
@@ -336,6 +328,22 @@ export const DirectoryManagementPanel = ({
       : selectedKind === "group" && selectedItem
         ? !isGroupEditable(selectedItem as Group)
         : true;
+  const selectedOrgUnitId =
+    selectedKind === "org" && selectedItem ? selectedItem.id : null;
+  const canAddMember = Boolean(selectedItem && !readonly);
+  const orgMembersQuery = api.orgUnits.listUsers.useQuery(
+    { orgUnitId: selectedOrgUnitId ?? "__none__" },
+    { enabled: Boolean(selectedOrgUnitId) },
+  );
+  const usersQuery = api.users.list.useQuery(
+    {
+      search: undefined,
+      role: "all",
+      isActive: "true",
+    },
+    { enabled: canAddMember },
+  );
+  const activeUsers = usersQuery.data ?? [];
   const permissionSummaryQuery =
     api.mcpPolicies.getTargetPermissionSummary.useQuery(
       {
@@ -418,7 +426,7 @@ export const DirectoryManagementPanel = ({
   const memberRows = useMemo(
     () =>
       selectedKind === "org" && selectedItem
-        ? (selectedItem as OrgUnit).memberships.map((membership) => ({
+        ? (orgMembersQuery.data ?? []).map((membership) => ({
             id: membership.id,
             userId: membership.user.id,
             name: getUserLabel(membership.user),
@@ -442,7 +450,7 @@ export const DirectoryManagementPanel = ({
               isPrimary: false,
             }))
           : [],
-    [readonly, selectedItem, selectedKind],
+    [orgMembersQuery.data, readonly, selectedItem, selectedKind],
   );
 
   const selectableUsers = useMemo(() => {
@@ -726,7 +734,7 @@ export const DirectoryManagementPanel = ({
                   isOrg && Boolean(childCountByParent.get(item.id));
                 const isExpanded = isOrg && expandedOrgIds.has(item.id);
                 const count = isOrg
-                  ? (item as OrgUnit).memberships.length
+                  ? (item as OrgUnit)._count.memberships
                   : (item as Group).memberships.length;
                 const summary = isOrg
                   ? (item as OrgUnit).path
@@ -999,10 +1007,16 @@ export const DirectoryManagementPanel = ({
                         onChange={(event) =>
                           setMemberUserId(event.target.value)
                         }
-                        disabled={readonly || isMutating}
+                        disabled={
+                          readonly || isMutating || usersQuery.isLoading
+                        }
                         className="bg-bg-active border-border-default text-text-secondary min-h-[44px] min-w-0 rounded-lg border px-3 text-xs outline-none disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        <option value="">追加するユーザーを選択</option>
+                        <option value="">
+                          {usersQuery.isLoading
+                            ? "ユーザーを読み込み中"
+                            : "追加するユーザーを選択"}
+                        </option>
                         {selectableUsers.map((user: UserListItem) => (
                           <option key={user.id} value={user.id}>
                             {getUserLabel(user)} ({user.email ?? "no email"})
@@ -1034,7 +1048,16 @@ export const DirectoryManagementPanel = ({
                       </button>
                     </div>
                   </div>
-                  {memberRows.length === 0 ? (
+                  {selectedKind === "org" && orgMembersQuery.isLoading ? (
+                    <div className="text-text-muted flex items-center justify-center gap-2 px-5 py-8 text-xs">
+                      <Loader2 size={13} className="animate-spin" />
+                      メンバーを読み込み中
+                    </div>
+                  ) : selectedKind === "org" && orgMembersQuery.isError ? (
+                    <div className="text-text-muted px-5 py-8 text-center text-xs">
+                      メンバーを取得できませんでした
+                    </div>
+                  ) : memberRows.length === 0 ? (
                     <div className="text-text-muted px-5 py-8 text-center text-xs">
                       直接所属しているユーザーはいません
                     </div>

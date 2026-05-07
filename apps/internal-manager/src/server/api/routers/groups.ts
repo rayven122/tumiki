@@ -131,6 +131,7 @@ export const groupsRouter = createTRPCRouter({
       });
     }),
 
+  // IdP mapping を触らず名称・説明だけ更新する既存呼び出し元のために残す。
   updateTumikiGroup: adminProcedure
     .input(
       z.object({
