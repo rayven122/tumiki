@@ -11,18 +11,30 @@ import {
   ShieldX,
   X,
 } from "lucide-react";
-import { api, type RouterInputs, type RouterOutputs } from "~/trpc/react";
+import { api, type RouterInputs } from "~/trpc/react";
+import {
+  countEffects,
+  formatRolePermissionDate,
+  getCatalogEffect,
+  getToolEffect,
+  type MatrixCatalog,
+  type MatrixTool,
+  type PermissionState,
+} from "./roles-management-helpers";
 
-type MatrixData = RouterOutputs["mcpPolicies"]["getMatrix"];
-type MatrixCatalog = MatrixData["catalogs"][number];
-type MatrixTool = MatrixCatalog["tools"][number];
 type PolicyEffectInput =
   RouterInputs["mcpPolicies"]["updateToolPermission"]["effect"];
 type ConcretePolicyEffect = NonNullable<PolicyEffectInput>;
-type PermissionState = ConcretePolicyEffect | null;
 
 type RolesManagementPanelProps = {
   initialOrgUnitId?: string;
+};
+
+type EffectControlProps = {
+  label: string;
+  value: PermissionState;
+  disabled: boolean;
+  onChange: (value: PermissionState) => void;
 };
 
 const effectOptions = [
@@ -56,33 +68,6 @@ const effectLabel = {
   DENY: "拒否",
 } satisfies Record<ConcretePolicyEffect, string>;
 
-const formatDate = (value: Date | string | null | undefined) =>
-  value ? new Date(value).toLocaleDateString("ja-JP") : "-";
-
-const getCatalogEffect = (catalog: MatrixCatalog): PermissionState =>
-  catalog.orgUnitCatalogPermissions[0]?.effect ?? null;
-
-const getToolEffect = (tool: MatrixTool): PermissionState =>
-  tool.orgUnitPermissions[0]?.effect ?? null;
-
-const countEffects = (catalogs: MatrixCatalog[]) =>
-  catalogs.reduce(
-    (counts, catalog) => {
-      const catalogEffect = getCatalogEffect(catalog);
-      if (catalogEffect === "ALLOW") counts.allow += 1;
-      if (catalogEffect === "DENY") counts.deny += 1;
-
-      for (const tool of catalog.tools) {
-        const toolEffect = getToolEffect(tool);
-        if (toolEffect === "ALLOW") counts.allow += 1;
-        if (toolEffect === "DENY") counts.deny += 1;
-      }
-
-      return counts;
-    },
-    { allow: 0, deny: 0 },
-  );
-
 export const RolesManagementPanel = ({
   initialOrgUnitId,
 }: RolesManagementPanelProps) => {
@@ -115,10 +100,7 @@ export const RolesManagementPanel = ({
   const selectedOrgUnit =
     orgUnits.find((orgUnit) => orgUnit.id === selectedOrgUnitId) ?? null;
   const isUnknownOrgUnit =
-    Boolean(selectedOrgUnitId) &&
-    !matrixQuery.isLoading &&
-    !matrixQuery.isError &&
-    !selectedOrgUnit;
+    Boolean(selectedOrgUnitId) && matrixQuery.isSuccess && !selectedOrgUnit;
   const isMutating =
     updateCatalogPermission.isPending || updateToolPermission.isPending;
   const mutationError =
@@ -256,7 +238,7 @@ export const RolesManagementPanel = ({
         <section className="overflow-y-auto p-6">
           {matrixQuery.isError ? (
             <div className="border-border-default bg-bg-card text-text-secondary rounded-lg border px-5 py-8 text-sm">
-              権限情報の読み込みに失敗しました: {matrixQuery.error.message}
+              権限情報の読み込みに失敗しました。時間をおいて再試行してください。
             </div>
           ) : isUnknownOrgUnit ? (
             <div className="border-border-default bg-bg-card rounded-lg border px-5 py-8">
@@ -304,24 +286,38 @@ export const RolesManagementPanel = ({
                       {selectedOrgUnit.externalId}
                     </p>
                   </div>
-                  <div className="flex gap-2 text-xs">
+                  <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
                     <div className="bg-bg-active rounded-lg px-3 py-2">
-                      <span className="text-text-muted">許可 </span>
+                      <span className="text-text-muted">カタログ許可 </span>
                       <span className="text-text-primary font-medium">
-                        {counts.allow}
+                        {counts.catalogAllow}
                       </span>
                     </div>
                     <div className="bg-bg-active rounded-lg px-3 py-2">
-                      <span className="text-text-muted">拒否 </span>
+                      <span className="text-text-muted">カタログ拒否 </span>
                       <span className="text-text-primary font-medium">
-                        {counts.deny}
+                        {counts.catalogDeny}
+                      </span>
+                    </div>
+                    <div className="bg-bg-active rounded-lg px-3 py-2">
+                      <span className="text-text-muted">ツール許可 </span>
+                      <span className="text-text-primary font-medium">
+                        {counts.toolAllow}
+                      </span>
+                    </div>
+                    <div className="bg-bg-active rounded-lg px-3 py-2">
+                      <span className="text-text-muted">ツール拒否 </span>
+                      <span className="text-text-primary font-medium">
+                        {counts.toolDeny}
                       </span>
                     </div>
                   </div>
                 </div>
                 {mutationError ? (
                   <div className="mt-4 flex items-center justify-between gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
-                    <span>保存に失敗しました: {mutationError.message}</span>
+                    <span>
+                      保存に失敗しました。時間をおいて再試行してください。
+                    </span>
                     <button
                       type="button"
                       aria-label="保存エラーを閉じる"
@@ -357,7 +353,7 @@ export const RolesManagementPanel = ({
                             </div>
                             <div className="text-text-muted mt-1 font-mono text-[10px]">
                               {catalog.slug} / {catalog.status} / 更新{" "}
-                              {formatDate(catalog.updatedAt)}
+                              {formatRolePermissionDate(catalog.updatedAt)}
                             </div>
                           </div>
                           <EffectControl
@@ -392,7 +388,8 @@ export const RolesManagementPanel = ({
                                     {tool.name}
                                   </div>
                                   <div className="text-text-muted mt-1 text-[10px]">
-                                    更新 {formatDate(tool.updatedAt)}
+                                    更新{" "}
+                                    {formatRolePermissionDate(tool.updatedAt)}
                                   </div>
                                 </div>
                                 <span
@@ -436,12 +433,7 @@ const EffectControl = ({
   value,
   disabled,
   onChange,
-}: {
-  label: string;
-  value: PermissionState;
-  disabled: boolean;
-  onChange: (value: PermissionState) => void;
-}) => (
+}: EffectControlProps) => (
   <div
     className="flex gap-1"
     role="group"
