@@ -73,6 +73,7 @@ jobs:
             User ${SSH_USER}
             IdentityFile ~/.ssh/id_ed25519
             IdentitiesOnly yes
+            StrictHostKeyChecking accept-new
 
           Host k3s-deploy
             HostName ${K3S_HOST}
@@ -100,4 +101,4 @@ jobs:
 
       - name: Cleanup SSH key
         if: always()
-        run: rm -f ~/.ssh/id_ed25519
+        run: rm -f ~/.ssh/id_ed25519 /tmp/cf-proxy.sh

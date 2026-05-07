@@ -32,19 +32,23 @@ runs:
       shell: bash
       env:
         SSH_HOST: ${{ inputs.ssh-host }}
+        CF_ID: ${{ inputs.cf-access-client-id }}
+        CF_SECRET: ${{ inputs.cf-access-client-secret }}
       run: |
         mkdir -p ~/.ssh
 
-        # クォートしたヒアドキュメントでシークレットをファイルに埋め込まない
-        # 実行時に CF_ACCESS_CLIENT_ID / CF_ACCESS_CLIENT_SECRET をジョブの環境変数から読む
-        cat > /tmp/cf-proxy.sh << 'WRAPPER'
+        # Service Token をラッパースクリプトに直接埋め込む
+        # ProxyCommand 子プロセス（特に ProxyJump 経由）への環境変数継承は確実でないため、
+        # ステップ実行時に値を展開してファイル化する。GitHub Actions runner の /tmp は
+        # ジョブ終了で破棄されるため、シークレット永続化のリスクは限定的。
+        cat > /tmp/cf-proxy.sh << EOF
         #!/bin/bash
-        exec cloudflared access ssh \
-          --service-token-id "${CF_ACCESS_CLIENT_ID}" \
-          --service-token-secret "${CF_ACCESS_CLIENT_SECRET}" \
-          --hostname "$@"
-        WRAPPER
-        chmod +x /tmp/cf-proxy.sh
+        exec cloudflared access ssh \\
+          --service-token-id "${CF_ID}" \\
+          --service-token-secret "${CF_SECRET}" \\
+          --hostname "\$@"
+        EOF
+        chmod 700 /tmp/cf-proxy.sh
 
         cat >> ~/.ssh/config << CONFIG
         Host ${SSH_HOST}
