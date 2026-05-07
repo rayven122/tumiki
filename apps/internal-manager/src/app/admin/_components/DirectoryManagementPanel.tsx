@@ -757,8 +757,7 @@ export const DirectoryManagementPanel = ({
                   最終的な許可 / 拒否
                 </h2>
                 <p className="text-text-muted mt-0.5 text-[11px]">
-                  {selectedItem.name} に適用中のロールから解決された最終的な許可
-                  / 拒否
+                  {`${selectedItem.name} に適用中のロールから解決された最終的な許可 / 拒否`}
                 </p>
               </div>
               <button
