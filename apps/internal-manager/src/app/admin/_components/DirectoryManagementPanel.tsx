@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Building2,
@@ -43,6 +43,7 @@ import {
   formatPermissionSummary,
   riskBadgeClass,
 } from "./idp-ui-helpers";
+import { useFocusTrap } from "./use-focus-trap";
 
 export type DirectoryTab = "organizations" | "groups";
 
@@ -104,6 +105,8 @@ export const DirectoryManagementPanel = ({
 
   const [showRolePicker, setShowRolePicker] = useState(false);
   const [showResolvedPermissions, setShowResolvedPermissions] = useState(false);
+  const rolePickerRef = useRef<HTMLDivElement>(null);
+  const resolvedPermissionsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!showRolePicker && !showResolvedPermissions) return;
@@ -119,18 +122,24 @@ export const DirectoryManagementPanel = ({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [showRolePicker, showResolvedPermissions]);
 
+  useFocusTrap(rolePickerRef, showRolePicker);
+  useFocusTrap(resolvedPermissionsRef, showResolvedPermissions);
+
   const selectedKind = selectedEntry.kind;
-  const selectedItem: MockOrgUnit | MockGroup =
+  const selectedItem: MockOrgUnit | MockGroup | null =
     selectedKind === "org"
       ? (mockOrgUnits.find((org) => org.id === selectedEntry.id) ??
-        mockOrgUnits[0]!)
+        mockOrgUnits[0] ??
+        null)
       : (mockGroups.find((group) => group.id === selectedEntry.id) ??
-        mockGroups[0]!);
-  const readonly = selectedItem.readonly;
-  const memberIds =
-    selectedKind === "org"
+        mockGroups[0] ??
+        null);
+  const readonly = selectedItem?.readonly ?? false;
+  const memberIds = selectedItem
+    ? selectedKind === "org"
       ? (selectedItem as MockOrgUnit).userIds
-      : (selectedItem as MockGroup).memberIds;
+      : (selectedItem as MockGroup).memberIds
+    : [];
   const members = useMemo(
     () =>
       memberIds
@@ -139,10 +148,12 @@ export const DirectoryManagementPanel = ({
     [memberIds],
   );
 
+  const selectedItemId = selectedItem?.id ?? null;
   const assignedRoles = useMemo<
     { assignment: MockRoleAssignment; role: MockRole }[]
   >(() => {
-    const assignments = getAssignmentsForTarget(selectedKind, selectedItem.id);
+    if (!selectedItemId) return [];
+    const assignments = getAssignmentsForTarget(selectedKind, selectedItemId);
     return assignments
       .map((assignment) => {
         const role = getRoleById(assignment.roleId);
@@ -152,7 +163,7 @@ export const DirectoryManagementPanel = ({
         (entry): entry is { assignment: MockRoleAssignment; role: MockRole } =>
           Boolean(entry),
       );
-  }, [selectedItem.id, selectedKind]);
+  }, [selectedItemId, selectedKind]);
 
   const assignedRoleIds = useMemo(
     () => new Set(assignedRoles.map((entry) => entry.role.id)),
@@ -214,6 +225,16 @@ export const DirectoryManagementPanel = ({
       return next;
     });
   };
+
+  if (!selectedItem) {
+    return (
+      <div className="flex h-full min-h-screen items-center justify-center p-6">
+        <p className="text-text-muted text-xs">
+          表示できるディレクトリエントリがありません
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full min-h-screen flex-col">
@@ -619,6 +640,7 @@ export const DirectoryManagementPanel = ({
           onClick={() => setShowRolePicker(false)}
         >
           <div
+            ref={rolePickerRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="role-picker-title"
@@ -711,6 +733,7 @@ export const DirectoryManagementPanel = ({
           onClick={() => setShowResolvedPermissions(false)}
         >
           <div
+            ref={resolvedPermissionsRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="resolved-permissions-title"
