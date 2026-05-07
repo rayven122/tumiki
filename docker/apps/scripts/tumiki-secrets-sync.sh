@@ -47,12 +47,19 @@ if [[ ! -s "$NEW_ENV" ]]; then
 fi
 
 # === 差分検知 ===
-if cmp -s "$NEW_ENV" "$ENV_FILE" 2>/dev/null; then
-  exit 0
+DIFF=0
+if ! cmp -s "$NEW_ENV" "$ENV_FILE" 2>/dev/null; then
+  install -m 600 "$NEW_ENV" "$ENV_FILE"
+  DIFF=1
 fi
 
-# === 反映 ===
-install -m 600 "$NEW_ENV" "$ENV_FILE"
+# === コンテナ稼働確認 ===
+# 差分が無くても、初期化やクラッシュでコンテナが落ちていた場合に再立ち上げする。
 cd "$TUMIKI_DIR"
-docker compose -f "$COMPOSE_FILE" up -d
-echo "secrets synced and compose updated"
+RUNNING=$(docker compose -f "$COMPOSE_FILE" ps --status running --services 2>/dev/null | wc -l)
+EXPECTED=$(docker compose -f "$COMPOSE_FILE" config --services 2>/dev/null | wc -l)
+
+if [[ "$DIFF" -eq 1 || "$RUNNING" -lt "$EXPECTED" ]]; then
+  docker compose -f "$COMPOSE_FILE" up -d
+  echo "compose reconciled (diff=$DIFF, running=${RUNNING}/${EXPECTED})"
+fi
