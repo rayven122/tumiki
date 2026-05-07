@@ -4,6 +4,7 @@ import { GroupSource, Prisma } from "@tumiki/internal-db";
 import { adminProcedure, createTRPCRouter } from "@/server/api/trpc";
 
 export const GROUP_LIST_LIMIT = 200;
+export const GROUP_MEMBER_LIST_LIMIT = 1000;
 
 const groupNameSchema = z.string().trim().min(1).max(100);
 
@@ -47,6 +48,7 @@ const groupListSelect = {
   updatedAt: true,
   memberships: {
     select: membershipSelect,
+    orderBy: { createdAt: "asc" },
   },
 } as const;
 
@@ -84,6 +86,8 @@ export const groupsRouter = createTRPCRouter({
       return ctx.db.userGroupMembership.findMany({
         where: { groupId: input.groupId },
         select: membershipSelect,
+        orderBy: { createdAt: "asc" },
+        take: GROUP_MEMBER_LIST_LIMIT,
       });
     }),
 

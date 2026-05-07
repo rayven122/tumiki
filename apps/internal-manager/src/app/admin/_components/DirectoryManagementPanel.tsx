@@ -76,6 +76,9 @@ const depthPaddingClass: Partial<Record<number, string>> = {
   1: "pl-8",
   2: "pl-14",
   3: "pl-20",
+  4: "pl-24",
+  5: "pl-28",
+  6: "pl-32",
 };
 
 const ROOT_ORG_PARENT_KEY = "__root__";
@@ -308,7 +311,8 @@ export const DirectoryManagementPanel = ({
 
   useEffect(() => {
     setSelectedEntry((currentEntry) => {
-      if (currentEntry) {
+      const expectedKind = activeTab === "organizations" ? "org" : "group";
+      if (currentEntry?.kind === expectedKind) {
         const exists =
           currentEntry.kind === "org"
             ? orgUnits.some((org) => org.id === currentEntry.id)
@@ -407,37 +411,53 @@ export const DirectoryManagementPanel = ({
     search,
   ]);
 
-  const memberRows =
-    selectedKind === "org" && selectedItem
-      ? (selectedItem as OrgUnit).memberships.map((membership) => ({
-          id: membership.id,
-          userId: membership.user.id,
-          name: getUserLabel(membership.user),
-          email: membership.user.email ?? "—",
-          // 現スキーマではOrgUnitメンバーシップ自体にsourceが存在しないため、親OrgUnitのsourceを使用する。
-          source: (selectedItem as OrgUnit).source,
-          readonly,
-          isPrimary: membership.isPrimary,
-        }))
-      : selectedKind === "group" && selectedItem
-        ? (selectedItem as Group).memberships.map((membership) => ({
+  const memberRows = useMemo(
+    () =>
+      selectedKind === "org" && selectedItem
+        ? (selectedItem as OrgUnit).memberships.map((membership) => ({
             id: membership.id,
-            userId: membership.userId,
+            userId: membership.user.id,
             name: getUserLabel(membership.user),
             email: membership.user.email ?? "—",
-            source: membership.source,
-            readonly:
-              readonly ||
-              membership.source !== "TUMIKI" ||
-              (selectedItem as Group).source !== "TUMIKI",
-            isPrimary: false,
+            // 現スキーマではOrgUnitメンバーシップ自体にsourceが存在しないため、親OrgUnitのsourceを使用する。
+            source: (selectedItem as OrgUnit).source,
+            readonly,
+            isPrimary: membership.isPrimary,
           }))
-        : [];
-
-  const existingMemberUserIds = new Set(memberRows.map((row) => row.userId));
-  const selectableUsers = activeUsers.filter(
-    (user) => !existingMemberUserIds.has(user.id),
+        : selectedKind === "group" && selectedItem
+          ? (selectedItem as Group).memberships.map((membership) => ({
+              id: membership.id,
+              userId: membership.userId,
+              name: getUserLabel(membership.user),
+              email: membership.user.email ?? "—",
+              source: membership.source,
+              readonly:
+                readonly ||
+                membership.source !== "TUMIKI" ||
+                (selectedItem as Group).source !== "TUMIKI",
+              isPrimary: false,
+            }))
+          : [],
+    [readonly, selectedItem, selectedKind],
   );
+
+  const selectableUsers = useMemo(() => {
+    const existingMemberUserIds = new Set(memberRows.map((row) => row.userId));
+    return activeUsers.filter((user) => !existingMemberUserIds.has(user.id));
+  }, [activeUsers, memberRows]);
+
+  useEffect(() => {
+    if (!entryForm && !deleteConfirm) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || isMutating) return;
+      setEntryForm(null);
+      setDeleteConfirm(null);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [deleteConfirm, entryForm, isMutating]);
 
   const openCreateForm = () => {
     setErrorMessage(null);
@@ -712,7 +732,7 @@ export const DirectoryManagementPanel = ({
                       isSelected ? "bg-bg-active" : "bg-transparent"
                     } ${
                       isOrg
-                        ? (depthPaddingClass[entry.depth] ?? "pl-20")
+                        ? (depthPaddingClass[entry.depth] ?? "pl-32")
                         : "pl-3"
                     }`}
                   >

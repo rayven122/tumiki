@@ -4,7 +4,11 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { GroupSource, Prisma, Role } from "@tumiki/internal-db";
 import type { Context } from "../../trpc";
 import type * as TrpcModule from "../../trpc";
-import { GROUP_LIST_LIMIT, groupsRouter } from "../groups";
+import {
+  GROUP_LIST_LIMIT,
+  GROUP_MEMBER_LIST_LIMIT,
+  groupsRouter,
+} from "../groups";
 import { expectTrpcErrorCode } from "./test-helpers";
 
 vi.mock("server-only", () => ({}));
@@ -88,7 +92,11 @@ describe("groupsRouter", () => {
       }),
     );
     expect(findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { groupId: "group-001" } }),
+      expect.objectContaining({
+        where: { groupId: "group-001" },
+        orderBy: { createdAt: "asc" },
+        take: GROUP_MEMBER_LIST_LIMIT,
+      }),
     );
   });
 

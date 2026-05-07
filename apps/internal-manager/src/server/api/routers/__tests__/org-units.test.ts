@@ -434,6 +434,48 @@ describe("orgUnitsRouter", () => {
     expect(executeRaw).toHaveBeenCalledTimes(1);
   });
 
+  test("updateManualOrgUnitはルートへ移動できる", async () => {
+    const update = vi.fn().mockResolvedValue({
+      id: "child",
+      name: "更新後",
+      source: OrgUnitSource.MANUAL,
+      path: "/manual:child",
+      memberships: [],
+      permissions: [],
+    });
+    const executeRaw = vi.fn().mockResolvedValue(0);
+    const tx = {
+      $executeRaw: executeRaw,
+      orgUnit: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: "child",
+          externalId: "manual:child",
+          path: "/parent/manual:child",
+          source: OrgUnitSource.MANUAL,
+        }),
+        update,
+      },
+    };
+    const caller = buildTransactionCaller(tx);
+
+    await expect(
+      caller.updateManualOrgUnit({
+        orgUnitId: "child",
+        name: "更新後",
+        parentId: null,
+      }),
+    ).resolves.toStrictEqual(
+      expect.objectContaining({ id: "child", path: "/manual:child" }),
+    );
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "child" },
+        data: { name: "更新後", parentId: null, path: "/manual:child" },
+      }),
+    );
+    expect(executeRaw).toHaveBeenCalledTimes(1);
+  });
+
   test("updateManualOrgUnitは自分自身への移動をBAD_REQUESTにする", async () => {
     const caller = buildCaller({} as Context["db"]);
 
