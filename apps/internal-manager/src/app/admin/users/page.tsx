@@ -157,8 +157,8 @@ const AdminUsersPage = () => {
         : isSelf
           ? "自分自身のアクセス状態は変更できません。別の管理者に操作してもらってください。"
           : user.isActive
-            ? "このユーザーの internal-manager と Tumiki Desktop の利用を停止します。IdP 側のユーザーは削除されません。"
-            : "このユーザーの internal-manager と Tumiki Desktop の利用を再開します。";
+            ? "このユーザーの Tumiki Manager と Tumiki Desktop の利用を停止します。IdP 側のユーザーは削除されません。"
+            : "このユーザーの Tumiki Manager と Tumiki Desktop の利用を再開します。";
       const deleteTooltip =
         user._count.externalIdentities > 0
           ? "SAML/SCIM/IdPで同期されたユーザーはTumikiから削除できません。IdP側で削除してください。"
@@ -426,14 +426,14 @@ const AdminUsersPage = () => {
             renderUserSection({
               title: "利用中ユーザー",
               description:
-                "internal-manager と Tumiki Desktop の利用を許可しているユーザーです。",
+                "Tumiki Manager と Tumiki Desktop の利用を許可しているユーザーです。",
               sectionUsers: activeUsers,
             })}
           {shouldShowSuspendedUsers &&
             renderUserSection({
               title: "アクセス停止中ユーザー",
               description:
-                "IdP には存在していても、internal-manager と Tumiki Desktop の利用を停止しているユーザーです。",
+                "IdP には存在していても、Tumiki Manager と Tumiki Desktop の利用を停止しているユーザーです。",
               sectionUsers: suspendedUsers,
             })}
         </div>

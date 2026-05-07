@@ -327,6 +327,179 @@ export const mockTools: MockTool[] = [
   },
 ];
 
+export type RoleType = "system" | "custom";
+
+export type RolePermission = {
+  toolId: string;
+  effect: "allow" | "deny";
+};
+
+export type MockRole = {
+  id: string;
+  name: string;
+  description: string;
+  type: RoleType;
+  source: IdpSource;
+  readonly: boolean;
+  permissions: RolePermission[];
+  updatedAt: string;
+  updatedBy: string;
+};
+
+export type AssignmentTargetType = "org" | "group" | "user";
+
+export type MockRoleAssignment = {
+  id: string;
+  roleId: string;
+  targetType: AssignmentTargetType;
+  targetId: string;
+  scopePath?: string;
+  inherited: boolean;
+  reason?: string;
+  expiresAt?: string;
+};
+
+export const roleTypeLabel: Record<RoleType, string> = {
+  system: "システム標準",
+  custom: "カスタム",
+};
+
+export const roleTypeBadgeClass: Record<RoleType, string> = {
+  system: "bg-sky-500/15 text-sky-300",
+  custom: "bg-emerald-500/15 text-emerald-300",
+};
+
+export const mockRoles: MockRole[] = [
+  {
+    id: "role-platform-engineer",
+    name: "Platform Engineer",
+    description: "GitHub PR・監査ログ閲覧などプラットフォーム標準権限",
+    type: "system",
+    source: "tumiki",
+    readonly: true,
+    permissions: [
+      { toolId: "github-pr", effect: "allow" },
+      { toolId: "audit-log", effect: "allow" },
+      { toolId: "prod-db", effect: "deny" },
+    ],
+    updatedAt: "2026-04-15",
+    updatedBy: "system",
+  },
+  {
+    id: "role-security-reviewer",
+    name: "Security Reviewer",
+    description: "監査ログ閲覧 + Sentry 参照のみ",
+    type: "system",
+    source: "tumiki",
+    readonly: true,
+    permissions: [
+      { toolId: "audit-log", effect: "allow" },
+      { toolId: "slack-admin", effect: "deny" },
+    ],
+    updatedAt: "2026-04-10",
+    updatedBy: "system",
+  },
+  {
+    id: "role-it-operator",
+    name: "IT Operator",
+    description: "Slack ワークスペース管理・Google Drive 管理",
+    type: "system",
+    source: "tumiki",
+    readonly: true,
+    permissions: [
+      { toolId: "slack-admin", effect: "allow" },
+      { toolId: "prod-db", effect: "deny" },
+    ],
+    updatedAt: "2026-03-28",
+    updatedBy: "system",
+  },
+  {
+    id: "role-ai-program",
+    name: "AI 推進メンバー",
+    description: "AI 推進チーム向けの横断例外権限",
+    type: "custom",
+    source: "tumiki",
+    readonly: false,
+    permissions: [
+      { toolId: "github-pr", effect: "allow" },
+      { toolId: "audit-log", effect: "allow" },
+    ],
+    updatedAt: "2026-04-30",
+    updatedBy: "水野 美奈",
+  },
+  {
+    id: "role-temporary-prod-readonly",
+    name: "本番 DB Read-only (一時)",
+    description: "障害対応時の一時的な参照権限",
+    type: "custom",
+    source: "tumiki",
+    readonly: false,
+    permissions: [{ toolId: "prod-db", effect: "allow" }],
+    updatedAt: "2026-05-01",
+    updatedBy: "佐倉 蓮",
+  },
+];
+
+export const mockRoleAssignments: MockRoleAssignment[] = [
+  {
+    id: "assign-platform-engineer-org",
+    roleId: "role-platform-engineer",
+    targetType: "org",
+    targetId: "engineering",
+    inherited: false,
+    reason: "開発部の標準権限",
+  },
+  {
+    id: "assign-platform-engineer-platform",
+    roleId: "role-platform-engineer",
+    targetType: "org",
+    targetId: "platform",
+    inherited: true,
+    reason: "開発部から継承",
+  },
+  {
+    id: "assign-security-reviewer-security",
+    roleId: "role-security-reviewer",
+    targetType: "org",
+    targetId: "security",
+    inherited: false,
+    reason: "情報セキュリティ部の標準権限",
+  },
+  {
+    id: "assign-security-reviewer-group",
+    roleId: "role-security-reviewer",
+    targetType: "group",
+    targetId: "security-reviewers",
+    inherited: false,
+    reason: "監査担当グループ",
+  },
+  {
+    id: "assign-it-operator-it",
+    roleId: "role-it-operator",
+    targetType: "org",
+    targetId: "it",
+    inherited: false,
+    reason: "情報システム部の標準権限",
+  },
+  {
+    id: "assign-ai-program-group",
+    roleId: "role-ai-program",
+    targetType: "group",
+    targetId: "ai-program",
+    inherited: false,
+    reason: "AI 推進チーム横断例外",
+  },
+  {
+    id: "assign-temporary-prod-readonly-user",
+    roleId: "role-temporary-prod-readonly",
+    targetType: "user",
+    targetId: "user-mina",
+    inherited: false,
+    reason: "障害対応 INC-2451 の一時例外",
+    expiresAt: "2026-05-14",
+  },
+];
+
 export const getUserById = (id: string) =>
   mockUsers.find((user) => user.id === id);
 
@@ -335,3 +508,21 @@ export const getOrgById = (id: string) =>
 
 export const getGroupById = (id: string) =>
   mockGroups.find((group) => group.id === id);
+
+export const getRoleById = (id: string) =>
+  mockRoles.find((role) => role.id === id);
+
+export const getToolById = (id: string) =>
+  mockTools.find((tool) => tool.id === id);
+
+export const getAssignmentsForTarget = (
+  targetType: AssignmentTargetType,
+  targetId: string,
+) =>
+  mockRoleAssignments.filter(
+    (assignment) =>
+      assignment.targetType === targetType && assignment.targetId === targetId,
+  );
+
+export const getAssignmentsForRole = (roleId: string) =>
+  mockRoleAssignments.filter((assignment) => assignment.roleId === roleId);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Building2,
@@ -13,20 +13,38 @@ import {
   Plus,
   Search,
   Shield,
+  ShieldPlus,
+  Trash2,
   UserPlus,
   Users,
+  X,
 } from "lucide-react";
 import {
-  effectBadgeClass,
+  getAssignmentsForTarget,
+  getRoleById,
   getUserById,
   mockGroups,
   mockOrgUnits,
+  mockRoles,
+  mockTools,
+  roleTypeBadgeClass,
+  roleTypeLabel,
   sourceBadgeClass,
   sourceLabel,
   type MockGroup,
   type MockOrgUnit,
+  type MockRole,
+  type MockRoleAssignment,
   type MockUser,
+  type PolicyEffect,
 } from "./idp-ui-mock-data";
+import {
+  effectConfig,
+  formatPermissionSummary,
+  riskBadgeClass,
+  riskLabel,
+} from "./idp-ui-helpers";
+import { useFocusTrap } from "./use-focus-trap";
 
 export type DirectoryTab = "organizations" | "groups";
 
@@ -68,19 +86,16 @@ const syncLabel = {
   pending: "未同期",
 } as const;
 
-const policyValueEffect = {
-  許可: "allow",
-  拒否: "deny",
-  未設定: "unset",
-} as const;
-
-const toPolicyEffect = (value: MockOrgUnit["policies"][number]["value"]) =>
-  policyValueEffect[value];
-
-const getInitialSelection = (initialTab: DirectoryTab): SelectedEntry =>
-  initialTab === "groups"
-    ? { kind: "group", id: "ai-program" }
-    : { kind: "org", id: "platform" };
+const getInitialSelection = (
+  initialTab: DirectoryTab,
+): SelectedEntry | null => {
+  if (initialTab === "groups") {
+    const first = mockGroups[0];
+    return first ? { kind: "group", id: first.id } : null;
+  }
+  const first = mockOrgUnits[0];
+  return first ? { kind: "org", id: first.id } : null;
+};
 
 export const DirectoryManagementPanel = ({
   initialTab,
@@ -88,34 +103,75 @@ export const DirectoryManagementPanel = ({
   initialTab: DirectoryTab;
 }) => {
   const [search, setSearch] = useState("");
-  const [selectedEntry, setSelectedEntry] = useState<SelectedEntry>(() =>
+  const [selectedEntry, setSelectedEntry] = useState<SelectedEntry | null>(() =>
     getInitialSelection(initialTab),
   );
   const [expandedOrgIds, setExpandedOrgIds] = useState<Set<string>>(
     () => new Set(["root", "engineering"]),
   );
 
-  const selectedOrg =
-    selectedEntry.kind === "org"
-      ? mockOrgUnits.find((org) => org.id === selectedEntry.id)
-      : null;
-  const selectedGroup =
-    selectedEntry.kind === "group"
-      ? mockGroups.find((group) => group.id === selectedEntry.id)
-      : null;
-  const selectedItem = selectedOrg ?? selectedGroup ?? mockOrgUnits[0]!;
-  const selectedKind = selectedOrg ? "org" : "group";
-  const readonly = selectedItem.readonly;
-  const memberIds =
-    selectedKind === "org"
+  const [showRolePicker, setShowRolePicker] = useState(false);
+  const [showResolvedPermissions, setShowResolvedPermissions] = useState(false);
+  const rolePickerRef = useRef<HTMLDivElement>(null);
+  const resolvedPermissionsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showRolePicker && !showResolvedPermissions) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (showResolvedPermissions) {
+        setShowResolvedPermissions(false);
+        return;
+      }
+      if (showRolePicker) setShowRolePicker(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [showRolePicker, showResolvedPermissions]);
+
+  useFocusTrap(rolePickerRef, showRolePicker);
+  useFocusTrap(resolvedPermissionsRef, showResolvedPermissions);
+
+  const selectedKind: DirectoryEntry["kind"] = selectedEntry?.kind ?? "org";
+  const selectedItem: MockOrgUnit | MockGroup | null = selectedEntry
+    ? selectedKind === "org"
+      ? (mockOrgUnits.find((org) => org.id === selectedEntry.id) ?? null)
+      : (mockGroups.find((group) => group.id === selectedEntry.id) ?? null)
+    : null;
+  const readonly = selectedItem?.readonly ?? false;
+  const memberIds = selectedItem
+    ? selectedKind === "org"
       ? (selectedItem as MockOrgUnit).userIds
-      : (selectedItem as MockGroup).memberIds;
+      : (selectedItem as MockGroup).memberIds
+    : [];
   const members = useMemo(
     () =>
       memberIds
         .map(getUserById)
         .filter((user): user is MockUser => Boolean(user)),
     [memberIds],
+  );
+
+  const selectedItemId = selectedItem?.id ?? null;
+  const assignedRoles = useMemo<
+    { assignment: MockRoleAssignment; role: MockRole }[]
+  >(() => {
+    if (!selectedItemId) return [];
+    const assignments = getAssignmentsForTarget(selectedKind, selectedItemId);
+    return assignments
+      .map((assignment) => {
+        const role = getRoleById(assignment.roleId);
+        return role ? { assignment, role } : null;
+      })
+      .filter(
+        (entry): entry is { assignment: MockRoleAssignment; role: MockRole } =>
+          Boolean(entry),
+      );
+  }, [selectedItemId, selectedKind]);
+
+  const assignedRoleIds = useMemo(
+    () => new Set(assignedRoles.map((entry) => entry.role.id)),
+    [assignedRoles],
   );
 
   const visibleEntries = useMemo(() => {
@@ -174,6 +230,16 @@ export const DirectoryManagementPanel = ({
     });
   };
 
+  if (!selectedItem) {
+    return (
+      <div className="flex h-full min-h-screen items-center justify-center p-6">
+        <p className="text-text-muted text-xs">
+          表示できるディレクトリエントリがありません
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full min-h-screen flex-col">
       <header className="border-b-border-default shrink-0 border-b px-6 py-4">
@@ -189,6 +255,8 @@ export const DirectoryManagementPanel = ({
           <button
             type="button"
             disabled
+            aria-disabled="true"
+            title="モック UI のため未実装"
             className="bg-btn-primary-bg text-btn-primary-text flex min-h-[44px] cursor-not-allowed items-center gap-1.5 rounded-lg px-3 text-xs font-medium opacity-60"
           >
             <Plus size={13} />
@@ -207,6 +275,7 @@ export const DirectoryManagementPanel = ({
               />
               <input
                 type="text"
+                aria-label="ディレクトリ検索"
                 placeholder="組織・グループ・sourceで検索"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
@@ -223,8 +292,8 @@ export const DirectoryManagementPanel = ({
               const isOrg = entry.kind === "org";
               const item = entry.item;
               const isSelected =
-                selectedEntry.kind === entry.kind &&
-                selectedEntry.id === item.id;
+                selectedEntry?.kind === entry.kind &&
+                selectedEntry?.id === item.id;
               const hasChildren =
                 isOrg && Boolean(childCountByParent[(item as MockOrgUnit).id]);
               const isExpanded = isOrg && expandedOrgIds.has(item.id);
@@ -253,7 +322,7 @@ export const DirectoryManagementPanel = ({
                       }
                       aria-expanded={isExpanded}
                       onClick={() => toggleExpanded(item.id)}
-                      className="text-text-muted hover:text-text-primary flex min-h-[32px] min-w-[32px] items-center justify-center rounded-md"
+                      className="text-text-muted hover:text-text-primary flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md"
                     >
                       {isExpanded ? (
                         <ChevronDown size={13} />
@@ -262,14 +331,14 @@ export const DirectoryManagementPanel = ({
                       )}
                     </button>
                   ) : (
-                    <span className="min-w-[32px]" />
+                    <span className="min-w-[44px]" />
                   )}
                   <button
                     type="button"
                     onClick={() =>
                       setSelectedEntry({ kind: entry.kind, id: item.id })
                     }
-                    className="flex min-h-[40px] min-w-0 flex-1 items-center gap-2 text-left"
+                    className="flex min-h-[44px] min-w-0 flex-1 items-center gap-2 text-left"
                   >
                     {isOrg ? (
                       <Building2 size={14} className="text-text-secondary" />
@@ -344,13 +413,14 @@ export const DirectoryManagementPanel = ({
               >
                 編集
               </button>
-              <Link
-                href={`/admin/roles?targetType=${selectedKind}&targetId=${selectedItem.id}`}
+              <button
+                type="button"
+                onClick={() => setShowResolvedPermissions(true)}
                 className="bg-btn-primary-bg text-btn-primary-text inline-flex min-h-[44px] items-center gap-2 rounded-lg px-3 text-xs font-medium"
               >
                 <Shield size={13} />
-                権限管理へ
-              </Link>
+                解決済み権限を見る
+              </button>
             </div>
           </div>
 
@@ -370,15 +440,12 @@ export const DirectoryManagementPanel = ({
               },
               {
                 icon: Shield,
-                label: selectedKind === "org" ? "担当管理者" : "権限割当",
-                value:
-                  selectedKind === "org"
-                    ? (selectedItem as MockOrgUnit).delegatedAdmin
-                    : `${(selectedItem as MockGroup).assignedPolicies.length} 件`,
+                label: "割り当てロール",
+                value: `${assignedRoles.length} 件`,
                 sub:
                   selectedKind === "org"
-                    ? "この範囲を管理する権限"
-                    : "グループ単位の例外権限",
+                    ? "下位組織へ継承される基点"
+                    : "グループ単位の横断例外",
               },
               {
                 icon: Users,
@@ -492,50 +559,285 @@ export const DirectoryManagementPanel = ({
               </section>
 
               <section className="bg-bg-card border-border-default rounded-xl border p-4">
-                <h3 className="text-text-primary mb-3 text-sm font-semibold">
-                  MCP 権限
-                </h3>
-                <div className="space-y-2">
-                  {selectedKind === "org"
-                    ? (selectedItem as MockOrgUnit).policies.map((policy) => (
-                        <div
-                          key={policy.label}
-                          className="bg-bg-active flex items-center justify-between gap-3 rounded-lg px-3 py-2"
-                        >
-                          <span className="text-text-secondary text-xs">
-                            {policy.label}
-                          </span>
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-[10px] ${
-                              effectBadgeClass[toPolicyEffect(policy.value)]
-                            }`}
-                          >
-                            {policy.value}
-                            {policy.inherited ? " / 継承" : ""}
-                          </span>
-                        </div>
-                      ))
-                    : (selectedItem as MockGroup).assignedPolicies.map(
-                        (policy) => (
-                          <div
-                            key={policy}
-                            className="bg-bg-active flex items-center justify-between gap-3 rounded-lg px-3 py-2"
-                          >
-                            <span className="text-text-secondary text-xs">
-                              {policy}
-                            </span>
-                            <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] text-emerald-300">
-                              許可
-                            </span>
-                          </div>
-                        ),
-                      )}
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-text-primary flex items-center gap-2 text-sm font-semibold">
+                    <Shield size={14} />
+                    割り当てロール
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowRolePicker(true)}
+                    disabled={readonly}
+                    className="bg-btn-primary-bg text-btn-primary-text flex min-h-[44px] items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-medium disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <ShieldPlus size={12} />
+                    追加
+                  </button>
                 </div>
+                {assignedRoles.length === 0 ? (
+                  <div className="text-text-muted bg-bg-active rounded-lg px-3 py-4 text-center text-[11px]">
+                    割り当てられたロールはありません
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {assignedRoles.map(({ assignment, role }) => (
+                      <div
+                        key={assignment.id}
+                        className="bg-bg-active border-border-subtle rounded-lg border px-3 py-3"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <Link
+                              href={`/admin/roles/${role.id}`}
+                              className="text-text-primary hover:text-text-link block truncate text-xs font-medium"
+                            >
+                              {role.name}
+                            </Link>
+                            <p className="text-text-muted mt-1 line-clamp-2 text-[10px]">
+                              {role.description}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            disabled={readonly || assignment.inherited}
+                            aria-label={`${role.name} の割り当てを解除`}
+                            className="text-text-muted hover:text-text-primary flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-md disabled:cursor-not-allowed disabled:opacity-30"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[9px] ${roleTypeBadgeClass[role.type]}`}
+                          >
+                            {roleTypeLabel[role.type]}
+                          </span>
+                          <span className="text-text-muted text-[10px]">
+                            {formatPermissionSummary(role)}
+                          </span>
+                          {assignment.inherited ? (
+                            <span className="bg-bg-card text-text-muted rounded-full px-2 py-0.5 text-[9px]">
+                              継承
+                            </span>
+                          ) : null}
+                          {assignment.expiresAt ? (
+                            <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[9px] text-amber-300">
+                              期限 {assignment.expiresAt}
+                            </span>
+                          ) : null}
+                        </div>
+                        {assignment.reason ? (
+                          <p className="text-text-subtle mt-2 text-[10px]">
+                            理由: {assignment.reason}
+                          </p>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </section>
             </div>
           </div>
         </main>
       </div>
+
+      {showRolePicker ? (
+        <div
+          className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 p-4 sm:items-center"
+          onClick={() => setShowRolePicker(false)}
+        >
+          <div
+            ref={rolePickerRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="role-picker-title"
+            className="bg-bg-card border-border-default flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="border-b-border-default flex items-start justify-between gap-2 border-b px-4 py-3">
+              <div>
+                <h2
+                  id="role-picker-title"
+                  className="text-text-primary text-sm font-semibold"
+                >
+                  ロールを割り当てる
+                </h2>
+                <p className="text-text-muted mt-0.5 text-[11px]">
+                  {selectedItem.name} に追加するロールを選択
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="閉じる"
+                onClick={() => setShowRolePicker(false)}
+                className="text-text-muted hover:text-text-primary flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-3">
+              {mockRoles.map((role) => {
+                const isAssigned = assignedRoleIds.has(role.id);
+                return (
+                  <button
+                    key={role.id}
+                    type="button"
+                    disabled={isAssigned}
+                    className="border-border-subtle hover:bg-bg-card-hover mb-2 flex min-h-[56px] w-full items-start gap-2 rounded-lg border px-3 py-2 text-left disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Shield size={14} className="text-text-secondary mt-0.5" />
+                    <span className="min-w-0 flex-1">
+                      <span className="text-text-primary block truncate text-xs font-medium">
+                        {role.name}
+                      </span>
+                      <span className="text-text-muted block truncate text-[10px]">
+                        {role.description}
+                      </span>
+                      <span className="mt-1 flex flex-wrap items-center gap-1">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[9px] ${roleTypeBadgeClass[role.type]}`}
+                        >
+                          {roleTypeLabel[role.type]}
+                        </span>
+                        <span className="text-text-muted text-[10px]">
+                          {formatPermissionSummary(role)}
+                        </span>
+                        {isAssigned ? (
+                          <span className="bg-bg-active text-text-muted rounded-full px-2 py-0.5 text-[9px]">
+                            割当済み
+                          </span>
+                        ) : null}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="border-t-border-default bg-bg-app flex items-center justify-between gap-3 border-t px-4 py-3">
+              <Link
+                href="/admin/roles/new"
+                className="text-text-link text-[11px] underline-offset-2 hover:underline"
+              >
+                新しいロールを作成
+              </Link>
+              <button
+                type="button"
+                onClick={() => setShowRolePicker(false)}
+                className="bg-bg-active text-text-secondary min-h-[44px] rounded-lg px-3 text-[11px]"
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showResolvedPermissions ? (
+        <div
+          className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 p-4 sm:items-center"
+          onClick={() => setShowResolvedPermissions(false)}
+        >
+          <div
+            ref={resolvedPermissionsRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="resolved-permissions-title"
+            className="bg-bg-card border-border-default flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="border-b-border-default flex items-start justify-between gap-2 border-b px-5 py-3">
+              <div>
+                <h2
+                  id="resolved-permissions-title"
+                  className="text-text-primary flex items-center gap-2 text-sm font-semibold"
+                >
+                  <Shield size={14} />
+                  解決済み権限
+                </h2>
+                <p className="text-text-muted mt-0.5 text-[11px]">
+                  {selectedItem.name}{" "}
+                  に割り当てられたロールから解決された最終的な権限
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="閉じる"
+                onClick={() => setShowResolvedPermissions(false)}
+                className="text-text-muted hover:text-text-primary flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              <div className="border-b-border-default text-text-subtle hidden grid-cols-[1fr_72px_120px] items-center gap-3 border-b px-5 py-2 text-[10px] sm:grid">
+                <span>提供ツール</span>
+                <span>リスク</span>
+                <span className="text-right">最終効果</span>
+              </div>
+              {mockTools.map((tool) => {
+                const effect: PolicyEffect =
+                  selectedKind === "org" ? tool.orgEffect : tool.groupEffect;
+                const cfg = effectConfig[effect];
+                const Icon = cfg.icon;
+                return (
+                  <div
+                    key={tool.id}
+                    className="border-b-border-subtle grid grid-cols-[1fr_auto] items-center gap-3 border-b px-5 py-3 text-xs sm:grid-cols-[1fr_72px_120px]"
+                  >
+                    <div className="min-w-0">
+                      <div className="text-text-primary font-medium">
+                        {tool.name}
+                      </div>
+                      <div className="text-text-muted mt-0.5 font-mono text-[10px]">
+                        {tool.catalog}
+                      </div>
+                      <div className="text-text-subtle mt-0.5 text-[10px]">
+                        {tool.inheritedFrom} ・ {tool.reason}
+                      </div>
+                    </div>
+                    <span
+                      className={`w-fit rounded-full px-2 py-0.5 text-[10px] ${riskBadgeClass[tool.risk]}`}
+                    >
+                      {riskLabel[tool.risk]}
+                    </span>
+                    <div className="col-span-2 flex justify-end sm:col-span-1">
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] ${cfg.className}`}
+                      >
+                        <Icon size={11} />
+                        {cfg.label}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="border-t-border-default bg-bg-app flex items-center justify-between gap-3 border-t px-5 py-3">
+              <p className="text-text-muted text-[10px]">
+                変更するには上の「割り当てロール」セクションでロールを追加・削除するか、
+                <Link
+                  href="/admin/roles"
+                  className="text-text-link underline-offset-2 hover:underline"
+                >
+                  ロール定義
+                </Link>
+                を編集してください。
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowResolvedPermissions(false)}
+                className="bg-bg-active text-text-secondary min-h-[44px] shrink-0 rounded-lg px-3 text-[11px]"
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };
