@@ -5,8 +5,8 @@
   "type": "module",
   "main": "dist-electron/main/index.cjs",
   "scripts": {
-    "dev": "pnpm with-env electron-vite dev",
-    "build": "pnpm with-env electron-vite build",
+    "dev": "pnpm db:generate && pnpm with-env electron-vite dev",
+    "build": "pnpm db:generate && pnpm with-env electron-vite build",
     "preview": "electron-vite preview",
     "start": "electron-vite preview",
     "clean": "git clean -xdf .cache .turbo node_modules dist-electron out",
@@ -24,7 +24,7 @@
     "postinstall": "pnpm db:generate && node scripts/download-runtimes.mjs",
     "runtimes:download": "node scripts/download-runtimes.mjs",
     "runtimes:download:all": "node scripts/download-runtimes.mjs --all",
-    "build:release": "node scripts/download-runtimes.mjs --all && electron-builder --config electron-builder.yml --publish never"
+    "build:release": "pnpm build && node scripts/download-runtimes.mjs --all && electron-builder --config electron-builder.yml --publish never"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",

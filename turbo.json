@@ -47,6 +47,10 @@
       "dependsOn": ["^build", "db:generate"],
       "outputs": []
     },
+    "@tumiki/desktop#build": {
+      "dependsOn": ["^build", "db:generate"],
+      "outputs": ["dist-electron/**", "out/**"]
+    },
     "@tumiki/desktop#db:generate": {
       "outputs": ["prisma/generated/**"]
     },
