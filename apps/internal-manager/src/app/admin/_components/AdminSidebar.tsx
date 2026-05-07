@@ -29,18 +29,21 @@ type NavItem = {
 };
 
 type NavSection = {
+  id: string;
   heading?: string;
   items: NavItem[];
 };
 
 const NAV_SECTIONS: NavSection[] = [
   {
+    id: "top",
     items: [
       { path: "/admin", label: "ダッシュボード", icon: Activity },
       { path: "/admin/history", label: "操作履歴", icon: History },
     ],
   },
   {
+    id: "directory",
     heading: "ディレクトリ",
     items: [
       { path: "/admin/directory", label: "組織・グループ", icon: Building2 },
@@ -53,6 +56,7 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    id: "access-control",
     heading: "アクセス制御",
     items: [
       {
@@ -70,6 +74,7 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    id: "platform",
     heading: "プラットフォーム",
     items: [
       { path: "/admin/tools", label: "カタログ管理", icon: Server },
@@ -136,10 +141,7 @@ export const AdminSidebar = ({ initialTheme }: Props) => {
         aria-label="管理画面ナビゲーション"
       >
         {NAV_SECTIONS.map((section, index) => (
-          <div
-            key={section.heading ?? `section-${index}`}
-            className={index === 0 ? "" : "mt-3"}
-          >
+          <div key={section.id} className={index === 0 ? "" : "mt-3"}>
             {section.heading && !collapsed ? (
               <div className="text-text-subtle px-2.5 pt-1 pb-1 text-[10px] font-medium tracking-wide uppercase">
                 {section.heading}

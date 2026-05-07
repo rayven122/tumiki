@@ -58,6 +58,8 @@ export const AssignmentsManagementPanel = () => {
           <button
             type="button"
             disabled
+            aria-disabled="true"
+            title="モック UI のため未実装"
             className="bg-btn-primary-bg text-btn-primary-text flex min-h-[44px] cursor-not-allowed items-center gap-1.5 rounded-lg px-3 text-xs font-medium opacity-60"
           >
             <Plus size={13} />
@@ -76,6 +78,7 @@ export const AssignmentsManagementPanel = () => {
               />
               <input
                 type="text"
+                aria-label="割り当て検索"
                 placeholder="ロール名・対象名・理由で検索"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}

@@ -7,7 +7,8 @@ export const setupFocusTrap = (
   container: HTMLElement,
   doc: Document = document,
 ): (() => void) => {
-  const previouslyFocused = doc.activeElement as HTMLElement | null;
+  const previouslyFocused =
+    doc.activeElement instanceof HTMLElement ? doc.activeElement : null;
   const queryFocusable = () =>
     Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTORS));
 

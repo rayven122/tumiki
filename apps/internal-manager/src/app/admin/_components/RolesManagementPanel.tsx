@@ -68,6 +68,7 @@ export const RolesManagementPanel = () => {
               />
               <input
                 type="text"
+                aria-label="ロール検索"
                 placeholder="ロール名・説明で検索"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
