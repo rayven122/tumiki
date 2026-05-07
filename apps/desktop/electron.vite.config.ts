@@ -34,6 +34,19 @@ export default defineConfig({
         },
         output: {
           format: "cjs",
+          // ビルドホストの絶対パス（CI: /Users/runner/...、開発者ローカル等）が
+          // require() に焼き込まれるのを防ぐため、external 化された Prisma client への
+          // 参照を出力ディレクトリ（dist-electron/main）からの相対パスに固定する。
+          // asar.unpacked 配下の prisma/generated/client/ に解決される。
+          paths: (id) => {
+            if (
+              id.includes("prisma/generated/client") ||
+              id.startsWith(".prisma/desktop-client")
+            ) {
+              return "../../prisma/generated/client";
+            }
+            return id;
+          },
         },
         external: [
           "electron",
