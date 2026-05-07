@@ -10,17 +10,11 @@ import { AiClientAutoWriteModal } from "../_components/AiClientAutoWriteModal";
 import { useMcpServers } from "../hooks/useMcpServers";
 import { useMcpProxyLaunchCommand } from "../hooks/useMcpProxyLaunchCommand";
 
+// 動作確認済みのクライアントのみ自動書き込み対象とする。それ以外は鍵アイコン + 「近日対応予定」表示
 const AUTO_WRITE_SUPPORTED_IDS = new Set([
   "claude-desktop",
   "claude-code",
   "cursor",
-  "windsurf",
-  "cline",
-  "roo-code",
-  "gemini-cli",
-  "vscode",
-  "zed",
-  "codex-cli",
 ]);
 
 export const AiIntegrations = (): JSX.Element => {
