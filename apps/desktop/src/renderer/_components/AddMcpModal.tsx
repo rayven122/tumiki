@@ -238,8 +238,10 @@ export const AddMcpModal = ({
         credentials,
       });
       onSuccess(result.serverName);
-    } catch {
-      setError("MCPサーバーの登録に失敗しました");
+    } catch (err) {
+      // メイン側でtools取得失敗時に整形した日本語メッセージを返すため、Errorのmessageを優先表示する
+      const message = err instanceof Error ? err.message : "";
+      setError(message || "MCPサーバーの登録に失敗しました");
     } finally {
       setLoading(false);
     }

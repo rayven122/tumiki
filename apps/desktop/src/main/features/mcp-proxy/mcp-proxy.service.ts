@@ -310,43 +310,35 @@ export const getEnabledConfigsWithMeta = async (
 };
 
 /**
- * 単一接続に対して `tools/list` を呼び出してツール一覧を取得する。
- * カタログ登録直後など「接続情報は保存済みだがプロキシは起動していない」状態で使用する。
- *
- * - タイムアウトを過ぎた場合は失敗扱いにし、Client/Transport を確実にcloseする
- * - isEnabled / authType の制限はかけない（OAUTH接続も登録時に1度はツール取得を試みる）
- *
- * @throws 接続不存在 / config組み立て失敗 / 接続/ツール取得タイムアウト等
+ * カタログ登録前のtools取得検証で発生するエラー。
+ * IPC層で識別してUIに「ツール取得失敗」を伝える用途で使う。
  */
-export const fetchToolsForConnection = async (
-  connectionId: number,
+export class ToolFetchError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options);
+    this.name = "ToolFetchError";
+  }
+}
+
+/**
+ * 与えられた `McpServerConfig` に対して `tools/list` を呼び出す共通処理。
+ *
+ * - タイムアウト時は失敗扱いにし、Client/Transport を確実にcloseする
+ * - 失敗は `ToolFetchError` でラップし、呼び出し元で識別可能にする
+ */
+const fetchToolsForConfig = async (
+  config: McpServerConfig,
   options?: { timeoutMs?: number },
 ): Promise<McpToolInfo[]> => {
-  const db = await getDb();
-  const conn = await mcpRepository.findConnectionByIdWithServer(
-    db,
-    connectionId,
-  );
-  if (!conn) {
-    throw new Error(`接続(id=${String(connectionId)})が見つかりません`);
-  }
-
-  const built = await buildConfigFromConnection(conn);
-  if (!built) {
-    throw new Error(
-      `接続(id=${String(connectionId)})の設定組み立てに失敗しました`,
-    );
-  }
-
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TOOL_FETCH_TIMEOUT_MS;
-  const { client, transport } = createMcpClient(built.config);
+  const { client, transport } = createMcpClient(config);
 
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeoutId = setTimeout(() => {
       reject(
-        new Error(
-          `MCP接続 "${built.meta.configName}" のツール取得がタイムアウト (${String(timeoutMs)}ms) しました`,
+        new ToolFetchError(
+          `MCP接続 "${config.name}" のツール取得がタイムアウト (${String(timeoutMs)}ms) しました`,
         ),
       );
     }, timeoutMs);
@@ -371,16 +363,143 @@ export const fetchToolsForConnection = async (
       timeoutPromise,
     ]);
     return tools;
+  } catch (error) {
+    if (error instanceof ToolFetchError) throw error;
+    const message = error instanceof Error ? error.message : String(error);
+    throw new ToolFetchError(
+      `MCP接続 "${config.name}" のツール取得に失敗しました: ${message}`,
+      { cause: error },
+    );
   } finally {
     if (timeoutId) clearTimeout(timeoutId);
     try {
       await client.close();
     } catch (closeError) {
       // close失敗は警告のみ（既にツール取得結果は確定しているため致命傷ではない）
-      logger.warn(`MCP接続 "${built.meta.configName}" の終了処理でエラー`, {
+      logger.warn(`MCP接続 "${config.name}" の終了処理でエラー`, {
         error:
           closeError instanceof Error ? closeError.message : String(closeError),
       });
     }
+  }
+};
+
+/**
+ * 単一接続に対して `tools/list` を呼び出してツール一覧を取得する。
+ * カタログ登録直後など「接続情報は保存済みだがプロキシは起動していない」状態で使用する。
+ *
+ * - isEnabled / authType の制限はかけない（OAUTH接続も登録時に1度はツール取得を試みる）
+ *
+ * @throws 接続不存在 / config組み立て失敗 / `ToolFetchError`（接続/ツール取得失敗）
+ */
+export const fetchToolsForConnection = async (
+  connectionId: number,
+  options?: { timeoutMs?: number },
+): Promise<McpToolInfo[]> => {
+  const db = await getDb();
+  const conn = await mcpRepository.findConnectionByIdWithServer(
+    db,
+    connectionId,
+  );
+  if (!conn) {
+    throw new Error(`接続(id=${String(connectionId)})が見つかりません`);
+  }
+
+  const built = await buildConfigFromConnection(conn);
+  if (!built) {
+    throw new Error(
+      `接続(id=${String(connectionId)})の設定組み立てに失敗しました`,
+    );
+  }
+
+  return fetchToolsForConfig(built.config, options);
+};
+
+/**
+ * カタログ登録「前」に未永続の接続情報からtools取得を試みる。
+ * 成功した場合のみ呼び出し元はDB登録に進める。
+ *
+ * 既存の `buildConfigFromConnection` は DB の `McpConnection` を入力とするため、
+ * ここでは登録前の生credentials/argsから `McpServerConfig` を直接組み立てる。
+ *
+ * @throws `ToolFetchError`（タイムアウト含むtools取得失敗）/ 設定不正
+ */
+export const fetchToolsForConnectionInput = async (
+  input: {
+    name: string;
+    transportType: TransportType;
+    command: string | null;
+    args: string;
+    url: string | null;
+    authType: string;
+    credentials: Record<string, string>;
+  },
+  options?: { timeoutMs?: number },
+): Promise<McpToolInfo[]> => {
+  const config = buildConfigFromInput(input);
+  return fetchToolsForConfig(config, options);
+};
+
+/**
+ * 生入力（credentials復号済み・args文字列）から `McpServerConfig` を組み立てる。
+ * `buildConfigFromConnection` が DB レコード前提なのに対し、こちらは登録前検証で使う。
+ */
+const buildConfigFromInput = (input: {
+  name: string;
+  transportType: TransportType;
+  command: string | null;
+  args: string;
+  url: string | null;
+  authType: string;
+  credentials: Record<string, string>;
+}): McpServerConfig => {
+  switch (input.transportType) {
+    case "STDIO": {
+      if (!input.command) {
+        throw new Error("STDIO接続にはcommandが必要です");
+      }
+      const args = parseAndValidate(
+        input.args,
+        connectionArgsSchema,
+        `connection(${input.name}).args`,
+      );
+      return {
+        name: input.name,
+        transportType: "STDIO",
+        command: resolveValue(input.command),
+        args: resolveArgs(args),
+        env: buildChildEnv(process.env, input.credentials),
+      };
+    }
+    case "SSE": {
+      if (!input.url) {
+        throw new Error("SSE接続にはurlが必要です");
+      }
+      const sseAuthType = toProxyAuthType(input.authType);
+      return {
+        name: input.name,
+        transportType: "SSE",
+        url: input.url,
+        authType: sseAuthType,
+        headers: buildHeaders(sseAuthType, input.credentials),
+      };
+    }
+    case "STREAMABLE_HTTP": {
+      if (!input.url) {
+        throw new Error("STREAMABLE_HTTP接続にはurlが必要です");
+      }
+      const httpAuthType = toProxyAuthType(input.authType);
+      return {
+        name: input.name,
+        transportType: "STREAMABLE_HTTP",
+        url: input.url,
+        authType: httpAuthType,
+        headers: buildHeaders(httpAuthType, input.credentials),
+      };
+    }
+    default:
+      throw new Error(
+        `未対応のトランスポートタイプです: ${String(input.transportType)}`,
+      );
   }
 };
