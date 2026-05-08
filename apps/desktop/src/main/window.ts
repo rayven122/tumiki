@@ -1,11 +1,24 @@
-import { BrowserWindow } from "electron";
+import { app, BrowserWindow } from "electron";
 import { join } from "path";
 import { APP_INDEX_URL } from "./shared/app-protocol";
+
+// Win/Linux のウィンドウフレームアイコンを解決する。
+// macOS は .app バンドル内の .icns が Dock/メニューバーで使われるため未指定。
+const resolveWindowIcon = (): string | undefined => {
+  if (process.platform === "darwin") return undefined;
+  const baseDir = app.isPackaged
+    ? process.resourcesPath
+    : join(app.getAppPath(), "resources");
+  return process.platform === "win32"
+    ? join(baseDir, "icon.ico")
+    : join(baseDir, "icon.png");
+};
 
 export const createMainWindow = (): BrowserWindow => {
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    icon: resolveWindowIcon(),
     webPreferences: {
       preload: join(__dirname, "../preload/index.cjs"),
       nodeIntegration: false,
