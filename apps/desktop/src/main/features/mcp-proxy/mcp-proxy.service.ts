@@ -344,24 +344,27 @@ const fetchToolsForConfig = async (
     }, timeoutMs);
   });
 
+  // タイムアウト時、内部の async IIFE は Promise.race の解決後も継続実行される。
+  // STDIO の場合、connect 中だった子プロセスは finally の client.close() に
+  // よって停止するが、その挙動は SDK の実装に依存するため完全な保証ではない。
+  // 現状の MCP SDK では transport.close() がプロセスに SIGTERM を送るため、
+  // タイムアウト後でもプロセスリークは発生しない想定。
+  const innerPromise = (async (): Promise<McpToolInfo[]> => {
+    await client.connect(transport);
+    const result = await client.listTools();
+    return result.tools.map((tool) => ({
+      name: tool.name,
+      description: tool.description,
+      inputSchema: tool.inputSchema,
+    }));
+  })();
+  // タイムアウトが先に勝った場合 innerPromise は arrives-late で reject する可能性があり、
+  // 誰も await しなくなって unhandled rejection になる。明示的に握りつぶして抑制する
+  // （race 側ですでに別経路としてエラーが捕捉済みのため安全）。
+  innerPromise.catch(() => {});
+
   try {
-    // タイムアウト時、内部の async IIFE は Promise.race の解決後も継続実行される。
-    // STDIO の場合、connect 中だった子プロセスは finally の client.close() に
-    // よって停止するが、その挙動は SDK の実装に依存するため完全な保証ではない。
-    // 現状の MCP SDK では transport.close() がプロセスに SIGTERM を送るため、
-    // タイムアウト後でもプロセスリークは発生しない想定。
-    const tools = await Promise.race([
-      (async (): Promise<McpToolInfo[]> => {
-        await client.connect(transport);
-        const result = await client.listTools();
-        return result.tools.map((tool) => ({
-          name: tool.name,
-          description: tool.description,
-          inputSchema: tool.inputSchema,
-        }));
-      })(),
-      timeoutPromise,
-    ]);
+    const tools = await Promise.race([innerPromise, timeoutPromise]);
     return tools;
   } catch (error) {
     if (error instanceof ToolFetchError) throw error;
