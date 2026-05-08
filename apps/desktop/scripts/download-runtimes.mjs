@@ -54,7 +54,9 @@ const RUNTIME_ROOT = path.join(DESKTOP_DIR, "resources", "runtime");
 
 const VERSIONS = {
   node: "22.11.0",
-  uv: "0.5.10",
+  // 0.5.25 以降が `uv-aarch64-pc-windows-msvc.zip` を公式リリースしているため、
+  // win32-arm64 を含む `--all` 取得が成立するバージョンに揃える。
+  uv: "0.5.31",
 };
 
 /**
