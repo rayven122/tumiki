@@ -8,10 +8,7 @@ import {
   ChevronDown,
   ChevronRight,
   Edit3,
-  GitBranch,
-  Link2,
   Loader2,
-  Lock,
   Plus,
   Search,
   Shield,
@@ -29,7 +26,6 @@ import {
   getUserLabel,
   sourceBadgeClass,
   sourceKindLabel,
-  sourceLabel,
 } from "./permission-display-utils";
 
 export type DirectoryTab = "organizations" | "groups";
@@ -70,7 +66,6 @@ type EntryFormState =
       kind: "group";
       name: string;
       description: string;
-      externalId: string;
     }
   | {
       mode: "edit";
@@ -78,7 +73,6 @@ type EntryFormState =
       id: string;
       name: string;
       description: string;
-      externalId: string;
     };
 
 const depthPaddingClass: Partial<Record<number, string>> = {
@@ -100,6 +94,29 @@ const tabLabel = {
 
 const isOrgEditable = (org: OrgUnit) => org.source === "MANUAL";
 const isGroupEditable = (group: Group) => group.source === "TUMIKI";
+
+const directorySourceLabel = {
+  SCIM: "外部IdP連携",
+  IDP: "外部IdP連携",
+  MANUAL: "手動作成",
+  TUMIKI: "手動作成",
+  GROUP: "グループ連携",
+} as const;
+
+const getEditDisabledTooltip = (kind: SelectedEntry["kind"] | null) =>
+  kind === "group"
+    ? "外部IdP連携グループの名前と説明は連携元で管理されています"
+    : "外部IdP連携の組織は連携元で管理されています";
+
+const getDeleteDisabledTooltip = (kind: SelectedEntry["kind"] | null) =>
+  kind === "group"
+    ? "外部IdP連携グループは削除できません"
+    : "外部IdP連携の組織は削除できません";
+
+const getMemberRemoveDisabledTooltip = (kind: SelectedEntry["kind"] | null) =>
+  kind === "group"
+    ? "外部IdPから同期されたメンバーは連携元で管理されています"
+    : "外部IdP連携の組織メンバーは連携元で管理されています";
 
 const getMutationErrorMessage = (error: {
   data?: { code?: string } | null;
@@ -160,7 +177,10 @@ export const DirectoryManagementPanel = ({
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmState | null>(
     null,
   );
-  const [memberUserId, setMemberUserId] = useState("");
+  const [selectedMemberUserIds, setSelectedMemberUserIds] = useState<
+    Set<string>
+  >(() => new Set());
+  const [memberSearch, setMemberSearch] = useState("");
   const [memberIsPrimary, setMemberIsPrimary] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -188,9 +208,23 @@ export const DirectoryManagementPanel = ({
   const invalidateDirectory = useCallback(async () => {
     await Promise.all([
       utils.orgUnits.tree.invalidate(),
+      utils.orgUnits.listUsers.invalidate(),
       utils.groups.list.invalidate(),
+      utils.users.list.invalidate(),
+      utils.mcpPolicies.getTargetPermissionSummary.invalidate(),
     ]);
-  }, [utils.groups.list, utils.orgUnits.tree]);
+  }, [
+    utils.groups.list,
+    utils.mcpPolicies.getTargetPermissionSummary,
+    utils.orgUnits.listUsers,
+    utils.orgUnits.tree,
+    utils.users.list,
+  ]);
+  const clearMemberSelection = useCallback(() => {
+    setSelectedMemberUserIds(new Set());
+    setMemberSearch("");
+    setMemberIsPrimary(false);
+  }, []);
 
   const handleMutationError = (error: {
     data?: { code?: string } | null;
@@ -227,8 +261,7 @@ export const DirectoryManagementPanel = ({
   const addOrgMember = api.orgUnits.addMember.useMutation({
     onSuccess: async () => {
       setErrorMessage(null);
-      setMemberUserId("");
-      setMemberIsPrimary(false);
+      clearMemberSelection();
       await invalidateDirectory();
     },
     onError: handleMutationError,
@@ -250,7 +283,7 @@ export const DirectoryManagementPanel = ({
     },
     onError: handleMutationError,
   });
-  const updateGroup = api.groups.updateTumikiGroupWithMapping.useMutation({
+  const updateGroup = api.groups.updateTumikiGroup.useMutation({
     onSuccess: async (group) => {
       setErrorMessage(null);
       setEntryForm(null);
@@ -271,8 +304,7 @@ export const DirectoryManagementPanel = ({
   const addGroupMember = api.groups.addMember.useMutation({
     onSuccess: async () => {
       setErrorMessage(null);
-      setMemberUserId("");
-      setMemberIsPrimary(false);
+      clearMemberSelection();
       await invalidateDirectory();
     },
     onError: handleMutationError,
@@ -330,7 +362,9 @@ export const DirectoryManagementPanel = ({
         : true;
   const selectedOrgUnitId =
     selectedKind === "org" && selectedItem ? selectedItem.id : null;
-  const canAddMember = Boolean(selectedItem && !readonly);
+  const canAddMember = Boolean(
+    selectedItem && (selectedKind === "group" || !readonly),
+  );
   const orgMembersQuery = api.orgUnits.listUsers.useQuery(
     { orgUnitId: selectedOrgUnitId ?? "__none__" },
     { enabled: Boolean(selectedOrgUnitId) },
@@ -359,12 +393,7 @@ export const DirectoryManagementPanel = ({
     if (normalizedSearch) {
       if (activeTab === "organizations") {
         return orgUnits
-          .filter((org) =>
-            [org.name, org.path, org.source]
-              .join(" ")
-              .toLowerCase()
-              .includes(normalizedSearch),
-          )
+          .filter((org) => org.name.toLowerCase().includes(normalizedSearch))
           .map((org) => ({
             kind: "org" as const,
             item: org,
@@ -374,13 +403,7 @@ export const DirectoryManagementPanel = ({
 
       return groups
         .filter((group) =>
-          [
-            group.name,
-            group.description ?? "",
-            group.source,
-            group.provider ?? "",
-            group.externalId ?? "",
-          ]
+          [group.name, group.description ?? ""]
             .join(" ")
             .toLowerCase()
             .includes(normalizedSearch),
@@ -431,7 +454,6 @@ export const DirectoryManagementPanel = ({
             userId: membership.user.id,
             name: getUserLabel(membership.user),
             email: membership.user.email ?? "—",
-            // 現スキーマではOrgUnitメンバーシップ自体にsourceが存在しないため、親OrgUnitのsourceを使用する。
             source: (selectedItem as OrgUnit).source,
             readonly,
             isPrimary: membership.isPrimary,
@@ -443,10 +465,7 @@ export const DirectoryManagementPanel = ({
               name: getUserLabel(membership.user),
               email: membership.user.email ?? "—",
               source: membership.source,
-              readonly:
-                readonly ||
-                membership.source !== "TUMIKI" ||
-                (selectedItem as Group).source !== "TUMIKI",
+              readonly: membership.source !== "TUMIKI",
               isPrimary: false,
             }))
           : [],
@@ -457,6 +476,29 @@ export const DirectoryManagementPanel = ({
     const existingMemberUserIds = new Set(memberRows.map((row) => row.userId));
     return activeUsers.filter((user) => !existingMemberUserIds.has(user.id));
   }, [activeUsers, memberRows]);
+  const visibleSelectableUsers = useMemo(() => {
+    const normalizedSearch = memberSearch.trim().toLowerCase();
+    if (!normalizedSearch) return selectableUsers;
+    return selectableUsers.filter((user) =>
+      [getUserLabel(user), user.email ?? ""]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedSearch),
+    );
+  }, [memberSearch, selectableUsers]);
+  const selectedMemberCount = selectedMemberUserIds.size;
+
+  const toggleMemberSelection = (userId: string) => {
+    setSelectedMemberUserIds((current) => {
+      const next = new Set(current);
+      if (next.has(userId)) {
+        next.delete(userId);
+      } else {
+        next.add(userId);
+      }
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (!entryForm && !deleteConfirm) return;
@@ -470,6 +512,10 @@ export const DirectoryManagementPanel = ({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [deleteConfirm, entryForm, isMutating]);
+
+  useEffect(() => {
+    clearMemberSelection();
+  }, [clearMemberSelection, selectedEntry?.id, selectedEntry?.kind]);
 
   const openCreateForm = () => {
     setErrorMessage(null);
@@ -487,7 +533,6 @@ export const DirectoryManagementPanel = ({
       kind: "group",
       name: "",
       description: "",
-      externalId: "",
     });
   };
 
@@ -513,7 +558,6 @@ export const DirectoryManagementPanel = ({
         id: group.id,
         name: group.name,
         description: group.description ?? "",
-        externalId: group.externalId ?? "",
       });
     }
   };
@@ -548,7 +592,6 @@ export const DirectoryManagementPanel = ({
       groupId: entryForm.id,
       name: entryForm.name,
       description: entryForm.description,
-      externalId: entryForm.externalId || null,
     });
   };
 
@@ -572,21 +615,32 @@ export const DirectoryManagementPanel = ({
     }
   };
 
-  const handleAddMember = () => {
-    if (!selectedItem || readonly || !memberUserId || isMutating) return;
-    if (selectedKind === "org") {
-      addOrgMember.mutate({
-        orgUnitId: selectedItem.id,
-        userId: memberUserId,
-        isPrimary: memberIsPrimary,
-      });
+  const handleAddMember = async () => {
+    const userIds = Array.from(selectedMemberUserIds);
+    if (!selectedItem || !canAddMember || userIds.length === 0 || isMutating) {
       return;
     }
-    if (selectedKind === "group") {
-      addGroupMember.mutate({
-        groupId: selectedItem.id,
-        userId: memberUserId,
-      });
+    try {
+      if (selectedKind === "org") {
+        for (const userId of userIds) {
+          await addOrgMember.mutateAsync({
+            orgUnitId: selectedItem.id,
+            userId,
+            isPrimary: memberIsPrimary,
+          });
+        }
+        return;
+      }
+      if (selectedKind === "group") {
+        for (const userId of userIds) {
+          await addGroupMember.mutateAsync({
+            groupId: selectedItem.id,
+            userId,
+          });
+        }
+      }
+    } catch {
+      // mutation側のonErrorで画面に表示する
     }
   };
 
@@ -594,8 +648,9 @@ export const DirectoryManagementPanel = ({
     membershipId: string,
     memberReadonly: boolean,
   ) => {
-    if (readonly || memberReadonly || isMutating) return;
+    if (memberReadonly || isMutating) return;
     if (selectedKind === "org") {
+      if (readonly) return;
       removeOrgMember.mutate({ membershipId });
       return;
     }
@@ -648,8 +703,7 @@ export const DirectoryManagementPanel = ({
               ディレクトリ管理
             </h1>
             <p className="text-text-secondary mt-1 text-xs">
-              SCIM/IdP 由来は readonly、Tumiki
-              で作成した組織・グループだけ編集可能
+              組織とグループのメンバー、権限の適用状況を確認します
             </p>
           </div>
           <button
@@ -699,8 +753,8 @@ export const DirectoryManagementPanel = ({
                 aria-label="ディレクトリ検索"
                 placeholder={
                   activeTab === "organizations"
-                    ? "組織名・path・sourceで検索"
-                    : "グループ名・説明・sourceで検索"
+                    ? "組織名で検索"
+                    : "グループ名・説明で検索"
                 }
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
@@ -736,8 +790,11 @@ export const DirectoryManagementPanel = ({
                 const count = isOrg
                   ? (item as OrgUnit)._count.memberships
                   : (item as Group).memberships.length;
+                const childCount = isOrg
+                  ? (childCountByParent.get(item.id) ?? 0)
+                  : 0;
                 const summary = isOrg
-                  ? (item as OrgUnit).path
+                  ? `メンバー ${count}名 / 配下 ${childCount}組織`
                   : ((item as Group).description ?? "説明なし");
 
                 return (
@@ -797,10 +854,10 @@ export const DirectoryManagementPanel = ({
                           sourceBadgeClass[item.source]
                         }`}
                       >
-                        {sourceLabel[item.source]}
+                        {directorySourceLabel[item.source]}
                       </span>
                       <span className="text-text-subtle text-[10px]">
-                        {count}
+                        {count}名
                       </span>
                     </button>
                   </div>
@@ -847,25 +904,15 @@ export const DirectoryManagementPanel = ({
                         sourceBadgeClass[selectedItem.source]
                       }`}
                     >
-                      {sourceLabel[selectedItem.source]}
+                      {directorySourceLabel[selectedItem.source]}
                     </span>
-                    {readonly ? (
-                      <span className="bg-bg-active text-text-muted inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px]">
-                        <Lock size={10} />
-                        同期元管理 / この画面では編集不可
-                      </span>
-                    ) : (
-                      <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] text-emerald-300">
-                        編集可能
-                      </span>
-                    )}
                   </div>
                   <h2 className="text-text-primary text-xl font-semibold">
                     {selectedItem.name}
                   </h2>
                   <p className="text-text-secondary mt-1 text-xs">
                     {selectedKind === "org"
-                      ? (selectedItem as OrgUnit).path
+                      ? `直接所属 ${memberRows.length}名`
                       : ((selectedItem as Group).description ?? "説明なし")}
                   </p>
                 </div>
@@ -876,7 +923,7 @@ export const DirectoryManagementPanel = ({
                     disabled={readonly || isMutating}
                     title={
                       readonly
-                        ? "SCIM/IdP由来のデータは管理画面から編集できません"
+                        ? getEditDisabledTooltip(selectedKind)
                         : undefined
                     }
                     className="bg-bg-active text-text-secondary flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 text-xs disabled:cursor-not-allowed disabled:opacity-40"
@@ -888,6 +935,11 @@ export const DirectoryManagementPanel = ({
                     type="button"
                     onClick={handleDelete}
                     disabled={readonly || isMutating}
+                    title={
+                      readonly
+                        ? getDeleteDisabledTooltip(selectedKind)
+                        : undefined
+                    }
                     className="bg-bg-active flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 text-xs text-red-300 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <Trash2 size={12} />
@@ -908,13 +960,9 @@ export const DirectoryManagementPanel = ({
               <div className="mb-4 grid gap-4 lg:grid-cols-4">
                 {[
                   {
-                    icon: selectedKind === "org" ? GitBranch : Link2,
-                    label: selectedKind === "org" ? "path" : "外部識別子",
-                    value:
-                      selectedKind === "org"
-                        ? (selectedItem as OrgUnit).path
-                        : ((selectedItem as Group).externalId ??
-                          "Tumiki manual group"),
+                    icon: selectedKind === "org" ? Building2 : Users,
+                    label: "同期元",
+                    value: directorySourceLabel[selectedItem.source],
                   },
                   {
                     icon: Shield,
@@ -956,73 +1004,12 @@ export const DirectoryManagementPanel = ({
               </div>
 
               <div className="space-y-4">
-                <section className="bg-bg-card border-border-default rounded-xl border p-4">
-                  <h3 className="text-text-primary mb-3 flex items-center gap-2 text-sm font-semibold">
-                    <Link2 size={14} />
-                    {selectedKind === "org"
-                      ? "この組織について"
-                      : "このグループについて"}
-                  </h3>
-                  <div className="grid gap-2 md:grid-cols-3">
-                    <div className="bg-bg-active rounded-lg px-3 py-3">
-                      <div className="text-text-muted text-[10px]">同期元</div>
-                      <div className="text-text-primary mt-1 text-xs">
-                        {sourceLabel[selectedItem.source]}
-                      </div>
-                    </div>
-                    <div className="bg-bg-active rounded-lg px-3 py-3">
-                      <div className="text-text-muted text-[10px]">
-                        {selectedKind === "org" ? "path" : "provider"}
-                      </div>
-                      <div className="text-text-primary mt-1 truncate font-mono text-xs">
-                        {selectedKind === "org"
-                          ? (selectedItem as OrgUnit).path
-                          : ((selectedItem as Group).provider ?? "—")}
-                      </div>
-                    </div>
-                    <div className="bg-bg-active rounded-lg px-3 py-3">
-                      <div className="text-text-muted text-[10px]">編集</div>
-                      <div className="text-text-primary mt-1 text-xs">
-                        {readonly
-                          ? "同期元管理 / この画面では編集不可"
-                          : "この画面で編集可能"}
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-text-muted mt-3 text-[10px]">
-                    SCIM/IdP 由来のデータは同期元を truth
-                    とし、ここでは参照のみです。手動作成した組織・Tumiki
-                    グループだけ編集できます。
-                  </p>
-                </section>
-
                 <section className="bg-bg-card border-border-default overflow-hidden rounded-xl border">
                   <div className="border-b-border-default flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3">
                     <h3 className="text-text-primary text-sm font-semibold">
                       メンバー
                     </h3>
                     <div className="flex min-w-0 flex-1 justify-end gap-2">
-                      <select
-                        value={memberUserId}
-                        onChange={(event) =>
-                          setMemberUserId(event.target.value)
-                        }
-                        disabled={
-                          readonly || isMutating || usersQuery.isLoading
-                        }
-                        className="bg-bg-active border-border-default text-text-secondary min-h-[44px] min-w-0 rounded-lg border px-3 text-xs outline-none disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        <option value="">
-                          {usersQuery.isLoading
-                            ? "ユーザーを読み込み中"
-                            : "追加するユーザーを選択"}
-                        </option>
-                        {selectableUsers.map((user: UserListItem) => (
-                          <option key={user.id} value={user.id}>
-                            {getUserLabel(user)} ({user.email ?? "no email"})
-                          </option>
-                        ))}
-                      </select>
                       {selectedKind === "org" ? (
                         <label className="bg-bg-active border-border-default text-text-secondary flex min-h-[44px] shrink-0 items-center gap-2 rounded-lg border px-3 text-xs">
                           <input
@@ -1039,15 +1026,77 @@ export const DirectoryManagementPanel = ({
                       ) : null}
                       <button
                         type="button"
-                        onClick={handleAddMember}
-                        disabled={readonly || !memberUserId || isMutating}
+                        onClick={() => void handleAddMember()}
+                        disabled={
+                          !canAddMember ||
+                          selectedMemberCount === 0 ||
+                          isMutating
+                        }
                         className="bg-btn-primary-bg text-btn-primary-text flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <UserPlus size={12} />
-                        追加
+                        {selectedMemberCount > 0
+                          ? `${selectedMemberCount}名を追加`
+                          : "追加"}
                       </button>
                     </div>
                   </div>
+                  {canAddMember ? (
+                    <div className="border-b-border-default border-b px-5 py-3">
+                      <div className="relative mb-3">
+                        <Search
+                          size={12}
+                          className="text-text-muted absolute top-1/2 left-2.5 -translate-y-1/2"
+                        />
+                        <input
+                          type="text"
+                          aria-label="追加するユーザーを検索"
+                          placeholder="追加するユーザーを検索"
+                          value={memberSearch}
+                          onChange={(event) =>
+                            setMemberSearch(event.target.value)
+                          }
+                          disabled={isMutating || usersQuery.isLoading}
+                          className="bg-bg-active border-border-default text-text-secondary w-full rounded-lg border py-2 pr-3 pl-7 text-xs outline-none disabled:cursor-not-allowed disabled:opacity-40"
+                        />
+                      </div>
+                      {usersQuery.isLoading ? (
+                        <div className="text-text-muted flex items-center gap-2 px-1 py-3 text-xs">
+                          <Loader2 size={13} className="animate-spin" />
+                          ユーザーを読み込み中
+                        </div>
+                      ) : visibleSelectableUsers.length === 0 ? (
+                        <div className="text-text-muted px-1 py-3 text-xs">
+                          追加できるユーザーはいません
+                        </div>
+                      ) : (
+                        <div className="grid max-h-48 gap-2 overflow-y-auto md:grid-cols-2">
+                          {visibleSelectableUsers.map((user: UserListItem) => (
+                            <label
+                              key={user.id}
+                              className="bg-bg-active border-border-default flex min-h-[44px] items-center gap-3 rounded-lg border px-3 py-2 text-xs"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selectedMemberUserIds.has(user.id)}
+                                onChange={() => toggleMemberSelection(user.id)}
+                                disabled={isMutating}
+                                className="h-3.5 w-3.5 shrink-0"
+                              />
+                              <span className="min-w-0">
+                                <span className="text-text-primary block truncate font-medium">
+                                  {getUserLabel(user)}
+                                </span>
+                                <span className="text-text-muted block truncate text-[10px]">
+                                  {user.email ?? "メール未設定"}
+                                </span>
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
                   {selectedKind === "org" && orgMembersQuery.isLoading ? (
                     <div className="text-text-muted flex items-center justify-center gap-2 px-5 py-8 text-xs">
                       <Loader2 size={13} className="animate-spin" />
@@ -1084,8 +1133,8 @@ export const DirectoryManagementPanel = ({
                           }`}
                         >
                           {member.isPrimary
-                            ? `${sourceLabel[member.source]} / primary`
-                            : sourceLabel[member.source]}
+                            ? `${directorySourceLabel[member.source]} / 主所属`
+                            : directorySourceLabel[member.source]}
                         </span>
                         <button
                           type="button"
@@ -1094,6 +1143,11 @@ export const DirectoryManagementPanel = ({
                             handleRemoveMember(member.id, member.readonly)
                           }
                           disabled={member.readonly || isMutating}
+                          title={
+                            member.readonly
+                              ? getMemberRemoveDisabledTooltip(selectedKind)
+                              : undefined
+                          }
                           className="text-text-muted flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-30"
                         >
                           <UserMinus size={12} />
@@ -1257,7 +1311,7 @@ export const DirectoryManagementPanel = ({
                 <p className="text-text-muted mt-0.5 text-[11px]">
                   {entryForm.kind === "org"
                     ? "手動管理する組織を設定"
-                    : "Tumiki グループを設定"}
+                    : "グループを設定"}
                 </p>
               </div>
               <button
@@ -1306,42 +1360,20 @@ export const DirectoryManagementPanel = ({
                   </select>
                 </label>
               ) : (
-                <>
-                  <label className="block">
-                    <span className="text-text-secondary text-[11px]">
-                      説明
-                    </span>
-                    <textarea
-                      value={entryForm.description}
-                      onChange={(event) =>
-                        setEntryForm({
-                          ...entryForm,
-                          description: event.target.value,
-                        })
-                      }
-                      maxLength={500}
-                      className="bg-bg-active border-border-default text-text-primary mt-1 min-h-[88px] w-full rounded-lg border px-3 py-2 text-xs outline-none"
-                    />
-                  </label>
-                  {entryForm.mode === "edit" ? (
-                    <label className="block">
-                      <span className="text-text-secondary text-[11px]">
-                        IdP mapping externalId
-                      </span>
-                      <input
-                        value={entryForm.externalId}
-                        onChange={(event) =>
-                          setEntryForm({
-                            ...entryForm,
-                            externalId: event.target.value,
-                          })
-                        }
-                        maxLength={200}
-                        className="bg-bg-active border-border-default text-text-primary mt-1 w-full rounded-lg border px-3 py-2 font-mono text-xs outline-none"
-                      />
-                    </label>
-                  ) : null}
-                </>
+                <label className="block">
+                  <span className="text-text-secondary text-[11px]">説明</span>
+                  <textarea
+                    value={entryForm.description}
+                    onChange={(event) =>
+                      setEntryForm({
+                        ...entryForm,
+                        description: event.target.value,
+                      })
+                    }
+                    maxLength={500}
+                    className="bg-bg-active border-border-default text-text-primary mt-1 min-h-[88px] w-full rounded-lg border px-3 py-2 text-xs outline-none"
+                  />
+                </label>
               )}
             </div>
             <div className="border-t-border-default bg-bg-app flex justify-end gap-2 border-t px-4 py-3">

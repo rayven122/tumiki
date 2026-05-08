@@ -240,15 +240,19 @@ export const groupsRouter = createTRPCRouter({
         const [group, user] = await Promise.all([
           tx.group.findUnique({
             where: { id: input.groupId },
-            select: { source: true },
+            select: { id: true },
           }),
           tx.user.findUnique({
             where: { id: input.userId },
             select: { id: true, isActive: true },
           }),
         ]);
-        assertTumikiGroup(group);
-
+        if (!group) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "グループが見つかりません",
+          });
+        }
         if (!user) {
           throw new TRPCError({
             code: "NOT_FOUND",
@@ -295,7 +299,6 @@ export const groupsRouter = createTRPCRouter({
           select: {
             id: true,
             source: true,
-            group: { select: { source: true } },
           },
         });
         if (!membership) {
@@ -304,14 +307,10 @@ export const groupsRouter = createTRPCRouter({
             message: "メンバーシップが見つかりません",
           });
         }
-        if (
-          membership.group.source !== GroupSource.TUMIKI ||
-          membership.source !== GroupSource.TUMIKI
-        ) {
+        if (membership.source !== GroupSource.TUMIKI) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message:
-              "IdPグループまたはIdP由来のメンバーシップは管理画面から削除できません",
+            message: "IdP由来のメンバーシップは管理画面から削除できません",
           });
         }
 
