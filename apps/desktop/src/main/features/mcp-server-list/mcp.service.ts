@@ -1,4 +1,5 @@
 import { ServerStatus, ServerType } from "@prisma/desktop-client";
+import type { McpToolInfo } from "@tumiki/mcp-core-proxy";
 import { getDb } from "../../shared/db";
 import type { DbClient } from "../../shared/db";
 import * as mcpRepository from "./mcp.repository";
@@ -78,9 +79,12 @@ const generateUniqueName = async (
 /**
  * 取得済みの `McpToolInfo[]` を `McpTool` 行のシード形式に変換する。
  * `allowedToolNames` 指定時は集合に含まれるツールのみ `isAllowed=true`。
+ *
+ * 入力は `fetchToolsForConnection` / `fetchToolsForConnectionInput` どちらの戻り値でも
+ * 受け取れるよう、共通の `McpToolInfo[]` 型を直接受け取る。
  */
 const toToolSeeds = (
-  tools: Awaited<ReturnType<typeof mcpProxyService.fetchToolsForConnection>>,
+  tools: McpToolInfo[],
   connectionId: number,
   allowedToolNames?: string[],
 ) => {

@@ -445,6 +445,84 @@ describe("mcp.service", () => {
       expect(mcpRepository.createServer).not.toHaveBeenCalled();
       expect(mcpRepository.createConnection).not.toHaveBeenCalled();
     });
+
+    test("登録前にツール一覧を取得し、allowedToolNamesでisAllowedをフィルタする", async () => {
+      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
+      vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
+      vi.mocked(mcpRepository.createServer).mockResolvedValue({
+        id: 10,
+      } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 101,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
+      // 取得結果の2件のうち、input.tools 側で allowed=true なのは "list_repos" のみ
+      vi.mocked(mcpProxyService.fetchToolsForConnectionInput).mockResolvedValue(
+        [
+          {
+            name: "list_repos",
+            description: "リポジトリ一覧",
+            inputSchema: {},
+          },
+          { name: "list_issues", description: "イシュー一覧", inputSchema: {} },
+        ],
+      );
+
+      await mcpService.createFromManagerCatalog({
+        ...input,
+        // input.tools で許可するのは list_repos のみ
+        tools: [
+          { name: "list_repos", allowed: true },
+          { name: "list_issues", allowed: false },
+        ],
+      });
+
+      expect(mcpProxyService.fetchToolsForConnectionInput).toHaveBeenCalledWith(
+        {
+          name: "github",
+          transportType: "STREAMABLE_HTTP",
+          command: null,
+          args: "[]",
+          url: "https://api.githubcopilot.com/mcp/",
+          authType: "BEARER",
+          credentials: { GITHUB_TOKEN: "test-token" },
+        },
+      );
+      // allowed=true は list_repos のみ。allowedToolNames 指定時は isAllowed を必ず明示する
+      expect(mcpRepository.createTools).toHaveBeenCalledWith(mockDb, [
+        {
+          name: "list_repos",
+          description: "リポジトリ一覧",
+          inputSchema: JSON.stringify({}),
+          connectionId: 101,
+          isAllowed: true,
+        },
+        {
+          name: "list_issues",
+          description: "イシュー一覧",
+          inputSchema: JSON.stringify({}),
+          connectionId: 101,
+          isAllowed: false,
+        },
+      ]);
+    });
+
+    test("ツール取得が失敗した場合は登録を中止しエラーを伝播する", async () => {
+      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
+      vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
+      vi.mocked(mcpProxyService.fetchToolsForConnectionInput).mockRejectedValue(
+        new Error("MCP接続に失敗"),
+      );
+
+      await expect(mcpService.createFromManagerCatalog(input)).rejects.toThrow(
+        "MCP接続に失敗",
+      );
+
+      // server / secret / connection / tools いずれも書き込まれない
+      expect(mcpRepository.createServer).not.toHaveBeenCalled();
+      expect(mcpRepository.createSecret).not.toHaveBeenCalled();
+      expect(mcpRepository.createConnection).not.toHaveBeenCalled();
+      expect(mcpRepository.createTools).not.toHaveBeenCalled();
+    });
   });
 
   describe("createCustomServer", () => {
@@ -637,6 +715,28 @@ describe("mcp.service", () => {
       expect(mcpRepository.createServer).not.toHaveBeenCalled();
       expect(mcpRepository.createSecret).not.toHaveBeenCalled();
       expect(mcpRepository.createConnection).not.toHaveBeenCalled();
+      expect(mcpRepository.createTools).not.toHaveBeenCalled();
+    });
+
+    test("ツール取得結果が0件でも登録自体は成功する（createToolsは呼ばない）", async () => {
+      vi.mocked(mcpRepository.findServerByName).mockResolvedValue(null);
+      vi.mocked(mcpRepository.findServerBySlug).mockResolvedValue(null);
+      vi.mocked(mcpRepository.createServer).mockResolvedValue({
+        id: 7,
+      } as Awaited<ReturnType<typeof mcpRepository.createServer>>);
+      vi.mocked(mcpRepository.createConnection).mockResolvedValue({
+        id: 106,
+      } as Awaited<ReturnType<typeof mcpRepository.createConnection>>);
+      vi.mocked(mcpProxyService.fetchToolsForConnectionInput).mockResolvedValue(
+        [],
+      );
+
+      const result = await mcpService.createCustomServer(input);
+
+      expect(result).toStrictEqual({
+        serverId: 7,
+        serverName: "My Remote MCP",
+      });
       expect(mcpRepository.createTools).not.toHaveBeenCalled();
     });
 
