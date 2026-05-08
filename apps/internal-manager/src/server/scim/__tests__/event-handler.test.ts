@@ -136,6 +136,13 @@ const buildUserEvent = (
     email: string;
     first_name: string;
     last_name: string;
+    displayName: string;
+    fullName: string;
+    name: { givenName?: string; familyName?: string; formatted?: string };
+    photos: { value?: string; primary?: boolean; type?: string }[];
+    picture: string;
+    photo: string;
+    thumbnailPhotoUrl: string;
     active: boolean;
     department: string;
     manager: { value: string; displayName: string };
@@ -236,6 +243,7 @@ describe("handleDirectorySyncEvent", () => {
         id: "user-001",
         email: "alice@example.com",
         name: "Alice Anderson",
+        image: null,
         isActive: true,
         scimDepartment: null,
         scimManagerValue: null,
@@ -281,6 +289,64 @@ describe("handleDirectorySyncEvent", () => {
       const args = getFirstCallArg(mockDb.user.upsert);
       expect(args.create.name).toBeNull();
       expect(args.update).not.toHaveProperty("name");
+    });
+
+    test("first_nameとlast_nameが空でもdisplayNameを名前として保存する", async () => {
+      await handleDirectorySyncEvent(
+        buildUserEvent("user.created", {
+          first_name: "",
+          last_name: "",
+          displayName: "Hidehisa Suzuki",
+        }),
+      );
+
+      const args = getFirstCallArg(mockDb.user.upsert);
+      expect(args.create.name).toStrictEqual("Hidehisa Suzuki");
+      expect(args.update).toHaveProperty("name", "Hidehisa Suzuki");
+    });
+
+    test("SCIM標準のname.formattedを名前として保存する", async () => {
+      await handleDirectorySyncEvent(
+        buildUserEvent("user.created", {
+          first_name: "",
+          last_name: "",
+          name: { formatted: "Hidehisa Suzuki" },
+        }),
+      );
+
+      const args = getFirstCallArg(mockDb.user.upsert);
+      expect(args.create.name).toStrictEqual("Hidehisa Suzuki");
+      expect(args.update).toHaveProperty("name", "Hidehisa Suzuki");
+    });
+
+    test("SCIM標準のphotosからプロフィール画像URLを保存する", async () => {
+      await handleDirectorySyncEvent(
+        buildUserEvent("user.created", {
+          photos: [
+            { value: "https://example.com/secondary.png" },
+            { value: "https://example.com/avatar.png", primary: true },
+          ],
+        }),
+      );
+
+      const args = getFirstCallArg(mockDb.user.upsert);
+      expect(args.create.image).toStrictEqual("https://example.com/avatar.png");
+      expect(args.update).toHaveProperty(
+        "image",
+        "https://example.com/avatar.png",
+      );
+    });
+
+    test("不正な画像URLは保存せず既存のUser.imageを上書きしない", async () => {
+      await handleDirectorySyncEvent(
+        buildUserEvent("user.created", {
+          photos: [{ value: "data:image/png;base64,invalid" }],
+        }),
+      );
+
+      const args = getFirstCallArg(mockDb.user.upsert);
+      expect(args.create.image).toBeNull();
+      expect(args.update).not.toHaveProperty("image");
     });
 
     test("first_nameとlast_nameをtrimして結合する", async () => {

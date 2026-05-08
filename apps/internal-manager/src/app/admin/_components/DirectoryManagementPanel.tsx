@@ -431,6 +431,7 @@ export const DirectoryManagementPanel = ({
             userId: membership.user.id,
             name: getUserLabel(membership.user),
             email: membership.user.email ?? "—",
+            image: membership.user.image,
             // 現スキーマではOrgUnitメンバーシップ自体にsourceが存在しないため、親OrgUnitのsourceを使用する。
             source: (selectedItem as OrgUnit).source,
             readonly,
@@ -442,6 +443,7 @@ export const DirectoryManagementPanel = ({
               userId: membership.userId,
               name: getUserLabel(membership.user),
               email: membership.user.email ?? "—",
+              image: membership.user.image,
               source: membership.source,
               readonly:
                 readonly ||
@@ -1071,11 +1073,26 @@ export const DirectoryManagementPanel = ({
                           href={`/admin/users/${member.userId}`}
                           className="min-w-0"
                         >
-                          <div className="text-text-primary font-medium">
-                            {member.name}
-                          </div>
-                          <div className="text-text-muted truncate text-[10px]">
-                            {member.email}
+                          <div className="flex min-w-0 items-center gap-2">
+                            <div className="bg-bg-active text-text-secondary flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-medium">
+                              {member.image ? (
+                                <img
+                                  src={member.image}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                member.name.charAt(0).toUpperCase()
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-text-primary truncate font-medium">
+                                {member.name}
+                              </div>
+                              <div className="text-text-muted truncate text-[10px]">
+                                {member.email}
+                              </div>
+                            </div>
                           </div>
                         </Link>
                         <span
