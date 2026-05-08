@@ -45,10 +45,7 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
 RUN pnpm turbo run build --filter=@tumiki/internal-manager^...
 
 # Next.js standalone モードでビルド（build:bare はinfisical不使用）
-# NEXT_PUBLIC_* は Next.js が build 時に静的展開するため、production image 用の値を build 時に明示する。
-ARG NEXT_PUBLIC_CALENDAR_URL=
-RUN NEXT_PUBLIC_CALENDAR_URL="${NEXT_PUBLIC_CALENDAR_URL}" \
-  pnpm --filter @tumiki/internal-manager run build:bare
+RUN pnpm --filter @tumiki/internal-manager run build:bare
 
 # saml-jackson が動的 import で jose / openid-client を読み込む際、Node.js は node_modules/<pkg> を探す。
 # pnpm の standalone コピーは .pnpm 仮想ストア形式になるためルートリンクが作られない。
