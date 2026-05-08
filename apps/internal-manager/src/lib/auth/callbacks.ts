@@ -22,6 +22,7 @@ const oidcJWTPayloadSchema = z.object({
   sub: z.string().optional(),
   email: z.string().optional(),
   name: z.string().optional(),
+  picture: z.string().optional(),
   tumiki: tumikiIdpClaimsSchema.optional(),
 });
 
@@ -198,6 +199,13 @@ export const jwtCallback = async ({
     token.oidcSub = oidcProfile.sub ?? "";
     token.email = oidcProfile.email ?? null;
     token.name = oidcProfile.name ?? null;
+    token.picture = oidcProfile.picture ?? token.picture ?? null;
+    if (oidcProfile.picture) {
+      await db.user.updateMany({
+        where: { id: token.sub ?? "" },
+        data: { image: oidcProfile.picture },
+      });
+    }
 
     // group_rolesはOIDCプロバイダーのカスタムクレーム（IdPによっては省略可能）
     const groupRoles = oidcProfile.tumiki?.group_roles;

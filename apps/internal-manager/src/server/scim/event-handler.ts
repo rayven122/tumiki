@@ -27,14 +27,24 @@ const isUserWithGroup = (
 ): data is Extract<DirectorySyncEvent["data"], { group: { id: string } }> =>
   "group" in data && "email" in data;
 
-const buildDisplayName = (
-  firstName?: string,
-  lastName?: string,
-): string | null => {
-  const parts = [firstName, lastName]
-    .map((part) => part?.trim())
-    .filter((part): part is string => !!part);
-  return parts.length > 0 ? parts.join(" ") : null;
+const buildDisplayName = (data: DirectorySyncEvent["data"]): string | null => {
+  const root = asRecord(data);
+  const structuredName = asRecord(root.name);
+  const firstName = stringOrNull(
+    root.first_name ?? root.givenName ?? structuredName.givenName,
+  );
+  const lastName = stringOrNull(
+    root.last_name ?? root.familyName ?? structuredName.familyName,
+  );
+  const joinedName = [firstName, lastName].filter(Boolean).join(" ");
+
+  return (
+    stringOrNull(root.displayName) ??
+    stringOrNull(root.fullName) ??
+    stringOrNull(structuredName.formatted) ??
+    stringOrNull(structuredName.fullName) ??
+    stringOrNull(joinedName)
+  );
 };
 
 const ENTERPRISE_USER_SCHEMA =
@@ -53,6 +63,31 @@ const asRecord = (value: unknown): Record<string, unknown> =>
 
 const stringOrNull = (value: unknown): string | null =>
   typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+
+const urlOrNull = (value: unknown): string | null => {
+  const text = stringOrNull(value);
+  if (!text) return null;
+  try {
+    const url = new URL(text);
+    return url.protocol === "https:" || url.protocol === "http:" ? text : null;
+  } catch {
+    return null;
+  }
+};
+
+const extractPhotoUrl = (data: DirectorySyncEvent["data"]): string | null => {
+  const root = asRecord(data);
+  const photos = Array.isArray(root.photos) ? root.photos.map(asRecord) : [];
+  const primaryPhoto =
+    photos.find((photo) => photo.primary === true) ?? photos[0] ?? null;
+
+  return (
+    urlOrNull(primaryPhoto?.value) ??
+    urlOrNull(root.picture) ??
+    urlOrNull(root.photo) ??
+    urlOrNull(root.thumbnailPhotoUrl)
+  );
+};
 
 const extractEnterpriseUserAttributes = (
   data: DirectorySyncEvent["data"],
@@ -146,7 +181,8 @@ const syncPrimaryOrgUnitMembership = async (
 type ScimUserData = Extract<DirectorySyncEvent["data"], { email: string }>;
 const upsertScimUser = async (data: ScimUserData) => {
   const enterpriseAttributes = extractEnterpriseUserAttributes(data);
-  const displayName = buildDisplayName(data.first_name, data.last_name);
+  const displayName = buildDisplayName(data);
+  const image = extractPhotoUrl(data);
   await db.$transaction(async (tx) => {
     await tx.user.upsert({
       where: { id: data.id },
@@ -154,6 +190,7 @@ const upsertScimUser = async (data: ScimUserData) => {
         id: data.id,
         email: data.email || null,
         name: displayName,
+        image,
         isActive: data.active,
         scimDepartment: enterpriseAttributes.department,
         scimManagerValue: enterpriseAttributes.managerValue,
@@ -165,6 +202,7 @@ const upsertScimUser = async (data: ScimUserData) => {
       update: {
         email: data.email || null,
         ...(displayName ? { name: displayName } : {}),
+        ...(image ? { image } : {}),
         isActive: data.active,
         scimDepartment: enterpriseAttributes.department,
         scimManagerValue: enterpriseAttributes.managerValue,
