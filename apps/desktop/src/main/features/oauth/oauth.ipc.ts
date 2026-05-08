@@ -3,7 +3,11 @@ import { z } from "zod";
 import type { McpOAuthManager } from "./oauth.service";
 import { DiscoveryError, DISCOVERY_ERROR_CODE } from "./oauth.discovery";
 import { LOOPBACK_PORT_IN_USE } from "./oauth.loopback";
+import { ToolFetchError } from "../mcp-proxy/mcp-proxy.service";
 import * as logger from "../../shared/utils/logger";
+
+/** OAuth成功後のtools取得失敗を識別するためのエラーコード */
+const TOOL_FETCH_FAILED_CODE = "TOOL_FETCH_FAILED";
 
 /** IPC入力のバリデーションスキーマ */
 const StartOAuthInputSchema = z.object({
@@ -84,6 +88,15 @@ const resolveOAuthErrorInfo = (
       default:
         return { code: error.code, message: error.message };
     }
+  }
+
+  // OAuth認証は成功したがtools取得に失敗したケース。renderer側でDCR分岐と区別するため固有コードを返す
+  if (error instanceof ToolFetchError) {
+    return {
+      code: TOOL_FETCH_FAILED_CODE,
+      message:
+        "MCPサーバーへ接続できずツール一覧を取得できなかったため登録を中止しました。接続設定を確認してください。",
+    };
   }
 
   // ループバックポート占有
