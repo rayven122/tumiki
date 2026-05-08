@@ -28,8 +28,6 @@ jobs:
       SSH_HOST: ssh.tumiki.cloud
       SSH_USER: deploy
       K3S_HOST: 192.168.0.20
-      CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
-      CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
 
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -54,37 +52,24 @@ jobs:
             exit 1
           fi
 
-      - name: Install cloudflared
+      - name: 🌐 Setup Cloudflare SSH
+        uses: ./.github/actions/setup-cloudflare-ssh
+        with:
+          ssh-host: ${{ env.SSH_HOST }}
+          cf-access-client-id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          cf-access-client-secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          ssh-private-key: ${{ secrets.K3S_DEPLOY_SSH_PRIVATE_KEY }}
+
+      - name: Configure k3s ProxyJump
         run: |
-          CLOUDFLARED_VERSION="2026.3.0"
-          EXPECTED_SHA256="00f2475bad5874e9a110c2f5b8d1ce8a1bf5b6280628886a68bdc4ee76fd376c"
-          curl -fsSL "https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-amd64.deb" -o /tmp/cloudflared.deb
-          echo "${EXPECTED_SHA256}  /tmp/cloudflared.deb" | sha256sum -c -
-          sudo dpkg -i /tmp/cloudflared.deb
-
-      - name: Setup SSH
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.K3S_DEPLOY_SSH_PRIVATE_KEY }}
-        run: |
-          mkdir -p ~/.ssh
-
-          printf '%s\n' "${SSH_PRIVATE_KEY}" > ~/.ssh/id_ed25519_deploy
-          chmod 600 ~/.ssh/id_ed25519_deploy
-
-          cat > /tmp/cf-proxy.sh << 'WRAPPER'
-          #!/bin/bash
-          exec cloudflared access ssh \
-            --service-token-id "${CF_ACCESS_CLIENT_ID}" \
-            --service-token-secret "${CF_ACCESS_CLIENT_SECRET}" \
-            --hostname "$@"
-          WRAPPER
-          chmod +x /tmp/cf-proxy.sh
-
+          # composite action は ProxyCommand のみ設定するため、User/IdentityFile と
+          # k3s ノードへの ProxyJump 設定をここで追加する
+          # 同一 Host を複数ブロックで指定すると最初に現れた値が優先されるため
+          # composite action のブロックには上書きされず累積される
           cat >> ~/.ssh/config << CONFIG
           Host ${SSH_HOST}
             User ${SSH_USER}
-            ProxyCommand /tmp/cf-proxy.sh %h
-            IdentityFile ~/.ssh/id_ed25519_deploy
+            IdentityFile ~/.ssh/id_ed25519
             IdentitiesOnly yes
             StrictHostKeyChecking accept-new
 
@@ -92,7 +77,7 @@ jobs:
             HostName ${K3S_HOST}
             User ${SSH_USER}
             ProxyJump ${SSH_HOST}
-            IdentityFile ~/.ssh/id_ed25519_deploy
+            IdentityFile ~/.ssh/id_ed25519
             IdentitiesOnly yes
             StrictHostKeyChecking accept-new
           CONFIG
@@ -114,4 +99,4 @@ jobs:
 
       - name: Cleanup SSH key
         if: always()
-        run: rm -f ~/.ssh/id_ed25519_deploy
+        run: rm -f ~/.ssh/id_ed25519 /tmp/cf-proxy.sh
