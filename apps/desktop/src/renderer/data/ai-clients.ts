@@ -38,10 +38,7 @@ export const AI_CLIENTS: AiClient[] = [
   {
     id: "vscode",
     name: "VS Code",
-    logoPath: (t) =>
-      t === "dark"
-        ? "/logos/ai-clients/copilot.webp"
-        : "/logos/ai-clients/copilot.svg",
+    logoPath: () => "/logos/ai-clients/vscode.svg",
     configTargetPath: "~/Library/Application Support/Code/User/mcp.json",
   },
   {
