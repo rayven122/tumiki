@@ -78,8 +78,16 @@ export const UserDetailPanel = ({ userId }: { userId: string }) => {
     <div className="space-y-5 p-6">
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-3">
-          <div className="bg-bg-active text-text-primary flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-base font-semibold">
-            {[...getUserLabel(user)][0] ?? "?"}
+          <div className="bg-bg-active text-text-primary flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl text-base font-semibold">
+            {user.image ? (
+              <img
+                src={user.image}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              ([...getUserLabel(user)][0] ?? "?")
+            )}
           </div>
           <div className="min-w-0">
             <div className="mb-2 flex flex-wrap items-center gap-2">
