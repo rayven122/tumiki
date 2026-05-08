@@ -104,9 +104,23 @@ export const jwtCallback = async ({
     token.refreshToken = account.refresh_token;
 
     const keycloakProfile = profile as KeycloakJWTPayload;
-    token.sub = keycloakProfile.sub;
+    // Auth.js (PrismaAdapter) は Keycloak の sub を Account.providerAccountId として
+    // 保存し、内部 User.id (cuid) と紐付ける。token.sub は前段の `if (user)` で
+    // User.id がセット済みのため、ここで Keycloak sub に上書きしないこと。
+    // 上書きすると getTumikiClaims の `db.user.findUnique({ where: { id: token.sub } })`
+    // が User.id ではなく Keycloak sub で検索し、User が見つからず必ず null が返り、
+    // セッションが無効化されて再ログインループが起きる。
     token.email = keycloakProfile.email ?? null;
     token.name = keycloakProfile.name ?? null;
+
+    // 上の `if (user)` ブロックで token.sub に User.id がセット済みのはず。
+    // 何らかの理由で undefined の場合は claim 取得も失敗するので早期に invalidate する。
+    if (!token.sub) {
+      console.error(
+        "[jwtCallback] token.sub is missing after sign-in. Session will be invalidated.",
+      );
+      return null;
+    }
 
     // DBから最新のtumikiクレームを取得（group_rolesから組織別ロールを解析）
     const updatedTumiki = await getTumikiClaims(
