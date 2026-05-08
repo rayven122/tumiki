@@ -1,10 +1,8 @@
-// NODE_ENV は Next.js / webpack が build 時に確実に "production" / "development" に
-// 静的展開してくれるため、process.env.NODE_ENV ベースの固定値が一番安定する。
-// staging など別 URL を使う場合は別 image を build する想定 (ソースで切り替え)。
 const MCP_PROXY_SERVER_URL =
-  process.env.NODE_ENV === "production"
+  process.env.NEXT_PUBLIC_MCP_PROXY_URL ??
+  (process.env.NODE_ENV === "production"
     ? "https://server.tumiki.cloud"
-    : "http://localhost:8080";
+    : "http://localhost:8080");
 
 /**
  * プロキシサーバーのベースURLを取得
