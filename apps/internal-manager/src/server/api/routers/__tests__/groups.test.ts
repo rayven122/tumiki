@@ -549,21 +549,47 @@ describe("groupsRouter", () => {
       );
     });
 
-    test("IdPグループにはメンバーを追加できない", async () => {
-      const create = vi.fn();
+    test("IdPグループにも手動メンバーを追加できる", async () => {
+      const create = vi.fn().mockResolvedValue({
+        id: "membership-001",
+        userId: "user-001",
+        source: GroupSource.TUMIKI,
+        user: {
+          id: "user-001",
+          name: "Target User",
+          email: "target@example.com",
+        },
+      });
       const caller = buildTransactionCaller({
         group: {
-          findUnique: vi.fn().mockResolvedValue({ source: GroupSource.IDP }),
+          findUnique: vi.fn().mockResolvedValue({ id: "group-idp" }),
         },
-        user: { findUnique: vi.fn() },
+        user: {
+          findUnique: vi.fn().mockResolvedValue({
+            id: "user-001",
+            isActive: true,
+          }),
+        },
         userGroupMembership: { create },
       });
 
-      await expectTrpcErrorCode(
+      await expect(
         caller.addMember({ groupId: "group-idp", userId: "user-001" }),
-        "BAD_REQUEST",
+      ).resolves.toStrictEqual(
+        expect.objectContaining({
+          id: "membership-001",
+          source: GroupSource.TUMIKI,
+        }),
       );
-      expect(create).not.toHaveBeenCalled();
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: {
+            groupId: "group-idp",
+            userId: "user-001",
+            source: GroupSource.TUMIKI,
+          },
+        }),
+      );
     });
 
     test("存在しないグループにはメンバーを追加できない", async () => {
@@ -710,24 +736,25 @@ describe("groupsRouter", () => {
       expect(del).not.toHaveBeenCalled();
     });
 
-    test("IdPグループのTumiki由来メンバーシップも削除できない", async () => {
-      const del = vi.fn();
+    test("IdPグループの手動追加メンバーシップは削除できる", async () => {
+      const del = vi.fn().mockResolvedValue({ id: "membership-tumiki" });
       const caller = buildTransactionCaller({
         userGroupMembership: {
           findUnique: vi.fn().mockResolvedValue({
             id: "membership-tumiki",
             source: GroupSource.TUMIKI,
-            group: { source: GroupSource.IDP },
           }),
           delete: del,
         },
       });
 
-      await expectTrpcErrorCode(
+      await expect(
         caller.removeMember({ membershipId: "membership-tumiki" }),
-        "BAD_REQUEST",
-      );
-      expect(del).not.toHaveBeenCalled();
+      ).resolves.toStrictEqual({ id: "membership-tumiki" });
+      expect(del).toHaveBeenCalledWith({
+        where: { id: "membership-tumiki" },
+        select: { id: true },
+      });
     });
   });
 
