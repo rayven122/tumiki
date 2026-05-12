@@ -422,8 +422,8 @@ export const ConnectorManual = (): JSX.Element => {
                 const isLoading = loadingToolsFor.has(connectionId);
                 const hasFailed = failedToolLoads.has(connectionId);
                 const iconPath =
-                  connector.connection.catalog?.iconPath ??
                   connector.connection.iconPath ??
+                  connector.connection.catalog?.iconPath ??
                   null;
                 const query = toolQueries[connectionId] ?? "";
                 const lowerQuery = query.trim().toLowerCase();

@@ -1,4 +1,3 @@
-// 複数部分TLD（Top Level Domain）のリスト
 const MULTI_PART_TLD_ARRAY = [
   // 日本
   "co.jp",

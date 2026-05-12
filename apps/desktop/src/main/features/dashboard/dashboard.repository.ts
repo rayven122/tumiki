@@ -105,7 +105,7 @@ export const findAllConnectors = async (
     serverId: c.server.id,
     connectionId: c.id,
     name: c.name,
-    iconPath: c.catalog?.iconPath ?? c.iconPath ?? null,
+    iconPath: c.iconPath ?? c.catalog?.iconPath ?? null,
     serverStatus: c.server.serverStatus,
   }));
 };
