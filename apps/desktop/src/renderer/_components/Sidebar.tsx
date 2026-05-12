@@ -13,7 +13,6 @@ import {
   PanelLeft,
   Sparkles,
   Plug,
-  BarChart2,
 } from "lucide-react";
 import { themeAtom, sidebarOpenAtom } from "../store/atoms";
 import type { ProfileState } from "../../shared/types";
@@ -202,11 +201,6 @@ export const Sidebar = (): JSX.Element => {
             path: "/ai-integrations",
             label: "AIツール連携",
             icon: <Plug size={18} />,
-          })}
-          {renderLink({
-            path: "/ai-coding-telemetry",
-            label: "AI 使用量",
-            icon: <BarChart2 size={18} />,
           })}
         </div>
 
