@@ -76,6 +76,8 @@ describe("mcp.service", () => {
     vi.mocked(mcpRepository.createSecret).mockResolvedValue({
       id: 1,
       credentials: "",
+      needsReauth: false,
+      lastAuthErrorAt: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -107,6 +109,8 @@ describe("mcp.service", () => {
       vi.mocked(mcpRepository.createSecret).mockResolvedValue({
         id: 50,
         credentials: `encrypted:${JSON.stringify({ API_KEY: "test-key" })}`,
+        needsReauth: false,
+        lastAuthErrorAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -258,6 +262,8 @@ describe("mcp.service", () => {
       vi.mocked(mcpRepository.createSecret).mockResolvedValue({
         id: 99,
         credentials: 'encrypted:{"API_KEY":"test-key"}',
+        needsReauth: false,
+        lastAuthErrorAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -400,6 +406,8 @@ describe("mcp.service", () => {
       vi.mocked(mcpRepository.createSecret).mockResolvedValue({
         id: 60,
         credentials: `encrypted:${JSON.stringify({ GITHUB_TOKEN: "test-token" })}`,
+        needsReauth: false,
+        lastAuthErrorAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -543,6 +551,8 @@ describe("mcp.service", () => {
       vi.mocked(mcpRepository.createSecret).mockResolvedValue({
         id: 70,
         credentials: `encrypted:${JSON.stringify({})}`,
+        needsReauth: false,
+        lastAuthErrorAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -589,6 +599,8 @@ describe("mcp.service", () => {
       vi.mocked(mcpRepository.createSecret).mockResolvedValue({
         id: 71,
         credentials: `encrypted:${JSON.stringify({ API_KEY: "sk-12345" })}`,
+        needsReauth: false,
+        lastAuthErrorAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -633,6 +645,8 @@ describe("mcp.service", () => {
       vi.mocked(mcpRepository.createSecret).mockResolvedValue({
         id: 72,
         credentials: `encrypted:${JSON.stringify({ access_token: "oauth-token-abc" })}`,
+        needsReauth: false,
+        lastAuthErrorAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -1425,6 +1439,7 @@ describe("mcp.service", () => {
               id: 10,
               secretId: 99,
               _count: { tools: 0 },
+              secret: { needsReauth: false },
             },
           ],
         },
@@ -1449,8 +1464,16 @@ describe("mcp.service", () => {
           id: 1,
           name: "Server A",
           connections: [
-            { id: 10, _count: { tools: 3 } },
-            { id: 11, _count: { tools: 0 } },
+            {
+              id: 10,
+              _count: { tools: 3 },
+              secret: { needsReauth: false },
+            },
+            {
+              id: 11,
+              _count: { tools: 0 },
+              secret: { needsReauth: false },
+            },
           ],
         },
       ];

@@ -40,6 +40,8 @@ export const getServerDetail = async (
         createdAt: tool.createdAt.toISOString(),
         updatedAt: tool.updatedAt.toISOString(),
       })),
+      // 共有 McpSecret から needsReauth を持ち上げる
+      needsReauth: conn.secret.needsReauth,
     })),
   };
 };

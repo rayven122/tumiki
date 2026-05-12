@@ -1,6 +1,6 @@
 import type { JSX } from "react";
 import { useEffect, useId, useState } from "react";
-import { Plug, X } from "lucide-react";
+import { Plug, X, KeyRound } from "lucide-react";
 import type { McpConnectionDetailItem } from "../../main/types";
 
 type OAuthReauthModalProps = {
@@ -9,6 +9,12 @@ type OAuthReauthModalProps = {
   connections: McpConnectionDetailItem[];
   /** 再認証実行中フラグ（処理中はボタンを無効化） */
   isProcessing: boolean;
+  /**
+   * 既定で選択しておきたいコネクトID。
+   * ディープリンク経由で開かれた場合や、リスト中に needsReauth のコネクトがあれば
+   * 呼び出し側がそれを指定する想定。指定が無ければ「needsReauth → 先頭」の優先順で自動選択。
+   */
+  initialSelectedId?: number | null;
   onConfirm: (connectionId: number) => void;
   onCancel: () => void;
 };
@@ -17,6 +23,7 @@ export const OAuthReauthModal = ({
   open,
   connections,
   isProcessing,
+  initialSelectedId = null,
   onConfirm,
   onCancel,
 }: OAuthReauthModalProps): JSX.Element | null => {
@@ -24,12 +31,22 @@ export const OAuthReauthModal = ({
   const descId = useId();
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
-  // モーダルを開くたびに先頭のコネクトを既定選択にする
+  // モーダルを開くたびに初期選択を決定する:
+  // 1. 呼び出し側が initialSelectedId を指定していて、それが connections に含まれる → それを使う
+  // 2. needsReauth のコネクトがあれば最優先
+  // 3. それ以外は先頭
   useEffect(() => {
-    if (open) {
-      setSelectedId(connections[0]?.id ?? null);
+    if (!open) return;
+    if (
+      initialSelectedId !== null &&
+      connections.some((c) => c.id === initialSelectedId)
+    ) {
+      setSelectedId(initialSelectedId);
+      return;
     }
-  }, [open, connections]);
+    const needsReauthFirst = connections.find((c) => c.needsReauth);
+    setSelectedId((needsReauthFirst ?? connections[0])?.id ?? null);
+  }, [open, connections, initialSelectedId]);
 
   // Escapeキーで閉じる（WAI-ARIA dialog 仕様）
   useEffect(() => {
@@ -118,9 +135,17 @@ export const OAuthReauthModal = ({
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
-                    <span className="truncate text-sm font-medium text-[var(--text-primary)]">
-                      {conn.name}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate text-sm font-medium text-[var(--text-primary)]">
+                        {conn.name}
+                      </span>
+                      {conn.needsReauth && (
+                        <span className="flex shrink-0 items-center gap-0.5 rounded bg-red-400/15 px-1.5 py-0.5 text-[9px] font-medium text-red-300">
+                          <KeyRound size={9} />
+                          要再認証
+                        </span>
+                      )}
+                    </div>
                     <div className="truncate text-[10px] text-[var(--text-muted)]">
                       {conn.url ?? conn.command ?? "—"}
                     </div>

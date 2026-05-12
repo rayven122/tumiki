@@ -368,6 +368,17 @@ export const ToolDetail = (): JSX.Element => {
   const oauthConnections: McpConnectionDetailItem[] =
     server?.connections.filter((conn) => conn.authType === "OAUTH") ?? [];
   const hasOAuthConnection = oauthConnections.length > 0;
+  // 1件でも refresh_token 失効を検知済みなら、ヘッダーに警告バナーを出す
+  const reauthRequiredConnections = oauthConnections.filter(
+    (c) => c.needsReauth,
+  );
+  const showReauthBanner = reauthRequiredConnections.length > 0;
+
+  // ディープリンク（tumiki://oauth/reauth?connectionId=X）で開かれた場合、
+  // 該当コネクトを自動選択してモーダルを開くために id を保持する
+  const [deepLinkSelectedId, setDeepLinkSelectedId] = useState<number | null>(
+    null,
+  );
 
   // 再認証実行: IPC 呼び出し → 成功時にサーバー詳細を再取得 → トースト通知
   const runReauth = useCallback(
@@ -402,6 +413,20 @@ export const ToolDetail = (): JSX.Element => {
       }
     };
   }, [reauthProcessing]);
+
+  // tumiki://oauth/reauth?connectionId=X が AI クライアント側からクリックされた時の処理。
+  // 該当コネクトがこのサーバー配下に含まれていれば自動でモーダルを開く。
+  useEffect(() => {
+    const unsubscribe = window.electronAPI.oauth.onReauthDeepLink(
+      ({ connectionId }) => {
+        const target = oauthConnections.find((c) => c.id === connectionId);
+        if (!target) return; // 他サーバーのコネクトに対するディープリンクは無視
+        setDeepLinkSelectedId(connectionId);
+        setShowReauthModal(true);
+      },
+    );
+    return unsubscribe;
+  }, [oauthConnections]);
 
   // 単一OAuthコネクトの場合は直接、複数ある場合はモーダルを開く。
   // ボタン自体が hasOAuthConnection 時のみ表示されるため length === 0 は到達不能。
@@ -531,6 +556,36 @@ export const ToolDetail = (): JSX.Element => {
       {/* 2カラムレイアウト: メインコンテンツ + 右サイドバー（接続先AI） 高さ合わせ、両側スクロール可 */}
       <div className="mt-4 flex max-h-[calc(100vh-10rem)] min-h-0 items-stretch gap-4">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
+          {/* OAuth要再認証バナー: refresh_token 失効を検知済みの場合のみ表示 */}
+          {showReauthBanner && (
+            <div
+              className="flex items-center justify-between gap-3 rounded-xl border border-red-400/40 bg-red-400/10 p-4"
+              role="alert"
+            >
+              <div className="flex items-start gap-3">
+                <KeyRound size={18} className="mt-0.5 shrink-0 text-red-300" />
+                <div>
+                  <p className="text-sm font-medium text-red-200">
+                    OAuth認証の有効期限が切れました
+                  </p>
+                  <p className="mt-0.5 text-xs text-red-200/80">
+                    {reauthRequiredConnections.length === 1
+                      ? `「${reauthRequiredConnections[0]?.name}」の再認証が必要です`
+                      : `${String(reauthRequiredConnections.length)}件のコネクトで再認証が必要です`}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleRequestReauth}
+                disabled={reauthProcessing}
+                className="shrink-0 rounded-lg bg-red-400/20 px-3 py-1.5 text-xs font-medium text-red-100 transition hover:bg-red-400/30 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {reauthProcessing ? "起動中..." : "再認証する"}
+              </button>
+            </div>
+          )}
+
           {/* ヘッダーカード: サーバー概要 + 基本情報 + 機能設定 + 3点リーダー */}
           <div className="rounded-xl p-5" style={cardStyle}>
             {/* 上段: アイコン + 名前 + ステータス + 統計 + 3点リーダー */}
@@ -1124,9 +1179,13 @@ export const ToolDetail = (): JSX.Element => {
         open={showReauthModal}
         connections={oauthConnections}
         isProcessing={reauthProcessing}
+        initialSelectedId={deepLinkSelectedId}
         onConfirm={(connectionId) => void runReauth(connectionId)}
         onCancel={() => {
-          if (!reauthProcessing) setShowReauthModal(false);
+          if (!reauthProcessing) {
+            setShowReauthModal(false);
+            setDeepLinkSelectedId(null);
+          }
         }}
       />
     </div>

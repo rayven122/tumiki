@@ -108,8 +108,9 @@ export const upsertOAuthClient = async (
   });
 };
 
-// secretId 単位で更新することで、同じ secret を指す全コネクションが最新トークンを参照する
-// DbClient を受けることで $transaction 内（mcp.repository と同じ慣例）からも呼べる
+// secretId 単位で更新することで、同じ secret を指す全コネクションが最新トークンを参照する。
+// 再認証成功時は同時に needsReauth フラグもクリアし、UI のバッジ／バナーが即座に消えるようにする。
+// DbClient を受けることで $transaction 内（mcp.repository と同じ慣例）からも呼べる。
 export const updateSecretCredentials = async (
   db: DbClient,
   secretId: number,
@@ -117,7 +118,7 @@ export const updateSecretCredentials = async (
 ): Promise<void> => {
   await db.mcpSecret.update({
     where: { id: secretId },
-    data: { credentials },
+    data: { credentials, needsReauth: false, lastAuthErrorAt: null },
     select: { id: true },
   });
 };
@@ -130,6 +131,32 @@ export const findCredentialsBySecretId = async (
   return db.mcpSecret.findUnique({
     where: { id: secretId },
     select: { credentials: true },
+  });
+};
+
+// resolveOAuthHeaders で「要再認証」状態を即時判定するため credentials と一緒に needsReauth を返す
+export const findSecretWithReauthState = async (
+  db: DbClient,
+  secretId: number,
+): Promise<{ credentials: string; needsReauth: boolean } | null> => {
+  return db.mcpSecret.findUnique({
+    where: { id: secretId },
+    select: { credentials: true, needsReauth: true },
+  });
+};
+
+/**
+ * refresh が FATAL（invalid_grant 等）失敗した secret に「要再認証」フラグを立てる。
+ * 既に true の場合も lastAuthErrorAt は最新に更新する（再発生のトラッキング用）。
+ */
+export const markSecretNeedsReauth = async (
+  db: DbClient,
+  secretId: number,
+): Promise<void> => {
+  await db.mcpSecret.update({
+    where: { id: secretId },
+    data: { needsReauth: true, lastAuthErrorAt: new Date() },
+    select: { id: true },
   });
 };
 

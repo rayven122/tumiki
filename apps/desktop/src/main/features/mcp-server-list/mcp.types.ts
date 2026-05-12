@@ -34,6 +34,11 @@ export type McpConnectionItem = Omit<
   catalog: Pick<McpCatalog, "id" | "name" | "description" | "iconPath"> | null;
   /** この接続が提供するツールの件数（一覧画面のサマリ表示用） */
   toolCount: number;
+  /**
+   * 共有している McpSecret.needsReauth の値。refresh_token 失効を検知した時 true になり、
+   * 一覧カードのバッジ表示や ToolDetail の警告バナーで利用する。
+   */
+  needsReauth: boolean;
 };
 
 /**

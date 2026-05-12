@@ -6,7 +6,7 @@
  * リフレッシュ後の新しいcredentialsはDBに暗号化保存される。
  */
 
-import type * as oauth from "oauth4webapi";
+import * as oauth from "oauth4webapi";
 import { z } from "zod";
 import { getDb } from "../../shared/db";
 import * as logger from "../../shared/utils/logger";
@@ -19,6 +19,57 @@ import {
   credentialsPayloadFromTokenData,
   isCacheableAuthorizationServerMetadata,
 } from "./oauth.service";
+import { buildReauthDeepLink } from "../../../shared/oauth/deeplink";
+
+/**
+ * needsReauth=true の secret に対して `resolveOAuthHeaders` から投げる専用エラー。
+ * このメッセージは MCP SDK 経由でそのまま AI クライアントのツール呼び出しエラーになるため、
+ * 人間可読 + Markdown ディープリンクで構成して再認証導線を示す。
+ */
+export class OAuthReauthRequiredError extends Error {
+  constructor(connectionId: number) {
+    const deepLink = buildReauthDeepLink(connectionId);
+    super(
+      `OAuth認証の有効期限が切れました。Tumikiで再認証してください。\n\n👉 [Tumikiで再認証する](${deepLink})`,
+    );
+    this.name = "OAuthReauthRequiredError";
+  }
+}
+
+/**
+ * refresh 失敗時の分類。
+ * - FATAL: refresh_token そのものが無効化されているため、ユーザー再認証が必要
+ * - TRANSIENT: ネットワーク・5xx 等の一時的失敗。次回再試行で復活する可能性あり
+ */
+type RefreshFailureKind = "FATAL" | "TRANSIENT";
+
+/**
+ * 認可サーバーが「refresh_token 自体が無効」を示す際に返す代表的なエラーコード集合。
+ * RFC 6749 §5.2 + 各プロバイダの慣習に基づく（invalid_grant が最一般）。
+ */
+const FATAL_OAUTH_ERROR_CODES = new Set([
+  "invalid_grant",
+  "invalid_token",
+  "expired_token",
+  "unauthorized_client",
+  "invalid_client",
+]);
+
+/**
+ * refreshTokenGrantRequest が投げたエラーを FATAL / TRANSIENT に分類する。
+ * 判定材料が無いケース（不明）は誤検知防止のため TRANSIENT 側に倒す。
+ */
+export const classifyRefreshError = (error: unknown): RefreshFailureKind => {
+  // oauth4webapi の ResponseBodyError は 4xx + error フィールドを保持しているのが特徴
+  if (error instanceof oauth.ResponseBodyError) {
+    if (FATAL_OAUTH_ERROR_CODES.has(error.error)) return "FATAL";
+    // 4xx で error コード未一致でも、サーバーが明示的に拒否しているため FATAL 寄り
+    if (error.status >= 400 && error.status < 500) return "FATAL";
+    return "TRANSIENT";
+  }
+
+  return "TRANSIENT";
+};
 
 /** リフレッシュ実行の閾値（秒）: 期限切れまでこの値以下ならリフレッシュ */
 const REFRESH_THRESHOLD_SECONDS = 5 * 60;
@@ -110,16 +161,30 @@ export const refreshOAuthTokenIfNeededOnce = async (
 /**
  * DB から最新の credentials を読み込み、必要ならリフレッシュし、
  * Authorization ヘッダーを返す。mcp-core-proxy の resolveHeaders コールバックとして使用する。
+ *
+ * `connectionId` は再認証ディープリンク埋め込み用。同じ secret を複数のコネクトが共有していても、
+ * AI クライアント側からはどれか1つの connectionId 経由で再認証モーダルを開ければ十分なので
+ * 呼び出し元のコネクトの id を渡す。
+ *
+ * needsReauth=true の secret は OAuthReauthRequiredError を投げる。これにより
+ * MCP SDK 経由で AI クライアントのツール呼び出しエラーとして「再認証してください」が表示される。
  */
 export const resolveOAuthHeaders = async (
   secretId: number,
   serverUrl: string,
+  connectionId: number,
 ): Promise<Record<string, string>> => {
   const db = await getDb();
-  const secret = await oauthRepository.findCredentialsBySecretId(db, secretId);
+  const secret = await oauthRepository.findSecretWithReauthState(db, secretId);
   if (!secret) {
     logger.warn("McpSecret が見つかりません", { secretId });
     return {};
+  }
+
+  if (secret.needsReauth) {
+    // 既に再認証が必要だと分かっているので、無駄に upstream を叩かず即座にエラーを返す。
+    // メッセージは AI クライアントが Markdown としてレンダリングする想定で組み立てている。
+    throw new OAuthReauthRequiredError(connectionId);
   }
 
   let rawJson: unknown;
@@ -145,6 +210,13 @@ export const resolveOAuthHeaders = async (
     credentials,
   );
   if (refreshed) credentials = refreshed;
+
+  // refresh が FATAL で失敗していると markSecretNeedsReauth が呼ばれているので、
+  // ここで再度フラグを読み直して、即座に再認証エラーを投げる。
+  const post = await oauthRepository.findSecretWithReauthState(db, secretId);
+  if (post?.needsReauth) {
+    throw new OAuthReauthRequiredError(connectionId);
+  }
 
   const accessToken = credentials["access_token"];
   if (!accessToken) return {};
@@ -200,12 +272,30 @@ export const refreshOAuthTokenIfNeeded = async (
 
     return newCredentials;
   } catch (error) {
+    const kind = classifyRefreshError(error);
     const message = error instanceof Error ? error.message : String(error);
     logger.error("OAuthトークンのリフレッシュに失敗しました", {
       secretId,
       serverUrl,
+      kind,
       error: message,
     });
+
+    // FATAL のときだけ「要再認証」フラグを立てる。TRANSIENT で立てると
+    // ネットワーク不調で偽陽性が出て、ユーザーに不必要な再認証を促してしまう。
+    if (kind === "FATAL") {
+      try {
+        const db = await getDb();
+        await oauthRepository.markSecretNeedsReauth(db, secretId);
+      } catch (markError) {
+        logger.error("needsReauth フラグ更新に失敗しました", {
+          secretId,
+          error:
+            markError instanceof Error ? markError.message : String(markError),
+        });
+      }
+    }
+
     return null;
   }
 };

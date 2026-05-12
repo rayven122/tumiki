@@ -23,6 +23,11 @@ export type McpConnectionDetailItem = Omit<
   updatedAt: string;
   catalog: Pick<McpCatalog, "id" | "name" | "description" | "iconPath"> | null;
   tools: McpToolItem[];
+  /**
+   * 共有している McpSecret.needsReauth の値。refresh_token 失効を検知した時 true になり、
+   * UI のバッジ／バナー表示や OAuthReauthModal での強調に使う。
+   */
+  needsReauth: boolean;
 };
 
 /**

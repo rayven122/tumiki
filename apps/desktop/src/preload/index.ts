@@ -242,6 +242,17 @@ const api = {
       ipcRenderer.on("oauth:reauthError", listener);
       return () => ipcRenderer.removeListener("oauth:reauthError", listener);
     },
+    // AI クライアントから tumiki://oauth/reauth?connectionId=X が呼ばれた時の通知
+    onReauthDeepLink: (
+      callback: (payload: { connectionId: number }) => void,
+    ): (() => void) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        payload: { connectionId: number },
+      ): void => callback(payload);
+      ipcRenderer.on("oauth:reauthDeepLink", listener);
+      return () => ipcRenderer.removeListener("oauth:reauthDeepLink", listener);
+    },
   },
 };
 

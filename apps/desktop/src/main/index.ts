@@ -22,6 +22,7 @@ import { resolveOidcEndpoints } from "./auth/oidc-client";
 import { getOAuthManager, setOAuthManager } from "./auth/manager-registry";
 import { getKeycloakEnvOptional } from "./utils/env";
 import { createMcpOAuthManager } from "./features/oauth/oauth.service";
+import { parseReauthDeepLink } from "../shared/oauth/deeplink";
 import { setupOAuthIpc } from "./features/oauth/oauth.ipc";
 import type { McpOAuthManager } from "./features/oauth/oauth.service";
 import { setupManagerIpc, fetchManagerOidcConfig } from "./ipc/manager";
@@ -439,26 +440,50 @@ if (isMcpProxyMode) {
   };
 
   /**
-   * カスタムURLスキームのコールバックを処理（Keycloak のみ）
+   * 再認証ディープリンク（tumiki://oauth/reauth?connectionId=X）を処理。
+   * MCP エラーレスポンスに埋め込まれたリンクを AI クライアントからクリックされた経由で来る。
+   * 該当コネクトの再認証モーダルを renderer 側で自動オープンするよう IPC で通知する。
+   */
+  const handleReauthDeepLink = (connectionId: number): void => {
+    ensureWindowAndFocus();
+    sendToWindow("oauth:reauthDeepLink", { connectionId });
+    logger.info("Reauth deep link received", { connectionId });
+  };
+
+  /**
+   * カスタムURLスキームのコールバックを処理
    *
-   * MCP OAuth は loopback HTTP（http://127.0.0.1:<port>/callback）に移行済みのため
-   * ここでは扱わない。tumiki:// は Keycloak ログインコールバック専用。
+   * - Keycloak 認証: tumiki://auth/callback
+   * - 再認証ディープリンク: tumiki://oauth/reauth?connectionId=X
+   *
+   * MCP OAuth の認可フロー自体は loopback HTTP（http://127.0.0.1:<port>/callback）に
+   * 移行済みのため、tumiki:// では扱わない。
    */
   const handleDeepLink = async (url: string): Promise<void> => {
-    let isKeycloakCallback = false;
+    let parsed: URL;
     try {
-      const parsed = new URL(url);
-      isKeycloakCallback =
-        parsed.protocol === `${PROTOCOL}:` &&
-        parsed.hostname === CALLBACK_HOST &&
-        parsed.pathname === CALLBACK_PATHNAME;
+      parsed = new URL(url);
     } catch {
       logger.warn("Received malformed deep link URL", { url });
       return;
     }
 
-    if (isKeycloakCallback) {
+    if (parsed.protocol !== `${PROTOCOL}:`) {
+      logger.warn("Received unknown deep link", { url });
+      return;
+    }
+
+    if (
+      parsed.hostname === CALLBACK_HOST &&
+      parsed.pathname === CALLBACK_PATHNAME
+    ) {
       await handleKeycloakCallback(url);
+      return;
+    }
+
+    const reauthLink = parseReauthDeepLink(url);
+    if (reauthLink) {
+      handleReauthDeepLink(reauthLink.connectionId);
       return;
     }
 

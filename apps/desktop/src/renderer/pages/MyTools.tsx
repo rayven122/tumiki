@@ -1,7 +1,14 @@
 import type { JSX } from "react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Search, ArrowRight, Server, Plus, Trash2 } from "lucide-react";
+import {
+  Search,
+  ArrowRight,
+  Server,
+  Plus,
+  Trash2,
+  KeyRound,
+} from "lucide-react";
 import { ToggleSwitch } from "../_components/ToggleSwitch";
 import { ConfirmDialog } from "../_components/ConfirmDialog";
 import { useMcpServers } from "../hooks/useMcpServers";
@@ -148,6 +155,9 @@ const ServerCard = ({
   const status = STATUS_CONFIG[server.serverStatus];
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // 配下のOAuthコネクトに1つでも要再認証フラグがあればカード全体に警告バッジを出す
+  const needsReauth = server.connections.some((c) => c.needsReauth);
+
   return (
     <div
       className={`flex flex-col rounded-xl transition-all ${
@@ -173,15 +183,23 @@ const ServerCard = ({
               <Server size={18} className="text-[var(--text-muted)]" />
             </div>
           )}
-          <span
-            className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-medium ${status.badgeClass}`}
-          >
+          <div className="flex flex-wrap items-center justify-end gap-1">
+            {needsReauth && (
+              <span className="flex items-center gap-1 rounded bg-red-400/15 px-1.5 py-0.5 text-[9px] font-medium text-red-300">
+                <KeyRound size={9} />
+                再認証が必要
+              </span>
+            )}
             <span
-              aria-hidden="true"
-              className="h-1.5 w-1.5 rounded-full bg-current"
-            />
-            {status.label}
-          </span>
+              className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-medium ${status.badgeClass}`}
+            >
+              <span
+                aria-hidden="true"
+                className="h-1.5 w-1.5 rounded-full bg-current"
+              />
+              {status.label}
+            </span>
+          </div>
         </div>
 
         {/* サーバー名 */}

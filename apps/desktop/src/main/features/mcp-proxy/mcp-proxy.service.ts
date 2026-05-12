@@ -116,13 +116,15 @@ const getAllowedToolNames = (conn: ConnectionForConfig) =>
     ? conn.tools.filter((tool) => tool.isAllowed).map((tool) => tool.name)
     : undefined;
 
-/** OAuth接続の場合のみ resolveHeaders を返す */
+/** OAuth接続の場合のみ resolveHeaders を返す。connectionId は再認証ディープリンク埋め込み用 */
 const buildResolveHeaders = (
   conn: ConnectionForConfig,
 ): { resolveHeaders?: ResolveHeaders } => {
   if (conn.authType !== "OAUTH" || !conn.url) return {};
   const url = conn.url;
-  return { resolveHeaders: () => resolveOAuthHeaders(conn.secretId, url) };
+  return {
+    resolveHeaders: () => resolveOAuthHeaders(conn.secretId, url, conn.id),
+  };
 };
 
 const withAllowedTools = <T extends McpServerConfig>(

@@ -497,6 +497,7 @@ export const getAllServers = async () => {
       updatedAt: conn.updatedAt,
       catalog: conn.catalog,
       toolCount: conn._count.tools,
+      needsReauth: conn.secret.needsReauth,
     })),
   }));
 };

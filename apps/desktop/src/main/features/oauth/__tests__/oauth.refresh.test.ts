@@ -29,7 +29,10 @@ import {
   refreshOAuthTokenIfNeededOnce,
   resolveOAuthHeaders,
   isTokenExpiringSoon,
+  classifyRefreshError,
+  OAuthReauthRequiredError,
 } from "../oauth.refresh";
+import * as oauth from "oauth4webapi";
 
 describe("oauth.refresh", () => {
   const mockDb = {} as Awaited<ReturnType<typeof getDb>>;
@@ -284,14 +287,19 @@ describe("oauth.refresh", () => {
         expires_at: String(Math.floor(Date.now() / 1000) + 3600),
       };
 
-      vi.mocked(oauthRepository.findCredentialsBySecretId).mockResolvedValue({
+      vi.mocked(oauthRepository.findSecretWithReauthState).mockResolvedValue({
         credentials: "encrypted-creds",
+        needsReauth: false,
       });
       vi.mocked(decryptCredentials).mockResolvedValue(
         JSON.stringify(credentials),
       );
 
-      const headers = await resolveOAuthHeaders(1, "https://api.example.com");
+      const headers = await resolveOAuthHeaders(
+        1,
+        "https://api.example.com",
+        1,
+      );
 
       expect(headers).toStrictEqual({
         Authorization: "Bearer valid-token",
@@ -299,11 +307,15 @@ describe("oauth.refresh", () => {
     });
 
     test("McpSecret が見つからない場合は空オブジェクトを返す", async () => {
-      vi.mocked(oauthRepository.findCredentialsBySecretId).mockResolvedValue(
+      vi.mocked(oauthRepository.findSecretWithReauthState).mockResolvedValue(
         null,
       );
 
-      const headers = await resolveOAuthHeaders(999, "https://api.example.com");
+      const headers = await resolveOAuthHeaders(
+        999,
+        "https://api.example.com",
+        1,
+      );
 
       expect(headers).toStrictEqual({});
     });
@@ -316,8 +328,9 @@ describe("oauth.refresh", () => {
         expires_at: String(Math.floor(Date.now() / 1000) - 100),
       };
 
-      vi.mocked(oauthRepository.findCredentialsBySecretId).mockResolvedValue({
+      vi.mocked(oauthRepository.findSecretWithReauthState).mockResolvedValue({
         credentials: "encrypted-creds",
+        needsReauth: false,
       });
       vi.mocked(decryptCredentials).mockResolvedValue(
         JSON.stringify(expiredCredentials),
@@ -347,7 +360,7 @@ describe("oauth.refresh", () => {
       });
       vi.mocked(oauthRepository.updateSecretCredentials).mockResolvedValue();
 
-      const headers = await resolveOAuthHeaders(42, serverUrl);
+      const headers = await resolveOAuthHeaders(42, serverUrl, 1);
 
       expect(headers).toStrictEqual({
         Authorization: "Bearer new-access-token",
@@ -361,8 +374,9 @@ describe("oauth.refresh", () => {
     });
 
     test("credentials のスキーマバリデーションに失敗した場合は空オブジェクトを返す", async () => {
-      vi.mocked(oauthRepository.findCredentialsBySecretId).mockResolvedValue({
+      vi.mocked(oauthRepository.findSecretWithReauthState).mockResolvedValue({
         credentials: "encrypted-creds",
+        needsReauth: false,
       });
       // credentialsSchema は Record<string, string> を期待するため
       // 値に数値が含まれていると safeParse が失敗する
@@ -370,19 +384,28 @@ describe("oauth.refresh", () => {
         JSON.stringify({ access_token: 123, expires_at: true }),
       );
 
-      const headers = await resolveOAuthHeaders(1, "https://api.example.com");
+      const headers = await resolveOAuthHeaders(
+        1,
+        "https://api.example.com",
+        1,
+      );
 
       expect(headers).toStrictEqual({});
       expect(refreshAccessToken).not.toHaveBeenCalled();
     });
 
     test("credentials の復号またはJSONパースに失敗した場合は空オブジェクトを返す", async () => {
-      vi.mocked(oauthRepository.findCredentialsBySecretId).mockResolvedValue({
+      vi.mocked(oauthRepository.findSecretWithReauthState).mockResolvedValue({
         credentials: "encrypted-creds",
+        needsReauth: false,
       });
       vi.mocked(decryptCredentials).mockResolvedValue("not-json");
 
-      const headers = await resolveOAuthHeaders(1, "https://api.example.com");
+      const headers = await resolveOAuthHeaders(
+        1,
+        "https://api.example.com",
+        1,
+      );
 
       expect(headers).toStrictEqual({});
       expect(refreshAccessToken).not.toHaveBeenCalled();
@@ -394,16 +417,154 @@ describe("oauth.refresh", () => {
         expires_at: String(Math.floor(Date.now() / 1000) + 3600),
       };
 
-      vi.mocked(oauthRepository.findCredentialsBySecretId).mockResolvedValue({
+      vi.mocked(oauthRepository.findSecretWithReauthState).mockResolvedValue({
         credentials: "encrypted-creds",
+        needsReauth: false,
       });
       vi.mocked(decryptCredentials).mockResolvedValue(
         JSON.stringify(credentials),
       );
 
-      const headers = await resolveOAuthHeaders(1, "https://api.example.com");
+      const headers = await resolveOAuthHeaders(
+        1,
+        "https://api.example.com",
+        1,
+      );
 
       expect(headers).toStrictEqual({});
+    });
+
+    test("needsReauth が立っている secret では OAuthReauthRequiredError を投げる", async () => {
+      vi.mocked(oauthRepository.findSecretWithReauthState).mockResolvedValue({
+        credentials: "encrypted-creds",
+        needsReauth: true,
+      });
+
+      await expect(
+        resolveOAuthHeaders(1, "https://api.example.com", 7),
+      ).rejects.toBeInstanceOf(OAuthReauthRequiredError);
+      // 早期エラーなので credentials の復号は走らない
+      expect(decryptCredentials).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("classifyRefreshError", () => {
+    test("invalid_grant の ResponseBodyError は FATAL", () => {
+      // oauth4webapi の ResponseBodyError コンストラクタは内部用なので
+      // 必要なプロパティだけ持つオブジェクトを ResponseBodyError として振る舞わせる
+      const err = Object.assign(
+        Object.create(oauth.ResponseBodyError.prototype) as Error,
+        {
+          error: "invalid_grant",
+          status: 400,
+        },
+      );
+      expect(classifyRefreshError(err)).toBe("FATAL");
+    });
+
+    test("4xx だが未知の error コードでも FATAL", () => {
+      const err = Object.assign(
+        Object.create(oauth.ResponseBodyError.prototype) as Error,
+        {
+          error: "some_unknown_code",
+          status: 401,
+        },
+      );
+      expect(classifyRefreshError(err)).toBe("FATAL");
+    });
+
+    test("5xx の ResponseBodyError は TRANSIENT", () => {
+      const err = Object.assign(
+        Object.create(oauth.ResponseBodyError.prototype) as Error,
+        {
+          error: "internal_error",
+          status: 503,
+        },
+      );
+      expect(classifyRefreshError(err)).toBe("TRANSIENT");
+    });
+
+    test("ResponseBodyError ではない通常の Error は TRANSIENT", () => {
+      expect(classifyRefreshError(new Error("network down"))).toBe("TRANSIENT");
+    });
+
+    test("非Errorオブジェクトも TRANSIENT", () => {
+      expect(classifyRefreshError("string error")).toBe("TRANSIENT");
+      expect(classifyRefreshError(null)).toBe("TRANSIENT");
+    });
+  });
+
+  describe("FATAL 失敗時の needsReauth マーキング", () => {
+    test("invalid_grant で markSecretNeedsReauth が呼ばれる", async () => {
+      const credentials = {
+        access_token: "old",
+        refresh_token: "rt",
+        expires_at: String(Math.floor(Date.now() / 1000) - 100),
+      };
+      vi.mocked(oauthRepository.findByServerUrl).mockResolvedValue({
+        id: 1,
+        serverUrl: "https://api.example.com",
+        issuer: "https://example.com",
+        clientId: "client-id",
+        clientSecret: null,
+        tokenEndpointAuthMethod: "none",
+        authServerMetadata: JSON.stringify({
+          issuer: "https://example.com",
+          authorization_endpoint: "https://example.com/auth",
+          token_endpoint: "https://example.com/token",
+        }),
+        isDcr: true,
+      });
+      const fatalErr = Object.assign(
+        Object.create(oauth.ResponseBodyError.prototype) as Error,
+        { error: "invalid_grant", status: 400 },
+      );
+      vi.mocked(refreshAccessToken).mockRejectedValue(fatalErr);
+
+      const result = await refreshOAuthTokenIfNeeded(
+        42,
+        "https://api.example.com",
+        credentials,
+      );
+
+      expect(result).toBeNull();
+      expect(oauthRepository.markSecretNeedsReauth).toHaveBeenCalledWith(
+        mockDb,
+        42,
+      );
+    });
+
+    test("TRANSIENT エラーでは markSecretNeedsReauth が呼ばれない", async () => {
+      const credentials = {
+        access_token: "old",
+        refresh_token: "rt",
+        expires_at: String(Math.floor(Date.now() / 1000) - 100),
+      };
+      vi.mocked(oauthRepository.findByServerUrl).mockResolvedValue({
+        id: 1,
+        serverUrl: "https://api.example.com",
+        issuer: "https://example.com",
+        clientId: "client-id",
+        clientSecret: null,
+        tokenEndpointAuthMethod: "none",
+        authServerMetadata: JSON.stringify({
+          issuer: "https://example.com",
+          authorization_endpoint: "https://example.com/auth",
+          token_endpoint: "https://example.com/token",
+        }),
+        isDcr: true,
+      });
+      vi.mocked(refreshAccessToken).mockRejectedValue(
+        new Error("network error"),
+      );
+
+      await refreshOAuthTokenIfNeeded(
+        42,
+        "https://api.example.com",
+        credentials,
+      );
+
+      expect(oauthRepository.markSecretNeedsReauth).not.toHaveBeenCalled();
     });
   });
 });
