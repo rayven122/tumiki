@@ -1,7 +1,7 @@
 import type { JSX } from "react";
 import { useMemo, useState } from "react";
 import { useAtomValue } from "jotai";
-import { ArrowRight, Activity, Lock, Plug } from "lucide-react";
+import { ArrowRight, Lock, Plug } from "lucide-react";
 import { themeAtom } from "../store/atoms";
 import { AI_CLIENTS, type AiClient } from "../data/ai-clients";
 import { cardStyle } from "../utils/theme-styles";
@@ -9,13 +9,7 @@ import { toast } from "../_components/Toast";
 import { AiClientAutoWriteModal } from "../_components/AiClientAutoWriteModal";
 import { useMcpServers } from "../hooks/useMcpServers";
 import { useMcpProxyLaunchCommand } from "../hooks/useMcpProxyLaunchCommand";
-import {
-  useAiCodingToolSettings,
-  useOtlpReceiverPort,
-} from "../hooks/useAiCodingTelemetry";
-import { ToolSettingCard } from "./_components/ToolSettingCard";
-import { AiCodingTrackingModal } from "./_components/AiCodingTrackingModal";
-import type { AiCodingTool } from "../../main/types";
+import { useOtlpReceiverPort } from "../hooks/useAiCodingTelemetry";
 
 const AUTO_WRITE_SUPPORTED_IDS = new Set([
   "claude-desktop",
@@ -35,11 +29,7 @@ export const AiIntegrations = (): JSX.Element => {
   const { servers } = useMcpServers();
   const launchCommand = useMcpProxyLaunchCommand();
   const [activeClient, setActiveClient] = useState<AiClient | null>(null);
-  const [activeTool, setActiveTool] = useState<AiCodingTool | null>(null);
   const port = useOtlpReceiverPort();
-  // 各ツールの設定状態をカード表示用に取得
-  const { settings: claudeSettings } = useAiCodingToolSettings("claude-code");
-  const { settings: codexSettings } = useAiCodingToolSettings("codex");
 
   // 有効サーバーのみ書き込み対象として渡す
   // メモ化することで、子モーダルの useEffect([client.id, servers]) を安定させ getPreview IPC の再実行を防ぐ
@@ -128,42 +118,6 @@ export const AiIntegrations = (): JSX.Element => {
         鍵アイコン付きのクライアントは現在自動書き込み未対応です。順次対応予定です。
       </p>
 
-      {/* 使用量の記録セクション */}
-      <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-sm font-medium text-[var(--text-muted)]">
-            <Activity size={14} />
-            使用量の記録
-          </h2>
-          {port > 0 && (
-            <span className="rounded-full bg-[var(--bg-active)] px-2 py-0.5 text-xs text-[var(--text-primary)]">
-              受信ポート: {port}
-            </span>
-          )}
-        </div>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-2">
-          <ToolSettingCard
-            tool="claude-code"
-            settings={claudeSettings}
-            onClick={() => setActiveTool("claude-code")}
-          />
-          <ToolSettingCard
-            tool="codex"
-            settings={codexSettings}
-            onClick={() => setActiveTool("codex")}
-          />
-        </div>
-      </section>
-
-      {/* 使用量記録設定モーダル */}
-      {activeTool && (
-        <AiCodingTrackingModal
-          tool={activeTool}
-          port={port}
-          onClose={() => setActiveTool(null)}
-        />
-      )}
-
       {/* 自動書き込みモーダル */}
       {activeClient && (
         <AiClientAutoWriteModal
@@ -171,6 +125,7 @@ export const AiIntegrations = (): JSX.Element => {
           servers={enabledServers}
           launchCommand={launchCommand}
           theme={theme}
+          port={port}
           onClose={() => setActiveClient(null)}
         />
       )}

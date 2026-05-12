@@ -7,22 +7,149 @@ import {
   CheckCircle2,
   Loader2,
   Trash2,
+  Activity,
+  Check,
 } from "lucide-react";
 import type { AiClient } from "../data/ai-clients";
 import type {
   AiClientPreview,
   McpEntry,
   McpProxyLaunchCommand,
+  AiCodingTool,
 } from "../../main/types";
 import type { McpServerWithRuntime } from "../hooks/useMcpServers";
 import { toast } from "./Toast";
+import { useAiCodingToolSettings } from "../hooks/useAiCodingTelemetry";
 
 type Props = {
   client: AiClient;
   servers: McpServerWithRuntime[];
   launchCommand: McpProxyLaunchCommand | null;
   theme: string;
+  port: number;
   onClose: () => void;
+};
+
+/** クライアント ID → AiCodingTool マッピング（対応ツールのみ） */
+const TRACKING_TOOL_MAP: Partial<Record<string, AiCodingTool>> = {
+  "claude-code": "claude-code",
+  "codex-cli": "codex",
+};
+
+/** 使用量記録セクション（フック呼び出しを安定させるためサブコンポーネント化） */
+const TrackingSection = ({
+  tool,
+  port,
+}: {
+  tool: AiCodingTool;
+  port: number;
+}): JSX.Element => {
+  const { settings, isLoading, refresh } = useAiCodingToolSettings(tool);
+  const [isApplying, setIsApplying] = useState(false);
+
+  const handleToggle = (): void => {
+    const newEnabled = !(settings?.enabled ?? false);
+    void window.electronAPI.aiCodingTelemetry
+      .saveToolEnabled(tool, newEnabled)
+      .then(() => refresh());
+  };
+
+  const handleApply = (): void => {
+    if (port === 0) {
+      toast.error("受信サーバーが起動していません");
+      return;
+    }
+    setIsApplying(true);
+    void window.electronAPI.aiCodingTelemetry
+      .applyToTool(tool, port)
+      .then((result) => {
+        if (result.success) {
+          toast.success("使用量記録の設定ファイルに書き込みました");
+          refresh();
+        } else {
+          toast.error(
+            `使用量記録の書き込みに失敗しました: ${result.errorCode ?? "UNKNOWN"}`,
+          );
+        }
+      })
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        toast.error(`使用量記録の書き込みに失敗しました: ${message}`);
+      })
+      .finally(() => setIsApplying(false));
+  };
+
+  return (
+    <div className="mb-5">
+      {/* セクションヘッダー */}
+      <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-[var(--text-primary)]">
+        <Activity size={12} className="text-[var(--text-subtle)]" />
+        使用量の記録
+      </div>
+      <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-app)] p-3">
+        {/* トグル行 */}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-[var(--text-primary)]">
+              トークン数・API呼び出し回数を収集
+            </p>
+            {settings?.appliedAt && (
+              <p className="mt-0.5 flex items-center gap-1 text-[10px] text-[var(--badge-success-text,#16a34a)]">
+                <Check size={10} />
+                連携済み{" "}
+                {new Date(settings.appliedAt).toLocaleDateString("ja-JP")}
+                {settings.appliedPort !== undefined &&
+                  ` (port: ${settings.appliedPort})`}
+              </p>
+            )}
+          </div>
+          {!isLoading && (
+            <button
+              type="button"
+              role="switch"
+              aria-checked={settings?.enabled ?? false}
+              aria-label="使用量記録を有効化"
+              onClick={handleToggle}
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center"
+            >
+              <div
+                className={`relative h-5 w-9 rounded-full transition-colors ${
+                  settings?.enabled
+                    ? "bg-[var(--badge-success-text)]"
+                    : "bg-[var(--text-subtle)]"
+                }`}
+              >
+                <div
+                  className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${
+                    settings?.enabled ? "left-[18px]" : "left-0.5"
+                  }`}
+                />
+              </div>
+            </button>
+          )}
+        </div>
+        {/* 自動設定ボタン */}
+        <button
+          type="button"
+          onClick={handleApply}
+          disabled={isApplying || port === 0}
+          className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-[var(--border-subtle)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] transition hover:bg-[var(--bg-card-hover)] disabled:opacity-50"
+        >
+          {isApplying ? (
+            <Loader2 size={12} className="animate-spin" />
+          ) : (
+            <Check size={12} />
+          )}
+          設定ファイルに自動書き込み
+        </button>
+        {port === 0 && (
+          <p className="mt-1 text-center text-[10px] text-[var(--text-subtle)]">
+            アプリを再起動すると受信サーバーが起動します
+          </p>
+        )}
+      </div>
+    </div>
+  );
 };
 
 const buildEntry = (
@@ -38,6 +165,7 @@ export const AiClientAutoWriteModal = ({
   servers,
   launchCommand,
   theme,
+  port,
   onClose,
 }: Props): JSX.Element => {
   const [preview, setPreview] = useState<AiClientPreview | null>(null);
@@ -405,6 +533,14 @@ export const AiClientAutoWriteModal = ({
             </ul>
           )}
         </div>
+
+        {/* 使用量記録セクション（claude-code / codex-cli のみ表示） */}
+        {TRACKING_TOOL_MAP[client.id] !== undefined && (
+          <TrackingSection
+            tool={TRACKING_TOOL_MAP[client.id] as AiCodingTool}
+            port={port}
+          />
+        )}
 
         {/* 区切り */}
         <div className="mb-5 border-t border-[var(--border)]" />
