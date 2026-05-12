@@ -606,10 +606,22 @@ if (isMcpProxyMode) {
       setupDesktopSessionIpc();
       setupShellIpc();
 
-      // OTLP レシーバーを起動してランダムポートで待ち受ける（listening イベント待ち）
-      const { server, port: otlpPort } = await startOtlpReceiver();
+      // OTLP レシーバーを起動する
+      // 前回バインドに成功したポートを優先し、競合時のみ OS 割り当てにフォールバックする。
+      // 使用ポートを electron-store に保存することで、次回起動時も同じポートを維持し
+      // 設定ファイルへ書き込んだ OTEL_EXPORTER_OTLP_ENDPOINT と一致させ続ける。
+      const appStore = await getAppStore();
+      const savedPort =
+        appStore.get("aiCodingTelemetry")?.receiverPort ?? undefined;
+      const { server, port: otlpPort } = await startOtlpReceiver(savedPort);
       otlpHttpServer = server;
       setReceiverPort(otlpPort);
+      // 実際にバインドできたポートを保存（フォールバック後も更新する）
+      appStore.set("aiCodingTelemetry", {
+        ...appStore.get("aiCodingTelemetry"),
+        receiverPort: otlpPort,
+        tools: appStore.get("aiCodingTelemetry")?.tools ?? {},
+      });
       setupAiCodingTelemetryIpc();
 
       createWindow();

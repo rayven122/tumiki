@@ -20,6 +20,8 @@ type AppStoreSchema = {
   hasCompletedInitialProfileSetup?: boolean;
   // AI コーディングツール テレメトリ設定
   aiCodingTelemetry?: {
+    // OTLP レシーバーが前回バインドに成功したポート番号（次回起動時に同じポートを優先使用）
+    receiverPort?: number;
     tools: {
       "claude-code"?: AiCodingTelemetryToolSetting;
       codex?: AiCodingTelemetryToolSetting;
