@@ -66,8 +66,8 @@ export const storeOtlpMetrics = async (body: unknown): Promise<void> => {
   const metrics: MetricRecord[] = [];
 
   for (const rm of b.resourceMetrics) {
-    const tool = extractToolName(rm);
     if (typeof rm !== "object" || rm === null) continue;
+    const tool = extractToolName(rm);
     const scopeMetrics = (rm as Record<string, unknown>).scopeMetrics;
     if (!Array.isArray(scopeMetrics)) continue;
 

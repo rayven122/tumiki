@@ -98,17 +98,21 @@ export const ToolSettingCard = ({
             aria-checked={settings?.enabled ?? false}
             aria-label={`${TOOL_LABELS[tool]} のテレメトリを有効化`}
             onClick={handleToggle}
-            className={`relative h-5 w-9 rounded-full transition-colors ${
-              settings?.enabled
-                ? "bg-[var(--badge-success-text)]"
-                : "bg-[var(--text-subtle)]"
-            }`}
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center"
           >
             <div
-              className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${
-                settings?.enabled ? "left-[18px]" : "left-0.5"
+              className={`relative h-5 w-9 rounded-full transition-colors ${
+                settings?.enabled
+                  ? "bg-[var(--badge-success-text)]"
+                  : "bg-[var(--text-subtle)]"
               }`}
-            />
+            >
+              <div
+                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${
+                  settings?.enabled ? "left-[18px]" : "left-0.5"
+                }`}
+              />
+            </div>
           </button>
         )}
       </div>

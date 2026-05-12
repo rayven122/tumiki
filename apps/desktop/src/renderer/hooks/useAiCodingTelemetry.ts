@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import type {
   AiCodingTool,
   DailyUsageItem,
@@ -86,7 +86,7 @@ export const useAiCodingToolSettings = (
   // 進行中リクエストのキャンセルトークン。ref で保持することで refresh でも前回分を無効化できる
   const cancelRef = useRef<{ value: boolean }>({ value: false });
 
-  const load = (): void => {
+  const load = useCallback((): void => {
     // 前回のリクエストをキャンセル
     cancelRef.current.value = true;
     const cancelled = { value: false };
@@ -104,14 +104,14 @@ export const useAiCodingToolSettings = (
       .finally(() => {
         if (!cancelled.value) setIsLoading(false);
       });
-  };
+  }, [tool]);
 
   useEffect(() => {
     load();
     return () => {
       cancelRef.current.value = true;
     };
-  }, [tool]);
+  }, [load]);
 
   return { settings, isLoading, refresh: load };
 };

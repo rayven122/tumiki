@@ -39,12 +39,15 @@ export const startOtlpReceiver = async (
 
     let body = "";
     let bodySize = 0;
+    // ボディ超過フラグ — end ハンドラで二重レスポンスを防ぐ
+    let bodyExceeded = false;
 
     req.on("data", (chunk: Buffer) => {
       // Buffer.length はバイト数なので MAX_BODY_BYTES と正確に比較できる
       bodySize += chunk.length;
       // ボディサイズ上限を超えたらリクエストを中断
       if (bodySize > MAX_BODY_BYTES) {
+        bodyExceeded = true;
         req.destroy();
         res.writeHead(413, { "Content-Type": "application/json" });
         res.end("{}");
@@ -54,6 +57,8 @@ export const startOtlpReceiver = async (
     });
 
     req.on("end", () => {
+      // ボディ超過で既にレスポンス送信済みの場合は何もしない
+      if (bodyExceeded) return;
       void (async () => {
         try {
           const data: unknown = JSON.parse(body);
