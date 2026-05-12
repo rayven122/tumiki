@@ -4,7 +4,44 @@ import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
-import type { McpServerConfig } from "../types.js";
+import type { McpServerConfig, ResolveHeaders } from "../types.js";
+
+/**
+ * RequestInit["headers"] を Record<string, string> に正規化する
+ */
+const normalizeHeaders = (
+  headers?: RequestInit["headers"],
+): Record<string, string> => {
+  if (!headers) return {};
+  if (headers instanceof Headers) {
+    return Object.fromEntries(headers.entries()) as Record<string, string>;
+  }
+  if (Array.isArray(headers)) {
+    return Object.fromEntries(headers) as Record<string, string>;
+  }
+  return headers as Record<string, string>;
+};
+
+/**
+ * 静的ヘッダーをマージするカスタム fetch を生成する。
+ * resolveHeaders が指定されている場合、リクエスト毎に動的ヘッダーも追加する。
+ */
+const createCustomFetch = (
+  staticHeaders: Record<string, string>,
+  resolveHeaders?: ResolveHeaders,
+): typeof fetch => {
+  return async (
+    input: string | URL | Request,
+    init?: RequestInit,
+  ): Promise<Response> => {
+    const dynamicHeaders = resolveHeaders ? await resolveHeaders() : {};
+    const existingHeaders = normalizeHeaders(init?.headers);
+    return fetch(input, {
+      ...init,
+      headers: { ...existingHeaders, ...staticHeaders, ...dynamicHeaders },
+    });
+  };
+};
 
 const SAFE_ENV_KEYS = [
   "PATH",
@@ -51,36 +88,25 @@ const createClientTransport = (config: McpServerConfig): Transport => {
         env: mergedEnv,
       });
     }
-    case "SSE":
+    case "SSE": {
+      const customFetch = createCustomFetch(
+        config.headers,
+        config.resolveHeaders,
+      );
       return new SSEClientTransport(new URL(config.url), {
-        requestInit: {
-          headers: config.headers,
-        },
-        eventSourceInit: {
-          fetch: (url: string | URL, init?: RequestInit) => {
-            const existingHeaders: Record<string, string> =
-              init?.headers instanceof Headers
-                ? (Object.fromEntries(init.headers.entries()) as Record<
-                    string,
-                    string
-                  >)
-                : Array.isArray(init?.headers)
-                  ? (Object.fromEntries(init.headers) as Record<string, string>)
-                  : ((init?.headers ?? {}) as Record<string, string>);
-
-            return fetch(url, {
-              ...init,
-              headers: { ...existingHeaders, ...config.headers },
-            });
-          },
-        },
+        requestInit: { headers: config.headers },
+        eventSourceInit: { fetch: customFetch },
+        ...(config.resolveHeaders ? { fetch: customFetch } : {}),
       });
-    case "STREAMABLE_HTTP":
+    }
+    case "STREAMABLE_HTTP": {
       return new StreamableHTTPClientTransport(new URL(config.url), {
-        requestInit: {
-          headers: config.headers,
-        },
+        requestInit: { headers: config.headers },
+        ...(config.resolveHeaders
+          ? { fetch: createCustomFetch(config.headers, config.resolveHeaders) }
+          : {}),
       });
+    }
     default: {
       const _exhaustive: never = config;
       throw new Error(

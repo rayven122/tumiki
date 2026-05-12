@@ -7,9 +7,11 @@
  */
 
 import type * as oauth from "oauth4webapi";
+import { z } from "zod";
 import { getDb } from "../../shared/db";
 import * as logger from "../../shared/utils/logger";
 import { encryptToken } from "../../utils/encryption";
+import { decryptCredentials } from "../../utils/credentials";
 import { refreshAccessToken } from "./oauth.token";
 import * as oauthRepository from "./oauth.repository";
 import {
@@ -67,6 +69,75 @@ const loadOAuthClientBundle = async (
       cached.tokenEndpointAuthMethod,
     ),
   };
+};
+
+const credentialsSchema = z.record(z.string(), z.string());
+
+/** 実行中のリフレッシュ Promise を secretId 単位でキャッシュし、同一 secret の並行リフレッシュを防止する */
+const inflightRefreshes = new Map<
+  number,
+  Promise<Record<string, string> | null>
+>();
+
+/**
+ * refreshOAuthTokenIfNeeded の並行リフレッシュ防止ラッパー。
+ * 同一 secretId に対して複数の fetch が同時にリフレッシュを試みた場合、
+ * 最初の呼び出しの結果を全員が共有する。
+ */
+export const refreshOAuthTokenIfNeededOnce = async (
+  secretId: number,
+  serverUrl: string,
+  credentials: Record<string, string>,
+): Promise<Record<string, string> | null> => {
+  const existing = inflightRefreshes.get(secretId);
+  if (existing) return existing;
+
+  const promise = refreshOAuthTokenIfNeeded(
+    secretId,
+    serverUrl,
+    credentials,
+  ).finally(() => inflightRefreshes.delete(secretId));
+
+  inflightRefreshes.set(secretId, promise);
+  return promise;
+};
+
+/**
+ * DB から最新の credentials を読み込み、必要ならリフレッシュし、
+ * Authorization ヘッダーを返す。mcp-core-proxy の resolveHeaders コールバックとして使用する。
+ */
+export const resolveOAuthHeaders = async (
+  secretId: number,
+  serverUrl: string,
+): Promise<Record<string, string>> => {
+  const db = await getDb();
+  const secret = await db.mcpSecret.findUnique({
+    where: { id: secretId },
+    select: { credentials: true },
+  });
+  if (!secret) {
+    logger.warn("McpSecret が見つかりません", { secretId });
+    return {};
+  }
+
+  const plain = await decryptCredentials(secret.credentials);
+  const parsed = credentialsSchema.safeParse(JSON.parse(plain));
+  if (!parsed.success) {
+    logger.warn("credentials の形式が不正です", { secretId });
+    return {};
+  }
+
+  let credentials = parsed.data;
+  const refreshed = await refreshOAuthTokenIfNeededOnce(
+    secretId,
+    serverUrl,
+    credentials,
+  );
+  if (refreshed) credentials = refreshed;
+
+  const accessToken = credentials["access_token"];
+  if (!accessToken) return {};
+  return { Authorization: `Bearer ${accessToken}` };
 };
 
 // secretId 単位でリフレッシュ。リフレッシュ不要・refresh_token 欠如・API失敗等は null を返す。

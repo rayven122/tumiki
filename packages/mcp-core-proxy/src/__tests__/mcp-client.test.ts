@@ -99,6 +99,59 @@ describe("mcp-client helper", () => {
     );
   });
 
+  test("SSE で resolveHeaders 指定時に fetch オプションが渡される", () => {
+    const resolveHeaders = vi
+      .fn()
+      .mockResolvedValue({ Authorization: "Bearer refreshed" });
+    const config = createConfig({
+      transportType: "SSE",
+      url: "https://example.com/events",
+      headers: { "X-Static": "value" },
+      resolveHeaders,
+    });
+
+    createMcpClient(config);
+
+    const sseOpts = MockSSEClientTransport.mock.calls[0]?.[1];
+    expect(sseOpts).toMatchObject({
+      requestInit: { headers: { "X-Static": "value" } },
+    });
+    expect(sseOpts).toHaveProperty("fetch");
+  });
+
+  test("STREAMABLE_HTTP で resolveHeaders 指定時に fetch オプションが渡される", () => {
+    const resolveHeaders = vi
+      .fn()
+      .mockResolvedValue({ Authorization: "Bearer refreshed" });
+    const config = createConfig({
+      transportType: "STREAMABLE_HTTP",
+      url: "https://example.com/stream",
+      headers: { "X-Static": "value" },
+      resolveHeaders,
+    });
+
+    createMcpClient(config);
+
+    const httpOpts = MockStreamableHTTPClientTransport.mock.calls[0]?.[1];
+    expect(httpOpts).toMatchObject({
+      requestInit: { headers: { "X-Static": "value" } },
+    });
+    expect(httpOpts).toHaveProperty("fetch");
+  });
+
+  test("SSE で resolveHeaders 未指定時は fetch オプションが渡されない", () => {
+    const config = createConfig({
+      transportType: "SSE",
+      url: "https://example.com/events",
+      headers: { Authorization: "Bearer static" },
+    });
+
+    createMcpClient(config);
+
+    const callArgs = MockSSEClientTransport.mock.calls[0]?.[1];
+    expect(callArgs).not.toHaveProperty("fetch");
+  });
+
   test("connectMcpClient がクライアントを接続する", async () => {
     const config = createConfig({
       transportType: "SSE",
