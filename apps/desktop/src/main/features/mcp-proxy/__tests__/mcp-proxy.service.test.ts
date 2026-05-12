@@ -148,6 +148,30 @@ describe("mcp-proxy.service", () => {
       );
     });
 
+    test("カタログ由来（catalogId !== null）の接続はconnSlugのみをnameに使う", async () => {
+      vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([
+        buildConnection({
+          slug: "backlog",
+          catalogId: 1,
+          command: "uvx",
+          args: '["backlog-mcp"]',
+          server: { slug: "backlog" },
+        }),
+      ]);
+
+      const result = await mcpProxyService.getEnabledConfigs();
+
+      expect(result).toStrictEqual([
+        {
+          name: "backlog",
+          transportType: "STDIO",
+          command: "uvx",
+          args: ["backlog-mcp"],
+          env: {},
+        },
+      ]);
+    });
+
     test("平文credentials（旧データとの互換性）もそのまま扱える", async () => {
       vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([
         buildConnection({

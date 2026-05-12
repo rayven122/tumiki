@@ -134,7 +134,10 @@ const buildConfigFromConnection = async (
   oauthCache: Map<number, Record<string, string>> = new Map(),
 ): Promise<{ config: McpServerConfig; meta: McpConnectionMeta } | null> => {
   const connLabel = `${conn.server.slug}/${conn.slug}`;
-  const name = `${conn.server.slug}-${conn.slug}`;
+  // カタログ由来（catalogId !== null）はサーバーslugを省いて接続slugのみをprefixにする。
+  // カスタムMCPは serverSlug-connSlug の形式を維持する。
+  const name =
+    conn.catalogId !== null ? conn.slug : `${conn.server.slug}-${conn.slug}`;
 
   const plainCredentials = await decryptCredentials(conn.secret.credentials);
   let credentials = parseAndValidate(
