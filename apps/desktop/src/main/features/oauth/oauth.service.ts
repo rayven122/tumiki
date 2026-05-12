@@ -20,6 +20,7 @@ import { getDb } from "../../shared/db";
 import { resolveByProfile } from "../../shared/profile-dispatch";
 import * as logger from "../../shared/utils/logger";
 import { AUTH_SESSION_TIMEOUT_MS } from "../../../shared/types";
+import { encryptToken } from "../../utils/encryption";
 import {
   discoverOAuthMetadata,
   DiscoveryError,
@@ -31,6 +32,7 @@ import { exchangeCodeForToken } from "./oauth.token";
 import { parseOAuthCallback } from "./oauth.protocol";
 import { startLoopbackServer, type LoopbackServer } from "./oauth.loopback";
 import * as oauthRepository from "./oauth.repository";
+import * as mcpRepository from "../mcp-server-list/mcp.repository";
 import {
   createFromCatalog,
   createFromManagerCatalog,
@@ -41,6 +43,8 @@ import type {
   StartOAuthInput,
   OAuthResult,
   McpOAuthTokenData,
+  ReauthenticateInput,
+  ReauthenticateResult,
 } from "./oauth.types";
 
 /** 手動入力済みOAuthクライアント情報 */
@@ -52,6 +56,9 @@ export type ManualOAuthClient = {
 /** MCP OAuthマネージャー型 */
 export type McpOAuthManager = {
   startAuthFlow: (input: StartOAuthInput) => Promise<OAuthResult>;
+  reauthenticateConnection: (
+    input: ReauthenticateInput,
+  ) => Promise<ReauthenticateResult>;
   cancelAuthFlow: () => void;
   getActiveSession: () => McpOAuthSession | null;
   findManualOAuthClient: (
@@ -86,23 +93,25 @@ export const oauthClientFromParts = (
   token_endpoint_auth_method: tokenEndpointAuthMethod,
 });
 
+// キャッシュされたOAuthクライアント情報をロードする。
+// 新規登録フロー（allowNonDcr=false）では DCR キャッシュのみ流用し、手動入力は再入力させる。
+// 再認証フロー（allowNonDcr=true）では DB に保存された手動入力クライアントもそのまま再利用する。
 const loadCachedOAuthClientBundle = async (
   db: Awaited<ReturnType<typeof getDb>>,
   serverUrl: string,
+  allowNonDcr = false,
 ): Promise<OAuthClientBundle | null> => {
   const cached = await oauthRepository.findByServerUrl(db, serverUrl);
   if (!cached) return null;
 
-  if (!cached.isDcr) {
+  if (!cached.isDcr && !allowNonDcr) {
     logger.info("Skipping non-DCR cached client, requires manual input", {
       serverUrl,
     });
     return null;
   }
 
-  logger.info("DCR cache hit, reusing OAuth client", { serverUrl });
   const parsed: unknown = JSON.parse(cached.authServerMetadata);
-
   if (!isCacheableAuthorizationServerMetadata(parsed)) {
     logger.warn("Cached OAuth metadata is corrupted, re-discovering", {
       serverUrl,
@@ -110,6 +119,11 @@ const loadCachedOAuthClientBundle = async (
     await oauthRepository.deleteByServerUrl(db, serverUrl);
     return null;
   }
+
+  logger.info("Reusing cached OAuth client", {
+    serverUrl,
+    isDcr: cached.isDcr,
+  });
 
   return {
     metadata: parsed,
@@ -446,6 +460,132 @@ export const createMcpOAuthManager = (): McpOAuthManager => {
     }
   };
 
+  // 既存コネクションの OAuth トークンを再取得して McpSecret.credentials を上書きする。
+  // 新規登録フローと異なり McpServer/McpConnection は作成せず、共有 secret を更新するだけ。
+  const reauthenticateConnection = async (
+    input: ReauthenticateInput,
+  ): Promise<ReauthenticateResult> => {
+    if (currentSession || currentLoopback) {
+      logger.info(
+        "Existing MCP OAuth session found, discarding and restarting",
+      );
+      await cleanupSession();
+    }
+
+    const db = await getDb();
+    const connection = await mcpRepository.findConnectionByIdWithServer(
+      db,
+      input.connectionId,
+    );
+    if (!connection) {
+      throw new Error("対象のMCP接続が見つかりません");
+    }
+    if (connection.authType !== "OAUTH") {
+      throw new Error("この接続はOAuth認証ではありません");
+    }
+    if (!connection.url) {
+      throw new Error("OAuth認証にはサーバーURLが必要です");
+    }
+
+    const serverUrl = connection.url;
+    const { secretId } = connection;
+
+    let loopback: LoopbackServer | null = null;
+    try {
+      loopback = await startLoopbackServer();
+      currentLoopback = loopback;
+      const redirectUri = loopback.redirectUri;
+
+      // 再認証ではキャッシュ済みクライアント（DCR・手動入力どちらも）を再利用する。
+      // 新規登録時に保存した clientId/Secret が DB にあるため discovery/DCR をやり直す必要はない。
+      const cachedBundle = await loadCachedOAuthClientBundle(
+        db,
+        serverUrl,
+        true,
+      );
+      const bundle =
+        cachedBundle ??
+        (await discoverPersistAndBundle(db, serverUrl, redirectUri));
+      const { metadata, client } = bundle;
+
+      const codeVerifier = generateCodeVerifier();
+      const codeChallenge = generateCodeChallenge(codeVerifier);
+      const state = generateState();
+      const scopes = metadata.scopes_supported ?? [];
+
+      const authUrl = generateAuthorizationUrl(metadata, client, {
+        redirectUri,
+        scopes,
+        state,
+        codeChallenge,
+      });
+
+      const session: McpOAuthSession = {
+        state,
+        codeVerifier,
+        serverUrl,
+        managerCatalog: null,
+        catalogName: connection.name,
+        description: "",
+        transportType: connection.transportType,
+        command: connection.command,
+        args: connection.args,
+        url: serverUrl,
+        redirectUri,
+        createdAt: new Date(),
+      };
+      currentSession = session;
+
+      await shell.openExternal(authUrl.toString());
+      logger.info("MCP OAuth reauthentication started", {
+        connectionId: input.connectionId,
+        serverUrl,
+        redirectUri,
+      });
+
+      const callbackUrl = await loopback.waitForCallback(
+        AUTH_SESSION_TIMEOUT_MS,
+      );
+
+      const { state: receivedState } = parseOAuthCallback(callbackUrl);
+      validateCallbackSession(session, receivedState);
+
+      const tokenData = await exchangeCodeForToken(
+        metadata,
+        client,
+        new URL(callbackUrl),
+        redirectUri,
+        session.codeVerifier,
+        session.state,
+      );
+
+      const credentials = credentialsPayloadFromTokenData(tokenData);
+      const encrypted = await encryptToken(JSON.stringify(credentials));
+      await oauthRepository.updateSecretCredentials(db, secretId, encrypted);
+
+      logger.info("MCP OAuth reauthentication completed", {
+        connectionId: input.connectionId,
+        serverId: connection.serverId,
+        serverUrl,
+      });
+
+      return {
+        connectionId: input.connectionId,
+        serverId: connection.serverId,
+        serverName: connection.server.name,
+        connectionName: connection.name,
+      };
+    } catch (error) {
+      logger.error("MCP OAuth reauthentication failed", {
+        connectionId: input.connectionId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    } finally {
+      await cleanupSession();
+    }
+  };
+
   const cancelAuthFlow = (): void => {
     if (currentSession || currentLoopback) {
       logger.info("MCP OAuth flow cancelled");
@@ -464,6 +604,7 @@ export const createMcpOAuthManager = (): McpOAuthManager => {
 
   return {
     startAuthFlow,
+    reauthenticateConnection,
     cancelAuthFlow,
     getActiveSession,
     findManualOAuthClient,
