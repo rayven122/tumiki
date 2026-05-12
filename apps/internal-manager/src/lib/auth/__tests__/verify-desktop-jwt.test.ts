@@ -1,9 +1,18 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { createRemoteJWKSet, jwtVerify } from "jose";
 
-type FindFirstArgs = {
+type FindFirstIdentityArgs = {
   where: { sub: string; provider: "oidc" };
   select: { userId: true };
+};
+type FindFirstUserArgs = {
+  where: { email: string };
+  select: { id: true };
+};
+type UpsertIdentityArgs = {
+  where: { provider_sub: { provider: string; sub: string } };
+  create: { userId: string; provider: string; sub: string };
+  update: Record<string, never>;
 };
 
 const issuer = "https://idp.example.com/realms/tumiki";
@@ -14,8 +23,11 @@ const mockJwks = vi.fn() as unknown as ReturnType<typeof createRemoteJWKSet>;
 const mockCreateRemoteJWKSet = vi.fn<typeof createRemoteJWKSet>();
 const mockJwtVerify = vi.fn<typeof jwtVerify>();
 const mockFetch = vi.fn<typeof fetch>();
-const mockFindFirst =
-  vi.fn<(args: FindFirstArgs) => Promise<{ userId: string } | null>>();
+const mockFindFirstIdentity =
+  vi.fn<(args: FindFirstIdentityArgs) => Promise<{ userId: string } | null>>();
+const mockFindFirstUser =
+  vi.fn<(args: FindFirstUserArgs) => Promise<{ id: string } | null>>();
+const mockUpsertIdentity = vi.fn<(args: UpsertIdentityArgs) => Promise<void>>();
 
 const loadModule = async () => {
   vi.doMock("jose", () => ({
@@ -33,7 +45,11 @@ const loadModule = async () => {
   vi.doMock("@tumiki/internal-db/server", () => ({
     db: {
       externalIdentity: {
-        findFirst: mockFindFirst,
+        findFirst: mockFindFirstIdentity,
+        upsert: mockUpsertIdentity,
+      },
+      user: {
+        findFirst: mockFindFirstUser,
       },
     },
   }));
@@ -63,7 +79,9 @@ beforeEach(() => {
     protectedHeader: { alg: "RS256" },
     key: new Uint8Array(),
   });
-  mockFindFirst.mockResolvedValue({ userId: "user-001" });
+  mockFindFirstIdentity.mockResolvedValue({ userId: "user-001" });
+  mockFindFirstUser.mockResolvedValue(null);
+  mockUpsertIdentity.mockResolvedValue(undefined);
   mockFetch.mockResolvedValue(buildDiscoveryResponse());
 });
 
@@ -150,13 +168,63 @@ describe("verifyDesktopJwt", () => {
     );
   });
 
-  test("ExternalIdentityが見つからない場合はエラーを返す", async () => {
-    mockFindFirst.mockResolvedValueOnce(null);
+  test("ExternalIdentityがなくemailクレームもない場合はエラーを返す", async () => {
+    mockFindFirstIdentity.mockResolvedValueOnce(null);
+    // emailクレームなし（デフォルトのpayload）
     const { verifyDesktopJwt } = await loadModule();
 
     await expect(verifyDesktopJwt("Bearer token-001")).rejects.toThrow(
       "External identity not found",
     );
+    expect(mockUpsertIdentity).not.toHaveBeenCalled();
+  });
+
+  test("SCIMユーザー初回デスクトップログイン: emailでユーザーを検索しExternalIdentityをJIT作成する", async () => {
+    mockFindFirstIdentity.mockResolvedValueOnce(null);
+    mockJwtVerify.mockResolvedValueOnce({
+      payload: {
+        sub: "oidc-sub",
+        aud: desktopClientId,
+        email: "member@example.com",
+      },
+      protectedHeader: { alg: "RS256" },
+      key: new Uint8Array(),
+    });
+    mockFindFirstUser.mockResolvedValueOnce({ id: "user-scim-001" });
+    const { verifyDesktopJwt } = await loadModule();
+
+    const result = await verifyDesktopJwt("Bearer token-001");
+
+    expect(result).toStrictEqual({ sub: "oidc-sub", userId: "user-scim-001" });
+    expect(mockFindFirstUser).toHaveBeenCalledWith({
+      where: { email: "member@example.com" },
+      select: { id: true },
+    });
+    expect(mockUpsertIdentity).toHaveBeenCalledWith({
+      where: { provider_sub: { provider: "oidc", sub: "oidc-sub" } },
+      create: { userId: "user-scim-001", provider: "oidc", sub: "oidc-sub" },
+      update: {},
+    });
+  });
+
+  test("SCIMユーザー初回デスクトップログイン: emailがDBに存在しない場合はエラーを返す", async () => {
+    mockFindFirstIdentity.mockResolvedValueOnce(null);
+    mockJwtVerify.mockResolvedValueOnce({
+      payload: {
+        sub: "oidc-sub",
+        aud: desktopClientId,
+        email: "unknown@example.com",
+      },
+      protectedHeader: { alg: "RS256" },
+      key: new Uint8Array(),
+    });
+    mockFindFirstUser.mockResolvedValueOnce(null);
+    const { verifyDesktopJwt } = await loadModule();
+
+    await expect(verifyDesktopJwt("Bearer token-001")).rejects.toThrow(
+      "External identity not found",
+    );
+    expect(mockUpsertIdentity).not.toHaveBeenCalled();
   });
 
   test("JWKS discoveryをTTL内で再利用する", async () => {
