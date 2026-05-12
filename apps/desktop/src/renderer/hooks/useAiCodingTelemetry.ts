@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type {
   AiCodingTool,
   DailyUsageItem,
@@ -6,8 +6,19 @@ import type {
   TelemetrySummaryItem,
 } from "../../main/types";
 
+type SummaryResult = {
+  data: TelemetrySummaryItem[] | null;
+  isLoading: boolean;
+};
+type DailyUsageResult = { data: DailyUsageItem[] | null; isLoading: boolean };
+type ToolSettingsResult = {
+  settings: GetToolSettingsResult | null;
+  isLoading: boolean;
+  refresh: () => void;
+};
+
 // 指定期間のサマリーを取得するフック
-export const useAiCodingTelemetrySummary = (days = 7) => {
+export const useAiCodingTelemetrySummary = (days = 7): SummaryResult => {
   const [data, setData] = useState<TelemetrySummaryItem[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -37,7 +48,7 @@ export const useAiCodingTelemetrySummary = (days = 7) => {
 };
 
 // 指定期間の日別使用量を取得するフック
-export const useAiCodingTelemetryDailyUsage = (days = 30) => {
+export const useAiCodingTelemetryDailyUsage = (days = 30): DailyUsageResult => {
   const [data, setData] = useState<DailyUsageItem[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -67,11 +78,21 @@ export const useAiCodingTelemetryDailyUsage = (days = 30) => {
 };
 
 // ツールのテレメトリ設定を取得するフック（refresh 関数付き）
-export const useAiCodingToolSettings = (tool: AiCodingTool) => {
+export const useAiCodingToolSettings = (
+  tool: AiCodingTool,
+): ToolSettingsResult => {
   const [settings, setSettings] = useState<GetToolSettingsResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // 進行中リクエストのキャンセルトークン。ref で保持することで refresh でも前回分を無効化できる
+  const cancelRef = useRef<{ value: boolean }>({ value: false });
 
-  const load = (cancelled: { value: boolean }): void => {
+  const load = (): void => {
+    // 前回のリクエストをキャンセル
+    cancelRef.current.value = true;
+    const cancelled = { value: false };
+    cancelRef.current = cancelled;
+
+    setIsLoading(true);
     window.electronAPI.aiCodingTelemetry
       .getToolSettings(tool)
       .then((result) => {
@@ -86,24 +107,17 @@ export const useAiCodingToolSettings = (tool: AiCodingTool) => {
   };
 
   useEffect(() => {
-    const cancelled = { value: false };
-    setIsLoading(true);
-    load(cancelled);
+    load();
     return () => {
-      cancelled.value = true;
+      cancelRef.current.value = true;
     };
   }, [tool]);
 
-  const refresh = (): void => {
-    const cancelled = { value: false };
-    load(cancelled);
-  };
-
-  return { settings, isLoading, refresh };
+  return { settings, isLoading, refresh: load };
 };
 
 // OTLP レシーバーのポート番号を取得するフック
-export const useOtlpReceiverPort = () => {
+export const useOtlpReceiverPort = (): number => {
   const [port, setPort] = useState<number>(0);
 
   useEffect(() => {

@@ -337,10 +337,15 @@ model AiCodingMetric {
 /// AI コーディングツールのトレース（Claude Code / Codex CLI）
 model AiCodingTrace {
   id           String   @id @default(cuid())
+  /// ツール識別子（"claude-code" | "codex"）
   tool         String
+  /// OTLP トレース ID
   traceId      String
+  /// スパン名（例: "llm.call"）
   spanName     String
+  /// スパンの所要時間（ミリ秒）
   durationMs   Int
+  /// 追加属性（JSON 文字列）
   attributes   String?
   startedAt    DateTime @default(now())
 

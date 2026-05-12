@@ -617,10 +617,11 @@ if (isMcpProxyMode) {
       otlpHttpServer = server;
       setReceiverPort(otlpPort);
       // 実際にバインドできたポートを保存（フォールバック後も更新する）
+      const currentTelemetry = appStore.get("aiCodingTelemetry");
       appStore.set("aiCodingTelemetry", {
-        ...appStore.get("aiCodingTelemetry"),
+        ...currentTelemetry,
         receiverPort: otlpPort,
-        tools: appStore.get("aiCodingTelemetry")?.tools ?? {},
+        tools: currentTelemetry?.tools ?? {},
       });
       setupAiCodingTelemetryIpc();
 

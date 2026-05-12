@@ -1,0 +1,154 @@
+import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
+import http from "node:http";
+
+vi.mock("../../../shared/utils/logger", () => ({
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+
+vi.mock("../ai-coding-telemetry.service", () => ({
+  storeOtlpMetrics: vi.fn().mockResolvedValue(undefined),
+  storeOtlpTraces: vi.fn().mockResolvedValue(undefined),
+}));
+
+import {
+  startOtlpReceiver,
+  OTLP_DEFAULT_PORT,
+} from "../ai-coding-telemetry.receiver";
+import * as service from "../ai-coding-telemetry.service";
+
+// HTTP リクエストのヘルパー
+const sendRequest = (
+  port: number,
+  path: string,
+  body: string,
+  method = "POST",
+): Promise<{ status: number; body: string }> =>
+  new Promise((resolve, reject) => {
+    const req = http.request(
+      { hostname: "127.0.0.1", port, path, method },
+      (res) => {
+        let data = "";
+        res.on("data", (chunk: unknown) => {
+          data += String(chunk);
+        });
+        res.on("end", () =>
+          resolve({ status: res.statusCode ?? 0, body: data }),
+        );
+      },
+    );
+    req.on("error", reject);
+    req.write(body);
+    req.end();
+  });
+
+let testServer: http.Server | null = null;
+let testPort = 0;
+
+beforeEach(async () => {
+  vi.clearAllMocks();
+  const result = await startOtlpReceiver(0); // 0 で OS 割り当て
+  testServer = result.server;
+  testPort = result.port;
+});
+
+afterEach(() => {
+  if (testServer) {
+    testServer.close();
+    testServer = null;
+  }
+});
+
+describe("startOtlpReceiver", () => {
+  test("サーバーが起動してポートが返される", () => {
+    expect(testPort).toBeGreaterThan(0);
+    expect(testServer).toBeDefined();
+  });
+
+  test("OTLP_DEFAULT_PORT は 4318 である", () => {
+    expect(OTLP_DEFAULT_PORT).toStrictEqual(4318);
+  });
+});
+
+describe("HTTP メソッドの検証", () => {
+  test("POST リクエストは 200 を返す", async () => {
+    const res = await sendRequest(testPort, "/v1/metrics", "{}");
+    expect(res.status).toStrictEqual(200);
+  });
+
+  test("GET リクエストは 405 を返す", async () => {
+    const res = await sendRequest(testPort, "/v1/metrics", "", "GET");
+    expect(res.status).toStrictEqual(405);
+    expect(service.storeOtlpMetrics).not.toHaveBeenCalled();
+  });
+
+  test("PUT リクエストは 405 を返す", async () => {
+    const res = await sendRequest(testPort, "/v1/metrics", "{}", "PUT");
+    expect(res.status).toStrictEqual(405);
+  });
+});
+
+describe("エンドポイントルーティング", () => {
+  test("/v1/metrics は storeOtlpMetrics を呼び出す", async () => {
+    const payload = JSON.stringify({ resourceMetrics: [] });
+    await sendRequest(testPort, "/v1/metrics", payload);
+    expect(service.storeOtlpMetrics).toHaveBeenCalledOnce();
+    expect(service.storeOtlpTraces).not.toHaveBeenCalled();
+  });
+
+  test("/v1/traces は storeOtlpTraces を呼び出す", async () => {
+    const payload = JSON.stringify({ resourceSpans: [] });
+    await sendRequest(testPort, "/v1/traces", payload);
+    expect(service.storeOtlpTraces).toHaveBeenCalledOnce();
+    expect(service.storeOtlpMetrics).not.toHaveBeenCalled();
+  });
+
+  test("未知のパスは 200 を返すがサービスを呼ばない", async () => {
+    const res = await sendRequest(testPort, "/unknown", "{}");
+    expect(res.status).toStrictEqual(200);
+    expect(service.storeOtlpMetrics).not.toHaveBeenCalled();
+    expect(service.storeOtlpTraces).not.toHaveBeenCalled();
+  });
+});
+
+describe("ボディサイズ制限", () => {
+  test("10MB 以下のボディは正常に処理される", async () => {
+    const smallBody = JSON.stringify({ resourceMetrics: [] });
+    const res = await sendRequest(testPort, "/v1/metrics", smallBody);
+    expect(res.status).toStrictEqual(200);
+  });
+
+  test("JSON パース失敗時はエラーログを出力して 200 を返す", async () => {
+    const res = await sendRequest(testPort, "/v1/metrics", "invalid json");
+    expect(res.status).toStrictEqual(200);
+    // エラーが発生してもサービスを呼び出さない
+    expect(service.storeOtlpMetrics).not.toHaveBeenCalled();
+  });
+});
+
+describe("レスポンス形式", () => {
+  test("レスポンスボディは {} である", async () => {
+    const res = await sendRequest(testPort, "/v1/metrics", "{}");
+    expect(res.body).toStrictEqual("{}");
+  });
+
+  test("エラー時のレスポンスボディも {} である", async () => {
+    const res = await sendRequest(testPort, "/v1/metrics", "invalid json");
+    expect(res.body).toStrictEqual("{}");
+  });
+});
+
+describe("ポートフォールバック", () => {
+  test("preferredPort が使用中でも OS 割り当てポートで起動する", async () => {
+    // 既に testPort が使用中
+    const result2 = await startOtlpReceiver(testPort);
+    try {
+      expect(result2.port).toBeGreaterThan(0);
+      // フォールバックして別のポートが割り当てられる
+      expect(result2.port).not.toStrictEqual(testPort);
+    } finally {
+      result2.server.close();
+    }
+  });
+});

@@ -5,6 +5,9 @@ import * as logger from "../../shared/utils/logger";
 // OTLP HTTP のデフォルトポート
 export const OTLP_DEFAULT_PORT = 4318;
 
+// ボディサイズ上限（10MB）— OTLPペイロードがこれを超えることはほぼないが念のため
+const MAX_BODY_BYTES = 10 * 1024 * 1024;
+
 // 指定ポートでリッスンを試みる。失敗（EADDRINUSE）時は reject する
 const tryListen = (server: http.Server, port: number): Promise<number> =>
   new Promise<number>((resolve, reject) => {
@@ -22,21 +25,34 @@ const tryListen = (server: http.Server, port: number): Promise<number> =>
     server.listen(port, "127.0.0.1");
   });
 
-/**
- * OTLP/HTTP レシーバーを起動する。
- *
- * preferredPort（前回起動ポートまたはデフォルト）でのバインドを優先する。
- * そのポートが競合している場合はポート 0（OS 割り当て）にフォールバックする。
- * 呼び出し元は返却された port を electron-store に永続化し、次回起動時に渡すこと。
- */
+// preferredPort を優先してバインド。競合時は OS 割り当てにフォールバック。返却ポートを electron-store に保存すること
 export const startOtlpReceiver = async (
   preferredPort: number = OTLP_DEFAULT_PORT,
 ): Promise<{ server: http.Server; port: number }> => {
   const server = http.createServer((req, res) => {
+    // POST 以外は即 405 を返す
+    if (req.method !== "POST") {
+      res.writeHead(405, { "Content-Type": "application/json" });
+      res.end("{}");
+      return;
+    }
+
     let body = "";
+    let bodySize = 0;
+
     req.on("data", (chunk: unknown) => {
-      body += String(chunk);
+      const str = String(chunk);
+      bodySize += str.length;
+      // ボディサイズ上限を超えたらリクエストを中断
+      if (bodySize > MAX_BODY_BYTES) {
+        req.destroy();
+        res.writeHead(413, { "Content-Type": "application/json" });
+        res.end("{}");
+        return;
+      }
+      body += str;
     });
+
     req.on("end", () => {
       void (async () => {
         try {
