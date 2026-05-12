@@ -1,6 +1,14 @@
 generator client {
   provider = "prisma-client-js"
   output   = "../prisma/generated/client"
+  // ビルドホストのアーキにかかわらず、配布対象 OS/arch のクエリエンジンを
+  // すべて同梱する。デフォルト (native のみ) だと CI ホスト上の単一エンジン
+  // しか入らず、`pnpm db:generate` を arm64 Mac で実行 → x64 Mac 向け DMG
+  // にも arm64 dylib が混入 → Intel Mac で起動失敗、といった事故が起きる。
+  // - native: ホスト用（重複しても Prisma が dedupe）
+  // - darwin / darwin-arm64: Intel / Apple Silicon Mac
+  // - windows: Windows x64（windows-arm64 は Prisma 未対応のため当面非サポート）
+  binaryTargets = ["native", "darwin", "darwin-arm64", "windows"]
 }
 
 generator markdown {
