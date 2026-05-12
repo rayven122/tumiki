@@ -429,9 +429,11 @@ export const ToolDetail = (): JSX.Element => {
 
   const badge = serverStatusBadge[server.serverStatus];
   const primaryConnection = server.connections[0];
-  // 接続のカタログからアイコンを取得（最初に見つかったものを使用）
-  const serverIcon = server.connections.find((c) => c.catalog?.iconPath)
-    ?.catalog?.iconPath;
+  // カタログアイコン優先、なければカスタムMCPのfavicon URLを使用
+  const serverIcon =
+    server.connections.find((c) => c.catalog?.iconPath)?.catalog?.iconPath ??
+    server.connections.find((c) => c.iconPath)?.iconPath ??
+    null;
 
   // 全接続からツールを集約（実データ）
   const allTools: DisplayTool[] = server.connections.flatMap((conn) =>

@@ -32,6 +32,7 @@ export const getServerDetail = async (
       authType: conn.authType,
       isEnabled: conn.isEnabled,
       catalogId: conn.catalogId,
+      iconPath: conn.iconPath,
       createdAt: conn.createdAt.toISOString(),
       updatedAt: conn.updatedAt.toISOString(),
       catalog: conn.catalog,

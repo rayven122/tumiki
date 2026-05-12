@@ -10,6 +10,7 @@ import {
   SLUG_FALLBACK_PREFIX,
   VIRTUAL_SERVER_MAX_CONNECTIONS,
 } from "../../../shared/mcp.constants";
+import { getFaviconUrlsFromUrl } from "../../../shared/faviconUtils";
 import { encryptToken } from "../../utils/encryption";
 import type {
   CreateFromCatalogInput,
@@ -248,6 +249,8 @@ export const createCustomServer = async (
   const command = input.transportType === "STDIO" ? input.command : null;
   const args = input.transportType === "STDIO" ? (input.args ?? "[]") : "[]";
   const url = input.transportType !== "STDIO" ? input.url : null;
+  // URLがある場合のみfavicon URLを生成（STDIOはURLなしのためnull）
+  const iconPath = url ? (getFaviconUrlsFromUrl(url, 32)[0] ?? null) : null;
 
   const tools = await mcpProxyService.fetchToolsForConnectionInput({
     name: slug,
@@ -282,6 +285,7 @@ export const createCustomServer = async (
       authType: input.authType,
       serverId: server.id,
       catalogId: null,
+      iconPath,
     });
     if (tools.length > 0) {
       await mcpRepository.createTools(tx, toToolSeeds(tools, connection.id));
