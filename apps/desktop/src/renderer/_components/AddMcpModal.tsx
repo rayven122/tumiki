@@ -257,7 +257,7 @@ export const AddMcpModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-8">
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-gray-200 bg-white p-8 dark:border-white/[.08] dark:bg-zinc-900">
         {/* タイトル + 閉じるボタン */}
         <div className="mb-1 flex items-start justify-between">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -266,7 +266,7 @@ export const AddMcpModal = ({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-gray-500 dark:text-zinc-500 transition hover:opacity-70"
+            className="rounded-md p-1 text-gray-500 transition hover:opacity-70 dark:text-zinc-500"
           >
             <X size={20} />
           </button>
@@ -287,7 +287,7 @@ export const AddMcpModal = ({
             value={serverName}
             onChange={(e) => setServerName(e.target.value)}
             placeholder="例: My Custom MCP Server"
-            className="w-full rounded-lg border border-gray-200 dark:border-white/[.08] bg-black/[.02] dark:bg-white/[.03] px-4 py-3 text-sm text-gray-900 dark:text-white outline-none placeholder:text-gray-400 dark:text-zinc-600"
+            className="w-full rounded-lg border border-gray-200 bg-black/[.02] px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white dark:text-zinc-600"
           />
           <p className="mt-1.5 text-xs text-gray-500 dark:text-zinc-500">
             表示されるサーバー名を設定できます（空白や大文字を含むことができます）
@@ -301,8 +301,10 @@ export const AddMcpModal = ({
           onMouseLeave={() => setShowSlugInfo(false)}
         >
           <div
-            className={`flex w-full items-center gap-1.5 rounded-lg border border-gray-100 dark:border-white/[.03] px-4 py-3 ${
-              showSlugInfo ? "bg-black/[.06] dark:bg-white/[.08]" : "bg-[#e8eaed] dark:bg-[#0a0a0a]"
+            className={`flex w-full items-center gap-1.5 rounded-lg border border-gray-100 px-4 py-3 dark:border-white/[.03] ${
+              showSlugInfo
+                ? "bg-black/[.06] dark:bg-white/[.08]"
+                : "bg-[#e8eaed] dark:bg-[#0a0a0a]"
             }`}
           >
             <span className="text-xs font-medium text-gray-500 dark:text-zinc-500">
@@ -313,10 +315,13 @@ export const AddMcpModal = ({
                 ? `${FALLBACK_SLUG_PLACEHOLDER}（自動生成）`
                 : slug}
             </span>
-            <Info size={14} className="ml-auto text-gray-400 dark:text-zinc-600" />
+            <Info
+              size={14}
+              className="ml-auto text-gray-400 dark:text-zinc-600"
+            />
           </div>
           <div
-            className={`pointer-events-none absolute bottom-full left-0 z-10 mb-2 w-80 rounded-lg border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 px-4 py-3 text-xs shadow-lg transition-all duration-150 ${
+            className={`pointer-events-none absolute bottom-full left-0 z-10 mb-2 w-80 rounded-lg border border-gray-200 bg-white px-4 py-3 text-xs shadow-lg transition-all duration-150 dark:border-white/[.08] dark:bg-zinc-900 ${
               showSlugInfo
                 ? "translate-y-0 opacity-100"
                 : "translate-y-1 opacity-0"
@@ -353,7 +358,7 @@ export const AddMcpModal = ({
               value={directoryPath}
               onChange={(e) => setDirectoryPath(e.target.value)}
               placeholder="/home/user/documents"
-              className="w-full rounded-lg border border-gray-200 dark:border-white/[.08] bg-black/[.02] dark:bg-white/[.03] px-4 py-3 text-sm text-gray-900 dark:text-white outline-none"
+              className="w-full rounded-lg border border-gray-200 bg-black/[.02] px-4 py-3 text-sm text-gray-900 outline-none dark:border-white/[.08] dark:bg-white/[.03] dark:text-white"
             />
             <p className="mt-1.5 text-xs text-gray-500 dark:text-zinc-500">
               MCPサーバーがアクセスできるディレクトリのパスを指定してください
@@ -372,7 +377,7 @@ export const AddMcpModal = ({
               value={customUrl}
               onChange={(e) => setCustomUrl(e.target.value)}
               placeholder="https://app.getoutline.com/mcp"
-              className="w-full rounded-lg border border-gray-200 dark:border-white/[.08] bg-black/[.02] dark:bg-white/[.03] px-4 py-3 text-sm text-gray-900 dark:text-white outline-none"
+              className="w-full rounded-lg border border-gray-200 bg-black/[.02] px-4 py-3 text-sm text-gray-900 outline-none dark:border-white/[.08] dark:bg-white/[.03] dark:text-white"
             />
             <p className="mt-1.5 text-xs text-gray-500 dark:text-zinc-500">
               セルフホストの場合はURLを変更してください（例:
@@ -387,7 +392,7 @@ export const AddMcpModal = ({
             <label className="mb-2 block text-sm font-medium text-gray-900 dark:text-white">
               認証タイプ
             </label>
-            <div className="rounded-lg border border-gray-200 dark:border-white/[.08] bg-[#e8eaed] dark:bg-[#0a0a0a] px-4 py-3 text-sm text-gray-600 dark:text-zinc-400">
+            <div className="rounded-lg border border-gray-200 bg-[#e8eaed] px-4 py-3 text-sm text-gray-600 dark:border-white/[.08] dark:bg-[#0a0a0a] dark:text-zinc-400">
               {AUTH_TYPE_LABEL[catalog.authType]}
             </div>
           </div>
@@ -395,7 +400,7 @@ export const AddMcpModal = ({
             <label className="mb-2 block text-sm font-medium text-gray-900 dark:text-white">
               通信方式
             </label>
-            <div className="rounded-lg border border-gray-200 dark:border-white/[.08] bg-[#e8eaed] dark:bg-[#0a0a0a] px-4 py-3 text-sm text-gray-600 dark:text-zinc-400">
+            <div className="rounded-lg border border-gray-200 bg-[#e8eaed] px-4 py-3 text-sm text-gray-600 dark:border-white/[.08] dark:bg-[#0a0a0a] dark:text-zinc-400">
               {TRANSPORT_LABEL[catalog.transportType]}
             </div>
           </div>
@@ -407,7 +412,7 @@ export const AddMcpModal = ({
             <button
               type="button"
               onClick={() => setShowOAuthSettings((prev) => !prev)}
-              className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-gray-900 dark:text-white transition hover:bg-black/[.02] dark:bg-white/[.04]"
+              className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-gray-900 transition hover:bg-black/[.02] dark:bg-white/[.04] dark:text-white"
               aria-expanded={showOAuthSettings}
             >
               <span>OAuthクライアント設定</span>
@@ -417,7 +422,7 @@ export const AddMcpModal = ({
               />
             </button>
             {showOAuthSettings && (
-              <div className="space-y-4 border-t border-t-gray-100 dark:border-t-white/[.03] px-4 py-4">
+              <div className="space-y-4 border-t border-t-gray-100 px-4 py-4 dark:border-t-white/[.03]">
                 {needsManualOAuthClient && (
                   <>
                     <p className="text-xs text-gray-500 dark:text-zinc-500">
@@ -436,7 +441,7 @@ export const AddMcpModal = ({
                     value={oauthClientId}
                     onChange={(e) => setOauthClientId(e.target.value)}
                     placeholder="Client IDを入力..."
-                    className="w-full rounded-lg border border-gray-200 dark:border-white/[.08] bg-black/[.02] dark:bg-white/[.03] px-4 py-3 text-sm text-gray-900 dark:text-white outline-none placeholder:text-gray-400 dark:text-zinc-600"
+                    className="w-full rounded-lg border border-gray-200 bg-black/[.02] px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white dark:text-zinc-600"
                   />
                 </div>
                 <div>
@@ -449,7 +454,7 @@ export const AddMcpModal = ({
                     value={oauthClientSecret}
                     onChange={(e) => setOauthClientSecret(e.target.value)}
                     placeholder="Client Secretを入力（任意）..."
-                    className="w-full rounded-lg border border-gray-200 dark:border-white/[.08] bg-black/[.02] dark:bg-white/[.03] px-4 py-3 text-sm text-gray-900 dark:text-white outline-none placeholder:text-gray-400 dark:text-zinc-600"
+                    className="w-full rounded-lg border border-gray-200 bg-black/[.02] px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white dark:text-zinc-600"
                   />
                 </div>
               </div>
@@ -476,7 +481,7 @@ export const AddMcpModal = ({
                     }))
                   }
                   placeholder={`${key}を入力...`}
-                  className="w-full rounded-lg border border-gray-200 dark:border-white/[.08] bg-black/[.02] dark:bg-white/[.03] px-4 py-3 text-sm text-gray-900 dark:text-white outline-none placeholder:text-gray-400 dark:text-zinc-600"
+                  className="w-full rounded-lg border border-gray-200 bg-black/[.02] px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white dark:text-zinc-600"
                 />
               </div>
             ))}
@@ -485,7 +490,7 @@ export const AddMcpModal = ({
 
         {/* エラー表示 */}
         {error && (
-          <div className="mb-4 rounded-lg bg-red-500/10 dark:bg-red-400/10 px-4 py-2.5 text-xs text-red-600 dark:text-red-400">
+          <div className="mb-4 rounded-lg bg-red-500/10 px-4 py-2.5 text-xs text-red-600 dark:bg-red-400/10 dark:text-red-400">
             {error}
           </div>
         )}
@@ -503,7 +508,7 @@ export const AddMcpModal = ({
               }
               onClose();
             }}
-            className="rounded-lg border border-gray-200 dark:border-white/[.08] px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-zinc-400 transition hover:opacity-80"
+            className="rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-600 transition hover:opacity-80 dark:border-white/[.08] dark:text-zinc-400"
           >
             キャンセル
           </button>
@@ -511,7 +516,7 @@ export const AddMcpModal = ({
             type="button"
             onClick={() => void handleSubmit()}
             disabled={loading}
-            className="rounded-lg bg-gray-900 dark:bg-white px-6 py-2.5 text-sm font-medium text-white dark:text-zinc-900 transition hover:opacity-90 disabled:opacity-50"
+            className="rounded-lg bg-gray-900 px-6 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50 dark:bg-white dark:text-zinc-900"
           >
             {submitLabel}
           </button>

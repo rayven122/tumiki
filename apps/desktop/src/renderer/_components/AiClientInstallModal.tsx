@@ -69,7 +69,7 @@ export const AiClientInstallModal = ({
       onClick={onClose}
     >
       <div
-        className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-8"
+        className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-gray-200 bg-white p-8 dark:border-white/[.08] dark:bg-zinc-900"
         onClick={(e) => e.stopPropagation()}
       >
         {/* タイトル */}
@@ -82,7 +82,7 @@ export const AiClientInstallModal = ({
                 className="h-9 w-9 rounded-lg"
               />
             ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-black/[.06] dark:bg-white/[.08] text-sm font-bold text-gray-500 dark:text-zinc-500">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-black/[.06] text-sm font-bold text-gray-500 dark:bg-white/[.08] dark:text-zinc-500">
                 {client.name.charAt(0)}
               </div>
             )}
@@ -98,7 +98,7 @@ export const AiClientInstallModal = ({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-gray-500 dark:text-zinc-500 transition hover:opacity-70"
+            className="rounded-md p-1 text-gray-500 transition hover:opacity-70 dark:text-zinc-500"
             aria-label="閉じる"
           >
             <X size={20} />
@@ -111,7 +111,7 @@ export const AiClientInstallModal = ({
             <Info size={12} className="text-gray-400 dark:text-zinc-600" />
             設定ファイル
           </div>
-          <code className="block rounded-lg border border-gray-100 dark:border-white/[.03] bg-[#e8eaed] dark:bg-[#0a0a0a] px-3 py-2 font-mono text-[11px] break-all text-gray-600 dark:text-zinc-400">
+          <code className="block rounded-lg border border-gray-100 bg-[#e8eaed] px-3 py-2 font-mono text-[11px] break-all text-gray-600 dark:border-white/[.03] dark:bg-[#0a0a0a] dark:text-zinc-400">
             {targetPath}
           </code>
         </div>
@@ -125,13 +125,13 @@ export const AiClientInstallModal = ({
             <button
               type="button"
               onClick={handleCopy}
-              className="flex items-center gap-1 rounded px-2 py-1 text-[10px] text-gray-500 dark:text-zinc-500 transition hover:text-gray-900 dark:text-white"
+              className="flex items-center gap-1 rounded px-2 py-1 text-[10px] text-gray-500 transition hover:text-gray-900 dark:text-white dark:text-zinc-500"
             >
               {copied ? <Check size={12} /> : <Copy size={12} />}
               {copied ? "コピー済み" : "コピー"}
             </button>
           </div>
-          <pre className="max-h-48 overflow-auto rounded-lg border border-gray-100 dark:border-white/[.03] bg-[#e8eaed] dark:bg-[#0a0a0a] p-3 font-mono text-[11px] leading-relaxed text-gray-600 dark:text-zinc-400">
+          <pre className="max-h-48 overflow-auto rounded-lg border border-gray-100 bg-[#e8eaed] p-3 font-mono text-[11px] leading-relaxed text-gray-600 dark:border-white/[.03] dark:bg-[#0a0a0a] dark:text-zinc-400">
             {configSnippet}
           </pre>
         </div>
@@ -144,14 +144,14 @@ export const AiClientInstallModal = ({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-gray-200 dark:border-white/[.08] px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-zinc-400 transition hover:opacity-80"
+            className="rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-600 transition hover:opacity-80 dark:border-white/[.08] dark:text-zinc-400"
           >
             キャンセル
           </button>
           <button
             type="button"
             onClick={handleInstall}
-            className="rounded-lg bg-gray-900 dark:bg-white px-6 py-2.5 text-sm font-medium text-white dark:text-zinc-900 transition hover:opacity-90"
+            className="rounded-lg bg-gray-900 px-6 py-2.5 text-sm font-medium text-white transition hover:opacity-90 dark:bg-white dark:text-zinc-900"
           >
             追加
           </button>

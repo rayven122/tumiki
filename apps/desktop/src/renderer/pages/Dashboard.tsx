@@ -70,7 +70,7 @@ const ChartTooltip = ({
 }): JSX.Element | null => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-lg border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 px-3 py-2 text-xs shadow-xl">
+    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs shadow-xl dark:border-white/[.08] dark:bg-zinc-900">
       <p className="mb-1 text-gray-500 dark:text-zinc-500">{label}</p>
       {payload.map((p) => (
         <p key={p.name} className="text-gray-900 dark:text-white">
@@ -100,7 +100,7 @@ const ConnectorIcon = ({
     );
   }
   return (
-    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-black/[.02] dark:bg-white/[.04] text-[10px] font-semibold text-gray-600 dark:text-zinc-400">
+    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-black/[.02] text-[10px] font-semibold text-gray-600 dark:bg-white/[.04] dark:text-zinc-400">
       {name.charAt(0).toUpperCase() || "?"}
     </div>
   );
@@ -162,7 +162,7 @@ const AiClientsSection = ({
   }));
 
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-5">
+    <div className="rounded-xl border border-gray-200 bg-white p-5 dark:border-white/[.08] dark:bg-zinc-900">
       <span className="mb-3 block text-sm font-medium text-gray-600 dark:text-zinc-400">
         AIクライアント別
       </span>
@@ -213,7 +213,7 @@ const AiClientsSection = ({
                 </span>
               </div>
             ))}
-            <div className="mt-3 flex flex-wrap gap-1.5 border-t border-t-gray-200 dark:border-t-white/[.08] pt-2">
+            <div className="mt-3 flex flex-wrap gap-1.5 border-t border-t-gray-200 pt-2 dark:border-t-white/[.08]">
               {aiClients.map((ai) => {
                 const isActive = activeAi === null || activeAi === ai.name;
                 const logo = getClientLogo(ai.name);
@@ -222,10 +222,10 @@ const AiClientsSection = ({
                     key={ai.name}
                     type="button"
                     onClick={() => onToggleAi(ai.name)}
-                    className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-gray-600 dark:text-zinc-400 transition-colors ${
+                    className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-gray-600 transition-colors dark:text-zinc-400 ${
                       isActive
-                        ? "bg-black/[.06] dark:bg-white/[.08] opacity-100"
-                        : "bg-black/[.02] dark:bg-white/[.04] opacity-50"
+                        ? "bg-black/[.06] opacity-100 dark:bg-white/[.08]"
+                        : "bg-black/[.02] opacity-50 dark:bg-white/[.04]"
                     }`}
                   >
                     {logo ? (
@@ -262,7 +262,7 @@ const RecentLogRow = ({ item }: { item: DashboardLogItem }): JSX.Element => {
 
   return (
     <div
-      className={`grid grid-cols-[70px_80px_120px_1fr_85px_50px] items-center gap-2 border-b border-b-gray-100 dark:border-b-white/[.03] px-5 py-2.5 text-xs transition-colors ${
+      className={`grid grid-cols-[70px_80px_120px_1fr_85px_50px] items-center gap-2 border-b border-b-gray-100 px-5 py-2.5 text-xs transition-colors dark:border-b-white/[.03] ${
         isErrorRow(status) ? "bg-red-500/[0.03]" : ""
       }`}
     >
@@ -345,7 +345,7 @@ export const Dashboard = (): JSX.Element => {
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
           ダッシュボード
         </h2>
-        <div className="flex items-center gap-1 rounded-lg bg-black/[.02] dark:bg-white/[.04] p-0.5">
+        <div className="flex items-center gap-1 rounded-lg bg-black/[.02] p-0.5 dark:bg-white/[.04]">
           {PERIODS.map((p) => (
             <button
               key={p}
@@ -353,7 +353,7 @@ export const Dashboard = (): JSX.Element => {
               onClick={() => setPeriod(p)}
               className={`rounded px-2.5 py-1 text-[11px] transition-colors ${
                 period === p
-                  ? "bg-black/[.06] dark:bg-white/[.08] text-gray-900 dark:text-white"
+                  ? "bg-black/[.06] text-gray-900 dark:bg-white/[.08] dark:text-white"
                   : "bg-transparent text-gray-400 dark:text-zinc-600"
               }`}
             >
@@ -368,14 +368,12 @@ export const Dashboard = (): JSX.Element => {
         {kpiCards.map((card) => (
           <div
             key={card.label}
-            className="rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-4"
+            className="rounded-xl border border-gray-200 bg-white p-4 dark:border-white/[.08] dark:bg-zinc-900"
           >
             <span className="text-xs text-gray-500 dark:text-zinc-500">
               {card.label}
             </span>
-            <div
-              className={`mt-2 text-2xl font-semibold ${card.colorClass}`}
-            >
+            <div className={`mt-2 text-2xl font-semibold ${card.colorClass}`}>
               {card.value}
             </div>
             <div className="mt-0.5 text-[10px] text-gray-500 dark:text-zinc-500">
@@ -386,7 +384,7 @@ export const Dashboard = (): JSX.Element => {
       </div>
 
       {/* コネクタ別アクセス推移 */}
-      <div className="rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-5">
+      <div className="rounded-xl border border-gray-200 bg-white p-5 dark:border-white/[.08] dark:bg-zinc-900">
         <div className="mb-4 flex items-center justify-between">
           <span className="text-sm font-medium text-gray-600 dark:text-zinc-400">
             コネクタ別アクセス推移
@@ -436,12 +434,17 @@ export const Dashboard = (): JSX.Element => {
                 </defs>
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke={theme === "dark" ? "rgba(255,255,255,0.08)" : "#e5e7eb"}
+                  stroke={
+                    theme === "dark" ? "rgba(255,255,255,0.08)" : "#e5e7eb"
+                  }
                   vertical={false}
                 />
                 <XAxis
                   dataKey="time"
-                  tick={{ fill: theme === "dark" ? "#71717a" : "#9ca3af", fontSize: 10 }}
+                  tick={{
+                    fill: theme === "dark" ? "#71717a" : "#9ca3af",
+                    fontSize: 10,
+                  }}
                   axisLine={false}
                   tickLine={false}
                 />
@@ -474,14 +477,14 @@ export const Dashboard = (): JSX.Element => {
         />
 
         {/* 右: コネクタ */}
-        <div className="rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-5">
+        <div className="rounded-xl border border-gray-200 bg-white p-5 dark:border-white/[.08] dark:bg-zinc-900">
           <div className="mb-4 flex items-center justify-between">
             <span className="text-sm font-medium text-gray-600 dark:text-zinc-400">
               コネクタ
             </span>
             <Link
               to="/tools"
-              className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-zinc-500 transition-colors hover:opacity-80"
+              className="flex items-center gap-1 text-[11px] text-gray-500 transition-colors hover:opacity-80 dark:text-zinc-500"
             >
               すべて見る
               <ArrowRight className="h-3 w-3" />
@@ -496,7 +499,7 @@ export const Dashboard = (): JSX.Element => {
               {connectors.map((c) => (
                 <div
                   key={c.connectionId}
-                  className="flex items-center gap-2.5 rounded-lg bg-black/[.02] dark:bg-white/[.04] px-3 py-2"
+                  className="flex items-center gap-2.5 rounded-lg bg-black/[.02] px-3 py-2 dark:bg-white/[.04]"
                 >
                   <ConnectorIcon name={c.name} iconPath={c.iconPath} />
                   <span className="flex-1 truncate text-xs text-gray-600 dark:text-zinc-400">
@@ -521,8 +524,8 @@ export const Dashboard = (): JSX.Element => {
       {/* コネクタログ + お知らせ */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_0.4fr]">
         {/* コネクタログ */}
-        <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900">
-          <div className="flex items-center justify-between border-b border-b-gray-200 dark:border-b-white/[.08] px-5 py-3">
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[.08] dark:bg-zinc-900">
+          <div className="flex items-center justify-between border-b border-b-gray-200 px-5 py-3 dark:border-b-white/[.08]">
             <div className="flex items-center gap-2">
               <Activity className="h-4 w-4 text-gray-500 dark:text-zinc-500" />
               <span className="text-sm font-medium text-gray-900 dark:text-white">
@@ -531,13 +534,13 @@ export const Dashboard = (): JSX.Element => {
             </div>
             <Link
               to="/history"
-              className="flex items-center gap-1 text-[10px] text-gray-500 dark:text-zinc-500 transition-colors hover:opacity-80"
+              className="flex items-center gap-1 text-[10px] text-gray-500 transition-colors hover:opacity-80 dark:text-zinc-500"
             >
               すべて見る
               <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
-          <div className="grid grid-cols-[70px_80px_120px_1fr_85px_50px] items-center gap-2 border-b border-b-gray-200 dark:border-b-white/[.08] px-5 py-2 text-[10px] text-gray-400 dark:text-zinc-600">
+          <div className="grid grid-cols-[70px_80px_120px_1fr_85px_50px] items-center gap-2 border-b border-b-gray-200 px-5 py-2 text-[10px] text-gray-400 dark:border-b-white/[.08] dark:text-zinc-600">
             <span>日時</span>
             <span>AIクライアント</span>
             <span>接続先</span>
@@ -555,7 +558,7 @@ export const Dashboard = (): JSX.Element => {
         </div>
 
         {/* お知らせ */}
-        <div className="rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-5">
+        <div className="rounded-xl border border-gray-200 bg-white p-5 dark:border-white/[.08] dark:bg-zinc-900">
           <div className="mb-4 flex items-center gap-2">
             <Megaphone className="h-4 w-4 text-gray-400 dark:text-zinc-600" />
             <span className="text-sm font-medium text-gray-600 dark:text-zinc-400">
@@ -565,16 +568,20 @@ export const Dashboard = (): JSX.Element => {
           <div className="space-y-3">
             {ANNOUNCEMENTS.map((a) => (
               <div key={a.id} className="flex items-start gap-3 text-xs">
-                <span className="text-gray-400 dark:text-zinc-600">{a.date}</span>
+                <span className="text-gray-400 dark:text-zinc-600">
+                  {a.date}
+                </span>
                 {a.link ? (
                   <Link
                     to={a.link}
-                    className="text-gray-900 dark:text-white transition-colors hover:opacity-80"
+                    className="text-gray-900 transition-colors hover:opacity-80 dark:text-white"
                   >
                     {a.message}
                   </Link>
                 ) : (
-                  <span className="text-gray-500 dark:text-zinc-500">{a.message}</span>
+                  <span className="text-gray-500 dark:text-zinc-500">
+                    {a.message}
+                  </span>
                 )}
               </div>
             ))}

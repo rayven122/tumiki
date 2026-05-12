@@ -15,7 +15,8 @@ const BADGE_VARIANT: Record<BadgeVariant, Pick<BadgeConfig, "className">> = {
       "bg-amber-500/10 text-amber-600 dark:bg-amber-400/10 dark:text-amber-400",
   },
   error: {
-    className: "bg-red-500/10 text-red-600 dark:bg-red-400/10 dark:text-red-400",
+    className:
+      "bg-red-500/10 text-red-600 dark:bg-red-400/10 dark:text-red-400",
   },
 };
 

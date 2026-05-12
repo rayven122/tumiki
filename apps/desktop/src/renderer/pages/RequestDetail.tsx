@@ -10,15 +10,18 @@ const statusConfig: Record<
   { className: string; label: string }
 > = {
   pending: {
-    className: "bg-amber-500/10 text-amber-600 dark:bg-amber-400/10 dark:text-amber-400",
+    className:
+      "bg-amber-500/10 text-amber-600 dark:bg-amber-400/10 dark:text-amber-400",
     label: "審査中",
   },
   approved: {
-    className: "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/10 dark:text-emerald-400",
+    className:
+      "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/10 dark:text-emerald-400",
     label: "承認済み",
   },
   rejected: {
-    className: "bg-red-500/10 text-red-600 dark:bg-red-400/10 dark:text-red-400",
+    className:
+      "bg-red-500/10 text-red-600 dark:bg-red-400/10 dark:text-red-400",
     label: "却下",
   },
 };
@@ -81,11 +84,17 @@ const approverStatusInfo = (
 ): { className: string; label: string } => {
   switch (status) {
     case "approved":
-      return { className: "text-emerald-600 dark:text-emerald-400", label: "承認済み" };
+      return {
+        className: "text-emerald-600 dark:text-emerald-400",
+        label: "承認済み",
+      };
     case "rejected":
       return { className: "text-red-600 dark:text-red-400", label: "却下" };
     case "pending":
-      return { className: "text-amber-600 dark:text-amber-400", label: "審査中" };
+      return {
+        className: "text-amber-600 dark:text-amber-400",
+        label: "審査中",
+      };
     default:
       return { className: "text-gray-400 dark:text-zinc-600", label: "待機中" };
   }
@@ -112,7 +121,7 @@ export const RequestDetail = (): JSX.Element => {
       {/* 戻るリンク */}
       <Link
         to="/requests"
-        className="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-zinc-500 hover:opacity-80"
+        className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:opacity-80 dark:text-zinc-500"
       >
         <ArrowLeft size={14} />
         権限申請
@@ -131,7 +140,7 @@ export const RequestDetail = (): JSX.Element => {
       </div>
 
       {/* 申請内容 */}
-      <div className="space-y-4 rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-6">
+      <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-6 dark:border-white/[.08] dark:bg-zinc-900">
         <h2 className="text-sm font-medium text-gray-900 dark:text-white">
           申請内容
         </h2>
@@ -141,7 +150,9 @@ export const RequestDetail = (): JSX.Element => {
             <p className="text-gray-600 dark:text-zinc-400">{request.date}</p>
           </div>
           <div className="space-y-1">
-            <p className="text-xs text-gray-500 dark:text-zinc-500">対象ツール</p>
+            <p className="text-xs text-gray-500 dark:text-zinc-500">
+              対象ツール
+            </p>
             <p className="text-gray-600 dark:text-zinc-400">{request.tool}</p>
           </div>
           <div className="space-y-1">
@@ -166,13 +177,15 @@ export const RequestDetail = (): JSX.Element => {
           </div>
           <div className="col-span-2 space-y-1">
             <p className="text-xs text-gray-500 dark:text-zinc-500">利用目的</p>
-            <p className="text-gray-600 dark:text-zinc-400">{request.purpose}</p>
+            <p className="text-gray-600 dark:text-zinc-400">
+              {request.purpose}
+            </p>
           </div>
         </div>
       </div>
 
       {/* 承認状況 ステッパー */}
-      <div className="space-y-4 rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-6">
+      <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-6 dark:border-white/[.08] dark:bg-zinc-900">
         <h2 className="text-sm font-medium text-gray-900 dark:text-white">
           承認状況
         </h2>
@@ -219,7 +232,7 @@ export const RequestDetail = (): JSX.Element => {
         </div>
 
         {/* 承認者一覧 */}
-        <div className="mt-2 space-y-2 border-t border-t-gray-200 dark:border-t-white/[.08] pt-4">
+        <div className="mt-2 space-y-2 border-t border-t-gray-200 pt-4 dark:border-t-white/[.08]">
           {request.approvers.map((approver) => {
             const approverStatus = approverStatusInfo(approver.status);
             return (
@@ -253,7 +266,7 @@ export const RequestDetail = (): JSX.Element => {
 
       {/* 却下理由 */}
       {request.rejectReason && (
-        <div className="space-y-2 rounded-xl border border-red-500/10 dark:border-red-400/10 bg-white dark:bg-zinc-900 p-6">
+        <div className="space-y-2 rounded-xl border border-red-500/10 bg-white p-6 dark:border-red-400/10 dark:bg-zinc-900">
           <h2 className="text-sm font-medium text-red-600 dark:text-red-400">
             却下理由
           </h2>
@@ -265,7 +278,7 @@ export const RequestDetail = (): JSX.Element => {
 
       {/* 取り消しボタン（pending時のみ） */}
       {request.status === "pending" && (
-        <button className="rounded-lg border border-red-500/10 dark:border-red-400/10 px-4 py-2 text-sm text-red-600 dark:text-red-400 transition-colors hover:opacity-80">
+        <button className="rounded-lg border border-red-500/10 px-4 py-2 text-sm text-red-600 transition-colors hover:opacity-80 dark:border-red-400/10 dark:text-red-400">
           申請を取り消す
         </button>
       )}

@@ -42,7 +42,7 @@ export const HistoryDetail = (): JSX.Element => {
       <div className="p-6">
         <Link
           to="/history"
-          className="text-sm text-gray-600 dark:text-zinc-400 hover:opacity-80"
+          className="text-sm text-gray-600 hover:opacity-80 dark:text-zinc-400"
         >
           ← 操作履歴
         </Link>
@@ -61,7 +61,7 @@ export const HistoryDetail = (): JSX.Element => {
       {/* 戻るリンク */}
       <Link
         to="/history"
-        className="inline-block text-sm text-gray-600 dark:text-zinc-400 hover:opacity-80"
+        className="inline-block text-sm text-gray-600 hover:opacity-80 dark:text-zinc-400"
       >
         ← 操作履歴
       </Link>
@@ -79,11 +79,13 @@ export const HistoryDetail = (): JSX.Element => {
       </div>
 
       {/* 操作情報カード */}
-      <div className="rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-6">
+      <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-white/[.08] dark:bg-zinc-900">
         <div className="grid grid-cols-2 gap-6">
           <InfoField label="日時" value={formatDateTime(item.createdAt)} />
           <div>
-            <p className="text-xs text-gray-500 dark:text-zinc-500">AIクライアント</p>
+            <p className="text-xs text-gray-500 dark:text-zinc-500">
+              AIクライアント
+            </p>
             <div className="mt-1 flex items-center gap-2">
               <ClientLogo clientName={item.clientName} size="md" />
               <span className="text-sm text-gray-600 dark:text-zinc-400">
@@ -105,7 +107,7 @@ export const HistoryDetail = (): JSX.Element => {
 
       {/* エラー詳細カード（エラー時のみ） */}
       {!item.isSuccess && item.errorSummary && (
-        <div className="rounded-xl border border-red-500/10 dark:border-red-400/10 bg-white dark:bg-zinc-900 p-6">
+        <div className="rounded-xl border border-red-500/10 bg-white p-6 dark:border-red-400/10 dark:bg-zinc-900">
           <h2 className="mb-3 text-sm font-semibold text-red-600 dark:text-red-400">
             エラー詳細
           </h2>
@@ -118,7 +120,9 @@ export const HistoryDetail = (): JSX.Element => {
             </div>
             {item.errorCode !== null && (
               <div>
-                <p className="text-xs text-gray-500 dark:text-zinc-500">エラーコード</p>
+                <p className="text-xs text-gray-500 dark:text-zinc-500">
+                  エラーコード
+                </p>
                 <p className="mt-1 font-mono text-sm text-gray-600 dark:text-zinc-400">
                   {item.errorCode}
                 </p>
@@ -129,7 +133,7 @@ export const HistoryDetail = (): JSX.Element => {
       )}
 
       {/* 備考 */}
-      <div className="rounded-lg bg-black/[.02] dark:bg-white/[.04] px-4 py-3">
+      <div className="rounded-lg bg-black/[.02] px-4 py-3 dark:bg-white/[.04]">
         <p className="text-xs text-gray-500 dark:text-zinc-500">
           セキュリティポリシーにより、リクエスト/レスポンスのペイロードは表示されません。詳細なログは管理者にお問い合わせください。
         </p>

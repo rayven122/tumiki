@@ -112,7 +112,7 @@ export const ConnectorAuto = (): JSX.Element => {
       {/* 戻るリンク */}
       <Link
         to="/tools"
-        className="mb-4 inline-flex items-center gap-1 text-sm text-gray-500 dark:text-zinc-500 hover:opacity-80"
+        className="mb-4 inline-flex items-center gap-1 text-sm text-gray-500 hover:opacity-80 dark:text-zinc-500"
       >
         <ArrowLeft size={14} /> コネクト
       </Link>
@@ -125,7 +125,7 @@ export const ConnectorAuto = (): JSX.Element => {
       </p>
 
       {/* チャットエリア */}
-      <div className="flex-1 overflow-y-auto rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-4">
+      <div className="flex-1 overflow-y-auto rounded-xl border border-gray-200 bg-white p-4 dark:border-white/[.08] dark:bg-zinc-900">
         <div className="space-y-4">
           {messages.map((msg) => (
             <div
@@ -152,7 +152,7 @@ export const ConnectorAuto = (): JSX.Element => {
 
         {/* 生成されたコネクタのプレビュー */}
         {generatedConnector && (
-          <div className="mt-4 rounded-xl border border-emerald-400/20 bg-black/[.02] dark:bg-white/[.04] p-4">
+          <div className="mt-4 rounded-xl border border-emerald-400/20 bg-black/[.02] p-4 dark:bg-white/[.04]">
             <div className="mb-3 flex items-center gap-2">
               <Sparkles
                 size={14}
@@ -175,7 +175,7 @@ export const ConnectorAuto = (): JSX.Element => {
                   return (
                     <div
                       key={t.id}
-                      className="rounded-lg bg-black/[.02] dark:bg-white/[.03] p-3"
+                      className="rounded-lg bg-black/[.02] p-3 dark:bg-white/[.03]"
                     >
                       <div className="mb-2 flex items-center gap-2">
                         <img
@@ -194,7 +194,7 @@ export const ConnectorAuto = (): JSX.Element => {
                         {t.operations.map((op) => (
                           <span
                             key={op}
-                            className="rounded bg-black/[.06] dark:bg-white/[.08] px-1.5 py-0.5 font-mono text-[8px] text-gray-500 dark:text-zinc-500"
+                            className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[8px] text-gray-500 dark:bg-white/[.08] dark:text-zinc-500"
                           >
                             {op}
                           </span>
@@ -225,13 +225,13 @@ export const ConnectorAuto = (): JSX.Element => {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setSaved(true)}
-                  className="flex items-center gap-1.5 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-xs font-medium text-white dark:text-black transition-colors hover:opacity-90"
+                  className="flex items-center gap-1.5 rounded-lg bg-gray-900 px-4 py-2 text-xs font-medium text-white transition-colors hover:opacity-90 dark:bg-white dark:text-black"
                 >
                   <Check size={14} /> 保存する
                 </button>
                 <button
                   onClick={() => setTesting(true)}
-                  className="flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-white/[.08] px-4 py-2 text-xs text-gray-500 dark:text-zinc-500 transition-colors hover:opacity-80"
+                  className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-xs text-gray-500 transition-colors hover:opacity-80 dark:border-white/[.08] dark:text-zinc-500"
                 >
                   <Play size={14} /> 検証する
                 </button>
@@ -262,7 +262,7 @@ export const ConnectorAuto = (): JSX.Element => {
                       <span className="w-14 shrink-0 text-gray-500 dark:text-zinc-500">
                         {p.ai}
                       </span>
-                      <code className="flex-1 truncate rounded bg-black/[.02] dark:bg-white/[.03] px-1.5 py-0.5 font-mono text-gray-600 dark:text-zinc-400">
+                      <code className="flex-1 truncate rounded bg-black/[.02] px-1.5 py-0.5 font-mono text-gray-600 dark:bg-white/[.03] dark:text-zinc-400">
                         {p.path}
                       </code>
                     </div>
@@ -272,7 +272,7 @@ export const ConnectorAuto = (): JSX.Element => {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setTesting(true)}
-                    className="flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-white/[.08] px-4 py-2 text-xs text-gray-500 dark:text-zinc-500 transition-colors hover:opacity-80"
+                    className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-xs text-gray-500 transition-colors hover:opacity-80 dark:border-white/[.08] dark:text-zinc-500"
                   >
                     <Play size={14} /> 検証する
                   </button>
@@ -282,9 +282,12 @@ export const ConnectorAuto = (): JSX.Element => {
 
             {/* 検証パネル */}
             {testing && (
-              <div className="mt-3 rounded-lg border border-gray-200 dark:border-white/[.08] bg-black/[.02] dark:bg-white/[.03] p-3">
+              <div className="mt-3 rounded-lg border border-gray-200 bg-black/[.02] p-3 dark:border-white/[.08] dark:bg-white/[.03]">
                 <div className="mb-2 flex items-center gap-2">
-                  <Play size={12} className="text-amber-600 dark:text-amber-400" />
+                  <Play
+                    size={12}
+                    className="text-amber-600 dark:text-amber-400"
+                  />
                   <span className="text-[10px] font-medium text-gray-900 dark:text-white">
                     検証結果
                   </span>
@@ -328,11 +331,11 @@ export const ConnectorAuto = (): JSX.Element => {
             if (e.key === "Enter") handleSend();
           }}
           placeholder="自動化したい業務を入力..."
-          className="flex-1 rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 px-4 py-3 text-sm text-gray-900 dark:text-white outline-none"
+          className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none dark:border-white/[.08] dark:bg-zinc-900 dark:text-white"
         />
         <button
           onClick={handleSend}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-900 dark:bg-white text-white dark:text-black transition-colors hover:opacity-80"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-900 text-white transition-colors hover:opacity-80 dark:bg-white dark:text-black"
         >
           <Send size={16} />
         </button>

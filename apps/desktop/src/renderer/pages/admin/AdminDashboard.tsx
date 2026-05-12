@@ -43,19 +43,17 @@ const ChartTooltip = ({
 }): JSX.Element | null => {
   if (!active || !payload?.length) return null;
   return (
-    <div
-      className="rounded-lg px-3 py-2 text-xs shadow-xl border border-gray-200 bg-white dark:border-white/[.08] dark:bg-zinc-900"
-    >
-      <p className="mb-1 text-gray-500 dark:text-zinc-500">
-        {label}
-      </p>
+    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs shadow-xl dark:border-white/[.08] dark:bg-zinc-900">
+      <p className="mb-1 text-gray-500 dark:text-zinc-500">{label}</p>
       {payload.map((entry) => (
         <p key={entry.name} className="flex items-center gap-1.5">
           <span
             className="inline-block h-1.5 w-1.5 rounded-full"
             style={{ backgroundColor: entry.color }}
           />
-          <span className="text-gray-600 dark:text-zinc-400">{entry.name}:</span>
+          <span className="text-gray-600 dark:text-zinc-400">
+            {entry.name}:
+          </span>
           <span className="text-gray-900 dark:text-white">
             {entry.value.toLocaleString()}
           </span>
@@ -84,14 +82,10 @@ export const AdminDashboard = (): JSX.Element => {
     <div className="space-y-4 p-6">
       {/* ヘッダー: タイトル + 期間切替 */}
       <div className="flex items-center justify-between">
-        <h2
-          className="text-lg font-semibold text-gray-900 dark:text-white"
-        >
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
           ダッシュボード
         </h2>
-        <div
-          className="flex items-center gap-1 rounded-lg p-0.5 bg-black/[.02] dark:bg-white/[.04]"
-        >
+        <div className="flex items-center gap-1 rounded-lg bg-black/[.02] p-0.5 dark:bg-white/[.04]">
           {PERIODS.map((p) => (
             <button
               key={p}
@@ -111,34 +105,24 @@ export const AdminDashboard = (): JSX.Element => {
       {/* KPIカード 4つ */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {/* リクエスト */}
-        <div
-          className="rounded-xl p-4 border border-gray-200 bg-white dark:border-white/[.08] dark:bg-zinc-900"
-        >
+        <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-white/[.08] dark:bg-zinc-900">
           <span className="text-xs text-gray-500 dark:text-zinc-500">
             リクエスト / {period}
           </span>
-          <div
-            className="mt-2 text-2xl font-semibold text-gray-900 dark:text-white"
-          >
+          <div className="mt-2 text-2xl font-semibold text-gray-900 dark:text-white">
             {stats.requests}
           </div>
-          <div
-            className="mt-0.5 text-[10px] text-gray-500 dark:text-zinc-500"
-          >
+          <div className="mt-0.5 text-[10px] text-gray-500 dark:text-zinc-500">
             {stats.requestsSub}
           </div>
         </div>
 
         {/* ブロック */}
-        <div
-          className="rounded-xl p-4 border border-gray-200 bg-white dark:border-white/[.08] dark:bg-zinc-900"
-        >
+        <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-white/[.08] dark:bg-zinc-900">
           <span className="text-xs text-gray-500 dark:text-zinc-500">
             ブロック
           </span>
-          <div
-            className="mt-2 text-2xl font-semibold text-gray-900 dark:text-white"
-          >
+          <div className="mt-2 text-2xl font-semibold text-gray-900 dark:text-white">
             {stats.blocks}
           </div>
           <div className="mt-0.5 text-[10px] text-red-400">
@@ -147,58 +131,40 @@ export const AdminDashboard = (): JSX.Element => {
         </div>
 
         {/* コネクタ */}
-        <div
-          className="rounded-xl p-4 border border-gray-200 bg-white dark:border-white/[.08] dark:bg-zinc-900"
-        >
+        <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-white/[.08] dark:bg-zinc-900">
           <span className="text-xs text-gray-500 dark:text-zinc-500">
             コネクタ
           </span>
-          <div
-            className="mt-2 text-2xl font-semibold text-gray-900 dark:text-white"
-          >
+          <div className="mt-2 text-2xl font-semibold text-gray-900 dark:text-white">
             8
           </div>
-          <div
-            className="mt-0.5 text-[10px] text-gray-500 dark:text-zinc-500"
-          >
+          <div className="mt-0.5 text-[10px] text-gray-500 dark:text-zinc-500">
             5 稼働中
           </div>
         </div>
 
         {/* ユーザー */}
-        <div
-          className="rounded-xl p-4 border border-gray-200 bg-white dark:border-white/[.08] dark:bg-zinc-900"
-        >
+        <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-white/[.08] dark:bg-zinc-900">
           <span className="text-xs text-gray-500 dark:text-zinc-500">
             ユーザー
           </span>
-          <div
-            className="mt-2 text-2xl font-semibold text-gray-900 dark:text-white"
-          >
+          <div className="mt-2 text-2xl font-semibold text-gray-900 dark:text-white">
             {stats.users}
           </div>
-          <div
-            className="mt-0.5 text-[10px] text-gray-500 dark:text-zinc-500"
-          >
+          <div className="mt-0.5 text-[10px] text-gray-500 dark:text-zinc-500">
             {stats.usersSub}
           </div>
         </div>
       </div>
 
       {/* AIクライアント別リクエスト推移 AreaChart */}
-      <div
-        className="rounded-xl p-5 border border-gray-200 bg-white dark:border-white/[.08] dark:bg-zinc-900"
-      >
+      <div className="rounded-xl border border-gray-200 bg-white p-5 dark:border-white/[.08] dark:bg-zinc-900">
         <div className="mb-4 flex items-center justify-between">
-          <span
-            className="text-sm font-medium text-gray-600 dark:text-zinc-400"
-          >
+          <span className="text-sm font-medium text-gray-600 dark:text-zinc-400">
             AIクライアント別リクエスト推移
           </span>
           {/* 凡例 */}
-          <div
-            className="flex flex-wrap gap-3 text-[10px] text-gray-400 dark:text-zinc-600"
-          >
+          <div className="flex flex-wrap gap-3 text-[10px] text-gray-400 dark:text-zinc-600">
             {CHART_LEGENDS.map((l) => (
               <span key={l.label} className="flex items-center gap-1">
                 <span
@@ -243,7 +209,10 @@ export const AdminDashboard = (): JSX.Element => {
               />
               <XAxis
                 dataKey="time"
-                tick={{ fill: theme === "dark" ? "#52525b" : "#9ca3af", fontSize: 10 }}
+                tick={{
+                  fill: theme === "dark" ? "#52525b" : "#9ca3af",
+                  fontSize: 10,
+                }}
                 axisLine={false}
                 tickLine={false}
               />
@@ -274,12 +243,8 @@ export const AdminDashboard = (): JSX.Element => {
       {/* 2カラム下段 */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* 左: AIクライアント別ドーナツチャート + 構成比テーブル + バッジ */}
-        <div
-          className="rounded-xl p-5 border border-gray-200 bg-white dark:border-white/[.08] dark:bg-zinc-900"
-        >
-          <span
-            className="mb-3 block text-sm font-medium text-gray-600 dark:text-zinc-400"
-          >
+        <div className="rounded-xl border border-gray-200 bg-white p-5 dark:border-white/[.08] dark:bg-zinc-900">
+          <span className="mb-3 block text-sm font-medium text-gray-600 dark:text-zinc-400">
             AIクライアント別
           </span>
 
@@ -324,9 +289,7 @@ export const AdminDashboard = (): JSX.Element => {
                   <span className="text-gray-600 dark:text-zinc-400">
                     {item.name}
                   </span>
-                  <span
-                    className="ml-auto font-mono text-gray-400 dark:text-zinc-600"
-                  >
+                  <span className="ml-auto font-mono text-gray-400 dark:text-zinc-600">
                     {item.value}%
                   </span>
                 </div>
@@ -344,8 +307,8 @@ export const AdminDashboard = (): JSX.Element => {
                 }
                 className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-gray-600 transition-colors dark:text-zinc-400 ${
                   activeAi === null || activeAi === ai.name
-                    ? "bg-black/[.06] dark:bg-white/[.08] opacity-100"
-                    : "bg-black/[.02] dark:bg-white/[.04] opacity-50"
+                    ? "bg-black/[.06] opacity-100 dark:bg-white/[.08]"
+                    : "bg-black/[.02] opacity-50 dark:bg-white/[.04]"
                 }`}
               >
                 <img
@@ -360,12 +323,8 @@ export const AdminDashboard = (): JSX.Element => {
         </div>
 
         {/* 右: 接続先サービスリスト */}
-        <div
-          className="rounded-xl p-5 border border-gray-200 bg-white dark:border-white/[.08] dark:bg-zinc-900"
-        >
-          <span
-            className="mb-4 block text-sm font-medium text-gray-600 dark:text-zinc-400"
-          >
+        <div className="rounded-xl border border-gray-200 bg-white p-5 dark:border-white/[.08] dark:bg-zinc-900">
+          <span className="mb-4 block text-sm font-medium text-gray-600 dark:text-zinc-400">
             接続先サービス
           </span>
           <div className="space-y-3">
@@ -376,25 +335,21 @@ export const AdminDashboard = (): JSX.Element => {
                   alt={s.name}
                   className="h-4 w-4 rounded"
                 />
-                <span
-                  className="w-24 text-gray-600 dark:text-zinc-400"
-                >
+                <span className="w-24 text-gray-600 dark:text-zinc-400">
                   {s.name}
                 </span>
                 <span
                   className={`h-1.5 w-1.5 rounded-full ${s.status === "active" ? "bg-emerald-400" : "bg-zinc-700"}`}
                 />
-                <div
-                  className="h-1.5 flex-1 rounded-full bg-black/[.02] dark:bg-white/[.04]"
-                >
+                <div className="h-1.5 flex-1 rounded-full bg-black/[.02] dark:bg-white/[.04]">
                   <div
                     className="h-1.5 rounded-full bg-gray-500 dark:bg-zinc-500"
-                    style={{ width: `${(s.requests / MAX_SERVICE_REQUESTS) * 100}%` }}
+                    style={{
+                      width: `${(s.requests / MAX_SERVICE_REQUESTS) * 100}%`,
+                    }}
                   />
                 </div>
-                <span
-                  className="w-12 text-right font-mono text-gray-400 dark:text-zinc-600"
-                >
+                <span className="w-12 text-right font-mono text-gray-400 dark:text-zinc-600">
                   {s.requests.toLocaleString()}
                 </span>
               </div>
@@ -406,26 +361,18 @@ export const AdminDashboard = (): JSX.Element => {
       {/* コネクタログ + お知らせ */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_0.4fr]">
         {/* コネクタログ */}
-        <div
-          className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[.08] dark:bg-zinc-900"
-        >
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[.08] dark:bg-zinc-900">
           {/* ヘッダー */}
-          <div
-            className="flex items-center justify-between px-5 py-3 border-b border-b-gray-200 dark:border-b-white/[.08]"
-          >
+          <div className="flex items-center justify-between border-b border-b-gray-200 px-5 py-3 dark:border-b-white/[.08]">
             <div className="flex items-center gap-2">
-              <Activity
-                className="h-4 w-4 text-gray-500 dark:text-zinc-500"
-              />
-              <span
-                className="text-sm font-medium text-gray-900 dark:text-white"
-              >
+              <Activity className="h-4 w-4 text-gray-500 dark:text-zinc-500" />
+              <span className="text-sm font-medium text-gray-900 dark:text-white">
                 コネクタログ
               </span>
             </div>
             <Link
               to="/admin/history"
-              className="flex items-center gap-1 text-[10px] transition-colors hover:opacity-80 text-gray-500 dark:text-zinc-500"
+              className="flex items-center gap-1 text-[10px] text-gray-500 transition-colors hover:opacity-80 dark:text-zinc-500"
             >
               すべて見る
               <ArrowRight className="h-3 w-3" />
@@ -433,9 +380,7 @@ export const AdminDashboard = (): JSX.Element => {
           </div>
 
           {/* テーブルヘッダー */}
-          <div
-            className="grid grid-cols-[70px_70px_80px_120px_1fr_85px_50px] items-center gap-2 border-b border-b-gray-200 px-5 py-2 text-[10px] text-gray-400 dark:border-b-white/[.08] dark:text-zinc-600"
-          >
+          <div className="grid grid-cols-[70px_70px_80px_120px_1fr_85px_50px] items-center gap-2 border-b border-b-gray-200 px-5 py-2 text-[10px] text-gray-400 dark:border-b-white/[.08] dark:text-zinc-600">
             <span>日時</span>
             <span>ユーザー</span>
             <span>AIクライアント</span>
@@ -454,9 +399,7 @@ export const AdminDashboard = (): JSX.Element => {
                 className={`grid grid-cols-[70px_70px_80px_120px_1fr_85px_50px] items-center gap-2 border-b border-b-gray-100 px-5 py-2.5 text-xs transition-colors dark:border-b-white/[.03] ${isErrorRow(item.status) ? "bg-red-500/[0.03]" : ""}`}
               >
                 {/* 日時 */}
-                <span
-                  className="font-mono text-[11px] text-gray-400 dark:text-zinc-600"
-                >
+                <span className="font-mono text-[11px] text-gray-400 dark:text-zinc-600">
                   {item.datetime.split(" ")[1]?.slice(0, 8)}
                 </span>
 
@@ -487,9 +430,7 @@ export const AdminDashboard = (): JSX.Element => {
                     alt={item.aiClient.name}
                     className="h-4 w-4 rounded-sm"
                   />
-                  <span
-                    className="text-[11px] text-gray-500 dark:text-zinc-500"
-                  >
+                  <span className="text-[11px] text-gray-500 dark:text-zinc-500">
                     {item.aiClient.name}
                   </span>
                 </div>
@@ -511,9 +452,7 @@ export const AdminDashboard = (): JSX.Element => {
                 </div>
 
                 {/* ツール / アクション */}
-                <span
-                  className="truncate font-mono text-[11px] text-gray-500 dark:text-zinc-500"
-                >
+                <span className="truncate font-mono text-[11px] text-gray-500 dark:text-zinc-500">
                   {item.operation}
                 </span>
 
@@ -525,9 +464,7 @@ export const AdminDashboard = (): JSX.Element => {
                 </span>
 
                 {/* 応答時間 */}
-                <span
-                  className="text-right font-mono text-[11px] text-gray-400 dark:text-zinc-600"
-                >
+                <span className="text-right font-mono text-[11px] text-gray-400 dark:text-zinc-600">
                   {item.latency}
                 </span>
               </div>
@@ -536,29 +473,19 @@ export const AdminDashboard = (): JSX.Element => {
         </div>
 
         {/* お知らせ */}
-        <div
-          className="rounded-xl p-5 border border-gray-200 bg-white dark:border-white/[.08] dark:bg-zinc-900"
-        >
-          <span
-            className="mb-4 block text-sm font-medium text-gray-600 dark:text-zinc-400"
-          >
+        <div className="rounded-xl border border-gray-200 bg-white p-5 dark:border-white/[.08] dark:bg-zinc-900">
+          <span className="mb-4 block text-sm font-medium text-gray-600 dark:text-zinc-400">
             お知らせ
           </span>
           <div className="space-y-3">
             {ANNOUNCEMENTS.map((a) => {
               const content = (
                 <div key={a.id} className="flex items-start gap-2.5 text-xs">
-                  <Megaphone
-                    className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-500 dark:text-zinc-500"
-                  />
-                  <span
-                    className="flex-1 text-gray-600 dark:text-zinc-400"
-                  >
+                  <Megaphone className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-500 dark:text-zinc-500" />
+                  <span className="flex-1 text-gray-600 dark:text-zinc-400">
                     {a.message}
                   </span>
-                  <span
-                    className="shrink-0 font-mono text-gray-400 dark:text-zinc-600"
-                  >
+                  <span className="shrink-0 font-mono text-gray-400 dark:text-zinc-600">
                     {a.date}
                   </span>
                 </div>
@@ -567,7 +494,7 @@ export const AdminDashboard = (): JSX.Element => {
                 <Link
                   key={a.id}
                   to={a.link}
-                  className="block rounded-lg px-2 py-1.5 transition-colors hover:opacity-80 bg-black/[.02] dark:bg-white/[.04]"
+                  className="block rounded-lg bg-black/[.02] px-2 py-1.5 transition-colors hover:opacity-80 dark:bg-white/[.04]"
                 >
                   {content}
                 </Link>

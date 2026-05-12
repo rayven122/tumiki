@@ -41,19 +41,21 @@ export const ConfirmDialog = ({
       aria-labelledby={titleId}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
     >
-      <div className="w-full max-w-sm rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-6">
+      <div className="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-6 dark:border-white/[.08] dark:bg-zinc-900">
         <h3
           id={titleId}
           className="text-base font-semibold text-gray-900 dark:text-white"
         >
           {title}
         </h3>
-        <p className="mt-2 text-sm text-gray-500 dark:text-zinc-500">{message}</p>
+        <p className="mt-2 text-sm text-gray-500 dark:text-zinc-500">
+          {message}
+        </p>
         <div className="mt-6 flex justify-end gap-3">
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-lg border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 px-4 py-2 text-sm text-gray-600 dark:text-zinc-400 transition hover:opacity-80"
+            className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm text-gray-600 transition hover:opacity-80 dark:border-white/[.08] dark:bg-zinc-900 dark:text-zinc-400"
           >
             キャンセル
           </button>

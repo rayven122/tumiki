@@ -58,14 +58,14 @@ export const MyTools = (): JSX.Element => {
         <div className="flex items-center gap-3">
           <Link
             to="/tools/catalog"
-            className="flex items-center gap-1 rounded-lg bg-gray-900 dark:bg-white px-3 py-1.5 text-xs font-medium text-white dark:text-black transition-opacity hover:opacity-90"
+            className="flex items-center gap-1 rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 dark:bg-white dark:text-black"
           >
             <Plus size={12} />
             追加
           </Link>
           <Link
             to="/tools/catalog"
-            className="flex items-center gap-1 text-xs text-gray-500 dark:text-zinc-500 transition-opacity hover:opacity-80"
+            className="flex items-center gap-1 text-xs text-gray-500 transition-opacity hover:opacity-80 dark:text-zinc-500"
           >
             カタログ
             <ArrowRight size={12} />
@@ -85,7 +85,7 @@ export const MyTools = (): JSX.Element => {
             placeholder="サーバーを検索..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full rounded-lg border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 py-2 pr-3 pl-9 text-sm text-gray-900 dark:text-white outline-none"
+            className="w-full rounded-lg border border-gray-200 bg-white py-2 pr-3 pl-9 text-sm text-gray-900 outline-none dark:border-white/[.08] dark:bg-zinc-900 dark:text-white"
           />
         </div>
       </div>
@@ -97,7 +97,7 @@ export const MyTools = (): JSX.Element => {
         </div>
       ) : filteredServers.length > 0 ? (
         <div>
-          <div className="mb-4 flex items-center justify-between border-b border-b-gray-200 dark:border-b-white/[.08] pb-2">
+          <div className="mb-4 flex items-center justify-between border-b border-b-gray-200 pb-2 dark:border-b-white/[.08]">
             <h2 className="text-sm font-medium text-gray-500 dark:text-zinc-500">
               MCPサーバー
             </h2>
@@ -124,7 +124,7 @@ export const MyTools = (): JSX.Element => {
           <p className="mt-3 text-sm">MCPサーバーがまだ登録されていません</p>
           <Link
             to="/tools/catalog"
-            className="mt-4 flex items-center gap-1 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-xs font-medium text-white dark:text-black transition hover:opacity-90"
+            className="mt-4 flex items-center gap-1 rounded-lg bg-gray-900 px-4 py-2 text-xs font-medium text-white transition hover:opacity-90 dark:bg-white dark:text-black"
           >
             <Plus size={14} />
             カタログから追加
@@ -145,7 +145,10 @@ const ServerCard = ({
   onToggle: (isEnabled: boolean) => void;
   onDelete: () => void;
 }): JSX.Element => {
-  const status = STATUS_CONFIG[server.serverStatus] ?? { badgeClass: "bg-gray-400/10 text-gray-400", label: "停止中" };
+  const status = STATUS_CONFIG[server.serverStatus] ?? {
+    badgeClass: "bg-gray-400/10 text-gray-400",
+    label: "停止中",
+  };
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   return (
@@ -202,11 +205,11 @@ const ServerCard = ({
       </Link>
 
       {/* フッター: 削除 + 有効/無効トグル */}
-      <div className="flex items-center justify-end gap-2 border-t border-t-gray-100 dark:border-t-white/[.03] px-4 py-3">
+      <div className="flex items-center justify-end gap-2 border-t border-t-gray-100 px-4 py-3 dark:border-t-white/[.03]">
         <button
           type="button"
           onClick={() => setShowDeleteConfirm(true)}
-          className="rounded p-1 text-gray-400 dark:text-zinc-600 transition hover:text-red-400"
+          className="rounded p-1 text-gray-400 transition hover:text-red-400 dark:text-zinc-600"
           title="削除"
         >
           <Trash2 size={12} />

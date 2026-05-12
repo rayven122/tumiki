@@ -12,8 +12,10 @@ import { authTypeLabel } from "../../shared/catalog.helpers";
 /** 認証種別バッジスタイル */
 const authBadgeClass: Record<CatalogItem["authType"], string> = {
   NONE: "bg-emerald-500/10 dark:bg-emerald-400/10 text-emerald-600 dark:text-emerald-400",
-  BEARER: "bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400",
-  API_KEY: "bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400",
+  BEARER:
+    "bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400",
+  API_KEY:
+    "bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400",
   OAUTH: "bg-blue-600/10 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400",
 };
 
@@ -32,8 +34,10 @@ const statusLabel: Record<CatalogItem["status"], string> = {
 };
 
 const statusBadgeClass: Record<CatalogItem["status"], string> = {
-  available: "bg-emerald-500/10 dark:bg-emerald-400/10 text-emerald-600 dark:text-emerald-400",
-  request_required: "bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400",
+  available:
+    "bg-emerald-500/10 dark:bg-emerald-400/10 text-emerald-600 dark:text-emerald-400",
+  request_required:
+    "bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400",
   disabled: "bg-red-500/10 dark:bg-red-400/10 text-red-600 dark:text-red-400",
 };
 
@@ -184,15 +188,17 @@ export const ToolCatalog = (): JSX.Element => {
   if (loadError) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <div className="max-w-md rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-6 text-center">
+        <div className="max-w-md rounded-xl border border-gray-200 bg-white p-6 text-center dark:border-white/[.08] dark:bg-zinc-900">
           <h1 className="text-base font-semibold text-gray-900 dark:text-white">
             カタログの取得に失敗しました
           </h1>
-          <p className="mt-2 text-sm text-gray-500 dark:text-zinc-500">{loadError}</p>
+          <p className="mt-2 text-sm text-gray-500 dark:text-zinc-500">
+            {loadError}
+          </p>
           <button
             type="button"
             onClick={loadCatalogs}
-            className="mt-4 inline-flex items-center gap-2 rounded-md bg-gray-900 dark:bg-white px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 transition hover:opacity-90"
+            className="mt-4 inline-flex items-center gap-2 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 dark:bg-white dark:text-zinc-900"
           >
             <RefreshCcw size={14} />
             再読み込み
@@ -216,7 +222,7 @@ export const ToolCatalog = (): JSX.Element => {
         </div>
         <Link
           to="/tools"
-          className="flex items-center gap-1 text-xs text-gray-500 dark:text-zinc-500 transition-opacity hover:opacity-80"
+          className="flex items-center gap-1 text-xs text-gray-500 transition-opacity hover:opacity-80 dark:text-zinc-500"
         >
           <ArrowLeft size={12} />
           コネクトに戻る
@@ -235,7 +241,7 @@ export const ToolCatalog = (): JSX.Element => {
             placeholder="ツールを検索..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full rounded-lg border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 py-2 pr-3 pl-9 text-sm text-gray-900 dark:text-white outline-none"
+            className="w-full rounded-lg border border-gray-200 bg-white py-2 pr-3 pl-9 text-sm text-gray-900 outline-none dark:border-white/[.08] dark:bg-zinc-900 dark:text-white"
           />
         </div>
 
@@ -253,7 +259,7 @@ export const ToolCatalog = (): JSX.Element => {
               className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-colors ${
                 selectedAuthTypes.includes(value)
                   ? `${authBadgeClass[value]} ring-1 ring-gray-300 dark:ring-zinc-700`
-                  : "bg-white dark:bg-zinc-900 text-gray-500 dark:text-zinc-500 ring-1 ring-gray-200 dark:ring-white/[.08] hover:ring-gray-400 dark:hover:ring-zinc-600"
+                  : "bg-white text-gray-500 ring-1 ring-gray-200 hover:ring-gray-400 dark:bg-zinc-900 dark:text-zinc-500 dark:ring-white/[.08] dark:hover:ring-zinc-600"
               }`}
             >
               {label}
@@ -263,7 +269,7 @@ export const ToolCatalog = (): JSX.Element => {
             <button
               type="button"
               onClick={clearAllFilters}
-              className="ml-1 text-[10px] text-gray-500 dark:text-zinc-500 transition-opacity hover:opacity-70"
+              className="ml-1 text-[10px] text-gray-500 transition-opacity hover:opacity-70 dark:text-zinc-500"
             >
               クリア
             </button>
@@ -274,7 +280,7 @@ export const ToolCatalog = (): JSX.Element => {
       {/* カタログ一覧 */}
       {filtered.length > 0 && (
         <div>
-          <div className="mb-4 flex items-center justify-between border-b border-b-gray-200 dark:border-b-white/[.08] pb-2">
+          <div className="mb-4 flex items-center justify-between border-b border-b-gray-200 pb-2 dark:border-b-white/[.08]">
             <h2 className="text-sm font-medium text-gray-500 dark:text-zinc-500">
               MCPカタログ
             </h2>
@@ -287,9 +293,12 @@ export const ToolCatalog = (): JSX.Element => {
             <button
               type="button"
               onClick={() => setShowCustomModal(true)}
-              className="flex min-h-[180px] flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 dark:border-white/[.08] p-4 transition-all hover:-translate-y-0.5 hover:border-gray-400 dark:hover:border-zinc-600 hover:shadow-lg"
+              className="flex min-h-[180px] flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 p-4 transition-all hover:-translate-y-0.5 hover:border-gray-400 hover:shadow-lg dark:border-white/[.08] dark:hover:border-zinc-600"
             >
-              <Plus size={28} className="mb-2 text-gray-400 dark:text-zinc-600" />
+              <Plus
+                size={28}
+                className="mb-2 text-gray-400 dark:text-zinc-600"
+              />
               <span className="text-sm font-medium text-gray-600 dark:text-zinc-400">
                 カスタムMCPを追加
               </span>
@@ -344,7 +353,7 @@ export const ToolCatalog = (): JSX.Element => {
                     type="button"
                     onClick={() => void handleAddClick(item)}
                     disabled={!addable}
-                    className="mt-auto flex w-full items-center justify-center gap-1 rounded-md bg-gray-900 dark:bg-white py-1.5 text-[10px] font-medium text-white dark:text-zinc-900 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="mt-auto flex w-full items-center justify-center gap-1 rounded-md bg-gray-900 py-1.5 text-[10px] font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-zinc-900"
                   >
                     {addable && <Plus size={10} />}
                     {addButtonLabel(item)}
@@ -362,7 +371,7 @@ export const ToolCatalog = (): JSX.Element => {
           <button
             type="button"
             onClick={() => setShowCustomModal(true)}
-            className="mt-4 inline-flex items-center gap-1 rounded-md bg-gray-900 dark:bg-white px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 transition hover:opacity-90"
+            className="mt-4 inline-flex items-center gap-1 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 dark:bg-white dark:text-zinc-900"
           >
             <Plus size={14} />
             カスタムMCPを追加

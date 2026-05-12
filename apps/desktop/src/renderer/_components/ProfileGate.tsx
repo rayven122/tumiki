@@ -42,7 +42,7 @@ export const ProfileGate = (): JSX.Element => {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#e8eaed] dark:bg-[#0a0a0a] text-sm text-gray-500 dark:text-zinc-500">
+      <div className="flex h-screen items-center justify-center bg-[#e8eaed] text-sm text-gray-500 dark:bg-[#0a0a0a] dark:text-zinc-500">
         読み込み中...
       </div>
     );
@@ -50,7 +50,7 @@ export const ProfileGate = (): JSX.Element => {
 
   if (error) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-[#e8eaed] dark:bg-[#0a0a0a] text-sm">
+      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-[#e8eaed] text-sm dark:bg-[#0a0a0a]">
         <p className="text-red-400">{error}</p>
         <button
           type="button"
@@ -59,7 +59,7 @@ export const ProfileGate = (): JSX.Element => {
             setError(null);
             refreshProfile();
           }}
-          className="rounded-lg border border-gray-200 dark:border-white/[.08] px-4 py-2 text-gray-600 dark:text-zinc-400 transition hover:bg-black/[.02] dark:bg-white/[.04] hover:text-gray-900 dark:text-white"
+          className="rounded-lg border border-gray-200 px-4 py-2 text-gray-600 transition hover:bg-black/[.02] hover:text-gray-900 dark:border-white/[.08] dark:bg-white/[.04] dark:text-white dark:text-zinc-400"
         >
           再試行
         </button>

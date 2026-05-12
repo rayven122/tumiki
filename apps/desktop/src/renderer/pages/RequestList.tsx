@@ -52,7 +52,7 @@ export const RequestList = (): JSX.Element => {
         </h1>
         <Link
           to="/requests/new"
-          className="flex items-center gap-1.5 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-sm font-medium text-white dark:text-black transition-colors hover:opacity-90"
+          className="flex items-center gap-1.5 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90 dark:bg-white dark:text-black"
         >
           <Plus size={16} />
           新規申請
@@ -60,14 +60,14 @@ export const RequestList = (): JSX.Element => {
       </div>
 
       {/* ピルナビ */}
-      <div className="flex items-center gap-1 rounded-lg bg-black/[.02] dark:bg-white/[.04] p-0.5">
+      <div className="flex items-center gap-1 rounded-lg bg-black/[.02] p-0.5 dark:bg-white/[.04]">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             className={`rounded px-3 py-1.5 text-xs transition-colors ${
               activeTab === tab.key
-                ? "bg-black/[.06] dark:bg-white/[.08] text-gray-900 dark:text-white"
+                ? "bg-black/[.06] text-gray-900 dark:bg-white/[.08] dark:text-white"
                 : "text-gray-400 dark:text-zinc-600"
             }`}
           >
@@ -80,10 +80,10 @@ export const RequestList = (): JSX.Element => {
       </div>
 
       {/* テーブル */}
-      <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900">
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[.08] dark:bg-zinc-900">
         <table className="w-full text-xs">
           <thead>
-            <tr className="border-b border-b-gray-200 dark:border-b-white/[.08] text-gray-500 dark:text-zinc-500">
+            <tr className="border-b border-b-gray-200 text-gray-500 dark:border-b-white/[.08] dark:text-zinc-500">
               <th className="px-4 py-2.5 text-left font-medium">申請日</th>
               <th className="px-4 py-2.5 text-left font-medium">ツール</th>
               <th className="px-4 py-2.5 text-left font-medium">申請内容</th>
@@ -98,7 +98,7 @@ export const RequestList = (): JSX.Element => {
               return (
                 <tr
                   key={req.id}
-                  className="border-b border-b-gray-200 dark:border-b-white/[.08] last:border-0"
+                  className="border-b border-b-gray-200 last:border-0 dark:border-b-white/[.08]"
                 >
                   <td className="px-4 py-2.5 text-gray-400 dark:text-zinc-600">
                     {req.date}
@@ -122,7 +122,7 @@ export const RequestList = (): JSX.Element => {
                   <td className="px-4 py-2.5">
                     <Link
                       to={`/requests/${req.id}`}
-                      className="flex items-center gap-1 text-[10px] text-gray-500 dark:text-zinc-500 hover:opacity-80"
+                      className="flex items-center gap-1 text-[10px] text-gray-500 hover:opacity-80 dark:text-zinc-500"
                     >
                       詳細
                       <ChevronRight size={12} />

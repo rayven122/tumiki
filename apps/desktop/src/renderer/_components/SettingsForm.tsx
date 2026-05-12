@@ -23,7 +23,7 @@ export const SettingsForm = (): React.ReactElement => {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-6">
+      <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-white/[.08] dark:bg-zinc-900">
         <h3 className="mb-4 text-sm font-medium text-gray-900 dark:text-white">
           アプリケーション設定
         </h3>
@@ -39,7 +39,7 @@ export const SettingsForm = (): React.ReactElement => {
               id="theme"
               value={config.theme}
               onChange={handleThemeChange}
-              className="mt-1 block w-full rounded-md border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-gray-900 dark:text-white shadow-sm focus:border-gray-900 dark:focus:border-white focus:ring-1 focus:ring-gray-900 dark:focus:ring-white focus:outline-none"
+              className="mt-1 block w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none dark:border-white/[.08] dark:bg-zinc-900 dark:text-white dark:focus:border-white dark:focus:ring-white"
             >
               <option value="light">ライト</option>
               <option value="dark">ダーク</option>
@@ -56,7 +56,7 @@ export const SettingsForm = (): React.ReactElement => {
                 type="checkbox"
                 checked={config.autoStart}
                 onChange={handleAutoStartChange}
-                className="h-4 w-4 rounded border-gray-200 dark:border-white/[.08] text-gray-900 dark:text-white focus:ring-gray-900 dark:focus:ring-white"
+                className="h-4 w-4 rounded border-gray-200 text-gray-900 focus:ring-gray-900 dark:border-white/[.08] dark:text-white dark:focus:ring-white"
               />
             </div>
             <div className="ml-3">
@@ -79,7 +79,7 @@ export const SettingsForm = (): React.ReactElement => {
                 type="checkbox"
                 checked={config.minimizeToTray}
                 onChange={handleMinimizeToTrayChange}
-                className="h-4 w-4 rounded border-gray-200 dark:border-white/[.08] text-gray-900 dark:text-white focus:ring-gray-900 dark:focus:ring-white"
+                className="h-4 w-4 rounded border-gray-200 text-gray-900 focus:ring-gray-900 dark:border-white/[.08] dark:text-white dark:focus:ring-white"
               />
             </div>
             <div className="ml-3">
@@ -95,7 +95,7 @@ export const SettingsForm = (): React.ReactElement => {
             </div>
           </div>
 
-          <div className="border-t border-gray-200 dark:border-white/[.08] pt-4">
+          <div className="border-t border-gray-200 pt-4 dark:border-white/[.08]">
             <p className="text-xs text-gray-500 dark:text-zinc-500">
               設定は自動的に保存されます
             </p>

@@ -117,7 +117,7 @@ export const HistoryList = (): JSX.Element => {
         ].map((card) => (
           <div
             key={card.label}
-            className="rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-4"
+            className="rounded-xl border border-gray-200 bg-white p-4 dark:border-white/[.08] dark:bg-zinc-900"
           >
             <span className="text-xs text-gray-500 dark:text-zinc-500">
               {card.label}
@@ -130,9 +130,9 @@ export const HistoryList = (): JSX.Element => {
       </div>
 
       {/* メインカード（フィルタ + テーブル） */}
-      <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900">
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[.08] dark:bg-zinc-900">
         {/* フィルタバー */}
-        <div className="flex items-center justify-between border-b border-b-gray-200 dark:border-b-white/[.08] px-5 py-3">
+        <div className="flex items-center justify-between border-b border-b-gray-200 px-5 py-3 dark:border-b-white/[.08]">
           <div className="flex items-center gap-2">
             <Activity className="h-4 w-4 text-gray-500 dark:text-zinc-500" />
             <span className="text-sm font-medium text-gray-900 dark:text-white">
@@ -182,7 +182,7 @@ export const HistoryList = (): JSX.Element => {
         </div>
 
         {/* テーブルヘッダー */}
-        <div className="grid grid-cols-[80px_90px_120px_1fr_85px_56px] items-center gap-2 border-b border-b-gray-200 dark:border-b-white/[.08] px-5 py-2 text-[10px] text-gray-400 dark:text-zinc-600">
+        <div className="grid grid-cols-[80px_90px_120px_1fr_85px_56px] items-center gap-2 border-b border-b-gray-200 px-5 py-2 text-[10px] text-gray-400 dark:border-b-white/[.08] dark:text-zinc-600">
           <span>日時</span>
           <span>AIクライアント</span>
           <span>接続先</span>
@@ -215,7 +215,7 @@ export const HistoryList = (): JSX.Element => {
                 key={item.id}
                 to={`/history/${item.id}`}
                 state={{ auditLog: item }}
-                className={`grid grid-cols-[80px_90px_120px_1fr_85px_56px] items-center gap-2 border-b border-b-gray-100 dark:border-b-white/[.03] px-5 py-2.5 text-xs transition-colors hover:opacity-90 ${isErrorRow(status) ? "bg-red-500/[0.03]" : ""}`}
+                className={`grid grid-cols-[80px_90px_120px_1fr_85px_56px] items-center gap-2 border-b border-b-gray-100 px-5 py-2.5 text-xs transition-colors hover:opacity-90 dark:border-b-white/[.03] ${isErrorRow(status) ? "bg-red-500/[0.03]" : ""}`}
               >
                 {/* 日時 */}
                 <span className="font-mono text-[11px] text-gray-400 dark:text-zinc-600">
@@ -257,7 +257,7 @@ export const HistoryList = (): JSX.Element => {
 
         {/* ページネーション */}
         {result && result.totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-t-gray-200 dark:border-t-white/[.08] px-5 py-2.5">
+          <div className="flex items-center justify-between border-t border-t-gray-200 px-5 py-2.5 dark:border-t-white/[.08]">
             <span className="text-xs text-gray-500 dark:text-zinc-500">
               {result.currentPage} / {result.totalPages} ページ
             </span>
@@ -266,7 +266,7 @@ export const HistoryList = (): JSX.Element => {
                 type="button"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="rounded p-1 text-gray-500 dark:text-zinc-500 hover:opacity-80 disabled:opacity-30"
+                className="rounded p-1 text-gray-500 hover:opacity-80 disabled:opacity-30 dark:text-zinc-500"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
@@ -274,7 +274,7 @@ export const HistoryList = (): JSX.Element => {
                 type="button"
                 disabled={page >= result.totalPages}
                 onClick={() => setPage((p) => p + 1)}
-                className="rounded p-1 text-gray-500 dark:text-zinc-500 hover:opacity-80 disabled:opacity-30"
+                className="rounded p-1 text-gray-500 hover:opacity-80 disabled:opacity-30 dark:text-zinc-500"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>

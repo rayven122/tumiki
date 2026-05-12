@@ -44,19 +44,23 @@ const serverStatusBadge: Record<
   { className: string; label: string }
 > = {
   RUNNING: {
-    className: "bg-emerald-500/10 dark:bg-emerald-400/10 text-emerald-600 dark:text-emerald-400",
+    className:
+      "bg-emerald-500/10 dark:bg-emerald-400/10 text-emerald-600 dark:text-emerald-400",
     label: "稼働中",
   },
   STOPPED: {
-    className: "bg-black/[.06] dark:bg-white/[.08] text-gray-500 dark:text-zinc-500",
+    className:
+      "bg-black/[.06] dark:bg-white/[.08] text-gray-500 dark:text-zinc-500",
     label: "停止中",
   },
   ERROR: {
-    className: "bg-red-500/10 dark:bg-red-400/10 text-red-600 dark:text-red-400",
+    className:
+      "bg-red-500/10 dark:bg-red-400/10 text-red-600 dark:text-red-400",
     label: "エラー",
   },
   PENDING: {
-    className: "bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400",
+    className:
+      "bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400",
     label: "接続中",
   },
 };
@@ -454,7 +458,7 @@ export const ToolDetail = (): JSX.Element => {
       <div className="p-6">
         <Link
           to="/tools"
-          className="flex items-center gap-1 text-sm text-gray-500 dark:text-zinc-500 hover:opacity-80"
+          className="flex items-center gap-1 text-sm text-gray-500 hover:opacity-80 dark:text-zinc-500"
         >
           <ArrowLeft size={14} />
           コネクト
@@ -472,7 +476,7 @@ export const ToolDetail = (): JSX.Element => {
       <div className="p-6">
         <Link
           to="/tools"
-          className="flex items-center gap-1 text-sm text-gray-500 dark:text-zinc-500 hover:opacity-80"
+          className="flex items-center gap-1 text-sm text-gray-500 hover:opacity-80 dark:text-zinc-500"
         >
           <ArrowLeft size={14} />
           コネクト
@@ -484,7 +488,11 @@ export const ToolDetail = (): JSX.Element => {
     );
   }
 
-  const badge = serverStatusBadge[server.serverStatus] ?? { className: "bg-black/[.06] dark:bg-white/[.08] text-gray-500 dark:text-zinc-500", label: "停止中" };
+  const badge = serverStatusBadge[server.serverStatus] ?? {
+    className:
+      "bg-black/[.06] dark:bg-white/[.08] text-gray-500 dark:text-zinc-500",
+    label: "停止中",
+  };
   const primaryConnection = server.connections[0];
   // 接続のカタログからアイコンを取得（最初に見つかったものを使用）
   const serverIcon = server.connections.find((c) => c.catalog?.iconPath)
@@ -522,7 +530,7 @@ export const ToolDetail = (): JSX.Element => {
       {/* 戻るリンク */}
       <Link
         to="/tools"
-        className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-zinc-500 hover:opacity-80"
+        className="inline-flex items-center gap-1 text-sm text-gray-500 hover:opacity-80 dark:text-zinc-500"
       >
         <ArrowLeft size={14} />
         コネクト
@@ -544,7 +552,10 @@ export const ToolDetail = (): JSX.Element => {
                   />
                 ) : (
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-black/[.02] dark:bg-white/[.04]">
-                    <Server size={24} className="text-gray-500 dark:text-zinc-500" />
+                    <Server
+                      size={24}
+                      className="text-gray-500 dark:text-zinc-500"
+                    />
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
@@ -559,7 +570,9 @@ export const ToolDetail = (): JSX.Element => {
                     </span>
                     {/* インライン統計（利用統計の大ボックスを吸収） */}
                     <div className="flex shrink-0 items-center gap-2 text-[11px] text-gray-500 dark:text-zinc-500">
-                      <span className="text-gray-400 dark:text-zinc-600">·</span>
+                      <span className="text-gray-400 dark:text-zinc-600">
+                        ·
+                      </span>
                       <span title="総リクエスト">
                         <span className="font-mono text-gray-600 dark:text-zinc-400">
                           {auditTotal.toLocaleString()}
@@ -568,7 +581,9 @@ export const ToolDetail = (): JSX.Element => {
                           req
                         </span>
                       </span>
-                      <span className="text-gray-400 dark:text-zinc-600">·</span>
+                      <span className="text-gray-400 dark:text-zinc-600">
+                        ·
+                      </span>
                       <span title="成功率">
                         <span className="font-mono text-gray-600 dark:text-zinc-400">
                           {successRate}
@@ -577,7 +592,9 @@ export const ToolDetail = (): JSX.Element => {
                           %
                         </span>
                       </span>
-                      <span className="text-gray-400 dark:text-zinc-600">·</span>
+                      <span className="text-gray-400 dark:text-zinc-600">
+                        ·
+                      </span>
                       <span title="平均応答">
                         <span className="font-mono text-gray-600 dark:text-zinc-400">
                           {avgDurationMs}
@@ -599,7 +616,7 @@ export const ToolDetail = (): JSX.Element => {
                 <button
                   type="button"
                   onClick={() => setShowMenu((prev) => !prev)}
-                  className="rounded-lg p-1.5 text-gray-500 dark:text-zinc-500 transition hover:bg-black/[.02] dark:bg-white/[.04] hover:text-gray-900 dark:text-white"
+                  className="rounded-lg p-1.5 text-gray-500 transition hover:bg-black/[.02] hover:text-gray-900 dark:bg-white/[.04] dark:text-white dark:text-zinc-500"
                   aria-label="メニュー"
                   aria-expanded={showMenu}
                 >
@@ -621,7 +638,7 @@ export const ToolDetail = (): JSX.Element => {
                           setShowMenu(false);
                           toast.success("サーバー設定編集は近日対応予定");
                         }}
-                        className="block w-full px-4 py-2.5 text-left text-sm text-gray-600 dark:text-zinc-400 transition hover:bg-black/[.02] dark:bg-white/[.04] hover:text-gray-900 dark:text-white"
+                        className="block w-full px-4 py-2.5 text-left text-sm text-gray-600 transition hover:bg-black/[.02] hover:text-gray-900 dark:bg-white/[.04] dark:text-white dark:text-zinc-400"
                       >
                         サーバー設定を編集
                       </button>
@@ -642,7 +659,7 @@ export const ToolDetail = (): JSX.Element => {
             </div>
 
             {/* 基本情報（インライン・ラベル+値） */}
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-t-gray-100 dark:border-t-white/[.03] pt-3 text-xs">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-t-gray-100 pt-3 text-xs dark:border-t-white/[.03]">
               <div className="flex min-w-0 items-center gap-1.5">
                 <span className="text-gray-400 dark:text-zinc-600">接続先</span>
                 <span className="truncate font-mono text-gray-600 dark:text-zinc-400">
@@ -654,7 +671,9 @@ export const ToolDetail = (): JSX.Element => {
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-gray-400 dark:text-zinc-600">プロトコル</span>
+                <span className="text-gray-400 dark:text-zinc-600">
+                  プロトコル
+                </span>
                 <span className="font-mono text-gray-600 dark:text-zinc-400">
                   {primaryConnection?.transportType ?? "—"}
                 </span>
@@ -674,7 +693,7 @@ export const ToolDetail = (): JSX.Element => {
             </div>
 
             {/* 機能設定（マスキング / 圧縮 / 動的検索） */}
-            <div className="mt-4 border-t border-t-gray-100 dark:border-t-white/[.03] pt-4">
+            <div className="mt-4 border-t border-t-gray-100 pt-4 dark:border-t-white/[.03]">
               <div className="mb-2 text-xs font-medium text-gray-500 dark:text-zinc-500">
                 機能設定
               </div>
@@ -682,7 +701,7 @@ export const ToolDetail = (): JSX.Element => {
                 {/* マスキング / 圧縮(TOON) は DB 永続化（再起動後に反映）、dynamicSearch は localStorage のみ（別 Issue で対応） */}
                 <div
                   title="機密情報を自動マスクします（再起動後に反映）"
-                  className="flex items-center justify-between gap-2 rounded-lg bg-black/[.02] dark:bg-white/[.04] px-3 py-2"
+                  className="flex items-center justify-between gap-2 rounded-lg bg-black/[.02] px-3 py-2 dark:bg-white/[.04]"
                 >
                   <div className="flex min-w-0 items-center gap-2">
                     <span className="shrink-0 text-gray-500 dark:text-zinc-500">
@@ -699,7 +718,7 @@ export const ToolDetail = (): JSX.Element => {
                 </div>
                 <div
                   title="レスポンスを TOON 形式へ変換しトークン使用量を削減します（再起動後に反映）"
-                  className="flex items-center justify-between gap-2 rounded-lg bg-black/[.02] dark:bg-white/[.04] px-3 py-2"
+                  className="flex items-center justify-between gap-2 rounded-lg bg-black/[.02] px-3 py-2 dark:bg-white/[.04]"
                 >
                   <div className="flex min-w-0 items-center gap-2">
                     <span className="shrink-0 text-gray-500 dark:text-zinc-500">
@@ -725,7 +744,7 @@ export const ToolDetail = (): JSX.Element => {
                   <div
                     key={f.key}
                     title={f.desc}
-                    className="flex items-center justify-between gap-2 rounded-lg bg-black/[.02] dark:bg-white/[.04] px-3 py-2"
+                    className="flex items-center justify-between gap-2 rounded-lg bg-black/[.02] px-3 py-2 dark:bg-white/[.04]"
                   >
                     <div className="flex min-w-0 items-center gap-2">
                       <span className="shrink-0 text-gray-500 dark:text-zinc-500">
@@ -755,7 +774,7 @@ export const ToolDetail = (): JSX.Element => {
                 <span className="ml-2 text-xs text-gray-400 dark:text-zinc-600">
                   {baseTools.length}件
                   {isSampleTools && (
-                    <span className="ml-1 rounded bg-black/[.06] dark:bg-white/[.08] px-1.5 py-0.5 text-[9px] font-medium text-gray-500 dark:text-zinc-500">
+                    <span className="ml-1 rounded bg-black/[.06] px-1.5 py-0.5 text-[9px] font-medium text-gray-500 dark:bg-white/[.08] dark:text-zinc-500">
                       サンプル
                     </span>
                   )}
@@ -772,7 +791,7 @@ export const ToolDetail = (): JSX.Element => {
                 placeholder="ツールを検索..."
                 value={toolQuery}
                 onChange={(e) => setToolQuery(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 dark:border-white/[.08] bg-black/[.02] dark:bg-white/[.03] py-1.5 pr-2 pl-8 text-xs text-gray-900 dark:text-white outline-none placeholder:text-gray-400 dark:text-zinc-600"
+                className="w-full rounded-lg border border-gray-200 bg-black/[.02] py-1.5 pr-2 pl-8 text-xs text-gray-900 outline-none placeholder:text-gray-400 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white dark:text-zinc-600"
               />
             </div>
             <div className="flex-1 space-y-1 overflow-y-auto pr-1">
@@ -789,7 +808,7 @@ export const ToolDetail = (): JSX.Element => {
                   return (
                     <div
                       key={tool.id}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 dark:border-white/[.03] bg-black/[.02] dark:bg-white/[.04] px-2.5 py-2"
+                      className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 bg-black/[.02] px-2.5 py-2 dark:border-white/[.03] dark:bg-white/[.04]"
                     >
                       <div className="min-w-0 flex-1">
                         <div className="truncate font-mono text-xs font-medium text-gray-900 dark:text-white">
@@ -815,10 +834,8 @@ export const ToolDetail = (): JSX.Element => {
 
         {/* 右サイドバー: 接続先AI一覧（左カラムと高さを揃える） */}
         <aside className="hidden w-64 shrink-0 xl:block">
-          <div
-            className={`flex h-full flex-col rounded-xl p-4 ${cardStyle}`}
-          >
-            <div className="mb-2 flex items-center gap-2 border-b border-b-gray-100 dark:border-b-white/[.03] pb-2">
+          <div className={`flex h-full flex-col rounded-xl p-4 ${cardStyle}`}>
+            <div className="mb-2 flex items-center gap-2 border-b border-b-gray-100 pb-2 dark:border-b-white/[.03]">
               <Plug size={13} className="text-gray-500 dark:text-zinc-500" />
               <h2 className="text-xs font-medium text-gray-900 dark:text-white">
                 接続先AI
@@ -835,7 +852,7 @@ export const ToolDetail = (): JSX.Element => {
                     key={client.id}
                     type="button"
                     onClick={() => setSelectedClient(client)}
-                    className="flex w-full items-center gap-2 rounded-lg border border-gray-100 dark:border-white/[.03] bg-black/[.02] dark:bg-white/[.04] px-2.5 py-1.5 text-left transition hover:border-gray-200 dark:border-white/[.08] hover:bg-black/[.06] dark:bg-white/[.08]"
+                    className="flex w-full items-center gap-2 rounded-lg border border-gray-100 bg-black/[.02] px-2.5 py-1.5 text-left transition hover:border-gray-200 hover:bg-black/[.06] dark:border-white/[.03] dark:border-white/[.08] dark:bg-white/[.04] dark:bg-white/[.08]"
                   >
                     {logo ? (
                       <img
@@ -844,7 +861,7 @@ export const ToolDetail = (): JSX.Element => {
                         className="h-4 w-4 shrink-0 rounded"
                       />
                     ) : (
-                      <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-black/[.06] dark:bg-white/[.08] text-[8px] font-bold text-gray-500 dark:text-zinc-500">
+                      <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-black/[.06] text-[8px] font-bold text-gray-500 dark:bg-white/[.08] dark:text-zinc-500">
                         {client.name.charAt(0)}
                       </div>
                     )}
@@ -880,7 +897,7 @@ export const ToolDetail = (): JSX.Element => {
                 value={logQuery}
                 onChange={(e) => setLogQuery(e.target.value)}
                 placeholder="ツール・クライアント・内容で検索..."
-                className="w-52 rounded-lg border border-gray-200 dark:border-white/[.08] bg-black/[.02] dark:bg-white/[.03] py-1 pr-2 pl-7 text-xs text-gray-900 dark:text-white outline-none placeholder:text-gray-400 dark:text-zinc-600"
+                className="w-52 rounded-lg border border-gray-200 bg-black/[.02] py-1 pr-2 pl-7 text-xs text-gray-900 outline-none placeholder:text-gray-400 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white dark:text-zinc-600"
               />
             </div>
             <Select
@@ -902,18 +919,20 @@ export const ToolDetail = (): JSX.Element => {
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="rounded-lg border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 px-2 py-1 text-xs text-gray-600 dark:text-zinc-400 outline-none"
+              className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs text-gray-600 outline-none dark:border-white/[.08] dark:bg-zinc-900 dark:text-zinc-400"
             />
             <input
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className="rounded-lg border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 px-2 py-1 text-xs text-gray-600 dark:text-zinc-400 outline-none"
+              className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs text-gray-600 outline-none dark:border-white/[.08] dark:bg-zinc-900 dark:text-zinc-400"
             />
           </div>
         </div>
         {auditLoading && auditLogs.length === 0 ? (
-          <p className="text-sm text-gray-400 dark:text-zinc-600">読み込み中...</p>
+          <p className="text-sm text-gray-400 dark:text-zinc-600">
+            読み込み中...
+          </p>
         ) : (
           <div className="space-y-2">
             {(() => {
@@ -1047,7 +1066,7 @@ export const ToolDetail = (): JSX.Element => {
                         type="button"
                         onClick={() => goPage(auditPage - 1)}
                         disabled={auditPage <= 1 || auditLoading}
-                        className="rounded-lg px-2 py-1 text-xs text-gray-500 dark:text-zinc-500 transition hover:opacity-80 disabled:opacity-30"
+                        className="rounded-lg px-2 py-1 text-xs text-gray-500 transition hover:opacity-80 disabled:opacity-30 dark:text-zinc-500"
                       >
                         &lt;
                       </button>
@@ -1080,7 +1099,7 @@ export const ToolDetail = (): JSX.Element => {
                               disabled={auditLoading}
                               className={`h-7 w-7 rounded-lg text-xs font-medium transition hover:opacity-80 disabled:opacity-50 ${
                                 p === auditPage
-                                  ? "bg-gray-900 dark:bg-white text-white dark:text-black"
+                                  ? "bg-gray-900 text-white dark:bg-white dark:text-black"
                                   : "text-gray-500 dark:text-zinc-500"
                               }`}
                             >
@@ -1092,7 +1111,7 @@ export const ToolDetail = (): JSX.Element => {
                         type="button"
                         onClick={() => goPage(auditPage + 1)}
                         disabled={auditPage >= auditTotalPages || auditLoading}
-                        className="rounded-lg px-2 py-1 text-xs text-gray-500 dark:text-zinc-500 transition hover:opacity-80 disabled:opacity-30"
+                        className="rounded-lg px-2 py-1 text-xs text-gray-500 transition hover:opacity-80 disabled:opacity-30 dark:text-zinc-500"
                       >
                         &gt;
                       </button>

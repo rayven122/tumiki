@@ -46,17 +46,13 @@ const AddRoleModal = ({ onClose }: { onClose: () => void }) => {
 
   return (
     <ModalOverlay onClose={onClose}>
-      <h3
-        className="mb-5 text-sm font-semibold text-gray-900 dark:text-white"
-      >
+      <h3 className="mb-5 text-sm font-semibold text-gray-900 dark:text-white">
         ロール追加
       </h3>
 
       {/* ロール名 */}
       <div className="mb-4">
-        <label
-          className="mb-1.5 block text-[11px] font-medium text-gray-500 dark:text-zinc-500"
-        >
+        <label className="mb-1.5 block text-[11px] font-medium text-gray-500 dark:text-zinc-500">
           ロール名
         </label>
         <input
@@ -70,9 +66,7 @@ const AddRoleModal = ({ onClose }: { onClose: () => void }) => {
 
       {/* 説明 */}
       <div className="mb-4">
-        <label
-          className="mb-1.5 block text-[11px] font-medium text-gray-500 dark:text-zinc-500"
-        >
+        <label className="mb-1.5 block text-[11px] font-medium text-gray-500 dark:text-zinc-500">
           説明
         </label>
         <input
@@ -86,9 +80,7 @@ const AddRoleModal = ({ onClose }: { onClose: () => void }) => {
 
       {/* カラー選択 */}
       <div className="mb-6">
-        <label
-          className="mb-1.5 block text-[11px] font-medium text-gray-500 dark:text-zinc-500"
-        >
+        <label className="mb-1.5 block text-[11px] font-medium text-gray-500 dark:text-zinc-500">
           カラー
         </label>
         <div className="flex gap-2">
@@ -175,17 +167,13 @@ const EditMembersModal = ({
         >
           {roleName}
         </span>
-        <h3
-          className="text-sm font-semibold text-gray-900 dark:text-white"
-        >
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
           メンバー編集
         </h3>
       </div>
 
       {/* メンバーリスト */}
-      <div
-        className="max-h-[320px] space-y-1 overflow-y-auto rounded-xl border border-gray-200 bg-black/[.01] p-2 dark:border-white/[.08] dark:bg-white/[.02]"
-      >
+      <div className="max-h-[320px] space-y-1 overflow-y-auto rounded-xl border border-gray-200 bg-black/[.01] p-2 dark:border-white/[.08] dark:bg-white/[.02]">
         {ORG_USERS.map((user) => {
           const isMember = members.has(user.id);
           return (
@@ -201,7 +189,9 @@ const EditMembersModal = ({
               {/* アバター */}
               <div
                 className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${isMember ? "" : "bg-gray-200 dark:bg-zinc-700"}`}
-                style={isMember ? { backgroundColor: `${roleColor}20` } : undefined}
+                style={
+                  isMember ? { backgroundColor: `${roleColor}20` } : undefined
+                }
               >
                 <span
                   className={`text-[10px] font-semibold ${isMember ? "" : "text-gray-600 dark:text-zinc-400"}`}
@@ -213,22 +203,16 @@ const EditMembersModal = ({
 
               {/* ユーザー情報 */}
               <div className="flex-1 text-left">
-                <div
-                  className="text-xs font-medium text-gray-900 dark:text-white"
-                >
+                <div className="text-xs font-medium text-gray-900 dark:text-white">
                   {user.name}
                 </div>
-                <div
-                  className="text-[10px] text-gray-500 dark:text-zinc-500"
-                >
+                <div className="text-[10px] text-gray-500 dark:text-zinc-500">
                   {user.department}
                 </div>
               </div>
 
               {/* 現在のロール */}
-              <span
-                className="text-[9px] text-gray-500 dark:text-zinc-500"
-              >
+              <span className="text-[9px] text-gray-500 dark:text-zinc-500">
                 {user.role}
               </span>
 
@@ -362,9 +346,7 @@ export const AdminRoles = (): JSX.Element => {
   return (
     <div className="space-y-4 p-6">
       <div className="flex items-center justify-between">
-        <h2
-          className="text-lg font-semibold text-gray-900 dark:text-white"
-        >
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
           ロール管理
         </h2>
         <button
@@ -377,9 +359,7 @@ export const AdminRoles = (): JSX.Element => {
         </button>
       </div>
 
-      <div
-        className="flex flex-col gap-2 rounded-2xl border border-gray-200 bg-black/[.04] p-2 dark:border-white/[.08] dark:bg-black/20"
-      >
+      <div className="flex flex-col gap-2 rounded-2xl border border-gray-200 bg-black/[.04] p-2 dark:border-white/[.08] dark:bg-black/20">
         {ROLE_DEFINITIONS.map((role, ri) => {
           const isActive = activeRoles.has(ri);
           const enabledTools =
@@ -401,10 +381,14 @@ export const AdminRoles = (): JSX.Element => {
                 });
               }}
               className={`cursor-pointer rounded-xl bg-white transition-all duration-300 dark:bg-zinc-900 ${isActive ? "" : "border border-gray-200 dark:border-white/[.08]"}`}
-              style={isActive ? {
-                border: `1px solid ${role.color}30`,
-                background: `linear-gradient(to bottom, ${role.color}06, transparent)`,
-              } : undefined}
+              style={
+                isActive
+                  ? {
+                      border: `1px solid ${role.color}30`,
+                      background: `linear-gradient(to bottom, ${role.color}06, transparent)`,
+                    }
+                  : undefined
+              }
             >
               {/* ヘッダー行 */}
               <div className="flex items-center px-4 py-3">
@@ -429,21 +413,15 @@ export const AdminRoles = (): JSX.Element => {
                         key={initial}
                         className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-gray-300 dark:border-zinc-900 dark:bg-zinc-700"
                       >
-                        <span
-                          className="text-[10px] font-semibold text-gray-600 dark:text-zinc-400"
-                        >
+                        <span className="text-[10px] font-semibold text-gray-600 dark:text-zinc-400">
                           {initial}
                         </span>
                       </div>
                     ),
                   )}
                   {role.userCount > 3 && (
-                    <div
-                      className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-gray-300 dark:border-zinc-900 dark:bg-zinc-700"
-                    >
-                      <span
-                        className="text-[8px] font-semibold text-gray-600 dark:text-zinc-400"
-                      >
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-gray-300 dark:border-zinc-900 dark:bg-zinc-700">
+                      <span className="text-[8px] font-semibold text-gray-600 dark:text-zinc-400">
                         +{role.userCount - 3}
                       </span>
                     </div>
@@ -467,9 +445,7 @@ export const AdminRoles = (): JSX.Element => {
                 </div>
 
                 {/* ツール数 */}
-                <span
-                  className="ml-auto text-[9px] tabular-nums text-gray-500 dark:text-zinc-500"
-                >
+                <span className="ml-auto text-[9px] text-gray-500 tabular-nums dark:text-zinc-500">
                   {isActive
                     ? `${enabledTools}/${totalTools} tools`
                     : `${getEnabledSvcCount(ri)}/${SERVICES.length} サービス`}
@@ -487,9 +463,7 @@ export const AdminRoles = (): JSX.Element => {
                   <div className="px-4 pb-4">
                     {/* ロール説明 + メンバー編集 */}
                     <div className="mb-4 flex items-center justify-between">
-                      <span
-                        className="text-[11px] text-gray-500 dark:text-zinc-500"
-                      >
+                      <span className="text-[11px] text-gray-500 dark:text-zinc-500">
                         {role.description} · {role.userCount}名
                       </span>
                       <button
@@ -532,9 +506,7 @@ export const AdminRoles = (): JSX.Element => {
                                 {svc.name}
                               </span>
                               <div className="ml-auto flex items-center gap-2">
-                                <span
-                                  className="text-[9px] tabular-nums text-gray-500 dark:text-zinc-500"
-                                >
+                                <span className="text-[9px] text-gray-500 tabular-nums dark:text-zinc-500">
                                   {toolMatrix[ri]?.[si]?.filter(Boolean)
                                     .length ?? 0}
                                   /{svc.tools.length}

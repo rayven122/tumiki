@@ -15,7 +15,7 @@ export const SelectTrigger = ({
   ...props
 }: TriggerProps): React.JSX.Element => (
   <SelectPrimitive.Trigger
-    className={`flex h-10 items-center justify-between gap-2 rounded-lg border border-gray-200 dark:border-white/[.08] bg-black/[.02] dark:bg-white/[.03] px-3 py-2 text-sm text-gray-900 dark:text-white transition-colors outline-none hover:bg-black/[.02] dark:bg-white/[.04] focus-visible:border-gray-500 dark:focus-visible:border-zinc-500 disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-gray-400 dark:text-zinc-600 ${className}`}
+    className={`flex h-10 items-center justify-between gap-2 rounded-lg border border-gray-200 bg-black/[.02] px-3 py-2 text-sm text-gray-900 transition-colors outline-none hover:bg-black/[.02] focus-visible:border-gray-500 disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-gray-400 dark:border-white/[.08] dark:bg-white/[.03] dark:bg-white/[.04] dark:text-white dark:text-zinc-600 dark:focus-visible:border-zinc-500 ${className}`}
     {...props}
   >
     {children}
@@ -36,7 +36,7 @@ export const SelectContent = ({
   <SelectPrimitive.Portal>
     <SelectPrimitive.Content
       position={position}
-      className={`data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 relative z-[60] max-h-[var(--radix-select-content-available-height)] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-lg border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 text-gray-900 dark:text-white shadow-xl ${className}`}
+      className={`data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 relative z-[60] max-h-[var(--radix-select-content-available-height)] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-lg border border-gray-200 bg-white text-gray-900 shadow-xl dark:border-white/[.08] dark:bg-zinc-900 dark:text-white ${className}`}
       {...props}
     >
       <SelectPrimitive.ScrollUpButton className="flex items-center justify-center py-1 text-gray-500 dark:text-zinc-500">
@@ -60,7 +60,7 @@ export const SelectItem = ({
   ...props
 }: ItemProps): React.JSX.Element => (
   <SelectPrimitive.Item
-    className={`relative flex cursor-pointer items-center rounded-md py-2 pr-8 pl-3 text-sm text-gray-600 dark:text-zinc-400 outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-black/[.06] dark:bg-white/[.08] data-[highlighted]:text-gray-900 dark:text-white data-[state=checked]:text-gray-900 dark:text-white ${className}`}
+    className={`relative flex cursor-pointer items-center rounded-md py-2 pr-8 pl-3 text-sm text-gray-600 outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-black/[.06] data-[highlighted]:text-gray-900 data-[state=checked]:text-gray-900 dark:bg-white/[.08] dark:text-white dark:text-zinc-400 ${className}`}
     {...props}
   >
     <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>

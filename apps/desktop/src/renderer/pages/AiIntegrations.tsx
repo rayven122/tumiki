@@ -48,7 +48,7 @@ export const AiIntegrations = (): JSX.Element => {
     <div className="space-y-6 p-6">
       {/* ヘッダー */}
       <div className="flex items-start gap-3">
-        <div className="mt-1 rounded-lg bg-black/[.06] dark:bg-white/[.08] p-2">
+        <div className="mt-1 rounded-lg bg-black/[.06] p-2 dark:bg-white/[.08]">
           <Plug size={18} className="text-gray-900 dark:text-white" />
         </div>
         <div>
@@ -81,15 +81,21 @@ export const AiIntegrations = (): JSX.Element => {
                     className="h-10 w-10 rounded-lg"
                   />
                 ) : (
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-black/[.06] dark:bg-white/[.08] text-sm font-bold text-gray-500 dark:text-zinc-500">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-black/[.06] text-sm font-bold text-gray-500 dark:bg-white/[.08] dark:text-zinc-500">
                     {client.name.charAt(0)}
                   </div>
                 )}
                 {supported ? (
-                  <ArrowRight size={14} className="text-gray-400 dark:text-zinc-600" />
+                  <ArrowRight
+                    size={14}
+                    className="text-gray-400 dark:text-zinc-600"
+                  />
                 ) : (
                   <span title="近日対応予定">
-                    <Lock size={12} className="text-gray-400 dark:text-zinc-600" />
+                    <Lock
+                      size={12}
+                      className="text-gray-400 dark:text-zinc-600"
+                    />
                   </span>
                 )}
               </div>
@@ -101,7 +107,7 @@ export const AiIntegrations = (): JSX.Element => {
                   {supported ? "自動書き込み対応" : "近日対応予定"}
                 </div>
               </div>
-              <code className="w-full truncate rounded bg-black/[.02] dark:bg-white/[.03] px-2 py-1 font-mono text-[9px] text-gray-400 dark:text-zinc-600">
+              <code className="w-full truncate rounded bg-black/[.02] px-2 py-1 font-mono text-[9px] text-gray-400 dark:bg-white/[.03] dark:text-zinc-600">
                 {client.configTargetPath}
               </code>
             </button>

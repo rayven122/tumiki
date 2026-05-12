@@ -279,7 +279,7 @@ export const ConnectorManual = (): JSX.Element => {
     <div className="space-y-6 p-6">
       <Link
         to="/tools"
-        className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-zinc-500 hover:opacity-80"
+        className="inline-flex items-center gap-1 text-sm text-gray-500 hover:opacity-80 dark:text-zinc-500"
       >
         <ArrowLeft size={14} /> コネクト
       </Link>
@@ -293,7 +293,7 @@ export const ConnectorManual = (): JSX.Element => {
         </p>
       </div>
 
-      <div className="rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-5">
+      <div className="rounded-xl border border-gray-200 bg-white p-5 dark:border-white/[.08] dark:bg-zinc-900">
         {/* サーバー名 */}
         <div className="mb-5">
           <label className="mb-1 block text-xs text-gray-500 dark:text-zinc-500">
@@ -304,7 +304,7 @@ export const ConnectorManual = (): JSX.Element => {
             value={serverName}
             onChange={(e) => setServerName(e.target.value)}
             placeholder="例: 週次レポート用コネクタ"
-            className="w-full rounded-lg border border-gray-200 dark:border-white/[.08] bg-black/[.02] dark:bg-white/[.03] px-3 py-2.5 text-sm text-gray-900 dark:text-white outline-none"
+            className="w-full rounded-lg border border-gray-200 bg-black/[.02] px-3 py-2.5 text-sm text-gray-900 outline-none dark:border-white/[.08] dark:bg-white/[.03] dark:text-white"
           />
           <p className="mt-1.5 text-[10px] text-gray-500 dark:text-zinc-500">
             MCP識別子:{" "}
@@ -331,12 +331,12 @@ export const ConnectorManual = (): JSX.Element => {
             onChange={(e) => setDescription(e.target.value)}
             rows={2}
             placeholder="この仮想MCPサーバーの用途を記述..."
-            className="w-full resize-none rounded-lg border border-gray-200 dark:border-white/[.08] bg-black/[.02] dark:bg-white/[.03] px-3 py-2.5 text-sm text-gray-900 dark:text-white outline-none"
+            className="w-full resize-none rounded-lg border border-gray-200 bg-black/[.02] px-3 py-2.5 text-sm text-gray-900 outline-none dark:border-white/[.08] dark:bg-white/[.03] dark:text-white"
           />
         </div>
 
         {/* コネクタ選択 */}
-        <div className="mb-5 border-t border-t-gray-200 dark:border-t-white/[.08] pt-4">
+        <div className="mb-5 border-t border-t-gray-200 pt-4 dark:border-t-white/[.08]">
           <label className="mb-2 block text-xs text-gray-500 dark:text-zinc-500">
             束ねるコネクタを選択（{selectedConnectionIds.length} /{" "}
             {String(VIRTUAL_SERVER_MAX_CONNECTIONS)}）
@@ -346,12 +346,12 @@ export const ConnectorManual = (): JSX.Element => {
               読み込み中...
             </div>
           ) : connectors.length === 0 ? (
-            <div className="rounded-lg bg-black/[.02] dark:bg-white/[.04] p-4 text-center text-xs text-gray-400 dark:text-zinc-600">
+            <div className="rounded-lg bg-black/[.02] p-4 text-center text-xs text-gray-400 dark:bg-white/[.04] dark:text-zinc-600">
               選択可能なコネクタがありません。
               <br />
               <Link
                 to="/tools"
-                className="text-gray-600 dark:text-zinc-400 underline hover:opacity-80"
+                className="text-gray-600 underline hover:opacity-80 dark:text-zinc-400"
               >
                 コネクト画面
               </Link>
@@ -371,8 +371,8 @@ export const ConnectorManual = (): JSX.Element => {
                     onClick={() => toggleConnector(connector.connection.id)}
                     className={`flex min-h-[44px] items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs transition-colors ${
                       isSelected
-                        ? "border-emerald-400/30 bg-black/[.06] dark:bg-white/[.08] text-gray-900 dark:text-white"
-                        : "border-transparent bg-black/[.02] dark:bg-white/[.04] text-gray-600 dark:text-zinc-400"
+                        ? "border-emerald-400/30 bg-black/[.06] text-gray-900 dark:bg-white/[.08] dark:text-white"
+                        : "border-transparent bg-black/[.02] text-gray-600 dark:bg-white/[.04] dark:text-zinc-400"
                     }`}
                   >
                     {iconPath ? (
@@ -382,7 +382,7 @@ export const ConnectorManual = (): JSX.Element => {
                         className="h-4 w-4 shrink-0 rounded"
                       />
                     ) : (
-                      <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-black/[.02] dark:bg-white/[.03] text-[7px] text-gray-400 dark:text-zinc-600">
+                      <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-black/[.02] text-[7px] text-gray-400 dark:bg-white/[.03] dark:text-zinc-600">
                         MCP
                       </div>
                     )}
@@ -404,7 +404,7 @@ export const ConnectorManual = (): JSX.Element => {
 
         {/* ツール選択エリア（コネクト UI の「提供ツール」と同じカード形式） */}
         {selectedConnectors.length > 0 && (
-          <div className="mb-5 border-t border-t-gray-200 dark:border-t-white/[.08] pt-4">
+          <div className="mb-5 border-t border-t-gray-200 pt-4 dark:border-t-white/[.08]">
             <label className="mb-3 block text-xs text-gray-500 dark:text-zinc-500">
               ツール設定
             </label>
@@ -434,7 +434,7 @@ export const ConnectorManual = (): JSX.Element => {
                 return (
                   <div
                     key={connectionId}
-                    className="rounded-lg border border-gray-100 dark:border-white/[.03] bg-black/[.02] dark:bg-white/[.04] p-3"
+                    className="rounded-lg border border-gray-100 bg-black/[.02] p-3 dark:border-white/[.03] dark:bg-white/[.04]"
                   >
                     {/* コネクタヘッダー */}
                     <div className="mb-2 flex items-center gap-2">
@@ -445,7 +445,7 @@ export const ConnectorManual = (): JSX.Element => {
                           className="h-4 w-4 rounded"
                         />
                       ) : (
-                        <div className="flex h-4 w-4 items-center justify-center rounded bg-black/[.02] dark:bg-white/[.03] text-[7px] text-gray-400 dark:text-zinc-600">
+                        <div className="flex h-4 w-4 items-center justify-center rounded bg-black/[.02] text-[7px] text-gray-400 dark:bg-white/[.03] dark:text-zinc-600">
                           MCP
                         </div>
                       )}
@@ -474,7 +474,7 @@ export const ConnectorManual = (): JSX.Element => {
                               [connectionId]: e.target.value,
                             }))
                           }
-                          className="w-full rounded-lg border border-gray-200 dark:border-white/[.08] bg-black/[.02] dark:bg-white/[.03] py-1.5 pr-2 pl-8 text-xs text-gray-900 dark:text-white outline-none placeholder:text-gray-400 dark:text-zinc-600"
+                          className="w-full rounded-lg border border-gray-200 bg-black/[.02] py-1.5 pr-2 pl-8 text-xs text-gray-900 outline-none placeholder:text-gray-400 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white dark:text-zinc-600"
                         />
                       </div>
                     )}
@@ -494,7 +494,7 @@ export const ConnectorManual = (): JSX.Element => {
                           onClick={() =>
                             void loadToolsForConnection(connectionId)
                           }
-                          className="inline-flex min-h-[44px] items-center rounded border border-gray-200 dark:border-white/[.08] px-2 py-1 text-[10px] text-gray-600 dark:text-zinc-400 transition-colors hover:opacity-80"
+                          className="inline-flex min-h-[44px] items-center rounded border border-gray-200 px-2 py-1 text-[10px] text-gray-600 transition-colors hover:opacity-80 dark:border-white/[.08] dark:text-zinc-400"
                         >
                           再試行
                         </button>
@@ -514,7 +514,7 @@ export const ConnectorManual = (): JSX.Element => {
                           return (
                             <div
                               key={tool.name}
-                              className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 dark:border-white/[.03] bg-black/[.02] dark:bg-white/[.03] px-2.5 py-2"
+                              className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 bg-black/[.02] px-2.5 py-2 dark:border-white/[.03] dark:bg-white/[.03]"
                             >
                               <div className="min-w-0 flex-1">
                                 <div className="truncate font-mono text-xs font-medium text-gray-900 dark:text-white">
@@ -546,16 +546,16 @@ export const ConnectorManual = (): JSX.Element => {
 
         {/* エラー表示 */}
         {error && (
-          <div className="mb-4 rounded-lg bg-red-500/10 dark:bg-red-400/10 px-4 py-2.5 text-xs text-red-600 dark:text-red-400">
+          <div className="mb-4 rounded-lg bg-red-500/10 px-4 py-2.5 text-xs text-red-600 dark:bg-red-400/10 dark:text-red-400">
             {error}
           </div>
         )}
 
         {/* ボタン群 */}
-        <div className="flex items-center justify-end gap-3 border-t border-t-gray-200 dark:border-t-white/[.08] pt-4">
+        <div className="flex items-center justify-end gap-3 border-t border-t-gray-200 pt-4 dark:border-t-white/[.08]">
           <Link
             to="/tools"
-            className="inline-flex min-h-[44px] items-center rounded-lg border border-gray-200 dark:border-white/[.08] px-4 py-2 text-xs text-gray-500 dark:text-zinc-500 transition-colors hover:opacity-80"
+            className="inline-flex min-h-[44px] items-center rounded-lg border border-gray-200 px-4 py-2 text-xs text-gray-500 transition-colors hover:opacity-80 dark:border-white/[.08] dark:text-zinc-500"
           >
             キャンセル
           </Link>
@@ -563,7 +563,7 @@ export const ConnectorManual = (): JSX.Element => {
             type="button"
             onClick={() => void handleSubmit()}
             disabled={!canSubmit}
-            className="flex min-h-[44px] items-center gap-1.5 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-xs font-medium text-white dark:text-black transition-colors hover:opacity-90 disabled:opacity-50"
+            className="flex min-h-[44px] items-center gap-1.5 rounded-lg bg-gray-900 px-4 py-2 text-xs font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50 dark:bg-white dark:text-black"
           >
             <Plus size={14} />
             {submitting ? "作成中..." : "仮想MCPを作成"}

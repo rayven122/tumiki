@@ -40,13 +40,13 @@ export const OAuthCallbackUrlField = (): JSX.Element => {
           readOnly
           value={MCP_OAUTH_REDIRECT_URI}
           onFocus={(e) => e.target.select()}
-          className="flex-1 rounded-lg border border-gray-200 dark:border-white/[.08] bg-[#e8eaed] dark:bg-[#0a0a0a] px-4 py-3 font-mono text-xs text-gray-600 dark:text-zinc-400 outline-none"
+          className="flex-1 rounded-lg border border-gray-200 bg-[#e8eaed] px-4 py-3 font-mono text-xs text-gray-600 outline-none dark:border-white/[.08] dark:bg-[#0a0a0a] dark:text-zinc-400"
         />
         <button
           type="button"
           onClick={handleCopy}
           aria-label="Callback URLをコピー"
-          className="flex h-11 min-h-11 w-11 min-w-11 items-center justify-center rounded-lg border border-gray-200 dark:border-white/[.08] text-gray-600 dark:text-zinc-400 transition hover:bg-black/[.02] dark:bg-white/[.04]"
+          className="flex h-11 min-h-11 w-11 min-w-11 items-center justify-center rounded-lg border border-gray-200 text-gray-600 transition hover:bg-black/[.02] dark:border-white/[.08] dark:bg-white/[.04] dark:text-zinc-400"
         >
           {copied ? (
             <Check size={16} className="text-emerald-500" />

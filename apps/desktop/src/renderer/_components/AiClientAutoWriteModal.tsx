@@ -205,7 +205,7 @@ export const AiClientAutoWriteModal = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="ai-client-modal-title"
-        className="max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-8"
+        className="max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-gray-200 bg-white p-8 dark:border-white/[.08] dark:bg-zinc-900"
         onClick={(e) => e.stopPropagation()}
       >
         {/* ヘッダー */}
@@ -218,7 +218,7 @@ export const AiClientAutoWriteModal = ({
                 className="h-9 w-9 rounded-lg"
               />
             ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-black/[.06] dark:bg-white/[.08] text-sm font-bold text-gray-500 dark:text-zinc-500">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-black/[.06] text-sm font-bold text-gray-500 dark:bg-white/[.08] dark:text-zinc-500">
                 {client.name.charAt(0)}
               </div>
             )}
@@ -238,7 +238,7 @@ export const AiClientAutoWriteModal = ({
             type="button"
             onClick={onClose}
             disabled={writing}
-            className="rounded-md p-1 text-gray-500 dark:text-zinc-500 transition hover:opacity-70 disabled:opacity-50"
+            className="rounded-md p-1 text-gray-500 transition hover:opacity-70 disabled:opacity-50 dark:text-zinc-500"
             aria-label="閉じる"
           >
             <X size={20} />
@@ -252,7 +252,7 @@ export const AiClientAutoWriteModal = ({
             設定ファイル
           </div>
           {preview ? (
-            <code className="block rounded-lg border border-gray-100 dark:border-white/[.03] bg-[#e8eaed] dark:bg-[#0a0a0a] px-3 py-2 font-mono text-[11px] break-all text-gray-600 dark:text-zinc-400">
+            <code className="block rounded-lg border border-gray-100 bg-[#e8eaed] px-3 py-2 font-mono text-[11px] break-all text-gray-600 dark:border-white/[.03] dark:bg-[#0a0a0a] dark:text-zinc-400">
               {preview.configPath}
               {!preview.exists && (
                 <span className="ml-2 text-gray-400 dark:text-zinc-600">
@@ -281,7 +281,7 @@ export const AiClientAutoWriteModal = ({
                 チェックを外すと削除されます
               </span>
             </div>
-            <ul className="max-h-32 space-y-1.5 overflow-auto rounded-lg border border-gray-100 dark:border-white/[.03] bg-[#e8eaed] dark:bg-[#0a0a0a] p-2">
+            <ul className="max-h-32 space-y-1.5 overflow-auto rounded-lg border border-gray-100 bg-[#e8eaed] p-2 dark:border-white/[.03] dark:bg-[#0a0a0a]">
               {orphanSlugs.map((slug) => {
                 const kept = keptOrphanSlugs.has(slug);
                 return (
@@ -300,7 +300,7 @@ export const AiClientAutoWriteModal = ({
                         {slug}
                       </span>
                       {kept ? (
-                        <span className="flex items-center gap-1 rounded bg-black/[.02] dark:bg-white/[.04] px-1.5 py-0.5 text-[9px] font-medium text-gray-500 dark:text-zinc-500">
+                        <span className="flex items-center gap-1 rounded bg-black/[.02] px-1.5 py-0.5 text-[9px] font-medium text-gray-500 dark:bg-white/[.04] dark:text-zinc-500">
                           保持
                         </span>
                       ) : (
@@ -337,11 +337,11 @@ export const AiClientAutoWriteModal = ({
             )}
           </div>
           {servers.length === 0 ? (
-            <div className="rounded-lg border border-gray-100 dark:border-white/[.03] bg-[#e8eaed] dark:bg-[#0a0a0a] px-3 py-2 text-xs text-gray-400 dark:text-zinc-600">
+            <div className="rounded-lg border border-gray-100 bg-[#e8eaed] px-3 py-2 text-xs text-gray-400 dark:border-white/[.03] dark:bg-[#0a0a0a] dark:text-zinc-600">
               書き込み可能なMCPサーバーがありません
             </div>
           ) : (
-            <ul className="max-h-56 space-y-1.5 overflow-auto rounded-lg border border-gray-100 dark:border-white/[.03] bg-[#e8eaed] dark:bg-[#0a0a0a] p-2">
+            <ul className="max-h-56 space-y-1.5 overflow-auto rounded-lg border border-gray-100 bg-[#e8eaed] p-2 dark:border-white/[.03] dark:bg-[#0a0a0a]">
               {servers.map((server) => {
                 const checked = selectedSlugs.has(server.slug);
                 const inExisting = conflictingSlugs.has(server.slug);
@@ -415,7 +415,7 @@ export const AiClientAutoWriteModal = ({
             type="button"
             onClick={onClose}
             disabled={writing}
-            className="rounded-lg border border-gray-200 dark:border-white/[.08] px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-zinc-400 transition hover:opacity-80 disabled:opacity-50"
+            className="rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-600 transition hover:opacity-80 disabled:opacity-50 dark:border-white/[.08] dark:text-zinc-400"
           >
             キャンセル
           </button>
@@ -423,7 +423,7 @@ export const AiClientAutoWriteModal = ({
             type="button"
             onClick={() => void handleWrite()}
             disabled={!isReady || writing || !hasChanges}
-            className="flex items-center gap-2 rounded-lg bg-gray-900 dark:bg-white px-6 py-2.5 text-sm font-medium text-white dark:text-zinc-900 transition hover:opacity-90 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-lg bg-gray-900 px-6 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50 dark:bg-white dark:text-zinc-900"
           >
             {writing && <Loader2 size={14} className="animate-spin" />}
             {writing ? "書き込み中..." : "書き込み"}

@@ -187,7 +187,7 @@ export const ProfileSetup = (): JSX.Element => {
 
   return (
     <div
-      className={`flex h-screen items-center justify-center bg-[#e8eaed] dark:bg-[#0a0a0a] px-6 ${theme === "light" ? "light" : ""}`}
+      className={`flex h-screen items-center justify-center bg-[#e8eaed] px-6 dark:bg-[#0a0a0a] ${theme === "light" ? "light" : ""}`}
     >
       <div className="w-full max-w-3xl">
         <div className="mb-8 flex items-center justify-center gap-3">
@@ -208,9 +208,9 @@ export const ProfileSetup = (): JSX.Element => {
               type="button"
               disabled={isSubmitting}
               onClick={() => void selectPersonal()}
-              className="group rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-6 text-left transition hover:border-gray-400 dark:hover:border-zinc-600 hover:bg-black/[.02] dark:bg-white/[.04] disabled:cursor-not-allowed disabled:opacity-50"
+              className="group rounded-xl border border-gray-200 bg-white p-6 text-left transition hover:border-gray-400 hover:bg-black/[.02] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/[.08] dark:bg-white/[.04] dark:bg-zinc-900 dark:hover:border-zinc-600"
             >
-              <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-black/[.06] dark:bg-white/[.08] text-gray-900 dark:text-white">
+              <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-black/[.06] text-gray-900 dark:bg-white/[.08] dark:text-white">
                 <User size={22} />
               </span>
               <span className="mt-5 block text-base font-semibold text-gray-900 dark:text-white">
@@ -219,7 +219,7 @@ export const ProfileSetup = (): JSX.Element => {
               <span className="mt-2 block text-sm leading-6 text-gray-500 dark:text-zinc-500">
                 自分のPC上でMCPコネクタを管理します。組織の承認や監査は使いません。
               </span>
-              <span className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-zinc-400 group-hover:text-gray-900 dark:text-white">
+              <span className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-gray-600 group-hover:text-gray-900 dark:text-white dark:text-zinc-400">
                 このプロファイルで始める
                 <Check size={15} />
               </span>
@@ -228,9 +228,9 @@ export const ProfileSetup = (): JSX.Element => {
             <button
               type="button"
               onClick={() => setView("organization")}
-              className="group rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-6 text-left transition hover:border-gray-400 dark:hover:border-zinc-600 hover:bg-black/[.02] dark:bg-white/[.04]"
+              className="group rounded-xl border border-gray-200 bg-white p-6 text-left transition hover:border-gray-400 hover:bg-black/[.02] dark:border-white/[.08] dark:bg-white/[.04] dark:bg-zinc-900 dark:hover:border-zinc-600"
             >
-              <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-black/[.06] dark:bg-white/[.08] text-gray-900 dark:text-white">
+              <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-black/[.06] text-gray-900 dark:bg-white/[.08] dark:text-white">
                 <Building2 size={22} />
               </span>
               <span className="mt-5 block text-base font-semibold text-gray-900 dark:text-white">
@@ -239,7 +239,7 @@ export const ProfileSetup = (): JSX.Element => {
               <span className="mt-2 block text-sm leading-6 text-gray-500 dark:text-zinc-500">
                 管理サーバーに接続し、組織のユーザー・承認・監査機能を有効化します。
               </span>
-              <span className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-zinc-400 group-hover:text-gray-900 dark:text-white">
+              <span className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-gray-600 group-hover:text-gray-900 dark:text-white dark:text-zinc-400">
                 管理サーバーに接続
                 <KeyRound size={15} />
               </span>
@@ -249,13 +249,13 @@ export const ProfileSetup = (): JSX.Element => {
           <form
             onSubmit={(e) => void startOrganization(e)}
             noValidate
-            className="mx-auto max-w-md rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-6"
+            className="mx-auto max-w-md rounded-xl border border-gray-200 bg-white p-6 dark:border-white/[.08] dark:bg-zinc-900"
           >
             <button
               type="button"
               onClick={() => void cancelOrganizationSetup()}
               disabled={isSubmitting && !isWaitingForCallback}
-              className="mb-5 flex items-center gap-2 text-sm text-gray-500 dark:text-zinc-500 transition hover:text-gray-900 dark:text-white disabled:opacity-50"
+              className="mb-5 flex items-center gap-2 text-sm text-gray-500 transition hover:text-gray-900 disabled:opacity-50 dark:text-white dark:text-zinc-500"
             >
               <ArrowLeft size={15} />
               戻る
@@ -281,7 +281,7 @@ export const ProfileSetup = (): JSX.Element => {
               placeholder="https://manager.example.com"
               required
               disabled={isSubmitting}
-              className="mt-1 w-full rounded-lg border border-gray-200 dark:border-white/[.08] bg-black/[.02] dark:bg-white/[.03] px-3 py-2.5 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:text-zinc-600 focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:outline-none disabled:opacity-50"
+              className="mt-1 w-full rounded-lg border border-gray-200 bg-black/[.02] px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-gray-900 focus:outline-none disabled:opacity-50 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white dark:text-zinc-600 dark:focus:ring-white"
             />
 
             {shouldWarnHttp && (
@@ -300,7 +300,7 @@ export const ProfileSetup = (): JSX.Element => {
             <button
               type="submit"
               disabled={isSubmitting || !managerUrl.trim()}
-              className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-gray-900 dark:bg-white px-4 py-2.5 text-sm font-medium text-white dark:text-black transition hover:bg-gray-800 dark:hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
             >
               {isSubmitting ? (
                 <>

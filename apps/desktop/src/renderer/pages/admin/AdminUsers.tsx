@@ -66,14 +66,10 @@ export const AdminUsers = (): JSX.Element => {
       {/* ヘッダー */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h2
-            className="text-lg font-semibold text-gray-900 dark:text-white"
-          >
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             ユーザー管理
           </h2>
-          <span
-            className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-300 dark:bg-white/[.08] dark:text-zinc-700"
-          >
+          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-300 dark:bg-white/[.08] dark:text-zinc-700">
             {ORG_USERS.length} users
           </span>
         </div>
@@ -88,18 +84,14 @@ export const AdminUsers = (): JSX.Element => {
 
       {/* 検索 + フィルタ */}
       <div className="flex items-center gap-3">
-        <div
-          className="flex flex-1 items-center gap-2 rounded-lg px-3 py-2 border border-gray-200 bg-white dark:border-white/[.08] dark:bg-zinc-900"
-        >
-          <Search
-            className="h-3.5 w-3.5 text-gray-500 dark:text-zinc-500"
-          />
+        <div className="flex flex-1 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 dark:border-white/[.08] dark:bg-zinc-900">
+          <Search className="h-3.5 w-3.5 text-gray-500 dark:text-zinc-500" />
           <input
             type="text"
             placeholder="名前・メールで検索..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="flex-1 bg-transparent text-xs outline-none text-gray-900 dark:text-white"
+            className="flex-1 bg-transparent text-xs text-gray-900 outline-none dark:text-white"
           />
         </div>
 
@@ -133,14 +125,10 @@ export const AdminUsers = (): JSX.Element => {
       </div>
 
       {/* ユーザーテーブル */}
-      <div
-        className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[.08] dark:bg-zinc-900"
-      >
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[.08] dark:bg-zinc-900">
         <table className="w-full text-xs">
           <thead>
-            <tr
-              className="border-b border-b-gray-200 text-gray-300 dark:border-b-white/[.08] dark:text-zinc-700"
-            >
+            <tr className="border-b border-b-gray-200 text-gray-300 dark:border-b-white/[.08] dark:text-zinc-700">
               <th className="px-4 py-3 text-left font-medium">ユーザー</th>
               <th className="px-4 py-3 text-left font-medium">部署</th>
               <th className="px-4 py-3 text-left font-medium">ロール</th>
@@ -157,23 +145,19 @@ export const AdminUsers = (): JSX.Element => {
               return (
                 <tr
                   key={user.id}
-                  className="transition-colors border-b border-b-gray-200 dark:border-b-white/[.08]"
+                  className="border-b border-b-gray-200 transition-colors dark:border-b-white/[.08]"
                 >
                   {/* ユーザー: アバター + 名前 + メール */}
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
-                      <div
-                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-[10px] font-semibold text-gray-600 dark:bg-white/[.08] dark:text-zinc-400"
-                      >
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-[10px] font-semibold text-gray-600 dark:bg-white/[.08] dark:text-zinc-400">
                         {getInitials(user.name)}
                       </div>
                       <div>
                         <div className="text-gray-900 dark:text-white">
                           {user.name}
                         </div>
-                        <div
-                          className="text-[10px] text-gray-500 dark:text-zinc-500"
-                        >
+                        <div className="text-[10px] text-gray-500 dark:text-zinc-500">
                           {user.email}
                         </div>
                       </div>
@@ -181,9 +165,7 @@ export const AdminUsers = (): JSX.Element => {
                   </td>
 
                   {/* 部署 */}
-                  <td
-                    className="px-4 py-3 text-gray-600 dark:text-zinc-400"
-                  >
+                  <td className="px-4 py-3 text-gray-600 dark:text-zinc-400">
                     {user.department}
                   </td>
 
@@ -209,23 +191,17 @@ export const AdminUsers = (): JSX.Element => {
                   </td>
 
                   {/* 最終ログイン */}
-                  <td
-                    className="px-4 py-3 font-mono text-gray-400 dark:text-zinc-600"
-                  >
+                  <td className="px-4 py-3 font-mono text-gray-400 dark:text-zinc-600">
                     {user.lastLogin}
                   </td>
 
                   {/* ツール数 */}
-                  <td
-                    className="px-4 py-3 text-right font-mono text-gray-600 dark:text-zinc-400"
-                  >
+                  <td className="px-4 py-3 text-right font-mono text-gray-600 dark:text-zinc-400">
                     {user.toolCount}
                   </td>
 
                   {/* リクエスト数 */}
-                  <td
-                    className="px-4 py-3 text-right font-mono text-gray-600 dark:text-zinc-400"
-                  >
+                  <td className="px-4 py-3 text-right font-mono text-gray-600 dark:text-zinc-400">
                     {user.requestCount.toLocaleString()}
                   </td>
                 </tr>
@@ -236,9 +212,7 @@ export const AdminUsers = (): JSX.Element => {
 
         {/* 結果なし */}
         {filtered.length === 0 && (
-          <div
-            className="py-8 text-center text-xs text-gray-500 dark:text-zinc-500"
-          >
+          <div className="py-8 text-center text-xs text-gray-500 dark:text-zinc-500">
             該当するユーザーが見つかりません
           </div>
         )}

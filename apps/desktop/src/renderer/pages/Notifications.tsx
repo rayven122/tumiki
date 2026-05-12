@@ -119,7 +119,7 @@ export const Notifications = (): JSX.Element => {
             通知
           </h2>
           {unreadCount > 0 && (
-            <span className="rounded-full bg-red-500/10 dark:bg-red-400/10 px-2 py-0.5 text-xs font-medium text-red-600 dark:text-red-400">
+            <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-600 dark:bg-red-400/10 dark:text-red-400">
               {unreadCount}
             </span>
           )}
@@ -127,7 +127,7 @@ export const Notifications = (): JSX.Element => {
         {unreadCount > 0 && (
           <button
             onClick={markAllRead}
-            className="rounded-lg bg-black/[.06] dark:bg-white/[.08] px-3 py-1.5 text-xs text-gray-600 dark:text-zinc-400 transition-colors hover:bg-black/[.02] dark:bg-white/[.04]"
+            className="rounded-lg bg-black/[.06] px-3 py-1.5 text-xs text-gray-600 transition-colors hover:bg-black/[.02] dark:bg-white/[.04] dark:bg-white/[.08] dark:text-zinc-400"
           >
             すべて既読にする
           </button>
@@ -140,8 +140,10 @@ export const Notifications = (): JSX.Element => {
           <button
             key={n.id}
             onClick={() => toggleRead(n.id)}
-            className={`flex w-full items-start gap-3 rounded-xl border border-gray-200 dark:border-white/[.08] p-4 text-left transition-colors hover:bg-black/[.02] dark:bg-white/[.04] ${
-              n.read ? "bg-white dark:bg-zinc-900" : "bg-black/[.06] dark:bg-white/[.08]"
+            className={`flex w-full items-start gap-3 rounded-xl border border-gray-200 p-4 text-left transition-colors hover:bg-black/[.02] dark:border-white/[.08] dark:bg-white/[.04] ${
+              n.read
+                ? "bg-white dark:bg-zinc-900"
+                : "bg-black/[.06] dark:bg-white/[.08]"
             }`}
           >
             {/* 未読インジケータ */}
@@ -154,9 +156,7 @@ export const Notifications = (): JSX.Element => {
             </div>
 
             {/* タイプアイコン */}
-            <div
-              className={`shrink-0 pt-0.5 ${TYPE_COLOR_CLASSES[n.type]}`}
-            >
+            <div className={`shrink-0 pt-0.5 ${TYPE_COLOR_CLASSES[n.type]}`}>
               {TYPE_ICONS[n.type]}
             </div>
 
