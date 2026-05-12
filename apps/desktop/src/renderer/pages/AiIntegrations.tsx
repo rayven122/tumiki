@@ -48,14 +48,14 @@ export const AiIntegrations = (): JSX.Element => {
     <div className="space-y-6 p-6">
       {/* ヘッダー */}
       <div className="flex items-start gap-3">
-        <div className="mt-1 rounded-lg bg-[var(--bg-active)] p-2">
-          <Plug size={18} className="text-[var(--text-primary)]" />
+        <div className="mt-1 rounded-lg bg-black/[.06] dark:bg-white/[.08] p-2">
+          <Plug size={18} className="text-gray-900 dark:text-white" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-[var(--text-primary)]">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             AIツール連携
           </h1>
-          <p className="mt-1 text-sm text-[var(--text-muted)]">
+          <p className="mt-1 text-sm text-gray-500 dark:text-zinc-500">
             MCPサーバーを接続するAIツールを管理します
           </p>
         </div>
@@ -71,8 +71,7 @@ export const AiIntegrations = (): JSX.Element => {
               key={client.id}
               type="button"
               onClick={() => handleClick(client)}
-              className="flex flex-col items-start gap-3 rounded-xl p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-lg"
-              style={cardStyle}
+              className={`flex flex-col items-start gap-3 rounded-xl p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-lg ${cardStyle}`}
             >
               <div className="flex w-full items-center justify-between">
                 {logo ? (
@@ -82,27 +81,27 @@ export const AiIntegrations = (): JSX.Element => {
                     className="h-10 w-10 rounded-lg"
                   />
                 ) : (
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--bg-active)] text-sm font-bold text-[var(--text-muted)]">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-black/[.06] dark:bg-white/[.08] text-sm font-bold text-gray-500 dark:text-zinc-500">
                     {client.name.charAt(0)}
                   </div>
                 )}
                 {supported ? (
-                  <ArrowRight size={14} className="text-[var(--text-subtle)]" />
+                  <ArrowRight size={14} className="text-gray-400 dark:text-zinc-600" />
                 ) : (
                   <span title="近日対応予定">
-                    <Lock size={12} className="text-[var(--text-subtle)]" />
+                    <Lock size={12} className="text-gray-400 dark:text-zinc-600" />
                   </span>
                 )}
               </div>
               <div>
-                <div className="text-sm font-medium text-[var(--text-primary)]">
+                <div className="text-sm font-medium text-gray-900 dark:text-white">
                   {client.name}
                 </div>
-                <div className="mt-0.5 text-[10px] text-[var(--text-subtle)]">
+                <div className="mt-0.5 text-[10px] text-gray-400 dark:text-zinc-600">
                   {supported ? "自動書き込み対応" : "近日対応予定"}
                 </div>
               </div>
-              <code className="w-full truncate rounded bg-[var(--bg-input)] px-2 py-1 font-mono text-[9px] text-[var(--text-subtle)]">
+              <code className="w-full truncate rounded bg-black/[.02] dark:bg-white/[.03] px-2 py-1 font-mono text-[9px] text-gray-400 dark:text-zinc-600">
                 {client.configTargetPath}
               </code>
             </button>
@@ -111,7 +110,7 @@ export const AiIntegrations = (): JSX.Element => {
       </div>
 
       {/* 説明補足 */}
-      <p className="text-xs text-[var(--text-subtle)]">
+      <p className="text-xs text-gray-400 dark:text-zinc-600">
         ※
         鍵アイコン付きのクライアントは現在自動書き込み未対応です。順次対応予定です。
       </p>

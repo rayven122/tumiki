@@ -69,7 +69,7 @@ export const AiClientInstallModal = ({
       onClick={onClose}
     >
       <div
-        className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-8"
+        className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-8"
         onClick={(e) => e.stopPropagation()}
       >
         {/* タイトル */}
@@ -82,15 +82,15 @@ export const AiClientInstallModal = ({
                 className="h-9 w-9 rounded-lg"
               />
             ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--bg-active)] text-sm font-bold text-[var(--text-muted)]">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-black/[.06] dark:bg-white/[.08] text-sm font-bold text-gray-500 dark:text-zinc-500">
                 {client.name.charAt(0)}
               </div>
             )}
             <div>
-              <h2 className="text-lg font-bold text-[var(--text-primary)]">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">
                 {client.name}に接続
               </h2>
-              <p className="text-xs text-[var(--text-muted)]">
+              <p className="text-xs text-gray-500 dark:text-zinc-500">
                 「{serverName}」を追加します
               </p>
             </div>
@@ -98,7 +98,7 @@ export const AiClientInstallModal = ({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-[var(--text-muted)] transition hover:opacity-70"
+            className="rounded-md p-1 text-gray-500 dark:text-zinc-500 transition hover:opacity-70"
             aria-label="閉じる"
           >
             <X size={20} />
@@ -107,11 +107,11 @@ export const AiClientInstallModal = ({
 
         {/* 設定ファイルパス */}
         <div className="mb-4">
-          <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-[var(--text-primary)]">
-            <Info size={12} className="text-[var(--text-subtle)]" />
+          <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-gray-900 dark:text-white">
+            <Info size={12} className="text-gray-400 dark:text-zinc-600" />
             設定ファイル
           </div>
-          <code className="block rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-app)] px-3 py-2 font-mono text-[11px] break-all text-[var(--text-secondary)]">
+          <code className="block rounded-lg border border-gray-100 dark:border-white/[.03] bg-[#e8eaed] dark:bg-[#0a0a0a] px-3 py-2 font-mono text-[11px] break-all text-gray-600 dark:text-zinc-400">
             {targetPath}
           </code>
         </div>
@@ -119,39 +119,39 @@ export const AiClientInstallModal = ({
         {/* 設定スニペット */}
         <div className="mb-5">
           <div className="mb-1.5 flex items-center justify-between">
-            <span className="text-xs font-medium text-[var(--text-primary)]">
+            <span className="text-xs font-medium text-gray-900 dark:text-white">
               設定内容
             </span>
             <button
               type="button"
               onClick={handleCopy}
-              className="flex items-center gap-1 rounded px-2 py-1 text-[10px] text-[var(--text-muted)] transition hover:text-[var(--text-primary)]"
+              className="flex items-center gap-1 rounded px-2 py-1 text-[10px] text-gray-500 dark:text-zinc-500 transition hover:text-gray-900 dark:text-white"
             >
               {copied ? <Check size={12} /> : <Copy size={12} />}
               {copied ? "コピー済み" : "コピー"}
             </button>
           </div>
-          <pre className="max-h-48 overflow-auto rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-app)] p-3 font-mono text-[11px] leading-relaxed text-[var(--text-secondary)]">
+          <pre className="max-h-48 overflow-auto rounded-lg border border-gray-100 dark:border-white/[.03] bg-[#e8eaed] dark:bg-[#0a0a0a] p-3 font-mono text-[11px] leading-relaxed text-gray-600 dark:text-zinc-400">
             {configSnippet}
           </pre>
         </div>
 
         {/* 区切り */}
-        <div className="mb-5 border-t border-[var(--border)]" />
+        <div className="mb-5 border-t border-gray-200 dark:border-white/[.08]" />
 
         {/* ボタン */}
         <div className="flex justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-[var(--border)] px-5 py-2.5 text-sm font-medium text-[var(--text-secondary)] transition hover:opacity-80"
+            className="rounded-lg border border-gray-200 dark:border-white/[.08] px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-zinc-400 transition hover:opacity-80"
           >
             キャンセル
           </button>
           <button
             type="button"
             onClick={handleInstall}
-            className="rounded-lg bg-[var(--text-primary)] px-6 py-2.5 text-sm font-medium text-[var(--bg-card)] transition hover:opacity-90"
+            className="rounded-lg bg-gray-900 dark:bg-white px-6 py-2.5 text-sm font-medium text-white dark:text-zinc-900 transition hover:opacity-90"
           >
             追加
           </button>

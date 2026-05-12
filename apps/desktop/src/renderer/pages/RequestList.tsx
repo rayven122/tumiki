@@ -47,12 +47,12 @@ export const RequestList = (): JSX.Element => {
     <div className="space-y-4 p-6">
       {/* ヘッダー */}
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-[var(--text-primary)]">
+        <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
           権限申請
         </h1>
         <Link
           to="/requests/new"
-          className="flex items-center gap-1.5 rounded-lg bg-[var(--btn-primary-bg)] px-4 py-2 text-sm font-medium text-[var(--btn-primary-text)] transition-colors hover:opacity-90"
+          className="flex items-center gap-1.5 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-sm font-medium text-white dark:text-black transition-colors hover:opacity-90"
         >
           <Plus size={16} />
           新規申請
@@ -60,15 +60,15 @@ export const RequestList = (): JSX.Element => {
       </div>
 
       {/* ピルナビ */}
-      <div className="flex items-center gap-1 rounded-lg bg-[var(--bg-card-hover)] p-0.5">
+      <div className="flex items-center gap-1 rounded-lg bg-black/[.02] dark:bg-white/[.04] p-0.5">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             className={`rounded px-3 py-1.5 text-xs transition-colors ${
               activeTab === tab.key
-                ? "bg-[var(--bg-active)] text-[var(--text-primary)]"
-                : "text-[var(--text-subtle)]"
+                ? "bg-black/[.06] dark:bg-white/[.08] text-gray-900 dark:text-white"
+                : "text-gray-400 dark:text-zinc-600"
             }`}
           >
             {tab.label}
@@ -80,10 +80,10 @@ export const RequestList = (): JSX.Element => {
       </div>
 
       {/* テーブル */}
-      <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg-card)] shadow-[var(--shadow-card)]">
+      <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900">
         <table className="w-full text-xs">
           <thead>
-            <tr className="border-b border-b-[var(--border)] text-[var(--text-muted)]">
+            <tr className="border-b border-b-gray-200 dark:border-b-white/[.08] text-gray-500 dark:text-zinc-500">
               <th className="px-4 py-2.5 text-left font-medium">申請日</th>
               <th className="px-4 py-2.5 text-left font-medium">ツール</th>
               <th className="px-4 py-2.5 text-left font-medium">申請内容</th>
@@ -98,32 +98,31 @@ export const RequestList = (): JSX.Element => {
               return (
                 <tr
                   key={req.id}
-                  className="border-b border-b-[var(--border)] last:border-0"
+                  className="border-b border-b-gray-200 dark:border-b-white/[.08] last:border-0"
                 >
-                  <td className="px-4 py-2.5 text-[var(--text-subtle)]">
+                  <td className="px-4 py-2.5 text-gray-400 dark:text-zinc-600">
                     {req.date}
                   </td>
-                  <td className="px-4 py-2.5 text-[var(--text-primary)]">
+                  <td className="px-4 py-2.5 text-gray-900 dark:text-white">
                     {req.tool}
                   </td>
-                  <td className="px-4 py-2.5 text-[var(--text-secondary)]">
+                  <td className="px-4 py-2.5 text-gray-600 dark:text-zinc-400">
                     {req.type}
                   </td>
                   <td className="px-4 py-2.5">
                     <span
-                      className="inline-block rounded-full px-2 py-0.5 text-[10px] font-medium"
-                      style={{ backgroundColor: status.bg, color: status.text }}
+                      className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${status.className}`}
                     >
                       {status.label}
                     </span>
                   </td>
-                  <td className="px-4 py-2.5 text-[var(--text-secondary)]">
+                  <td className="px-4 py-2.5 text-gray-600 dark:text-zinc-400">
                     {req.approvers.map((a) => a.name).join(", ")}
                   </td>
                   <td className="px-4 py-2.5">
                     <Link
                       to={`/requests/${req.id}`}
-                      className="flex items-center gap-1 text-[10px] text-[var(--text-muted)] hover:opacity-80"
+                      className="flex items-center gap-1 text-[10px] text-gray-500 dark:text-zinc-500 hover:opacity-80"
                     >
                       詳細
                       <ChevronRight size={12} />

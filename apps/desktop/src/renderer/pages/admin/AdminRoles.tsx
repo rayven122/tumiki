@@ -30,12 +30,7 @@ const ModalOverlay = ({
     onClick={onClose}
   >
     <div
-      className="w-full max-w-md rounded-2xl p-6"
-      style={{
-        backgroundColor: "var(--bg-card, #1a1a1a)",
-        border: "1px solid var(--border)",
-        boxShadow: "0 25px 50px rgba(0,0,0,0.5)",
-      }}
+      className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-white/[.08] dark:bg-zinc-900"
       onClick={(e) => e.stopPropagation()}
     >
       {children}
@@ -52,8 +47,7 @@ const AddRoleModal = ({ onClose }: { onClose: () => void }) => {
   return (
     <ModalOverlay onClose={onClose}>
       <h3
-        className="mb-5 text-sm font-semibold"
-        style={{ color: "var(--text-primary)" }}
+        className="mb-5 text-sm font-semibold text-gray-900 dark:text-white"
       >
         ロール追加
       </h3>
@@ -61,8 +55,7 @@ const AddRoleModal = ({ onClose }: { onClose: () => void }) => {
       {/* ロール名 */}
       <div className="mb-4">
         <label
-          className="mb-1.5 block text-[11px] font-medium"
-          style={{ color: "var(--text-muted)" }}
+          className="mb-1.5 block text-[11px] font-medium text-gray-500 dark:text-zinc-500"
         >
           ロール名
         </label>
@@ -71,20 +64,14 @@ const AddRoleModal = ({ onClose }: { onClose: () => void }) => {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="例: Viewer"
-          className="w-full rounded-lg px-3 py-2 text-xs outline-none"
-          style={{
-            backgroundColor: "var(--bg-tertiary, rgba(255,255,255,0.04))",
-            border: "1px solid var(--border)",
-            color: "var(--text-primary)",
-          }}
+          className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-900 outline-none dark:border-white/[.08] dark:bg-white/[.04] dark:text-white"
         />
       </div>
 
       {/* 説明 */}
       <div className="mb-4">
         <label
-          className="mb-1.5 block text-[11px] font-medium"
-          style={{ color: "var(--text-muted)" }}
+          className="mb-1.5 block text-[11px] font-medium text-gray-500 dark:text-zinc-500"
         >
           説明
         </label>
@@ -93,20 +80,14 @@ const AddRoleModal = ({ onClose }: { onClose: () => void }) => {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="例: 閲覧のみ可能なロール"
-          className="w-full rounded-lg px-3 py-2 text-xs outline-none"
-          style={{
-            backgroundColor: "var(--bg-tertiary, rgba(255,255,255,0.04))",
-            border: "1px solid var(--border)",
-            color: "var(--text-primary)",
-          }}
+          className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-900 outline-none dark:border-white/[.08] dark:bg-white/[.04] dark:text-white"
         />
       </div>
 
       {/* カラー選択 */}
       <div className="mb-6">
         <label
-          className="mb-1.5 block text-[11px] font-medium"
-          style={{ color: "var(--text-muted)" }}
+          className="mb-1.5 block text-[11px] font-medium text-gray-500 dark:text-zinc-500"
         >
           カラー
         </label>
@@ -135,12 +116,7 @@ const AddRoleModal = ({ onClose }: { onClose: () => void }) => {
         <button
           type="button"
           onClick={onClose}
-          className="rounded-lg px-4 py-2 text-xs font-medium transition-colors"
-          style={{
-            backgroundColor: "var(--bg-tertiary, rgba(255,255,255,0.04))",
-            color: "var(--text-secondary)",
-            border: "1px solid var(--border)",
-          }}
+          className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-xs font-medium text-gray-600 transition-colors dark:border-white/[.08] dark:bg-white/[.04] dark:text-zinc-400"
         >
           キャンセル
         </button>
@@ -200,8 +176,7 @@ const EditMembersModal = ({
           {roleName}
         </span>
         <h3
-          className="text-sm font-semibold"
-          style={{ color: "var(--text-primary)" }}
+          className="text-sm font-semibold text-gray-900 dark:text-white"
         >
           メンバー編集
         </h3>
@@ -209,11 +184,7 @@ const EditMembersModal = ({
 
       {/* メンバーリスト */}
       <div
-        className="max-h-[320px] space-y-1 overflow-y-auto rounded-xl p-2"
-        style={{
-          backgroundColor: "var(--bg-tertiary, rgba(255,255,255,0.02))",
-          border: "1px solid var(--border)",
-        }}
+        className="max-h-[320px] space-y-1 overflow-y-auto rounded-xl border border-gray-200 bg-black/[.01] p-2 dark:border-white/[.08] dark:bg-white/[.02]"
       >
         {ORG_USERS.map((user) => {
           const isMember = members.has(user.id);
@@ -229,18 +200,12 @@ const EditMembersModal = ({
             >
               {/* アバター */}
               <div
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
-                style={{
-                  backgroundColor: isMember
-                    ? `${roleColor}20`
-                    : "var(--bg-tertiary, #374151)",
-                }}
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${isMember ? "" : "bg-gray-200 dark:bg-zinc-700"}`}
+                style={isMember ? { backgroundColor: `${roleColor}20` } : undefined}
               >
                 <span
-                  className="text-[10px] font-semibold"
-                  style={{
-                    color: isMember ? roleColor : "var(--text-secondary)",
-                  }}
+                  className={`text-[10px] font-semibold ${isMember ? "" : "text-gray-600 dark:text-zinc-400"}`}
+                  style={isMember ? { color: roleColor } : undefined}
                 >
                   {user.name.charAt(0)}
                 </span>
@@ -249,14 +214,12 @@ const EditMembersModal = ({
               {/* ユーザー情報 */}
               <div className="flex-1 text-left">
                 <div
-                  className="text-xs font-medium"
-                  style={{ color: "var(--text-primary)" }}
+                  className="text-xs font-medium text-gray-900 dark:text-white"
                 >
                   {user.name}
                 </div>
                 <div
-                  className="text-[10px]"
-                  style={{ color: "var(--text-muted)" }}
+                  className="text-[10px] text-gray-500 dark:text-zinc-500"
                 >
                   {user.department}
                 </div>
@@ -264,19 +227,15 @@ const EditMembersModal = ({
 
               {/* 現在のロール */}
               <span
-                className="text-[9px]"
-                style={{ color: "var(--text-muted)" }}
+                className="text-[9px] text-gray-500 dark:text-zinc-500"
               >
                 {user.role}
               </span>
 
               {/* チェック */}
               <div
-                className="flex h-4 w-4 shrink-0 items-center justify-center rounded"
-                style={{
-                  backgroundColor: isMember ? roleColor : "transparent",
-                  border: isMember ? "none" : "1px solid var(--border)",
-                }}
+                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded ${isMember ? "" : "border border-gray-200 dark:border-white/[.08]"}`}
+                style={isMember ? { backgroundColor: roleColor } : undefined}
               >
                 {isMember && <span className="text-[10px] text-black">✓</span>}
               </div>
@@ -286,7 +245,7 @@ const EditMembersModal = ({
       </div>
 
       {/* 選択数 */}
-      <div className="mt-3 text-[11px]" style={{ color: "var(--text-muted)" }}>
+      <div className="mt-3 text-[11px] text-gray-500 dark:text-zinc-500">
         {members.size}名 選択中
       </div>
 
@@ -295,12 +254,7 @@ const EditMembersModal = ({
         <button
           type="button"
           onClick={onClose}
-          className="rounded-lg px-4 py-2 text-xs font-medium transition-colors"
-          style={{
-            backgroundColor: "var(--bg-tertiary, rgba(255,255,255,0.04))",
-            color: "var(--text-secondary)",
-            border: "1px solid var(--border)",
-          }}
+          className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-xs font-medium text-gray-600 transition-colors dark:border-white/[.08] dark:bg-white/[.04] dark:text-zinc-400"
         >
           キャンセル
         </button>
@@ -338,10 +292,10 @@ const Toggle = ({
     className="relative h-3.5 w-6 shrink-0 cursor-pointer rounded-full transition-colors duration-300"
     style={{
       backgroundColor: on
-        ? (color ?? "var(--accent, #34d399)")
+        ? (color ?? "#34d399")
         : partial
           ? "#f59e0b"
-          : "var(--bg-tertiary, rgba(255,255,255,0.15))",
+          : "rgba(156,163,175,0.3)",
     }}
   >
     <div
@@ -409,20 +363,14 @@ export const AdminRoles = (): JSX.Element => {
     <div className="space-y-4 p-6">
       <div className="flex items-center justify-between">
         <h2
-          className="text-lg font-semibold"
-          style={{ color: "var(--text-primary)" }}
+          className="text-lg font-semibold text-gray-900 dark:text-white"
         >
           ロール管理
         </h2>
         <button
           type="button"
           onClick={() => setShowAddRole(true)}
-          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
-          style={{
-            backgroundColor: "var(--accent-alpha, rgba(52,211,153,0.1))",
-            color: "var(--accent, #34d399)",
-            border: "1px solid var(--accent-alpha, rgba(52,211,153,0.2))",
-          }}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-600 transition-colors dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-400"
         >
           <span className="text-sm">+</span>
           ロール追加
@@ -430,11 +378,7 @@ export const AdminRoles = (): JSX.Element => {
       </div>
 
       <div
-        className="flex flex-col gap-2 rounded-2xl p-2"
-        style={{
-          backgroundColor: "var(--bg-secondary, rgba(0,0,0,0.2))",
-          border: "1px solid var(--border)",
-        }}
+        className="flex flex-col gap-2 rounded-2xl border border-gray-200 bg-black/[.04] p-2 dark:border-white/[.08] dark:bg-black/20"
       >
         {ROLE_DEFINITIONS.map((role, ri) => {
           const isActive = activeRoles.has(ri);
@@ -456,16 +400,11 @@ export const AdminRoles = (): JSX.Element => {
                   return next;
                 });
               }}
-              className="cursor-pointer rounded-xl transition-all duration-300"
-              style={{
-                backgroundColor: "var(--bg-card)",
-                border: isActive
-                  ? `1px solid ${role.color}30`
-                  : "1px solid var(--border)",
-                background: isActive
-                  ? `linear-gradient(to bottom, ${role.color}06, var(--bg-card))`
-                  : "var(--bg-card)",
-              }}
+              className={`cursor-pointer rounded-xl bg-white transition-all duration-300 dark:bg-zinc-900 ${isActive ? "" : "border border-gray-200 dark:border-white/[.08]"}`}
+              style={isActive ? {
+                border: `1px solid ${role.color}30`,
+                background: `linear-gradient(to bottom, ${role.color}06, transparent)`,
+              } : undefined}
             >
               {/* ヘッダー行 */}
               <div className="flex items-center px-4 py-3">
@@ -488,15 +427,10 @@ export const AdminRoles = (): JSX.Element => {
                     (initial) => (
                       <div
                         key={initial}
-                        className="flex h-6 w-6 items-center justify-center rounded-full"
-                        style={{
-                          backgroundColor: "var(--bg-tertiary, #374151)",
-                          border: "2px solid var(--bg-card)",
-                        }}
+                        className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-gray-300 dark:border-zinc-900 dark:bg-zinc-700"
                       >
                         <span
-                          className="text-[10px] font-semibold"
-                          style={{ color: "var(--text-secondary)" }}
+                          className="text-[10px] font-semibold text-gray-600 dark:text-zinc-400"
                         >
                           {initial}
                         </span>
@@ -505,15 +439,10 @@ export const AdminRoles = (): JSX.Element => {
                   )}
                   {role.userCount > 3 && (
                     <div
-                      className="flex h-6 w-6 items-center justify-center rounded-full"
-                      style={{
-                        backgroundColor: "var(--bg-tertiary, #1f2937)",
-                        border: "2px solid var(--bg-card)",
-                      }}
+                      className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-gray-300 dark:border-zinc-900 dark:bg-zinc-700"
                     >
                       <span
-                        className="text-[8px] font-semibold"
-                        style={{ color: "var(--text-secondary)" }}
+                        className="text-[8px] font-semibold text-gray-600 dark:text-zinc-400"
                       >
                         +{role.userCount - 3}
                       </span>
@@ -539,8 +468,7 @@ export const AdminRoles = (): JSX.Element => {
 
                 {/* ツール数 */}
                 <span
-                  className="ml-auto text-[9px] tabular-nums"
-                  style={{ color: "var(--text-muted)" }}
+                  className="ml-auto text-[9px] tabular-nums text-gray-500 dark:text-zinc-500"
                 >
                   {isActive
                     ? `${enabledTools}/${totalTools} tools`
@@ -560,8 +488,7 @@ export const AdminRoles = (): JSX.Element => {
                     {/* ロール説明 + メンバー編集 */}
                     <div className="mb-4 flex items-center justify-between">
                       <span
-                        className="text-[11px]"
-                        style={{ color: "var(--text-muted)" }}
+                        className="text-[11px] text-gray-500 dark:text-zinc-500"
                       >
                         {role.description} · {role.userCount}名
                       </span>
@@ -574,13 +501,7 @@ export const AdminRoles = (): JSX.Element => {
                             roleColor: role.color,
                           });
                         }}
-                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium transition-colors"
-                        style={{
-                          backgroundColor:
-                            "var(--bg-tertiary, rgba(255,255,255,0.04))",
-                          color: "var(--text-secondary)",
-                          border: "1px solid var(--border)",
-                        }}
+                        className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-[10px] font-medium text-gray-600 transition-colors dark:border-white/[.08] dark:bg-white/[.04] dark:text-zinc-400"
                       >
                         メンバー編集
                       </button>
@@ -596,16 +517,7 @@ export const AdminRoles = (): JSX.Element => {
                         return (
                           <div
                             key={svc.name}
-                            className="rounded-xl p-3 transition-all"
-                            style={{
-                              backgroundColor: svcOn
-                                ? "var(--bg-tertiary, rgba(255,255,255,0.02))"
-                                : "transparent",
-                              border: svcOn
-                                ? "1px solid var(--border)"
-                                : "1px solid transparent",
-                              opacity: svcOn ? 1 : 0.35,
-                            }}
+                            className={`rounded-xl p-3 transition-all ${svcOn ? "border border-gray-200 bg-black/[.01] dark:border-white/[.08] dark:bg-white/[.02]" : "border border-transparent opacity-35"}`}
                           >
                             {/* サービスヘッダー */}
                             <div className="mb-2 flex items-center gap-2">
@@ -615,19 +527,13 @@ export const AdminRoles = (): JSX.Element => {
                                 className="h-4 w-4 rounded-sm"
                               />
                               <span
-                                className="text-xs font-medium"
-                                style={{
-                                  color: svcOn
-                                    ? "var(--text-primary)"
-                                    : "var(--text-muted)",
-                                }}
+                                className={`text-xs font-medium ${svcOn ? "text-gray-900 dark:text-white" : "text-gray-300 dark:text-zinc-700"}`}
                               >
                                 {svc.name}
                               </span>
                               <div className="ml-auto flex items-center gap-2">
                                 <span
-                                  className="text-[9px] tabular-nums"
-                                  style={{ color: "var(--text-muted)" }}
+                                  className="text-[9px] tabular-nums text-gray-500 dark:text-zinc-500"
                                 >
                                   {toolMatrix[ri]?.[si]?.filter(Boolean)
                                     .length ?? 0}
@@ -665,15 +571,7 @@ export const AdminRoles = (): JSX.Element => {
                                   >
                                     <Toggle on={toolOn} color={role.color} />
                                     <span
-                                      className="font-mono text-[10px] transition-colors"
-                                      style={{
-                                        color: toolOn
-                                          ? "var(--text-secondary)"
-                                          : "var(--text-muted)",
-                                        textDecoration: toolOn
-                                          ? "none"
-                                          : "line-through",
-                                      }}
+                                      className={`font-mono text-[10px] transition-colors ${toolOn ? "text-gray-600 dark:text-zinc-400" : "text-gray-300 line-through dark:text-zinc-700"}`}
                                     >
                                       {tool}
                                     </span>

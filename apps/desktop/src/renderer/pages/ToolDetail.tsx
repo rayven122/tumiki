@@ -44,19 +44,19 @@ const serverStatusBadge: Record<
   { className: string; label: string }
 > = {
   RUNNING: {
-    className: "bg-[var(--badge-success-bg)] text-[var(--badge-success-text)]",
+    className: "bg-emerald-500/10 dark:bg-emerald-400/10 text-emerald-600 dark:text-emerald-400",
     label: "稼働中",
   },
   STOPPED: {
-    className: "bg-[var(--bg-active)] text-[var(--text-muted)]",
+    className: "bg-black/[.06] dark:bg-white/[.08] text-gray-500 dark:text-zinc-500",
     label: "停止中",
   },
   ERROR: {
-    className: "bg-[var(--badge-error-bg)] text-[var(--badge-error-text)]",
+    className: "bg-red-500/10 dark:bg-red-400/10 text-red-600 dark:text-red-400",
     label: "エラー",
   },
   PENDING: {
-    className: "bg-[var(--badge-warn-bg)] text-[var(--badge-warn-text)]",
+    className: "bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400",
     label: "接続中",
   },
 };
@@ -454,12 +454,12 @@ export const ToolDetail = (): JSX.Element => {
       <div className="p-6">
         <Link
           to="/tools"
-          className="flex items-center gap-1 text-sm text-[var(--text-muted)] hover:opacity-80"
+          className="flex items-center gap-1 text-sm text-gray-500 dark:text-zinc-500 hover:opacity-80"
         >
           <ArrowLeft size={14} />
           コネクト
         </Link>
-        <div className="mt-12 text-center text-sm text-[var(--text-subtle)]">
+        <div className="mt-12 text-center text-sm text-gray-400 dark:text-zinc-600">
           読み込み中...
         </div>
       </div>
@@ -472,19 +472,19 @@ export const ToolDetail = (): JSX.Element => {
       <div className="p-6">
         <Link
           to="/tools"
-          className="flex items-center gap-1 text-sm text-[var(--text-muted)] hover:opacity-80"
+          className="flex items-center gap-1 text-sm text-gray-500 dark:text-zinc-500 hover:opacity-80"
         >
           <ArrowLeft size={14} />
           コネクト
         </Link>
-        <div className="mt-12 text-center text-sm text-[var(--text-subtle)]">
+        <div className="mt-12 text-center text-sm text-gray-400 dark:text-zinc-600">
           サーバーが見つかりません
         </div>
       </div>
     );
   }
 
-  const badge = serverStatusBadge[server.serverStatus];
+  const badge = serverStatusBadge[server.serverStatus] ?? { className: "bg-black/[.06] dark:bg-white/[.08] text-gray-500 dark:text-zinc-500", label: "停止中" };
   const primaryConnection = server.connections[0];
   // 接続のカタログからアイコンを取得（最初に見つかったものを使用）
   const serverIcon = server.connections.find((c) => c.catalog?.iconPath)
@@ -522,7 +522,7 @@ export const ToolDetail = (): JSX.Element => {
       {/* 戻るリンク */}
       <Link
         to="/tools"
-        className="inline-flex items-center gap-1 text-sm text-[var(--text-muted)] hover:opacity-80"
+        className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-zinc-500 hover:opacity-80"
       >
         <ArrowLeft size={14} />
         コネクト
@@ -532,7 +532,7 @@ export const ToolDetail = (): JSX.Element => {
       <div className="mt-4 flex max-h-[calc(100vh-10rem)] min-h-0 items-stretch gap-4">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
           {/* ヘッダーカード: サーバー概要 + 基本情報 + 機能設定 + 3点リーダー */}
-          <div className="rounded-xl p-5" style={cardStyle}>
+          <div className={`rounded-xl p-5 ${cardStyle}`}>
             {/* 上段: アイコン + 名前 + ステータス + 統計 + 3点リーダー */}
             <div className="mb-3 flex items-start justify-between gap-3">
               <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -543,13 +543,13 @@ export const ToolDetail = (): JSX.Element => {
                     className="h-12 w-12 shrink-0 rounded-lg"
                   />
                 ) : (
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--bg-card-hover)]">
-                    <Server size={24} className="text-[var(--text-muted)]" />
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-black/[.02] dark:bg-white/[.04]">
+                    <Server size={24} className="text-gray-500 dark:text-zinc-500" />
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h1 className="truncate text-2xl font-bold text-[var(--text-primary)]">
+                    <h1 className="truncate text-2xl font-bold text-gray-900 dark:text-white">
                       {server.name}
                     </h1>
                     <span
@@ -558,37 +558,37 @@ export const ToolDetail = (): JSX.Element => {
                       {badge.label}
                     </span>
                     {/* インライン統計（利用統計の大ボックスを吸収） */}
-                    <div className="flex shrink-0 items-center gap-2 text-[11px] text-[var(--text-muted)]">
-                      <span className="text-[var(--text-subtle)]">·</span>
+                    <div className="flex shrink-0 items-center gap-2 text-[11px] text-gray-500 dark:text-zinc-500">
+                      <span className="text-gray-400 dark:text-zinc-600">·</span>
                       <span title="総リクエスト">
-                        <span className="font-mono text-[var(--text-secondary)]">
+                        <span className="font-mono text-gray-600 dark:text-zinc-400">
                           {auditTotal.toLocaleString()}
                         </span>
-                        <span className="ml-0.5 text-[var(--text-subtle)]">
+                        <span className="ml-0.5 text-gray-400 dark:text-zinc-600">
                           req
                         </span>
                       </span>
-                      <span className="text-[var(--text-subtle)]">·</span>
+                      <span className="text-gray-400 dark:text-zinc-600">·</span>
                       <span title="成功率">
-                        <span className="font-mono text-[var(--text-secondary)]">
+                        <span className="font-mono text-gray-600 dark:text-zinc-400">
                           {successRate}
                         </span>
-                        <span className="ml-0.5 text-[var(--text-subtle)]">
+                        <span className="ml-0.5 text-gray-400 dark:text-zinc-600">
                           %
                         </span>
                       </span>
-                      <span className="text-[var(--text-subtle)]">·</span>
+                      <span className="text-gray-400 dark:text-zinc-600">·</span>
                       <span title="平均応答">
-                        <span className="font-mono text-[var(--text-secondary)]">
+                        <span className="font-mono text-gray-600 dark:text-zinc-400">
                           {avgDurationMs}
                         </span>
-                        <span className="ml-0.5 text-[var(--text-subtle)]">
+                        <span className="ml-0.5 text-gray-400 dark:text-zinc-600">
                           ms
                         </span>
                       </span>
                     </div>
                   </div>
-                  <p className="truncate text-sm text-[var(--text-muted)]">
+                  <p className="truncate text-sm text-gray-500 dark:text-zinc-500">
                     {server.description || server.slug}
                   </p>
                 </div>
@@ -599,7 +599,7 @@ export const ToolDetail = (): JSX.Element => {
                 <button
                   type="button"
                   onClick={() => setShowMenu((prev) => !prev)}
-                  className="rounded-lg p-1.5 text-[var(--text-muted)] transition hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)]"
+                  className="rounded-lg p-1.5 text-gray-500 dark:text-zinc-500 transition hover:bg-black/[.02] dark:bg-white/[.04] hover:text-gray-900 dark:text-white"
                   aria-label="メニュー"
                   aria-expanded={showMenu}
                 >
@@ -614,14 +614,14 @@ export const ToolDetail = (): JSX.Element => {
                       className="fixed inset-0 z-10 cursor-default"
                       onClick={() => setShowMenu(false)}
                     />
-                    <div className="absolute right-0 z-20 mt-1 w-56 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg-card)] shadow-xl">
+                    <div className="absolute right-0 z-20 mt-1 w-56 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl dark:border-white/[.08] dark:bg-zinc-900">
                       <button
                         type="button"
                         onClick={() => {
                           setShowMenu(false);
                           toast.success("サーバー設定編集は近日対応予定");
                         }}
-                        className="block w-full px-4 py-2.5 text-left text-sm text-[var(--text-secondary)] transition hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)]"
+                        className="block w-full px-4 py-2.5 text-left text-sm text-gray-600 dark:text-zinc-400 transition hover:bg-black/[.02] dark:bg-white/[.04] hover:text-gray-900 dark:text-white"
                       >
                         サーバー設定を編集
                       </button>
@@ -642,10 +642,10 @@ export const ToolDetail = (): JSX.Element => {
             </div>
 
             {/* 基本情報（インライン・ラベル+値） */}
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-t-[var(--border-subtle)] pt-3 text-xs">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-t-gray-100 dark:border-t-white/[.03] pt-3 text-xs">
               <div className="flex min-w-0 items-center gap-1.5">
-                <span className="text-[var(--text-subtle)]">接続先</span>
-                <span className="truncate font-mono text-[var(--text-secondary)]">
+                <span className="text-gray-400 dark:text-zinc-600">接続先</span>
+                <span className="truncate font-mono text-gray-600 dark:text-zinc-400">
                   {primaryConnection
                     ? primaryConnection.transportType === "STDIO"
                       ? (primaryConnection.command ?? "—")
@@ -654,41 +654,41 @@ export const ToolDetail = (): JSX.Element => {
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-[var(--text-subtle)]">プロトコル</span>
-                <span className="font-mono text-[var(--text-secondary)]">
+                <span className="text-gray-400 dark:text-zinc-600">プロトコル</span>
+                <span className="font-mono text-gray-600 dark:text-zinc-400">
                   {primaryConnection?.transportType ?? "—"}
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-[var(--text-subtle)]">追加日</span>
-                <span className="text-[var(--text-secondary)]">
+                <span className="text-gray-400 dark:text-zinc-600">追加日</span>
+                <span className="text-gray-600 dark:text-zinc-400">
                   {new Date(server.createdAt).toLocaleDateString("ja-JP")}
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-[var(--text-subtle)]">識別子</span>
-                <span className="font-mono text-[var(--text-secondary)]">
+                <span className="text-gray-400 dark:text-zinc-600">識別子</span>
+                <span className="font-mono text-gray-600 dark:text-zinc-400">
                   {server.slug}
                 </span>
               </div>
             </div>
 
             {/* 機能設定（マスキング / 圧縮 / 動的検索） */}
-            <div className="mt-4 border-t border-t-[var(--border-subtle)] pt-4">
-              <div className="mb-2 text-xs font-medium text-[var(--text-muted)]">
+            <div className="mt-4 border-t border-t-gray-100 dark:border-t-white/[.03] pt-4">
+              <div className="mb-2 text-xs font-medium text-gray-500 dark:text-zinc-500">
                 機能設定
               </div>
               <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
                 {/* マスキング / 圧縮(TOON) は DB 永続化（再起動後に反映）、dynamicSearch は localStorage のみ（別 Issue で対応） */}
                 <div
                   title="機密情報を自動マスクします（再起動後に反映）"
-                  className="flex items-center justify-between gap-2 rounded-lg bg-[var(--bg-card-hover)] px-3 py-2"
+                  className="flex items-center justify-between gap-2 rounded-lg bg-black/[.02] dark:bg-white/[.04] px-3 py-2"
                 >
                   <div className="flex min-w-0 items-center gap-2">
-                    <span className="shrink-0 text-[var(--text-muted)]">
+                    <span className="shrink-0 text-gray-500 dark:text-zinc-500">
                       <EyeOff size={13} />
                     </span>
-                    <span className="truncate text-xs text-[var(--text-primary)]">
+                    <span className="truncate text-xs text-gray-900 dark:text-white">
                       マスキング
                     </span>
                   </div>
@@ -699,13 +699,13 @@ export const ToolDetail = (): JSX.Element => {
                 </div>
                 <div
                   title="レスポンスを TOON 形式へ変換しトークン使用量を削減します（再起動後に反映）"
-                  className="flex items-center justify-between gap-2 rounded-lg bg-[var(--bg-card-hover)] px-3 py-2"
+                  className="flex items-center justify-between gap-2 rounded-lg bg-black/[.02] dark:bg-white/[.04] px-3 py-2"
                 >
                   <div className="flex min-w-0 items-center gap-2">
-                    <span className="shrink-0 text-[var(--text-muted)]">
+                    <span className="shrink-0 text-gray-500 dark:text-zinc-500">
                       <Archive size={13} />
                     </span>
-                    <span className="truncate text-xs text-[var(--text-primary)]">
+                    <span className="truncate text-xs text-gray-900 dark:text-white">
                       レスポンス圧縮
                     </span>
                   </div>
@@ -725,13 +725,13 @@ export const ToolDetail = (): JSX.Element => {
                   <div
                     key={f.key}
                     title={f.desc}
-                    className="flex items-center justify-between gap-2 rounded-lg bg-[var(--bg-card-hover)] px-3 py-2"
+                    className="flex items-center justify-between gap-2 rounded-lg bg-black/[.02] dark:bg-white/[.04] px-3 py-2"
                   >
                     <div className="flex min-w-0 items-center gap-2">
-                      <span className="shrink-0 text-[var(--text-muted)]">
+                      <span className="shrink-0 text-gray-500 dark:text-zinc-500">
                         {f.icon}
                       </span>
-                      <span className="truncate text-xs text-[var(--text-primary)]">
+                      <span className="truncate text-xs text-gray-900 dark:text-white">
                         {f.label}
                       </span>
                     </div>
@@ -747,16 +747,15 @@ export const ToolDetail = (): JSX.Element => {
 
           {/* 提供ツールカード */}
           <div
-            className="flex min-h-0 flex-1 flex-col rounded-xl p-4"
-            style={cardStyle}
+            className={`flex min-h-0 flex-1 flex-col rounded-xl p-4 ${cardStyle}`}
           >
             <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-sm font-medium text-[var(--text-primary)]">
+              <h2 className="text-sm font-medium text-gray-900 dark:text-white">
                 提供ツール
-                <span className="ml-2 text-xs text-[var(--text-subtle)]">
+                <span className="ml-2 text-xs text-gray-400 dark:text-zinc-600">
                   {baseTools.length}件
                   {isSampleTools && (
-                    <span className="ml-1 rounded bg-[var(--bg-active)] px-1.5 py-0.5 text-[9px] font-medium text-[var(--text-muted)]">
+                    <span className="ml-1 rounded bg-black/[.06] dark:bg-white/[.08] px-1.5 py-0.5 text-[9px] font-medium text-gray-500 dark:text-zinc-500">
                       サンプル
                     </span>
                   )}
@@ -766,19 +765,19 @@ export const ToolDetail = (): JSX.Element => {
             <div className="relative mb-2">
               <Search
                 size={12}
-                className="absolute top-1/2 left-2.5 -translate-y-1/2 text-[var(--text-subtle)]"
+                className="absolute top-1/2 left-2.5 -translate-y-1/2 text-gray-400 dark:text-zinc-600"
               />
               <input
                 type="text"
                 placeholder="ツールを検索..."
                 value={toolQuery}
                 onChange={(e) => setToolQuery(e.target.value)}
-                className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-input)] py-1.5 pr-2 pl-8 text-xs text-[var(--text-primary)] outline-none placeholder:text-[var(--text-subtle)]"
+                className="w-full rounded-lg border border-gray-200 dark:border-white/[.08] bg-black/[.02] dark:bg-white/[.03] py-1.5 pr-2 pl-8 text-xs text-gray-900 dark:text-white outline-none placeholder:text-gray-400 dark:text-zinc-600"
               />
             </div>
             <div className="flex-1 space-y-1 overflow-y-auto pr-1">
               {filteredTools.length === 0 ? (
-                <p className="py-6 text-center text-xs text-[var(--text-subtle)]">
+                <p className="py-6 text-center text-xs text-gray-400 dark:text-zinc-600">
                   条件に一致するツールが見つかりません
                 </p>
               ) : (
@@ -790,14 +789,14 @@ export const ToolDetail = (): JSX.Element => {
                   return (
                     <div
                       key={tool.id}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card-hover)] px-2.5 py-2"
+                      className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 dark:border-white/[.03] bg-black/[.02] dark:bg-white/[.04] px-2.5 py-2"
                     >
                       <div className="min-w-0 flex-1">
-                        <div className="truncate font-mono text-xs font-medium text-[var(--text-primary)]">
+                        <div className="truncate font-mono text-xs font-medium text-gray-900 dark:text-white">
                           {displayName}
                         </div>
                         {displayDescription && (
-                          <div className="mt-0.5 line-clamp-1 text-[10px] text-[var(--text-muted)]">
+                          <div className="mt-0.5 line-clamp-1 text-[10px] text-gray-500 dark:text-zinc-500">
                             {displayDescription}
                           </div>
                         )}
@@ -817,15 +816,14 @@ export const ToolDetail = (): JSX.Element => {
         {/* 右サイドバー: 接続先AI一覧（左カラムと高さを揃える） */}
         <aside className="hidden w-64 shrink-0 xl:block">
           <div
-            className="flex h-full flex-col rounded-xl p-4"
-            style={cardStyle}
+            className={`flex h-full flex-col rounded-xl p-4 ${cardStyle}`}
           >
-            <div className="mb-2 flex items-center gap-2 border-b border-b-[var(--border-subtle)] pb-2">
-              <Plug size={13} className="text-[var(--text-muted)]" />
-              <h2 className="text-xs font-medium text-[var(--text-primary)]">
+            <div className="mb-2 flex items-center gap-2 border-b border-b-gray-100 dark:border-b-white/[.03] pb-2">
+              <Plug size={13} className="text-gray-500 dark:text-zinc-500" />
+              <h2 className="text-xs font-medium text-gray-900 dark:text-white">
                 接続先AI
               </h2>
-              <span className="ml-auto text-[10px] text-[var(--text-subtle)]">
+              <span className="ml-auto text-[10px] text-gray-400 dark:text-zinc-600">
                 {AI_CLIENTS.length}件
               </span>
             </div>
@@ -837,7 +835,7 @@ export const ToolDetail = (): JSX.Element => {
                     key={client.id}
                     type="button"
                     onClick={() => setSelectedClient(client)}
-                    className="flex w-full items-center gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card-hover)] px-2.5 py-1.5 text-left transition hover:border-[var(--border)] hover:bg-[var(--bg-active)]"
+                    className="flex w-full items-center gap-2 rounded-lg border border-gray-100 dark:border-white/[.03] bg-black/[.02] dark:bg-white/[.04] px-2.5 py-1.5 text-left transition hover:border-gray-200 dark:border-white/[.08] hover:bg-black/[.06] dark:bg-white/[.08]"
                   >
                     {logo ? (
                       <img
@@ -846,16 +844,16 @@ export const ToolDetail = (): JSX.Element => {
                         className="h-4 w-4 shrink-0 rounded"
                       />
                     ) : (
-                      <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-[var(--bg-active)] text-[8px] font-bold text-[var(--text-muted)]">
+                      <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-black/[.06] dark:bg-white/[.08] text-[8px] font-bold text-gray-500 dark:text-zinc-500">
                         {client.name.charAt(0)}
                       </div>
                     )}
-                    <span className="flex-1 truncate text-[11px] text-[var(--text-primary)]">
+                    <span className="flex-1 truncate text-[11px] text-gray-900 dark:text-white">
                       {client.name}
                     </span>
                     <ChevronRight
                       size={11}
-                      className="shrink-0 text-[var(--text-subtle)]"
+                      className="shrink-0 text-gray-400 dark:text-zinc-600"
                     />
                   </button>
                 );
@@ -866,23 +864,23 @@ export const ToolDetail = (): JSX.Element => {
       </div>
 
       {/* 最近の操作（実データ: 監査ログ + フィルター + ページネーション） — サイドバーを超えてフル幅 */}
-      <div className="mt-4 rounded-xl p-6" style={cardStyle}>
+      <div className={`mt-4 rounded-xl p-6 ${cardStyle}`}>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-medium text-[var(--text-primary)]">
+          <h2 className="text-sm font-medium text-gray-900 dark:text-white">
             最近の操作
           </h2>
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative">
               <Search
                 size={12}
-                className="absolute top-1/2 left-2.5 -translate-y-1/2 text-[var(--text-subtle)]"
+                className="absolute top-1/2 left-2.5 -translate-y-1/2 text-gray-400 dark:text-zinc-600"
               />
               <input
                 type="text"
                 value={logQuery}
                 onChange={(e) => setLogQuery(e.target.value)}
                 placeholder="ツール・クライアント・内容で検索..."
-                className="w-52 rounded-lg border border-[var(--border)] bg-[var(--bg-input)] py-1 pr-2 pl-7 text-xs text-[var(--text-primary)] outline-none placeholder:text-[var(--text-subtle)]"
+                className="w-52 rounded-lg border border-gray-200 dark:border-white/[.08] bg-black/[.02] dark:bg-white/[.03] py-1 pr-2 pl-7 text-xs text-gray-900 dark:text-white outline-none placeholder:text-gray-400 dark:text-zinc-600"
               />
             </div>
             <Select
@@ -904,18 +902,18 @@ export const ToolDetail = (): JSX.Element => {
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-2 py-1 text-xs text-[var(--text-secondary)] outline-none"
+              className="rounded-lg border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 px-2 py-1 text-xs text-gray-600 dark:text-zinc-400 outline-none"
             />
             <input
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className="rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-2 py-1 text-xs text-[var(--text-secondary)] outline-none"
+              className="rounded-lg border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 px-2 py-1 text-xs text-gray-600 dark:text-zinc-400 outline-none"
             />
           </div>
         </div>
         {auditLoading && auditLogs.length === 0 ? (
-          <p className="text-sm text-[var(--text-subtle)]">読み込み中...</p>
+          <p className="text-sm text-gray-400 dark:text-zinc-600">読み込み中...</p>
         ) : (
           <div className="space-y-2">
             {(() => {
@@ -937,10 +935,10 @@ export const ToolDetail = (): JSX.Element => {
                 n >= 1024 ? `${(n / 1024).toFixed(1)} KB` : `${n} B`;
               return (
                 <>
-                  <div className="overflow-x-auto rounded-lg border border-[var(--border-subtle)]">
+                  <div className="overflow-x-auto rounded-lg border border-gray-100 dark:border-white/[.03]">
                     <table className="w-full text-xs">
-                      <thead className="bg-[var(--bg-card-hover)]">
-                        <tr className="text-left text-[var(--text-muted)]">
+                      <thead className="bg-black/[.02] dark:bg-white/[.04]">
+                        <tr className="text-left text-gray-500 dark:text-zinc-500">
                           <th className="px-3 py-2 font-medium">日時</th>
                           <th className="px-3 py-2 font-medium">
                             クライアント
@@ -961,7 +959,7 @@ export const ToolDetail = (): JSX.Element => {
                           <tr>
                             <td
                               colSpan={7}
-                              className="px-3 py-6 text-center text-[var(--text-subtle)]"
+                              className="px-3 py-6 text-center text-gray-400 dark:text-zinc-600"
                             >
                               条件に一致する操作履歴が見つかりません
                             </td>
@@ -980,10 +978,10 @@ export const ToolDetail = (): JSX.Element => {
                                 className={
                                   isLast
                                     ? ""
-                                    : "border-b border-b-[var(--border-subtle)]"
+                                    : "border-b border-b-gray-100 dark:border-b-white/[.03]"
                                 }
                               >
-                                <td className="px-3 py-2 whitespace-nowrap text-[var(--text-subtle)]">
+                                <td className="px-3 py-2 whitespace-nowrap text-gray-400 dark:text-zinc-600">
                                   {new Date(log.createdAt).toLocaleString(
                                     "ja-JP",
                                     {
@@ -999,32 +997,32 @@ export const ToolDetail = (): JSX.Element => {
                                   {log.clientName ? (
                                     <div className="flex items-center gap-1.5">
                                       <ClientLogo clientName={log.clientName} />
-                                      <span className="text-[var(--text-muted)]">
+                                      <span className="text-gray-500 dark:text-zinc-500">
                                         {log.clientName}
                                       </span>
                                     </div>
                                   ) : (
-                                    <span className="text-[var(--text-subtle)]">
+                                    <span className="text-gray-400 dark:text-zinc-600">
                                       —
                                     </span>
                                   )}
                                 </td>
-                                <td className="px-3 py-2 font-mono whitespace-nowrap text-[var(--text-secondary)]">
+                                <td className="px-3 py-2 font-mono whitespace-nowrap text-gray-600 dark:text-zinc-400">
                                   {log.toolName}
                                 </td>
                                 <td
-                                  className="max-w-[200px] truncate px-3 py-2 font-mono text-[var(--text-subtle)]"
+                                  className="max-w-[200px] truncate px-3 py-2 font-mono text-gray-400 dark:text-zinc-600"
                                   title={requestText}
                                 >
                                   {requestText}
                                 </td>
                                 <td
-                                  className="max-w-[200px] truncate px-3 py-2 font-mono text-[var(--text-subtle)]"
+                                  className="max-w-[200px] truncate px-3 py-2 font-mono text-gray-400 dark:text-zinc-600"
                                   title={responseText}
                                 >
                                   {responseText}
                                 </td>
-                                <td className="px-3 py-2 text-right font-mono whitespace-nowrap text-[var(--text-subtle)]">
+                                <td className="px-3 py-2 text-right font-mono whitespace-nowrap text-gray-400 dark:text-zinc-600">
                                   {log.durationMs}ms
                                 </td>
                                 <td className="px-3 py-2 text-right whitespace-nowrap">
@@ -1049,7 +1047,7 @@ export const ToolDetail = (): JSX.Element => {
                         type="button"
                         onClick={() => goPage(auditPage - 1)}
                         disabled={auditPage <= 1 || auditLoading}
-                        className="rounded-lg px-2 py-1 text-xs text-[var(--text-muted)] transition hover:opacity-80 disabled:opacity-30"
+                        className="rounded-lg px-2 py-1 text-xs text-gray-500 dark:text-zinc-500 transition hover:opacity-80 disabled:opacity-30"
                       >
                         &lt;
                       </button>
@@ -1070,7 +1068,7 @@ export const ToolDetail = (): JSX.Element => {
                           p === "ellipsis" ? (
                             <span
                               key={`e-${i}`}
-                              className="px-1 text-xs text-[var(--text-subtle)]"
+                              className="px-1 text-xs text-gray-400 dark:text-zinc-600"
                             >
                               …
                             </span>
@@ -1082,8 +1080,8 @@ export const ToolDetail = (): JSX.Element => {
                               disabled={auditLoading}
                               className={`h-7 w-7 rounded-lg text-xs font-medium transition hover:opacity-80 disabled:opacity-50 ${
                                 p === auditPage
-                                  ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]"
-                                  : "text-[var(--text-muted)]"
+                                  ? "bg-gray-900 dark:bg-white text-white dark:text-black"
+                                  : "text-gray-500 dark:text-zinc-500"
                               }`}
                             >
                               {p}
@@ -1094,7 +1092,7 @@ export const ToolDetail = (): JSX.Element => {
                         type="button"
                         onClick={() => goPage(auditPage + 1)}
                         disabled={auditPage >= auditTotalPages || auditLoading}
-                        className="rounded-lg px-2 py-1 text-xs text-[var(--text-muted)] transition hover:opacity-80 disabled:opacity-30"
+                        className="rounded-lg px-2 py-1 text-xs text-gray-500 dark:text-zinc-500 transition hover:opacity-80 disabled:opacity-30"
                       >
                         &gt;
                       </button>

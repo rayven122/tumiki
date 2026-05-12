@@ -81,12 +81,12 @@ const TYPE_ICONS: Record<NotificationType, JSX.Element> = {
   error: <XCircle size={18} />,
 };
 
-const TYPE_COLORS: Record<NotificationType, string> = {
-  approval: "var(--badge-success-text)",
-  request: "var(--badge-warn-text)",
-  tool: "var(--text-muted)",
-  maintenance: "var(--badge-warn-text)",
-  error: "var(--badge-error-text)",
+const TYPE_COLOR_CLASSES: Record<NotificationType, string> = {
+  approval: "text-emerald-600 dark:text-emerald-400",
+  request: "text-amber-600 dark:text-amber-400",
+  tool: "text-gray-300 dark:text-zinc-700",
+  maintenance: "text-amber-600 dark:text-amber-400",
+  error: "text-red-600 dark:text-red-400",
 };
 
 /* ---------- メインコンポーネント ---------- */
@@ -115,11 +115,11 @@ export const Notifications = (): JSX.Element => {
       {/* ヘッダー */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             通知
           </h2>
           {unreadCount > 0 && (
-            <span className="rounded-full bg-[var(--badge-error-bg)] px-2 py-0.5 text-xs font-medium text-[var(--badge-error-text)]">
+            <span className="rounded-full bg-red-500/10 dark:bg-red-400/10 px-2 py-0.5 text-xs font-medium text-red-600 dark:text-red-400">
               {unreadCount}
             </span>
           )}
@@ -127,7 +127,7 @@ export const Notifications = (): JSX.Element => {
         {unreadCount > 0 && (
           <button
             onClick={markAllRead}
-            className="rounded-lg bg-[var(--bg-active)] px-3 py-1.5 text-xs text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-card-hover)]"
+            className="rounded-lg bg-black/[.06] dark:bg-white/[.08] px-3 py-1.5 text-xs text-gray-600 dark:text-zinc-400 transition-colors hover:bg-black/[.02] dark:bg-white/[.04]"
           >
             すべて既読にする
           </button>
@@ -140,39 +140,38 @@ export const Notifications = (): JSX.Element => {
           <button
             key={n.id}
             onClick={() => toggleRead(n.id)}
-            className={`flex w-full items-start gap-3 rounded-xl border border-[var(--border)] p-4 text-left transition-colors hover:bg-[var(--bg-card-hover)] ${
-              n.read ? "bg-[var(--bg-card)]" : "bg-[var(--bg-active)]"
+            className={`flex w-full items-start gap-3 rounded-xl border border-gray-200 dark:border-white/[.08] p-4 text-left transition-colors hover:bg-black/[.02] dark:bg-white/[.04] ${
+              n.read ? "bg-white dark:bg-zinc-900" : "bg-black/[.06] dark:bg-white/[.08]"
             }`}
           >
             {/* 未読インジケータ */}
             <div className="flex shrink-0 items-center pt-1">
               <span
                 className={`inline-block h-2 w-2 rounded-full ${
-                  n.read ? "bg-transparent" : "bg-[var(--badge-warn-text)]"
+                  n.read ? "bg-transparent" : "bg-amber-600 dark:bg-amber-400"
                 }`}
               />
             </div>
 
             {/* タイプアイコン */}
             <div
-              className="shrink-0 pt-0.5"
-              style={{ color: TYPE_COLORS[n.type] }}
+              className={`shrink-0 pt-0.5 ${TYPE_COLOR_CLASSES[n.type]}`}
             >
               {TYPE_ICONS[n.type]}
             </div>
 
             {/* コンテンツ */}
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-medium text-[var(--text-primary)]">
+              <div className="text-sm font-medium text-gray-900 dark:text-white">
                 {n.title}
               </div>
-              <div className="mt-0.5 text-xs leading-relaxed text-[var(--text-muted)]">
+              <div className="mt-0.5 text-xs leading-relaxed text-gray-500 dark:text-zinc-500">
                 {n.body}
               </div>
             </div>
 
             {/* 日付 */}
-            <span className="shrink-0 text-[10px] text-[var(--text-subtle)]">
+            <span className="shrink-0 text-[10px] text-gray-400 dark:text-zinc-600">
               {n.date}
             </span>
           </button>

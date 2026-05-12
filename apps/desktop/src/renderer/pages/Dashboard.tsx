@@ -70,10 +70,10 @@ const ChartTooltip = ({
 }): JSX.Element | null => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-xs shadow-xl">
-      <p className="mb-1 text-[var(--text-muted)]">{label}</p>
+    <div className="rounded-lg border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 px-3 py-2 text-xs shadow-xl">
+      <p className="mb-1 text-gray-500 dark:text-zinc-500">{label}</p>
       {payload.map((p) => (
-        <p key={p.name} className="text-[var(--text-primary)]">
+        <p key={p.name} className="text-gray-900 dark:text-white">
           {p.name}: {p.value}
         </p>
       ))}
@@ -100,7 +100,7 @@ const ConnectorIcon = ({
     );
   }
   return (
-    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[var(--bg-card-hover)] text-[10px] font-semibold text-[var(--text-secondary)]">
+    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-black/[.02] dark:bg-white/[.04] text-[10px] font-semibold text-gray-600 dark:text-zinc-400">
       {name.charAt(0).toUpperCase() || "?"}
     </div>
   );
@@ -115,19 +115,19 @@ const buildKpiCards = (kpi: DashboardKpi, period: Period) => {
       label: `リクエスト / ${period}`,
       value: kpi.requests.toLocaleString(),
       sub: `${formatSignedInt(kpi.requestsDelta)} ${deltaLabel}`,
-      color: "var(--text-primary)",
+      colorClass: "text-gray-900 dark:text-white",
     },
     {
       label: "ブロック",
       value: kpi.blocks.toLocaleString(),
       sub: `${kpi.blockRate.toFixed(1)}%`,
-      color: "var(--badge-error-text)",
+      colorClass: "text-red-600 dark:text-red-400",
     },
     {
       label: "成功率",
       value: `${kpi.successRate.toFixed(1)}%`,
       sub: `${deltaLabel} ${formatSignedPercent(kpi.successRateDelta)}`,
-      color: "var(--badge-success-text)",
+      colorClass: "text-emerald-600 dark:text-emerald-400",
     },
     {
       label: "コネクタ",
@@ -136,7 +136,7 @@ const buildKpiCards = (kpi: DashboardKpi, period: Period) => {
         kpi.connectorsDegraded > 0
           ? `${kpi.connectorsDegraded} 要確認`
           : "全稼働",
-      color: "var(--text-primary)",
+      colorClass: "text-gray-900 dark:text-white",
     },
   ];
 };
@@ -162,12 +162,12 @@ const AiClientsSection = ({
   }));
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-5 shadow-[var(--shadow-card)]">
-      <span className="mb-3 block text-sm font-medium text-[var(--text-secondary)]">
+    <div className="rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-5">
+      <span className="mb-3 block text-sm font-medium text-gray-600 dark:text-zinc-400">
         AIクライアント別
       </span>
       {aiClients.length === 0 ? (
-        <p className="py-6 text-center text-xs text-[var(--text-muted)]">
+        <p className="py-6 text-center text-xs text-gray-500 dark:text-zinc-500">
           まだ利用ログがありません
         </p>
       ) : (
@@ -205,15 +205,15 @@ const AiClientsSection = ({
                   className="h-2 w-2 shrink-0 rounded-full"
                   style={{ backgroundColor: resolveColor(item.color) }}
                 />
-                <span className="truncate text-[var(--text-secondary)]">
+                <span className="truncate text-gray-600 dark:text-zinc-400">
                   {item.name}
                 </span>
-                <span className="ml-auto font-mono text-[var(--text-subtle)]">
+                <span className="ml-auto font-mono text-gray-400 dark:text-zinc-600">
                   {item.value.toFixed(1)}%
                 </span>
               </div>
             ))}
-            <div className="mt-3 flex flex-wrap gap-1.5 border-t border-t-[var(--border)] pt-2">
+            <div className="mt-3 flex flex-wrap gap-1.5 border-t border-t-gray-200 dark:border-t-white/[.08] pt-2">
               {aiClients.map((ai) => {
                 const isActive = activeAi === null || activeAi === ai.name;
                 const logo = getClientLogo(ai.name);
@@ -222,10 +222,10 @@ const AiClientsSection = ({
                     key={ai.name}
                     type="button"
                     onClick={() => onToggleAi(ai.name)}
-                    className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-[var(--text-secondary)] transition-colors ${
+                    className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-gray-600 dark:text-zinc-400 transition-colors ${
                       isActive
-                        ? "bg-[var(--bg-active)] opacity-100"
-                        : "bg-[var(--bg-card-hover)] opacity-50"
+                        ? "bg-black/[.06] dark:bg-white/[.08] opacity-100"
+                        : "bg-black/[.02] dark:bg-white/[.04] opacity-50"
                     }`}
                   >
                     {logo ? (
@@ -235,7 +235,7 @@ const AiClientsSection = ({
                         className="h-3.5 w-3.5 rounded"
                       />
                     ) : (
-                      <Bot className="h-3.5 w-3.5 text-[var(--text-muted)]" />
+                      <Bot className="h-3.5 w-3.5 text-gray-500 dark:text-zinc-500" />
                     )}
                     <span className="text-[10px]">{ai.name}</span>
                   </button>
@@ -262,11 +262,11 @@ const RecentLogRow = ({ item }: { item: DashboardLogItem }): JSX.Element => {
 
   return (
     <div
-      className={`grid grid-cols-[70px_80px_120px_1fr_85px_50px] items-center gap-2 border-b border-b-[var(--border-subtle)] px-5 py-2.5 text-xs transition-colors ${
+      className={`grid grid-cols-[70px_80px_120px_1fr_85px_50px] items-center gap-2 border-b border-b-gray-100 dark:border-b-white/[.03] px-5 py-2.5 text-xs transition-colors ${
         isErrorRow(status) ? "bg-red-500/[0.03]" : ""
       }`}
     >
-      <span className="font-mono text-[11px] text-[var(--text-subtle)]">
+      <span className="font-mono text-[11px] text-gray-400 dark:text-zinc-600">
         {time}
       </span>
       <div className="flex items-center gap-1.5 overflow-hidden">
@@ -277,25 +277,24 @@ const RecentLogRow = ({ item }: { item: DashboardLogItem }): JSX.Element => {
             className="h-4 w-4 rounded-sm"
           />
         ) : (
-          <Bot className="h-4 w-4 text-[var(--text-muted)]" />
+          <Bot className="h-4 w-4 text-gray-500 dark:text-zinc-500" />
         )}
-        <span className="truncate text-[11px] text-[var(--text-muted)]">
+        <span className="truncate text-[11px] text-gray-500 dark:text-zinc-500">
           {item.clientName ?? "-"}
         </span>
       </div>
-      <span className="truncate text-[var(--text-secondary)]">
+      <span className="truncate text-gray-600 dark:text-zinc-400">
         {item.connectionName ?? "不明"}
       </span>
-      <span className="truncate font-mono text-[11px] text-[var(--text-muted)]">
+      <span className="truncate font-mono text-[11px] text-gray-500 dark:text-zinc-500">
         {item.toolName}
       </span>
       <span
-        className="rounded-full px-1.5 py-0.5 text-center text-[9px] font-medium"
-        style={{ backgroundColor: badge.bg, color: badge.text }}
+        className={`rounded-full px-1.5 py-0.5 text-center text-[9px] font-medium ${badge.className}`}
       >
         {badge.label}
       </span>
-      <span className="text-right font-mono text-[11px] text-[var(--text-subtle)]">
+      <span className="text-right font-mono text-[11px] text-gray-400 dark:text-zinc-600">
         {item.durationMs}ms
       </span>
     </div>
@@ -343,10 +342,10 @@ export const Dashboard = (): JSX.Element => {
     <div className="space-y-4 p-6">
       {/* ヘッダー */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
           ダッシュボード
         </h2>
-        <div className="flex items-center gap-1 rounded-lg bg-[var(--bg-card-hover)] p-0.5">
+        <div className="flex items-center gap-1 rounded-lg bg-black/[.02] dark:bg-white/[.04] p-0.5">
           {PERIODS.map((p) => (
             <button
               key={p}
@@ -354,8 +353,8 @@ export const Dashboard = (): JSX.Element => {
               onClick={() => setPeriod(p)}
               className={`rounded px-2.5 py-1 text-[11px] transition-colors ${
                 period === p
-                  ? "bg-[var(--bg-active)] text-[var(--text-primary)]"
-                  : "bg-transparent text-[var(--text-subtle)]"
+                  ? "bg-black/[.06] dark:bg-white/[.08] text-gray-900 dark:text-white"
+                  : "bg-transparent text-gray-400 dark:text-zinc-600"
               }`}
             >
               {p}
@@ -369,18 +368,17 @@ export const Dashboard = (): JSX.Element => {
         {kpiCards.map((card) => (
           <div
             key={card.label}
-            className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-4"
+            className="rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-4"
           >
-            <span className="text-xs text-[var(--text-muted)]">
+            <span className="text-xs text-gray-500 dark:text-zinc-500">
               {card.label}
             </span>
             <div
-              className="mt-2 text-2xl font-semibold"
-              style={{ color: card.color }}
+              className={`mt-2 text-2xl font-semibold ${card.colorClass}`}
             >
               {card.value}
             </div>
-            <div className="mt-0.5 text-[10px] text-[var(--text-muted)]">
+            <div className="mt-0.5 text-[10px] text-gray-500 dark:text-zinc-500">
               {card.sub}
             </div>
           </div>
@@ -388,12 +386,12 @@ export const Dashboard = (): JSX.Element => {
       </div>
 
       {/* コネクタ別アクセス推移 */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-5 shadow-[var(--shadow-card)]">
+      <div className="rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-5">
         <div className="mb-4 flex items-center justify-between">
-          <span className="text-sm font-medium text-[var(--text-secondary)]">
+          <span className="text-sm font-medium text-gray-600 dark:text-zinc-400">
             コネクタ別アクセス推移
           </span>
-          <div className="flex flex-wrap gap-3 text-[10px] text-[var(--text-subtle)]">
+          <div className="flex flex-wrap gap-3 text-[10px] text-gray-400 dark:text-zinc-600">
             {series.map((s) => (
               <span key={s.key} className="flex items-center gap-1">
                 <span
@@ -407,7 +405,7 @@ export const Dashboard = (): JSX.Element => {
         </div>
         <div className="h-[200px]">
           {series.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-xs text-[var(--text-muted)]">
+            <div className="flex h-full items-center justify-center text-xs text-gray-500 dark:text-zinc-500">
               {loading ? "読み込み中..." : "まだ利用ログがありません"}
             </div>
           ) : (
@@ -438,12 +436,12 @@ export const Dashboard = (): JSX.Element => {
                 </defs>
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke="var(--border)"
+                  stroke={theme === "dark" ? "rgba(255,255,255,0.08)" : "#e5e7eb"}
                   vertical={false}
                 />
                 <XAxis
                   dataKey="time"
-                  tick={{ fill: "var(--text-subtle)", fontSize: 10 }}
+                  tick={{ fill: theme === "dark" ? "#71717a" : "#9ca3af", fontSize: 10 }}
                   axisLine={false}
                   tickLine={false}
                 />
@@ -476,21 +474,21 @@ export const Dashboard = (): JSX.Element => {
         />
 
         {/* 右: コネクタ */}
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-5 shadow-[var(--shadow-card)]">
+        <div className="rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-5">
           <div className="mb-4 flex items-center justify-between">
-            <span className="text-sm font-medium text-[var(--text-secondary)]">
+            <span className="text-sm font-medium text-gray-600 dark:text-zinc-400">
               コネクタ
             </span>
             <Link
               to="/tools"
-              className="flex items-center gap-1 text-[11px] text-[var(--text-muted)] transition-colors hover:opacity-80"
+              className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-zinc-500 transition-colors hover:opacity-80"
             >
               すべて見る
               <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
           {connectors.length === 0 ? (
-            <p className="py-6 text-center text-xs text-[var(--text-muted)]">
+            <p className="py-6 text-center text-xs text-gray-500 dark:text-zinc-500">
               {loading ? "読み込み中..." : "登録されたコネクタはありません"}
             </p>
           ) : (
@@ -498,10 +496,10 @@ export const Dashboard = (): JSX.Element => {
               {connectors.map((c) => (
                 <div
                   key={c.connectionId}
-                  className="flex items-center gap-2.5 rounded-lg bg-[var(--bg-card-hover)] px-3 py-2"
+                  className="flex items-center gap-2.5 rounded-lg bg-black/[.02] dark:bg-white/[.04] px-3 py-2"
                 >
                   <ConnectorIcon name={c.name} iconPath={c.iconPath} />
-                  <span className="flex-1 truncate text-xs text-[var(--text-secondary)]">
+                  <span className="flex-1 truncate text-xs text-gray-600 dark:text-zinc-400">
                     {c.name}
                   </span>
                   <span
@@ -523,23 +521,23 @@ export const Dashboard = (): JSX.Element => {
       {/* コネクタログ + お知らせ */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_0.4fr]">
         {/* コネクタログ */}
-        <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg-card)] shadow-[var(--shadow-card)]">
-          <div className="flex items-center justify-between border-b border-b-[var(--border)] px-5 py-3">
+        <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900">
+          <div className="flex items-center justify-between border-b border-b-gray-200 dark:border-b-white/[.08] px-5 py-3">
             <div className="flex items-center gap-2">
-              <Activity className="h-4 w-4 text-[var(--text-muted)]" />
-              <span className="text-sm font-medium text-[var(--text-primary)]">
+              <Activity className="h-4 w-4 text-gray-500 dark:text-zinc-500" />
+              <span className="text-sm font-medium text-gray-900 dark:text-white">
                 コネクタログ
               </span>
             </div>
             <Link
               to="/history"
-              className="flex items-center gap-1 text-[10px] text-[var(--text-muted)] transition-colors hover:opacity-80"
+              className="flex items-center gap-1 text-[10px] text-gray-500 dark:text-zinc-500 transition-colors hover:opacity-80"
             >
               すべて見る
               <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
-          <div className="grid grid-cols-[70px_80px_120px_1fr_85px_50px] items-center gap-2 border-b border-b-[var(--border)] px-5 py-2 text-[10px] text-[var(--text-subtle)]">
+          <div className="grid grid-cols-[70px_80px_120px_1fr_85px_50px] items-center gap-2 border-b border-b-gray-200 dark:border-b-white/[.08] px-5 py-2 text-[10px] text-gray-400 dark:text-zinc-600">
             <span>日時</span>
             <span>AIクライアント</span>
             <span>接続先</span>
@@ -548,7 +546,7 @@ export const Dashboard = (): JSX.Element => {
             <span className="text-right">応答</span>
           </div>
           {recentLogs.length === 0 ? (
-            <p className="py-6 text-center text-xs text-[var(--text-muted)]">
+            <p className="py-6 text-center text-xs text-gray-500 dark:text-zinc-500">
               {loading ? "読み込み中..." : "まだ利用ログがありません"}
             </p>
           ) : (
@@ -557,26 +555,26 @@ export const Dashboard = (): JSX.Element => {
         </div>
 
         {/* お知らせ */}
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-5 shadow-[var(--shadow-card)]">
+        <div className="rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-5">
           <div className="mb-4 flex items-center gap-2">
-            <Megaphone className="h-4 w-4 text-[var(--text-subtle)]" />
-            <span className="text-sm font-medium text-[var(--text-secondary)]">
+            <Megaphone className="h-4 w-4 text-gray-400 dark:text-zinc-600" />
+            <span className="text-sm font-medium text-gray-600 dark:text-zinc-400">
               お知らせ
             </span>
           </div>
           <div className="space-y-3">
             {ANNOUNCEMENTS.map((a) => (
               <div key={a.id} className="flex items-start gap-3 text-xs">
-                <span className="text-[var(--text-subtle)]">{a.date}</span>
+                <span className="text-gray-400 dark:text-zinc-600">{a.date}</span>
                 {a.link ? (
                   <Link
                     to={a.link}
-                    className="text-[var(--text-primary)] transition-colors hover:opacity-80"
+                    className="text-gray-900 dark:text-white transition-colors hover:opacity-80"
                   >
                     {a.message}
                   </Link>
                 ) : (
-                  <span className="text-[var(--text-muted)]">{a.message}</span>
+                  <span className="text-gray-500 dark:text-zinc-500">{a.message}</span>
                 )}
               </div>
             ))}

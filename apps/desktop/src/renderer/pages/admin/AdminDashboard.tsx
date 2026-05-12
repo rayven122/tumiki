@@ -44,13 +44,9 @@ const ChartTooltip = ({
   if (!active || !payload?.length) return null;
   return (
     <div
-      className="rounded-lg px-3 py-2 text-xs shadow-xl"
-      style={{
-        backgroundColor: "var(--bg-card)",
-        border: "1px solid var(--border)",
-      }}
+      className="rounded-lg px-3 py-2 text-xs shadow-xl border border-gray-200 bg-white dark:border-white/[.08] dark:bg-zinc-900"
     >
-      <p className="mb-1" style={{ color: "var(--text-muted)" }}>
+      <p className="mb-1 text-gray-500 dark:text-zinc-500">
         {label}
       </p>
       {payload.map((entry) => (
@@ -59,8 +55,8 @@ const ChartTooltip = ({
             className="inline-block h-1.5 w-1.5 rounded-full"
             style={{ backgroundColor: entry.color }}
           />
-          <span style={{ color: "var(--text-secondary)" }}>{entry.name}:</span>
-          <span style={{ color: "var(--text-primary)" }}>
+          <span className="text-gray-600 dark:text-zinc-400">{entry.name}:</span>
+          <span className="text-gray-900 dark:text-white">
             {entry.value.toLocaleString()}
           </span>
         </p>
@@ -89,26 +85,22 @@ export const AdminDashboard = (): JSX.Element => {
       {/* ヘッダー: タイトル + 期間切替 */}
       <div className="flex items-center justify-between">
         <h2
-          className="text-lg font-semibold"
-          style={{ color: "var(--text-primary)" }}
+          className="text-lg font-semibold text-gray-900 dark:text-white"
         >
           ダッシュボード
         </h2>
         <div
-          className="flex items-center gap-1 rounded-lg p-0.5"
-          style={{ backgroundColor: "var(--bg-card-hover)" }}
+          className="flex items-center gap-1 rounded-lg p-0.5 bg-black/[.02] dark:bg-white/[.04]"
         >
           {PERIODS.map((p) => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
-              className="rounded px-2.5 py-1 text-[11px] transition-colors"
-              style={{
-                backgroundColor:
-                  period === p ? "var(--bg-active)" : "transparent",
-                color:
-                  period === p ? "var(--text-primary)" : "var(--text-subtle)",
-              }}
+              className={`rounded px-2.5 py-1 text-[11px] transition-colors ${
+                period === p
+                  ? "bg-black/[.06] text-gray-900 dark:bg-white/[.08] dark:text-white"
+                  : "text-gray-400 dark:text-zinc-600"
+              }`}
             >
               {p}
             </button>
@@ -120,24 +112,18 @@ export const AdminDashboard = (): JSX.Element => {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {/* リクエスト */}
         <div
-          className="rounded-xl p-4"
-          style={{
-            backgroundColor: "var(--bg-card)",
-            border: "1px solid var(--border)",
-          }}
+          className="rounded-xl p-4 border border-gray-200 bg-white dark:border-white/[.08] dark:bg-zinc-900"
         >
-          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+          <span className="text-xs text-gray-500 dark:text-zinc-500">
             リクエスト / {period}
           </span>
           <div
-            className="mt-2 text-2xl font-semibold"
-            style={{ color: "var(--text-primary)" }}
+            className="mt-2 text-2xl font-semibold text-gray-900 dark:text-white"
           >
             {stats.requests}
           </div>
           <div
-            className="mt-0.5 text-[10px]"
-            style={{ color: "var(--text-muted)" }}
+            className="mt-0.5 text-[10px] text-gray-500 dark:text-zinc-500"
           >
             {stats.requestsSub}
           </div>
@@ -145,18 +131,13 @@ export const AdminDashboard = (): JSX.Element => {
 
         {/* ブロック */}
         <div
-          className="rounded-xl p-4"
-          style={{
-            backgroundColor: "var(--bg-card)",
-            border: "1px solid var(--border)",
-          }}
+          className="rounded-xl p-4 border border-gray-200 bg-white dark:border-white/[.08] dark:bg-zinc-900"
         >
-          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+          <span className="text-xs text-gray-500 dark:text-zinc-500">
             ブロック
           </span>
           <div
-            className="mt-2 text-2xl font-semibold"
-            style={{ color: "var(--text-primary)" }}
+            className="mt-2 text-2xl font-semibold text-gray-900 dark:text-white"
           >
             {stats.blocks}
           </div>
@@ -167,24 +148,18 @@ export const AdminDashboard = (): JSX.Element => {
 
         {/* コネクタ */}
         <div
-          className="rounded-xl p-4"
-          style={{
-            backgroundColor: "var(--bg-card)",
-            border: "1px solid var(--border)",
-          }}
+          className="rounded-xl p-4 border border-gray-200 bg-white dark:border-white/[.08] dark:bg-zinc-900"
         >
-          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+          <span className="text-xs text-gray-500 dark:text-zinc-500">
             コネクタ
           </span>
           <div
-            className="mt-2 text-2xl font-semibold"
-            style={{ color: "var(--text-primary)" }}
+            className="mt-2 text-2xl font-semibold text-gray-900 dark:text-white"
           >
             8
           </div>
           <div
-            className="mt-0.5 text-[10px]"
-            style={{ color: "var(--text-muted)" }}
+            className="mt-0.5 text-[10px] text-gray-500 dark:text-zinc-500"
           >
             5 稼働中
           </div>
@@ -192,24 +167,18 @@ export const AdminDashboard = (): JSX.Element => {
 
         {/* ユーザー */}
         <div
-          className="rounded-xl p-4"
-          style={{
-            backgroundColor: "var(--bg-card)",
-            border: "1px solid var(--border)",
-          }}
+          className="rounded-xl p-4 border border-gray-200 bg-white dark:border-white/[.08] dark:bg-zinc-900"
         >
-          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+          <span className="text-xs text-gray-500 dark:text-zinc-500">
             ユーザー
           </span>
           <div
-            className="mt-2 text-2xl font-semibold"
-            style={{ color: "var(--text-primary)" }}
+            className="mt-2 text-2xl font-semibold text-gray-900 dark:text-white"
           >
             {stats.users}
           </div>
           <div
-            className="mt-0.5 text-[10px]"
-            style={{ color: "var(--text-muted)" }}
+            className="mt-0.5 text-[10px] text-gray-500 dark:text-zinc-500"
           >
             {stats.usersSub}
           </div>
@@ -218,24 +187,17 @@ export const AdminDashboard = (): JSX.Element => {
 
       {/* AIクライアント別リクエスト推移 AreaChart */}
       <div
-        className="rounded-xl p-5"
-        style={{
-          backgroundColor: "var(--bg-card)",
-          border: "1px solid var(--border)",
-          boxShadow: "var(--shadow-card)",
-        }}
+        className="rounded-xl p-5 border border-gray-200 bg-white dark:border-white/[.08] dark:bg-zinc-900"
       >
         <div className="mb-4 flex items-center justify-between">
           <span
-            className="text-sm font-medium"
-            style={{ color: "var(--text-secondary)" }}
+            className="text-sm font-medium text-gray-600 dark:text-zinc-400"
           >
             AIクライアント別リクエスト推移
           </span>
           {/* 凡例 */}
           <div
-            className="flex flex-wrap gap-3 text-[10px]"
-            style={{ color: "var(--text-subtle)" }}
+            className="flex flex-wrap gap-3 text-[10px] text-gray-400 dark:text-zinc-600"
           >
             {CHART_LEGENDS.map((l) => (
               <span key={l.label} className="flex items-center gap-1">
@@ -276,12 +238,12 @@ export const AdminDashboard = (): JSX.Element => {
               </defs>
               <CartesianGrid
                 strokeDasharray="3 3"
-                stroke="var(--border)"
+                stroke={theme === "dark" ? "rgba(255,255,255,0.08)" : "#e5e7eb"}
                 vertical={false}
               />
               <XAxis
                 dataKey="time"
-                tick={{ fill: "var(--text-subtle)", fontSize: 10 }}
+                tick={{ fill: theme === "dark" ? "#52525b" : "#9ca3af", fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
               />
@@ -313,16 +275,10 @@ export const AdminDashboard = (): JSX.Element => {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* 左: AIクライアント別ドーナツチャート + 構成比テーブル + バッジ */}
         <div
-          className="rounded-xl p-5"
-          style={{
-            backgroundColor: "var(--bg-card)",
-            border: "1px solid var(--border)",
-            boxShadow: "var(--shadow-card)",
-          }}
+          className="rounded-xl p-5 border border-gray-200 bg-white dark:border-white/[.08] dark:bg-zinc-900"
         >
           <span
-            className="mb-3 block text-sm font-medium"
-            style={{ color: "var(--text-secondary)" }}
+            className="mb-3 block text-sm font-medium text-gray-600 dark:text-zinc-400"
           >
             AIクライアント別
           </span>
@@ -365,12 +321,11 @@ export const AdminDashboard = (): JSX.Element => {
                     className="h-1.5 w-1.5 shrink-0 rounded-full"
                     style={{ backgroundColor: resolveColor(item.color) }}
                   />
-                  <span style={{ color: "var(--text-secondary)" }}>
+                  <span className="text-gray-600 dark:text-zinc-400">
                     {item.name}
                   </span>
                   <span
-                    className="ml-auto font-mono"
-                    style={{ color: "var(--text-subtle)" }}
+                    className="ml-auto font-mono text-gray-400 dark:text-zinc-600"
                   >
                     {item.value}%
                   </span>
@@ -387,15 +342,11 @@ export const AdminDashboard = (): JSX.Element => {
                 onClick={() =>
                   setActiveAi(activeAi === ai.name ? null : ai.name)
                 }
-                className="flex items-center gap-1.5 rounded-md px-2 py-1 transition-colors"
-                style={{
-                  backgroundColor:
-                    activeAi === null || activeAi === ai.name
-                      ? "var(--bg-active)"
-                      : "var(--bg-card-hover)",
-                  opacity: activeAi === null || activeAi === ai.name ? 1 : 0.5,
-                  color: "var(--text-secondary)",
-                }}
+                className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-gray-600 transition-colors dark:text-zinc-400 ${
+                  activeAi === null || activeAi === ai.name
+                    ? "bg-black/[.06] dark:bg-white/[.08] opacity-100"
+                    : "bg-black/[.02] dark:bg-white/[.04] opacity-50"
+                }`}
               >
                 <img
                   src={theme === "dark" ? ai.dark : ai.light}
@@ -410,16 +361,10 @@ export const AdminDashboard = (): JSX.Element => {
 
         {/* 右: 接続先サービスリスト */}
         <div
-          className="rounded-xl p-5"
-          style={{
-            backgroundColor: "var(--bg-card)",
-            border: "1px solid var(--border)",
-            boxShadow: "var(--shadow-card)",
-          }}
+          className="rounded-xl p-5 border border-gray-200 bg-white dark:border-white/[.08] dark:bg-zinc-900"
         >
           <span
-            className="mb-4 block text-sm font-medium"
-            style={{ color: "var(--text-secondary)" }}
+            className="mb-4 block text-sm font-medium text-gray-600 dark:text-zinc-400"
           >
             接続先サービス
           </span>
@@ -432,8 +377,7 @@ export const AdminDashboard = (): JSX.Element => {
                   className="h-4 w-4 rounded"
                 />
                 <span
-                  className="w-24"
-                  style={{ color: "var(--text-secondary)" }}
+                  className="w-24 text-gray-600 dark:text-zinc-400"
                 >
                   {s.name}
                 </span>
@@ -441,20 +385,15 @@ export const AdminDashboard = (): JSX.Element => {
                   className={`h-1.5 w-1.5 rounded-full ${s.status === "active" ? "bg-emerald-400" : "bg-zinc-700"}`}
                 />
                 <div
-                  className="h-1.5 flex-1 rounded-full"
-                  style={{ backgroundColor: "var(--bg-card-hover)" }}
+                  className="h-1.5 flex-1 rounded-full bg-black/[.02] dark:bg-white/[.04]"
                 >
                   <div
-                    className="h-1.5 rounded-full"
-                    style={{
-                      width: `${(s.requests / MAX_SERVICE_REQUESTS) * 100}%`,
-                      backgroundColor: "var(--text-muted)",
-                    }}
+                    className="h-1.5 rounded-full bg-gray-500 dark:bg-zinc-500"
+                    style={{ width: `${(s.requests / MAX_SERVICE_REQUESTS) * 100}%` }}
                   />
                 </div>
                 <span
-                  className="w-12 text-right font-mono"
-                  style={{ color: "var(--text-subtle)" }}
+                  className="w-12 text-right font-mono text-gray-400 dark:text-zinc-600"
                 >
                   {s.requests.toLocaleString()}
                 </span>
@@ -468,34 +407,25 @@ export const AdminDashboard = (): JSX.Element => {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_0.4fr]">
         {/* コネクタログ */}
         <div
-          className="overflow-hidden rounded-xl"
-          style={{
-            backgroundColor: "var(--bg-card)",
-            border: "1px solid var(--border)",
-            boxShadow: "var(--shadow-card)",
-          }}
+          className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[.08] dark:bg-zinc-900"
         >
           {/* ヘッダー */}
           <div
-            className="flex items-center justify-between px-5 py-3"
-            style={{ borderBottom: "1px solid var(--border)" }}
+            className="flex items-center justify-between px-5 py-3 border-b border-b-gray-200 dark:border-b-white/[.08]"
           >
             <div className="flex items-center gap-2">
               <Activity
-                className="h-4 w-4"
-                style={{ color: "var(--text-muted)" }}
+                className="h-4 w-4 text-gray-500 dark:text-zinc-500"
               />
               <span
-                className="text-sm font-medium"
-                style={{ color: "var(--text-primary)" }}
+                className="text-sm font-medium text-gray-900 dark:text-white"
               >
                 コネクタログ
               </span>
             </div>
             <Link
               to="/admin/history"
-              className="flex items-center gap-1 text-[10px] transition-colors hover:opacity-80"
-              style={{ color: "var(--text-muted)" }}
+              className="flex items-center gap-1 text-[10px] transition-colors hover:opacity-80 text-gray-500 dark:text-zinc-500"
             >
               すべて見る
               <ArrowRight className="h-3 w-3" />
@@ -504,11 +434,7 @@ export const AdminDashboard = (): JSX.Element => {
 
           {/* テーブルヘッダー */}
           <div
-            className="grid grid-cols-[70px_70px_80px_120px_1fr_85px_50px] items-center gap-2 px-5 py-2 text-[10px]"
-            style={{
-              borderBottom: "1px solid var(--border)",
-              color: "var(--text-subtle)",
-            }}
+            className="grid grid-cols-[70px_70px_80px_120px_1fr_85px_50px] items-center gap-2 border-b border-b-gray-200 px-5 py-2 text-[10px] text-gray-400 dark:border-b-white/[.08] dark:text-zinc-600"
           >
             <span>日時</span>
             <span>ユーザー</span>
@@ -525,18 +451,11 @@ export const AdminDashboard = (): JSX.Element => {
             return (
               <div
                 key={item.id}
-                className="grid grid-cols-[70px_70px_80px_120px_1fr_85px_50px] items-center gap-2 px-5 py-2.5 text-xs transition-colors"
-                style={{
-                  borderBottom: "1px solid var(--border-subtle)",
-                  backgroundColor: isErrorRow(item.status)
-                    ? "rgba(239,68,68,0.03)"
-                    : "transparent",
-                }}
+                className={`grid grid-cols-[70px_70px_80px_120px_1fr_85px_50px] items-center gap-2 border-b border-b-gray-100 px-5 py-2.5 text-xs transition-colors dark:border-b-white/[.03] ${isErrorRow(item.status) ? "bg-red-500/[0.03]" : ""}`}
               >
                 {/* 日時 */}
                 <span
-                  className="font-mono text-[11px]"
-                  style={{ color: "var(--text-subtle)" }}
+                  className="font-mono text-[11px] text-gray-400 dark:text-zinc-600"
                 >
                   {item.datetime.split(" ")[1]?.slice(0, 8)}
                 </span>
@@ -544,21 +463,15 @@ export const AdminDashboard = (): JSX.Element => {
                 {/* ユーザー */}
                 <div className="flex items-center gap-1.5">
                   <div
-                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-medium"
-                    style={{
-                      backgroundColor:
-                        item.user === "不明"
-                          ? "var(--badge-error-bg)"
-                          : "var(--bg-active)",
-                      color:
-                        item.user === "不明"
-                          ? "var(--badge-error-text)"
-                          : "var(--text-secondary)",
-                    }}
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-medium ${
+                      item.user === "不明"
+                        ? "bg-red-500/10 text-red-600 dark:bg-red-400/10 dark:text-red-400"
+                        : "bg-black/[.06] text-gray-600 dark:bg-white/[.08] dark:text-zinc-400"
+                    }`}
                   >
                     {item.user.charAt(0)}
                   </div>
-                  <span style={{ color: "var(--text-secondary)" }}>
+                  <span className="text-gray-600 dark:text-zinc-400">
                     {item.user}
                   </span>
                 </div>
@@ -575,8 +488,7 @@ export const AdminDashboard = (): JSX.Element => {
                     className="h-4 w-4 rounded-sm"
                   />
                   <span
-                    className="text-[11px]"
-                    style={{ color: "var(--text-muted)" }}
+                    className="text-[11px] text-gray-500 dark:text-zinc-500"
                   >
                     {item.aiClient.name}
                   </span>
@@ -593,31 +505,28 @@ export const AdminDashboard = (): JSX.Element => {
                     alt={item.service.name}
                     className="h-4 w-4 rounded-sm"
                   />
-                  <span style={{ color: "var(--text-secondary)" }}>
+                  <span className="text-gray-600 dark:text-zinc-400">
                     {item.service.name}
                   </span>
                 </div>
 
                 {/* ツール / アクション */}
                 <span
-                  className="truncate font-mono text-[11px]"
-                  style={{ color: "var(--text-muted)" }}
+                  className="truncate font-mono text-[11px] text-gray-500 dark:text-zinc-500"
                 >
                   {item.operation}
                 </span>
 
                 {/* ステータス */}
                 <span
-                  className="rounded-full px-1.5 py-0.5 text-center text-[9px] font-medium"
-                  style={{ backgroundColor: badge.bg, color: badge.text }}
+                  className={`rounded-full px-1.5 py-0.5 text-center text-[9px] font-medium ${badge.className}`}
                 >
                   {badge.label}
                 </span>
 
                 {/* 応答時間 */}
                 <span
-                  className="text-right font-mono text-[11px]"
-                  style={{ color: "var(--text-subtle)" }}
+                  className="text-right font-mono text-[11px] text-gray-400 dark:text-zinc-600"
                 >
                   {item.latency}
                 </span>
@@ -628,16 +537,10 @@ export const AdminDashboard = (): JSX.Element => {
 
         {/* お知らせ */}
         <div
-          className="rounded-xl p-5"
-          style={{
-            backgroundColor: "var(--bg-card)",
-            border: "1px solid var(--border)",
-            boxShadow: "var(--shadow-card)",
-          }}
+          className="rounded-xl p-5 border border-gray-200 bg-white dark:border-white/[.08] dark:bg-zinc-900"
         >
           <span
-            className="mb-4 block text-sm font-medium"
-            style={{ color: "var(--text-secondary)" }}
+            className="mb-4 block text-sm font-medium text-gray-600 dark:text-zinc-400"
           >
             お知らせ
           </span>
@@ -646,18 +549,15 @@ export const AdminDashboard = (): JSX.Element => {
               const content = (
                 <div key={a.id} className="flex items-start gap-2.5 text-xs">
                   <Megaphone
-                    className="mt-0.5 h-3.5 w-3.5 shrink-0"
-                    style={{ color: "var(--text-muted)" }}
+                    className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-500 dark:text-zinc-500"
                   />
                   <span
-                    className="flex-1"
-                    style={{ color: "var(--text-secondary)" }}
+                    className="flex-1 text-gray-600 dark:text-zinc-400"
                   >
                     {a.message}
                   </span>
                   <span
-                    className="shrink-0 font-mono"
-                    style={{ color: "var(--text-subtle)" }}
+                    className="shrink-0 font-mono text-gray-400 dark:text-zinc-600"
                   >
                     {a.date}
                   </span>
@@ -667,8 +567,7 @@ export const AdminDashboard = (): JSX.Element => {
                 <Link
                   key={a.id}
                   to={a.link}
-                  className="block rounded-lg px-2 py-1.5 transition-colors hover:opacity-80"
-                  style={{ backgroundColor: "var(--bg-card-hover)" }}
+                  className="block rounded-lg px-2 py-1.5 transition-colors hover:opacity-80 bg-black/[.02] dark:bg-white/[.04]"
                 >
                   {content}
                 </Link>

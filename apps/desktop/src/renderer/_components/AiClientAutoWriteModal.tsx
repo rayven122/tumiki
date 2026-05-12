@@ -205,7 +205,7 @@ export const AiClientAutoWriteModal = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="ai-client-modal-title"
-        className="max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-8"
+        className="max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-8"
         onClick={(e) => e.stopPropagation()}
       >
         {/* ヘッダー */}
@@ -218,18 +218,18 @@ export const AiClientAutoWriteModal = ({
                 className="h-9 w-9 rounded-lg"
               />
             ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--bg-active)] text-sm font-bold text-[var(--text-muted)]">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-black/[.06] dark:bg-white/[.08] text-sm font-bold text-gray-500 dark:text-zinc-500">
                 {client.name.charAt(0)}
               </div>
             )}
             <div>
               <h2
                 id="ai-client-modal-title"
-                className="text-lg font-bold text-[var(--text-primary)]"
+                className="text-lg font-bold text-gray-900 dark:text-white"
               >
                 {client.name} に書き込み
               </h2>
-              <p className="text-xs text-[var(--text-muted)]">
+              <p className="text-xs text-gray-500 dark:text-zinc-500">
                 登録済みMCPサーバーを設定ファイルへ書き込みます
               </p>
             </div>
@@ -238,7 +238,7 @@ export const AiClientAutoWriteModal = ({
             type="button"
             onClick={onClose}
             disabled={writing}
-            className="rounded-md p-1 text-[var(--text-muted)] transition hover:opacity-70 disabled:opacity-50"
+            className="rounded-md p-1 text-gray-500 dark:text-zinc-500 transition hover:opacity-70 disabled:opacity-50"
             aria-label="閉じる"
           >
             <X size={20} />
@@ -247,15 +247,15 @@ export const AiClientAutoWriteModal = ({
 
         {/* 設定ファイルパス */}
         <div className="mb-4">
-          <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-[var(--text-primary)]">
-            <Info size={12} className="text-[var(--text-subtle)]" />
+          <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-gray-900 dark:text-white">
+            <Info size={12} className="text-gray-400 dark:text-zinc-600" />
             設定ファイル
           </div>
           {preview ? (
-            <code className="block rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-app)] px-3 py-2 font-mono text-[11px] break-all text-[var(--text-secondary)]">
+            <code className="block rounded-lg border border-gray-100 dark:border-white/[.03] bg-[#e8eaed] dark:bg-[#0a0a0a] px-3 py-2 font-mono text-[11px] break-all text-gray-600 dark:text-zinc-400">
               {preview.configPath}
               {!preview.exists && (
-                <span className="ml-2 text-[var(--text-subtle)]">
+                <span className="ml-2 text-gray-400 dark:text-zinc-600">
                   （新規作成）
                 </span>
               )}
@@ -265,7 +265,7 @@ export const AiClientAutoWriteModal = ({
               {previewError}
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-xs text-[var(--text-subtle)]">
+            <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-zinc-600">
               <Loader2 size={12} className="animate-spin" />
               読み込み中...
             </div>
@@ -275,18 +275,18 @@ export const AiClientAutoWriteModal = ({
         {/* 既存エントリ（Tumikiに無いもの = orphan） */}
         {orphanSlugs.length > 0 && (
           <div className="mb-5">
-            <div className="mb-1.5 text-xs font-medium text-[var(--text-primary)]">
+            <div className="mb-1.5 text-xs font-medium text-gray-900 dark:text-white">
               既存エントリ（Tumikiに無いもの、{orphanSlugs.length}件）
-              <span className="ml-2 text-[10px] font-normal text-[var(--text-subtle)]">
+              <span className="ml-2 text-[10px] font-normal text-gray-400 dark:text-zinc-600">
                 チェックを外すと削除されます
               </span>
             </div>
-            <ul className="max-h-32 space-y-1.5 overflow-auto rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-app)] p-2">
+            <ul className="max-h-32 space-y-1.5 overflow-auto rounded-lg border border-gray-100 dark:border-white/[.03] bg-[#e8eaed] dark:bg-[#0a0a0a] p-2">
               {orphanSlugs.map((slug) => {
                 const kept = keptOrphanSlugs.has(slug);
                 return (
                   <li key={slug}>
-                    <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded px-2 py-2 transition hover:bg-[var(--bg-card-hover)]">
+                    <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded px-2 py-2 transition hover:bg-black/[.02] dark:bg-white/[.04]">
                       <input
                         type="checkbox"
                         checked={kept}
@@ -294,13 +294,13 @@ export const AiClientAutoWriteModal = ({
                           toggleOrphanKept(slug, e.target.checked)
                         }
                         disabled={writing}
-                        className="h-4 w-4 cursor-pointer accent-[var(--text-primary)]"
+                        className="h-4 w-4 cursor-pointer accent-gray-900 dark:accent-white"
                       />
-                      <span className="flex-1 font-mono text-xs text-[var(--text-primary)]">
+                      <span className="flex-1 font-mono text-xs text-gray-900 dark:text-white">
                         {slug}
                       </span>
                       {kept ? (
-                        <span className="flex items-center gap-1 rounded bg-[var(--bg-card-hover)] px-1.5 py-0.5 text-[9px] font-medium text-[var(--text-muted)]">
+                        <span className="flex items-center gap-1 rounded bg-black/[.02] dark:bg-white/[.04] px-1.5 py-0.5 text-[9px] font-medium text-gray-500 dark:text-zinc-500">
                           保持
                         </span>
                       ) : (
@@ -320,28 +320,28 @@ export const AiClientAutoWriteModal = ({
         {/* Tumiki から追加するサーバー（チェックボックス） */}
         <div className="mb-5">
           <div className="mb-1.5 flex items-center justify-between">
-            <span className="text-xs font-medium text-[var(--text-primary)]">
+            <span className="text-xs font-medium text-gray-900 dark:text-white">
               Tumikiから追加するサーバー（{servers.length}件）
             </span>
             {servers.length > 0 && (
-              <label className="flex cursor-pointer items-center gap-1.5 text-[10px] text-[var(--text-muted)]">
+              <label className="flex cursor-pointer items-center gap-1.5 text-[10px] text-gray-500 dark:text-zinc-500">
                 <input
                   type="checkbox"
                   checked={allChecked}
                   onChange={(e) => toggleAll(e.target.checked)}
                   disabled={writing}
-                  className="h-3.5 w-3.5 cursor-pointer accent-[var(--text-primary)]"
+                  className="h-3.5 w-3.5 cursor-pointer accent-gray-900 dark:accent-white"
                 />
                 全選択
               </label>
             )}
           </div>
           {servers.length === 0 ? (
-            <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-app)] px-3 py-2 text-xs text-[var(--text-subtle)]">
+            <div className="rounded-lg border border-gray-100 dark:border-white/[.03] bg-[#e8eaed] dark:bg-[#0a0a0a] px-3 py-2 text-xs text-gray-400 dark:text-zinc-600">
               書き込み可能なMCPサーバーがありません
             </div>
           ) : (
-            <ul className="max-h-56 space-y-1.5 overflow-auto rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-app)] p-2">
+            <ul className="max-h-56 space-y-1.5 overflow-auto rounded-lg border border-gray-100 dark:border-white/[.03] bg-[#e8eaed] dark:bg-[#0a0a0a] p-2">
               {servers.map((server) => {
                 const checked = selectedSlugs.has(server.slug);
                 const inExisting = conflictingSlugs.has(server.slug);
@@ -368,14 +368,14 @@ export const AiClientAutoWriteModal = ({
                         title: "設定ファイルから削除します",
                       }
                     : {
-                        cls: "bg-[var(--bg-card-hover)] text-[var(--text-muted)]",
+                        cls: "bg-black/[.02] dark:bg-white/[.04] text-gray-500 dark:text-zinc-500",
                         icon: null,
                         label: "スキップ",
                         title: "書き込まずスキップします",
                       };
                 return (
                   <li key={server.slug}>
-                    <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded px-2 py-2 transition hover:bg-[var(--bg-card-hover)]">
+                    <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded px-2 py-2 transition hover:bg-black/[.02] dark:bg-white/[.04]">
                       <input
                         type="checkbox"
                         checked={checked}
@@ -383,12 +383,12 @@ export const AiClientAutoWriteModal = ({
                           toggleSelected(server.slug, e.target.checked)
                         }
                         disabled={writing}
-                        className="h-4 w-4 cursor-pointer accent-[var(--text-primary)]"
+                        className="h-4 w-4 cursor-pointer accent-gray-900 dark:accent-white"
                       />
-                      <span className="flex-1 text-xs text-[var(--text-primary)]">
+                      <span className="flex-1 text-xs text-gray-900 dark:text-white">
                         {server.name}
                       </span>
-                      <span className="font-mono text-[10px] text-[var(--text-subtle)]">
+                      <span className="font-mono text-[10px] text-gray-400 dark:text-zinc-600">
                         {server.slug}
                       </span>
                       <span
@@ -407,7 +407,7 @@ export const AiClientAutoWriteModal = ({
         </div>
 
         {/* 区切り */}
-        <div className="mb-5 border-t border-[var(--border)]" />
+        <div className="mb-5 border-t border-gray-200 dark:border-white/[.08]" />
 
         {/* ボタン */}
         <div className="flex justify-end gap-3">
@@ -415,7 +415,7 @@ export const AiClientAutoWriteModal = ({
             type="button"
             onClick={onClose}
             disabled={writing}
-            className="rounded-lg border border-[var(--border)] px-5 py-2.5 text-sm font-medium text-[var(--text-secondary)] transition hover:opacity-80 disabled:opacity-50"
+            className="rounded-lg border border-gray-200 dark:border-white/[.08] px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-zinc-400 transition hover:opacity-80 disabled:opacity-50"
           >
             キャンセル
           </button>
@@ -423,7 +423,7 @@ export const AiClientAutoWriteModal = ({
             type="button"
             onClick={() => void handleWrite()}
             disabled={!isReady || writing || !hasChanges}
-            className="flex items-center gap-2 rounded-lg bg-[var(--text-primary)] px-6 py-2.5 text-sm font-medium text-[var(--bg-card)] transition hover:opacity-90 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-lg bg-gray-900 dark:bg-white px-6 py-2.5 text-sm font-medium text-white dark:text-zinc-900 transition hover:opacity-90 disabled:opacity-50"
           >
             {writing && <Loader2 size={14} className="animate-spin" />}
             {writing ? "書き込み中..." : "書き込み"}

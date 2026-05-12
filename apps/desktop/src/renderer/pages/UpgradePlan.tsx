@@ -21,16 +21,16 @@ export const UpgradePlan = (): JSX.Element => {
 
   return (
     <div className="flex flex-1 items-center justify-center p-6">
-      <div className="w-full max-w-lg rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-8 text-center shadow-xl">
-        <div className="mx-auto mb-5 inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--bg-active)]">
-          <Sparkles className="text-[var(--text-primary)]" size={26} />
+      <div className="w-full max-w-lg rounded-2xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-8 text-center shadow-xl">
+        <div className="mx-auto mb-5 inline-flex h-14 w-14 items-center justify-center rounded-full bg-black/[.06] dark:bg-white/[.08]">
+          <Sparkles className="text-gray-900 dark:text-white" size={26} />
         </div>
 
-        <h1 className="text-xl font-semibold text-[var(--text-primary)]">
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
           権限申請は Pro プラン限定機能です
         </h1>
 
-        <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
+        <p className="mt-3 text-sm leading-relaxed text-gray-500 dark:text-zinc-500">
           チームでの MCP サーバー共有や承認フローをご利用いただくには、Pro
           プランへのアップグレードが必要です。
         </p>
@@ -39,11 +39,11 @@ export const UpgradePlan = (): JSX.Element => {
           {PREMIUM_FEATURES.map((feature) => (
             <li
               key={feature}
-              className="flex items-start gap-2 text-sm text-[var(--text-secondary)]"
+              className="flex items-start gap-2 text-sm text-gray-600 dark:text-zinc-400"
             >
               <Check
                 size={16}
-                className="mt-0.5 shrink-0 text-[var(--badge-success-text)]"
+                className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400"
               />
               <span>{feature}</span>
             </li>
@@ -53,7 +53,7 @@ export const UpgradePlan = (): JSX.Element => {
         <button
           type="button"
           onClick={handleUpgrade}
-          className="mt-7 inline-flex items-center gap-2 rounded-lg bg-[var(--text-primary)] px-5 py-2.5 text-sm font-medium text-[var(--bg-app)] transition-opacity hover:opacity-90"
+          className="mt-7 inline-flex items-center gap-2 rounded-lg bg-gray-900 dark:bg-white px-5 py-2.5 text-sm font-medium text-white dark:text-zinc-900 transition-opacity hover:opacity-90"
         >
           プランを見る
           <ExternalLink size={14} />

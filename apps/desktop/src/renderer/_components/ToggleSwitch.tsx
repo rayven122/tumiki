@@ -25,7 +25,7 @@ export const ToggleSwitch = ({
   >
     <span
       className={`inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-        checked ? "bg-emerald-500" : "bg-[var(--bg-active)]"
+        checked ? "bg-emerald-500" : "bg-black/[.06] dark:bg-white/[.08]"
       }`}
     >
       <span

@@ -23,15 +23,15 @@ export const SettingsForm = (): React.ReactElement => {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">
-        <h3 className="mb-4 text-sm font-medium text-[var(--text-primary)]">
+      <div className="rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-6">
+        <h3 className="mb-4 text-sm font-medium text-gray-900 dark:text-white">
           アプリケーション設定
         </h3>
         <div className="space-y-6">
           <div>
             <label
               htmlFor="theme"
-              className="block text-sm font-medium text-[var(--text-secondary)]"
+              className="block text-sm font-medium text-gray-600 dark:text-zinc-400"
             >
               テーマ
             </label>
@@ -39,12 +39,12 @@ export const SettingsForm = (): React.ReactElement => {
               id="theme"
               value={config.theme}
               onChange={handleThemeChange}
-              className="mt-1 block w-full rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm text-[var(--text-primary)] shadow-sm focus:border-[var(--btn-primary-bg)] focus:ring-1 focus:ring-[var(--btn-primary-bg)] focus:outline-none"
+              className="mt-1 block w-full rounded-md border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-gray-900 dark:text-white shadow-sm focus:border-gray-900 dark:focus:border-white focus:ring-1 focus:ring-gray-900 dark:focus:ring-white focus:outline-none"
             >
               <option value="light">ライト</option>
               <option value="dark">ダーク</option>
             </select>
-            <p className="mt-2 text-xs text-[var(--text-muted)]">
+            <p className="mt-2 text-xs text-gray-500 dark:text-zinc-500">
               アプリケーションの表示テーマを選択
             </p>
           </div>
@@ -56,17 +56,17 @@ export const SettingsForm = (): React.ReactElement => {
                 type="checkbox"
                 checked={config.autoStart}
                 onChange={handleAutoStartChange}
-                className="h-4 w-4 rounded border-[var(--border)] text-[var(--btn-primary-bg)] focus:ring-[var(--btn-primary-bg)]"
+                className="h-4 w-4 rounded border-gray-200 dark:border-white/[.08] text-gray-900 dark:text-white focus:ring-gray-900 dark:focus:ring-white"
               />
             </div>
             <div className="ml-3">
               <label
                 htmlFor="autoStart"
-                className="text-sm font-medium text-[var(--text-secondary)]"
+                className="text-sm font-medium text-gray-600 dark:text-zinc-400"
               >
                 システム起動時に自動起動
               </label>
-              <p className="text-xs text-[var(--text-muted)]">
+              <p className="text-xs text-gray-500 dark:text-zinc-500">
                 コンピューター起動時にtumikiを自動的に起動します
               </p>
             </div>
@@ -79,24 +79,24 @@ export const SettingsForm = (): React.ReactElement => {
                 type="checkbox"
                 checked={config.minimizeToTray}
                 onChange={handleMinimizeToTrayChange}
-                className="h-4 w-4 rounded border-[var(--border)] text-[var(--btn-primary-bg)] focus:ring-[var(--btn-primary-bg)]"
+                className="h-4 w-4 rounded border-gray-200 dark:border-white/[.08] text-gray-900 dark:text-white focus:ring-gray-900 dark:focus:ring-white"
               />
             </div>
             <div className="ml-3">
               <label
                 htmlFor="minimizeToTray"
-                className="text-sm font-medium text-[var(--text-secondary)]"
+                className="text-sm font-medium text-gray-600 dark:text-zinc-400"
               >
                 システムトレイに最小化
               </label>
-              <p className="text-xs text-[var(--text-muted)]">
+              <p className="text-xs text-gray-500 dark:text-zinc-500">
                 ウィンドウを閉じたときにシステムトレイに最小化します
               </p>
             </div>
           </div>
 
-          <div className="border-t border-[var(--border)] pt-4">
-            <p className="text-xs text-[var(--text-muted)]">
+          <div className="border-t border-gray-200 dark:border-white/[.08] pt-4">
+            <p className="text-xs text-gray-500 dark:text-zinc-500">
               設定は自動的に保存されます
             </p>
           </div>

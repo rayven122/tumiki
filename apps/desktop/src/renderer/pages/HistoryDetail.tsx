@@ -15,9 +15,9 @@ const InfoField = ({
   mono?: boolean;
 }): JSX.Element => (
   <div>
-    <p className="text-xs text-[var(--text-muted)]">{label}</p>
+    <p className="text-xs text-gray-500 dark:text-zinc-500">{label}</p>
     <p
-      className={`mt-1 text-sm text-[var(--text-secondary)] ${mono ? "font-mono" : ""}`}
+      className={`mt-1 text-sm text-gray-600 dark:text-zinc-400 ${mono ? "font-mono" : ""}`}
     >
       {value}
     </p>
@@ -42,11 +42,11 @@ export const HistoryDetail = (): JSX.Element => {
       <div className="p-6">
         <Link
           to="/history"
-          className="text-sm text-[var(--text-secondary)] hover:opacity-80"
+          className="text-sm text-gray-600 dark:text-zinc-400 hover:opacity-80"
         >
           ← 操作履歴
         </Link>
-        <p className="mt-8 text-center text-[var(--text-muted)]">
+        <p className="mt-8 text-center text-gray-500 dark:text-zinc-500">
           該当する履歴が見つかりません。操作履歴から選択してください。
         </p>
       </div>
@@ -61,33 +61,32 @@ export const HistoryDetail = (): JSX.Element => {
       {/* 戻るリンク */}
       <Link
         to="/history"
-        className="inline-block text-sm text-[var(--text-secondary)] hover:opacity-80"
+        className="inline-block text-sm text-gray-600 dark:text-zinc-400 hover:opacity-80"
       >
         ← 操作履歴
       </Link>
 
       {/* ヘッダー */}
       <div className="flex items-center gap-3">
-        <h1 className="text-lg font-semibold text-[var(--text-primary)]">
+        <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
           操作詳細
         </h1>
         <span
-          className="rounded-full px-2.5 py-0.5 text-[10px] font-medium"
-          style={{ backgroundColor: badge.bg, color: badge.text }}
+          className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium ${badge.className}`}
         >
           {badge.label}
         </span>
       </div>
 
       {/* 操作情報カード */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">
+      <div className="rounded-xl border border-gray-200 dark:border-white/[.08] bg-white dark:bg-zinc-900 p-6">
         <div className="grid grid-cols-2 gap-6">
           <InfoField label="日時" value={formatDateTime(item.createdAt)} />
           <div>
-            <p className="text-xs text-[var(--text-muted)]">AIクライアント</p>
+            <p className="text-xs text-gray-500 dark:text-zinc-500">AIクライアント</p>
             <div className="mt-1 flex items-center gap-2">
               <ClientLogo clientName={item.clientName} size="md" />
-              <span className="text-sm text-[var(--text-secondary)]">
+              <span className="text-sm text-gray-600 dark:text-zinc-400">
                 {item.clientName
                   ? item.clientVersion
                     ? `${item.clientName} v${item.clientVersion}`
@@ -106,21 +105,21 @@ export const HistoryDetail = (): JSX.Element => {
 
       {/* エラー詳細カード（エラー時のみ） */}
       {!item.isSuccess && item.errorSummary && (
-        <div className="rounded-xl border border-[var(--badge-error-bg)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">
-          <h2 className="mb-3 text-sm font-semibold text-[var(--badge-error-text)]">
+        <div className="rounded-xl border border-red-500/10 dark:border-red-400/10 bg-white dark:bg-zinc-900 p-6">
+          <h2 className="mb-3 text-sm font-semibold text-red-600 dark:text-red-400">
             エラー詳細
           </h2>
           <div className="grid grid-cols-2 gap-6">
             <div>
-              <p className="text-xs text-[var(--text-muted)]">概要</p>
-              <p className="mt-1 text-sm text-[var(--badge-error-text)]">
+              <p className="text-xs text-gray-500 dark:text-zinc-500">概要</p>
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                 {item.errorSummary}
               </p>
             </div>
             {item.errorCode !== null && (
               <div>
-                <p className="text-xs text-[var(--text-muted)]">エラーコード</p>
-                <p className="mt-1 font-mono text-sm text-[var(--text-secondary)]">
+                <p className="text-xs text-gray-500 dark:text-zinc-500">エラーコード</p>
+                <p className="mt-1 font-mono text-sm text-gray-600 dark:text-zinc-400">
                   {item.errorCode}
                 </p>
               </div>
@@ -130,8 +129,8 @@ export const HistoryDetail = (): JSX.Element => {
       )}
 
       {/* 備考 */}
-      <div className="rounded-lg bg-[var(--bg-card-hover)] px-4 py-3">
-        <p className="text-xs text-[var(--text-muted)]">
+      <div className="rounded-lg bg-black/[.02] dark:bg-white/[.04] px-4 py-3">
+        <p className="text-xs text-gray-500 dark:text-zinc-500">
           セキュリティポリシーにより、リクエスト/レスポンスのペイロードは表示されません。詳細なログは管理者にお問い合わせください。
         </p>
       </div>
