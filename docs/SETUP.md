@@ -123,7 +123,7 @@ pnpm docker:up
 
 ```bash
 # コンテナの状態確認
-docker compose -f docker/compose.yaml ps
+docker compose -f docker/local/compose.yaml ps
 ```
 
 ### 5. データベースのセットアップ
@@ -138,6 +138,23 @@ pnpm db:deploy
 # プロジェクトルートに戻る
 cd ../..
 ```
+
+### 5-b. テスト用データベースのセットアップ
+
+`pnpm test`（pre-push フック含む）を実行するには、テスト用 DB にスキーマを適用する必要があります。
+
+```bash
+# テスト用 DB の接続設定ファイルを作成
+cp .env.test.example .env.test
+
+# テスト用 DB にスキーマを適用（db-test コンテナが起動済みであること）
+cd packages/db
+pnpm db:push:test
+cd ../..
+```
+
+> **注意**: `pnpm docker:up` で起動される `db-test` コンテナ（ポート 5435）が対象です。
+> テスト DB を使うテストは CI 環境では自動的にスキップされるため、この手順はローカル開発時のみ必要です。
 
 ### 6. MCPサーバーテンプレートとツールの初期データ投入
 
