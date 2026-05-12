@@ -49,6 +49,10 @@ terraform
 # ドキュメント・スクリプト
 docs
 scripts
+# DEV-1598: postinstall 用の keycloak テーマインストールラッパだけは
+# 上の `scripts` 除外を解除して Docker build context に含める。
+# 他のスクリプト（deploy-keycloak-theme.sh / dev-stripe.sh 等）は引き続き除外。
+!scripts/install-keycloak-themes.mjs
 *.md
 LICENSE
 LICENSE.*

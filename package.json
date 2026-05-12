@@ -31,7 +31,7 @@
     "lint:fix": "turbo run lint --continue -- --fix --cache --cache-location .cache/.eslintcache",
     "lint:ws": "pnpm dlx sherif@latest -i ai",
     "prepare": "test -d .git && prek install -t pre-commit -t pre-push || true",
-    "postinstall": "pnpm lint:ws && (command -v bash >/dev/null 2>&1 && bash docker/keycloak/install-themes.sh || echo 'Skipping theme install (bash not available)')",
+    "postinstall": "pnpm lint:ws && node scripts/install-keycloak-themes.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
