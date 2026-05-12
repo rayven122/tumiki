@@ -2,6 +2,7 @@ import type {
   AuthType,
   McpServerConfig,
   McpToolInfo,
+  ResolveHeaders,
 } from "@tumiki/mcp-core-proxy";
 import { createMcpClient } from "@tumiki/mcp-core-proxy";
 import type { TransportType } from "@prisma/desktop-client";
@@ -116,10 +117,13 @@ const getAllowedToolNames = (conn: ConnectionForConfig) =>
     : undefined;
 
 /** OAuth接続の場合のみ resolveHeaders を返す */
-const buildResolveHeaders = (conn: ConnectionForConfig) =>
-  conn.authType === "OAUTH" && conn.url
-    ? { resolveHeaders: () => resolveOAuthHeaders(conn.secretId, conn.url!) }
-    : {};
+const buildResolveHeaders = (
+  conn: ConnectionForConfig,
+): { resolveHeaders?: ResolveHeaders } => {
+  if (conn.authType !== "OAUTH" || !conn.url) return {};
+  const url = conn.url;
+  return { resolveHeaders: () => resolveOAuthHeaders(conn.secretId, url) };
+};
 
 const withAllowedTools = <T extends McpServerConfig>(
   config: T,
