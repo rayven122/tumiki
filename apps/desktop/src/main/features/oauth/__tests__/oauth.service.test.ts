@@ -534,8 +534,9 @@ describe("oauth.service", () => {
       expect(oauthRepository.updateSecretCredentials).toHaveBeenCalled();
     });
 
+    // 以下のエラーケースは loopback 起動前に弾かれるため startLoopbackServer はモック不要
+
     test("コネクトが存在しない場合エラーをスローする", async () => {
-      vi.mocked(startLoopbackServer).mockResolvedValueOnce(buildLoopback());
       vi.mocked(
         mcpRepository.findConnectionByIdWithServer,
       ).mockResolvedValueOnce(null);
@@ -548,7 +549,6 @@ describe("oauth.service", () => {
     });
 
     test("OAuth以外のコネクトはエラーをスローする", async () => {
-      vi.mocked(startLoopbackServer).mockResolvedValueOnce(buildLoopback());
       vi.mocked(
         mcpRepository.findConnectionByIdWithServer,
       ).mockResolvedValueOnce({
@@ -564,7 +564,6 @@ describe("oauth.service", () => {
     });
 
     test("URLが空のOAuthコネクトはエラーをスローする", async () => {
-      vi.mocked(startLoopbackServer).mockResolvedValueOnce(buildLoopback());
       vi.mocked(
         mcpRepository.findConnectionByIdWithServer,
       ).mockResolvedValueOnce({

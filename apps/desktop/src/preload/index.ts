@@ -233,6 +233,15 @@ const api = {
       ipcRenderer.on("oauth:reauthSuccess", listener);
       return () => ipcRenderer.removeListener("oauth:reauthSuccess", listener);
     },
+    // 再認証エラーは登録フロー（onOAuthError）と分離して購読する
+    onReauthError: (callback: (error: string) => void): (() => void) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        error: string,
+      ): void => callback(error);
+      ipcRenderer.on("oauth:reauthError", listener);
+      return () => ipcRenderer.removeListener("oauth:reauthError", listener);
+    },
   },
 };
 

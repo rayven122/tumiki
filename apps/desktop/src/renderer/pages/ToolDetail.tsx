@@ -393,13 +393,20 @@ export const ToolDetail = (): JSX.Element => {
     [serverId],
   );
 
-  // 単一OAuthコネクトの場合は直接、複数ある場合はモーダルを開く
+  // 再認証進行中にこの画面がアンマウントされた場合、main プロセス側で動いている
+  // ループバックサーバーが残らないようにキャンセル IPC を呼ぶ
+  useEffect(() => {
+    return () => {
+      if (reauthProcessing) {
+        void window.electronAPI.oauth.cancelAuth();
+      }
+    };
+  }, [reauthProcessing]);
+
+  // 単一OAuthコネクトの場合は直接、複数ある場合はモーダルを開く。
+  // ボタン自体が hasOAuthConnection 時のみ表示されるため length === 0 は到達不能。
   const handleRequestReauth = (): void => {
     setShowMenu(false);
-    if (oauthConnections.length === 0) {
-      toast.error("OAuth認証のコネクトがありません");
-      return;
-    }
     if (oauthConnections.length === 1 && oauthConnections[0]) {
       void runReauth(oauthConnections[0].id);
       return;

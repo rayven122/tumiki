@@ -9,6 +9,11 @@ import * as logger from "../../shared/utils/logger";
 /** OAuth成功後のtools取得失敗を識別するためのエラーコード */
 const TOOL_FETCH_FAILED_CODE = "TOOL_FETCH_FAILED";
 
+/** 再認証 IPC 入力のバリデーションスキーマ */
+const ReauthenticateInputSchema = z.object({
+  connectionId: z.number().int().positive(),
+});
+
 /** IPC入力のバリデーションスキーマ */
 const StartOAuthInputSchema = z.object({
   catalogName: z.string().min(1),
@@ -165,12 +170,9 @@ export const setupOAuthIpc = (manager: McpOAuthManager): void => {
 
   // 既存コネクションのOAuth再認証（McpSecretのみ更新）
   ipcMain.handle("oauth:reauthenticate", async (_, input: unknown) => {
-    const ReauthenticateSchema = z.object({
-      connectionId: z.number().int().positive(),
-    });
-    let parsed: z.infer<typeof ReauthenticateSchema>;
+    let parsed: z.infer<typeof ReauthenticateInputSchema>;
     try {
-      parsed = ReauthenticateSchema.parse(input);
+      parsed = ReauthenticateInputSchema.parse(input);
     } catch (error) {
       logger.error(
         "Invalid OAuth reauthenticate IPC input",
@@ -191,7 +193,8 @@ export const setupOAuthIpc = (manager: McpOAuthManager): void => {
 
       const { code, message } = resolveOAuthErrorInfo(error);
       const wrapped = `[${code}] ${message}`;
-      broadcastToWindows("oauth:error", wrapped);
+      // 再認証エラーは登録フローのリスナー（onOAuthError）と分離して配信する
+      broadcastToWindows("oauth:reauthError", wrapped);
       throw new Error(wrapped);
     }
   });

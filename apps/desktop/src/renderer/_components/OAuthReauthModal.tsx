@@ -21,6 +21,7 @@ export const OAuthReauthModal = ({
   onCancel,
 }: OAuthReauthModalProps): JSX.Element | null => {
   const titleId = useId();
+  const descId = useId();
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
   // モーダルを開くたびに先頭のコネクトを既定選択にする
@@ -52,6 +53,7 @@ export const OAuthReauthModal = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
+      aria-describedby={descId}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
     >
       <div className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-5 shadow-[var(--shadow-card)]">
@@ -63,7 +65,7 @@ export const OAuthReauthModal = ({
             >
               OAuthを再設定するコネクトを選択
             </h3>
-            <p className="mt-1 text-xs text-[var(--text-muted)]">
+            <p id={descId} className="mt-1 text-xs text-[var(--text-muted)]">
               選択したコネクトのトークンが新しいものに置き換わります。同じ接続元を共有している他のコネクトにも反映されます。
             </p>
           </div>
