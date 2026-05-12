@@ -216,7 +216,11 @@ if (isMcpProxyMode) {
       };
 
       const { join } = await import("path");
-      const mod = (await import(join(__dirname, "mcp-cli.cjs"))) as {
+      const { pathToFileURL } = await import("url");
+      // Windows では絶対パスを直接 import() するとESMローダが "c:" をURLスキームと誤認するため
+      // file:// URL に変換する必要がある (ERR_UNSUPPORTED_ESM_URL_SCHEME 回避)
+      const mcpCliUrl = pathToFileURL(join(__dirname, "mcp-cli.cjs")).href;
+      const mod = (await import(mcpCliUrl)) as {
         runMcpProxy: (
           configs: import("@tumiki/mcp-core-proxy").McpServerConfig[],
           hooks?: import("@tumiki/mcp-core-proxy").ProxyHooks,
