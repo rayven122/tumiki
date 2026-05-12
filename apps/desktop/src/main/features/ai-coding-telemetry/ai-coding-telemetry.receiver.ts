@@ -40,9 +40,9 @@ export const startOtlpReceiver = async (
     let body = "";
     let bodySize = 0;
 
-    req.on("data", (chunk: unknown) => {
-      const str = String(chunk);
-      bodySize += str.length;
+    req.on("data", (chunk: Buffer) => {
+      // Buffer.length はバイト数なので MAX_BODY_BYTES と正確に比較できる
+      bodySize += chunk.length;
       // ボディサイズ上限を超えたらリクエストを中断
       if (bodySize > MAX_BODY_BYTES) {
         req.destroy();
@@ -50,7 +50,7 @@ export const startOtlpReceiver = async (
         res.end("{}");
         return;
       }
-      body += str;
+      body += chunk.toString("utf-8");
     });
 
     req.on("end", () => {

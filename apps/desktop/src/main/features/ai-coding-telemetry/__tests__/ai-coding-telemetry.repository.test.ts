@@ -8,6 +8,7 @@ vi.mock("electron", () => ({
 
 import * as repository from "../ai-coding-telemetry.repository";
 import type { getDb } from "../../../shared/db";
+import type { MetricRecord, TraceRecord } from "../ai-coding-telemetry.types";
 
 // DbClient のモック
 const mockCreateMany = vi.fn().mockResolvedValue({ count: 0 });
@@ -39,12 +40,11 @@ describe("storeMetrics", () => {
   });
 
   test("メトリクスを DB に保存する", async () => {
-    const metrics = [
+    const metrics: MetricRecord[] = [
       { tool: "claude-code", metricName: "tokens_total", value: 1000 },
       { tool: "codex", metricName: "api_calls", value: 5 },
     ];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await repository.storeMetrics(mockDb, metrics as any);
+    await repository.storeMetrics(mockDb, metrics);
     expect(mockCreateMany).toHaveBeenCalledWith({ data: metrics });
   });
 });
@@ -56,7 +56,7 @@ describe("storeTraces", () => {
   });
 
   test("トレースを DB に保存する", async () => {
-    const traces = [
+    const traces: TraceRecord[] = [
       {
         tool: "claude-code",
         traceId: "abc",
@@ -64,8 +64,7 @@ describe("storeTraces", () => {
         durationMs: 500,
       },
     ];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await repository.storeTraces(mockDb, traces as any);
+    await repository.storeTraces(mockDb, traces);
     expect(mockCreateMany).toHaveBeenCalledWith({ data: traces });
   });
 });

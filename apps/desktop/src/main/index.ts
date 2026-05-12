@@ -611,8 +611,7 @@ if (isMcpProxyMode) {
       // 使用ポートを electron-store に保存することで、次回起動時も同じポートを維持し
       // 設定ファイルへ書き込んだ OTEL_EXPORTER_OTLP_ENDPOINT と一致させ続ける。
       const appStore = await getAppStore();
-      const savedPort =
-        appStore.get("aiCodingTelemetry")?.receiverPort ?? undefined;
+      const savedPort = appStore.get("aiCodingTelemetry")?.receiverPort;
       const { server, port: otlpPort } = await startOtlpReceiver(savedPort);
       otlpHttpServer = server;
       setReceiverPort(otlpPort);
@@ -674,10 +673,16 @@ if (isMcpProxyMode) {
     event.preventDefault();
     const oauthManager = getOAuthManager();
     oauthManager?.stopAutoRefresh();
-    otlpHttpServer?.close();
+    // OTLP サーバーのクローズを Promise でラップして DB クローズ前に完了を保証する
+    const closeOtlpServer = (): Promise<void> =>
+      new Promise((resolve) => {
+        if (otlpHttpServer) otlpHttpServer.close(() => resolve());
+        else resolve();
+      });
     Promise.all([
       stopAuditLogManagerSyncScheduler(),
       oauthManager?.waitForPendingRefresh() ?? Promise.resolve(),
+      closeOtlpServer(),
     ])
       .then(() => closeDb())
       .then(() => {
