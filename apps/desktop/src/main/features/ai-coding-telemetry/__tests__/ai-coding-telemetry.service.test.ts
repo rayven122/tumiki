@@ -346,6 +346,18 @@ describe("saveToolEnabled", () => {
       }),
     );
   });
+
+  test("既存の receiverPort を保持したまま更新する", async () => {
+    vi.mocked(mockStore.get).mockReturnValue({
+      receiverPort: 4318,
+      tools: {},
+    });
+    await service.saveToolEnabled("claude-code", true);
+    const [[, saved]] = vi.mocked(mockStore.set).mock.calls as [
+      [string, Record<string, unknown>],
+    ];
+    expect(saved.receiverPort).toStrictEqual(4318);
+  });
 });
 
 describe("applyToolSettings", () => {
@@ -361,6 +373,22 @@ describe("applyToolSettings", () => {
     });
     expect(result.success).toStrictEqual(true);
     expect(mockStore.set).toHaveBeenCalled();
+  });
+
+  test("既存の receiverPort を保持したまま更新する", async () => {
+    vi.mocked(applyOtlpToTool).mockResolvedValue({
+      success: true,
+      configPath: "/path/to/config",
+    });
+    vi.mocked(mockStore.get).mockReturnValue({
+      receiverPort: 4318,
+      tools: {},
+    });
+    await service.applyToolSettings({ tool: "claude-code", port: 4318 });
+    const [[, saved]] = vi.mocked(mockStore.set).mock.calls as [
+      [string, Record<string, unknown>],
+    ];
+    expect(saved.receiverPort).toStrictEqual(4318);
   });
 
   test("config-writer が失敗した場合は electron-store を更新しない", async () => {

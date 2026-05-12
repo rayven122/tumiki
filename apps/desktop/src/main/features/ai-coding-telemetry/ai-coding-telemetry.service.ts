@@ -187,6 +187,7 @@ export const applyToolSettings = async (
     const store = await getAppStore();
     const current = store.get("aiCodingTelemetry") ?? { tools: {} };
     store.set("aiCodingTelemetry", {
+      ...current,
       tools: {
         ...current.tools,
         [input.tool]: {
@@ -223,6 +224,7 @@ export const saveToolEnabled = async (
   const store = await getAppStore();
   const current = store.get("aiCodingTelemetry") ?? { tools: {} };
   store.set("aiCodingTelemetry", {
+    ...current,
     tools: {
       ...current.tools,
       [tool]: {
