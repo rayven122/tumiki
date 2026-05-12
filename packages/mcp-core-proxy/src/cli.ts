@@ -149,6 +149,16 @@ export const runMcpProxy = async (
 
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
+
+  // stdin EOF（AI クライアントが接続を切断）でシャットダウン。
+  // StdioClientTransport.close() は SIGTERM より先に stdin.end() を呼ぶため、
+  // このハンドラが SIGTERM ハンドラより早くトリガーされる。
+  // 応答しないまま放置すると 2 秒後の SIGTERM で親プロセスが終了し、
+  // このプロセス（孫プロセス経路含む）がゾンビとして残留する。
+  process.stdin.once("end", () => {
+    logger.info("stdin EOF を検知。シャットダウンします");
+    shutdown();
+  });
 };
 
 // bin エントリーとして直接実行された場合のみ自動起動
