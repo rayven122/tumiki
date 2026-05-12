@@ -123,17 +123,6 @@ export const updateSecretCredentials = async (
   });
 };
 
-// secretId で credentials のみを取得する。resolveOAuthHeaders 等のヘッダー解決経路から呼ばれる
-export const findCredentialsBySecretId = async (
-  db: DbClient,
-  secretId: number,
-): Promise<{ credentials: string } | null> => {
-  return db.mcpSecret.findUnique({
-    where: { id: secretId },
-    select: { credentials: true },
-  });
-};
-
 // resolveOAuthHeaders で「要再認証」状態を即時判定するため credentials と一緒に needsReauth を返す
 export const findSecretWithReauthState = async (
   db: DbClient,

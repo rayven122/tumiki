@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAtomValue } from "jotai";
 import {
@@ -365,8 +365,11 @@ export const ToolDetail = (): JSX.Element => {
   };
 
   // OAuth認証タイプのコネクト一覧（再認証対象）
-  const oauthConnections: McpConnectionDetailItem[] =
-    server?.connections.filter((conn) => conn.authType === "OAUTH") ?? [];
+  // useEffect 依存配列で参照同一性を担保するため useMemo で安定化
+  const oauthConnections = useMemo<McpConnectionDetailItem[]>(
+    () => server?.connections.filter((conn) => conn.authType === "OAUTH") ?? [],
+    [server?.connections],
+  );
   const hasOAuthConnection = oauthConnections.length > 0;
   // 1件でも refresh_token 失効を検知済みなら、ヘッダーに警告バナーを出す
   const reauthRequiredConnections = oauthConnections.filter(

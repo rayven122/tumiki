@@ -63,8 +63,9 @@ export const classifyRefreshError = (error: unknown): RefreshFailureKind => {
   // oauth4webapi の ResponseBodyError は 4xx + error フィールドを保持しているのが特徴
   if (error instanceof oauth.ResponseBodyError) {
     if (FATAL_OAUTH_ERROR_CODES.has(error.error)) return "FATAL";
-    // 4xx で error コード未一致でも、サーバーが明示的に拒否しているため FATAL 寄り
-    if (error.status >= 400 && error.status < 500) return "FATAL";
+    // 401/403 のみ FATAL とする。429 (rate limit) や 408 (timeout) のような
+    // 一時的な 4xx は TRANSIENT 側に倒し、誤った needsReauth フラグ立てを防ぐ
+    if (error.status === 401 || error.status === 403) return "FATAL";
     return "TRANSIENT";
   }
 

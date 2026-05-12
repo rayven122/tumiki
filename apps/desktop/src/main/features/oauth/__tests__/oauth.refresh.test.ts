@@ -446,6 +446,73 @@ describe("oauth.refresh", () => {
       // 早期エラーなので credentials の復号は走らない
       expect(decryptCredentials).not.toHaveBeenCalled();
     });
+
+    test("FATAL リフレッシュ失敗で needsReauth が立ち OAuthReauthRequiredError を投げる", async () => {
+      const serverUrl = "https://api.example.com";
+      const expiredCredentials = {
+        access_token: "expired-token",
+        refresh_token: "old-rt",
+        expires_at: String(Math.floor(Date.now() / 1000) - 100),
+      };
+
+      // 1回目の findSecretWithReauthState: needsReauth=false（まだフラグ未設定）
+      // 2回目の findSecretWithReauthState: needsReauth=true（FATAL 失敗後のフラグ立て後）
+      vi.mocked(oauthRepository.findSecretWithReauthState)
+        .mockResolvedValueOnce({
+          credentials: "encrypted-creds",
+          needsReauth: false,
+        })
+        .mockResolvedValueOnce({
+          credentials: "encrypted-creds",
+          needsReauth: true,
+        });
+
+      vi.mocked(decryptCredentials).mockResolvedValue(
+        JSON.stringify(expiredCredentials),
+      );
+
+      vi.mocked(oauthRepository.findByServerUrl).mockResolvedValue({
+        id: 1,
+        serverUrl,
+        issuer: "https://example.com",
+        clientId: "client-id",
+        clientSecret: "client-secret",
+        tokenEndpointAuthMethod: "client_secret_post",
+        authServerMetadata: JSON.stringify({
+          issuer: "https://example.com",
+          authorization_endpoint: "https://example.com/auth",
+          token_endpoint: "https://example.com/token",
+        }),
+        isDcr: true,
+      });
+
+      // invalid_grant の ResponseBodyError をスローして FATAL 経路に入れる
+      const fatalErr = Object.assign(
+        Object.create(oauth.ResponseBodyError.prototype) as Error,
+        { error: "invalid_grant", status: 400 },
+      );
+      vi.mocked(refreshAccessToken).mockRejectedValue(fatalErr);
+      vi.mocked(oauthRepository.markSecretNeedsReauth).mockResolvedValue();
+
+      let caughtError: unknown;
+      try {
+        await resolveOAuthHeaders(42, serverUrl, 7);
+      } catch (e) {
+        caughtError = e;
+      }
+
+      // FATAL 経路で markSecretNeedsReauth が secretId=42 で呼ばれる
+      expect(oauthRepository.markSecretNeedsReauth).toHaveBeenCalledWith(
+        mockDb,
+        42,
+      );
+
+      // 最終的に OAuthReauthRequiredError がスローされる
+      expect(caughtError).toBeInstanceOf(OAuthReauthRequiredError);
+      expect((caughtError as Error).message).toContain(
+        "tumiki://oauth/reauth?connectionId=7",
+      );
+    });
   });
 
   describe("classifyRefreshError", () => {
@@ -482,6 +549,39 @@ describe("oauth.refresh", () => {
         },
       );
       expect(classifyRefreshError(err)).toBe("TRANSIENT");
+    });
+
+    test("429 (rate limit) は TRANSIENT", () => {
+      const err = Object.assign(
+        Object.create(oauth.ResponseBodyError.prototype) as Error,
+        {
+          error: "too_many_requests",
+          status: 429,
+        },
+      );
+      expect(classifyRefreshError(err)).toBe("TRANSIENT");
+    });
+
+    test("408 (request timeout) は TRANSIENT", () => {
+      const err = Object.assign(
+        Object.create(oauth.ResponseBodyError.prototype) as Error,
+        {
+          error: "request_timeout",
+          status: 408,
+        },
+      );
+      expect(classifyRefreshError(err)).toBe("TRANSIENT");
+    });
+
+    test("403 (forbidden) は FATAL", () => {
+      const err = Object.assign(
+        Object.create(oauth.ResponseBodyError.prototype) as Error,
+        {
+          error: "some_unknown_code",
+          status: 403,
+        },
+      );
+      expect(classifyRefreshError(err)).toBe("FATAL");
     });
 
     test("ResponseBodyError ではない通常の Error は TRANSIENT", () => {
