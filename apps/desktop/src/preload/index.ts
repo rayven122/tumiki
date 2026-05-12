@@ -22,6 +22,8 @@ import type {
   UpdateToonConversionInput,
   StartOAuthInput,
   OAuthResult,
+  ReauthenticateInput,
+  ReauthenticateResult,
   AuditLogListAllInput,
   AuditLogListInput,
   AuditLogListResult,
@@ -196,6 +198,10 @@ const api = {
   oauth: {
     startAuth: (input: StartOAuthInput): Promise<OAuthResult> =>
       ipcRenderer.invoke("oauth:startAuth", input),
+    reauthenticate: (
+      input: ReauthenticateInput,
+    ): Promise<ReauthenticateResult> =>
+      ipcRenderer.invoke("oauth:reauthenticate", input),
     cancelAuth: (): Promise<void> => ipcRenderer.invoke("oauth:cancelAuth"),
     findManualOAuthClient: (
       serverUrl: string,
@@ -216,6 +222,16 @@ const api = {
       ): void => callback(error);
       ipcRenderer.on("oauth:error", listener);
       return () => ipcRenderer.removeListener("oauth:error", listener);
+    },
+    onReauthSuccess: (
+      callback: (result: ReauthenticateResult) => void,
+    ): (() => void) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        result: ReauthenticateResult,
+      ): void => callback(result);
+      ipcRenderer.on("oauth:reauthSuccess", listener);
+      return () => ipcRenderer.removeListener("oauth:reauthSuccess", listener);
     },
   },
 };

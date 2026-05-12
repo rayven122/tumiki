@@ -163,6 +163,39 @@ export const setupOAuthIpc = (manager: McpOAuthManager): void => {
     }
   });
 
+  // 既存コネクションのOAuth再認証（McpSecretのみ更新）
+  ipcMain.handle("oauth:reauthenticate", async (_, input: unknown) => {
+    const ReauthenticateSchema = z.object({
+      connectionId: z.number().int().positive(),
+    });
+    let parsed: z.infer<typeof ReauthenticateSchema>;
+    try {
+      parsed = ReauthenticateSchema.parse(input);
+    } catch (error) {
+      logger.error(
+        "Invalid OAuth reauthenticate IPC input",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error("[UNKNOWN] OAuth再認証入力の検証に失敗しました");
+    }
+
+    try {
+      const result = await manager.reauthenticateConnection(parsed);
+      broadcastToWindows("oauth:reauthSuccess", result);
+      return result;
+    } catch (error) {
+      logger.error(
+        "Failed to reauthenticate MCP OAuth connection",
+        error instanceof Error ? error : { error },
+      );
+
+      const { code, message } = resolveOAuthErrorInfo(error);
+      const wrapped = `[${code}] ${message}`;
+      broadcastToWindows("oauth:error", wrapped);
+      throw new Error(wrapped);
+    }
+  });
+
   // OAuth認証フローキャンセル
   ipcMain.handle("oauth:cancelAuth", () => {
     manager.cancelAuthFlow();

@@ -23,6 +23,7 @@ vi.mock("../oauth.protocol");
 vi.mock("../oauth.loopback");
 vi.mock("../oauth.repository");
 vi.mock("../../mcp-server-list/mcp.service");
+vi.mock("../../mcp-server-list/mcp.repository");
 vi.mock("../../../shared/profile-dispatch");
 
 import { shell } from "electron";
@@ -39,10 +40,12 @@ import { exchangeCodeForToken } from "../oauth.token";
 import { parseOAuthCallback } from "../oauth.protocol";
 import { startLoopbackServer, type LoopbackServer } from "../oauth.loopback";
 import * as oauthRepository from "../oauth.repository";
+import * as mcpRepository from "../../mcp-server-list/mcp.repository";
 import {
   createFromCatalog,
   createFromManagerCatalog,
 } from "../../mcp-server-list/mcp.service";
+import { encryptToken } from "../../../utils/encryption";
 import { resolveByProfile } from "../../../shared/profile-dispatch";
 import { createMcpOAuthManager } from "../oauth.service";
 import type { StartOAuthInput } from "../oauth.types";
@@ -427,6 +430,152 @@ describe("oauth.service", () => {
       // 即時に nullable とは限らないが、close が呼ばれることを期待
       await new Promise((resolve) => setTimeout(resolve, 10));
       expect(loopback.close).toHaveBeenCalled();
+    });
+  });
+
+  describe("reauthenticateConnection", () => {
+    const baseConnection = {
+      id: 7,
+      name: "Figma",
+      slug: "figma",
+      transportType: "STREAMABLE_HTTP" as const,
+      command: null,
+      args: "[]",
+      url: "https://mcp.figma.com/mcp",
+      authType: "OAUTH" as const,
+      isEnabled: true,
+      displayOrder: 0,
+      serverId: 11,
+      catalogId: null,
+      secretId: 33,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      server: {
+        id: 11,
+        name: "Figma MCP",
+        slug: "figma-mcp",
+        description: "",
+        serverType: "OFFICIAL" as const,
+        serverStatus: "RUNNING" as const,
+        isEnabled: true,
+        isPiiMaskingEnabled: false,
+        isToonConversionEnabled: false,
+        displayOrder: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      secret: { credentials: "encrypted" },
+    };
+
+    beforeEach(() => {
+      vi.mocked(encryptToken).mockResolvedValue("encrypted-credentials");
+    });
+
+    test("OAuthコネクトの再認証でキャッシュ済みクライアントを再利用し既存Secretを更新する", async () => {
+      vi.mocked(startLoopbackServer).mockResolvedValueOnce(buildLoopback());
+      vi.mocked(
+        mcpRepository.findConnectionByIdWithServer,
+      ).mockResolvedValueOnce(baseConnection);
+      vi.mocked(oauthRepository.findByServerUrl).mockResolvedValueOnce({
+        id: 1,
+        serverUrl: "https://mcp.figma.com/mcp",
+        issuer: "https://www.figma.com",
+        clientId: "cached-client-id",
+        clientSecret: "cached-secret",
+        tokenEndpointAuthMethod: "client_secret_post",
+        authServerMetadata: JSON.stringify(mockMetadata),
+        isDcr: true,
+      });
+
+      const manager = createMcpOAuthManager();
+      const result = await manager.reauthenticateConnection({
+        connectionId: 7,
+      });
+
+      expect(discoverOAuthMetadata).not.toHaveBeenCalled();
+      expect(performDCR).not.toHaveBeenCalled();
+      // 新規登録系は呼ばれないこと
+      expect(createFromCatalog).not.toHaveBeenCalled();
+      expect(createFromManagerCatalog).not.toHaveBeenCalled();
+      // 既存Secret を更新すること
+      expect(oauthRepository.updateSecretCredentials).toHaveBeenCalledWith(
+        mockDb,
+        33,
+        "encrypted-credentials",
+      );
+      expect(result).toStrictEqual({
+        connectionId: 7,
+        serverId: 11,
+        serverName: "Figma MCP",
+        connectionName: "Figma",
+      });
+    });
+
+    test("非DCRクライアントもキャッシュから流用できる（手動入力クライアントの再認証）", async () => {
+      vi.mocked(startLoopbackServer).mockResolvedValueOnce(buildLoopback());
+      vi.mocked(
+        mcpRepository.findConnectionByIdWithServer,
+      ).mockResolvedValueOnce(baseConnection);
+      vi.mocked(oauthRepository.findByServerUrl).mockResolvedValueOnce({
+        id: 1,
+        serverUrl: "https://mcp.figma.com/mcp",
+        issuer: "https://www.figma.com",
+        clientId: "manual-client-id",
+        clientSecret: "manual-secret",
+        tokenEndpointAuthMethod: "client_secret_post",
+        authServerMetadata: JSON.stringify(mockMetadata),
+        isDcr: false,
+      });
+
+      const manager = createMcpOAuthManager();
+      await manager.reauthenticateConnection({ connectionId: 7 });
+
+      expect(discoverOAuthMetadata).not.toHaveBeenCalled();
+      expect(oauthRepository.updateSecretCredentials).toHaveBeenCalled();
+    });
+
+    test("コネクトが存在しない場合エラーをスローする", async () => {
+      vi.mocked(startLoopbackServer).mockResolvedValueOnce(buildLoopback());
+      vi.mocked(
+        mcpRepository.findConnectionByIdWithServer,
+      ).mockResolvedValueOnce(null);
+
+      const manager = createMcpOAuthManager();
+      await expect(
+        manager.reauthenticateConnection({ connectionId: 999 }),
+      ).rejects.toThrow("対象のMCP接続が見つかりません");
+      expect(oauthRepository.updateSecretCredentials).not.toHaveBeenCalled();
+    });
+
+    test("OAuth以外のコネクトはエラーをスローする", async () => {
+      vi.mocked(startLoopbackServer).mockResolvedValueOnce(buildLoopback());
+      vi.mocked(
+        mcpRepository.findConnectionByIdWithServer,
+      ).mockResolvedValueOnce({
+        ...baseConnection,
+        authType: "BEARER" as const,
+      });
+
+      const manager = createMcpOAuthManager();
+      await expect(
+        manager.reauthenticateConnection({ connectionId: 7 }),
+      ).rejects.toThrow("この接続はOAuth認証ではありません");
+      expect(oauthRepository.updateSecretCredentials).not.toHaveBeenCalled();
+    });
+
+    test("URLが空のOAuthコネクトはエラーをスローする", async () => {
+      vi.mocked(startLoopbackServer).mockResolvedValueOnce(buildLoopback());
+      vi.mocked(
+        mcpRepository.findConnectionByIdWithServer,
+      ).mockResolvedValueOnce({
+        ...baseConnection,
+        url: null,
+      });
+
+      const manager = createMcpOAuthManager();
+      await expect(
+        manager.reauthenticateConnection({ connectionId: 7 }),
+      ).rejects.toThrow("OAuth認証にはサーバーURLが必要です");
     });
   });
 
