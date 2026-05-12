@@ -318,3 +318,31 @@ model AuditLog {
   @@index([createdAt])
   @@index([syncStatus, createdAt])
 }
+
+/// AI コーディングツールのメトリクス（Claude Code / Codex CLI）
+model AiCodingMetric {
+  id           String   @id @default(cuid())
+  /// ツール識別子（"claude-code" | "codex"）
+  tool         String
+  /// メトリクス名（例: "claude_code_tokens_total"）
+  metricName   String
+  value        Float
+  /// 追加属性（JSON 文字列、例: {"type":"input"}）
+  attributes   String?
+  recordedAt   DateTime @default(now())
+
+  @@index([tool, metricName, recordedAt])
+}
+
+/// AI コーディングツールのトレース（Claude Code / Codex CLI）
+model AiCodingTrace {
+  id           String   @id @default(cuid())
+  tool         String
+  traceId      String
+  spanName     String
+  durationMs   Int
+  attributes   String?
+  startedAt    DateTime @default(now())
+
+  @@index([tool, startedAt])
+}

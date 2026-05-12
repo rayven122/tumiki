@@ -14,6 +14,7 @@ import { Notifications } from "./pages/Notifications";
 import { ConnectorAuto } from "./pages/ConnectorAuto";
 import { ConnectorManual } from "./pages/ConnectorManual";
 import { AiIntegrations } from "./pages/AiIntegrations";
+import { AiCodingTelemetry } from "./pages/AiCodingTelemetry";
 import { ProfileSetup } from "./pages/ProfileSetup";
 
 export const App = (): JSX.Element => {
@@ -41,6 +42,10 @@ export const App = (): JSX.Element => {
               <Route path="history" element={<HistoryList />} />
               <Route path="history/:historyId" element={<HistoryDetail />} />
               <Route path="ai-integrations" element={<AiIntegrations />} />
+              <Route
+                path="ai-coding-telemetry"
+                element={<AiCodingTelemetry />}
+              />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="notifications" element={<Notifications />} />
               <Route path="admin/*" element={<Navigate to="/" replace />} />

@@ -38,6 +38,11 @@ import { ServerStatus } from "@prisma/desktop-client";
 import type { Prisma } from "@prisma/desktop-client";
 import * as logger from "./shared/utils/logger";
 import { ensureNodeShim } from "./runtime/path-resolver";
+import { startOtlpReceiver } from "./features/ai-coding-telemetry/ai-coding-telemetry.receiver";
+import {
+  setupAiCodingTelemetryIpc,
+  setReceiverPort,
+} from "./features/ai-coding-telemetry/ai-coding-telemetry.ipc";
 
 // Cursor など親プロセス（Electron アプリ）が子プロセスへ ELECTRON_RUN_AS_NODE=1 を継承
 // させたケース対応。Electron が Node モードで起動すると `import { app } from "electron"` が
@@ -321,6 +326,8 @@ if (isMcpProxyMode) {
 
   let mainWindow: BrowserWindow | null = null;
   let mcpOAuthManager: McpOAuthManager | null = null;
+  // OTLP レシーバーのサーバーインスタンス（will-quit で close するため外側スコープで保持）
+  let otlpHttpServer: import("http").Server | null = null;
 
   /**
    * 管理サーバーURLとOIDC設定からOAuthManagerを初期化（or 再初期化）
@@ -599,6 +606,12 @@ if (isMcpProxyMode) {
       setupDesktopSessionIpc();
       setupShellIpc();
 
+      // OTLP レシーバーを起動してランダムポートで待ち受ける（listening イベント待ち）
+      const { server, port: otlpPort } = await startOtlpReceiver();
+      otlpHttpServer = server;
+      setReceiverPort(otlpPort);
+      setupAiCodingTelemetryIpc();
+
       createWindow();
 
       // スリープ復帰時にトークンの有効期限を再チェック
@@ -648,6 +661,7 @@ if (isMcpProxyMode) {
     event.preventDefault();
     const oauthManager = getOAuthManager();
     oauthManager?.stopAutoRefresh();
+    otlpHttpServer?.close();
     Promise.all([
       stopAuditLogManagerSyncScheduler(),
       oauthManager?.waitForPendingRefresh() ?? Promise.resolve(),

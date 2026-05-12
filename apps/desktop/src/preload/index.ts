@@ -32,6 +32,11 @@ import type {
   AiClientPreview,
   AiClientWriteRequest,
   AiClientWriteResult,
+  AiCodingTool,
+  TelemetrySummaryItem,
+  DailyUsageItem,
+  ApplyToolSettingsResult,
+  GetToolSettingsResult,
 } from "../main/types";
 
 // Electron APIを安全に公開
@@ -190,6 +195,28 @@ const api = {
   shell: {
     openExternal: (url: string): Promise<void> =>
       ipcRenderer.invoke("shell:openExternal", url),
+  },
+
+  // AI コーディングツール テレメトリ API
+  aiCodingTelemetry: {
+    getSummary: (days: number): Promise<TelemetrySummaryItem[]> =>
+      ipcRenderer.invoke("aiCodingTelemetry:getSummary", { days }),
+    getDailyUsage: (days: number): Promise<DailyUsageItem[]> =>
+      ipcRenderer.invoke("aiCodingTelemetry:getDailyUsage", { days }),
+    getReceiverPort: (): Promise<number> =>
+      ipcRenderer.invoke("aiCodingTelemetry:getReceiverPort"),
+    getToolSettings: (tool: AiCodingTool): Promise<GetToolSettingsResult> =>
+      ipcRenderer.invoke("aiCodingTelemetry:getToolSettings", tool),
+    saveToolEnabled: (tool: AiCodingTool, enabled: boolean): Promise<void> =>
+      ipcRenderer.invoke("aiCodingTelemetry:saveToolEnabled", {
+        tool,
+        enabled,
+      }),
+    applyToTool: (
+      tool: AiCodingTool,
+      port: number,
+    ): Promise<ApplyToolSettingsResult> =>
+      ipcRenderer.invoke("aiCodingTelemetry:applyToTool", { tool, port }),
   },
 
   // MCP OAuth認証 API
