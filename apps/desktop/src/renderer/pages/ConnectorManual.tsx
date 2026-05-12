@@ -363,7 +363,10 @@ export const ConnectorManual = (): JSX.Element => {
                 const isSelected = selectedConnectionIds.includes(
                   connector.connection.id,
                 );
-                const iconPath = connector.connection.catalog?.iconPath;
+                const iconPath =
+                  connector.connection.catalog?.iconPath ??
+                  connector.connection.iconPath ??
+                  null;
                 return (
                   <button
                     key={connector.connection.id}
@@ -418,7 +421,10 @@ export const ConnectorManual = (): JSX.Element => {
                 ).length;
                 const isLoading = loadingToolsFor.has(connectionId);
                 const hasFailed = failedToolLoads.has(connectionId);
-                const iconPath = connector.connection.catalog?.iconPath;
+                const iconPath =
+                  connector.connection.catalog?.iconPath ??
+                  connector.connection.iconPath ??
+                  null;
                 const query = toolQueries[connectionId] ?? "";
                 const lowerQuery = query.trim().toLowerCase();
                 const filteredTools =

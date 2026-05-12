@@ -497,6 +497,7 @@ export const getAllServers = async () => {
       displayOrder: conn.displayOrder,
       serverId: conn.serverId,
       catalogId: conn.catalogId,
+      iconPath: conn.iconPath,
       createdAt: conn.createdAt,
       updatedAt: conn.updatedAt,
       catalog: conn.catalog,

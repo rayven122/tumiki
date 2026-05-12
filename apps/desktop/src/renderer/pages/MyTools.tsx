@@ -162,17 +162,23 @@ const ServerCard = ({
       >
         {/* アイコン + ステータスバッジ */}
         <div className="mb-3 flex items-start justify-between gap-2">
-          {server.connections[0]?.catalog?.iconPath ? (
-            <img
-              src={server.connections[0].catalog.iconPath}
-              alt={server.name}
-              className="h-8 w-8 rounded-lg"
-            />
-          ) : (
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--bg-card-hover)]">
-              <Server size={18} className="text-[var(--text-muted)]" />
-            </div>
-          )}
+          {(() => {
+            const icon =
+              server.connections[0]?.catalog?.iconPath ??
+              server.connections[0]?.iconPath ??
+              null;
+            return icon ? (
+              <img
+                src={icon}
+                alt={server.name}
+                className="h-8 w-8 rounded-lg"
+              />
+            ) : (
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--bg-card-hover)]">
+                <Server size={18} className="text-[var(--text-muted)]" />
+              </div>
+            );
+          })()}
           <span
             className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-medium ${status.badgeClass}`}
           >
