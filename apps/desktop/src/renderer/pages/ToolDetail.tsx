@@ -393,6 +393,9 @@ export const ToolDetail = (): JSX.Element => {
           "OAuth再認証が完了しました。MCPサーバーの再起動後に新トークンが反映されます",
         );
         setShowReauthModal(false);
+        // ディープリンク経由で開かれた選択状態もクリアしておく。次回手動で
+        // モーダルを開いた時に古い deepLinkSelectedId が事前選択に残らないようにするため
+        setDeepLinkSelectedId(null);
         // 最新の接続情報を取得してUI上の更新日時等を反映
         const detail = await window.electronAPI.mcp.getDetail(serverId);
         if (detail) setServer(detail);
