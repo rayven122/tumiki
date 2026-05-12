@@ -38,15 +38,28 @@ export const AI_CLIENTS: AiClient[] = [
   {
     id: "vscode",
     name: "VS Code",
+    logoPath: () => "/logos/ai-clients/vscode.svg",
+    configTargetPath: "~/Library/Application Support/Code/User/mcp.json",
+  },
+  {
+    id: "gemini-cli",
+    name: "Gemini CLI",
+    logoPath: () => "/logos/ai-clients/gemini-cli.svg",
+    configTargetPath: "~/.gemini/settings.json",
+  },
+  {
+    id: "antigravity",
+    name: "Antigravity",
     logoPath: (t) =>
       t === "dark"
-        ? "/logos/ai-clients/copilot.webp"
-        : "/logos/ai-clients/copilot.svg",
-    configTargetPath: "~/Library/Application Support/Code/User/mcp.json",
+        ? "/logos/ai-clients/antigravity.webp"
+        : "/logos/ai-clients/antigravity.svg",
+    configTargetPath: "Antigravity → Settings → MCP",
   },
   {
     id: "windsurf",
     name: "Windsurf",
+    logoPath: () => "/logos/ai-clients/windsurf.svg",
     configTargetPath: "~/.codeium/windsurf/mcp_config.json",
   },
   {
@@ -62,66 +75,32 @@ export const AI_CLIENTS: AiClient[] = [
   {
     id: "raycast",
     name: "Raycast",
+    logoPath: () => "/logos/ai-clients/raycast.svg",
     configTargetPath: "Raycast → Extensions → MCP Servers",
-  },
-  {
-    id: "gemini-cli",
-    name: "Gemini CLI",
-    configTargetPath: "~/.gemini/settings.json",
-  },
-  {
-    id: "continue",
-    name: "Continue",
-    configTargetPath: "~/.continue/config.json",
   },
   {
     id: "zed",
     name: "Zed",
+    logoPath: () => "/logos/ai-clients/zed.svg",
     configTargetPath: "~/.config/zed/settings.json",
-  },
-  {
-    id: "goose",
-    name: "Goose",
-    configTargetPath: "~/.config/goose/config.yaml",
   },
   {
     id: "roo-code",
     name: "Roo Code",
+    logoPath: () => "/logos/ai-clients/roo-code.svg",
     configTargetPath:
       "~/Library/Application Support/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/mcp_settings.json",
   },
   {
-    id: "librechat",
-    name: "LibreChat",
-    configTargetPath: "<プロジェクトルート>/librechat.yaml",
-  },
-  {
     id: "warp",
     name: "Warp",
+    logoPath: () => "/logos/ai-clients/warp.svg",
     configTargetPath: "Warp → Settings → AI → MCP Servers",
-  },
-  {
-    id: "amp",
-    name: "Amp",
-    configTargetPath: "~/.ampcode/config.json",
-  },
-  {
-    id: "aider",
-    name: "Aider",
-    configTargetPath: "~/.aider.conf.yml",
   },
   {
     id: "codex-cli",
     name: "Codex CLI",
+    logoPath: () => "/logos/ai-clients/codex-cli.svg",
     configTargetPath: "~/.codex/config.toml",
-  },
-  {
-    id: "antigravity",
-    name: "Antigravity",
-    logoPath: (t) =>
-      t === "dark"
-        ? "/logos/ai-clients/antigravity.webp"
-        : "/logos/ai-clients/antigravity.svg",
-    configTargetPath: "Antigravity → Settings → MCP",
   },
 ];
