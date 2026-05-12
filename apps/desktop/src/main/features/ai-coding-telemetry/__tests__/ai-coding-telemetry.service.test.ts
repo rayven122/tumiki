@@ -353,7 +353,7 @@ describe("saveToolEnabled", () => {
       tools: {},
     });
     await service.saveToolEnabled("claude-code", true);
-    const [[, saved]] = vi.mocked(mockStore.set).mock.calls as [
+    const [[, saved]] = vi.mocked(mockStore.set).mock.calls as unknown as [
       [string, Record<string, unknown>],
     ];
     expect(saved.receiverPort).toStrictEqual(4318);
@@ -385,7 +385,7 @@ describe("applyToolSettings", () => {
       tools: {},
     });
     await service.applyToolSettings({ tool: "claude-code", port: 4318 });
-    const [[, saved]] = vi.mocked(mockStore.set).mock.calls as [
+    const [[, saved]] = vi.mocked(mockStore.set).mock.calls as unknown as [
       [string, Record<string, unknown>],
     ];
     expect(saved.receiverPort).toStrictEqual(4318);
