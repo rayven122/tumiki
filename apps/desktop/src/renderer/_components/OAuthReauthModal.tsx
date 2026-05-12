@@ -13,22 +13,6 @@ type OAuthReauthModalProps = {
   onCancel: () => void;
 };
 
-// McpConnectionDetailItem は credentials を露出しないため、
-// 認証状態の詳細はサーバーステータスから推測するに留める（精度は将来Issueで改善）。
-const resolveTokenBadge = (
-  connection: McpConnectionDetailItem,
-): { label: string; className: string } =>
-  connection.isEnabled
-    ? {
-        label: "有効",
-        className:
-          "bg-[var(--badge-success-bg)] text-[var(--badge-success-text)]",
-      }
-    : {
-        label: "無効化",
-        className: "bg-[var(--bg-active)] text-[var(--text-muted)]",
-      };
-
 export const OAuthReauthModal = ({
   open,
   connections,
@@ -102,7 +86,6 @@ export const OAuthReauthModal = ({
           ) : (
             connections.map((conn) => {
               const isSelected = selectedId === conn.id;
-              const badge = resolveTokenBadge(conn);
               return (
                 <label
                   key={conn.id}
@@ -133,16 +116,9 @@ export const OAuthReauthModal = ({
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="truncate text-sm font-medium text-[var(--text-primary)]">
-                        {conn.name}
-                      </span>
-                      <span
-                        className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] ${badge.className}`}
-                      >
-                        {badge.label}
-                      </span>
-                    </div>
+                    <span className="truncate text-sm font-medium text-[var(--text-primary)]">
+                      {conn.name}
+                    </span>
                     <div className="truncate text-[10px] text-[var(--text-muted)]">
                       {conn.url ?? conn.command ?? "—"}
                     </div>
