@@ -127,12 +127,13 @@ export const verifyDesktopJwt = async (
     throw new Error("External identity not found");
   }
 
-  const userByEmail = await db.user.findFirst({
+  // isActive チェック: SCIMで無効化済みのユーザーはJITリンク不可
+  const userByEmail = await db.user.findUnique({
     where: { email },
-    select: { id: true },
+    select: { id: true, isActive: true },
   });
 
-  if (!userByEmail) {
+  if (!userByEmail?.isActive) {
     throw new Error("External identity not found");
   }
 

@@ -5,9 +5,9 @@ type FindFirstIdentityArgs = {
   where: { sub: string; provider: "oidc" };
   select: { userId: true };
 };
-type FindFirstUserArgs = {
+type FindUniqueUserArgs = {
   where: { email: string };
-  select: { id: true };
+  select: { id: true; isActive: true };
 };
 type UpsertIdentityArgs = {
   where: { provider_sub: { provider: string; sub: string } };
@@ -25,8 +25,12 @@ const mockJwtVerify = vi.fn<typeof jwtVerify>();
 const mockFetch = vi.fn<typeof fetch>();
 const mockFindFirstIdentity =
   vi.fn<(args: FindFirstIdentityArgs) => Promise<{ userId: string } | null>>();
-const mockFindFirstUser =
-  vi.fn<(args: FindFirstUserArgs) => Promise<{ id: string } | null>>();
+const mockFindUniqueUser =
+  vi.fn<
+    (
+      args: FindUniqueUserArgs,
+    ) => Promise<{ id: string; isActive: boolean } | null>
+  >();
 const mockUpsertIdentity = vi.fn<(args: UpsertIdentityArgs) => Promise<void>>();
 
 const loadModule = async () => {
@@ -49,7 +53,7 @@ const loadModule = async () => {
         upsert: mockUpsertIdentity,
       },
       user: {
-        findFirst: mockFindFirstUser,
+        findUnique: mockFindUniqueUser,
       },
     },
   }));
@@ -80,7 +84,7 @@ beforeEach(() => {
     key: new Uint8Array(),
   });
   mockFindFirstIdentity.mockResolvedValue({ userId: "user-001" });
-  mockFindFirstUser.mockResolvedValue(null);
+  mockFindUniqueUser.mockResolvedValue(null);
   mockUpsertIdentity.mockResolvedValue(undefined);
   mockFetch.mockResolvedValue(buildDiscoveryResponse());
 });
@@ -190,15 +194,18 @@ describe("verifyDesktopJwt", () => {
       protectedHeader: { alg: "RS256" },
       key: new Uint8Array(),
     });
-    mockFindFirstUser.mockResolvedValueOnce({ id: "user-scim-001" });
+    mockFindUniqueUser.mockResolvedValueOnce({
+      id: "user-scim-001",
+      isActive: true,
+    });
     const { verifyDesktopJwt } = await loadModule();
 
     const result = await verifyDesktopJwt("Bearer token-001");
 
     expect(result).toStrictEqual({ sub: "oidc-sub", userId: "user-scim-001" });
-    expect(mockFindFirstUser).toHaveBeenCalledWith({
+    expect(mockFindUniqueUser).toHaveBeenCalledWith({
       where: { email: "member@example.com" },
-      select: { id: true },
+      select: { id: true, isActive: true },
     });
     expect(mockUpsertIdentity).toHaveBeenCalledWith({
       where: { provider_sub: { provider: "oidc", sub: "oidc-sub" } },
@@ -218,7 +225,30 @@ describe("verifyDesktopJwt", () => {
       protectedHeader: { alg: "RS256" },
       key: new Uint8Array(),
     });
-    mockFindFirstUser.mockResolvedValueOnce(null);
+    mockFindUniqueUser.mockResolvedValueOnce(null);
+    const { verifyDesktopJwt } = await loadModule();
+
+    await expect(verifyDesktopJwt("Bearer token-001")).rejects.toThrow(
+      "External identity not found",
+    );
+    expect(mockUpsertIdentity).not.toHaveBeenCalled();
+  });
+
+  test("SCIMユーザー初回デスクトップログイン: isActive=falseのユーザーはエラーを返す", async () => {
+    mockFindFirstIdentity.mockResolvedValueOnce(null);
+    mockJwtVerify.mockResolvedValueOnce({
+      payload: {
+        sub: "oidc-sub",
+        aud: desktopClientId,
+        email: "inactive@example.com",
+      },
+      protectedHeader: { alg: "RS256" },
+      key: new Uint8Array(),
+    });
+    mockFindUniqueUser.mockResolvedValueOnce({
+      id: "user-deactivated-001",
+      isActive: false,
+    });
     const { verifyDesktopJwt } = await loadModule();
 
     await expect(verifyDesktopJwt("Bearer token-001")).rejects.toThrow(
