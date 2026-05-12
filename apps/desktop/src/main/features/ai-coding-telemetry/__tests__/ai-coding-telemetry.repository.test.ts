@@ -102,7 +102,7 @@ describe("getSummary", () => {
 
     const result = await repository.getSummary(mockDb, new Date());
 
-    expect(result[0]!.totalValue).toStrictEqual(0);
+    expect(result.at(0)?.totalValue).toStrictEqual(0);
   });
 
   test("データがない場合は空配列を返す", async () => {
@@ -161,8 +161,8 @@ describe("getDailyUsage", () => {
 
     const result = await repository.getDailyUsage(mockDb, new Date());
 
-    expect(result[0]!.totalValue).toStrictEqual(9999);
-    expect(typeof result[0]!.totalValue).toStrictEqual("number");
+    expect(result.at(0)?.totalValue).toStrictEqual(9999);
+    expect(typeof result.at(0)?.totalValue).toStrictEqual("number");
   });
 
   test("データがない場合は空配列を返す", async () => {

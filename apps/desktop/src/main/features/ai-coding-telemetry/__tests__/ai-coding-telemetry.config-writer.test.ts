@@ -51,9 +51,8 @@ describe("applyOtlpToTool - claude-code", () => {
     expect(result.success).toStrictEqual(true);
     expect(result.configPath).toContain("settings.json");
     expect(mockWriteFile).toHaveBeenCalledOnce();
-    const written = JSON.parse(
-      mockWriteFile.mock.calls[0]![1] as string,
-    ) as Record<string, unknown>;
+    const [[, content]] = mockWriteFile.mock.calls as [[string, string]];
+    const written = JSON.parse(content) as Record<string, unknown>;
     expect(written).toMatchObject({
       env: {
         CLAUDE_CODE_ENABLE_TELEMETRY: "1",
@@ -70,9 +69,8 @@ describe("applyOtlpToTool - claude-code", () => {
     const result = await applyOtlpToTool("claude-code", 4319);
 
     expect(result.success).toStrictEqual(true);
-    const written = JSON.parse(
-      mockWriteFile.mock.calls[0]![1] as string,
-    ) as Record<string, unknown>;
+    const [[, content]] = mockWriteFile.mock.calls as [[string, string]];
+    const written = JSON.parse(content) as Record<string, unknown>;
     // 既存キーが保持されている
     expect((written as { theme?: string }).theme).toStrictEqual("dark");
     // 既存 env もマージされている
@@ -94,9 +92,8 @@ describe("applyOtlpToTool - claude-code", () => {
     const result = await applyOtlpToTool("claude-code", 4318);
 
     expect(result.success).toStrictEqual(true);
-    const written = JSON.parse(
-      mockWriteFile.mock.calls[0]![1] as string,
-    ) as Record<string, unknown>;
+    const [[, content]] = mockWriteFile.mock.calls as [[string, string]];
+    const written = JSON.parse(content) as Record<string, unknown>;
     // 配列は無視されて env オブジェクトが作成される
     expect(written.env).toMatchObject({ CLAUDE_CODE_ENABLE_TELEMETRY: "1" });
   });
@@ -107,11 +104,11 @@ describe("applyOtlpToTool - claude-code", () => {
     await applyOtlpToTool("claude-code", 4318);
 
     // writeFile は .tmp. を含むパスに書き込む
-    const tmpPath = mockWriteFile.mock.calls[0]![0] as string;
+    const [[tmpPath]] = mockWriteFile.mock.calls as [[string, string]];
     expect(tmpPath).toContain(".tmp.");
     // rename でファイルを確定させる
     expect(mockRename).toHaveBeenCalledOnce();
-    const [src, dest] = mockRename.mock.calls[0] as [string, string];
+    const [[src, dest]] = mockRename.mock.calls as [[string, string]];
     expect(src).toStrictEqual(tmpPath);
     expect(dest).toContain("settings.json");
     expect(dest).not.toContain(".tmp.");
@@ -136,9 +133,8 @@ describe("applyOtlpToTool - claude-code", () => {
 
     expect(result.success).toStrictEqual(true);
     // 既存ファイルは無視され、OTLP 設定のみ含む
-    const written = JSON.parse(
-      mockWriteFile.mock.calls[0]![1] as string,
-    ) as Record<string, unknown>;
+    const [[, content]] = mockWriteFile.mock.calls as [[string, string]];
+    const written = JSON.parse(content) as Record<string, unknown>;
     expect(written).toMatchObject({
       env: { CLAUDE_CODE_ENABLE_TELEMETRY: "1" },
     });
@@ -158,10 +154,9 @@ describe("applyOtlpToTool - codex", () => {
     expect(result.success).toStrictEqual(true);
     expect(result.configPath).toContain("config.toml");
     expect(mockStringifyToml).toHaveBeenCalledOnce();
-    const tomlArg = mockStringifyToml.mock.calls[0]![0] as Record<
-      string,
-      unknown
-    >;
+    const [[tomlArg]] = mockStringifyToml.mock.calls as [
+      [Record<string, unknown>],
+    ];
     expect(
       (tomlArg.telemetry as Record<string, string>).otel_exporter_otlp_endpoint,
     ).toStrictEqual("http://127.0.0.1:4318");
@@ -177,10 +172,9 @@ describe("applyOtlpToTool - codex", () => {
     const result = await applyOtlpToTool("codex", 4320);
 
     expect(result.success).toStrictEqual(true);
-    const tomlArg = mockStringifyToml.mock.calls[0]![0] as Record<
-      string,
-      unknown
-    >;
+    const [[tomlArg]] = mockStringifyToml.mock.calls as [
+      [Record<string, unknown>],
+    ];
     // 既存 telemetry キーが保持されている
     expect(
       (tomlArg.telemetry as Record<string, string>).existing_key,
@@ -203,10 +197,9 @@ describe("applyOtlpToTool - codex", () => {
     const result = await applyOtlpToTool("codex", 4318);
 
     expect(result.success).toStrictEqual(true);
-    const tomlArg = mockStringifyToml.mock.calls[0]![0] as Record<
-      string,
-      unknown
-    >;
+    const [[tomlArg]] = mockStringifyToml.mock.calls as [
+      [Record<string, unknown>],
+    ];
     expect(
       (tomlArg.telemetry as Record<string, string>).otel_exporter_otlp_endpoint,
     ).toStrictEqual("http://127.0.0.1:4318");

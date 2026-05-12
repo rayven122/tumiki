@@ -283,7 +283,9 @@ describe("getSummary", () => {
       mockDb,
       expect.any(Date),
     );
-    const since = vi.mocked(repository.getSummary).mock.calls[0]![1] as Date;
+    const [[, since]] = vi.mocked(repository.getSummary).mock.calls as [
+      [unknown, Date],
+    ];
     expect(since.getTime()).toBeGreaterThanOrEqual(before - 7 * 86400_000 - 10);
     expect(since.getTime()).toBeLessThanOrEqual(after - 7 * 86400_000 + 10);
   });
