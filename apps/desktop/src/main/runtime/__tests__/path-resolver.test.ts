@@ -30,13 +30,27 @@ describe("path-resolver", () => {
   const originalArch = process.arch;
   const originalExecPath = process.execPath;
 
+  // configurable / writable を明示しないと一度の defineProperty 後に non-configurable 化し、
+  // 後続の afterEach リストアで TypeError になる Node.js 環境がある（将来バージョン対策）
   const setPlatform = (platform: NodeJS.Platform, arch: string) => {
-    Object.defineProperty(process, "platform", { value: platform });
-    Object.defineProperty(process, "arch", { value: arch });
+    Object.defineProperty(process, "platform", {
+      value: platform,
+      configurable: true,
+      writable: true,
+    });
+    Object.defineProperty(process, "arch", {
+      value: arch,
+      configurable: true,
+      writable: true,
+    });
   };
 
   const setExecPath = (execPath: string) => {
-    Object.defineProperty(process, "execPath", { value: execPath });
+    Object.defineProperty(process, "execPath", {
+      value: execPath,
+      configurable: true,
+      writable: true,
+    });
   };
 
   beforeEach(() => {
@@ -112,12 +126,35 @@ describe("path-resolver", () => {
       );
     });
 
-    test("Windowsでは.exe拡張子が付与される", () => {
+    test("Windowsでは npx / npm に .cmd 拡張子が付与される", () => {
       // 実行ホストがmacOSの場合 path.join は POSIX セパレータを使うため、
-      // 末尾の .exe 付与のみを検証する（実Windows上では path.join が \\ を返す）
+      // 末尾の拡張子付与のみを検証する（実Windows上では path.join が \\ を返す）
+      // Node.js Windows 配布物の npx / npm は .cmd ラッパで配布されるため
+      // 絶対パスで spawn するには .cmd 拡張子を必ず明示する必要がある。
       setPlatform("win32", "x64");
       expect(resolveValue("${runtime:npx}")).toMatch(
-        /\/win32-x64\/bin\/npx\.exe$/,
+        /[\/\\]win32-x64[\/\\]bin[\/\\]npx\.cmd$/,
+      );
+      expect(resolveValue("${runtime:npm}")).toMatch(
+        /[\/\\]win32-x64[\/\\]bin[\/\\]npm\.cmd$/,
+      );
+    });
+
+    test("Windowsでは uv / uvx に .exe 拡張子が付与される", () => {
+      // uv / uvx は astral-sh/uv が単体 .exe バイナリで配布するため
+      setPlatform("win32", "x64");
+      expect(resolveValue("${runtime:uv}")).toMatch(
+        /[\/\\]win32-x64[\/\\]bin[\/\\]uv\.exe$/,
+      );
+      expect(resolveValue("${runtime:uvx}")).toMatch(
+        /[\/\\]win32-x64[\/\\]bin[\/\\]uvx\.exe$/,
+      );
+    });
+
+    test("Windowsでは node shim に .cmd 拡張子が付与される", () => {
+      setPlatform("win32", "x64");
+      expect(resolveValue("${runtime:node}")).toStrictEqual(
+        path.join(tmpUserData, "runtime", "bin", "node.cmd"),
       );
     });
   });
@@ -164,6 +201,18 @@ describe("path-resolver", () => {
       });
       expect(result.PATH).toMatch(/;C:\\Windows;C:\\Windows\\System32$/);
       expect(result.PATH).toContain(";");
+    });
+
+    test("Windowsでは元envのPath/pathキーを削除しPATHに正規化する", () => {
+      setPlatform("win32", "x64");
+      const result = buildChildEnv({
+        Path: "C:\\Windows",
+        path: "C:\\Lower",
+      });
+      // 子プロセスに `Path: <旧>` と `PATH: <新>` の両方が渡らないことを保証する
+      expect("Path" in result).toStrictEqual(false);
+      expect("path" in result).toStrictEqual(false);
+      expect(result.PATH).toMatch(/;C:\\Windows$/);
     });
 
     test("undefined値はenvに含めない", () => {
@@ -231,13 +280,79 @@ describe("path-resolver", () => {
       expect(content).not.toContain("'/old/Electron'");
     });
 
-    test("Windows ではスキップする (現状未対応)", () => {
+    test("Windows では node.cmd を ELECTRON_RUN_AS_NODE で起動する shim を生成する", () => {
       setPlatform("win32", "x64");
+      setExecPath("C:\\Program Files\\Tumiki\\Tumiki.exe");
       ensureNodeShim();
-      // shim ファイルが作られないこと
+
+      const shimPath = path.join(tmpUserData, "runtime", "bin", "node.cmd");
+      expect(existsSync(shimPath)).toStrictEqual(true);
+      const content = readFileSync(shimPath, "utf8");
+      expect(content).toContain("@echo off");
+      expect(content).toContain("setlocal");
+      expect(content).toContain("set ELECTRON_RUN_AS_NODE=1");
+      expect(content).toContain('"C:\\Program Files\\Tumiki\\Tumiki.exe" %*');
+      // Windows バッチ慣習として CRLF 改行
+      expect(content).toContain("\r\n");
+      // POSIX shim は生成されないこと
       expect(
         existsSync(path.join(tmpUserData, "runtime", "bin", "node")),
       ).toStrictEqual(false);
+    });
+
+    test("Windows: 実行パスに二重引用符が含まれていてもエスケープされる", () => {
+      setPlatform("win32", "x64");
+      setExecPath('C:\\path\\with"quote\\Tumiki.exe');
+      ensureNodeShim();
+
+      const content = readFileSync(
+        path.join(tmpUserData, "runtime", "bin", "node.cmd"),
+        "utf8",
+      );
+      // バッチ内で " を表現するための " 倍化（"" はリテラル ")
+      expect(content).toContain('"C:\\path\\with""quote\\Tumiki.exe" %*');
+    });
+
+    test("Windows: 実行パスに % が含まれていても変数展開されないようエスケープされる", () => {
+      setPlatform("win32", "x64");
+      setExecPath("C:\\Users\\ab%cd\\Tumiki.exe");
+      ensureNodeShim();
+
+      const content = readFileSync(
+        path.join(tmpUserData, "runtime", "bin", "node.cmd"),
+        "utf8",
+      );
+      // バッチ内で % を表現するための % 倍化（%% はリテラル %）
+      expect(content).toContain('"C:\\Users\\ab%%cd\\Tumiki.exe" %*');
+    });
+
+    test("Windows: 既存 shim と内容が同一ならファイルを書き換えない", () => {
+      setPlatform("win32", "x64");
+      setExecPath("C:\\Program Files\\Tumiki\\Tumiki.exe");
+      ensureNodeShim();
+      const shimPath = path.join(tmpUserData, "runtime", "bin", "node.cmd");
+      const firstContent = readFileSync(shimPath, "utf8");
+
+      ensureNodeShim();
+      const secondContent = readFileSync(shimPath, "utf8");
+
+      expect(secondContent).toStrictEqual(firstContent);
+    });
+
+    test("Windows: 実行パスが変わったら shim を上書きする", () => {
+      setPlatform("win32", "x64");
+      setExecPath("C:\\old\\Tumiki.exe");
+      ensureNodeShim();
+
+      setExecPath("C:\\new\\Tumiki.exe");
+      ensureNodeShim();
+
+      const content = readFileSync(
+        path.join(tmpUserData, "runtime", "bin", "node.cmd"),
+        "utf8",
+      );
+      expect(content).toContain('"C:\\new\\Tumiki.exe" %*');
+      expect(content).not.toContain("C:\\old");
     });
   });
 });

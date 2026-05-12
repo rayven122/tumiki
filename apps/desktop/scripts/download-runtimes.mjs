@@ -24,8 +24,11 @@
  *   node scripts/download-runtimes.mjs --platform darwin-x64
  *   node scripts/download-runtimes.mjs --force      # 既存を再ダウンロード
  *
- * CI 環境（CI=true）では取得をスキップする。
- * typecheck / lint / test はランタイム実体を使わないため。
+ * CI 環境（CI=true）では引数なしで呼ばれた時のみスキップする。
+ * - 引数なし（`pnpm install` の postinstall）: typecheck / lint / test では
+ *   ランタイム実体は不要なためスキップ
+ * - `--all` / `--platform` / `--force` 付き: リリースビルドの意図とみなし
+ *   CI 上でも実行（`pnpm build:release` がこれに該当）
  */
 
 import { spawn } from "node:child_process";
@@ -50,9 +53,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_DIR = path.resolve(__dirname, "..");
 const RUNTIME_ROOT = path.join(DESKTOP_DIR, "resources", "runtime");
 
+// uv 0.7.21 を全プラットフォームで使用。
+// Windows on ARM の開発環境向けに win-arm64 アセットを持つ 0.7.x 系を選択
+// （リリース配布は win-x64 のみ。win-arm64 ユーザーは x64 エミュレーションで .exe を実行する）。
 const VERSIONS = {
   node: "22.11.0",
-  uv: "0.5.10",
+  uv: "0.7.21",
 };
 
 /**
@@ -132,8 +138,10 @@ const runCommand = async (command, args, label) => {
     const child = spawn(command, args, {
       stdio: ["ignore", "ignore", "inherit"],
     });
-    child.on("exit", (code) => {
+    // SIGKILL 等でプロセスが落ちた場合 code は null になるため、signal を別メッセージで扱う
+    child.on("exit", (code, signal) => {
       if (code === 0) resolve();
+      else if (signal) reject(new Error(`${label} killed by signal ${signal}`));
       else reject(new Error(`${label} exit code ${code}`));
     });
     child.on("error", reject);
@@ -231,6 +239,20 @@ const fetchUvChecksum = async (archiveUrl) => {
 };
 
 /**
+ * Windows 上で tar コマンドを呼ぶときは `C:\Windows\System32\tar.exe`
+ * （Win10+ 同梱の bsdtar / libarchive）を絶対パスで指定する。
+ *
+ * windows-latest ランナーには Git for Windows 同梱の GNU tar も入っており、
+ * PATH 解決によってはこちらが先に拾われる。GNU tar は `C:\foo\bar.tar.gz`
+ * の `C:` を host:path のリモート指定として解釈し
+ * `tar (child): Cannot connect to C: resolve failed` で落ちるため、
+ * 必ず bsdtar を呼ぶよう絶対パス指定で固定する（bsdtar は Windows パスを
+ * 正しく扱い、tar.gz と zip の両方に対応）。
+ */
+const tarBinary = () =>
+  process.platform === "win32" ? "C:\\Windows\\System32\\tar.exe" : "tar";
+
+/**
  * tar.gz / zip を抽出する。
  * libarchive (macOS/Linux/Win10+ 標準 tar) は zip を自動検出するが、
  * GNU tar は zip 非対応なので Linux 上は unzip を併用する。
@@ -243,7 +265,11 @@ const extractArchive = async (archivePath, destDir, archive) => {
   } else {
     // tar.gz / macOS の zip 共通: tar に任せる
     const flags = archive === "zip" ? ["-xf"] : ["-xzf"];
-    await runCommand("tar", [...flags, archivePath, "-C", destDir], "tar");
+    await runCommand(
+      tarBinary(),
+      [...flags, archivePath, "-C", destDir],
+      "tar",
+    );
   }
 };
 
@@ -359,24 +385,44 @@ const setupPlatform = async (platform, force) => {
   await rm(target, { recursive: true, force: true });
   await mkdir(target, { recursive: true });
 
-  await installNode(platform, target);
-  await installUv(platform, target);
+  // installNode 成功後に installUv が失敗すると target に中途半端な Node ファイルが残る。
+  // 失敗時は target ごと削除し、次回の再実行でクリーンに開始できるようにする。
+  try {
+    await installNode(platform, target);
+    await installUv(platform, target);
 
-  // sentinel ファイルでバージョンを記録（再ダウンロード判定用）
-  const meta = {
-    versions: VERSIONS,
-    installedAt: new Date().toISOString(),
-  };
-  await writeFile(sentinel, JSON.stringify(meta, null, 2));
+    // sentinel ファイルでバージョンを記録（再ダウンロード判定用）
+    const meta = {
+      versions: VERSIONS,
+      installedAt: new Date().toISOString(),
+    };
+    await writeFile(sentinel, JSON.stringify(meta, null, 2));
+  } catch (error) {
+    await rm(target, { recursive: true, force: true });
+    throw error;
+  }
 
   log(`${platform}: 完了 → ${path.relative(DESKTOP_DIR, target)}`);
 };
 
+/**
+ * CI 上で「リリースビルド意図」を示すフラグが渡されているかを判定する。
+ *
+ * `pnpm build:release` のような明示的な呼び出しでは `--all` が付くため、
+ * これを「CI でも実体取得を行うべきシーン」として識別する。
+ * 引数なしの `pnpm install` postinstall は従来通り CI ではスキップ対象。
+ */
+const isExplicitReleaseInvocation = (argv) =>
+  argv.includes("--all") ||
+  argv.includes("--platform") ||
+  argv.includes("--force");
+
 const main = async () => {
-  // CI 環境ではランタイム実体を使わない（typecheck/lint/test のみ）ためスキップ
-  // 必要なら CI 上で `--force` 付きで明示実行することは可能（force だけではスキップは外れない設計）
-  if (process.env.CI === "true") {
-    log("CI 環境を検出 - ランタイム取得をスキップします");
+  const argv = process.argv.slice(2);
+  if (process.env.CI === "true" && !isExplicitReleaseInvocation(argv)) {
+    log(
+      "CI 環境を検出 - 引数なしのためランタイム取得をスキップします（--all/--platform/--force で強制可）",
+    );
     return;
   }
 

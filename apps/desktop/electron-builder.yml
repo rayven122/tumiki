@@ -84,12 +84,32 @@ dmg:
       y: 190
       type: file
 
-# Windows設定（将来対応）
-# win:
-#   target:
-#     - target: nsis
-#       arch: [x64]
-#   icon: resources/icon.ico
+# Windows設定
+# DEV-1598: NSIS インストーラを x64 のみで生成。
+# arm64 は Prisma 6.x が `windows-arm64` ターゲット未対応のため当面除外する
+# （binaryTargets に該当エントリが無く、生成しても初回 DB アクセスで
+#  "Query engine library for current platform could not be found" でクラッシュする）。
+# Windows on ARM ユーザーは Windows 11 の x64 エミュレーション (Prism) で
+# x64 .exe をそのまま動作可能。Prisma が windows-arm64 を正式サポートした時点で復活させる。
+# 現時点ではコード署名なし（EV証明書購入後に CSC_LINK / CSC_KEY_PASSWORD で有効化）。
+# icon は専用 .ico 未作成のため Electron デフォルトを使用（別 Issue で差し替え予定）。
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+
+# NSIS インストーラ設定
+# - oneClick: false ＆ allowToChangeInstallationDirectory: true でインストール先選択可能
+# - perMachine: false でユーザーごとインストール（管理者権限不要）
+# - artifactName: desktop-release.yml のリリースノートと一致するファイル名に固定する
+#   （electron-builder のデフォルトは `Tumiki Setup ${version}.exe` でスペース区切り
+#    かつ arch サフィックスがなく、リリースノート記載のリンク名と乖離する）
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  shortcutName: Tumiki
+  artifactName: "Tumiki-Setup-${version}-${arch}.exe"
 
 # Linux設定（将来対応）
 # linux:
