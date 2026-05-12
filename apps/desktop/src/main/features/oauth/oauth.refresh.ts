@@ -120,8 +120,17 @@ export const resolveOAuthHeaders = async (
     return {};
   }
 
-  const plain = await decryptCredentials(secret.credentials);
-  const parsed = credentialsSchema.safeParse(JSON.parse(plain));
+  let rawJson: unknown;
+  try {
+    const plain = await decryptCredentials(secret.credentials);
+    rawJson = JSON.parse(plain);
+  } catch {
+    logger.warn("credentials の復号またはJSONパースに失敗しました", {
+      secretId,
+    });
+    return {};
+  }
+  const parsed = credentialsSchema.safeParse(rawJson);
   if (!parsed.success) {
     logger.warn("credentials の形式が不正です", { secretId });
     return {};
