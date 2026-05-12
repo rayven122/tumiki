@@ -151,7 +151,7 @@ jobs:
           cd apps/desktop
           pnpm build
 
-      - name: 📦 Package for Windows (x64 + arm64)
+      - name: 📦 Package for Windows (x64, NSIS)
         shell: bash
         run: |
           cd apps/desktop

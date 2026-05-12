@@ -215,6 +215,18 @@ describe("path-resolver", () => {
       expect(result.PATH).toMatch(/;C:\\Windows$/);
     });
 
+    test("WindowsではPATH(大文字)のみのケースでもPATHキーが1つだけになる", () => {
+      // 仕様: `{ ...env, PATH: newPath }` の spread + 末尾上書きで上書きされるが、
+      // 大文字 `PATH` がもともと入っている場合に重複しないことを明示テストする。
+      setPlatform("win32", "x64");
+      const result = buildChildEnv({ PATH: "C:\\ExistingPath" });
+      expect(result.PATH).toMatch(/;C:\\ExistingPath$/);
+      const pathKeys = Object.keys(result).filter(
+        (k) => k.toUpperCase() === "PATH",
+      );
+      expect(pathKeys).toStrictEqual(["PATH"]);
+    });
+
     test("undefined値はenvに含めない", () => {
       const result = buildChildEnv({ FOO: "bar", UNDEFINED_KEY: undefined });
       expect(result.FOO).toStrictEqual("bar");
