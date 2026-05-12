@@ -44,6 +44,9 @@ if (process.platform === "win32") {
   }
 }
 
+// Windows で `pnpm.cmd` を PATH 解決させるためにシェル経由で起動する。
+// args は静的文字列＋schema からのジェネレータ名 (`\w+` のみマッチ) で構成されており、
+// シェルメタ文字は混入しないためコマンドインジェクションリスクはない。
 const result = spawnSync("pnpm", ["exec", ...args], {
   stdio: "inherit",
   shell: true,

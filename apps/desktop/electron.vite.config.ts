@@ -15,7 +15,7 @@ import { resolve } from "path";
 // プラットフォーム間のパス区切りの差を吸収できる。
 const prismaDesktopClientPlugin = () => ({
   name: "prisma-desktop-client-relative",
-  resolveId(source: string) {
+  resolveId: (source: string) => {
     if (source === "@prisma/desktop-client") {
       return { id: "../../prisma/generated/client", external: true };
     }

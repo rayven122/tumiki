@@ -99,6 +99,9 @@ const PLATFORM_MAP = {
     archive: "zip",
     layout: "win",
   },
+  // win32-arm64 はリリース配布対象外 (electron-builder.yml は x64 のみ。
+  // Prisma 6.x が windows-arm64 binaryTarget 未サポートのため)。
+  // ここに残しているのは Windows on ARM 開発環境で `--all` 取得を成立させるため。
   "win32-arm64": {
     nodeArch: "win-arm64",
     uvTriple: "aarch64-pc-windows-msvc",
