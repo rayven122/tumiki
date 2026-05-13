@@ -1,7 +1,7 @@
 import type { JSX } from "react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Search, ArrowRight, Server, Plus, Trash2 } from "lucide-react";
+import { Search, Server, Plus, Trash2 } from "lucide-react";
 import { ToggleSwitch } from "../_components/ToggleSwitch";
 import { ConfirmDialog } from "../_components/ConfirmDialog";
 import { useMcpServers } from "../hooks/useMcpServers";
@@ -55,22 +55,13 @@ export const MyTools = (): JSX.Element => {
             登録済みのMCPサーバーを管理
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Link
-            to="/tools/catalog"
-            className="flex items-center gap-1 rounded-lg bg-[var(--btn-primary-bg)] px-3 py-1.5 text-xs font-medium text-[var(--btn-primary-text)] transition-opacity hover:opacity-90"
-          >
-            <Plus size={12} />
-            追加
-          </Link>
-          <Link
-            to="/tools/catalog"
-            className="flex items-center gap-1 text-xs text-[var(--text-muted)] transition-opacity hover:opacity-80"
-          >
-            カタログ
-            <ArrowRight size={12} />
-          </Link>
-        </div>
+        <Link
+          to="/tools/catalog"
+          className="flex items-center gap-1 rounded-lg bg-[var(--btn-primary-bg)] px-3 py-1.5 text-xs font-medium text-[var(--btn-primary-text)] transition-opacity hover:opacity-90"
+        >
+          <Plus size={12} />
+          追加
+        </Link>
       </div>
 
       {/* 検索バー */}
