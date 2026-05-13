@@ -405,3 +405,104 @@ describe("applyToolSettings", () => {
     expect(mockStore.set).not.toHaveBeenCalled();
   });
 });
+
+describe("autoReapplyMismatchedPorts", () => {
+  test("適用済みツールでポートが異なる場合は再書き込みする", async () => {
+    vi.mocked(mockStore.get).mockReturnValue({
+      receiverPort: 5000,
+      tools: {
+        "claude-code": {
+          enabled: true,
+          appliedAt: "2026-01-01T00:00:00.000Z",
+          appliedPort: 4318,
+        },
+      },
+    });
+    vi.mocked(applyOtlpToTool).mockResolvedValue({
+      success: true,
+      configPath: "/path/to/config",
+    });
+
+    await service.autoReapplyMismatchedPorts(5000);
+
+    expect(applyOtlpToTool).toHaveBeenCalledWith("claude-code", 5000);
+    expect(mockStore.set).toHaveBeenCalled();
+  });
+
+  test("適用済みでもポートが一致していれば再書き込みしない", async () => {
+    vi.mocked(mockStore.get).mockReturnValue({
+      tools: {
+        "claude-code": {
+          enabled: true,
+          appliedAt: "2026-01-01T00:00:00.000Z",
+          appliedPort: 4318,
+        },
+      },
+    });
+
+    await service.autoReapplyMismatchedPorts(4318);
+
+    expect(applyOtlpToTool).not.toHaveBeenCalled();
+    expect(mockStore.set).not.toHaveBeenCalled();
+  });
+
+  test("未適用ツール（appliedAt が無い）はスキップする", async () => {
+    vi.mocked(mockStore.get).mockReturnValue({
+      tools: {
+        "claude-code": { enabled: true },
+      },
+    });
+
+    await service.autoReapplyMismatchedPorts(5000);
+
+    expect(applyOtlpToTool).not.toHaveBeenCalled();
+  });
+
+  test("複数ツールのうち不一致のものだけ再書き込みする", async () => {
+    vi.mocked(mockStore.get).mockReturnValue({
+      tools: {
+        "claude-code": {
+          enabled: true,
+          appliedAt: "2026-01-01T00:00:00.000Z",
+          appliedPort: 4318,
+        },
+        codex: {
+          enabled: true,
+          appliedAt: "2026-01-01T00:00:00.000Z",
+          appliedPort: 5000,
+        },
+      },
+    });
+    vi.mocked(applyOtlpToTool).mockResolvedValue({
+      success: true,
+      configPath: "/path",
+    });
+
+    await service.autoReapplyMismatchedPorts(5000);
+
+    expect(applyOtlpToTool).toHaveBeenCalledTimes(1);
+    expect(applyOtlpToTool).toHaveBeenCalledWith("claude-code", 5000);
+  });
+
+  test("config-writer が失敗した場合は store を更新しない", async () => {
+    vi.mocked(mockStore.get).mockReturnValue({
+      tools: {
+        "claude-code": {
+          enabled: true,
+          appliedAt: "2026-01-01T00:00:00.000Z",
+          appliedPort: 4318,
+        },
+      },
+    });
+    vi.mocked(applyOtlpToTool).mockResolvedValue({
+      success: false,
+      configPath: null,
+      errorCode: "WRITE_FAILED",
+    });
+
+    await service.autoReapplyMismatchedPorts(5000);
+
+    expect(applyOtlpToTool).toHaveBeenCalled();
+    expect(mockStore.set).not.toHaveBeenCalled();
+  });
+});

@@ -39,6 +39,7 @@ import type { Prisma } from "@prisma/desktop-client";
 import * as logger from "./shared/utils/logger";
 import { ensureNodeShim } from "./runtime/path-resolver";
 import { startOtlpReceiver } from "./features/ai-coding-telemetry/ai-coding-telemetry.receiver";
+import { autoReapplyMismatchedPorts } from "./features/ai-coding-telemetry/ai-coding-telemetry.service";
 import {
   setupAiCodingTelemetryIpc,
   setReceiverPort,
@@ -621,6 +622,12 @@ if (isMcpProxyMode) {
         ...currentTelemetry,
         receiverPort: otlpPort,
         tools: currentTelemetry?.tools ?? {},
+      });
+      // 過去に適用したツールでポートが変わっていれば自動で再書き込みする。
+      // OTLP ポートがフォールバックで変わったり、ユーザー設定で変更されても
+      // 設定ファイル（~/.claude/settings.json 等）と Tumiki 受信ポートの整合性を保つ。
+      await autoReapplyMismatchedPorts(otlpPort).catch((error: unknown) => {
+        logger.error("Failed auto re-apply of tool configs", { error });
       });
       setupAiCodingTelemetryIpc();
 

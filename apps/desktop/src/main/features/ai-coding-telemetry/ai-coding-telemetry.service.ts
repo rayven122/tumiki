@@ -1,5 +1,6 @@
 import { getDb } from "../../shared/db";
 import { getAppStore } from "../../shared/app-store";
+import * as logger from "../../shared/utils/logger";
 import * as repository from "./ai-coding-telemetry.repository";
 import { applyOtlpToTool } from "./ai-coding-telemetry.config-writer";
 import type {
@@ -214,6 +215,53 @@ export const getToolSettings = async (
     appliedAt: settings?.appliedAt,
     appliedPort: settings?.appliedPort,
   };
+};
+
+// OTLP レシーバーのポートが前回と変わった場合、適用済みツールの設定ファイルを
+// 現在のポートで再書き込みする。
+// 起動時に呼び出すことで、ポート変更後も Tumiki と設定ファイルの整合性を保つ。
+export const autoReapplyMismatchedPorts = async (
+  currentPort: number,
+): Promise<void> => {
+  const store = await getAppStore();
+  const current = store.get("aiCodingTelemetry");
+  const tools = current?.tools ?? {};
+
+  for (const [toolKey, settings] of Object.entries(tools)) {
+    // 過去に書き込み実績があり、かつポートが現在と異なる場合のみ再適用
+    if (!settings?.appliedAt) continue;
+    if (settings.appliedPort === currentPort) continue;
+
+    const tool = toolKey as AiCodingTool;
+    logger.info("Re-applying tool config due to port change", {
+      tool,
+      oldPort: settings.appliedPort,
+      newPort: currentPort,
+    });
+
+    const result = await applyOtlpToTool(tool, currentPort);
+    if (result.success) {
+      // electron-store を最新ポートで更新
+      const latest = store.get("aiCodingTelemetry") ?? { tools: {} };
+      store.set("aiCodingTelemetry", {
+        ...latest,
+        tools: {
+          ...latest.tools,
+          [tool]: {
+            ...(latest.tools[tool] ?? { enabled: true }),
+            appliedAt: new Date().toISOString(),
+            appliedPort: currentPort,
+          },
+        },
+      });
+      logger.info("Re-applied tool config successfully", { tool, currentPort });
+    } else {
+      logger.warn("Failed to re-apply tool config", {
+        tool,
+        errorCode: result.errorCode,
+      });
+    }
+  }
 };
 
 // ツールのテレメトリ有効フラグを electron-store に保存する
