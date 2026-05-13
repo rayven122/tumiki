@@ -317,13 +317,15 @@ export const ToolCatalog = (): JSX.Element => {
                   {/* アイコン + 認証種別 */}
                   <div className="mb-3 flex items-start justify-between">
                     {item.iconUrl ? (
-                      <img
-                        src={item.iconUrl}
-                        alt={item.name}
-                        className="h-8 w-8 rounded-lg"
-                      />
+                      <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
+                        <img
+                          src={item.iconUrl}
+                          alt={item.name}
+                          className="h-8 w-8 object-contain"
+                        />
+                      </div>
                     ) : (
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-700 text-xs text-gray-400">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100 text-xs text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
                         MCP
                       </div>
                     )}

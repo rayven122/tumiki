@@ -99,13 +99,15 @@ export const AiIntegrations = (): JSX.Element => {
             >
               <div className="flex w-full items-center justify-between">
                 {logo ? (
-                  <img
-                    src={logo}
-                    alt={client.name}
-                    className="h-10 w-10 rounded-lg"
-                  />
+                  <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
+                    <img
+                      src={logo}
+                      alt={client.name}
+                      className="h-10 w-10 object-contain"
+                    />
+                  </div>
                 ) : (
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-black/[.06] text-sm font-bold text-gray-500 dark:bg-white/[.08] dark:text-zinc-500">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-100 text-sm font-bold text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
                     {client.name.charAt(0)}
                   </div>
                 )}
