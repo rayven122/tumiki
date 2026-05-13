@@ -400,6 +400,14 @@ export const AiClientAutoWriteModal = ({
           )}
         </div>
 
+        {/* 使用量記録セクション（claude-code / codex-cli のみ表示） */}
+        {TRACKING_TOOL_MAP[client.id] !== undefined && (
+          <TrackingSection
+            tool={TRACKING_TOOL_MAP[client.id] as AiCodingTool}
+            port={port}
+          />
+        )}
+
         {/* 既存エントリ（Tumikiに無いもの = orphan） */}
         {orphanSlugs.length > 0 && (
           <div className="mb-5">
@@ -533,14 +541,6 @@ export const AiClientAutoWriteModal = ({
             </ul>
           )}
         </div>
-
-        {/* 使用量記録セクション（claude-code / codex-cli のみ表示） */}
-        {TRACKING_TOOL_MAP[client.id] !== undefined && (
-          <TrackingSection
-            tool={TRACKING_TOOL_MAP[client.id] as AiCodingTool}
-            port={port}
-          />
-        )}
 
         {/* 区切り */}
         <div className="mb-5 border-t border-[var(--border)]" />
