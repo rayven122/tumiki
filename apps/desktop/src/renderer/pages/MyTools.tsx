@@ -137,7 +137,11 @@ export const MyTools = (): JSX.Element => {
 
 /** サーバーアイコンを取得する関数 */
 const getServerIcon = (server: McpServerWithRuntime): string | null => {
-  return server.connections[0]?.iconPath ?? server.connections[0]?.catalog?.iconPath ?? null;
+  return (
+    server.connections[0]?.iconPath ??
+    server.connections[0]?.catalog?.iconPath ??
+    null
+  );
 };
 
 /** サーバーカードコンポーネント */
