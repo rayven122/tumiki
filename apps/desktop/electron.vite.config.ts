@@ -1,6 +1,7 @@
 import { defineConfig, externalizeDepsPlugin } from "electron-vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "path";
+import type { Plugin } from "vite";
 
 // `@prisma/desktop-client` を bundle 出力 (dist-electron/main/index.cjs) からの
 // 相対パスとして external 化する rollup plugin。
@@ -13,9 +14,9 @@ import { resolve } from "path";
 //
 // プラグイン内で直接相対文字列を返せば絶対パスが一度も生成されず、
 // プラットフォーム間のパス区切りの差を吸収できる。
-const prismaDesktopClientPlugin = () => ({
+const prismaDesktopClientPlugin = (): Plugin => ({
   name: "prisma-desktop-client-relative",
-  resolveId: (source: string) => {
+  resolveId: (source) => {
     if (source === "@prisma/desktop-client") {
       return { id: "../../prisma/generated/client", external: true };
     }

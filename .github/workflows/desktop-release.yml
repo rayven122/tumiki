@@ -136,7 +136,10 @@ jobs:
 
       # @tumiki/desktop が依存する全ワークスペースパッケージ (db / mcp-core-proxy / tooling) を
       # ビルドする。詳細は build-macos ジョブのコメント参照。
+      # `shell: bash` を明示し、build-windows 内の他ステップとシェルを統一する
+      # （PowerShell デフォルトでは `^` などのクォート/エスケープ挙動が異なるため）。
       - name: 🔧 Build workspace dependencies
+        shell: bash
         run: pnpm --filter "@tumiki/desktop^..." build
 
       - name: 🔧 Generate Prisma client for desktop
