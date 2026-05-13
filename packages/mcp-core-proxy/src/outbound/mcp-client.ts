@@ -93,9 +93,6 @@ const createClientTransport = (config: McpServerConfig): Transport => {
         config.headers,
         config.resolveHeaders,
       );
-      // W3C EventSource 仕様では requestInit.headers が無視されるため、
-      // eventSourceInit.fetch にカスタム fetch を渡してヘッダーをマージする必要がある。
-      // STREAMABLE_HTTP と異なり、静的ヘッダーのみの場合でも常にカスタム fetch が必要。
       return new SSEClientTransport(new URL(config.url), {
         requestInit: { headers: config.headers },
         eventSourceInit: { fetch: customFetch },
