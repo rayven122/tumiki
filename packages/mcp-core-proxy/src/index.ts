@@ -20,6 +20,7 @@ export type {
   ToolCallHook,
   ToolCallFilter,
   PiiDetectionSummary,
+  ResolveHeaders,
 } from "./types.js";
 
 // MCPクライアントヘルパー

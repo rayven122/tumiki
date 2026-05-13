@@ -12,6 +12,7 @@ import {
   SearchCode,
   ChevronRight,
   Plug,
+  KeyRound,
 } from "lucide-react";
 import { themeAtom } from "../store/atoms";
 import { AI_CLIENTS, type AiClient } from "../data/ai-clients";
@@ -19,6 +20,7 @@ import { useMcpProxyLaunchCommand } from "../hooks/useMcpProxyLaunchCommand";
 import { buildMcpSnippet } from "../utils/mcp-snippet";
 import type {
   McpServerDetailItem,
+  McpConnectionDetailItem,
   McpToolItem,
   AuditLogItem,
 } from "../../main/types";
@@ -26,6 +28,7 @@ import { statusBadge, cardStyle } from "../utils/theme-styles";
 import { ClientLogo } from "../_components/ClientLogo";
 import { ToggleSwitch } from "../_components/ToggleSwitch";
 import { AiClientInstallModal } from "../_components/AiClientInstallModal";
+import { OAuthReauthModal } from "../_components/OAuthReauthModal";
 import { toast } from "../_components/Toast";
 import {
   Select,
@@ -223,6 +226,10 @@ export const ToolDetail = (): JSX.Element => {
   // ヘッダーの3点リーダーメニュー開閉
   const [showMenu, setShowMenu] = useState(false);
 
+  // OAuth再認証モーダル開閉と進行中フラグ
+  const [showReauthModal, setShowReauthModal] = useState(false);
+  const [reauthProcessing, setReauthProcessing] = useState(false);
+
   // 接続先AIサイドバーから選択中のクライアント
   const [selectedClient, setSelectedClient] = useState<AiClient | null>(null);
 
@@ -355,6 +362,56 @@ export const ToolDetail = (): JSX.Element => {
       setToolAllowedMap((prev) => ({ ...prev, [toolId]: previous }));
       toast.error("ツールの切替に失敗しました");
     });
+  };
+
+  // OAuth認証タイプのコネクト一覧（再認証対象）
+  const oauthConnections: McpConnectionDetailItem[] =
+    server?.connections.filter((conn) => conn.authType === "OAUTH") ?? [];
+  const hasOAuthConnection = oauthConnections.length > 0;
+
+  // 再認証実行: IPC 呼び出し → 成功時にサーバー詳細を再取得 → トースト通知
+  const runReauth = useCallback(
+    async (connectionId: number): Promise<void> => {
+      setReauthProcessing(true);
+      try {
+        await window.electronAPI.oauth.reauthenticate({ connectionId });
+        toast.success(
+          "OAuth再認証が完了しました。MCPサーバーの再起動後に新トークンが反映されます",
+        );
+        setShowReauthModal(false);
+        // 最新の接続情報を取得してUI上の更新日時等を反映
+        const detail = await window.electronAPI.mcp.getDetail(serverId);
+        if (detail) setServer(detail);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "OAuth再認証に失敗しました";
+        toast.error(message);
+      } finally {
+        setReauthProcessing(false);
+      }
+    },
+    [serverId],
+  );
+
+  // 再認証進行中にこの画面がアンマウントされた場合、main プロセス側で動いている
+  // ループバックサーバーが残らないようにキャンセル IPC を呼ぶ
+  useEffect(() => {
+    return () => {
+      if (reauthProcessing) {
+        void window.electronAPI.oauth.cancelAuth();
+      }
+    };
+  }, [reauthProcessing]);
+
+  // 単一OAuthコネクトの場合は直接、複数ある場合はモーダルを開く。
+  // ボタン自体が hasOAuthConnection 時のみ表示されるため length === 0 は到達不能。
+  const handleRequestReauth = (): void => {
+    setShowMenu(false);
+    if (oauthConnections.length === 1 && oauthConnections[0]) {
+      void runReauth(oauthConnections[0].id);
+      return;
+    }
+    setShowReauthModal(true);
   };
 
   // 監査ログ取得
@@ -557,7 +614,7 @@ export const ToolDetail = (): JSX.Element => {
                       className="fixed inset-0 z-10 cursor-default"
                       onClick={() => setShowMenu(false)}
                     />
-                    <div className="absolute right-0 z-20 mt-1 w-48 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg-card)] shadow-xl">
+                    <div className="absolute right-0 z-20 mt-1 w-56 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg-card)] shadow-xl">
                       <button
                         type="button"
                         onClick={() => {
@@ -568,6 +625,16 @@ export const ToolDetail = (): JSX.Element => {
                       >
                         サーバー設定を編集
                       </button>
+                      {hasOAuthConnection && (
+                        <button
+                          type="button"
+                          onClick={handleRequestReauth}
+                          className="flex w-full items-center gap-2 border-t border-t-[var(--border-subtle)] px-4 py-2.5 text-left text-sm text-[var(--text-secondary)] transition hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)]"
+                        >
+                          <KeyRound size={14} />
+                          OAuthを再設定
+                        </button>
+                      )}
                     </div>
                   </>
                 )}
@@ -1051,6 +1118,17 @@ export const ToolDetail = (): JSX.Element => {
           onClose={() => setSelectedClient(null)}
         />
       )}
+
+      {/* OAuth再認証モーダル（仮想MCPで複数OAuthコネクトがある場合に表示） */}
+      <OAuthReauthModal
+        open={showReauthModal}
+        connections={oauthConnections}
+        isProcessing={reauthProcessing}
+        onConfirm={(connectionId) => void runReauth(connectionId)}
+        onCancel={() => {
+          if (!reauthProcessing) setShowReauthModal(false);
+        }}
+      />
     </div>
   );
 };

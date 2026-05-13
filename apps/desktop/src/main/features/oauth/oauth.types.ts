@@ -72,3 +72,16 @@ export type OAuthResult = {
   serverId: number;
   serverName: string;
 };
+
+/** 既存コネクション向け OAuth 再認証の入力型（renderer → main） */
+export type ReauthenticateInput = {
+  connectionId: number;
+};
+
+/** OAuth 再認証成功時の結果型 */
+export type ReauthenticateResult = {
+  connectionId: number;
+  serverId: number;
+  serverName: string;
+  connectionName: string;
+};

@@ -33,7 +33,7 @@ vi.mocked(fetchUser).mockResolvedValue(mockUser);
 ## DBテスト
 
 ```bash
-docker compose -f ./docker/compose.yaml up -d db-test
+docker compose -f ./docker/local/compose.yaml up -d db-test
 cd packages/db && pnpm db:push:test
 ```
 
