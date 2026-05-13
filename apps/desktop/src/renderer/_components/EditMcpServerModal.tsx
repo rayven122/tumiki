@@ -378,7 +378,9 @@ const CredentialsSection = ({
     ) : (
       <div className="space-y-3 px-3 py-3">
         {connection.credentialKeys.map((key) => {
-          const inputId = `edit-mcp-cred-${String(connection.id)}-${key}`;
+          // credential 名にスペースや記号が含まれても HTML id 属性として有効な値になるようサニタイズする
+          const safeKey = key.replace(/[^a-zA-Z0-9_-]/g, "_");
+          const inputId = `edit-mcp-cred-${String(connection.id)}-${safeKey}`;
           return (
             <div key={key}>
               <label

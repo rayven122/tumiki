@@ -621,6 +621,16 @@ export const updateServerConnectionCredentials = async (
     );
     const merged = mergeCredentials(existing, inputCredentials, MASK_VALUE);
 
+    // 実質変更がない（全フィールドが MASK or 空文字、もしくは既存に無いキーのみ）場合は
+    // 何もせずトランザクションを閉じる。renderer 側でも canSubmit でガード済みだが、
+    // IPC 直叩きや将来の呼び出し経路から no-op で呼ばれたときに secret 差し替えと
+    // orphan 掃除が走らないようサービス層でも防衛する。
+    const existingKeys = Object.keys(existing);
+    const isUnchanged =
+      existingKeys.length === Object.keys(merged).length &&
+      existingKeys.every((key) => existing[key] === merged[key]);
+    if (isUnchanged) return;
+
     const encrypted = await encryptToken(JSON.stringify(merged));
     const newSecret = await mcpRepository.createSecret(tx, encrypted);
     const oldSecretId = conn.secretId;

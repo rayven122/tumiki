@@ -233,7 +233,7 @@ const ServerCard = ({
         <button
           type="button"
           onClick={onEdit}
-          className="rounded p-1 text-gray-400 transition hover:text-gray-900 dark:text-zinc-600 dark:hover:text-white"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-gray-400 transition hover:text-gray-900 dark:text-zinc-600 dark:hover:text-white"
           title="編集"
           aria-label={`${server.name}を編集`}
         >

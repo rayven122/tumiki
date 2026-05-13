@@ -1640,10 +1640,16 @@ describe("mcp.service", () => {
       );
     });
 
-    test("MASK 値・空文字は既存値で維持される", async () => {
+    test("MASK 値・空文字は既存値で維持され、新値だけが上書きされる", async () => {
       vi.mocked(mcpRepository.findConnectionByIdWithServer).mockResolvedValue(
         buildConn({
-          secret: { credentials: JSON.stringify({ A: "old-a", B: "old-b" }) },
+          secret: {
+            credentials: JSON.stringify({
+              A: "old-a",
+              B: "old-b",
+              C: "old-c",
+            }),
+          },
         } as Partial<ConnectionWithSecret>),
       );
       vi.mocked(mcpRepository.createSecret).mockResolvedValue({
@@ -1656,11 +1662,12 @@ describe("mcp.service", () => {
       await mcpService.updateServerConnectionCredentials(300, {
         A: "•••••",
         B: "",
+        C: "new-c",
       });
 
-      // 既存値がそのまま暗号化される
+      // A は MASK 維持・B は空維持・C のみ新値で上書きされる
       expect(encryptToken).toHaveBeenCalledWith(
-        JSON.stringify({ A: "old-a", B: "old-b" }),
+        JSON.stringify({ A: "old-a", B: "old-b", C: "new-c" }),
       );
     });
 
@@ -1684,6 +1691,38 @@ describe("mcp.service", () => {
       await expect(
         mcpService.updateServerConnectionCredentials(999, {}),
       ).rejects.toThrow("接続が見つかりません");
+    });
+
+    test("実質変更がない（全 MASK 値）場合は secret を更新せず早期 return する", async () => {
+      vi.mocked(mcpRepository.findConnectionByIdWithServer).mockResolvedValue(
+        buildConn({
+          secret: { credentials: JSON.stringify({ A: "old-a", B: "old-b" }) },
+        } as Partial<ConnectionWithSecret>),
+      );
+
+      await mcpService.updateServerConnectionCredentials(300, {
+        A: "•••••",
+        B: "•••••",
+      });
+
+      expect(mcpRepository.createSecret).not.toHaveBeenCalled();
+      expect(mcpRepository.updateConnectionSecretId).not.toHaveBeenCalled();
+      expect(mcpRepository.deleteSecretIfOrphaned).not.toHaveBeenCalled();
+    });
+
+    test("既存に無いキーだけが入力された場合も no-op として扱う", async () => {
+      vi.mocked(mcpRepository.findConnectionByIdWithServer).mockResolvedValue(
+        buildConn({
+          secret: { credentials: JSON.stringify({ TOKEN: "old" }) },
+        } as Partial<ConnectionWithSecret>),
+      );
+
+      await mcpService.updateServerConnectionCredentials(300, {
+        UNKNOWN_KEY: "new-value",
+      });
+
+      expect(mcpRepository.createSecret).not.toHaveBeenCalled();
+      expect(mcpRepository.updateConnectionSecretId).not.toHaveBeenCalled();
     });
   });
 
