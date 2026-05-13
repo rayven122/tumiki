@@ -608,12 +608,12 @@ if (isMcpProxyMode) {
       setupShellIpc();
 
       // OTLP レシーバーを起動する
-      // 前回バインドに成功したポートを優先し、競合時のみ OS 割り当てにフォールバックする。
-      // 使用ポートを electron-store に保存することで、次回起動時も同じポートを維持し
-      // 設定ファイルへ書き込んだ OTEL_EXPORTER_OTLP_ENDPOINT と一致させ続ける。
+      // OTLP HTTP の標準ポート 4318 を常に優先する。
+      // 競合時のみ OS 割り当てにフォールバックし、4318 が再び空けば次回は 4318 に戻る。
+      // これにより通常は同じポートに収束し、設定ファイル再書き込み（およびトースト通知）が
+      // 最小限に抑えられる。
       const appStore = await getAppStore();
-      const savedPort = appStore.get("aiCodingTelemetry")?.receiverPort;
-      const { server, port: otlpPort } = await startOtlpReceiver(savedPort);
+      const { server, port: otlpPort } = await startOtlpReceiver();
       otlpHttpServer = server;
       setReceiverPort(otlpPort);
       // 実際にバインドできたポートを保存（フォールバック後も更新する）
