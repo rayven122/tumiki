@@ -4,10 +4,6 @@ export type ServerStatus = "running" | "stopped" | "error" | "pending";
 // 認証タイプ（HTTP系トランスポート用）
 export type AuthType = "NONE" | "BEARER" | "API_KEY";
 
-// リクエスト毎に最新ヘッダーを解決するコールバック（OAuthトークンリフレッシュ等で使用）
-// 返却されたヘッダーは静的 headers の上にマージされる
-export type ResolveHeaders = () => Promise<Record<string, string>>;
-
 // STDIO トランスポート設定
 export type StdioServerConfig = {
   name: string;
@@ -25,7 +21,6 @@ export type SseServerConfig = {
   url: string;
   authType: AuthType;
   headers: Record<string, string>;
-  resolveHeaders?: ResolveHeaders;
   allowedTools?: string[];
 };
 
@@ -36,7 +31,6 @@ export type StreamableHttpServerConfig = {
   url: string;
   authType: AuthType;
   headers: Record<string, string>;
-  resolveHeaders?: ResolveHeaders;
   allowedTools?: string[];
 };
 

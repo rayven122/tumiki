@@ -10,10 +10,7 @@ import { getDb } from "../../shared/db";
 import * as mcpRepository from "../mcp-server-list/mcp.repository";
 import * as logger from "../../shared/utils/logger";
 import { decryptCredentials } from "../../utils/credentials";
-import {
-  refreshOAuthTokenIfNeeded,
-  resolveOAuthHeaders,
-} from "../oauth/oauth.refresh";
+import { refreshOAuthTokenIfNeeded } from "../oauth/oauth.refresh";
 import {
   buildChildEnv,
   resolveArgs,
@@ -115,12 +112,6 @@ const getAllowedToolNames = (conn: ConnectionForConfig) =>
     ? conn.tools.filter((tool) => tool.isAllowed).map((tool) => tool.name)
     : undefined;
 
-/** OAuth接続の場合のみ resolveHeaders を返す */
-const buildResolveHeaders = (conn: ConnectionForConfig) =>
-  conn.authType === "OAUTH" && conn.url
-    ? { resolveHeaders: () => resolveOAuthHeaders(conn.secretId, conn.url!) }
-    : {};
-
 const withAllowedTools = <T extends McpServerConfig>(
   config: T,
   conn: ConnectionForConfig,
@@ -212,7 +203,6 @@ const buildConfigFromConnection = async (
           url: conn.url,
           authType: sseAuthType,
           headers: buildHeaders(sseAuthType, credentials),
-          ...buildResolveHeaders(conn),
         },
         conn,
       );
@@ -233,7 +223,6 @@ const buildConfigFromConnection = async (
           url: conn.url,
           authType: httpAuthType,
           headers: buildHeaders(httpAuthType, credentials),
-          ...buildResolveHeaders(conn),
         },
         conn,
       );
