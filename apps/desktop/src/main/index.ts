@@ -626,9 +626,19 @@ if (isMcpProxyMode) {
       // 過去に適用したツールでポートが変わっていれば自動で再書き込みする。
       // OTLP ポートがフォールバックで変わったり、ユーザー設定で変更されても
       // 設定ファイル（~/.claude/settings.json 等）と Tumiki 受信ポートの整合性を保つ。
-      await autoReapplyMismatchedPorts(otlpPort).catch((error: unknown) => {
-        logger.error("Failed auto re-apply of tool configs", { error });
-      });
+      const reappliedTools = await autoReapplyMismatchedPorts(otlpPort).catch(
+        (error: unknown) => {
+          logger.error("Failed auto re-apply of tool configs", { error });
+          return [] as Awaited<ReturnType<typeof autoReapplyMismatchedPorts>>;
+        },
+      );
+      // 再書き込みが行われた場合、ウィンドウ読み込み完了後にトーストで通知する
+      if (reappliedTools.length > 0) {
+        sendToWindow("aiCodingTelemetry:autoReapplied", {
+          tools: reappliedTools,
+          port: otlpPort,
+        });
+      }
       setupAiCodingTelemetryIpc();
 
       createWindow();

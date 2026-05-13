@@ -1,4 +1,5 @@
 import type { JSX } from "react";
+import { useEffect } from "react";
 import { HashRouter, Navigate, Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
 import { Layout } from "./_components/Layout";
@@ -15,8 +16,32 @@ import { ConnectorAuto } from "./pages/ConnectorAuto";
 import { ConnectorManual } from "./pages/ConnectorManual";
 import { AiIntegrations } from "./pages/AiIntegrations";
 import { ProfileSetup } from "./pages/ProfileSetup";
+import { toast } from "./_components/Toast";
+
+const TELEMETRY_TOOL_LABELS: Record<string, string> = {
+  "claude-code": "Claude Code",
+  codex: "Codex CLI",
+};
+
+/** OTLP ポート不一致時の自動再書き込み通知をトースト表示 */
+const useAutoReapplyToast = (): void => {
+  useEffect(() => {
+    const off = window.electronAPI.aiCodingTelemetry.onAutoReapplied(
+      ({ tools, port }) => {
+        const names = tools
+          .map((t) => TELEMETRY_TOOL_LABELS[t] ?? t)
+          .join("・");
+        toast.success(
+          `${names} の使用量記録ポートが ${String(port)} に変わったため設定ファイルを自動更新しました`,
+        );
+      },
+    );
+    return off;
+  }, []);
+};
 
 export const App = (): JSX.Element => {
+  useAutoReapplyToast();
   return (
     <>
       <Toaster position="top-center" duration={3000} />
