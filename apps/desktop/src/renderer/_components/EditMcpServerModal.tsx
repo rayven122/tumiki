@@ -5,10 +5,11 @@ import type {
   GetServerEditDetailOutput,
   GetServerEditDetailConnection,
 } from "../../main/types";
+import { CREDENTIALS_MASK_VALUE } from "../../shared/mcp.constants";
 import { toast } from "./Toast";
 
-/** Toast.tsx は描画専用のため、ここでマスク文字列を定数として持つ */
-const MASK_VALUE = "•••••";
+/** main 側と同一のマスク文字列。共通定数を再エクスポートして1ファイルだけが意味を持つようにする */
+const MASK_VALUE = CREDENTIALS_MASK_VALUE;
 
 type EditMcpServerModalProps = {
   serverId: number;
@@ -126,30 +127,30 @@ export const EditMcpServerModal = ({
     if (!detail) return;
     setSubmitting(true);
 
-    const tasks: Promise<unknown>[] = [];
+    // 名前/説明と credentials は別 IPC かつ別トランザクションのため、
+    // 並列実行すると部分失敗時に「名前は保存されたが credentials は失敗」など
+    // 不整合な状態を生む。順次実行で先行成功分をユーザーに明示できるようにする。
+    const savedSteps: string[] = [];
 
-    if (isNameDescriptionDirty) {
-      tasks.push(
-        window.electronAPI.mcp.updateServer({
+    try {
+      if (isNameDescriptionDirty) {
+        await window.electronAPI.mcp.updateServer({
           id: serverId,
           name: name !== detail.name ? name : undefined,
           description:
             description !== detail.description ? description : undefined,
-        }),
-      );
-    }
+        });
+        savedSteps.push("名前・説明");
+      }
 
-    for (const connectionId of dirtyConnectionIds) {
-      tasks.push(
-        window.electronAPI.mcp.updateServerConnectionCredentials({
+      for (const connectionId of dirtyConnectionIds) {
+        await window.electronAPI.mcp.updateServerConnectionCredentials({
           connectionId,
           credentials: credentialsInput[connectionId] ?? {},
-        }),
-      );
-    }
+        });
+        savedSteps.push(`接続(id=${String(connectionId)})の認証情報`);
+      }
 
-    try {
-      await Promise.all(tasks);
       onSuccess();
       if (dirtyConnectionIds.size > 0) {
         // credentials を変更した場合は再起動の案内をモーダル内で表示
@@ -159,8 +160,18 @@ export const EditMcpServerModal = ({
         onClose();
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "保存に失敗しました";
-      toast.error(message);
+      const failureMessage =
+        err instanceof Error ? err.message : "保存に失敗しました";
+      // 先行成功分があるかで文言を変え、ユーザーに「どこまで保存されたか」を伝える
+      if (savedSteps.length > 0) {
+        toast.error(
+          `${savedSteps.join(" / ")}は保存しましたが、後続の更新に失敗しました: ${failureMessage}`,
+        );
+        // 一部成功している以上、画面上のサーバー情報は古いままなので再取得を促す
+        onSuccess();
+      } else {
+        toast.error(failureMessage);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -262,10 +273,14 @@ const EditingForm = ({
 
       {/* サーバー名 */}
       <div className="mb-4">
-        <label className="mb-2 block text-sm font-medium text-[var(--text-primary)]">
+        <label
+          htmlFor="edit-mcp-server-name"
+          className="mb-2 block text-sm font-medium text-[var(--text-primary)]"
+        >
           サーバー名<span className="text-[var(--badge-error-text)]">*</span>
         </label>
         <input
+          id="edit-mcp-server-name"
           type="text"
           value={name}
           onChange={(e) => onChangeName(e.target.value)}
@@ -276,10 +291,14 @@ const EditingForm = ({
 
       {/* 説明 */}
       <div className="mb-6">
-        <label className="mb-2 block text-sm font-medium text-[var(--text-primary)]">
+        <label
+          htmlFor="edit-mcp-server-description"
+          className="mb-2 block text-sm font-medium text-[var(--text-primary)]"
+        >
           説明
         </label>
         <textarea
+          id="edit-mcp-server-description"
           value={description}
           onChange={(e) => onChangeDescription(e.target.value)}
           disabled={submitting}
@@ -358,22 +377,29 @@ const CredentialsSection = ({
       <p className="px-3 py-2 text-xs text-[var(--text-muted)]">認証情報なし</p>
     ) : (
       <div className="space-y-3 px-3 py-3">
-        {connection.credentialKeys.map((key) => (
-          <div key={key}>
-            <label className="mb-1.5 block text-xs font-medium text-[var(--text-secondary)]">
-              {key}
-            </label>
-            <input
-              type="password"
-              autoComplete="new-password"
-              value={values[key] ?? ""}
-              onChange={(e) => onChange(connection.id, key, e.target.value)}
-              disabled={submitting}
-              placeholder={MASK_VALUE}
-              className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-input)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-subtle)] disabled:opacity-50"
-            />
-          </div>
-        ))}
+        {connection.credentialKeys.map((key) => {
+          const inputId = `edit-mcp-cred-${String(connection.id)}-${key}`;
+          return (
+            <div key={key}>
+              <label
+                htmlFor={inputId}
+                className="mb-1.5 block text-xs font-medium text-[var(--text-secondary)]"
+              >
+                {key}
+              </label>
+              <input
+                id={inputId}
+                type="password"
+                autoComplete="new-password"
+                value={values[key] ?? ""}
+                onChange={(e) => onChange(connection.id, key, e.target.value)}
+                disabled={submitting}
+                placeholder={MASK_VALUE}
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-input)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-subtle)] disabled:opacity-50"
+              />
+            </div>
+          );
+        })}
         <p className="text-[10px] text-[var(--text-subtle)]">
           空欄またはマスク表示のままだと、既存の値が維持されます。
         </p>

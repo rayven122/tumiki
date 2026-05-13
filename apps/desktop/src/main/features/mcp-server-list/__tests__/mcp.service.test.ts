@@ -1572,6 +1572,26 @@ describe("mcp.service", () => {
 
       expect(result.connections[0]?.credentialKeys).toStrictEqual([]);
     });
+
+    test("接続が無いサーバーでも空の connections 配列で正常応答する", async () => {
+      vi.mocked(
+        mcpRepository.findServerWithConnectionsAndSecrets,
+      ).mockResolvedValue({
+        id: 12,
+        name: "no-conn",
+        description: "no connections yet",
+        connections: [],
+      } as unknown as ServerWithConnectionsAndSecrets);
+
+      const result = await mcpService.getServerEditDetail(12);
+
+      expect(result).toStrictEqual({
+        id: 12,
+        name: "no-conn",
+        description: "no connections yet",
+        connections: [],
+      });
+    });
   });
 
   describe("updateServerConnectionCredentials", () => {
