@@ -56,6 +56,8 @@ const VERSIONS = {
   node: "22.11.0",
   // 0.5.25 以降が `uv-aarch64-pc-windows-msvc.zip` を公式リリースしているため、
   // win32-arm64 を含む `--all` 取得が成立するバージョンに揃える。
+  // リリース配布は win-x64 のみだが、Windows on ARM 開発環境向けに arm64
+  // アセットも取得可能な版を選んでいる（実行時は x64 エミュレーションで動く）。
   uv: "0.5.31",
 };
 
@@ -97,6 +99,9 @@ const PLATFORM_MAP = {
     archive: "zip",
     layout: "win",
   },
+  // win32-arm64 はリリース配布対象外 (electron-builder.yml は x64 のみ。
+  // Prisma 6.x が windows-arm64 binaryTarget 未サポートのため)。
+  // ここに残しているのは Windows on ARM 開発環境で `--all` 取得を成立させるため。
   "win32-arm64": {
     nodeArch: "win-arm64",
     uvTriple: "aarch64-pc-windows-msvc",
@@ -136,8 +141,10 @@ const runCommand = async (command, args, label) => {
     const child = spawn(command, args, {
       stdio: ["ignore", "ignore", "inherit"],
     });
-    child.on("exit", (code) => {
+    // SIGKILL 等でプロセスが落ちた場合 code は null になるため、signal を別メッセージで扱う
+    child.on("exit", (code, signal) => {
       if (code === 0) resolve();
+      else if (signal) reject(new Error(`${label} killed by signal ${signal}`));
       else reject(new Error(`${label} exit code ${code}`));
     });
     child.on("error", reject);
@@ -235,6 +242,20 @@ const fetchUvChecksum = async (archiveUrl) => {
 };
 
 /**
+ * Windows 上で tar コマンドを呼ぶときは `C:\Windows\System32\tar.exe`
+ * （Win10+ 同梱の bsdtar / libarchive）を絶対パスで指定する。
+ *
+ * windows-latest ランナーには Git for Windows 同梱の GNU tar も入っており、
+ * PATH 解決によってはこちらが先に拾われる。GNU tar は `C:\foo\bar.tar.gz`
+ * の `C:` を host:path のリモート指定として解釈し
+ * `tar (child): Cannot connect to C: resolve failed` で落ちるため、
+ * 必ず bsdtar を呼ぶよう絶対パス指定で固定する（bsdtar は Windows パスを
+ * 正しく扱い、tar.gz と zip の両方に対応）。
+ */
+const tarBinary = () =>
+  process.platform === "win32" ? "C:\\Windows\\System32\\tar.exe" : "tar";
+
+/**
  * tar.gz / zip を抽出する。
  * libarchive (macOS/Linux/Win10+ 標準 tar) は zip を自動検出するが、
  * GNU tar は zip 非対応なので Linux 上は unzip を併用する。
@@ -247,7 +268,11 @@ const extractArchive = async (archivePath, destDir, archive) => {
   } else {
     // tar.gz / macOS の zip 共通: tar に任せる
     const flags = archive === "zip" ? ["-xf"] : ["-xzf"];
-    await runCommand("tar", [...flags, archivePath, "-C", destDir], "tar");
+    await runCommand(
+      tarBinary(),
+      [...flags, archivePath, "-C", destDir],
+      "tar",
+    );
   }
 };
 
@@ -363,15 +388,22 @@ const setupPlatform = async (platform, force) => {
   await rm(target, { recursive: true, force: true });
   await mkdir(target, { recursive: true });
 
-  await installNode(platform, target);
-  await installUv(platform, target);
+  // installNode 成功後に installUv が失敗すると target に中途半端な Node ファイルが残る。
+  // 失敗時は target ごと削除し、次回の再実行でクリーンに開始できるようにする。
+  try {
+    await installNode(platform, target);
+    await installUv(platform, target);
 
-  // sentinel ファイルでバージョンを記録（再ダウンロード判定用）
-  const meta = {
-    versions: VERSIONS,
-    installedAt: new Date().toISOString(),
-  };
-  await writeFile(sentinel, JSON.stringify(meta, null, 2));
+    // sentinel ファイルでバージョンを記録（再ダウンロード判定用）
+    const meta = {
+      versions: VERSIONS,
+      installedAt: new Date().toISOString(),
+    };
+    await writeFile(sentinel, JSON.stringify(meta, null, 2));
+  } catch (error) {
+    await rm(target, { recursive: true, force: true });
+    throw error;
+  }
 
   log(`${platform}: 完了 → ${path.relative(DESKTOP_DIR, target)}`);
 };

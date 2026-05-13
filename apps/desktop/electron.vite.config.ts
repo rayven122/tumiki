@@ -1,10 +1,35 @@
 import { defineConfig, externalizeDepsPlugin } from "electron-vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "path";
+import type { Plugin } from "vite";
+
+// `@prisma/desktop-client` を bundle 出力 (dist-electron/main/index.cjs) からの
+// 相対パスとして external 化する rollup plugin。
+//
+// 過去の実装は alias で絶対パスに解決 → external regex → output.paths で相対パスに
+// 書き戻す3段構成だったが、Windows では path.resolve がバックスラッシュ区切りを
+// 返す一方 rollup は内部 ID をフォワードスラッシュに正規化するため
+// output.paths のキー一致が外れ、絶対パス (D:/a/.../prisma/generated/client) が
+// require() に焼き込まれて配布先で Cannot find module で落ちていた。
+//
+// プラグイン内で直接相対文字列を返せば絶対パスが一度も生成されず、
+// プラットフォーム間のパス区切りの差を吸収できる。
+const prismaDesktopClientPlugin = (): Plugin => ({
+  name: "prisma-desktop-client-relative",
+  resolveId: (source) => {
+    if (source === "@prisma/desktop-client") {
+      return { id: "../../prisma/generated/client", external: true };
+    }
+    return null;
+  },
+});
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin({ exclude: ["oauth4webapi"] })],
+    plugins: [
+      externalizeDepsPlugin({ exclude: ["oauth4webapi"] }),
+      prismaDesktopClientPlugin(),
+    ],
     define: {
       "process.env.KEYCLOAK_ISSUER": JSON.stringify(
         process.env.KEYCLOAK_ISSUER ?? "",
@@ -12,11 +37,6 @@ export default defineConfig({
       "process.env.KEYCLOAK_DESKTOP_CLIENT_ID": JSON.stringify(
         process.env.KEYCLOAK_DESKTOP_CLIENT_ID ?? "",
       ),
-    },
-    resolve: {
-      alias: {
-        "@prisma/desktop-client": resolve(__dirname, "prisma/generated/client"),
-      },
     },
     build: {
       outDir: "dist-electron/main",
@@ -34,25 +54,8 @@ export default defineConfig({
         },
         output: {
           format: "cjs",
-          // ビルドホストの絶対パス（CI: /Users/runner/...、開発者ローカル等）が
-          // require() に焼き込まれるのを防ぐため、external 化された Prisma client への
-          // 参照を出力ディレクトリ（dist-electron/main）からの相対パスに固定する。
-          // asar.unpacked 配下の prisma/generated/client/ に解決される。
-          paths: (id) => {
-            if (
-              id.includes("prisma/generated/client") ||
-              id.startsWith(".prisma/desktop-client")
-            ) {
-              return "../../prisma/generated/client";
-            }
-            return id;
-          },
         },
-        external: [
-          "electron",
-          /^\.prisma\/desktop-client/,
-          /prisma\/generated\/client/,
-        ],
+        external: ["electron"],
       },
     },
   },
