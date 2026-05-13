@@ -222,6 +222,45 @@ export const findServerById = async (db: DbClient, id: number) => {
 };
 
 /**
+ * サーバーと、配下の各接続 + secret（暗号化済み credentials）を一括取得
+ * 編集画面（getServerEditDetail）の初期データ表示に使う。
+ * `secretId` を含むが、戻り値の credentials は復号せずそのまま返すため
+ * service 層で復号 → キー集合抽出 → renderer へはマスク済みで返す責務分離が必要。
+ */
+export const findServerWithConnectionsAndSecrets = async (
+  db: DbClient,
+  serverId: number,
+) => {
+  return db.mcpServer.findUnique({
+    where: { id: serverId },
+    include: {
+      connections: {
+        orderBy: { displayOrder: "asc" },
+        include: {
+          secret: { select: { credentials: true } },
+        },
+      },
+    },
+  });
+};
+
+/**
+ * 接続の secretId を差し替え
+ * credentials 編集時に「新規 secret を作って差し替え → 旧 secret を deleteSecretIfOrphaned で掃除」
+ * パターンで使う。旧 secret 削除との同一トランザクション実行を前提とする。
+ */
+export const updateConnectionSecretId = async (
+  db: DbClient,
+  connectionId: number,
+  secretId: number,
+) => {
+  return db.mcpConnection.update({
+    where: { id: connectionId },
+    data: { secretId },
+  });
+};
+
+/**
  * サーバー情報を更新
  */
 export const updateServer = async (

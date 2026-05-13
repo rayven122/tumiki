@@ -671,4 +671,94 @@ describe("mcp.repository（実DB）", () => {
       ).rejects.toThrow();
     });
   });
+
+  describe("findServerWithConnectionsAndSecrets", () => {
+    test("サーバーと接続 + secret.credentials を含めて返す", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+      const secret = await mcpRepository.createSecret(db, "encrypted:abc");
+      await mcpRepository.createConnection(
+        db,
+        await buildConnectionData(server.id, secret.id),
+      );
+
+      const result = await mcpRepository.findServerWithConnectionsAndSecrets(
+        db,
+        server.id,
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.id).toBe(server.id);
+      expect(result?.connections).toHaveLength(1);
+      expect(result?.connections[0]?.secret.credentials).toBe("encrypted:abc");
+    });
+
+    test("接続が displayOrder の昇順で返る", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+      const secret = await mcpRepository.createSecret(db, "{}");
+      // displayOrder を逆順で挿入し、戻り値の順序を検証
+      await db.mcpConnection.create({
+        data: {
+          ...(await buildConnectionData(server.id, secret.id)),
+          name: "second",
+          slug: "second",
+          displayOrder: 1,
+        },
+      });
+      await db.mcpConnection.create({
+        data: {
+          ...(await buildConnectionData(server.id, secret.id)),
+          name: "first",
+          slug: "first",
+          displayOrder: 0,
+        },
+      });
+
+      const result = await mcpRepository.findServerWithConnectionsAndSecrets(
+        db,
+        server.id,
+      );
+
+      expect(result?.connections.map((c) => c.name)).toStrictEqual([
+        "first",
+        "second",
+      ]);
+    });
+
+    test("存在しないIDの場合は null を返す", async () => {
+      const result = await mcpRepository.findServerWithConnectionsAndSecrets(
+        db,
+        99999,
+      );
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe("updateConnectionSecretId", () => {
+    test("接続の secretId を差し替える", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+      const oldSecret = await mcpRepository.createSecret(db, "old");
+      const connection = await mcpRepository.createConnection(
+        db,
+        await buildConnectionData(server.id, oldSecret.id),
+      );
+      const newSecret = await mcpRepository.createSecret(db, "new");
+
+      const result = await mcpRepository.updateConnectionSecretId(
+        db,
+        connection.id,
+        newSecret.id,
+      );
+
+      expect(result.secretId).toBe(newSecret.id);
+    });
+
+    test("存在しない接続IDの場合はエラーになる", async () => {
+      const secret = await mcpRepository.createSecret(db, "x");
+
+      await expect(
+        mcpRepository.updateConnectionSecretId(db, 99999, secret.id),
+      ).rejects.toThrow();
+    });
+  });
 });

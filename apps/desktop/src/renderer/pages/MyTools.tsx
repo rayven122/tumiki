@@ -1,9 +1,10 @@
 import type { JSX } from "react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Search, ArrowRight, Server, Plus, Trash2 } from "lucide-react";
+import { Search, ArrowRight, Server, Plus, Trash2, Pencil } from "lucide-react";
 import { ToggleSwitch } from "../_components/ToggleSwitch";
 import { ConfirmDialog } from "../_components/ConfirmDialog";
+import { EditMcpServerModal } from "../_components/EditMcpServerModal";
 import { useMcpServers } from "../hooks/useMcpServers";
 import type { McpServerWithRuntime } from "../hooks/useMcpServers";
 import { cardStyle } from "../utils/theme-styles";
@@ -33,7 +34,10 @@ const STATUS_CONFIG: Record<
 
 export const MyTools = (): JSX.Element => {
   const [query, setQuery] = useState("");
-  const { servers, loading, toggleServer, deleteServer } = useMcpServers();
+  const { servers, loading, toggleServer, deleteServer, refresh } =
+    useMcpServers();
+  // サーバーカードから編集モーダルを開く対象（複数カードからの起動を親で一元管理）
+  const [editTargetId, setEditTargetId] = useState<number | null>(null);
 
   const lowerQuery = query.toLowerCase();
   const filteredServers = servers.filter(
@@ -114,6 +118,7 @@ export const MyTools = (): JSX.Element => {
                   void toggleServer(server.id, isEnabled)
                 }
                 onDelete={() => void deleteServer(server.id)}
+                onEdit={() => setEditTargetId(server.id)}
               />
             ))}
           </div>
@@ -130,6 +135,14 @@ export const MyTools = (): JSX.Element => {
             カタログから追加
           </Link>
         </div>
+      )}
+
+      {editTargetId !== null && (
+        <EditMcpServerModal
+          serverId={editTargetId}
+          onClose={() => setEditTargetId(null)}
+          onSuccess={() => void refresh()}
+        />
       )}
     </div>
   );
@@ -149,10 +162,12 @@ const ServerCard = ({
   server,
   onToggle,
   onDelete,
+  onEdit,
 }: {
   server: McpServerWithRuntime;
   onToggle: (isEnabled: boolean) => void;
   onDelete: () => void;
+  onEdit: () => void;
 }): JSX.Element => {
   const status = STATUS_CONFIG[server.serverStatus] ?? {
     badgeClass: "bg-gray-400/10 text-gray-400",
@@ -213,8 +228,17 @@ const ServerCard = ({
         </div>
       </Link>
 
-      {/* フッター: 削除 + 有効/無効トグル */}
+      {/* フッター: 編集 / 削除 + 有効/無効トグル */}
       <div className="flex items-center justify-end gap-2 border-t border-t-gray-100 px-4 py-3 dark:border-t-white/[.03]">
+        <button
+          type="button"
+          onClick={onEdit}
+          className="rounded p-1 text-gray-400 transition hover:text-gray-900 dark:text-zinc-600 dark:hover:text-white"
+          title="編集"
+          aria-label={`${server.name}を編集`}
+        >
+          <Pencil size={12} />
+        </button>
         <button
           type="button"
           onClick={() => setShowDeleteConfirm(true)}

@@ -589,6 +589,112 @@ describe("setupMcpIpc", () => {
     });
   });
 
+  describe("mcp:getServerEditDetail", () => {
+    test("有効な ID で編集詳細を取得する", async () => {
+      const mockResult = {
+        id: 1,
+        name: "Server",
+        description: "desc",
+        connections: [],
+      };
+      vi.mocked(mcpService.getServerEditDetail).mockResolvedValue(
+        mockResult as Awaited<
+          ReturnType<typeof mcpService.getServerEditDetail>
+        >,
+      );
+      const handler = mockIpcHandlers.get("mcp:getServerEditDetail");
+
+      const result = await handler!({} as IpcMainInvokeEvent, { id: 1 });
+
+      expect(result).toStrictEqual(mockResult);
+      expect(mcpService.getServerEditDetail).toHaveBeenCalledWith(1);
+    });
+
+    test("id が欠落している場合はエラーになる", async () => {
+      const handler = mockIpcHandlers.get("mcp:getServerEditDetail");
+
+      await expect(handler!({} as IpcMainInvokeEvent, {})).rejects.toThrow(
+        "サーバー編集情報の取得に失敗しました",
+      );
+    });
+
+    test("id が 0 以下の場合はエラーになる", async () => {
+      const handler = mockIpcHandlers.get("mcp:getServerEditDetail");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, { id: 0 }),
+      ).rejects.toThrow("サーバー編集情報の取得に失敗しました");
+    });
+
+    test("サービスがエラーを投げた場合はラップして再スローする", async () => {
+      vi.mocked(mcpService.getServerEditDetail).mockRejectedValue(
+        new Error("DB接続エラー"),
+      );
+      const handler = mockIpcHandlers.get("mcp:getServerEditDetail");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, { id: 1 }),
+      ).rejects.toThrow("サーバー編集情報の取得に失敗しました: DB接続エラー");
+    });
+  });
+
+  describe("mcp:updateServerConnectionCredentials", () => {
+    test("有効な入力で credentials を更新する", async () => {
+      vi.mocked(
+        mcpService.updateServerConnectionCredentials,
+      ).mockResolvedValue();
+      const handler = mockIpcHandlers.get(
+        "mcp:updateServerConnectionCredentials",
+      );
+
+      await handler!({} as IpcMainInvokeEvent, {
+        connectionId: 10,
+        credentials: { TOKEN: "new" },
+      });
+
+      expect(mcpService.updateServerConnectionCredentials).toHaveBeenCalledWith(
+        10,
+        { TOKEN: "new" },
+      );
+    });
+
+    test("connectionId が欠落している場合はエラーになる", async () => {
+      const handler = mockIpcHandlers.get(
+        "mcp:updateServerConnectionCredentials",
+      );
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, { credentials: {} }),
+      ).rejects.toThrow("認証情報の更新に失敗しました");
+    });
+
+    test("credentials が欠落している場合はエラーになる", async () => {
+      const handler = mockIpcHandlers.get(
+        "mcp:updateServerConnectionCredentials",
+      );
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, { connectionId: 1 }),
+      ).rejects.toThrow("認証情報の更新に失敗しました");
+    });
+
+    test("サービスがエラーを投げた場合はラップして再スローする", async () => {
+      vi.mocked(mcpService.updateServerConnectionCredentials).mockRejectedValue(
+        new Error("OAuth接続"),
+      );
+      const handler = mockIpcHandlers.get(
+        "mcp:updateServerConnectionCredentials",
+      );
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, {
+          connectionId: 1,
+          credentials: { K: "v" },
+        }),
+      ).rejects.toThrow("認証情報の更新に失敗しました: OAuth接続");
+    });
+  });
+
   describe("ハンドラー登録", () => {
     test("全てのIPCハンドラーが登録される", () => {
       expect(mockIpcHandlers.has("mcp:createFromCatalog")).toBe(true);
@@ -602,6 +708,10 @@ describe("setupMcpIpc", () => {
       expect(mockIpcHandlers.has("mcp:toggleServer")).toBe(true);
       expect(mockIpcHandlers.has("mcp:updatePiiMasking")).toBe(true);
       expect(mockIpcHandlers.has("mcp:updateToonConversion")).toBe(true);
+      expect(mockIpcHandlers.has("mcp:getServerEditDetail")).toBe(true);
+      expect(mockIpcHandlers.has("mcp:updateServerConnectionCredentials")).toBe(
+        true,
+      );
     });
   });
 });
