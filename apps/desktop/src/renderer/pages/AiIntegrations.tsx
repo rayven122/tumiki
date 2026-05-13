@@ -1,7 +1,7 @@
 import type { JSX } from "react";
 import { useMemo, useState } from "react";
 import { useAtomValue } from "jotai";
-import { ArrowRight, Lock, Plug } from "lucide-react";
+import { ArrowRight, Lock, Plug, Activity } from "lucide-react";
 import { themeAtom } from "../store/atoms";
 import { AI_CLIENTS, type AiClient } from "../data/ai-clients";
 import { cardStyle } from "../utils/theme-styles";
@@ -9,7 +9,33 @@ import { toast } from "../_components/Toast";
 import { AiClientAutoWriteModal } from "../_components/AiClientAutoWriteModal";
 import { useMcpServers } from "../hooks/useMcpServers";
 import { useMcpProxyLaunchCommand } from "../hooks/useMcpProxyLaunchCommand";
-import { useOtlpReceiverPort } from "../hooks/useAiCodingTelemetry";
+import {
+  useAiCodingToolSettings,
+  useOtlpReceiverPort,
+} from "../hooks/useAiCodingTelemetry";
+import type { AiCodingTool } from "../../main/types";
+
+/** クライアント ID → AiCodingTool（使用量記録対応ツールのみ） */
+const TRACKING_TOOL_MAP: Partial<Record<string, AiCodingTool>> = {
+  "claude-code": "claude-code",
+  "codex-cli": "codex",
+};
+
+/** 使用量記録が有効なツールに表示するバッジ（フック安定化のためサブコンポーネント化） */
+const TrackingBadge = ({
+  tool,
+}: {
+  tool: AiCodingTool;
+}): JSX.Element | null => {
+  const { settings } = useAiCodingToolSettings(tool);
+  if (!settings?.enabled) return null;
+  return (
+    <span className="flex items-center gap-0.5 rounded-full bg-[var(--badge-success-bg,#dcfce7)] px-1.5 py-0.5 text-[9px] font-medium text-[var(--badge-success-text,#16a34a)]">
+      <Activity size={8} />
+      記録中
+    </span>
+  );
+};
 
 const AUTO_WRITE_SUPPORTED_IDS = new Set([
   "claude-desktop",
@@ -97,8 +123,15 @@ export const AiIntegrations = (): JSX.Element => {
                 )}
               </div>
               <div>
-                <div className="text-sm font-medium text-[var(--text-primary)]">
-                  {client.name}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-medium text-[var(--text-primary)]">
+                    {client.name}
+                  </span>
+                  {TRACKING_TOOL_MAP[client.id] !== undefined && (
+                    <TrackingBadge
+                      tool={TRACKING_TOOL_MAP[client.id] as AiCodingTool}
+                    />
+                  )}
                 </div>
                 <div className="mt-0.5 text-[10px] text-[var(--text-subtle)]">
                   {supported ? "自動書き込み対応" : "近日対応予定"}
