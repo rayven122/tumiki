@@ -152,7 +152,21 @@ export const createUpstreamClient = (
       lastError = message;
       logger.error(`MCPサーバー "${config.name}" への接続に失敗: ${message}`);
 
-      // クリーンアップ
+      // クリーンアップ: transport.close() で spawn 済みの子プロセスを確実に終了させる。
+      // close() を呼ばないと、ハンドシェイク失敗でも子プロセスが生き続けてゾンビになる。
+      if (transport) {
+        transport.close().catch((closeError: unknown) => {
+          logger.warn(
+            `MCPサーバー "${config.name}" の transport.close() でエラー`,
+            {
+              error:
+                closeError instanceof Error
+                  ? closeError.message
+                  : String(closeError),
+            },
+          );
+        });
+      }
       client = null;
       transport = null;
 

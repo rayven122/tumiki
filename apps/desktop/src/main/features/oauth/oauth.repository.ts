@@ -122,6 +122,17 @@ export const updateSecretCredentials = async (
   });
 };
 
+// secretId で credentials のみを取得する。resolveOAuthHeaders 等のヘッダー解決経路から呼ばれる
+export const findCredentialsBySecretId = async (
+  db: DbClient,
+  secretId: number,
+): Promise<{ credentials: string } | null> => {
+  return db.mcpSecret.findUnique({
+    where: { id: secretId },
+    select: { credentials: true },
+  });
+};
+
 /**
  * MCPサーバーURLでOAuthClientを削除（DCR再登録用）
  */
