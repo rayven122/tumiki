@@ -73,12 +73,7 @@ const loadOAuthClientBundle = async (
 
 const credentialsSchema = z.record(z.string(), z.string());
 
-/**
- * 実行中のリフレッシュ Promise を secretId 単位でキャッシュし、同一 secret の並行リフレッシュを防止する。
- * 現在は secretId が MCP サーバーごとに一意なためキーは secretId のみで十分。
- * 将来 secretId を複数サーバーで共有する設計に変わった場合は、
- * キーを `${secretId}:${serverUrl}` のような複合キーに変更する必要がある。
- */
+/** 実行中のリフレッシュ Promise を secretId 単位でキャッシュし、同一 secret の並行リフレッシュを防止する */
 const inflightRefreshes = new Map<
   number,
   Promise<Record<string, string> | null>
@@ -116,7 +111,10 @@ export const resolveOAuthHeaders = async (
   serverUrl: string,
 ): Promise<Record<string, string>> => {
   const db = await getDb();
-  const secret = await oauthRepository.findCredentialsBySecretId(db, secretId);
+  const secret = await db.mcpSecret.findUnique({
+    where: { id: secretId },
+    select: { credentials: true },
+  });
   if (!secret) {
     logger.warn("McpSecret が見つかりません", { secretId });
     return {};
