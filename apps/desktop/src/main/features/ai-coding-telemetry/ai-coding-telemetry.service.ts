@@ -20,9 +20,18 @@ import type {
 const MAX_TOOL_NAME_LENGTH = 128;
 const MAX_RECORD_FIELD_LENGTH = 255;
 const MAX_ATTRIBUTES_LENGTH = 4096;
+const MAX_RECORDS_PER_REQUEST = 1000;
 
 const truncateString = (value: string, maxLength: number): string =>
   value.length > maxLength ? value.slice(0, maxLength) : value;
+
+const parseBigIntSafe = (value: string): bigint => {
+  try {
+    return BigInt(value);
+  } catch {
+    return 0n;
+  }
+};
 
 // OTLP JSON の resource.attributes から service.name を安全に抽出する
 const extractToolName = (resourceMetric: unknown): string => {
@@ -46,25 +55,42 @@ const extractToolName = (resourceMetric: unknown): string => {
   return "unknown";
 };
 
+const getEnabledToolMap = async (): Promise<Record<AiCodingTool, boolean>> => {
+  const store = await getAppStore();
+  const tools = store.get("aiCodingTelemetry")?.tools ?? {};
+  return {
+    "claude-code": tools["claude-code"]?.enabled === true,
+    codex: tools.codex?.enabled === true,
+  };
+};
+
 // OTLP dataPoint から数値を安全に抽出する
 const extractDataPointValue = (dataPoint: unknown): number => {
   if (typeof dataPoint !== "object" || dataPoint === null) return 0;
   const dp = dataPoint as Record<string, unknown>;
-  const v = dp.asDouble ?? dp.asInt;
-  return typeof v === "number" ? v : 0;
+  if (typeof dp.asDouble === "number") return dp.asDouble;
+  if (typeof dp.asInt === "number") return dp.asInt;
+  if (typeof dp.asInt === "string") {
+    const value = Number(dp.asInt);
+    return Number.isFinite(value) ? value : 0;
+  }
+  return 0;
 };
 
 // OTLP dataPoint の attributes を JSON 文字列で返す
-const extractAttributes = (dataPoint: unknown): string | undefined => {
-  if (typeof dataPoint !== "object" || dataPoint === null) return undefined;
-  const dp = dataPoint as Record<string, unknown>;
-  if (!Array.isArray(dp.attributes) || dp.attributes.length === 0)
-    return undefined;
+const stringifyAttributes = (attributes: unknown): string | undefined => {
+  if (!Array.isArray(attributes) || attributes.length === 0) return undefined;
   try {
-    return truncateString(JSON.stringify(dp.attributes), MAX_ATTRIBUTES_LENGTH);
+    return truncateString(JSON.stringify(attributes), MAX_ATTRIBUTES_LENGTH);
   } catch {
     return undefined;
   }
+};
+
+const extractAttributes = (dataPoint: unknown): string | undefined => {
+  if (typeof dataPoint !== "object" || dataPoint === null) return undefined;
+  const dp = dataPoint as Record<string, unknown>;
+  return stringifyAttributes(dp.attributes);
 };
 
 // OTLP /v1/metrics ペイロードを解析して DB に保存する
@@ -74,19 +100,25 @@ export const storeOtlpMetrics = async (body: unknown): Promise<void> => {
   if (!Array.isArray(b.resourceMetrics)) return;
 
   const metrics: MetricRecord[] = [];
+  const enabledTools = await getEnabledToolMap();
 
   for (const rm of b.resourceMetrics) {
+    if (metrics.length >= MAX_RECORDS_PER_REQUEST) break;
     if (typeof rm !== "object" || rm === null) continue;
     const tool = extractToolName(rm);
+    if (!isAiCodingTool(tool)) continue;
+    if (!enabledTools[tool]) continue;
     const scopeMetrics = (rm as Record<string, unknown>).scopeMetrics;
     if (!Array.isArray(scopeMetrics)) continue;
 
     for (const sm of scopeMetrics) {
+      if (metrics.length >= MAX_RECORDS_PER_REQUEST) break;
       if (typeof sm !== "object" || sm === null) continue;
       const smMetrics = (sm as Record<string, unknown>).metrics;
       if (!Array.isArray(smMetrics)) continue;
 
       for (const metric of smMetrics) {
+        if (metrics.length >= MAX_RECORDS_PER_REQUEST) break;
         if (typeof metric !== "object" || metric === null) continue;
         const m = metric as Record<string, unknown>;
         const metricName =
@@ -104,6 +136,7 @@ export const storeOtlpMetrics = async (body: unknown): Promise<void> => {
         if (!Array.isArray(dataPoints)) continue;
 
         for (const dp of dataPoints) {
+          if (metrics.length >= MAX_RECORDS_PER_REQUEST) break;
           metrics.push({
             tool,
             metricName,
@@ -127,20 +160,26 @@ export const storeOtlpTraces = async (body: unknown): Promise<void> => {
   if (!Array.isArray(b.resourceSpans)) return;
 
   const traces: TraceRecord[] = [];
+  const enabledTools = await getEnabledToolMap();
 
   for (const rs of b.resourceSpans) {
+    if (traces.length >= MAX_RECORDS_PER_REQUEST) break;
     if (typeof rs !== "object" || rs === null) continue;
     const tool = extractToolName(rs);
+    if (!isAiCodingTool(tool)) continue;
+    if (!enabledTools[tool]) continue;
     const scopeSpans = (rs as Record<string, unknown>).scopeSpans;
     if (!Array.isArray(scopeSpans)) continue;
 
     for (const ss of scopeSpans) {
+      if (traces.length >= MAX_RECORDS_PER_REQUEST) break;
       if (typeof ss !== "object" || ss === null) continue;
       const spans = (ss as Record<string, unknown>).spans;
       if (!Array.isArray(spans)) continue;
 
       for (const span of spans) {
         if (typeof span !== "object" || span === null) continue;
+        if (traces.length >= MAX_RECORDS_PER_REQUEST) break;
         const s = span as Record<string, unknown>;
         const traceId =
           typeof s.traceId === "string"
@@ -153,11 +192,11 @@ export const storeOtlpTraces = async (body: unknown): Promise<void> => {
         // OTLP の時刻は Unix ナノ秒の文字列
         const startNs =
           typeof s.startTimeUnixNano === "string"
-            ? BigInt(s.startTimeUnixNano)
+            ? parseBigIntSafe(s.startTimeUnixNano)
             : 0n;
         const endNs =
           typeof s.endTimeUnixNano === "string"
-            ? BigInt(s.endTimeUnixNano)
+            ? parseBigIntSafe(s.endTimeUnixNano)
             : 0n;
         const durationMs = Number((endNs - startNs) / 1_000_000n);
         traces.push({
@@ -165,13 +204,7 @@ export const storeOtlpTraces = async (body: unknown): Promise<void> => {
           traceId,
           spanName,
           durationMs: Math.max(0, durationMs),
-          attributes:
-            Array.isArray(s.attributes) && s.attributes.length > 0
-              ? truncateString(
-                  JSON.stringify(s.attributes),
-                  MAX_ATTRIBUTES_LENGTH,
-                )
-              : undefined,
+          attributes: stringifyAttributes(s.attributes),
         });
       }
     }
@@ -213,7 +246,7 @@ export const applyToolSettings = async (
       tools: {
         ...current.tools,
         [input.tool]: {
-          ...(current.tools[input.tool] ?? { enabled: true }),
+          ...(current.tools[input.tool] ?? { enabled: false }),
           appliedAt: new Date().toISOString(),
           appliedPort: input.port,
         },
@@ -300,7 +333,7 @@ export const autoReapplyMismatchedPorts = async (
         tools: {
           ...latest.tools,
           [tool]: {
-            ...(latest.tools[tool] ?? { enabled: true }),
+            ...(latest.tools[tool] ?? { enabled: false }),
             appliedAt: new Date().toISOString(),
             appliedPort: currentPort,
           },

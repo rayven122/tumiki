@@ -41,12 +41,21 @@ const TrackingSection = ({
 }): JSX.Element => {
   const { settings, isLoading, refresh } = useAiCodingToolSettings(tool);
   const [isApplying, setIsApplying] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
 
   const handleToggle = (): void => {
+    if (isToggling) return;
+    setIsToggling(true);
     const newEnabled = !(settings?.enabled ?? false);
     void window.electronAPI.aiCodingTelemetry
       .saveToolEnabled(tool, newEnabled)
-      .then(() => refresh());
+      .then(() => refresh())
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        toast.error(`使用量記録の設定変更に失敗しました: ${message}`);
+        refresh();
+      })
+      .finally(() => setIsToggling(false));
   };
 
   const handleApply = (): void => {
@@ -77,19 +86,19 @@ const TrackingSection = ({
   return (
     <div className="mb-5">
       {/* セクションヘッダー */}
-      <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-[var(--text-primary)]">
-        <Activity size={12} className="text-[var(--text-subtle)]" />
+      <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-gray-800 dark:text-white">
+        <Activity size={12} className="text-gray-400 dark:text-zinc-500" />
         使用量の記録
       </div>
-      <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-app)] p-3">
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
         {/* トグル行 */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs font-medium text-[var(--text-primary)]">
+            <p className="text-xs font-medium text-gray-900 dark:text-white">
               トークン数・API呼び出し回数を収集
             </p>
             {settings?.appliedAt && (
-              <p className="mt-0.5 flex items-center gap-1 text-[10px] text-[var(--badge-success-text,#16a34a)]">
+              <p className="mt-0.5 flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400">
                 <Check size={10} />
                 連携済み{" "}
                 {new Date(settings.appliedAt).toLocaleDateString("ja-JP")}
@@ -104,14 +113,15 @@ const TrackingSection = ({
               role="switch"
               aria-checked={settings?.enabled ?? false}
               aria-label="使用量記録を有効化"
+              disabled={isToggling}
               onClick={handleToggle}
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center disabled:cursor-not-allowed disabled:opacity-60"
             >
               <div
                 className={`relative h-5 w-9 rounded-full transition-colors ${
                   settings?.enabled
-                    ? "bg-[var(--badge-success-text)]"
-                    : "bg-[var(--text-subtle)]"
+                    ? "bg-emerald-500"
+                    : "bg-gray-300 dark:bg-zinc-600"
                 }`}
               >
                 <div
@@ -128,7 +138,7 @@ const TrackingSection = ({
           type="button"
           onClick={handleApply}
           disabled={isApplying || port === 0}
-          className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-[var(--border-subtle)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] transition hover:bg-[var(--bg-card-hover)] disabled:opacity-50"
+          className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-100 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-900"
         >
           {isApplying ? (
             <Loader2 size={12} className="animate-spin" />
@@ -138,7 +148,7 @@ const TrackingSection = ({
           設定ファイルに自動書き込み
         </button>
         {port === 0 && (
-          <p className="mt-1 text-center text-[10px] text-[var(--text-subtle)]">
+          <p className="mt-1 text-center text-[10px] text-gray-400 dark:text-zinc-500">
             アプリを再起動すると受信サーバーが起動します
           </p>
         )}

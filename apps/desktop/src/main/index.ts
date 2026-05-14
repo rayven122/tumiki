@@ -333,6 +333,7 @@ if (isMcpProxyMode) {
   let mcpOAuthManager: McpOAuthManager | null = null;
   // OTLP レシーバーのサーバーインスタンス（will-quit で close するため外側スコープで保持）
   let otlpHttpServer: import("http").Server | null = null;
+  let telemetryPruneInterval: ReturnType<typeof setInterval> | null = null;
 
   /**
    * 管理サーバーURLとOIDC設定からOAuthManagerを初期化（or 再初期化）
@@ -636,10 +637,17 @@ if (isMcpProxyMode) {
       setupAiCodingTelemetryIpc();
 
       // 90 日より古い AI コーディングテレメトリを削除（SQLite 肥大化防止）。
-      // 起動ブロックしないよう fire-and-forget で実行する。
-      void pruneOldTelemetry().catch((error: unknown) => {
-        logger.error("Failed to prune old AI coding telemetry", { error });
-      });
+      // 起動ブロックしないよう fire-and-forget で実行し、長時間起動に備えて日次でも実行する。
+      const runTelemetryPrune = (): void => {
+        void pruneOldTelemetry().catch((error: unknown) => {
+          logger.error("Failed to prune old AI coding telemetry", { error });
+        });
+      };
+      runTelemetryPrune();
+      telemetryPruneInterval = setInterval(
+        runTelemetryPrune,
+        24 * 60 * 60 * 1000,
+      );
 
       createWindow();
 
@@ -690,6 +698,10 @@ if (isMcpProxyMode) {
     event.preventDefault();
     const oauthManager = getOAuthManager();
     oauthManager?.stopAutoRefresh();
+    if (telemetryPruneInterval) {
+      clearInterval(telemetryPruneInterval);
+      telemetryPruneInterval = null;
+    }
     // OTLP サーバーのクローズを Promise でラップして DB クローズ前に完了を保証する
     const closeOtlpServer = (): Promise<void> =>
       new Promise((resolve) => {

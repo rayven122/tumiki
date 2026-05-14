@@ -24,10 +24,11 @@ const sendRequest = (
   path: string,
   body: string,
   method = "POST",
+  headers?: http.OutgoingHttpHeaders,
 ): Promise<{ status: number; body: string }> =>
   new Promise((resolve, reject) => {
     const req = http.request(
-      { hostname: "127.0.0.1", port, path, method },
+      { hostname: "127.0.0.1", port, path, method, headers },
       (res) => {
         let data = "";
         res.on("data", (chunk: unknown) => {
@@ -89,10 +90,31 @@ describe("HTTP メソッドの検証", () => {
   });
 });
 
+describe("Host ヘッダーの検証", () => {
+  test("Host が偽装されてもローカルソケットからの接続は処理する", async () => {
+    const res = await sendRequest(testPort, "/v1/metrics", "{}", "POST", {
+      Host: "example.com",
+    });
+
+    expect(res.status).toStrictEqual(200);
+    expect(res.body).toStrictEqual("{}");
+    expect(service.storeOtlpMetrics).toHaveBeenCalledOnce();
+    expect(service.storeOtlpTraces).not.toHaveBeenCalled();
+  });
+});
+
 describe("エンドポイントルーティング", () => {
   test("/v1/metrics は storeOtlpMetrics を呼び出す", async () => {
     const payload = JSON.stringify({ resourceMetrics: [] });
     await sendRequest(testPort, "/v1/metrics", payload);
+    expect(service.storeOtlpMetrics).toHaveBeenCalledOnce();
+    expect(service.storeOtlpTraces).not.toHaveBeenCalled();
+  });
+
+  test("/v1/metrics はクエリ文字列付きでも storeOtlpMetrics を呼び出す", async () => {
+    const payload = JSON.stringify({ resourceMetrics: [] });
+    const res = await sendRequest(testPort, "/v1/metrics?timeout=10", payload);
+    expect(res.status).toStrictEqual(200);
     expect(service.storeOtlpMetrics).toHaveBeenCalledOnce();
     expect(service.storeOtlpTraces).not.toHaveBeenCalled();
   });
@@ -102,6 +124,18 @@ describe("エンドポイントルーティング", () => {
     await sendRequest(testPort, "/v1/traces", payload);
     expect(service.storeOtlpTraces).toHaveBeenCalledOnce();
     expect(service.storeOtlpMetrics).not.toHaveBeenCalled();
+  });
+
+  test("保存処理が失敗した場合は 500 を返す", async () => {
+    vi.mocked(service.storeOtlpMetrics).mockRejectedValueOnce(
+      new Error("DB locked"),
+    );
+    const payload = JSON.stringify({ resourceMetrics: [] });
+
+    const res = await sendRequest(testPort, "/v1/metrics", payload);
+
+    expect(res.status).toStrictEqual(500);
+    expect(res.body).toStrictEqual("{}");
   });
 
   test("未知のパスは 404 を返してサービスを呼ばない", async () => {
@@ -127,9 +161,9 @@ describe("ボディサイズ制限", () => {
     expect(service.storeOtlpMetrics).not.toHaveBeenCalled();
   });
 
-  test("JSON パース失敗時はエラーログを出力して 200 を返す", async () => {
+  test("JSON パース失敗時はエラーログを出力して 400 を返す", async () => {
     const res = await sendRequest(testPort, "/v1/metrics", "invalid json");
-    expect(res.status).toStrictEqual(200);
+    expect(res.status).toStrictEqual(400);
     // エラーが発生してもサービスを呼び出さない
     expect(service.storeOtlpMetrics).not.toHaveBeenCalled();
   });

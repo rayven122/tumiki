@@ -42,7 +42,11 @@ export type ApplyToolSettingsInput = {
 export type ApplyToolSettingsResult = {
   success: boolean;
   configPath: string | null;
-  errorCode?: "UNSUPPORTED_PLATFORM" | "WRITE_FAILED" | "UNKNOWN";
+  errorCode?:
+    | "UNSUPPORTED_PLATFORM"
+    | "INVALID_PORT"
+    | "WRITE_FAILED"
+    | "UNKNOWN";
 };
 
 // ツール設定取得の結果

@@ -25,7 +25,7 @@ const TrackingBadge = ({
   const { settings } = useAiCodingToolSettings(tool);
   if (!settings?.enabled) return null;
   return (
-    <span className="flex items-center gap-0.5 rounded-full bg-[var(--badge-success-bg,#dcfce7)] px-1.5 py-0.5 text-[9px] font-medium text-[var(--badge-success-text,#16a34a)]">
+    <span className="flex items-center gap-0.5 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-medium text-emerald-600 dark:bg-emerald-400/10 dark:text-emerald-400">
       <Activity size={8} />
       記録中
     </span>
@@ -89,6 +89,7 @@ export const AiIntegrations = (): JSX.Element => {
         {AI_CLIENTS.map((client) => {
           const logo = client.logoPath?.(theme);
           const supported = AUTO_WRITE_SUPPORTED_IDS.has(client.id);
+          const trackingTool = TRACKING_TOOL_MAP[client.id];
           return (
             <button
               key={client.id}
@@ -127,10 +128,8 @@ export const AiIntegrations = (): JSX.Element => {
                   <span className="text-sm font-medium text-gray-900 dark:text-white">
                     {client.name}
                   </span>
-                  {TRACKING_TOOL_MAP[client.id] !== undefined && (
-                    <TrackingBadge
-                      tool={TRACKING_TOOL_MAP[client.id] as AiCodingTool}
-                    />
+                  {trackingTool !== undefined && (
+                    <TrackingBadge tool={trackingTool} />
                   )}
                 </div>
                 <div className="mt-0.5 text-[10px] text-gray-400 dark:text-zinc-600">

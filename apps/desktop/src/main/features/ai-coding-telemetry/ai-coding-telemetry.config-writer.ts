@@ -1,4 +1,5 @@
 import { promises as fs } from "node:fs";
+import { randomBytes } from "node:crypto";
 import os from "node:os";
 import path from "node:path";
 import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
@@ -28,12 +29,15 @@ const isFileNotFoundError = (error: unknown): boolean => {
   );
 };
 
+const isValidPort = (port: number): boolean =>
+  Number.isInteger(port) && port >= 1 && port <= 65535;
+
 // 一時ファイルを使ったアトミック書き込み
 const writeAtomic = async (
   filePath: string,
   content: string,
 ): Promise<void> => {
-  const tmpPath = `${filePath}.tmp.${String(Date.now())}.${String(process.pid)}`;
+  const tmpPath = `${filePath}.tmp.${String(Date.now())}.${randomBytes(4).toString("hex")}`;
   await fs.writeFile(tmpPath, content, "utf-8");
   try {
     await fs.rename(tmpPath, filePath);
@@ -109,7 +113,14 @@ const applyToCodex = async (port: number): Promise<ApplyToolSettingsResult> => {
       throw error;
     });
     if (content !== undefined) {
-      existing = parseToml(content) as Record<string, unknown>;
+      const parsed: unknown = parseToml(content);
+      if (
+        typeof parsed !== "object" ||
+        parsed === null ||
+        Array.isArray(parsed)
+      )
+        throw new Error("Codex config must be a TOML object");
+      existing = parsed as Record<string, unknown>;
     }
 
     // 既存の telemetry セクションをマージする
@@ -142,6 +153,13 @@ export const applyOtlpToTool = async (
   tool: AiCodingTool,
   port: number,
 ): Promise<ApplyToolSettingsResult> => {
+  if (!isValidPort(port)) {
+    return {
+      success: false,
+      configPath: null,
+      errorCode: "INVALID_PORT",
+    };
+  }
   if (tool === "claude-code") return applyToClaudeCode(port);
   if (tool === "codex") return applyToCodex(port);
   const exhaustive: never = tool;

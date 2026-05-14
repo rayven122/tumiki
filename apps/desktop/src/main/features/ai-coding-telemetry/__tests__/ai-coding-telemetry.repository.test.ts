@@ -138,11 +138,11 @@ describe("getDailyUsage", () => {
     const result = await repository.getDailyUsage(mockDb, since);
 
     expect(mockQueryRaw).toHaveBeenCalledOnce();
-    const [[queryParts, timezoneOffsetSec, sinceMs]] = mockQueryRaw.mock
-      .calls as [[TemplateStringsArray, number, bigint]];
-    expect(queryParts.join("?")).toContain('("recordedAt" / 1000) + ?');
-    expect(timezoneOffsetSec).toStrictEqual(
-      -new Date().getTimezoneOffset() * 60,
+    const [[queryParts, sinceMs]] = mockQueryRaw.mock.calls as [
+      [TemplateStringsArray, bigint],
+    ];
+    expect(queryParts.join("?")).toContain(
+      `"recordedAt" / 1000, 'unixepoch', 'localtime'`,
     );
     expect(sinceMs).toStrictEqual(BigInt(since.getTime()));
     expect(result).toStrictEqual([
@@ -175,6 +175,21 @@ describe("getDailyUsage", () => {
 
     expect(result.at(0)?.totalValue).toStrictEqual(9999);
     expect(typeof result.at(0)?.totalValue).toStrictEqual("number");
+  });
+
+  test("totalValue が数値化できない場合は 0 を返す", async () => {
+    mockQueryRaw.mockResolvedValue([
+      {
+        date: "2026-01-01",
+        tool: "claude-code",
+        metricName: "tokens_total",
+        totalValue: undefined,
+      },
+    ]);
+
+    const result = await repository.getDailyUsage(mockDb, new Date());
+
+    expect(result.at(0)?.totalValue).toStrictEqual(0);
   });
 
   test("データがない場合は空配列を返す", async () => {

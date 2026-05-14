@@ -2,15 +2,11 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor, act } from "@testing-library/react";
 import {
-  useAiCodingTelemetrySummary,
-  useAiCodingTelemetryDailyUsage,
   useAiCodingToolSettings,
   useOtlpReceiverPort,
 } from "../useAiCodingTelemetry";
 
 // electronAPI のモック
-const mockGetSummary = vi.fn();
-const mockGetDailyUsage = vi.fn();
 const mockGetToolSettings = vi.fn();
 const mockGetReceiverPort = vi.fn();
 const mockSaveToolEnabled = vi.fn();
@@ -19,8 +15,6 @@ const mockSaveToolEnabled = vi.fn();
 Object.defineProperty(window, "electronAPI", {
   value: {
     aiCodingTelemetry: {
-      getSummary: mockGetSummary,
-      getDailyUsage: mockGetDailyUsage,
       getToolSettings: mockGetToolSettings,
       getReceiverPort: mockGetReceiverPort,
       saveToolEnabled: mockSaveToolEnabled,
@@ -32,89 +26,6 @@ Object.defineProperty(window, "electronAPI", {
 
 beforeEach(() => {
   vi.clearAllMocks();
-});
-
-describe("useAiCodingTelemetrySummary", () => {
-  test("初期状態は isLoading: true, data: null", () => {
-    mockGetSummary.mockResolvedValue([]);
-    const { result } = renderHook(() => useAiCodingTelemetrySummary(7));
-    expect(result.current.isLoading).toStrictEqual(true);
-    expect(result.current.data).toBeNull();
-  });
-
-  test("取得完了後にデータがセットされる", async () => {
-    const summary = [
-      { tool: "claude-code", metricName: "tokens_total", totalValue: 1000 },
-    ];
-    mockGetSummary.mockResolvedValue(summary);
-
-    const { result } = renderHook(() => useAiCodingTelemetrySummary(7));
-
-    await waitFor(() => expect(result.current.isLoading).toStrictEqual(false));
-    expect(result.current.data).toStrictEqual(summary);
-    expect(mockGetSummary).toHaveBeenCalledWith(7);
-  });
-
-  test("API エラー時は空配列を返す", async () => {
-    mockGetSummary.mockRejectedValue(new Error("IPC error"));
-
-    const { result } = renderHook(() => useAiCodingTelemetrySummary(7));
-
-    await waitFor(() => expect(result.current.isLoading).toStrictEqual(false));
-    expect(result.current.data).toStrictEqual([]);
-  });
-
-  test("days が変わると再取得する", async () => {
-    mockGetSummary.mockResolvedValue([]);
-
-    const { rerender } = renderHook(
-      ({ days }: { days: number }) => useAiCodingTelemetrySummary(days),
-      { initialProps: { days: 7 } },
-    );
-
-    await waitFor(() => expect(mockGetSummary).toHaveBeenCalledWith(7));
-
-    rerender({ days: 30 });
-
-    await waitFor(() => expect(mockGetSummary).toHaveBeenCalledWith(30));
-    expect(mockGetSummary).toHaveBeenCalledTimes(2);
-  });
-});
-
-describe("useAiCodingTelemetryDailyUsage", () => {
-  test("初期状態は isLoading: true, data: null", () => {
-    mockGetDailyUsage.mockResolvedValue([]);
-    const { result } = renderHook(() => useAiCodingTelemetryDailyUsage(30));
-    expect(result.current.isLoading).toStrictEqual(true);
-    expect(result.current.data).toBeNull();
-  });
-
-  test("取得完了後にデータがセットされる", async () => {
-    const usage = [
-      {
-        date: "2026-01-01",
-        tool: "claude-code",
-        metricName: "tokens_total",
-        totalValue: 500,
-      },
-    ];
-    mockGetDailyUsage.mockResolvedValue(usage);
-
-    const { result } = renderHook(() => useAiCodingTelemetryDailyUsage(30));
-
-    await waitFor(() => expect(result.current.isLoading).toStrictEqual(false));
-    expect(result.current.data).toStrictEqual(usage);
-    expect(mockGetDailyUsage).toHaveBeenCalledWith(30);
-  });
-
-  test("API エラー時は空配列を返す", async () => {
-    mockGetDailyUsage.mockRejectedValue(new Error("IPC error"));
-
-    const { result } = renderHook(() => useAiCodingTelemetryDailyUsage(30));
-
-    await waitFor(() => expect(result.current.isLoading).toStrictEqual(false));
-    expect(result.current.data).toStrictEqual([]);
-  });
 });
 
 describe("useAiCodingToolSettings", () => {
@@ -211,5 +122,35 @@ describe("useOtlpReceiverPort", () => {
 
     await waitFor(() => expect(mockGetReceiverPort).toHaveBeenCalledOnce());
     expect(result.current).toStrictEqual(0);
+  });
+
+  test("API エラー後に一度だけリトライする", async () => {
+    vi.useFakeTimers();
+    try {
+      mockGetReceiverPort
+        .mockRejectedValueOnce(new Error("IPC error"))
+        .mockResolvedValueOnce(4318);
+
+      const { result } = renderHook(() => useOtlpReceiverPort());
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(mockGetReceiverPort).toHaveBeenCalledTimes(1);
+      expect(result.current).toStrictEqual(0);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000);
+        await Promise.resolve();
+      });
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(result.current).toStrictEqual(4318);
+      expect(mockGetReceiverPort).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

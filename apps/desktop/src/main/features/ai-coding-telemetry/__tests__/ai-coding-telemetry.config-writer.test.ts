@@ -206,6 +206,18 @@ describe("applyOtlpToTool - codex", () => {
     expect(mockWriteFile).not.toHaveBeenCalled();
   });
 
+  test("TOML パース結果がオブジェクトでない場合は既存ファイルを上書きしない", async () => {
+    mockReadFile.mockResolvedValue("invalid = true");
+    mockParseToml.mockReturnValue(null);
+
+    const result = await applyOtlpToTool("codex", 4318);
+
+    expect(result.success).toStrictEqual(false);
+    expect(result.errorCode).toStrictEqual("WRITE_FAILED");
+    expect(mockStringifyToml).not.toHaveBeenCalled();
+    expect(mockWriteFile).not.toHaveBeenCalled();
+  });
+
   test("mkdir 失敗時は success: false を返す", async () => {
     mockMkdir.mockRejectedValue(new Error("EACCES"));
 
@@ -217,6 +229,15 @@ describe("applyOtlpToTool - codex", () => {
 });
 
 describe("applyOtlpToTool - 未対応ツール", () => {
+  test("不正なポート番号は INVALID_PORT を返す", async () => {
+    const result = await applyOtlpToTool("claude-code", 0);
+
+    expect(result.success).toStrictEqual(false);
+    expect(result.errorCode).toStrictEqual("INVALID_PORT");
+    expect(result.configPath).toBeNull();
+    expect(mockWriteFile).not.toHaveBeenCalled();
+  });
+
   test("未対応のツール名は UNSUPPORTED_PLATFORM を返す", async () => {
     // @ts-expect-error テスト用に不正な値を渡す
     const result = await applyOtlpToTool("unknown-tool", 4318);

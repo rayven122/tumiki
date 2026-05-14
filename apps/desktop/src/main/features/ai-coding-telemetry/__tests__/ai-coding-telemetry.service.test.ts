@@ -29,7 +29,12 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getDb).mockResolvedValue(mockDb);
   vi.mocked(getAppStore).mockResolvedValue(mockStore);
-  vi.mocked(mockStore.get).mockReturnValue(undefined);
+  vi.mocked(mockStore.get).mockReturnValue({
+    tools: {
+      "claude-code": { enabled: true },
+      codex: { enabled: true },
+    },
+  });
   vi.mocked(repository.storeMetrics).mockResolvedValue(undefined);
   vi.mocked(repository.storeTraces).mockResolvedValue(undefined);
   vi.mocked(repository.getSummary).mockResolvedValue([]);
@@ -108,7 +113,38 @@ describe("storeOtlpMetrics", () => {
     ]);
   });
 
-  test("service.name が存在しない場合は tool が unknown になる", async () => {
+  test("OTLP asInt の文字列値を数値として保存する", async () => {
+    await service.storeOtlpMetrics({
+      resourceMetrics: [
+        {
+          resource: {
+            attributes: [
+              { key: "service.name", value: { stringValue: "claude-code" } },
+            ],
+          },
+          scopeMetrics: [
+            {
+              metrics: [
+                {
+                  name: "claude_code_tokens_total",
+                  sum: { dataPoints: [{ asInt: "1500", attributes: [] }] },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    expect(repository.storeMetrics).toHaveBeenCalledWith(mockDb, [
+      expect.objectContaining({
+        tool: "claude-code",
+        metricName: "claude_code_tokens_total",
+        value: 1500,
+      }),
+    ]);
+  });
+
+  test("service.name が存在しない場合は保存しない", async () => {
     await service.storeOtlpMetrics({
       resourceMetrics: [
         {
@@ -126,20 +162,16 @@ describe("storeOtlpMetrics", () => {
         },
       ],
     });
-    expect(repository.storeMetrics).toHaveBeenCalledWith(mockDb, [
-      expect.objectContaining({ tool: "unknown" }),
-    ]);
+    expect(repository.storeMetrics).not.toHaveBeenCalled();
   });
 
-  test("service.name が長すぎる場合は 128 文字に切り詰める", async () => {
-    const longToolName = "x".repeat(200);
-
+  test("未知の service.name は保存しない", async () => {
     await service.storeOtlpMetrics({
       resourceMetrics: [
         {
           resource: {
             attributes: [
-              { key: "service.name", value: { stringValue: longToolName } },
+              { key: "service.name", value: { stringValue: "unknown-tool" } },
             ],
           },
           scopeMetrics: [
@@ -156,9 +188,37 @@ describe("storeOtlpMetrics", () => {
       ],
     });
 
-    expect(repository.storeMetrics).toHaveBeenCalledWith(mockDb, [
-      expect.objectContaining({ tool: "x".repeat(128) }),
-    ]);
+    expect(repository.storeMetrics).not.toHaveBeenCalled();
+  });
+
+  test("無効化されたツールのメトリクスは保存しない", async () => {
+    vi.mocked(mockStore.get).mockReturnValue({
+      tools: { "claude-code": { enabled: false } },
+    });
+
+    await service.storeOtlpMetrics({
+      resourceMetrics: [
+        {
+          resource: {
+            attributes: [
+              { key: "service.name", value: { stringValue: "claude-code" } },
+            ],
+          },
+          scopeMetrics: [
+            {
+              metrics: [
+                {
+                  name: "claude_code_tokens_total",
+                  sum: { dataPoints: [{ asDouble: 1500 }] },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(repository.storeMetrics).not.toHaveBeenCalled();
   });
 
   test("metric 名と attributes が長すぎる場合は切り詰める", async () => {
@@ -265,6 +325,38 @@ describe("storeOtlpMetrics", () => {
       expect.objectContaining({ attributes: JSON.stringify(attrs) }),
     ]);
   });
+
+  test("1リクエストで保存するメトリクスは1000件までに制限する", async () => {
+    await service.storeOtlpMetrics({
+      resourceMetrics: [
+        {
+          resource: {
+            attributes: [
+              { key: "service.name", value: { stringValue: "claude-code" } },
+            ],
+          },
+          scopeMetrics: [
+            {
+              metrics: [
+                {
+                  name: "tokens",
+                  sum: {
+                    dataPoints: Array.from({ length: 1001 }, () => ({
+                      asDouble: 1,
+                    })),
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    const [[, metrics]] = vi.mocked(repository.storeMetrics).mock
+      .calls as unknown as [[unknown, unknown[]]];
+    expect(metrics).toHaveLength(1000);
+  });
 });
 
 describe("storeOtlpTraces", () => {
@@ -282,7 +374,11 @@ describe("storeOtlpTraces", () => {
     await service.storeOtlpTraces({
       resourceSpans: [
         {
-          resource: { attributes: [] },
+          resource: {
+            attributes: [
+              { key: "service.name", value: { stringValue: "claude-code" } },
+            ],
+          },
           scopeSpans: [{ spans: [] }],
         },
       ],
@@ -366,11 +462,46 @@ describe("storeOtlpTraces", () => {
     ]);
   });
 
+  test("span attributes の JSON 変換に失敗した場合は attributes を保存しない", async () => {
+    await service.storeOtlpTraces({
+      resourceSpans: [
+        {
+          resource: {
+            attributes: [
+              { key: "service.name", value: { stringValue: "claude-code" } },
+            ],
+          },
+          scopeSpans: [
+            {
+              spans: [
+                {
+                  traceId: "abc123",
+                  name: "llm.call",
+                  startTimeUnixNano: "1000000000",
+                  endTimeUnixNano: "2000000000",
+                  attributes: [{ key: "bigint", value: BigInt(1) }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(repository.storeTraces).toHaveBeenCalledWith(mockDb, [
+      expect.objectContaining({ attributes: undefined }),
+    ]);
+  });
+
   test("durationMs が負にならない（endTime < startTime のケース）", async () => {
     await service.storeOtlpTraces({
       resourceSpans: [
         {
-          resource: { attributes: [] },
+          resource: {
+            attributes: [
+              { key: "service.name", value: { stringValue: "claude-code" } },
+            ],
+          },
           scopeSpans: [
             {
               spans: [
@@ -390,6 +521,96 @@ describe("storeOtlpTraces", () => {
     expect(repository.storeTraces).toHaveBeenCalledWith(mockDb, [
       expect.objectContaining({ durationMs: 0 }),
     ]);
+  });
+
+  test("Unix ナノ秒が不正な文字列でも span を保存する", async () => {
+    await service.storeOtlpTraces({
+      resourceSpans: [
+        {
+          resource: {
+            attributes: [
+              { key: "service.name", value: { stringValue: "claude-code" } },
+            ],
+          },
+          scopeSpans: [
+            {
+              spans: [
+                {
+                  traceId: "x",
+                  name: "span",
+                  startTimeUnixNano: "not-a-number",
+                  endTimeUnixNano: "also-invalid",
+                  attributes: [],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    expect(repository.storeTraces).toHaveBeenCalledWith(mockDb, [
+      expect.objectContaining({ durationMs: 0 }),
+    ]);
+  });
+
+  test("無効化されたツールのトレースは保存しない", async () => {
+    vi.mocked(mockStore.get).mockReturnValue({
+      tools: { "claude-code": { enabled: false } },
+    });
+
+    await service.storeOtlpTraces({
+      resourceSpans: [
+        {
+          resource: {
+            attributes: [
+              { key: "service.name", value: { stringValue: "claude-code" } },
+            ],
+          },
+          scopeSpans: [
+            {
+              spans: [
+                {
+                  traceId: "abc123",
+                  name: "llm.call",
+                  startTimeUnixNano: "1000000000",
+                  endTimeUnixNano: "2000000000",
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(repository.storeTraces).not.toHaveBeenCalled();
+  });
+
+  test("1リクエストで保存するトレースは1000件までに制限する", async () => {
+    await service.storeOtlpTraces({
+      resourceSpans: [
+        {
+          resource: {
+            attributes: [
+              { key: "service.name", value: { stringValue: "claude-code" } },
+            ],
+          },
+          scopeSpans: [
+            {
+              spans: Array.from({ length: 1001 }, (_value, index) => ({
+                traceId: `trace-${String(index)}`,
+                name: "llm.call",
+                startTimeUnixNano: "1000000000",
+                endTimeUnixNano: "2000000000",
+              })),
+            },
+          ],
+        },
+      ],
+    });
+
+    const [[, traces]] = vi.mocked(repository.storeTraces).mock
+      .calls as unknown as [[unknown, unknown[]]];
+    expect(traces).toHaveLength(1000);
   });
 });
 
@@ -503,6 +724,10 @@ describe("applyToolSettings", () => {
     });
     expect(result.success).toStrictEqual(true);
     expect(mockStore.set).toHaveBeenCalled();
+    const [[, saved]] = vi.mocked(mockStore.set).mock.calls as unknown as [
+      [string, { tools: { "claude-code": Record<string, unknown> } }],
+    ];
+    expect(saved.tools["claude-code"].enabled).toStrictEqual(false);
   });
 
   test("既存の別ツール設定を保持したまま更新する", async () => {
@@ -538,7 +763,12 @@ describe("applyToolSettings", () => {
         appliedPort: 4318,
       }),
     );
-    expect(saved.tools["claude-code"].appliedPort).toStrictEqual(4318);
+    expect(saved.tools["claude-code"]).toStrictEqual(
+      expect.objectContaining({
+        enabled: false,
+        appliedPort: 4318,
+      }),
+    );
   });
 
   test("config-writer が失敗した場合は electron-store を更新しない", async () => {

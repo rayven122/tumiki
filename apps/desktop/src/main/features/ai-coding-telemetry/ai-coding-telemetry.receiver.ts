@@ -8,6 +8,11 @@ export const OTLP_DEFAULT_PORT = 4318;
 // ボディサイズ上限（10MB）— OTLPペイロードがこれを超えることはほぼないが念のため
 const MAX_BODY_BYTES = 10 * 1024 * 1024;
 
+const isLoopbackAddress = (address: string | undefined): boolean =>
+  address === "127.0.0.1" ||
+  address === "::1" ||
+  address === "::ffff:127.0.0.1";
+
 // 指定ポートでリッスンを試みる。失敗（EADDRINUSE）時は reject する
 const tryListen = (server: http.Server, port: number): Promise<number> =>
   new Promise<number>((resolve, reject) => {
@@ -17,7 +22,13 @@ const tryListen = (server: http.Server, port: number): Promise<number> =>
     };
     const onListening = (): void => {
       server.removeListener("error", onError);
-      const addr = server.address() as { port: number };
+      const addr = server.address();
+      if (!addr || typeof addr === "string") {
+        reject(
+          new Error("OTLP receiver: サーバーアドレスの取得に失敗しました"),
+        );
+        return;
+      }
       resolve(addr.port);
     };
     server.once("error", onError);
@@ -30,10 +41,20 @@ export const startOtlpReceiver = async (
   preferredPort: number = OTLP_DEFAULT_PORT,
 ): Promise<{ server: http.Server; port: number }> => {
   const server = http.createServer((req, res) => {
+    const sendJsonResponse = (statusCode: number): void => {
+      if (res.headersSent || res.writableEnded) return;
+      res.writeHead(statusCode, { "Content-Type": "application/json" });
+      res.end("{}");
+    };
+
+    if (!isLoopbackAddress(req.socket.remoteAddress)) {
+      sendJsonResponse(400);
+      return;
+    }
+
     // POST 以外は即 405 を返す
     if (req.method !== "POST") {
-      res.writeHead(405, { "Content-Type": "application/json" });
-      res.end("{}");
+      sendJsonResponse(405);
       return;
     }
 
@@ -41,16 +62,25 @@ export const startOtlpReceiver = async (
     let bodySize = 0;
     // ボディ超過フラグ — end ハンドラで二重レスポンスを防ぐ
     let bodyExceeded = false;
+    let requestFailed = false;
+
+    req.on("error", (error) => {
+      requestFailed = true;
+      logger.warn("OTLP receiver: リクエストエラーが発生しました", {
+        url: req.url,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      sendJsonResponse(400);
+    });
 
     req.on("data", (chunk: Buffer) => {
-      if (bodyExceeded) return;
+      if (bodyExceeded || requestFailed) return;
       // Buffer.length はバイト数なので MAX_BODY_BYTES と正確に比較できる
       bodySize += chunk.length;
       // ボディサイズ上限を超えたら 413 を返し、残りのリクエストボディを読み捨てる
       if (bodySize > MAX_BODY_BYTES) {
         bodyExceeded = true;
-        res.writeHead(413, { "Content-Type": "application/json" });
-        res.end("{}");
+        sendJsonResponse(413);
         req.resume();
         return;
       }
@@ -59,29 +89,40 @@ export const startOtlpReceiver = async (
 
     req.on("end", () => {
       // ボディ超過で既にレスポンス送信済みの場合は何もしない
-      if (bodyExceeded) return;
+      if (bodyExceeded || requestFailed) return;
       void (async () => {
-        if (req.url !== "/v1/metrics" && req.url !== "/v1/traces") {
-          res.writeHead(404, { "Content-Type": "application/json" });
-          res.end("{}");
+        const pathname = req.url?.split("?")[0] ?? "";
+        if (pathname !== "/v1/metrics" && pathname !== "/v1/traces") {
+          sendJsonResponse(404);
+          return;
+        }
+        let data: unknown;
+        try {
+          const body = Buffer.concat(chunks).toString("utf-8");
+          data = JSON.parse(body);
+        } catch (error) {
+          logger.warn("OTLP receiver: JSON パースエラーが発生しました", {
+            url: req.url,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          sendJsonResponse(400);
           return;
         }
         try {
-          const body = Buffer.concat(chunks).toString("utf-8");
-          const data: unknown = JSON.parse(body);
-          if (req.url === "/v1/metrics") {
+          if (pathname === "/v1/metrics") {
             await service.storeOtlpMetrics(data);
           } else {
             await service.storeOtlpTraces(data);
           }
         } catch (error) {
-          logger.warn("OTLP receiver: リクエスト処理中にエラーが発生しました", {
+          logger.error("OTLP receiver: テレメトリ保存に失敗しました", {
             url: req.url,
             error: error instanceof Error ? error.message : String(error),
           });
+          sendJsonResponse(500);
+          return;
         }
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end("{}");
+        sendJsonResponse(200);
       })();
     });
   });
@@ -92,7 +133,8 @@ export const startOtlpReceiver = async (
     port = await tryListen(server, preferredPort);
     logger.info("OTLP receiver を起動しました", { port });
   } catch (err) {
-    const code = (err as NodeJS.ErrnoException).code;
+    const code =
+      err instanceof Error ? (err as NodeJS.ErrnoException).code : undefined;
     if (code === "EADDRINUSE") {
       logger.warn(
         `OTLP receiver: ポート ${String(preferredPort)} が使用中のため空きポートにフォールバックします`,

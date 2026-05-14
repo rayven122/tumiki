@@ -6,6 +6,11 @@ import type {
   TraceRecord,
 } from "./ai-coding-telemetry.types";
 
+const toFiniteNumber = (value: unknown): number => {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : 0;
+};
+
 // メトリクスを一括保存する
 export const storeMetrics = async (
   db: DbClient,
@@ -70,14 +75,13 @@ export const getDailyUsage = async (
   since: Date,
 ): Promise<DailyUsageItem[]> => {
   // Prisma は SQLite の DateTime をミリ秒 Unix タイムスタンプとして保存するため
-  // strftime では unixepoch 変換（÷1000）とローカルタイムゾーン補正を使い、
+  // strftime では unixepoch 変換（÷1000）と localtime 補正を使い、
   // WHERE 句では BigInt で比較する
   const sinceMs = BigInt(since.getTime());
-  const timezoneOffsetSec = -new Date().getTimezoneOffset() * 60;
   const rows = await db.$queryRaw<
     { date: string; tool: string; metricName: string; totalValue: number }[]
   >`
-    SELECT strftime('%Y-%m-%d', ("recordedAt" / 1000) + ${timezoneOffsetSec}, 'unixepoch') as date,
+    SELECT strftime('%Y-%m-%d', "recordedAt" / 1000, 'unixepoch', 'localtime') as date,
            "tool", "metricName", SUM("value") as totalValue
     FROM   "AiCodingMetric"
     WHERE  "recordedAt" >= ${sinceMs}
@@ -88,6 +92,6 @@ export const getDailyUsage = async (
     date: r.date,
     tool: r.tool,
     metricName: r.metricName,
-    totalValue: Number(r.totalValue),
+    totalValue: toFiniteNumber(r.totalValue),
   }));
 };
