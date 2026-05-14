@@ -286,8 +286,26 @@ if (isMcpProxyMode) {
         await import("./features/oauth/oauth.repository");
 
       // AI 向け再認証 deeplink 入りエラーメッセージ（proactive / reactive 共通フォーマット）
-      const buildReauthErrorMessage = (connectionId: number): string =>
-        `OAuthトークンが失効しています。Tumiki Desktop で再認証してください: [Tumiki Desktopで再認証する](tumiki://reauth?connectionId=${String(connectionId)})`;
+      //
+      // LLM はツールエラーを要約しがちで、Markdown リンクや URL を勝手に短縮する傾向がある。
+      // ユーザーに deeplink をそのまま提示させるため:
+      //   1. URL を独立した行に置く（行内に埋め込まない）
+      //   2. 「原文のまま表示してください」と明示指示
+      //   3. Markdown 形式 + 生 URL を両方併記（クライアントによってどちらが拾われるか不定のため）
+      const buildReauthErrorMessage = (connectionId: number): string => {
+        const url = `tumiki://reauth?connectionId=${String(connectionId)}`;
+        return [
+          "OAUTH_REAUTH_REQUIRED: このMCPサーバーのOAuthトークンが失効しています。",
+          "",
+          "ユーザーへの応答では、要約・省略せず以下のリンクを必ずそのまま提示してください:",
+          "",
+          `[Tumiki Desktopで再認証する](${url})`,
+          "",
+          `URL: ${url}`,
+          "",
+          "上記リンクをクリックすると Tumiki Desktop が起動し、OAuth再認証ブラウザが開きます。再認証が完了するまでこの接続のすべてのツールは利用できません。",
+        ].join("\n");
+      };
 
       // proactive な事前チェック: needsReauth=true のコネクトは upstream に投げず即拒否する。
       // フラグの判定は DB を都度参照する（GUI から再認証成功した瞬間に解除を拾えるようにするため）。
