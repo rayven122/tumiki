@@ -1,7 +1,14 @@
 import type { JSX } from "react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Search, Server, Plus, Trash2, Pencil } from "lucide-react";
+import {
+  Search,
+  Server,
+  Plus,
+  Trash2,
+  Pencil,
+  AlertTriangle,
+} from "lucide-react";
 import { ToggleSwitch } from "../_components/ToggleSwitch";
 import { ConfirmDialog } from "../_components/ConfirmDialog";
 import { EditMcpServerModal } from "../_components/EditMcpServerModal";
@@ -190,15 +197,26 @@ const ServerCard = ({
               <Server size={18} className="text-gray-500 dark:text-zinc-500" />
             </div>
           )}
-          <span
-            className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-medium ${status.badgeClass}`}
-          >
+          <div className="flex items-center gap-1">
+            {server.needsReauth && (
+              <span
+                className="flex items-center gap-1 rounded bg-red-500/15 px-1.5 py-0.5 text-[9px] font-medium text-red-400"
+                title="OAuth再認証が必要です"
+              >
+                <AlertTriangle size={9} aria-hidden="true" />
+                再認証
+              </span>
+            )}
             <span
-              aria-hidden="true"
-              className="h-1.5 w-1.5 rounded-full bg-current"
-            />
-            {status.label}
-          </span>
+              className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-medium ${status.badgeClass}`}
+            >
+              <span
+                aria-hidden="true"
+                className="h-1.5 w-1.5 rounded-full bg-current"
+              />
+              {status.label}
+            </span>
+          </div>
         </div>
 
         {/* サーバー名 */}

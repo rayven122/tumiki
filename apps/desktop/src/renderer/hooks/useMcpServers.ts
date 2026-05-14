@@ -9,6 +9,8 @@ const POLLING_INTERVAL_MS = 5000;
 export type McpServerWithRuntime = McpServerItem & {
   /** サーバー全体のツール総数（全接続のtoolCount合算） */
   toolCount: number;
+  /** 配下のいずれかの接続で needsReauth=true なら true（カード上のバッジ用） */
+  needsReauth: boolean;
 };
 
 export const useMcpServers = () => {
@@ -27,6 +29,7 @@ export const useMcpServers = () => {
             (sum, conn) => sum + conn.toolCount,
             0,
           ),
+          needsReauth: server.connections.some((conn) => conn.needsReauth),
         })),
       );
     } catch (error) {

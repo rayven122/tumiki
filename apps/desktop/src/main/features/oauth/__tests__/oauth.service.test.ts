@@ -24,6 +24,15 @@ vi.mock("../oauth.loopback");
 vi.mock("../oauth.repository");
 vi.mock("../../mcp-server-list/mcp.service");
 vi.mock("../../mcp-server-list/mcp.repository");
+vi.mock("../../mcp-proxy/mcp-proxy.service", () => ({
+  fetchToolsForConnection: vi.fn(),
+  ToolFetchError: class ToolFetchError extends Error {
+    constructor(message: string) {
+      super(message);
+      this.name = "ToolFetchError";
+    }
+  },
+}));
 vi.mock("../../../shared/profile-dispatch");
 
 import { shell } from "electron";
@@ -41,6 +50,7 @@ import { parseOAuthCallback } from "../oauth.protocol";
 import { startLoopbackServer, type LoopbackServer } from "../oauth.loopback";
 import * as oauthRepository from "../oauth.repository";
 import * as mcpRepository from "../../mcp-server-list/mcp.repository";
+import { fetchToolsForConnection } from "../../mcp-proxy/mcp-proxy.service";
 import {
   createFromCatalog,
   createFromManagerCatalog,
@@ -470,6 +480,8 @@ describe("oauth.service", () => {
 
     beforeEach(() => {
       vi.mocked(encryptToken).mockResolvedValue("encrypted-credentials");
+      // tools/list 検証はデフォルト成功にする。失敗ケースは個別に上書きする。
+      vi.mocked(fetchToolsForConnection).mockResolvedValue([]);
     });
 
     test("OAuthコネクトの再認証でキャッシュ済みクライアントを再利用し既存Secretを更新する", async () => {
@@ -576,6 +588,43 @@ describe("oauth.service", () => {
       await expect(
         manager.reauthenticateConnection({ connectionId: 7 }),
       ).rejects.toThrow("OAuth認証にはサーバーURLが必要です");
+    });
+
+    test("tools/list 検証に失敗したら markSecretNeedsReauth を呼んでエラーをスローする", async () => {
+      vi.mocked(startLoopbackServer).mockResolvedValueOnce(buildLoopback());
+      vi.mocked(
+        mcpRepository.findConnectionByIdWithServer,
+      ).mockResolvedValueOnce(baseConnection);
+      vi.mocked(oauthRepository.findByServerUrl).mockResolvedValueOnce({
+        id: 1,
+        serverUrl: "https://mcp.figma.com/mcp",
+        issuer: "https://www.figma.com",
+        clientId: "cached-client-id",
+        clientSecret: "cached-secret",
+        tokenEndpointAuthMethod: "client_secret_post",
+        authServerMetadata: JSON.stringify(mockMetadata),
+        isDcr: true,
+      });
+      // tools/list が失敗するケース（provider 側でトークンが拒否される）
+      vi.mocked(fetchToolsForConnection).mockRejectedValueOnce(
+        new Error("connection not found"),
+      );
+
+      const manager = createMcpOAuthManager();
+      await expect(
+        manager.reauthenticateConnection({ connectionId: 7 }),
+      ).rejects.toThrow("新しいOAuthトークンの検証に失敗しました");
+      // updateSecretCredentials は先に呼ばれて needsReauth を一旦 false にしたが、
+      // 検証失敗で再度 markSecretNeedsReauth が呼ばれる
+      expect(oauthRepository.updateSecretCredentials).toHaveBeenCalledWith(
+        mockDb,
+        33,
+        "encrypted-credentials",
+      );
+      expect(oauthRepository.markSecretNeedsReauth).toHaveBeenCalledWith(
+        mockDb,
+        33,
+      );
     });
   });
 
