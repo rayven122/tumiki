@@ -12,6 +12,8 @@
 #   - Watchtower が :latest の digest 変化を監視し、自動 pull + 再起動
 services:
   manager:
+    # WARNING: image タグを固定してロールバックする場合は Watchtower を先に停止する
+    #   docker compose -f compose.production.yaml stop watchtower
     image: ghcr.io/rayven122/tumiki-manager:latest
     container_name: tumiki-manager
     restart: unless-stopped
@@ -42,6 +44,8 @@ services:
       retries: 3
 
   mcp-proxy:
+    # WARNING: image タグを固定してロールバックする場合は Watchtower を先に停止する
+    #   docker compose -f compose.production.yaml stop watchtower
     image: ghcr.io/rayven122/tumiki-mcp-proxy:latest
     container_name: tumiki-mcp-proxy
     restart: unless-stopped
@@ -73,7 +77,8 @@ services:
     container_name: tumiki-watchtower
     restart: unless-stopped
     volumes:
-      # TODO: Docker socket proxy を介して必要な API のみに絞る
+      # TODO: Docker socket proxy を介して必要な API のみに絞る。
+      # 暫定運用では digest 固定と label 限定監視で攻撃面を抑える。
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       # ラベル付きコンテナのみ監視対象とする
