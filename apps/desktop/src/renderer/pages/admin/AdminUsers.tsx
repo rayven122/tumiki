@@ -74,8 +74,8 @@ export const AdminUsers = (): JSX.Element => {
           </span>
         </div>
         <button
-          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-colors"
-          style={{ backgroundColor: "#34d399" }}
+          type="button"
+          className="flex items-center gap-1.5 rounded-lg bg-emerald-400 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:opacity-90"
         >
           <UserPlus className="h-3.5 w-3.5" />
           ユーザー招待

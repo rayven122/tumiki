@@ -1,22 +1,20 @@
-import type React from "react";
+import type { ChangeEvent, JSX } from "react";
 import { useAtom } from "jotai";
 import { appConfigAtom } from "../store/atoms";
 
-export const SettingsForm = (): React.ReactElement => {
+export const SettingsForm = (): JSX.Element => {
   const [config, setConfig] = useAtom(appConfigAtom);
 
-  const handleThemeChange = (e: React.ChangeEvent<HTMLSelectElement>): void => {
+  const handleThemeChange = (e: ChangeEvent<HTMLSelectElement>): void => {
     setConfig({ ...config, theme: e.target.value as "light" | "dark" });
   };
 
-  const handleAutoStartChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ): void => {
+  const handleAutoStartChange = (e: ChangeEvent<HTMLInputElement>): void => {
     setConfig({ ...config, autoStart: e.target.checked });
   };
 
   const handleMinimizeToTrayChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
+    e: ChangeEvent<HTMLInputElement>,
   ): void => {
     setConfig({ ...config, minimizeToTray: e.target.checked });
   };
