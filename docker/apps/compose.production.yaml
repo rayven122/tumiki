@@ -22,6 +22,8 @@ services:
     ports:
       # Cloudflare Tunnel ingress は localhost:3000 に接続するため、外部 NIC へ公開しない
       - "127.0.0.1:3000:8080"
+    networks:
+      - app
     env_file: .env
     environment:
       # apps/manager/.env として image に焼き込まれた AUTH_URL=http://localhost:3000 を上書き
@@ -56,6 +58,8 @@ services:
     ports:
       # Cloudflare Tunnel ingress は localhost:8080 に接続するため、外部 NIC へ公開しない
       - "127.0.0.1:8080:8080"
+    networks:
+      - app
     env_file: .env
     labels:
       - com.centurylinklabs.watchtower.enable=true
@@ -86,6 +90,8 @@ services:
     tmpfs:
       - /run
       - /tmp
+    networks:
+      - socket-proxy
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
@@ -113,6 +119,10 @@ services:
     read_only: true
     tmpfs:
       - /tmp
+    networks:
+      # app network は GHCR / 通知先への外向き通信、socket-proxy は Docker API 用
+      - app
+      - socket-proxy
     environment:
       DOCKER_HOST: tcp://docker-socket-proxy:2375
       # ラベル付きコンテナのみ監視対象とする
@@ -126,3 +136,8 @@ services:
       # Shoutrrr 形式の URL（例: slack://hook:TOKEN@channel）。空なら通知無効
       WATCHTOWER_NOTIFICATION_URL: ${WATCHTOWER_NOTIFICATION_URL:-}
       TZ: Asia/Tokyo
+
+networks:
+  app:
+  socket-proxy:
+    internal: true

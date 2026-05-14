@@ -88,6 +88,8 @@ WATCHTOWER_NOTIFICATION_URL=slack://hook:T0000/B0000/XXXXXXXX@channel
 
 Watchtower は Docker API を操作するため、`compose.production.yaml` では `tecnativa/docker-socket-proxy` を介して Docker socket へのアクセス範囲を絞る。Watchtower 本体は現在稼働確認済みの `nickfedor/watchtower:1.16.1` を digest 固定し、更新時はタグ差分を確認してから変更する。`WATCHTOWER_NOTIFICATION_URL` が空の場合は通知なし (`notify=no`) として稼働することを `tumiki-sakura-prod` の Watchtower ログで確認済み。
 
+`docker-socket-proxy` は `socket-proxy` internal network に隔離し、`manager` / `mcp-proxy` からは到達できない。Watchtower は GHCR と通知先へ外向き通信するため `app` network にも参加する。
+
 GHCR の `tumiki-manager` / `tumiki-mcp-proxy` image は、`tumiki-sakura-prod` 上で Docker 認証設定なしに `docker pull` できることを確認済み。Private package に変更する場合は、VM 上で `docker login ghcr.io` を実行し、生成された Docker config を Watchtower に読ませる。
 
 ```yaml

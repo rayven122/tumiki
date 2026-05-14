@@ -66,6 +66,7 @@ fi
 # === コンテナ稼働確認 ===
 # 差分が無くても、初期化やクラッシュでアプリコンテナが落ちていた場合に再立ち上げする。
 # watchtower 自体は secrets 変更で再起動不要なため、同時実行時の過剰 reconcile を避ける。
+# docker-socket-proxy は Watchtower の Docker API 経路なので停止時に復旧対象へ含める。
 cd "$TUMIKI_DIR"
 if ! docker info >/dev/null; then
   echo "ERROR: docker daemon is not running" >&2
