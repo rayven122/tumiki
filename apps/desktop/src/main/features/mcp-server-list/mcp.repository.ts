@@ -54,6 +54,8 @@ export const findAllWithConnections = async (db: DbClient) => {
           _count: {
             select: { tools: true },
           },
+          // needsReauth フラグだけ参照（暗号化済 credentials は UI に流したくない）
+          secret: { select: { needsReauth: true } },
         },
       },
     },
