@@ -29,7 +29,7 @@ export const OAuthCallbackUrlField = (): JSX.Element => {
     <div>
       <label
         htmlFor={inputId}
-        className="mb-2 block text-sm font-medium text-[var(--text-primary)]"
+        className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
       >
         Callback URL（リダイレクトURI）
       </label>
@@ -40,13 +40,13 @@ export const OAuthCallbackUrlField = (): JSX.Element => {
           readOnly
           value={MCP_OAUTH_REDIRECT_URI}
           onFocus={(e) => e.target.select()}
-          className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg-app)] px-4 py-3 font-mono text-xs text-[var(--text-secondary)] outline-none"
+          className="flex-1 rounded-lg border border-gray-200 bg-[#e8eaed] px-4 py-3 font-mono text-xs text-gray-600 outline-none dark:border-white/[.08] dark:bg-[#0a0a0a] dark:text-zinc-400"
         />
         <button
           type="button"
           onClick={handleCopy}
           aria-label="Callback URLをコピー"
-          className="flex h-11 min-h-11 w-11 min-w-11 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--text-secondary)] transition hover:bg-[var(--bg-card-hover)]"
+          className="flex h-11 min-h-11 w-11 min-w-11 items-center justify-center rounded-lg border border-gray-200 text-gray-600 transition hover:bg-black/[.02] dark:border-white/[.08] dark:bg-white/[.04] dark:text-zinc-400"
         >
           {copied ? (
             <Check size={16} className="text-emerald-500" />
@@ -55,7 +55,7 @@ export const OAuthCallbackUrlField = (): JSX.Element => {
           )}
         </button>
       </div>
-      <p className="mt-2 text-xs text-[var(--text-muted)]">
+      <p className="mt-2 text-xs text-gray-500 dark:text-zinc-500">
         SaaS側のOAuthアプリ設定で、このURLを「Callback URL」または「Redirect
         URI」として登録してください。
       </p>

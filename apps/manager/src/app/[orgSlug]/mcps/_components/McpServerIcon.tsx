@@ -63,11 +63,17 @@ export const McpServerIcon = ({
       const colorClass = getIconColorClass(parsed.color);
 
       if (IconComponent) {
+        // 固定背景色のコンテナでアイコンを囲み、テーマカラーに依存しない表示にする
         return (
-          <IconComponent
-            className={colorClass}
+          <div
+            className="flex items-center justify-center rounded-md bg-zinc-100"
             style={{ width: size, height: size }}
-          />
+          >
+            <IconComponent
+              className={colorClass}
+              style={{ width: size * 0.65, height: size * 0.65 }}
+            />
+          </div>
         );
       }
     }

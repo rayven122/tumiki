@@ -112,9 +112,37 @@ export const verifyDesktopJwt = async (
     select: { userId: true },
   });
 
-  if (!identity) {
+  if (identity) {
+    return { sub, userId: identity.userId };
+  }
+
+  // SCIMプロビジョニング済みユーザーの初回デスクトップログイン対応:
+  // ブラウザログイン前にデスクトップアプリでログインした場合、ExternalIdentity（provider=oidc）
+  // が未作成のため通常パスで検索できない。
+  // JWTのemailクレームでユーザーを特定し、ExternalIdentityをJIT作成してリンクする。
+  // JWTは署名・issuer・audience検証済みのため、email一致によるリンクは安全。
+  const emailClaim = payload.email;
+  const email = typeof emailClaim === "string" ? emailClaim : null;
+  if (!email) {
     throw new Error("External identity not found");
   }
 
-  return { sub, userId: identity.userId };
+  // isActive チェック: SCIMで無効化済みのユーザーはJITリンク不可
+  const userByEmail = await db.user.findUnique({
+    where: { email },
+    select: { id: true, isActive: true },
+  });
+
+  if (!userByEmail?.isActive) {
+    throw new Error("External identity not found");
+  }
+
+  // 初回ログイン時にExternalIdentityを作成（以降は通常パスを通る）
+  await db.externalIdentity.upsert({
+    where: { provider_sub: { provider: "oidc", sub } },
+    create: { userId: userByEmail.id, provider: "oidc", sub },
+    update: {},
+  });
+
+  return { sub, userId: userByEmail.id };
 };

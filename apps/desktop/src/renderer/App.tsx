@@ -1,7 +1,8 @@
-import type { JSX } from "react";
-import { useEffect } from "react";
+import { type JSX, useEffect } from "react";
 import { HashRouter, Navigate, Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
+import { useAtomValue } from "jotai";
+import { themeAtom } from "./store/atoms";
 import { Layout } from "./_components/Layout";
 import { ProfileGate } from "./_components/ProfileGate";
 import { Dashboard } from "./pages/Dashboard";
@@ -42,6 +43,11 @@ const useAutoReapplyToast = (): void => {
 
 export const App = (): JSX.Element => {
   useAutoReapplyToast();
+  const theme = useAtomValue(themeAtom);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", theme === "dark");
+  }, [theme]);
   return (
     <>
       <Toaster position="top-center" duration={3000} />

@@ -25,6 +25,8 @@ export type {
 export type {
   StartOAuthInput,
   OAuthResult,
+  ReauthenticateInput,
+  ReauthenticateResult,
 } from "./features/oauth/oauth.types";
 
 // MCP Server Detail feature

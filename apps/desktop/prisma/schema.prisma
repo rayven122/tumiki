@@ -138,6 +138,8 @@ model McpConnection {
   url           String?
   /// 認証タイプ
   authType      AuthType      @default(NONE)
+  /// アイコンパス（カスタムMCPのfavicon URL等）
+  iconPath      String?
   /// 有効/無効フラグ
   isEnabled     Boolean       @default(true)
   /// 統合サーバー内での表示順序
