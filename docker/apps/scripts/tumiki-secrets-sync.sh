@@ -16,6 +16,7 @@ INFISICAL_PATH="${INFISICAL_PATH:-/}"
 
 : "${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID:?env not set}"
 : "${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET:?env not set}"
+: "${INFISICAL_API_URL:?env not set}"
 : "${INFISICAL_PROJECT_ID:?env not set}"
 
 ENV_FILE="$TUMIKI_DIR/.env"
@@ -23,11 +24,10 @@ NEW_ENV="$(mktemp --tmpdir tumiki-env.XXXXXX)"
 trap 'rm -f "$NEW_ENV"' EXIT
 
 # === 認証 ===
-# Universal Auth で access token を取得（短命だが本スクリプト実行内で使い切る）。
+# Universal Auth の Client ID / Secret は環境変数から読み込ませ、
+# secret が ps /proc 等のコマンドライン引数に出ないようにする。
 TOKEN="$(infisical login \
   --method=universal-auth \
-  --client-id="$INFISICAL_UNIVERSAL_AUTH_CLIENT_ID" \
-  --client-secret="$INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET" \
   --plain --silent)"
 
 # === シークレット取得 ===
@@ -56,8 +56,10 @@ fi
 # === コンテナ稼働確認 ===
 # 差分が無くても、初期化やクラッシュでコンテナが落ちていた場合に再立ち上げする。
 cd "$TUMIKI_DIR"
-RUNNING=$(docker compose -f "$COMPOSE_FILE" ps --status running --services 2>/dev/null | wc -l)
-EXPECTED=$(docker compose -f "$COMPOSE_FILE" config --services 2>/dev/null | wc -l)
+RUNNING=$(docker compose -f "$COMPOSE_FILE" ps --status running --services 2>/dev/null \
+  | awk 'NF { count++ } END { print count + 0 }')
+EXPECTED=$(docker compose -f "$COMPOSE_FILE" config --services 2>/dev/null \
+  | awk '/^[A-Za-z0-9_.-]+$/ { count++ } END { print count + 0 }')
 
 if [[ "$DIFF" -eq 1 || "$RUNNING" -lt "$EXPECTED" ]]; then
   docker compose -f "$COMPOSE_FILE" up -d

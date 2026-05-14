@@ -84,6 +84,8 @@
 WATCHTOWER_NOTIFICATION_URL=slack://hook:T0000/B0000/XXXXXXXX@channel
 ```
 
+Watchtower は Docker socket をマウントするため、侵害時の影響範囲が大きい。`compose.production.yaml` では現在稼働確認済みの `nickfedor/watchtower:1.16.1` に固定し、更新時はタグ差分を確認してから変更する。将来的に権限をさらに絞る場合は Docker socket proxy の導入を検討する。
+
 ### image ロールバック
 
 `:latest` で固定運用しているため、過去版に戻すには `compose.production.yaml` の `image:` を直接書き換える。
@@ -144,10 +146,7 @@ ls -la /etc/infisical/agent.env
 
 # 動作テスト
 set -a; source /etc/infisical/agent.env; set +a
-TOKEN=$(infisical login --method=universal-auth \
-  --client-id="$INFISICAL_UNIVERSAL_AUTH_CLIENT_ID" \
-  --client-secret="$INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET" \
-  --plain --silent)
+TOKEN=$(infisical login --method=universal-auth --plain --silent)
 infisical export --env=prod --path=/ --format=dotenv \
   --projectId="$INFISICAL_PROJECT_ID" --token="$TOKEN" | wc -l
 ```

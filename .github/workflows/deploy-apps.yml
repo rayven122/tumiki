@@ -176,6 +176,10 @@ jobs:
               sleep 2
             done
             sudo systemctl status --no-pager tumiki-secrets-sync.service || true
+            if [[ "${status:-unknown}" != "inactive" ]]; then
+              echo "::error::tumiki-secrets-sync.service did not complete successfully (status=${status:-unknown})"
+              exit 1
+            fi
           REMOTE_SCRIPT
 
       - name: ✅ Verify health endpoints
