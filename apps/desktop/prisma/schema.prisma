@@ -327,6 +327,7 @@ model AuditLog {
 }
 
 /// AI コーディングツールのメトリクス（Claude Code / Codex CLI）
+/// @namespace AiCodingTelemetry
 model AiCodingMetric {
   id           String   @id @default(cuid())
   /// ツール識別子（"claude-code" | "codex"）
@@ -342,6 +343,7 @@ model AiCodingMetric {
 }
 
 /// AI コーディングツールのトレース（Claude Code / Codex CLI）
+/// @namespace AiCodingTelemetry
 model AiCodingTrace {
   id           String   @id @default(cuid())
   /// ツール識別子（"claude-code" | "codex"）

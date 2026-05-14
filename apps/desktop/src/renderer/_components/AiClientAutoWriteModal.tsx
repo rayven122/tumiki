@@ -31,7 +31,7 @@ type Props = {
   onClose: () => void;
 };
 
-/** 使用量記録セクション（フック呼び出しを安定させるためサブコンポーネント化） */
+// 使用量記録セクション（フック安定化のためサブコンポーネント化）
 const TrackingSection = ({
   tool,
   port,
@@ -56,7 +56,7 @@ const TrackingSection = ({
     }
     setIsApplying(true);
     void window.electronAPI.aiCodingTelemetry
-      .applyToTool(tool, port)
+      .applyToTool(tool)
       .then((result) => {
         if (result.success) {
           toast.success("使用量記録の設定ファイルに書き込みました");

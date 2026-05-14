@@ -22,7 +22,6 @@ const saveToolEnabledSchema = z.object({
 
 const applyToToolSchema = z.object({
   tool: toolSchema,
-  port: z.number().int().min(1).max(65535),
 });
 
 // 起動中の OTLP レシーバーポートを保持する
@@ -135,7 +134,13 @@ export const setupAiCodingTelemetryIpc = (): void => {
   ipcMain.handle("aiCodingTelemetry:applyToTool", async (_, input: unknown) => {
     try {
       const validated = applyToToolSchema.parse(input);
-      return await service.applyToolSettings(validated);
+      if (_receiverPort <= 0) {
+        throw new Error("OTLP レシーバーが起動していません");
+      }
+      return await service.applyToolSettings({
+        tool: validated.tool,
+        port: _receiverPort,
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : "不明なエラー";
       logger.error(

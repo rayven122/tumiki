@@ -37,23 +37,24 @@ export const startOtlpReceiver = async (
       return;
     }
 
-    let body = "";
+    const chunks: Buffer[] = [];
     let bodySize = 0;
     // ボディ超過フラグ — end ハンドラで二重レスポンスを防ぐ
     let bodyExceeded = false;
 
     req.on("data", (chunk: Buffer) => {
+      if (bodyExceeded) return;
       // Buffer.length はバイト数なので MAX_BODY_BYTES と正確に比較できる
       bodySize += chunk.length;
-      // ボディサイズ上限を超えたらリクエストを中断
+      // ボディサイズ上限を超えたら 413 を返し、残りのリクエストボディを読み捨てる
       if (bodySize > MAX_BODY_BYTES) {
         bodyExceeded = true;
-        req.destroy();
         res.writeHead(413, { "Content-Type": "application/json" });
         res.end("{}");
+        req.resume();
         return;
       }
-      body += chunk.toString("utf-8");
+      chunks.push(chunk);
     });
 
     req.on("end", () => {
@@ -61,6 +62,7 @@ export const startOtlpReceiver = async (
       if (bodyExceeded) return;
       void (async () => {
         try {
+          const body = Buffer.concat(chunks).toString("utf-8");
           const data: unknown = JSON.parse(body);
           if (req.url === "/v1/metrics") await service.storeOtlpMetrics(data);
           if (req.url === "/v1/traces") await service.storeOtlpTraces(data);

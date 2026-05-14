@@ -231,7 +231,7 @@ export const pruneOldTelemetry = async (
     repository.deleteOldTraces(db, cutoff),
   ]);
   if (metrics > 0 || traces > 0) {
-    logger.info("Pruned old AI coding telemetry", {
+    logger.info("古いAIコーディングテレメトリを削除しました", {
       retentionDays,
       metrics,
       traces,
@@ -255,7 +255,9 @@ export const autoReapplyMismatchedPorts = async (
   for (const [toolKey, settings] of Object.entries(tools)) {
     // electron-store は外部入力扱いとし、未知のキーは無視する
     if (!isAiCodingTool(toolKey)) {
-      logger.warn("Skipping unknown tool key in store", { toolKey });
+      logger.warn("保存済み設定に未知のツールキーがあるためスキップします", {
+        toolKey,
+      });
       continue;
     }
     const tool = toolKey;
@@ -263,7 +265,7 @@ export const autoReapplyMismatchedPorts = async (
     if (!settings?.appliedAt) continue;
     if (settings.appliedPort === currentPort) continue;
 
-    logger.info("Re-applying tool config due to port change", {
+    logger.info("ポート変更のためツール設定を再適用します", {
       tool,
       oldPort: settings.appliedPort,
       newPort: currentPort,
@@ -285,9 +287,9 @@ export const autoReapplyMismatchedPorts = async (
         },
       });
       reapplied.push(tool);
-      logger.info("Re-applied tool config successfully", { tool, currentPort });
+      logger.info("ツール設定の再適用が完了しました", { tool, currentPort });
     } else {
-      logger.warn("Failed to re-apply tool config", {
+      logger.warn("ツール設定の再適用に失敗しました", {
         tool,
         errorCode: result.errorCode,
       });

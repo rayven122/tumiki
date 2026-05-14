@@ -225,11 +225,8 @@ const api = {
         tool,
         enabled,
       }),
-    applyToTool: (
-      tool: AiCodingTool,
-      port: number,
-    ): Promise<ApplyToolSettingsResult> =>
-      ipcRenderer.invoke("aiCodingTelemetry:applyToTool", { tool, port }),
+    applyToTool: (tool: AiCodingTool): Promise<ApplyToolSettingsResult> =>
+      ipcRenderer.invoke("aiCodingTelemetry:applyToTool", { tool }),
     // 起動時の自動再書き込み結果を取得（マウント時の取りこぼし対策）。
     // 取得後は main 側でクリアされるため、複数回呼んでも重複表示されない。
     getPendingAutoReapplied: (): Promise<{

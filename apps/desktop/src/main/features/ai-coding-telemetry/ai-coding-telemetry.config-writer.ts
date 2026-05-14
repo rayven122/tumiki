@@ -123,6 +123,8 @@ export const applyOtlpToTool = async (
 ): Promise<ApplyToolSettingsResult> => {
   if (tool === "claude-code") return applyToClaudeCode(port);
   if (tool === "codex") return applyToCodex(port);
+  const exhaustive: never = tool;
+  void exhaustive;
   return {
     success: false,
     configPath: null,

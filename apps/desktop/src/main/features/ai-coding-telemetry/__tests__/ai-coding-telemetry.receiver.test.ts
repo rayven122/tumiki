@@ -119,6 +119,14 @@ describe("ボディサイズ制限", () => {
     expect(res.status).toStrictEqual(200);
   });
 
+  test("10MB を超えるボディは 413 を返す", async () => {
+    const largeBody = "x".repeat(10 * 1024 * 1024 + 1);
+    const res = await sendRequest(testPort, "/v1/metrics", largeBody);
+    expect(res.status).toStrictEqual(413);
+    expect(res.body).toStrictEqual("{}");
+    expect(service.storeOtlpMetrics).not.toHaveBeenCalled();
+  });
+
   test("JSON パース失敗時はエラーログを出力して 200 を返す", async () => {
     const res = await sendRequest(testPort, "/v1/metrics", "invalid json");
     expect(res.status).toStrictEqual(200);
