@@ -115,8 +115,8 @@ export const Sidebar = (): JSX.Element => {
         to={item.path}
         className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
           isActive
-            ? "bg-[var(--bg-active)] text-[var(--text-primary)]"
-            : "text-[var(--text-muted)] hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-secondary)]"
+            ? "bg-black/[.06] text-gray-900 dark:bg-white/[.08] dark:text-white"
+            : "text-gray-500 hover:bg-black/[.02] hover:text-gray-600 dark:bg-white/[.04] dark:text-zinc-400 dark:text-zinc-500"
         }`}
         title={!isOpen ? item.label : undefined}
       >
@@ -128,7 +128,7 @@ export const Sidebar = (): JSX.Element => {
 
   return (
     <aside
-      className={`flex shrink-0 flex-col bg-[var(--bg-app)] py-3 transition-all duration-200 ${
+      className={`flex shrink-0 flex-col bg-[#e8eaed] py-3 transition-all duration-200 dark:bg-[#0a0a0a] ${
         isOpen ? "w-[220px]" : "w-14"
       }`}
     >
@@ -141,7 +141,7 @@ export const Sidebar = (): JSX.Element => {
             className="h-6 w-6 shrink-0 object-contain"
           />
           {isOpen && (
-            <span className="truncate text-sm font-semibold text-[var(--text-primary)]">
+            <span className="truncate text-sm font-semibold text-gray-900 dark:text-white">
               {workspaceName}
             </span>
           )}
@@ -150,7 +150,7 @@ export const Sidebar = (): JSX.Element => {
           <button
             type="button"
             onClick={() => setIsOpen(false)}
-            className="shrink-0 rounded-md p-1 text-[var(--text-subtle)] transition-colors hover:text-[var(--text-secondary)]"
+            className="shrink-0 rounded-md p-1 text-gray-400 transition-colors hover:text-gray-600 dark:text-zinc-400 dark:text-zinc-600"
             aria-label="サイドバーを閉じる"
           >
             <PanelLeftClose size={16} />
@@ -164,7 +164,7 @@ export const Sidebar = (): JSX.Element => {
           <button
             type="button"
             onClick={() => setIsOpen(true)}
-            className="flex w-full items-center justify-center rounded-md p-1.5 text-[var(--text-subtle)] transition-colors hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-secondary)]"
+            className="flex w-full items-center justify-center rounded-md p-1.5 text-gray-400 transition-colors hover:bg-black/[.02] hover:text-gray-600 dark:bg-white/[.04] dark:text-zinc-400 dark:text-zinc-600"
             aria-label="サイドバーを開く"
           >
             <PanelLeft size={16} />
@@ -177,9 +177,9 @@ export const Sidebar = (): JSX.Element => {
         <div className="space-y-0.5">{mainNav.map(renderLink)}</div>
 
         {/* カスタムコネクタ */}
-        <div className="mt-2 space-y-0.5 border-t border-t-[var(--border)] pt-2">
+        <div className="mt-2 space-y-0.5 border-t border-t-gray-200 pt-2 dark:border-t-white/[.08]">
           {isOpen && (
-            <div className="px-3 pt-1 pb-1 text-[10px] font-medium tracking-wider text-[var(--text-subtle)] uppercase">
+            <div className="px-3 pt-1 pb-1 text-[10px] font-medium tracking-wider text-gray-400 uppercase dark:text-zinc-600">
               カスタムコネクタ
             </div>
           )}
@@ -196,7 +196,7 @@ export const Sidebar = (): JSX.Element => {
         </div>
 
         {/* AIツール連携 */}
-        <div className="mt-2 space-y-0.5 border-t border-t-[var(--border)] pt-2">
+        <div className="mt-2 space-y-0.5 border-t border-t-gray-200 pt-2 dark:border-t-white/[.08]">
           {renderLink({
             path: "/ai-integrations",
             label: "AIツール連携",
@@ -205,14 +205,14 @@ export const Sidebar = (): JSX.Element => {
         </div>
 
         {/* 下部: 設定 + テーマ切替 */}
-        <div className="mt-auto space-y-0.5 border-t border-t-[var(--border)] pt-3">
+        <div className="mt-auto space-y-0.5 border-t border-t-gray-200 pt-3 dark:border-t-white/[.08]">
           {subNav.map(renderLink)}
 
           {/* テーマ切替 */}
           <button
             type="button"
             onClick={toggleTheme}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-secondary)]"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-500 transition-colors hover:bg-black/[.02] hover:text-gray-600 dark:bg-white/[.04] dark:text-zinc-400 dark:text-zinc-500"
             aria-label={
               theme === "dark" ? "ライトモードに切替" : "ダークモードに切替"
             }

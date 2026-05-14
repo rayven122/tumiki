@@ -1,32 +1,22 @@
-import type { CSSProperties } from "react";
-
 type BadgeVariant = "success" | "warn" | "error";
 
 type BadgeConfig = {
-  bg: string;
-  text: string;
   className: string;
   label: string;
 };
 
-const BADGE_VARIANT: Record<
-  BadgeVariant,
-  Pick<BadgeConfig, "bg" | "text" | "className">
-> = {
+const BADGE_VARIANT: Record<BadgeVariant, Pick<BadgeConfig, "className">> = {
   success: {
-    bg: "var(--badge-success-bg)",
-    text: "var(--badge-success-text)",
-    className: "bg-[var(--badge-success-bg)] text-[var(--badge-success-text)]",
+    className:
+      "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/10 dark:text-emerald-400",
   },
   warn: {
-    bg: "var(--badge-warn-bg)",
-    text: "var(--badge-warn-text)",
-    className: "bg-[var(--badge-warn-bg)] text-[var(--badge-warn-text)]",
+    className:
+      "bg-amber-500/10 text-amber-600 dark:bg-amber-400/10 dark:text-amber-400",
   },
   error: {
-    bg: "var(--badge-error-bg)",
-    text: "var(--badge-error-text)",
-    className: "bg-[var(--badge-error-bg)] text-[var(--badge-error-text)]",
+    className:
+      "bg-red-500/10 text-red-600 dark:bg-red-400/10 dark:text-red-400",
   },
 };
 
@@ -40,7 +30,7 @@ const BADGE_LABEL: Record<string, { variant: BadgeVariant; label: string }> = {
   rejected: { variant: "error", label: "却下" },
 };
 
-/** ステータスバッジの設定を返す（className は Tailwind 任意値、bg/text は style フォールバック用） */
+/** ステータスバッジの設定を返す */
 export const statusBadge = (status: string): BadgeConfig => {
   const entry = BADGE_LABEL[status];
   if (!entry) {
@@ -53,53 +43,10 @@ export const statusBadge = (status: string): BadgeConfig => {
 export const isErrorRow = (status: string): boolean =>
   status === "blocked" || status === "error";
 
-/** カードの共通スタイル */
-export const cardStyle: CSSProperties = {
-  border: "1px solid var(--border)",
-  backgroundColor: "var(--bg-card)",
-  boxShadow: "var(--shadow-card)",
-};
+/** カードの共通 className */
+export const cardStyle =
+  "border border-gray-200 bg-white dark:border-white/[.08] dark:bg-zinc-900";
 
-/** セレクトの共通スタイル */
-export const selectStyle: CSSProperties = {
-  border: "1px solid var(--border)",
-  backgroundColor: "var(--bg-card)",
-  color: "var(--text-secondary)",
-};
-
-/** テキスト入力の共通スタイル */
-export const inputStyle: CSSProperties = {
-  border: "1px solid var(--border)",
-  backgroundColor: "var(--bg-card)",
-  color: "var(--text-primary)",
-};
-
-/** セクション区切りの共通スタイル */
-export const sectionBorderStyle: CSSProperties = {
-  borderBottomWidth: 1,
-  borderBottomStyle: "solid",
-  borderBottomColor: "var(--border)",
-};
-
-/** 認証種別バッジのスタイルを返す */
-export const authBadgeStyle = (
-  authType: "NONE" | "API_KEY" | "OAuth",
-): { backgroundColor: string; color: string } => {
-  switch (authType) {
-    case "NONE":
-      return {
-        backgroundColor: "var(--badge-success-bg)",
-        color: "var(--badge-success-text)",
-      };
-    case "API_KEY":
-      return {
-        backgroundColor: "var(--badge-warn-bg)",
-        color: "var(--badge-warn-text)",
-      };
-    case "OAuth":
-      return {
-        backgroundColor: "var(--badge-info-bg)",
-        color: "var(--badge-info-text)",
-      };
-  }
-};
+/** セレクトの共通 className */
+export const selectStyle =
+  "border border-gray-200 bg-white text-gray-600 dark:border-white/[.08] dark:bg-zinc-900 dark:text-zinc-400";

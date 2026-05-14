@@ -187,16 +187,16 @@ export const ProfileSetup = (): JSX.Element => {
 
   return (
     <div
-      className={`flex h-screen items-center justify-center bg-[var(--bg-app)] px-6 ${theme === "light" ? "light" : ""}`}
+      className={`flex h-screen items-center justify-center bg-[#e8eaed] px-6 dark:bg-[#0a0a0a] ${theme === "light" ? "light" : ""}`}
     >
       <div className="w-full max-w-3xl">
         <div className="mb-8 flex items-center justify-center gap-3">
           <img src="/tumiki-logo.svg" alt="TUMIKI" className="h-9 w-9" />
           <div>
-            <h1 className="text-xl font-semibold text-[var(--text-primary)]">
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
               TUMIKI Desktop
             </h1>
-            <p className="text-xs text-[var(--text-muted)]">
+            <p className="text-xs text-gray-500 dark:text-zinc-500">
               利用プロファイルを設定
             </p>
           </div>
@@ -208,18 +208,18 @@ export const ProfileSetup = (): JSX.Element => {
               type="button"
               disabled={isSubmitting}
               onClick={() => void selectPersonal()}
-              className="group rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 text-left transition hover:border-[var(--text-muted)] hover:bg-[var(--bg-card-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+              className="group rounded-xl border border-gray-200 bg-white p-6 text-left transition hover:border-gray-400 hover:bg-black/[.02] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/[.08] dark:bg-zinc-900 dark:hover:border-zinc-600"
             >
-              <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-[var(--bg-active)] text-[var(--text-primary)]">
+              <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-black/[.06] text-gray-900 dark:bg-white/[.08] dark:text-white">
                 <User size={22} />
               </span>
-              <span className="mt-5 block text-base font-semibold text-[var(--text-primary)]">
+              <span className="mt-5 block text-base font-semibold text-gray-900 dark:text-white">
                 個人利用
               </span>
-              <span className="mt-2 block text-sm leading-6 text-[var(--text-muted)]">
+              <span className="mt-2 block text-sm leading-6 text-gray-500 dark:text-zinc-500">
                 自分のPC上でMCPコネクタを管理します。組織の承認や監査は使いません。
               </span>
-              <span className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">
+              <span className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-gray-600 group-hover:text-gray-900 dark:text-zinc-400">
                 このプロファイルで始める
                 <Check size={15} />
               </span>
@@ -228,18 +228,18 @@ export const ProfileSetup = (): JSX.Element => {
             <button
               type="button"
               onClick={() => setView("organization")}
-              className="group rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 text-left transition hover:border-[var(--text-muted)] hover:bg-[var(--bg-card-hover)]"
+              className="group rounded-xl border border-gray-200 bg-white p-6 text-left transition hover:border-gray-400 hover:bg-black/[.02] dark:border-white/[.08] dark:bg-zinc-900 dark:hover:border-zinc-600"
             >
-              <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-[var(--bg-active)] text-[var(--text-primary)]">
+              <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-black/[.06] text-gray-900 dark:bg-white/[.08] dark:text-white">
                 <Building2 size={22} />
               </span>
-              <span className="mt-5 block text-base font-semibold text-[var(--text-primary)]">
+              <span className="mt-5 block text-base font-semibold text-gray-900 dark:text-white">
                 組織利用
               </span>
-              <span className="mt-2 block text-sm leading-6 text-[var(--text-muted)]">
+              <span className="mt-2 block text-sm leading-6 text-gray-500 dark:text-zinc-500">
                 管理サーバーに接続し、組織のユーザー・承認・監査機能を有効化します。
               </span>
-              <span className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">
+              <span className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-gray-600 group-hover:text-gray-900 dark:text-zinc-400">
                 管理サーバーに接続
                 <KeyRound size={15} />
               </span>
@@ -249,27 +249,27 @@ export const ProfileSetup = (): JSX.Element => {
           <form
             onSubmit={(e) => void startOrganization(e)}
             noValidate
-            className="mx-auto max-w-md rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6"
+            className="mx-auto max-w-md rounded-xl border border-gray-200 bg-white p-6 dark:border-white/[.08] dark:bg-zinc-900"
           >
             <button
               type="button"
               onClick={() => void cancelOrganizationSetup()}
               disabled={isSubmitting && !isWaitingForCallback}
-              className="mb-5 flex items-center gap-2 text-sm text-[var(--text-muted)] transition hover:text-[var(--text-primary)] disabled:opacity-50"
+              className="mb-5 flex items-center gap-2 text-sm text-gray-500 transition hover:text-gray-900 disabled:opacity-50 dark:text-zinc-500"
             >
               <ArrowLeft size={15} />
               戻る
             </button>
-            <h2 className="text-base font-semibold text-[var(--text-primary)]">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">
               組織利用を設定
             </h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
+            <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-zinc-500">
               組織利用を有効化すると、停止するまで個人利用には切り替えられません。
             </p>
 
             <label
               htmlFor="profile-manager-url"
-              className="mt-5 block text-xs font-medium text-[var(--text-secondary)]"
+              className="mt-5 block text-xs font-medium text-gray-600 dark:text-zinc-400"
             >
               管理サーバー URL
             </label>
@@ -281,7 +281,7 @@ export const ProfileSetup = (): JSX.Element => {
               placeholder="https://manager.example.com"
               required
               disabled={isSubmitting}
-              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-input)] px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-subtle)] focus:ring-2 focus:ring-[var(--btn-primary-bg)] focus:outline-none disabled:opacity-50"
+              className="mt-1 w-full rounded-lg border border-gray-200 bg-black/[.02] px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-gray-900 focus:outline-none disabled:opacity-50 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white dark:focus:ring-white"
             />
 
             {shouldWarnHttp && (
@@ -300,7 +300,7 @@ export const ProfileSetup = (): JSX.Element => {
             <button
               type="submit"
               disabled={isSubmitting || !managerUrl.trim()}
-              className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--btn-primary-bg)] px-4 py-2.5 text-sm font-medium text-[var(--btn-primary-text)] transition hover:bg-[var(--btn-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
             >
               {isSubmitting ? (
                 <>
