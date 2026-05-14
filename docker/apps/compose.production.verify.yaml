@@ -4,9 +4,9 @@
 # 検証用は別ポート (127.0.0.1:3001 / 127.0.0.1:8082) で起動する。Cloudflare Tunnel ingress
 # は触らないため外部疎通は発生しない。
 #
-# WARNING: 本番 DB / 本番 .env を共有する。本ファイルでは SKIP_MIGRATE=true を
-# 明示し、検証起動だけで本番 DB migration が走らないようにする。
-# 本番 DB への不要な書き込みを避けるため、疎通確認後は必ず down する。
+# WARNING: 本番 DB / 本番 .env を共有するため、疎通確認だけに使い必ず down する。
+# 本ファイルでは SKIP_MIGRATE=true を明示し、検証起動だけで本番 DB migration が
+# 走らないようにする。ただしアプリロジックからの本番 DB 書き込みは防げない。
 #
 # 使用方法:
 #   docker compose -f compose.production.verify.yaml up -d

@@ -73,14 +73,28 @@ if ! docker info >/dev/null; then
   exit 1
 fi
 
-RUNNING=$(docker compose -f "$COMPOSE_FILE" ps --status running --services \
-  | awk '$0 != "watchtower" && NF { count++ } END { print count + 0 }')
-EXPECTED=$(docker compose -f "$COMPOSE_FILE" config --services \
-  | awk '$0 != "watchtower" && /^[A-Za-z0-9_.-]+$/ { count++ } END { print count + 0 }')
+count_running_services() {
+  docker compose -f "$COMPOSE_FILE" ps --status running --services \
+    | awk '$0 != "watchtower" && NF { count++ } END { print count + 0 }'
+}
+
+count_expected_services() {
+  docker compose -f "$COMPOSE_FILE" config --services \
+    | awk '$0 != "watchtower" && /^[A-Za-z0-9_.-]+$/ { count++ } END { print count + 0 }'
+}
+
+RUNNING=$(count_running_services)
+EXPECTED=$(count_expected_services)
 
 if [[ "$EXPECTED" -eq 0 ]]; then
   echo "ERROR: docker compose config returned 0 services; aborting" >&2
   exit 1
+fi
+
+if [[ "$DIFF" -eq 0 && "$RUNNING" -lt "$EXPECTED" ]]; then
+  # Watchtower の更新中は一時的に running 数が減るため、短く待って再確認する。
+  sleep 30
+  RUNNING=$(count_running_services)
 fi
 
 if [[ "$DIFF" -eq 1 || "$RUNNING" -lt "$EXPECTED" ]]; then

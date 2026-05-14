@@ -96,7 +96,6 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       LOG_LEVEL: warning
-      AUTH: "1"
       CONTAINERS: "1"
       IMAGES: "1"
       INFO: "1"
