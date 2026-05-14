@@ -1,5 +1,6 @@
 import type { JSX } from "react";
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useAtomValue } from "jotai";
 import { Link, useNavigate } from "react-router-dom";
 import { Search, Plus, ArrowLeft, RefreshCcw } from "lucide-react";
 import type { CatalogItem } from "../../types/catalog";
@@ -8,6 +9,36 @@ import { AddCustomMcpModal } from "../_components/AddCustomMcpModal";
 import { toast } from "../_components/Toast";
 import { cardStyle } from "../utils/theme-styles";
 import { authTypeLabel } from "../../shared/catalog.helpers";
+import { themeAtom } from "../store/atoms";
+
+/** ライトモード用の `-light` バリアントが存在するアイコンのベース名 */
+const LIGHT_VARIANT_ICONS = new Set(["notion", "attio"]);
+
+/** ダークモード用の `-dark` バリアントが存在するアイコンのベース名 */
+const DARK_VARIANT_ICONS = new Set([
+  "outline",
+  "sequential-thinking",
+  "github_black",
+  "moneyforward",
+]);
+
+/** テーマに応じたアイコンURLを返す（ライト/ダーク各バリアントを優先） */
+const getThemeIconUrl = (
+  iconUrl: string | null | undefined,
+  theme: string,
+): string | null | undefined => {
+  if (!iconUrl) return iconUrl;
+  const match = iconUrl.match(/\/([^/]+)\.[a-z]+$/);
+  const baseName = match?.[1];
+  if (!baseName) return iconUrl;
+  if (theme === "light" && LIGHT_VARIANT_ICONS.has(baseName)) {
+    return iconUrl.replace(/(\.[a-z]+)$/, "-light$1");
+  }
+  if (theme === "dark" && DARK_VARIANT_ICONS.has(baseName)) {
+    return iconUrl.replace(/(\.[a-z]+)$/, "-dark$1");
+  }
+  return iconUrl;
+};
 
 /** 認証種別バッジスタイル */
 const authBadgeClass: Record<CatalogItem["authType"], string> = {
@@ -53,6 +84,7 @@ const addButtonLabel = (item: CatalogItem) => {
 
 export const ToolCatalog = (): JSX.Element => {
   const navigate = useNavigate();
+  const theme = useAtomValue(themeAtom);
   const [catalogs, setCatalogs] = useState<CatalogItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -319,7 +351,9 @@ export const ToolCatalog = (): JSX.Element => {
                     {item.iconUrl ? (
                       <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
                         <img
-                          src={item.iconUrl}
+                          src={
+                            getThemeIconUrl(item.iconUrl, theme) ?? item.iconUrl
+                          }
                           alt={item.name}
                           className="h-8 w-8 object-contain"
                         />
