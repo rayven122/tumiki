@@ -17,6 +17,7 @@ import {
   findManualClientByServerUrl,
   updateSecretCredentials,
   markSecretNeedsReauth,
+  findSecretNeedsReauthById,
 } from "../oauth.repository";
 import { encryptToken, decryptToken } from "../../../utils/encryption";
 
@@ -29,6 +30,7 @@ describe("oauth.repository", () => {
     },
     mcpSecret: {
       update: vi.fn(),
+      findUnique: vi.fn(),
     },
   } as unknown as Parameters<typeof findByServerUrl>[0];
 
@@ -267,6 +269,33 @@ describe("oauth.repository", () => {
       expect(call.where).toStrictEqual({ id: 42 });
       expect(call.data.needsReauth).toBe(true);
       expect(call.data.lastAuthErrorAt).toBeInstanceOf(Date);
+    });
+  });
+
+  describe("findSecretNeedsReauthById", () => {
+    test("needsReauth=true を返す", async () => {
+      const findMock = mockDb.mcpSecret.findUnique as ReturnType<typeof vi.fn>;
+      findMock.mockResolvedValueOnce({ needsReauth: true });
+      const result = await findSecretNeedsReauthById(mockDb, 7);
+      expect(result).toStrictEqual(true);
+      expect(findMock).toHaveBeenCalledWith({
+        where: { id: 7 },
+        select: { needsReauth: true },
+      });
+    });
+
+    test("needsReauth=false を返す", async () => {
+      const findMock = mockDb.mcpSecret.findUnique as ReturnType<typeof vi.fn>;
+      findMock.mockResolvedValueOnce({ needsReauth: false });
+      const result = await findSecretNeedsReauthById(mockDb, 7);
+      expect(result).toStrictEqual(false);
+    });
+
+    test("レコードが見つからない場合は null を返す", async () => {
+      const findMock = mockDb.mcpSecret.findUnique as ReturnType<typeof vi.fn>;
+      findMock.mockResolvedValueOnce(null);
+      const result = await findSecretNeedsReauthById(mockDb, 9999);
+      expect(result).toBeNull();
     });
   });
 });

@@ -9,6 +9,7 @@
  * 単体サーバーとして動作させる。
  */
 import type {
+  OnBeforeToolCallByName,
   OnUpstreamAuthErrorByName,
   ResolveAllowedToolsByName,
 } from "./outbound/upstream-pool.js";
@@ -89,6 +90,12 @@ export type ProxyHooks = {
   /** 指定時、listTools/callTool の都度呼ばれて DB から最新の許可ツールリストを取得する */
   resolveAllowedTools?: ResolveAllowedToolsByName;
   /**
+   * tool 呼び出し前に proactive にブロックするかを判定するフック。
+   * 戻り値が文字列ならその文字列をエラーメッセージとして AI に返し、upstream へは投げない。
+   * Tumiki Desktop では needsReauth=true のコネクトを即拒否する用途で使う。
+   */
+  onBeforeToolCall?: OnBeforeToolCallByName;
+  /**
    * upstream MCP サーバーが tools/call で 401/403 等の認証エラーを返したときに呼ばれる。
    * Tumiki Desktop 側で needsReauth フラグを立てつつ、AI 向けに再認証ディープリンクを
    * 返却する用途（戻り値の文字列がエラーメッセージに追記される）。
@@ -104,6 +111,7 @@ export const runMcpProxy = async (
 
   const core = createProxyCore(configs, logger, {
     resolveAllowedTools: hooks?.resolveAllowedTools,
+    onBeforeToolCall: hooks?.onBeforeToolCall,
     onUpstreamAuthError: hooks?.onUpstreamAuthError,
   });
 

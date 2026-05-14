@@ -282,8 +282,28 @@ if (isMcpProxyMode) {
 
       // upstream 認証エラー（401/403）→ needsReauth フラグを立て、AI クライアントへ
       // 再認証ディープリンクを返す（戻り値はエラーメッセージに追記される）
-      const { markSecretNeedsReauth } =
+      const { markSecretNeedsReauth, findSecretNeedsReauthById } =
         await import("./features/oauth/oauth.repository");
+
+      // AI 向け再認証 deeplink 入りエラーメッセージ（proactive / reactive 共通フォーマット）
+      const buildReauthErrorMessage = (connectionId: number): string =>
+        `OAuthトークンが失効しています。Tumiki Desktop で再認証してください: [Tumiki Desktopで再認証する](tumiki://reauth?connectionId=${String(connectionId)})`;
+
+      // proactive な事前チェック: needsReauth=true のコネクトは upstream に投げず即拒否する。
+      // フラグの判定は DB を都度参照する（GUI から再認証成功した瞬間に解除を拾えるようにするため）。
+      const onBeforeToolCall = async (
+        serverName: string,
+      ): Promise<string | null> => {
+        const connMeta = metaMap.get(serverName);
+        if (!connMeta) return null;
+        const flag = await findSecretNeedsReauthById(db, connMeta.secretId);
+        if (flag !== true) return null;
+        return buildReauthErrorMessage(connMeta.connectionId);
+      };
+
+      // reactive 経路: upstream が 401/403 を返したケースを拾う保険。
+      // 既に proactive で弾かれているはずだが、refresh が走っていない / 起動直後で
+      // フラグがまだ立っていない状態で発生した実 401 をフォローする。
       const onUpstreamAuthError = async (
         serverName: string,
       ): Promise<string | null> => {
@@ -296,15 +316,14 @@ if (isMcpProxyMode) {
             `[tumiki-mcp-proxy] needsReauth フラグ更新に失敗: ${error instanceof Error ? error.message : String(error)}\n`,
           );
         }
-        // AI クライアント（Claude Code 等）が Markdown を解釈する前提でディープリンクを返す。
-        // プレーンテキスト URL でも多くのクライアントは自動リンク化するため、両形式を併記しない。
-        return `OAuthトークンが失効している可能性があります。Tumiki Desktop で再認証してください: [Tumiki Desktopで再認証する](tumiki://reauth?connectionId=${String(connMeta.connectionId)})`;
+        return buildReauthErrorMessage(connMeta.connectionId);
       };
 
       await mod.runMcpProxy(configs, {
         onToolCall,
         onStatusChange,
         resolveAllowedTools,
+        onBeforeToolCall,
         onUpstreamAuthError,
         disableDefaultFilter,
         enableToonConversion,

@@ -37,8 +37,17 @@ export type OnUpstreamAuthErrorByName = (
   serverName: string,
 ) => Promise<string | null>;
 
+/**
+ * tool 呼び出し前に proactive にブロックするかを判定するフック。
+ * 戻り値が文字列ならそのままエラーメッセージとして使われ、upstream へは投げない。
+ */
+export type OnBeforeToolCallByName = (
+  serverName: string,
+) => Promise<string | null>;
+
 export type CreateUpstreamPoolOptions = {
   resolveAllowedTools?: ResolveAllowedToolsByName;
+  onBeforeToolCall?: OnBeforeToolCallByName;
   onUpstreamAuthError?: OnUpstreamAuthErrorByName;
 };
 
@@ -73,14 +82,18 @@ export const createUpstreamPool = (
       throw new Error(`サーバー "${config.name}" は既に登録されています`);
     }
 
-    // pool 共通の resolver / onUpstreamAuthError をサーバー名で部分適用して client 毎の callback にする
+    // pool 共通の resolver / hook 群をサーバー名で部分適用して client 毎の callback にする
     const poolResolver = options?.resolveAllowedTools;
+    const poolBeforeHook = options?.onBeforeToolCall;
     const poolAuthErrorHook = options?.onUpstreamAuthError;
     const clientOptions =
-      poolResolver || poolAuthErrorHook
+      poolResolver || poolBeforeHook || poolAuthErrorHook
         ? {
             ...(poolResolver
               ? { resolveAllowedTools: () => poolResolver(config.name) }
+              : {}),
+            ...(poolBeforeHook
+              ? { onBeforeToolCall: () => poolBeforeHook(config.name) }
               : {}),
             ...(poolAuthErrorHook
               ? { onUpstreamAuthError: () => poolAuthErrorHook(config.name) }

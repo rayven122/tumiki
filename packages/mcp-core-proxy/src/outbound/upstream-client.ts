@@ -47,9 +47,20 @@ export type ResolveAllowedTools = () => Promise<string[] | null>;
  */
 export type UpstreamAuthErrorHook = () => Promise<string | null>;
 
+/**
+ * tool 呼び出し前に「このコネクトは現時点で呼んで良いか？」を判定するフック。
+ * 戻り値が null なら通常通り upstream へ転送、文字列なら upstream に投げず
+ * その文字列を Error メッセージにして即拒否する（AI へ deeplink 等を返す用途）。
+ *
+ * needsReauth=true のコネクトに対して proactive にツール呼び出しを止めるのに使う。
+ */
+export type BeforeToolCallHook = () => Promise<string | null>;
+
 export type CreateUpstreamClientOptions = {
   /** 指定時、listTools/callTool 毎に呼ばれて config.allowedTools より優先される（例外時は config.allowedTools にフォールバック） */
   resolveAllowedTools?: ResolveAllowedTools;
+  /** upstream 呼び出し前の事前チェック（needsReauth 等で proactive に止める用途） */
+  onBeforeToolCall?: BeforeToolCallHook;
   /** upstream 呼び出しが認証エラーで失敗したとき発火する */
   onUpstreamAuthError?: UpstreamAuthErrorHook;
 };
@@ -322,6 +333,29 @@ export const createUpstreamClient = (
     const allowedToolNames = await getAllowedToolNames();
     if (allowedToolNames && !allowedToolNames.has(name)) {
       throw new Error(`ツール "${name}" は許可されていません`);
+    }
+
+    // proactive な事前チェック: needsReauth=true 等で upstream へ投げる前に止める。
+    // フック自体が落ちた場合は upstream へそのまま転送する（フックの失敗で正常な呼び出しを巻き込まないため）。
+    const beforeHook = options?.onBeforeToolCall;
+    if (beforeHook) {
+      let blockMessage: string | null = null;
+      try {
+        blockMessage = await beforeHook();
+      } catch (hookError) {
+        logger.error(
+          `onBeforeToolCall hook が失敗しました（サーバー "${config.name}"・upstream 呼び出しは継続）`,
+          {
+            error:
+              hookError instanceof Error
+                ? hookError.message
+                : String(hookError),
+          },
+        );
+      }
+      if (blockMessage) {
+        throw new Error(blockMessage);
+      }
     }
 
     let result;
