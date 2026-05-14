@@ -17,6 +17,8 @@ services:
     image: ghcr.io/rayven122/tumiki-manager:latest
     container_name: tumiki-manager-verify
     restart: "no"
+    security_opt:
+      - no-new-privileges:true
     ports:
       - "127.0.0.1:3001:8080"
     # 本番 .env を共有するため、短時間の疎通確認後は必ず down する
@@ -45,6 +47,8 @@ services:
     image: ghcr.io/rayven122/tumiki-mcp-proxy:latest
     container_name: tumiki-mcp-proxy-verify
     restart: "no"
+    security_opt:
+      - no-new-privileges:true
     ports:
       - "127.0.0.1:8082:8080"
     # 本番 .env を共有するため、短時間の疎通確認後は必ず down する

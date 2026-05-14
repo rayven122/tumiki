@@ -33,13 +33,15 @@ TOKEN="$(infisical login \
 
 # === シークレット取得 ===
 # Machine Identity の場合 --projectId が必須。Access token はプロセス引数に出さない。
-INFISICAL_TOKEN="$TOKEN" infisical export \
+export INFISICAL_TOKEN="$TOKEN"
+infisical export \
   --env="$INFISICAL_ENV" \
   --path="$INFISICAL_PATH" \
   --format=dotenv \
   --domain="$INFISICAL_API_URL" \
   --projectId="$INFISICAL_PROJECT_ID" \
   > "$NEW_ENV"
+unset INFISICAL_TOKEN
 
 # 空応答ガード: CLI バグや一時障害で .env を空にしてサービス停止しないようにする
 if [[ ! -s "$NEW_ENV" ]]; then
@@ -55,12 +57,13 @@ if ! cmp -s "$NEW_ENV" "$ENV_FILE" 2>/dev/null; then
 fi
 
 # === コンテナ稼働確認 ===
-# 差分が無くても、初期化やクラッシュでコンテナが落ちていた場合に再立ち上げする。
+# 差分が無くても、初期化やクラッシュでアプリコンテナが落ちていた場合に再立ち上げする。
+# watchtower 自体は secrets 変更で再起動不要なため、同時実行時の過剰 reconcile を避ける。
 cd "$TUMIKI_DIR"
 RUNNING=$(docker compose -f "$COMPOSE_FILE" ps --status running --services 2>/dev/null \
-  | awk 'NF { count++ } END { print count + 0 }')
+  | awk '$0 != "watchtower" && NF { count++ } END { print count + 0 }')
 EXPECTED=$(docker compose -f "$COMPOSE_FILE" config --services 2>/dev/null \
-  | awk '/^[A-Za-z0-9_.-]+$/ { count++ } END { print count + 0 }')
+  | awk '$0 != "watchtower" && /^[A-Za-z0-9_.-]+$/ { count++ } END { print count + 0 }')
 
 if [[ "$EXPECTED" -eq 0 ]]; then
   echo "ERROR: docker compose config returned 0 services; aborting" >&2
