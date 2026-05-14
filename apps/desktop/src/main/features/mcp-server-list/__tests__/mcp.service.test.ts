@@ -1596,7 +1596,7 @@ describe("mcp.service", () => {
 
   describe("updateServerConnectionCredentials", () => {
     type ConnectionWithSecret = NonNullable<
-      Awaited<ReturnType<typeof mcpRepository.findConnectionByIdWithServer>>
+      Awaited<ReturnType<typeof mcpRepository.findConnectionByIdWithSecret>>
     >;
 
     const buildConn = (overrides: Partial<ConnectionWithSecret> = {}) =>
@@ -1609,7 +1609,7 @@ describe("mcp.service", () => {
       }) as unknown as ConnectionWithSecret;
 
     test("新規 secret を作成して接続の secretId を差し替え、旧 secret を孤立判定する", async () => {
-      vi.mocked(mcpRepository.findConnectionByIdWithServer).mockResolvedValue(
+      vi.mocked(mcpRepository.findConnectionByIdWithSecret).mockResolvedValue(
         buildConn(),
       );
       vi.mocked(mcpRepository.createSecret).mockResolvedValue({
@@ -1641,7 +1641,7 @@ describe("mcp.service", () => {
     });
 
     test("MASK 値・空文字は既存値で維持され、新値だけが上書きされる", async () => {
-      vi.mocked(mcpRepository.findConnectionByIdWithServer).mockResolvedValue(
+      vi.mocked(mcpRepository.findConnectionByIdWithSecret).mockResolvedValue(
         buildConn({
           secret: {
             credentials: JSON.stringify({
@@ -1672,7 +1672,7 @@ describe("mcp.service", () => {
     });
 
     test("OAuth 接続は更新できずエラーになる", async () => {
-      vi.mocked(mcpRepository.findConnectionByIdWithServer).mockResolvedValue(
+      vi.mocked(mcpRepository.findConnectionByIdWithSecret).mockResolvedValue(
         buildConn({ authType: "OAUTH" } as Partial<ConnectionWithSecret>),
       );
 
@@ -1684,7 +1684,7 @@ describe("mcp.service", () => {
     });
 
     test("接続が見つからない場合はエラーになる", async () => {
-      vi.mocked(mcpRepository.findConnectionByIdWithServer).mockResolvedValue(
+      vi.mocked(mcpRepository.findConnectionByIdWithSecret).mockResolvedValue(
         null,
       );
 
@@ -1694,7 +1694,7 @@ describe("mcp.service", () => {
     });
 
     test("実質変更がない（全 MASK 値）場合は secret を更新せず早期 return する", async () => {
-      vi.mocked(mcpRepository.findConnectionByIdWithServer).mockResolvedValue(
+      vi.mocked(mcpRepository.findConnectionByIdWithSecret).mockResolvedValue(
         buildConn({
           secret: { credentials: JSON.stringify({ A: "old-a", B: "old-b" }) },
         } as Partial<ConnectionWithSecret>),
@@ -1711,7 +1711,7 @@ describe("mcp.service", () => {
     });
 
     test("既存に無いキーだけが入力された場合も no-op として扱う", async () => {
-      vi.mocked(mcpRepository.findConnectionByIdWithServer).mockResolvedValue(
+      vi.mocked(mcpRepository.findConnectionByIdWithSecret).mockResolvedValue(
         buildConn({
           secret: { credentials: JSON.stringify({ TOKEN: "old" }) },
         } as Partial<ConnectionWithSecret>),

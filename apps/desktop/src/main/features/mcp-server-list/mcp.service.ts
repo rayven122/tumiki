@@ -13,7 +13,8 @@ import {
 import { getFaviconUrlsFromUrl } from "../../../shared/faviconUtils";
 import { encryptToken } from "../../utils/encryption";
 import { decryptCredentials } from "../../utils/credentials";
-import { MASK_VALUE, mergeCredentials } from "./mcp.credentials";
+import { mergeCredentials } from "./mcp.credentials";
+import { CREDENTIALS_MASK_VALUE } from "../../../shared/mcp.constants";
 import type {
   CreateFromCatalogInput,
   CreateFromManagerCatalogInput,
@@ -605,7 +606,7 @@ export const updateServerConnectionCredentials = async (
 ) => {
   const db = await getDb();
   await db.$transaction(async (tx) => {
-    const conn = await mcpRepository.findConnectionByIdWithServer(
+    const conn = await mcpRepository.findConnectionByIdWithSecret(
       tx,
       connectionId,
     );
@@ -619,16 +620,21 @@ export const updateServerConnectionCredentials = async (
     const existing = await safeDecryptCredentialsRecord(
       conn.secret.credentials,
     );
-    const merged = mergeCredentials(existing, inputCredentials, MASK_VALUE);
+    const merged = mergeCredentials(
+      existing,
+      inputCredentials,
+      CREDENTIALS_MASK_VALUE,
+    );
 
     // 実質変更がない（全フィールドが MASK or 空文字、もしくは既存に無いキーのみ）場合は
     // 何もせずトランザクションを閉じる。renderer 側でも canSubmit でガード済みだが、
     // IPC 直叩きや将来の呼び出し経路から no-op で呼ばれたときに secret 差し替えと
     // orphan 掃除が走らないようサービス層でも防衛する。
-    const existingKeys = Object.keys(existing);
-    const isUnchanged =
-      existingKeys.length === Object.keys(merged).length &&
-      existingKeys.every((key) => existing[key] === merged[key]);
+    // mergeCredentials は既存に無いキーを追加しないため、existing と merged のキー集合は
+    // 常に一致する。全キーの値一致だけ確認すれば充分。
+    const isUnchanged = Object.keys(existing).every(
+      (key) => existing[key] === merged[key],
+    );
     if (isUnchanged) return;
 
     const encrypted = await encryptToken(JSON.stringify(merged));

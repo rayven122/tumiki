@@ -761,4 +761,35 @@ describe("mcp.repository（実DB）", () => {
       ).rejects.toThrow();
     });
   });
+
+  describe("findConnectionByIdWithSecret", () => {
+    test("接続と secret.credentials を必要な分だけ返す", async () => {
+      const server = await mcpRepository.createServer(db, serverData);
+      const secret = await mcpRepository.createSecret(db, "enc-data");
+      const connection = await mcpRepository.createConnection(
+        db,
+        await buildConnectionData(server.id, secret.id),
+      );
+
+      const result = await mcpRepository.findConnectionByIdWithSecret(
+        db,
+        connection.id,
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.id).toBe(connection.id);
+      expect(result?.authType).toBe("NONE");
+      expect(result?.secretId).toBe(secret.id);
+      expect(result?.secret.credentials).toBe("enc-data");
+    });
+
+    test("存在しないIDの場合は null を返す", async () => {
+      const result = await mcpRepository.findConnectionByIdWithSecret(
+        db,
+        99999,
+      );
+
+      expect(result).toBeNull();
+    });
+  });
 });

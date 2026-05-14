@@ -1,5 +1,6 @@
 import { describe, test, expect } from "vitest";
-import { MASK_VALUE, mergeCredentials } from "../mcp.credentials";
+import { mergeCredentials } from "../mcp.credentials";
+import { CREDENTIALS_MASK_VALUE as MASK_VALUE } from "../../../../shared/mcp.constants";
 
 describe("mcp.credentials", () => {
   describe("mergeCredentials", () => {

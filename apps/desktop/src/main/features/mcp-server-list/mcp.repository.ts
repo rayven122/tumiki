@@ -131,6 +131,26 @@ export const findConnectionByIdWithServer = async (
   });
 };
 
+/**
+ * credentials 更新フロー専用の絞り込みクエリ
+ * updateServerConnectionCredentials は authType / secretId / secret.credentials しか
+ * 参照しないため、server リレーション全体を持ち込まず必要最小限のみ返す。
+ */
+export const findConnectionByIdWithSecret = async (
+  db: DbClient,
+  connectionId: number,
+) => {
+  return db.mcpConnection.findUnique({
+    where: { id: connectionId },
+    select: {
+      id: true,
+      authType: true,
+      secretId: true,
+      secret: { select: { credentials: true } },
+    },
+  });
+};
+
 export const findConnectionsByIdsWithTools = async (
   db: DbClient,
   connectionIds: number[],
