@@ -34,6 +34,7 @@ export const setReceiverPort = (port: number): void => {
 
 // 起動時の自動再書き込み結果を保持する（renderer 起動完了後に取得させるため）。
 // `getPendingAutoReapplied` で取得され、消費されるとクリアされる。
+// 現在はシングルウィンドウ前提のため、最初の renderer が取得した時点で消費する。
 let _pendingAutoReapplied: { tools: AiCodingTool[]; port: number } | null =
   null;
 

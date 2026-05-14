@@ -104,9 +104,9 @@ describe("エンドポイントルーティング", () => {
     expect(service.storeOtlpMetrics).not.toHaveBeenCalled();
   });
 
-  test("未知のパスは 200 を返すがサービスを呼ばない", async () => {
+  test("未知のパスは 404 を返してサービスを呼ばない", async () => {
     const res = await sendRequest(testPort, "/unknown", "{}");
-    expect(res.status).toStrictEqual(200);
+    expect(res.status).toStrictEqual(404);
     expect(service.storeOtlpMetrics).not.toHaveBeenCalled();
     expect(service.storeOtlpTraces).not.toHaveBeenCalled();
   });

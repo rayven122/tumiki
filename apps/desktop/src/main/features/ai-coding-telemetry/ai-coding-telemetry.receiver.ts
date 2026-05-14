@@ -61,11 +61,19 @@ export const startOtlpReceiver = async (
       // ボディ超過で既にレスポンス送信済みの場合は何もしない
       if (bodyExceeded) return;
       void (async () => {
+        if (req.url !== "/v1/metrics" && req.url !== "/v1/traces") {
+          res.writeHead(404, { "Content-Type": "application/json" });
+          res.end("{}");
+          return;
+        }
         try {
           const body = Buffer.concat(chunks).toString("utf-8");
           const data: unknown = JSON.parse(body);
-          if (req.url === "/v1/metrics") await service.storeOtlpMetrics(data);
-          if (req.url === "/v1/traces") await service.storeOtlpTraces(data);
+          if (req.url === "/v1/metrics") {
+            await service.storeOtlpMetrics(data);
+          } else {
+            await service.storeOtlpTraces(data);
+          }
         } catch (error) {
           logger.warn("OTLP receiver: リクエスト処理中にエラーが発生しました", {
             url: req.url,
