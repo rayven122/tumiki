@@ -33,15 +33,14 @@ TOKEN="$(infisical login \
 
 # === シークレット取得 ===
 # Machine Identity の場合 --projectId が必須。Access token はプロセス引数に出さない。
-export INFISICAL_TOKEN="$TOKEN"
-infisical export \
+INFISICAL_TOKEN="$TOKEN" infisical export \
   --env="$INFISICAL_ENV" \
   --path="$INFISICAL_PATH" \
   --format=dotenv \
   --domain="$INFISICAL_API_URL" \
   --projectId="$INFISICAL_PROJECT_ID" \
   > "$NEW_ENV"
-unset INFISICAL_TOKEN
+unset TOKEN
 
 # 空応答ガード: CLI バグや一時障害で .env を空にしてサービス停止しないようにする
 if [[ ! -s "$NEW_ENV" ]]; then
