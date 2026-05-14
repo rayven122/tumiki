@@ -135,6 +135,15 @@ export const MyTools = (): JSX.Element => {
   );
 };
 
+/** サーバーアイコンを取得する関数 */
+const getServerIcon = (server: McpServerWithRuntime): string | null => {
+  return (
+    server.connections[0]?.iconPath ??
+    server.connections[0]?.catalog?.iconPath ??
+    null
+  );
+};
+
 /** サーバーカードコンポーネント */
 const ServerCard = ({
   server,
@@ -164,9 +173,9 @@ const ServerCard = ({
       >
         {/* アイコン + ステータスバッジ */}
         <div className="mb-3 flex items-start justify-between gap-2">
-          {server.connections[0]?.catalog?.iconPath ? (
+          {getServerIcon(server) ? (
             <img
-              src={server.connections[0].catalog.iconPath}
+              src={getServerIcon(server)!}
               alt={server.name}
               className="h-8 w-8 rounded-lg"
             />
