@@ -210,36 +210,6 @@ describe("oauth.repository", () => {
       expect(result).toBeNull();
     });
 
-    test("updateSecretCredentials は credentials を保存し needsReauth/lastAuthErrorAt をクリアする", async () => {
-      await updateSecretCredentials(mockDb, 42, "encrypted-blob");
-
-      // 当該 mcpSecret.update に credentials と一緒に needsReauth=false 等が含まれる
-      const updateMock = mockDb.mcpSecret.update as ReturnType<typeof vi.fn>;
-      expect(updateMock).toHaveBeenCalledWith({
-        where: { id: 42 },
-        data: {
-          credentials: "encrypted-blob",
-          needsReauth: false,
-          lastAuthErrorAt: null,
-        },
-        select: { id: true },
-      });
-    });
-
-    test("markSecretNeedsReauth は needsReauth=true と lastAuthErrorAt を立てる", async () => {
-      await markSecretNeedsReauth(mockDb, 42);
-
-      const updateMock = mockDb.mcpSecret.update as ReturnType<typeof vi.fn>;
-      expect(updateMock).toHaveBeenCalledTimes(1);
-      const call = updateMock.mock.calls[0]?.[0] as {
-        where: { id: number };
-        data: { needsReauth: boolean; lastAuthErrorAt: Date };
-      };
-      expect(call.where).toStrictEqual({ id: 42 });
-      expect(call.data.needsReauth).toBe(true);
-      expect(call.data.lastAuthErrorAt).toBeInstanceOf(Date);
-    });
-
     test("isDcr=falseでclientSecretがnullの場合もnullのまま返す", async () => {
       vi.mocked(mockDb.oAuthClient.findUnique).mockResolvedValueOnce({
         id: 2,
@@ -263,6 +233,40 @@ describe("oauth.repository", () => {
         clientId: "public-client",
         clientSecret: null,
       });
+    });
+  });
+
+  describe("updateSecretCredentials", () => {
+    test("updateSecretCredentials は credentials を保存し needsReauth/lastAuthErrorAt をクリアする", async () => {
+      await updateSecretCredentials(mockDb, 42, "encrypted-blob");
+
+      // 当該 mcpSecret.update に credentials と一緒に needsReauth=false 等が含まれる
+      const updateMock = mockDb.mcpSecret.update as ReturnType<typeof vi.fn>;
+      expect(updateMock).toHaveBeenCalledWith({
+        where: { id: 42 },
+        data: {
+          credentials: "encrypted-blob",
+          needsReauth: false,
+          lastAuthErrorAt: null,
+        },
+        select: { id: true },
+      });
+    });
+  });
+
+  describe("markSecretNeedsReauth", () => {
+    test("markSecretNeedsReauth は needsReauth=true と lastAuthErrorAt を立てる", async () => {
+      await markSecretNeedsReauth(mockDb, 42);
+
+      const updateMock = mockDb.mcpSecret.update as ReturnType<typeof vi.fn>;
+      expect(updateMock).toHaveBeenCalledTimes(1);
+      const call = updateMock.mock.calls[0]?.[0] as {
+        where: { id: number };
+        data: { needsReauth: boolean; lastAuthErrorAt: Date };
+      };
+      expect(call.where).toStrictEqual({ id: 42 });
+      expect(call.data.needsReauth).toBe(true);
+      expect(call.data.lastAuthErrorAt).toBeInstanceOf(Date);
     });
   });
 });

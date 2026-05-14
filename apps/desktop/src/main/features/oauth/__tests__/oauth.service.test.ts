@@ -50,7 +50,10 @@ import { parseOAuthCallback } from "../oauth.protocol";
 import { startLoopbackServer, type LoopbackServer } from "../oauth.loopback";
 import * as oauthRepository from "../oauth.repository";
 import * as mcpRepository from "../../mcp-server-list/mcp.repository";
-import { fetchToolsForConnection } from "../../mcp-proxy/mcp-proxy.service";
+import {
+  fetchToolsForConnection,
+  ToolFetchError,
+} from "../../mcp-proxy/mcp-proxy.service";
 import {
   createFromCatalog,
   createFromManagerCatalog,
@@ -620,6 +623,38 @@ describe("oauth.service", () => {
         mockDb,
         33,
         "encrypted-credentials",
+      );
+      expect(oauthRepository.markSecretNeedsReauth).toHaveBeenCalledWith(
+        mockDb,
+        33,
+      );
+    });
+
+    test("ToolFetchError 発生時はプロバイダ拒否を示す専用メッセージで失敗する", async () => {
+      vi.mocked(startLoopbackServer).mockResolvedValueOnce(buildLoopback());
+      vi.mocked(
+        mcpRepository.findConnectionByIdWithServer,
+      ).mockResolvedValueOnce(baseConnection);
+      vi.mocked(oauthRepository.findByServerUrl).mockResolvedValueOnce({
+        id: 1,
+        serverUrl: "https://mcp.figma.com/mcp",
+        issuer: "https://www.figma.com",
+        clientId: "cached-client-id",
+        clientSecret: "cached-secret",
+        tokenEndpointAuthMethod: "client_secret_post",
+        authServerMetadata: JSON.stringify(mockMetadata),
+        isDcr: true,
+      });
+      // tools/list が ToolFetchError で失敗するケース（プロバイダ側でトークン拒否）
+      vi.mocked(fetchToolsForConnection).mockRejectedValueOnce(
+        new ToolFetchError("upstream rejected"),
+      );
+
+      const manager = createMcpOAuthManager();
+      await expect(
+        manager.reauthenticateConnection({ connectionId: 7 }),
+      ).rejects.toThrow(
+        "新しいOAuthトークンでツール一覧の取得に失敗しました（プロバイダ側でトークンが受け付けられていません）",
       );
       expect(oauthRepository.markSecretNeedsReauth).toHaveBeenCalledWith(
         mockDb,
