@@ -28,8 +28,8 @@ services:
     environment:
       # apps/manager/.env として image に焼き込まれた AUTH_URL=http://localhost:3000 を上書き
       # AUTH_URL は NEXTAUTH_URL より優先されるため両方設定する
-      AUTH_URL: ${NEXTAUTH_URL}
-      NEXTAUTH_URL: ${NEXTAUTH_URL}
+      AUTH_URL: ${NEXTAUTH_URL:?NEXTAUTH_URL is required}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:?NEXTAUTH_URL is required}
     labels:
       - com.centurylinklabs.watchtower.enable=true
     healthcheck:

@@ -148,6 +148,8 @@ docker compose -f compose.production.yaml up -d --no-deps manager mcp-proxy
 
 ```bash
 ssh tumiki-sakura-prod
+# 本番環境では Docker 公式 apt リポジトリ経由のインストールを推奨:
+# https://docs.docker.com/engine/install/ubuntu/
 curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER
 sudo apt-get install -y docker-compose-plugin

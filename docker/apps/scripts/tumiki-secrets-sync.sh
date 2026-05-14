@@ -83,7 +83,7 @@ count_running_services() {
 
 count_expected_services() {
   docker compose -f "$COMPOSE_FILE" config --services \
-    | awk -v exclude="$RECONCILE_COUNT_EXCLUDE_PATTERN" '$0 !~ exclude && /^[A-Za-z0-9_.-]+$/ { count++ } END { print count + 0 }'
+    | awk -v exclude="$RECONCILE_COUNT_EXCLUDE_PATTERN" '$0 !~ exclude && /^[a-z0-9_-]+$/ { count++ } END { print count + 0 }'
 }
 
 RUNNING=$(count_running_services)

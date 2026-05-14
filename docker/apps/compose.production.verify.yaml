@@ -22,11 +22,13 @@ services:
       - no-new-privileges:true
     ports:
       - "127.0.0.1:3001:8080"
+    networks:
+      - app
     # 本番 .env を共有するため、短時間の疎通確認後は必ず down する
     env_file: .env
     environment:
-      AUTH_URL: ${NEXTAUTH_URL}
-      NEXTAUTH_URL: ${NEXTAUTH_URL}
+      AUTH_URL: ${NEXTAUTH_URL:?NEXTAUTH_URL is required}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:?NEXTAUTH_URL is required}
       # 本番 DB を共有する検証起動では migrate deploy を必ず抑止する
       SKIP_MIGRATE: "true"
     healthcheck:
@@ -53,6 +55,8 @@ services:
       - no-new-privileges:true
     ports:
       - "127.0.0.1:8082:8080"
+    networks:
+      - app
     # 本番 .env を共有するため、短時間の疎通確認後は必ず down する
     env_file: .env
     healthcheck:
@@ -69,3 +73,6 @@ services:
       timeout: 10s
       start_period: 30s
       retries: 3
+
+networks:
+  app:
