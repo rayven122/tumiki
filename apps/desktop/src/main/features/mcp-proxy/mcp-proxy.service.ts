@@ -134,8 +134,8 @@ const buildConfigFromConnection = async (
   oauthCache: Map<number, Record<string, string>> = new Map(),
 ): Promise<{ config: McpServerConfig; meta: McpConnectionMeta } | null> => {
   const connLabel = `${conn.server.slug}/${conn.slug}`;
-  // カタログ由来（catalogId !== null）はサーバーslugを省いて接続slugのみをprefixにする。
-  // カスタムMCPは serverSlug-connSlug の形式を維持する。
+  // カタログ由来は接続slugのみ（冗長な server-server__ を避ける）、カスタムは serverSlug-connSlug を維持。
+  // 前提: カタログ接続slugはcreateFromCatalog経由でMcpServerのslugと同値が設定され、DB上でグローバルにユニーク（McpServer.slug @unique）。
   const name =
     conn.catalogId !== null ? conn.slug : `${conn.server.slug}-${conn.slug}`;
 

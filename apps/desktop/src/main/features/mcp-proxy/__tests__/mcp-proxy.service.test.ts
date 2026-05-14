@@ -155,6 +155,7 @@ describe("mcp-proxy.service", () => {
           catalogId: 1,
           command: "uvx",
           args: '["backlog-mcp"]',
+          credentials: "{}",
           server: { slug: "backlog" },
         }),
       ]);
