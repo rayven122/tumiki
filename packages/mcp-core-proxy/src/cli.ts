@@ -14,6 +14,7 @@ import type {
   ResolveAllowedToolsByName,
 } from "./outbound/upstream-pool.js";
 import type {
+  DynamicSearchOptions,
   Logger,
   McpServerConfig,
   ServerStatus,
@@ -53,7 +54,13 @@ export type {
   RedactionPolicy,
   RedactionFilterOptions,
 } from "./security/redaction-filter.js";
-export type { PiiDetectionSummary } from "./types.js";
+export type {
+  DynamicSearchOptions,
+  PiiDetectionSummary,
+  ToolDescriptionResult,
+  ToolSearchProvider,
+  ToolSearchResult,
+} from "./types.js";
 export {
   DEFAULT_PII_MASKING_ENABLED,
   DEFAULT_REDACTION_POLICY,
@@ -101,6 +108,8 @@ export type ProxyHooks = {
    * 返却する用途（戻り値の文字列がエラーメッセージに追記される）。
    */
   onUpstreamAuthError?: OnUpstreamAuthErrorByName;
+  /** true の場合、元ツールを隠して search_tools/describe_tools/execute_tool のみ公開する */
+  dynamicSearch?: DynamicSearchOptions;
 };
 
 export const runMcpProxy = async (
@@ -113,6 +122,7 @@ export const runMcpProxy = async (
     resolveAllowedTools: hooks?.resolveAllowedTools,
     onBeforeToolCall: hooks?.onBeforeToolCall,
     onUpstreamAuthError: hooks?.onUpstreamAuthError,
+    dynamicSearch: hooks?.dynamicSearch,
   });
 
   // ステータス変更フックを登録

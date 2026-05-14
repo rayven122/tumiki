@@ -107,6 +107,52 @@ export const createTools = async (db: DbClient, data: CreateMcpToolInput[]) => {
   return db.mcpTool.createMany({ data });
 };
 
+export const syncToolsForConnection = async (
+  db: DbClient,
+  connectionId: number,
+  data: Omit<CreateMcpToolInput, "connectionId">[],
+): Promise<{ upsertedCount: number; deletedCount: number }> => {
+  const names = data.map((tool) => tool.name);
+  // tools/list が空の場合は、その接続が現在ツールを提供していない状態として全件同期削除する。
+  const deleted = await db.mcpTool.deleteMany({
+    where: {
+      connectionId,
+      ...(names.length > 0 ? { name: { notIn: names } } : {}),
+    },
+  });
+  for (const tool of data) {
+    await db.mcpTool.upsert({
+      where: {
+        connectionId_name: {
+          connectionId,
+          name: tool.name,
+        },
+      },
+      create: {
+        ...tool,
+        connectionId,
+      },
+      update: {
+        description: tool.description,
+        inputSchema: tool.inputSchema,
+      },
+    });
+  }
+
+  return { upsertedCount: data.length, deletedCount: deleted.count };
+};
+
+export const findConnectionsByServerId = async (
+  db: DbClient,
+  serverId: number,
+) => {
+  return db.mcpConnection.findMany({
+    where: { serverId },
+    select: { id: true },
+    orderBy: { displayOrder: "asc" },
+  });
+};
+
 /**
  * 指定接続のツール名と許可状態を取得（CLI モードの動的フィルタ resolver 用）
  */

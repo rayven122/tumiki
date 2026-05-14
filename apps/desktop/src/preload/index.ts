@@ -20,6 +20,9 @@ import type {
   ToggleServerInput,
   UpdatePiiMaskingInput,
   UpdateToonConversionInput,
+  UpdateDynamicSearchInput,
+  RefreshToolsInput,
+  RefreshToolsOutput,
   GetServerEditDetailInput,
   GetServerEditDetailOutput,
   UpdateServerConnectionCredentialsInput,
@@ -126,6 +129,10 @@ const api = {
       ipcRenderer.invoke("mcp:updatePiiMasking", input),
     updateToonConversion: (input: UpdateToonConversionInput): Promise<void> =>
       ipcRenderer.invoke("mcp:updateToonConversion", input),
+    updateDynamicSearch: (input: UpdateDynamicSearchInput): Promise<void> =>
+      ipcRenderer.invoke("mcp:updateDynamicSearch", input),
+    refreshTools: (input: RefreshToolsInput): Promise<RefreshToolsOutput> =>
+      ipcRenderer.invoke("mcp:refreshTools", input),
     getDetail: (serverId: number): Promise<McpServerDetailItem | null> =>
       ipcRenderer.invoke("mcp-server:getDetail", serverId),
     toggleTool: (input: {
