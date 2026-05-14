@@ -9,6 +9,8 @@
 #   INFISICAL_PROJECT_ID                    プロジェクト UUID
 set -euo pipefail
 
+export PATH="/usr/local/bin:/usr/bin:/bin:${PATH:-}"
+
 TUMIKI_DIR="${TUMIKI_DIR:-$HOME/tumiki}"
 COMPOSE_FILE="${COMPOSE_FILE:-compose.production.yaml}"
 INFISICAL_ENV="${INFISICAL_ENV:-prod}"
