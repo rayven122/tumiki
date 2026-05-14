@@ -69,7 +69,7 @@ services:
   watchtower:
     # containrrr/watchtower は最終リリースが古く Docker API v1.40+ に未対応のため
     # 互換性が維持されている active fork (nickfedor/watchtower) を採用する。
-    image: nickfedor/watchtower:1.16.1
+    image: nickfedor/watchtower:1.16.1@sha256:62bec6c1a89e9882970130a311f0ac27faf11f26520b8755ca6a78802a1a6d8f
     container_name: tumiki-watchtower
     restart: unless-stopped
     volumes:

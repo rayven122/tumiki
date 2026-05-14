@@ -2,8 +2,10 @@
 #
 # 旧 systemd は host:3000 (manager) / host:8080 (mcp-proxy) で稼働中のため、
 # 検証用は別ポート (host:3001 / host:8082) で起動する。Cloudflare Tunnel ingress
-# は触らないため外部疎通は発生しない。本番 DB / 本番 .env を共有するので、
-# entrypoint で `prisma migrate deploy` が走り未適用 migration が適用される。
+# は触らないため外部疎通は発生しない。
+#
+# WARNING: 本番 DB / 本番 .env を共有するため、up -d だけで entrypoint の
+# `prisma migrate deploy` が本番 DB に対して実行される。
 #
 # 使用方法:
 #   docker compose -f compose.production.verify.yaml up -d

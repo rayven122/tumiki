@@ -84,7 +84,9 @@
 WATCHTOWER_NOTIFICATION_URL=slack://hook:T0000/B0000/XXXXXXXX@channel
 ```
 
-Watchtower は Docker socket をマウントするため、侵害時の影響範囲が大きい。`compose.production.yaml` では現在稼働確認済みの `nickfedor/watchtower:1.16.1` に固定し、更新時はタグ差分を確認してから変更する。将来的に権限をさらに絞る場合は Docker socket proxy の導入を検討する。
+Watchtower は Docker socket をマウントするため、侵害時の影響範囲が大きい。`compose.production.yaml` では現在稼働確認済みの `nickfedor/watchtower:1.16.1` を digest 固定し、更新時はタグ差分を確認してから変更する。将来的に権限をさらに絞る場合は Docker socket proxy の導入を検討する。
+
+GHCR の `tumiki-manager` / `tumiki-mcp-proxy` image は、`tumiki-sakura-prod` 上で Docker 認証設定なしに `docker pull` できることを確認済み。Private package に変更する場合は、Watchtower から参照できる Docker registry 認証情報を追加する。
 
 ### image ロールバック
 
@@ -146,8 +148,11 @@ ls -la /etc/infisical/agent.env
 
 # 動作テスト
 set -a; source /etc/infisical/agent.env; set +a
-TOKEN=$(infisical login --method=universal-auth --plain --silent)
+TOKEN=$(infisical login --method=universal-auth \
+  --domain="$INFISICAL_API_URL" \
+  --plain --silent)
 infisical export --env=prod --path=/ --format=dotenv \
+  --domain="$INFISICAL_API_URL" \
   --projectId="$INFISICAL_PROJECT_ID" --token="$TOKEN" | wc -l
 ```
 

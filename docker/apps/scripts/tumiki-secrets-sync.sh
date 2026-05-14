@@ -28,6 +28,7 @@ trap 'rm -f "$NEW_ENV"' EXIT
 # secret が ps /proc 等のコマンドライン引数に出ないようにする。
 TOKEN="$(infisical login \
   --method=universal-auth \
+  --domain="$INFISICAL_API_URL" \
   --plain --silent)"
 
 # === シークレット取得 ===
@@ -36,6 +37,7 @@ infisical export \
   --env="$INFISICAL_ENV" \
   --path="$INFISICAL_PATH" \
   --format=dotenv \
+  --domain="$INFISICAL_API_URL" \
   --projectId="$INFISICAL_PROJECT_ID" \
   --token="$TOKEN" \
   > "$NEW_ENV"

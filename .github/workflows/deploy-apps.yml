@@ -168,18 +168,9 @@ jobs:
           # NoNewPrivileges 等の制限を尊重し、journal にログを残すため systemctl start を使用。
           ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash << 'REMOTE_SCRIPT'
             set -euo pipefail
+            # oneshot service の完了まで systemctl start がブロックし、失敗時は非ゼロで終了する。
             sudo systemctl start tumiki-secrets-sync.service
-            # 完了するまで待機（oneshot のため start は即時 return する）
-            for i in $(seq 1 30); do
-              status=$(systemctl is-active tumiki-secrets-sync.service || true)
-              [[ "$status" == "inactive" || "$status" == "failed" ]] && break
-              sleep 2
-            done
-            sudo systemctl status --no-pager tumiki-secrets-sync.service || true
-            if [[ "${status:-unknown}" != "inactive" ]]; then
-              echo "::error::tumiki-secrets-sync.service did not complete successfully (status=${status:-unknown})"
-              exit 1
-            fi
+            sudo systemctl status --no-pager tumiki-secrets-sync.service
           REMOTE_SCRIPT
 
       - name: ✅ Verify health endpoints
