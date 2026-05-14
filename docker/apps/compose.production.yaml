@@ -16,8 +16,8 @@ services:
     container_name: tumiki-manager
     restart: unless-stopped
     ports:
-      # 既存 Cloudflare Tunnel ingress (host:3000 → manager) を維持
-      - "3000:8080"
+      # Cloudflare Tunnel ingress は localhost:3000 に接続するため、外部 NIC へ公開しない
+      - "127.0.0.1:3000:8080"
     env_file: .env
     environment:
       # apps/manager/.env として image に焼き込まれた AUTH_URL=http://localhost:3000 を上書き
@@ -46,8 +46,8 @@ services:
     container_name: tumiki-mcp-proxy
     restart: unless-stopped
     ports:
-      # 既存 Cloudflare Tunnel ingress (host:8080 → mcp-proxy) を維持
-      - "8080:8080"
+      # Cloudflare Tunnel ingress は localhost:8080 に接続するため、外部 NIC へ公開しない
+      - "127.0.0.1:8080:8080"
     env_file: .env
     labels:
       - com.centurylinklabs.watchtower.enable=true
@@ -73,6 +73,7 @@ services:
     container_name: tumiki-watchtower
     restart: unless-stopped
     volumes:
+      # TODO: Docker socket proxy を介して必要な API のみに絞る
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       # ラベル付きコンテナのみ監視対象とする

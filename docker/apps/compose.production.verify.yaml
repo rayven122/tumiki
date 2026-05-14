@@ -1,7 +1,7 @@
 # 検証用 standalone compose（旧 systemd と並行稼働して動作確認するため）
 #
 # 旧 systemd は host:3000 (manager) / host:8080 (mcp-proxy) で稼働中のため、
-# 検証用は別ポート (host:3001 / host:8082) で起動する。Cloudflare Tunnel ingress
+# 検証用は別ポート (127.0.0.1:3001 / 127.0.0.1:8082) で起動する。Cloudflare Tunnel ingress
 # は触らないため外部疎通は発生しない。
 #
 # WARNING: 本番 DB / 本番 .env を共有する。本ファイルでは SKIP_MIGRATE=true を
@@ -18,11 +18,12 @@ services:
     container_name: tumiki-manager-verify
     restart: "no"
     ports:
-      - "3001:8080"
+      - "127.0.0.1:3001:8080"
     env_file: .env
     environment:
       AUTH_URL: ${NEXTAUTH_URL}
       NEXTAUTH_URL: ${NEXTAUTH_URL}
+      # 本番 DB を共有する検証起動では migrate deploy を必ず抑止する
       SKIP_MIGRATE: "true"
     healthcheck:
       test:
@@ -44,7 +45,7 @@ services:
     container_name: tumiki-mcp-proxy-verify
     restart: "no"
     ports:
-      - "8082:8080"
+      - "127.0.0.1:8082:8080"
     env_file: .env
     healthcheck:
       test:
