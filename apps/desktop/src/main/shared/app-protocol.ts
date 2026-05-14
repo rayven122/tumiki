@@ -61,6 +61,31 @@ export const resolveSafePath = (
   return isSafe ? resolved : null;
 };
 
+/**
+ * AI クライアント向け再認証ディープリンク `tumiki://reauth?connectionId=N` の検証。
+ * 連携先 AI が自動リンク化したテキストをユーザーがクリックして起動するので、
+ * connectionId は素朴に整数（正の値）であることだけを保証する。
+ *
+ * @returns 有効な connectionId（正の整数）、不正なら null
+ */
+export const parseReauthDeepLink = (url: string): number | null => {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== "tumiki:" || parsed.hostname !== "reauth") {
+    return null;
+  }
+  const raw = parsed.searchParams.get("connectionId");
+  if (raw === null || raw === "") return null;
+  // 浮動小数や負値・ゼロ・先頭ゼロ等を排除（DB の autoincrement PK は正の整数）
+  if (!/^[1-9]\d*$/.test(raw)) return null;
+  const id = Number(raw);
+  return Number.isSafeInteger(id) ? id : null;
+};
+
 // `app.whenReady()` 後に呼ぶ。レンダラー dist 配下のファイルを返す。
 export const handleAppProtocol = (rendererRoot: string): void => {
   protocol.handle(APP_SCHEME, (req) => {

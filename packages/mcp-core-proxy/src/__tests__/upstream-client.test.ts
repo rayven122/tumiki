@@ -197,6 +197,80 @@ describe("UpstreamClient", () => {
         client.callTool("read_file", { path: "/test" }),
       ).rejects.toThrow("接続されていません");
     });
+
+    test("upstream が 401 を返したとき onUpstreamAuthError が呼ばれ、戻り値がメッセージに追記される", async () => {
+      const hook = vi
+        .fn<() => Promise<string | null>>()
+        .mockResolvedValue("[再認証する](tumiki://reauth?connectionId=42)");
+      const authClient = createUpstreamClient(createTestConfig(), mockLogger, {
+        onUpstreamAuthError: hook,
+      });
+      mockConnect.mockResolvedValue(undefined);
+      mockCallTool.mockRejectedValue(new Error("HTTP 401 Unauthorized"));
+
+      await authClient.connect();
+      await expect(
+        authClient.callTool("read_file", { path: "/x" }),
+      ).rejects.toThrow(
+        "HTTP 401 Unauthorized\n\n[再認証する](tumiki://reauth?connectionId=42)",
+      );
+      expect(hook).toHaveBeenCalledTimes(1);
+    });
+
+    test("upstream が 500 を返したときは onUpstreamAuthError は呼ばれない（TRANSIENT は対象外）", async () => {
+      const hook = vi
+        .fn<() => Promise<string | null>>()
+        .mockResolvedValue("should not appear");
+      const authClient = createUpstreamClient(createTestConfig(), mockLogger, {
+        onUpstreamAuthError: hook,
+      });
+      mockConnect.mockResolvedValue(undefined);
+      mockCallTool.mockRejectedValue(new Error("Internal server error 500"));
+
+      await authClient.connect();
+      await expect(
+        authClient.callTool("read_file", { path: "/x" }),
+      ).rejects.toThrow("Internal server error 500");
+      expect(hook).not.toHaveBeenCalled();
+    });
+
+    test("onUpstreamAuthError が null を返した場合は元のエラーをそのまま伝搬する", async () => {
+      const hook = vi
+        .fn<() => Promise<string | null>>()
+        .mockResolvedValue(null);
+      const authClient = createUpstreamClient(createTestConfig(), mockLogger, {
+        onUpstreamAuthError: hook,
+      });
+      mockConnect.mockResolvedValue(undefined);
+      mockCallTool.mockRejectedValue(new Error("HTTP 401 Unauthorized"));
+
+      await authClient.connect();
+      await expect(
+        authClient.callTool("read_file", { path: "/x" }),
+      ).rejects.toThrow("HTTP 401 Unauthorized");
+      // 追記行（\n\n）は付かない
+      await expect(
+        authClient
+          .callTool("read_file", { path: "/x" })
+          .catch((e: unknown) => (e instanceof Error ? e.message : String(e))),
+      ).resolves.toStrictEqual("HTTP 401 Unauthorized");
+    });
+
+    test("onUpstreamAuthError 自体が throw しても元のエラーをそのまま伝搬する（hook 例外は握りつぶす）", async () => {
+      const hook = vi
+        .fn<() => Promise<string | null>>()
+        .mockRejectedValue(new Error("hook failed"));
+      const authClient = createUpstreamClient(createTestConfig(), mockLogger, {
+        onUpstreamAuthError: hook,
+      });
+      mockConnect.mockResolvedValue(undefined);
+      mockCallTool.mockRejectedValue(new Error("HTTP 401 Unauthorized"));
+
+      await authClient.connect();
+      await expect(
+        authClient.callTool("read_file", { path: "/x" }),
+      ).rejects.toThrow("HTTP 401 Unauthorized");
+    });
   });
 
   describe("クラッシュリトライ", () => {

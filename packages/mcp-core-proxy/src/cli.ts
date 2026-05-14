@@ -8,7 +8,10 @@
  * desktop の --server <slug> オプションで渡す configs を絞り込むことで
  * 単体サーバーとして動作させる。
  */
-import type { ResolveAllowedToolsByName } from "./outbound/upstream-pool.js";
+import type {
+  OnUpstreamAuthErrorByName,
+  ResolveAllowedToolsByName,
+} from "./outbound/upstream-pool.js";
 import type {
   Logger,
   McpServerConfig,
@@ -85,6 +88,12 @@ export type ProxyHooks = {
   enableToonConversion?: boolean;
   /** 指定時、listTools/callTool の都度呼ばれて DB から最新の許可ツールリストを取得する */
   resolveAllowedTools?: ResolveAllowedToolsByName;
+  /**
+   * upstream MCP サーバーが tools/call で 401/403 等の認証エラーを返したときに呼ばれる。
+   * Tumiki Desktop 側で needsReauth フラグを立てつつ、AI 向けに再認証ディープリンクを
+   * 返却する用途（戻り値の文字列がエラーメッセージに追記される）。
+   */
+  onUpstreamAuthError?: OnUpstreamAuthErrorByName;
 };
 
 export const runMcpProxy = async (
@@ -95,6 +104,7 @@ export const runMcpProxy = async (
 
   const core = createProxyCore(configs, logger, {
     resolveAllowedTools: hooks?.resolveAllowedTools,
+    onUpstreamAuthError: hooks?.onUpstreamAuthError,
   });
 
   // ステータス変更フックを登録
