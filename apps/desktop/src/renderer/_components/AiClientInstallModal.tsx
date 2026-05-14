@@ -125,7 +125,7 @@ export const AiClientInstallModal = ({
             <button
               type="button"
               onClick={handleCopy}
-              className="flex items-center gap-1 rounded px-2 py-1 text-[10px] text-gray-500 transition hover:text-gray-900 dark:text-white dark:text-zinc-500"
+              className="flex items-center gap-1 rounded px-2 py-1 text-[10px] text-gray-500 transition hover:text-gray-900 dark:text-zinc-500"
             >
               {copied ? <Check size={12} /> : <Copy size={12} />}
               {copied ? "コピー済み" : "コピー"}

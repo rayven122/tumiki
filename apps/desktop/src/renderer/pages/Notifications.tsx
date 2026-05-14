@@ -127,7 +127,7 @@ export const Notifications = (): JSX.Element => {
         {unreadCount > 0 && (
           <button
             onClick={markAllRead}
-            className="rounded-lg bg-black/[.06] px-3 py-1.5 text-xs text-gray-600 transition-colors hover:bg-black/[.02] dark:bg-white/[.04] dark:bg-white/[.08] dark:text-zinc-400"
+            className="rounded-lg bg-black/[.06] px-3 py-1.5 text-xs text-gray-600 transition-colors hover:bg-black/[.02] dark:bg-white/[.08] dark:text-zinc-400"
           >
             すべて既読にする
           </button>

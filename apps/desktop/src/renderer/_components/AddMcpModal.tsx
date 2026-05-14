@@ -287,7 +287,7 @@ export const AddMcpModal = ({
             value={serverName}
             onChange={(e) => setServerName(e.target.value)}
             placeholder="例: My Custom MCP Server"
-            className="w-full rounded-lg border border-gray-200 bg-black/[.02] px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white dark:text-zinc-600"
+            className="w-full rounded-lg border border-gray-200 bg-black/[.02] px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white"
           />
           <p className="mt-1.5 text-xs text-gray-500 dark:text-zinc-500">
             表示されるサーバー名を設定できます（空白や大文字を含むことができます）
@@ -441,7 +441,7 @@ export const AddMcpModal = ({
                     value={oauthClientId}
                     onChange={(e) => setOauthClientId(e.target.value)}
                     placeholder="Client IDを入力..."
-                    className="w-full rounded-lg border border-gray-200 bg-black/[.02] px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white dark:text-zinc-600"
+                    className="w-full rounded-lg border border-gray-200 bg-black/[.02] px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white"
                   />
                 </div>
                 <div>
@@ -454,7 +454,7 @@ export const AddMcpModal = ({
                     value={oauthClientSecret}
                     onChange={(e) => setOauthClientSecret(e.target.value)}
                     placeholder="Client Secretを入力（任意）..."
-                    className="w-full rounded-lg border border-gray-200 bg-black/[.02] px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white dark:text-zinc-600"
+                    className="w-full rounded-lg border border-gray-200 bg-black/[.02] px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white"
                   />
                 </div>
               </div>
@@ -481,7 +481,7 @@ export const AddMcpModal = ({
                     }))
                   }
                   placeholder={`${key}を入力...`}
-                  className="w-full rounded-lg border border-gray-200 bg-black/[.02] px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white dark:text-zinc-600"
+                  className="w-full rounded-lg border border-gray-200 bg-black/[.02] px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white"
                 />
               </div>
             ))}

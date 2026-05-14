@@ -59,7 +59,7 @@ export const ProfileGate = (): JSX.Element => {
             setError(null);
             refreshProfile();
           }}
-          className="rounded-lg border border-gray-200 px-4 py-2 text-gray-600 transition hover:bg-black/[.02] hover:text-gray-900 dark:border-white/[.08] dark:bg-white/[.04] dark:text-white dark:text-zinc-400"
+          className="rounded-lg border border-gray-200 px-4 py-2 text-gray-600 transition hover:bg-black/[.02] hover:text-gray-900 dark:border-white/[.08] dark:bg-white/[.04] dark:text-zinc-400"
         >
           再試行
         </button>

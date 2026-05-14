@@ -310,7 +310,7 @@ export const AddCustomMcpModal = ({
             onChange={(e) => setServerName(e.target.value)}
             placeholder="例: My Custom MCP Server"
             disabled={loading}
-            className="w-full rounded-lg border border-gray-200 bg-black/[.02] px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 disabled:opacity-50 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white dark:text-zinc-600"
+            className="w-full rounded-lg border border-gray-200 bg-black/[.02] px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 disabled:opacity-50 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white"
           />
           <p className="mt-1.5 text-xs text-gray-500 dark:text-zinc-500">
             表示されるサーバー名を設定できます（空白や大文字を含むことができます）
@@ -384,7 +384,7 @@ export const AddCustomMcpModal = ({
                 onChange={(e) => setCommand(e.target.value)}
                 placeholder="例: npx, node, python"
                 disabled={loading}
-                className="w-full rounded-lg border border-gray-200 bg-black/[.02] px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 disabled:opacity-50 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white dark:text-zinc-600"
+                className="w-full rounded-lg border border-gray-200 bg-black/[.02] px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 disabled:opacity-50 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white"
               />
             </div>
             <div>
@@ -397,7 +397,7 @@ export const AddCustomMcpModal = ({
                 onChange={(e) => setArgs(e.target.value)}
                 placeholder="例: -y @modelcontextprotocol/server-filesystem /path/to/dir"
                 disabled={loading}
-                className="w-full rounded-lg border border-gray-200 bg-black/[.02] px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 disabled:opacity-50 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white dark:text-zinc-600"
+                className="w-full rounded-lg border border-gray-200 bg-black/[.02] px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 disabled:opacity-50 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white"
               />
               <p className="mt-1.5 text-xs text-gray-500 dark:text-zinc-500">
                 スペース区切りで引数を入力してください（JSON配列形式も可）
@@ -416,7 +416,7 @@ export const AddCustomMcpModal = ({
               onChange={(e) => setUrl(e.target.value)}
               placeholder="例: https://example.com/mcp"
               disabled={loading}
-              className="w-full rounded-lg border border-gray-200 bg-black/[.02] px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 disabled:opacity-50 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white dark:text-zinc-600"
+              className="w-full rounded-lg border border-gray-200 bg-black/[.02] px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 disabled:opacity-50 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white"
             />
           </div>
         )}
@@ -519,7 +519,7 @@ export const AddCustomMcpModal = ({
                     onChange={(e) => setOauthClientId(e.target.value)}
                     placeholder="Client IDを入力..."
                     disabled={loading}
-                    className="w-full rounded-lg border border-gray-200 bg-black/[.02] px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 disabled:opacity-50 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white dark:text-zinc-600"
+                    className="w-full rounded-lg border border-gray-200 bg-black/[.02] px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 disabled:opacity-50 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white"
                   />
                 </div>
                 <div>
@@ -533,7 +533,7 @@ export const AddCustomMcpModal = ({
                     onChange={(e) => setOauthClientSecret(e.target.value)}
                     placeholder="Client Secretを入力（任意）..."
                     disabled={loading}
-                    className="w-full rounded-lg border border-gray-200 bg-black/[.02] px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 disabled:opacity-50 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white dark:text-zinc-600"
+                    className="w-full rounded-lg border border-gray-200 bg-black/[.02] px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 disabled:opacity-50 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white"
                   />
                 </div>
               </div>
@@ -557,7 +557,7 @@ export const AddCustomMcpModal = ({
                 }}
                 placeholder="キー名 (例: Authorization)"
                 disabled={loading}
-                className="flex-1 rounded-lg border border-gray-200 bg-black/[.02] px-3 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 disabled:opacity-50 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white dark:text-zinc-600"
+                className="flex-1 rounded-lg border border-gray-200 bg-black/[.02] px-3 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 disabled:opacity-50 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white"
               />
               <input
                 type="password"
@@ -569,7 +569,7 @@ export const AddCustomMcpModal = ({
                 }}
                 placeholder="値"
                 disabled={loading}
-                className="flex-1 rounded-lg border border-gray-200 bg-black/[.02] px-3 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 disabled:opacity-50 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white dark:text-zinc-600"
+                className="flex-1 rounded-lg border border-gray-200 bg-black/[.02] px-3 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 disabled:opacity-50 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white"
               />
               <button
                 type="button"

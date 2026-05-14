@@ -474,7 +474,7 @@ export const ConnectorManual = (): JSX.Element => {
                               [connectionId]: e.target.value,
                             }))
                           }
-                          className="w-full rounded-lg border border-gray-200 bg-black/[.02] py-1.5 pr-2 pl-8 text-xs text-gray-900 outline-none placeholder:text-gray-400 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white dark:text-zinc-600"
+                          className="w-full rounded-lg border border-gray-200 bg-black/[.02] py-1.5 pr-2 pl-8 text-xs text-gray-900 outline-none placeholder:text-gray-400 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white"
                         />
                       </div>
                     )}
@@ -514,7 +514,7 @@ export const ConnectorManual = (): JSX.Element => {
                           return (
                             <div
                               key={tool.name}
-                              className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 bg-black/[.02] px-2.5 py-2 dark:border-white/[.03] dark:bg-white/[.03]"
+                              className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 bg-black/[.02] px-2.5 py-2 dark:border-white/[.03] dark:bg-white/[.03] dark:text-white"
                             >
                               <div className="min-w-0 flex-1">
                                 <div className="truncate font-mono text-xs font-medium text-gray-900 dark:text-white">

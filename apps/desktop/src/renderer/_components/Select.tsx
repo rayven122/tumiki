@@ -15,7 +15,7 @@ export const SelectTrigger = ({
   ...props
 }: TriggerProps): React.JSX.Element => (
   <SelectPrimitive.Trigger
-    className={`flex h-10 items-center justify-between gap-2 rounded-lg border border-gray-200 bg-black/[.02] px-3 py-2 text-sm text-gray-900 transition-colors outline-none hover:bg-black/[.02] focus-visible:border-gray-500 disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-gray-400 dark:border-white/[.08] dark:bg-white/[.03] dark:bg-white/[.04] dark:text-white dark:text-zinc-600 dark:focus-visible:border-zinc-500 ${className}`}
+    className={`flex h-10 items-center justify-between gap-2 rounded-lg border border-gray-200 bg-black/[.02] px-3 py-2 text-sm text-gray-900 transition-colors outline-none hover:bg-black/[.02] focus-visible:border-gray-500 disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-gray-400 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white dark:focus-visible:border-zinc-500 ${className}`}
     {...props}
   >
     {children}
@@ -60,7 +60,7 @@ export const SelectItem = ({
   ...props
 }: ItemProps): React.JSX.Element => (
   <SelectPrimitive.Item
-    className={`relative flex cursor-pointer items-center rounded-md py-2 pr-8 pl-3 text-sm text-gray-600 outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-black/[.06] data-[highlighted]:text-gray-900 data-[state=checked]:text-gray-900 dark:bg-white/[.08] dark:text-white dark:text-zinc-400 ${className}`}
+    className={`relative flex cursor-pointer items-center rounded-md py-2 pr-8 pl-3 text-sm text-gray-600 outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-black/[.06] data-[highlighted]:text-gray-900 data-[state=checked]:text-gray-900 dark:bg-white/[.08] dark:text-zinc-400 ${className}`}
     {...props}
   >
     <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>

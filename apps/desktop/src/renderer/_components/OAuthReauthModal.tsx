@@ -56,16 +56,19 @@ export const OAuthReauthModal = ({
       aria-describedby={descId}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
     >
-      <div className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-5 shadow-[var(--shadow-card)]">
+      <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-5 shadow-xl dark:border-white/[.08] dark:bg-zinc-900">
         <div className="mb-3 flex items-start justify-between gap-3">
           <div>
             <h3
               id={titleId}
-              className="text-base font-semibold text-[var(--text-primary)]"
+              className="text-base font-semibold text-gray-900 dark:text-white"
             >
               OAuthを再設定するコネクトを選択
             </h3>
-            <p id={descId} className="mt-1 text-xs text-[var(--text-muted)]">
+            <p
+              id={descId}
+              className="mt-1 text-xs text-gray-500 dark:text-zinc-500"
+            >
               選択したコネクトのトークンが新しいものに置き換わります。同じ接続元を共有している他のコネクトにも反映されます。
             </p>
           </div>
@@ -74,7 +77,7 @@ export const OAuthReauthModal = ({
             onClick={onCancel}
             disabled={isProcessing}
             aria-label="閉じる"
-            className="rounded-lg p-1 text-[var(--text-muted)] transition hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)] disabled:opacity-50"
+            className="rounded-lg p-1 text-gray-500 transition hover:bg-black/[.02] hover:text-gray-900 disabled:opacity-50 dark:text-zinc-500 dark:hover:bg-white/[.04] dark:hover:text-white"
           >
             <X size={16} />
           </button>
@@ -82,7 +85,7 @@ export const OAuthReauthModal = ({
 
         <div className="max-h-72 space-y-1.5 overflow-y-auto pr-1">
           {connections.length === 0 ? (
-            <p className="py-6 text-center text-xs text-[var(--text-subtle)]">
+            <p className="py-6 text-center text-xs text-gray-400 dark:text-zinc-600">
               再認証可能なOAuthコネクトがありません
             </p>
           ) : (
@@ -93,8 +96,8 @@ export const OAuthReauthModal = ({
                   key={conn.id}
                   className={`flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 transition ${
                     isSelected
-                      ? "border-[var(--accent)] bg-[var(--bg-card-hover)]"
-                      : "border-[var(--border-subtle)] bg-[var(--bg-card-hover)]/40 hover:border-[var(--border)]"
+                      ? "border-emerald-500 bg-black/[.02] dark:border-emerald-400 dark:bg-white/[.04]"
+                      : "border-gray-100 bg-black/[.01] hover:border-gray-200 dark:border-white/[.03] dark:bg-white/[.02] dark:hover:border-white/[.08]"
                   }`}
                 >
                   <input
@@ -104,7 +107,7 @@ export const OAuthReauthModal = ({
                     checked={isSelected}
                     onChange={() => setSelectedId(conn.id)}
                     disabled={isProcessing}
-                    className="h-3.5 w-3.5 accent-[var(--accent)]"
+                    className="h-3.5 w-3.5 accent-emerald-500 dark:accent-emerald-400"
                   />
                   {conn.catalog?.iconPath ? (
                     <img
@@ -113,15 +116,18 @@ export const OAuthReauthModal = ({
                       className="h-7 w-7 shrink-0 rounded"
                     />
                   ) : (
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-[var(--bg-active)]">
-                      <Plug size={14} className="text-[var(--text-muted)]" />
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-black/[.06] dark:bg-white/[.08]">
+                      <Plug
+                        size={14}
+                        className="text-gray-500 dark:text-zinc-500"
+                      />
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
-                    <span className="truncate text-sm font-medium text-[var(--text-primary)]">
+                    <span className="truncate text-sm font-medium text-gray-900 dark:text-white">
                       {conn.name}
                     </span>
-                    <div className="truncate text-[10px] text-[var(--text-muted)]">
+                    <div className="truncate text-[10px] text-gray-500 dark:text-zinc-500">
                       {conn.url ?? conn.command ?? "—"}
                     </div>
                   </div>
@@ -136,7 +142,7 @@ export const OAuthReauthModal = ({
             type="button"
             onClick={onCancel}
             disabled={isProcessing}
-            className="rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3.5 py-1.5 text-sm text-[var(--text-secondary)] transition hover:opacity-80 disabled:opacity-50"
+            className="rounded-lg border border-gray-200 bg-white px-3.5 py-1.5 text-sm text-gray-600 transition hover:opacity-80 disabled:opacity-50 dark:border-white/[.08] dark:bg-zinc-900 dark:text-zinc-400"
           >
             キャンセル
           </button>
@@ -146,7 +152,7 @@ export const OAuthReauthModal = ({
             disabled={
               selectedId === null || isProcessing || connections.length === 0
             }
-            className="rounded-lg bg-[var(--accent)] px-3.5 py-1.5 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-emerald-600 px-3.5 py-1.5 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-500"
           >
             {isProcessing ? "認証画面を起動中..." : "再認証する"}
           </button>

@@ -616,7 +616,7 @@ export const ToolDetail = (): JSX.Element => {
                 <button
                   type="button"
                   onClick={() => setShowMenu((prev) => !prev)}
-                  className="rounded-lg p-1.5 text-gray-500 transition hover:bg-black/[.02] hover:text-gray-900 dark:bg-white/[.04] dark:text-white dark:text-zinc-500"
+                  className="rounded-lg p-1.5 text-gray-500 transition hover:bg-black/[.02] hover:text-gray-900 dark:text-zinc-500 dark:hover:bg-white/[.04] dark:hover:text-white"
                   aria-label="メニュー"
                   aria-expanded={showMenu}
                 >
@@ -638,7 +638,7 @@ export const ToolDetail = (): JSX.Element => {
                           setShowMenu(false);
                           toast.success("サーバー設定編集は近日対応予定");
                         }}
-                        className="block w-full px-4 py-2.5 text-left text-sm text-gray-600 transition hover:bg-black/[.02] hover:text-gray-900 dark:bg-white/[.04] dark:text-white dark:text-zinc-400"
+                        className="block w-full px-4 py-2.5 text-left text-sm text-gray-600 transition hover:bg-black/[.02] hover:text-gray-900 dark:text-zinc-400 dark:hover:bg-white/[.04] dark:hover:text-white"
                       >
                         サーバー設定を編集
                       </button>
@@ -646,7 +646,7 @@ export const ToolDetail = (): JSX.Element => {
                         <button
                           type="button"
                           onClick={handleRequestReauth}
-                          className="flex w-full items-center gap-2 border-t border-t-[var(--border-subtle)] px-4 py-2.5 text-left text-sm text-[var(--text-secondary)] transition hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)]"
+                          className="flex w-full items-center gap-2 border-t border-t-gray-100 px-4 py-2.5 text-left text-sm text-gray-600 transition hover:bg-black/[.02] hover:text-gray-900 dark:border-t-white/[.03] dark:text-zinc-400 dark:hover:bg-white/[.04] dark:hover:text-white"
                         >
                           <KeyRound size={14} />
                           OAuthを再設定
@@ -791,7 +791,7 @@ export const ToolDetail = (): JSX.Element => {
                 placeholder="ツールを検索..."
                 value={toolQuery}
                 onChange={(e) => setToolQuery(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 bg-black/[.02] py-1.5 pr-2 pl-8 text-xs text-gray-900 outline-none placeholder:text-gray-400 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white dark:text-zinc-600"
+                className="w-full rounded-lg border border-gray-200 bg-black/[.02] py-1.5 pr-2 pl-8 text-xs text-gray-900 outline-none placeholder:text-gray-400 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white"
               />
             </div>
             <div className="flex-1 space-y-1 overflow-y-auto pr-1">
@@ -852,7 +852,7 @@ export const ToolDetail = (): JSX.Element => {
                     key={client.id}
                     type="button"
                     onClick={() => setSelectedClient(client)}
-                    className="flex w-full items-center gap-2 rounded-lg border border-gray-100 bg-black/[.02] px-2.5 py-1.5 text-left transition hover:border-gray-200 hover:bg-black/[.06] dark:border-white/[.03] dark:border-white/[.08] dark:bg-white/[.04] dark:bg-white/[.08]"
+                    className="flex w-full items-center gap-2 rounded-lg border border-gray-100 bg-black/[.02] px-2.5 py-1.5 text-left transition hover:border-gray-200 hover:bg-black/[.06] dark:border-white/[.08] dark:bg-white/[.08]"
                   >
                     {logo ? (
                       <img
@@ -897,7 +897,7 @@ export const ToolDetail = (): JSX.Element => {
                 value={logQuery}
                 onChange={(e) => setLogQuery(e.target.value)}
                 placeholder="ツール・クライアント・内容で検索..."
-                className="w-52 rounded-lg border border-gray-200 bg-black/[.02] py-1 pr-2 pl-7 text-xs text-gray-900 outline-none placeholder:text-gray-400 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white dark:text-zinc-600"
+                className="w-52 rounded-lg border border-gray-200 bg-black/[.02] py-1 pr-2 pl-7 text-xs text-gray-900 outline-none placeholder:text-gray-400 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white"
               />
             </div>
             <Select

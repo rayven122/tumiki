@@ -658,7 +658,7 @@ export const SettingsPage = (): JSX.Element => {
               onClick={() =>
                 navigate("/profile-setup?mode=organization", { replace: false })
               }
-              className="mt-4 inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-black/[.02] hover:text-gray-900 dark:border-white/[.08] dark:bg-white/[.04] dark:text-white dark:text-zinc-400"
+              className="mt-4 inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-black/[.02] hover:text-gray-900 dark:border-white/[.08] dark:bg-white/[.04] dark:text-zinc-400"
             >
               <Building2 size={16} />
               組織利用へ切り替え
