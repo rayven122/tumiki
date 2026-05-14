@@ -9,25 +9,22 @@ vi.mock("electron", () => ({
 vi.mock("../../../shared/db");
 vi.mock("../../../shared/utils/logger");
 vi.mock("../../../utils/encryption");
-vi.mock("../../../utils/credentials");
 vi.mock("../oauth.token");
 vi.mock("../oauth.repository");
 vi.mock("../oauth.service", async (importOriginal) => {
   const original = await importOriginal<typeof import("../oauth.service")>();
   return {
     ...original,
+    // isCacheableAuthorizationServerMetadata は実際のロジックを使う
   };
 });
 
 import { getDb } from "../../../shared/db";
 import { encryptToken } from "../../../utils/encryption";
-import { decryptCredentials } from "../../../utils/credentials";
 import { refreshAccessToken } from "../oauth.token";
 import * as oauthRepository from "../oauth.repository";
 import {
   refreshOAuthTokenIfNeeded,
-  refreshOAuthTokenIfNeededOnce,
-  resolveOAuthHeaders,
   isTokenExpiringSoon,
 } from "../oauth.refresh";
 
@@ -216,194 +213,6 @@ describe("oauth.refresh", () => {
 
       expect(result).toBeNull();
       expect(refreshAccessToken).not.toHaveBeenCalled();
-    });
-  });
-
-  describe("refreshOAuthTokenIfNeededOnce", () => {
-    test("同一 secretId の並行呼び出しは1回だけリフレッシュする", async () => {
-      const credentials = {
-        access_token: "expired-token",
-        refresh_token: "old-rt",
-        expires_at: String(Math.floor(Date.now() / 1000) - 100),
-      };
-
-      vi.mocked(oauthRepository.findByServerUrl).mockResolvedValue({
-        id: 1,
-        serverUrl: "https://api.example.com",
-        issuer: "https://example.com",
-        clientId: "cid",
-        clientSecret: null,
-        tokenEndpointAuthMethod: "none",
-        authServerMetadata: JSON.stringify({
-          issuer: "https://example.com",
-          authorization_endpoint: "https://example.com/auth",
-          token_endpoint: "https://example.com/token",
-        }),
-        isDcr: true,
-      });
-
-      const newExpiresAt = Math.floor(Date.now() / 1000) + 3600;
-      vi.mocked(refreshAccessToken).mockResolvedValue({
-        access_token: "new-token",
-        token_type: "bearer",
-        refresh_token: "new-rt",
-        expires_at: newExpiresAt,
-      });
-      vi.mocked(oauthRepository.updateSecretCredentials).mockResolvedValue();
-
-      // 同一 secretId=99 で並行3件
-      const [r1, r2, r3] = await Promise.all([
-        refreshOAuthTokenIfNeededOnce(
-          99,
-          "https://api.example.com",
-          credentials,
-        ),
-        refreshOAuthTokenIfNeededOnce(
-          99,
-          "https://api.example.com",
-          credentials,
-        ),
-        refreshOAuthTokenIfNeededOnce(
-          99,
-          "https://api.example.com",
-          credentials,
-        ),
-      ]);
-
-      expect(r1).toStrictEqual(r2);
-      expect(r2).toStrictEqual(r3);
-      // refreshAccessToken は1回だけ呼ばれる
-      expect(refreshAccessToken).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe("resolveOAuthHeaders", () => {
-    test("有効なトークンがある場合は Authorization ヘッダーを返す", async () => {
-      const credentials = {
-        access_token: "valid-token",
-        expires_at: String(Math.floor(Date.now() / 1000) + 3600),
-      };
-
-      vi.mocked(oauthRepository.findCredentialsBySecretId).mockResolvedValue({
-        credentials: "encrypted-creds",
-      });
-      vi.mocked(decryptCredentials).mockResolvedValue(
-        JSON.stringify(credentials),
-      );
-
-      const headers = await resolveOAuthHeaders(1, "https://api.example.com");
-
-      expect(headers).toStrictEqual({
-        Authorization: "Bearer valid-token",
-      });
-    });
-
-    test("McpSecret が見つからない場合は空オブジェクトを返す", async () => {
-      vi.mocked(oauthRepository.findCredentialsBySecretId).mockResolvedValue(
-        null,
-      );
-
-      const headers = await resolveOAuthHeaders(999, "https://api.example.com");
-
-      expect(headers).toStrictEqual({});
-    });
-
-    test("期限切れトークンがリフレッシュされ新しい Authorization ヘッダーを返す", async () => {
-      const serverUrl = "https://api.example.com";
-      const expiredCredentials = {
-        access_token: "expired-token",
-        refresh_token: "old-rt",
-        expires_at: String(Math.floor(Date.now() / 1000) - 100),
-      };
-
-      vi.mocked(oauthRepository.findCredentialsBySecretId).mockResolvedValue({
-        credentials: "encrypted-creds",
-      });
-      vi.mocked(decryptCredentials).mockResolvedValue(
-        JSON.stringify(expiredCredentials),
-      );
-
-      vi.mocked(oauthRepository.findByServerUrl).mockResolvedValue({
-        id: 1,
-        serverUrl,
-        issuer: "https://example.com",
-        clientId: "client-id",
-        clientSecret: "client-secret",
-        tokenEndpointAuthMethod: "client_secret_post",
-        authServerMetadata: JSON.stringify({
-          issuer: "https://example.com",
-          authorization_endpoint: "https://example.com/auth",
-          token_endpoint: "https://example.com/token",
-        }),
-        isDcr: true,
-      });
-
-      const newExpiresAt = Math.floor(Date.now() / 1000) + 3600;
-      vi.mocked(refreshAccessToken).mockResolvedValue({
-        access_token: "new-access-token",
-        token_type: "bearer",
-        refresh_token: "new-rt",
-        expires_at: newExpiresAt,
-      });
-      vi.mocked(oauthRepository.updateSecretCredentials).mockResolvedValue();
-
-      const headers = await resolveOAuthHeaders(42, serverUrl);
-
-      expect(headers).toStrictEqual({
-        Authorization: "Bearer new-access-token",
-      });
-      expect(refreshAccessToken).toHaveBeenCalledTimes(1);
-      expect(oauthRepository.updateSecretCredentials).toHaveBeenCalledWith(
-        mockDb,
-        42,
-        expect.stringContaining("encrypted:"),
-      );
-    });
-
-    test("credentials のスキーマバリデーションに失敗した場合は空オブジェクトを返す", async () => {
-      vi.mocked(oauthRepository.findCredentialsBySecretId).mockResolvedValue({
-        credentials: "encrypted-creds",
-      });
-      // credentialsSchema は Record<string, string> を期待するため
-      // 値に数値が含まれていると safeParse が失敗する
-      vi.mocked(decryptCredentials).mockResolvedValue(
-        JSON.stringify({ access_token: 123, expires_at: true }),
-      );
-
-      const headers = await resolveOAuthHeaders(1, "https://api.example.com");
-
-      expect(headers).toStrictEqual({});
-      expect(refreshAccessToken).not.toHaveBeenCalled();
-    });
-
-    test("credentials の復号またはJSONパースに失敗した場合は空オブジェクトを返す", async () => {
-      vi.mocked(oauthRepository.findCredentialsBySecretId).mockResolvedValue({
-        credentials: "encrypted-creds",
-      });
-      vi.mocked(decryptCredentials).mockResolvedValue("not-json");
-
-      const headers = await resolveOAuthHeaders(1, "https://api.example.com");
-
-      expect(headers).toStrictEqual({});
-      expect(refreshAccessToken).not.toHaveBeenCalled();
-    });
-
-    test("access_token が含まれない場合は空オブジェクトを返す", async () => {
-      const credentials = {
-        refresh_token: "rt",
-        expires_at: String(Math.floor(Date.now() / 1000) + 3600),
-      };
-
-      vi.mocked(oauthRepository.findCredentialsBySecretId).mockResolvedValue({
-        credentials: "encrypted-creds",
-      });
-      vi.mocked(decryptCredentials).mockResolvedValue(
-        JSON.stringify(credentials),
-      );
-
-      const headers = await resolveOAuthHeaders(1, "https://api.example.com");
-
-      expect(headers).toStrictEqual({});
     });
   });
 });

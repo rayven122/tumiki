@@ -183,6 +183,7 @@ describe("dashboard.repository", () => {
           id: true,
           name: true,
           displayOrder: true,
+          iconPath: true,
           catalog: { select: { iconPath: true } },
           server: {
             select: { id: true, serverStatus: true, displayOrder: true },

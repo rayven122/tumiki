@@ -59,6 +59,7 @@ erDiagram
   String args
   String url "nullable"
   AuthType authType
+  String iconPath "nullable"
   Boolean isEnabled
   Int displayOrder
   DateTime createdAt
@@ -160,6 +161,7 @@ MCP接続（個別のMCPサーバーへの接続設定）
   - `args`: STDIO用引数（JSON配列文字列）
   - `url`: SSE/Streamable HTTP用URL
   - `authType`: 認証タイプ
+  - `iconPath`: アイコンパス（カスタムMCPのfavicon URL等）
   - `isEnabled`: 有効/無効フラグ
   - `displayOrder`: 統合サーバー内での表示順序
   - `createdAt`: 

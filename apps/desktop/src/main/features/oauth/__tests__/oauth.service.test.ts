@@ -448,6 +448,7 @@ describe("oauth.service", () => {
       serverId: 11,
       catalogId: null,
       secretId: 33,
+      iconPath: null,
       createdAt: new Date(),
       updatedAt: new Date(),
       server: {

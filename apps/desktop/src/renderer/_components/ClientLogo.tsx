@@ -27,5 +27,5 @@ export const ClientLogo = ({
     );
   }
 
-  return <Bot className={`${px} shrink-0 text-[var(--text-muted)]`} />;
+  return <Bot className={`${px} shrink-0 text-gray-500 dark:text-zinc-500`} />;
 };
