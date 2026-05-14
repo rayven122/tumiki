@@ -72,7 +72,7 @@ const SetupPage = () => {
     <div className="flex min-h-screen items-center justify-center bg-gray-950 p-6">
       <div className="w-full max-w-md">
         <h1 className="mb-1 text-base font-semibold text-white">
-          Tumiki Internal Manager
+          Tumiki Manager
         </h1>
         <p className="mb-6 text-sm text-gray-400">
           Jackson が Web / Desktop 用 OIDC client

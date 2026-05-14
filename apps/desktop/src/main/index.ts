@@ -547,13 +547,21 @@ if (isMcpProxyMode) {
         }
       } else {
         // 後方互換: Keycloak環境変数フォールバック
+        // Keycloak issuerが不到達でもアプリ起動を継続させるためtry/catchで保護
         const keycloakEnv = getKeycloakEnvOptional();
         if (keycloakEnv) {
-          await initOAuthManagerFromUrl(
-            "",
-            keycloakEnv.KEYCLOAK_ISSUER,
-            keycloakEnv.KEYCLOAK_DESKTOP_CLIENT_ID,
-          );
+          try {
+            await initOAuthManagerFromUrl(
+              "",
+              keycloakEnv.KEYCLOAK_ISSUER,
+              keycloakEnv.KEYCLOAK_DESKTOP_CLIENT_ID,
+            );
+          } catch (error) {
+            logger.warn(
+              "Keycloak issuer is unreachable, OAuth disabled until reconnect",
+              { error: error instanceof Error ? error.message : error },
+            );
+          }
         } else {
           logger.warn(
             "No manager URL or Keycloak env vars configured, OAuth disabled",

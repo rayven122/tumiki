@@ -93,6 +93,7 @@ export const findAllConnectors = async (
       id: true,
       name: true,
       displayOrder: true,
+      iconPath: true,
       catalog: { select: { iconPath: true } },
       server: {
         select: { id: true, serverStatus: true, displayOrder: true },
@@ -104,7 +105,7 @@ export const findAllConnectors = async (
     serverId: c.server.id,
     connectionId: c.id,
     name: c.name,
-    iconPath: c.catalog?.iconPath ?? null,
+    iconPath: c.iconPath ?? c.catalog?.iconPath ?? null,
     serverStatus: c.server.serverStatus,
   }));
 };

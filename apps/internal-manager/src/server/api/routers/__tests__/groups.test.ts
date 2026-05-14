@@ -4,7 +4,11 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { GroupSource, Prisma, Role } from "@tumiki/internal-db";
 import type { Context } from "../../trpc";
 import type * as TrpcModule from "../../trpc";
-import { GROUP_LIST_LIMIT, groupsRouter } from "../groups";
+import {
+  GROUP_LIST_LIMIT,
+  GROUP_MEMBER_LIST_LIMIT,
+  groupsRouter,
+} from "../groups";
 import { expectTrpcErrorCode } from "./test-helpers";
 
 vi.mock("server-only", () => ({}));
@@ -35,6 +39,13 @@ const buildCaller = (db: Context["db"]) =>
     headers: new Headers(),
     session: buildSession(),
   });
+
+const buildTransactionCaller = (tx: unknown) =>
+  buildCaller({
+    $transaction: vi.fn((callback: (tx: unknown) => Promise<unknown>) =>
+      callback(tx),
+    ),
+  } as unknown as Context["db"]);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -73,13 +84,19 @@ describe("groupsRouter", () => {
     const result = await caller.getMembers({ groupId: "group-001" });
 
     expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({
-      id: "membership-001",
-      userId: "user-001",
-      source: GroupSource.TUMIKI,
-    });
+    expect(result[0]).toStrictEqual(
+      expect.objectContaining({
+        id: "membership-001",
+        userId: "user-001",
+        source: GroupSource.TUMIKI,
+      }),
+    );
     expect(findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { groupId: "group-001" } }),
+      expect.objectContaining({
+        where: { groupId: "group-001" },
+        orderBy: { createdAt: "asc" },
+        take: GROUP_MEMBER_LIST_LIMIT,
+      }),
     );
   });
 
@@ -103,11 +120,13 @@ describe("groupsRouter", () => {
     const result = await caller.getSyncLogs({ groupId: "group-001" });
 
     expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({
-      id: "sync-log-001",
-      trigger: "SCIM",
-      status: "SUCCESS",
-    });
+    expect(result[0]).toStrictEqual(
+      expect.objectContaining({
+        id: "sync-log-001",
+        trigger: "SCIM",
+        status: "SUCCESS",
+      }),
+    );
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { groupId: "group-001" },
@@ -140,10 +159,12 @@ describe("groupsRouter", () => {
           name: " AI推進チーム ",
           description: " 横断チーム ",
         }),
-      ).resolves.toMatchObject({
-        id: "group-001",
-        source: GroupSource.TUMIKI,
-      });
+      ).resolves.toStrictEqual(
+        expect.objectContaining({
+          id: "group-001",
+          source: GroupSource.TUMIKI,
+        }),
+      );
       expect(create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: {
@@ -205,12 +226,12 @@ describe("groupsRouter", () => {
         updatedAt: new Date("2026-05-06T00:00:00.000Z"),
         memberships: [],
       });
-      const caller = buildCaller({
+      const caller = buildTransactionCaller({
         group: {
           findUnique: vi.fn().mockResolvedValue({ source: GroupSource.TUMIKI }),
           update,
         },
-      } as unknown as Context["db"]);
+      });
 
       await expect(
         caller.updateTumikiGroup({
@@ -218,7 +239,9 @@ describe("groupsRouter", () => {
           name: "更新後",
           description: "",
         }),
-      ).resolves.toMatchObject({ id: "group-001", name: "更新後" });
+      ).resolves.toStrictEqual(
+        expect.objectContaining({ id: "group-001", name: "更新後" }),
+      );
       expect(update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: "group-001" },
@@ -229,12 +252,12 @@ describe("groupsRouter", () => {
 
     test("IdPグループは更新できない", async () => {
       const update = vi.fn();
-      const caller = buildCaller({
+      const caller = buildTransactionCaller({
         group: {
           findUnique: vi.fn().mockResolvedValue({ source: GroupSource.IDP }),
           update,
         },
-      } as unknown as Context["db"]);
+      });
 
       await expectTrpcErrorCode(
         caller.updateTumikiGroup({
@@ -249,12 +272,12 @@ describe("groupsRouter", () => {
 
     test("存在しないグループは更新できない", async () => {
       const update = vi.fn();
-      const caller = buildCaller({
+      const caller = buildTransactionCaller({
         group: {
           findUnique: vi.fn().mockResolvedValue(null),
           update,
         },
-      } as unknown as Context["db"]);
+      });
 
       await expectTrpcErrorCode(
         caller.updateTumikiGroup({
@@ -267,14 +290,159 @@ describe("groupsRouter", () => {
       expect(update).not.toHaveBeenCalled();
     });
 
-    test("Tumiki独自グループを削除できる", async () => {
-      const del = vi.fn().mockResolvedValue({ id: "group-001" });
-      const caller = buildCaller({
+    test("Tumiki独自グループの表示情報とIdP mappingを同時に更新できる", async () => {
+      const update = vi.fn().mockResolvedValue({
+        id: "group-001",
+        name: "更新後",
+        description: "説明更新",
+        source: GroupSource.TUMIKI,
+        provider: "scim-map",
+        externalId: "external-group-001",
+        lastSyncedAt: null,
+        createdAt: new Date("2026-05-06T00:00:00.000Z"),
+        updatedAt: new Date("2026-05-06T00:00:00.000Z"),
+        memberships: [],
+      });
+      const caller = buildTransactionCaller({
         group: {
           findUnique: vi.fn().mockResolvedValue({ source: GroupSource.TUMIKI }),
+          update,
+        },
+      });
+
+      await expect(
+        caller.updateTumikiGroupWithMapping({
+          groupId: "group-001",
+          name: " 更新後 ",
+          description: " 説明更新 ",
+          externalId: " external-group-001 ",
+        }),
+      ).resolves.toStrictEqual(
+        expect.objectContaining({
+          id: "group-001",
+          name: "更新後",
+          provider: "scim-map",
+          externalId: "external-group-001",
+        }),
+      );
+      expect(update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "group-001" },
+          data: {
+            name: "更新後",
+            description: "説明更新",
+            provider: "scim-map",
+            externalId: "external-group-001",
+          },
+        }),
+      );
+    });
+
+    test("Tumiki独自グループの同時更新でIdP mappingを解除できる", async () => {
+      const update = vi.fn().mockResolvedValue({
+        id: "group-001",
+        name: "更新後",
+        description: null,
+        source: GroupSource.TUMIKI,
+        provider: null,
+        externalId: null,
+        lastSyncedAt: null,
+        createdAt: new Date("2026-05-06T00:00:00.000Z"),
+        updatedAt: new Date("2026-05-06T00:00:00.000Z"),
+        memberships: [],
+      });
+      const caller = buildTransactionCaller({
+        group: {
+          findUnique: vi.fn().mockResolvedValue({ source: GroupSource.TUMIKI }),
+          update,
+        },
+      });
+
+      await expect(
+        caller.updateTumikiGroupWithMapping({
+          groupId: "group-001",
+          name: "更新後",
+          description: "",
+          externalId: "",
+        }),
+      ).resolves.toStrictEqual(
+        expect.objectContaining({
+          id: "group-001",
+          provider: null,
+          externalId: null,
+        }),
+      );
+      expect(update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: {
+            name: "更新後",
+            description: null,
+            provider: null,
+            externalId: null,
+          },
+        }),
+      );
+    });
+
+    test("同時更新はIdPグループを変更できない", async () => {
+      const update = vi.fn();
+      const caller = buildTransactionCaller({
+        group: {
+          findUnique: vi.fn().mockResolvedValue({ source: GroupSource.IDP }),
+          update,
+        },
+      });
+
+      await expectTrpcErrorCode(
+        caller.updateTumikiGroupWithMapping({
+          groupId: "group-idp",
+          name: "更新後",
+          description: null,
+          externalId: "external-group-001",
+        }),
+        "BAD_REQUEST",
+      );
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    test("同時更新のIdP mapping重複はCONFLICTを返す", async () => {
+      const caller = buildTransactionCaller({
+        group: {
+          findUnique: vi.fn().mockResolvedValue({ source: GroupSource.TUMIKI }),
+          update: vi.fn().mockRejectedValue(
+            new Prisma.PrismaClientKnownRequestError(
+              "Unique constraint failed",
+              {
+                code: "P2002",
+                clientVersion: "test",
+              },
+            ),
+          ),
+        },
+      });
+
+      await expectTrpcErrorCode(
+        caller.updateTumikiGroupWithMapping({
+          groupId: "group-001",
+          name: "更新後",
+          description: null,
+          externalId: "external-group-001",
+        }),
+        "CONFLICT",
+      );
+    });
+
+    test("Tumiki独自グループを削除できる", async () => {
+      const del = vi.fn().mockResolvedValue({ id: "group-001" });
+      const caller = buildTransactionCaller({
+        group: {
+          findUnique: vi.fn().mockResolvedValue({
+            source: GroupSource.TUMIKI,
+            _count: { memberships: 0 },
+          }),
           delete: del,
         },
-      } as unknown as Context["db"]);
+      });
 
       await expect(
         caller.deleteTumikiGroup({ groupId: "group-001" }),
@@ -285,14 +453,33 @@ describe("groupsRouter", () => {
       });
     });
 
+    test("メンバーが残るTumiki独自グループは削除できない", async () => {
+      const del = vi.fn();
+      const caller = buildTransactionCaller({
+        group: {
+          findUnique: vi.fn().mockResolvedValue({
+            source: GroupSource.TUMIKI,
+            _count: { memberships: 1 },
+          }),
+          delete: del,
+        },
+      });
+
+      await expectTrpcErrorCode(
+        caller.deleteTumikiGroup({ groupId: "group-001" }),
+        "BAD_REQUEST",
+      );
+      expect(del).not.toHaveBeenCalled();
+    });
+
     test("IdPグループは削除できない", async () => {
       const del = vi.fn();
-      const caller = buildCaller({
+      const caller = buildTransactionCaller({
         group: {
           findUnique: vi.fn().mockResolvedValue({ source: GroupSource.IDP }),
           delete: del,
         },
-      } as unknown as Context["db"]);
+      });
 
       await expectTrpcErrorCode(
         caller.deleteTumikiGroup({ groupId: "group-idp" }),
@@ -303,12 +490,12 @@ describe("groupsRouter", () => {
 
     test("存在しないグループは削除できない", async () => {
       const del = vi.fn();
-      const caller = buildCaller({
+      const caller = buildTransactionCaller({
         group: {
           findUnique: vi.fn().mockResolvedValue(null),
           delete: del,
         },
-      } as unknown as Context["db"]);
+      });
 
       await expectTrpcErrorCode(
         caller.deleteTumikiGroup({ groupId: "missing-group" }),
@@ -330,7 +517,7 @@ describe("groupsRouter", () => {
           email: "target@example.com",
         },
       });
-      const caller = buildCaller({
+      const caller = buildTransactionCaller({
         group: {
           findUnique: vi.fn().mockResolvedValue({ source: GroupSource.TUMIKI }),
         },
@@ -341,14 +528,16 @@ describe("groupsRouter", () => {
           }),
         },
         userGroupMembership: { create },
-      } as unknown as Context["db"]);
+      });
 
       await expect(
         caller.addMember({ groupId: "group-001", userId: "user-001" }),
-      ).resolves.toMatchObject({
-        id: "membership-001",
-        source: GroupSource.TUMIKI,
-      });
+      ).resolves.toStrictEqual(
+        expect.objectContaining({
+          id: "membership-001",
+          source: GroupSource.TUMIKI,
+        }),
+      );
       expect(create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: {
@@ -360,32 +549,58 @@ describe("groupsRouter", () => {
       );
     });
 
-    test("IdPグループにはメンバーを追加できない", async () => {
-      const create = vi.fn();
-      const caller = buildCaller({
-        group: {
-          findUnique: vi.fn().mockResolvedValue({ source: GroupSource.IDP }),
+    test("IdPグループにも手動メンバーを追加できる", async () => {
+      const create = vi.fn().mockResolvedValue({
+        id: "membership-001",
+        userId: "user-001",
+        source: GroupSource.TUMIKI,
+        user: {
+          id: "user-001",
+          name: "Target User",
+          email: "target@example.com",
         },
-        user: { findUnique: vi.fn() },
+      });
+      const caller = buildTransactionCaller({
+        group: {
+          findUnique: vi.fn().mockResolvedValue({ id: "group-idp" }),
+        },
+        user: {
+          findUnique: vi.fn().mockResolvedValue({
+            id: "user-001",
+            isActive: true,
+          }),
+        },
         userGroupMembership: { create },
-      } as unknown as Context["db"]);
+      });
 
-      await expectTrpcErrorCode(
+      await expect(
         caller.addMember({ groupId: "group-idp", userId: "user-001" }),
-        "BAD_REQUEST",
+      ).resolves.toStrictEqual(
+        expect.objectContaining({
+          id: "membership-001",
+          source: GroupSource.TUMIKI,
+        }),
       );
-      expect(create).not.toHaveBeenCalled();
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: {
+            groupId: "group-idp",
+            userId: "user-001",
+            source: GroupSource.TUMIKI,
+          },
+        }),
+      );
     });
 
     test("存在しないグループにはメンバーを追加できない", async () => {
       const create = vi.fn();
-      const caller = buildCaller({
+      const caller = buildTransactionCaller({
         group: {
           findUnique: vi.fn().mockResolvedValue(null),
         },
         user: { findUnique: vi.fn() },
         userGroupMembership: { create },
-      } as unknown as Context["db"]);
+      });
 
       await expectTrpcErrorCode(
         caller.addMember({ groupId: "missing-group", userId: "user-001" }),
@@ -396,13 +611,13 @@ describe("groupsRouter", () => {
 
     test("存在しないユーザーはメンバーに追加できない", async () => {
       const create = vi.fn();
-      const caller = buildCaller({
+      const caller = buildTransactionCaller({
         group: {
           findUnique: vi.fn().mockResolvedValue({ source: GroupSource.TUMIKI }),
         },
         user: { findUnique: vi.fn().mockResolvedValue(null) },
         userGroupMembership: { create },
-      } as unknown as Context["db"]);
+      });
 
       await expectTrpcErrorCode(
         caller.addMember({ groupId: "group-001", userId: "missing-user" }),
@@ -413,7 +628,7 @@ describe("groupsRouter", () => {
 
     test("無効化されたユーザーはメンバーに追加できない", async () => {
       const create = vi.fn();
-      const caller = buildCaller({
+      const caller = buildTransactionCaller({
         group: {
           findUnique: vi.fn().mockResolvedValue({ source: GroupSource.TUMIKI }),
         },
@@ -424,7 +639,7 @@ describe("groupsRouter", () => {
           }),
         },
         userGroupMembership: { create },
-      } as unknown as Context["db"]);
+      });
 
       await expectTrpcErrorCode(
         caller.addMember({ groupId: "group-001", userId: "user-001" }),
@@ -434,7 +649,7 @@ describe("groupsRouter", () => {
     });
 
     test("重複メンバー追加はCONFLICTを返す", async () => {
-      const caller = buildCaller({
+      const caller = buildTransactionCaller({
         group: {
           findUnique: vi.fn().mockResolvedValue({ source: GroupSource.TUMIKI }),
         },
@@ -455,7 +670,7 @@ describe("groupsRouter", () => {
             ),
           ),
         },
-      } as unknown as Context["db"]);
+      });
 
       await expectTrpcErrorCode(
         caller.addMember({ groupId: "group-001", userId: "user-001" }),
@@ -465,7 +680,7 @@ describe("groupsRouter", () => {
 
     test("Tumiki由来メンバーシップを削除できる", async () => {
       const del = vi.fn().mockResolvedValue({ id: "membership-001" });
-      const caller = buildCaller({
+      const caller = buildTransactionCaller({
         userGroupMembership: {
           findUnique: vi.fn().mockResolvedValue({
             id: "membership-001",
@@ -474,7 +689,7 @@ describe("groupsRouter", () => {
           }),
           delete: del,
         },
-      } as unknown as Context["db"]);
+      });
 
       await expect(
         caller.removeMember({ membershipId: "membership-001" }),
@@ -487,12 +702,12 @@ describe("groupsRouter", () => {
 
     test("存在しないメンバーシップは削除できない", async () => {
       const del = vi.fn();
-      const caller = buildCaller({
+      const caller = buildTransactionCaller({
         userGroupMembership: {
           findUnique: vi.fn().mockResolvedValue(null),
           delete: del,
         },
-      } as unknown as Context["db"]);
+      });
 
       await expectTrpcErrorCode(
         caller.removeMember({ membershipId: "missing-membership" }),
@@ -503,7 +718,7 @@ describe("groupsRouter", () => {
 
     test("IdP由来メンバーシップは削除できない", async () => {
       const del = vi.fn();
-      const caller = buildCaller({
+      const caller = buildTransactionCaller({
         userGroupMembership: {
           findUnique: vi.fn().mockResolvedValue({
             id: "membership-idp",
@@ -512,7 +727,7 @@ describe("groupsRouter", () => {
           }),
           delete: del,
         },
-      } as unknown as Context["db"]);
+      });
 
       await expectTrpcErrorCode(
         caller.removeMember({ membershipId: "membership-idp" }),
@@ -521,24 +736,25 @@ describe("groupsRouter", () => {
       expect(del).not.toHaveBeenCalled();
     });
 
-    test("IdPグループのTumiki由来メンバーシップも削除できない", async () => {
-      const del = vi.fn();
-      const caller = buildCaller({
+    test("IdPグループの手動追加メンバーシップは削除できる", async () => {
+      const del = vi.fn().mockResolvedValue({ id: "membership-tumiki" });
+      const caller = buildTransactionCaller({
         userGroupMembership: {
           findUnique: vi.fn().mockResolvedValue({
             id: "membership-tumiki",
             source: GroupSource.TUMIKI,
-            group: { source: GroupSource.IDP },
           }),
           delete: del,
         },
-      } as unknown as Context["db"]);
+      });
 
-      await expectTrpcErrorCode(
+      await expect(
         caller.removeMember({ membershipId: "membership-tumiki" }),
-        "BAD_REQUEST",
-      );
-      expect(del).not.toHaveBeenCalled();
+      ).resolves.toStrictEqual({ id: "membership-tumiki" });
+      expect(del).toHaveBeenCalledWith({
+        where: { id: "membership-tumiki" },
+        select: { id: true },
+      });
     });
   });
 
@@ -553,9 +769,9 @@ describe("groupsRouter", () => {
         externalId: "external-group-001",
         updatedAt: new Date("2026-05-05T00:00:00.000Z"),
       });
-      const caller = buildCaller({
+      const caller = buildTransactionCaller({
         group: { findUnique, update },
-      } as unknown as Context["db"]);
+      });
 
       await expect(
         caller.updateIdpMapping({
@@ -593,9 +809,9 @@ describe("groupsRouter", () => {
         externalId: null,
         updatedAt: new Date("2026-05-05T00:00:00.000Z"),
       });
-      const caller = buildCaller({
+      const caller = buildTransactionCaller({
         group: { findUnique, update },
-      } as unknown as Context["db"]);
+      });
 
       await expect(
         caller.updateIdpMapping({
@@ -625,12 +841,12 @@ describe("groupsRouter", () => {
 
     test("SCIMグループにはIdP mappingを設定できない", async () => {
       const update = vi.fn();
-      const caller = buildCaller({
+      const caller = buildTransactionCaller({
         group: {
           findUnique: vi.fn().mockResolvedValue({ source: GroupSource.IDP }),
           update,
         },
-      } as unknown as Context["db"]);
+      });
 
       await expectTrpcErrorCode(
         caller.updateIdpMapping({
@@ -643,12 +859,12 @@ describe("groupsRouter", () => {
     });
 
     test("存在しないグループはNOT_FOUNDを返す", async () => {
-      const caller = buildCaller({
+      const caller = buildTransactionCaller({
         group: {
           findUnique: vi.fn().mockResolvedValue(null),
           update: vi.fn(),
         },
-      } as unknown as Context["db"]);
+      });
 
       await expectTrpcErrorCode(
         caller.updateIdpMapping({
@@ -660,7 +876,7 @@ describe("groupsRouter", () => {
     });
 
     test("IdP mappingの重複はCONFLICTを返す", async () => {
-      const caller = buildCaller({
+      const caller = buildTransactionCaller({
         group: {
           findUnique: vi.fn().mockResolvedValue({ source: GroupSource.TUMIKI }),
           update: vi.fn().mockRejectedValue(
@@ -673,7 +889,7 @@ describe("groupsRouter", () => {
             ),
           ),
         },
-      } as unknown as Context["db"]);
+      });
 
       await expectTrpcErrorCode(
         caller.updateIdpMapping({

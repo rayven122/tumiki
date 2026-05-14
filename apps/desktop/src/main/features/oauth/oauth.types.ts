@@ -42,7 +42,7 @@ export type McpOAuthSession = {
   createdAt: Date;
 };
 
-/** OAuthトークンデータ（McpConnection.credentialsに格納） */
+/** OAuthトークンデータ（暗号化後 McpSecret.credentials に格納） */
 export type McpOAuthTokenData = {
   access_token: string;
   token_type?: string;
@@ -71,4 +71,17 @@ export type StartOAuthInput = {
 export type OAuthResult = {
   serverId: number;
   serverName: string;
+};
+
+/** 既存コネクション向け OAuth 再認証の入力型（renderer → main） */
+export type ReauthenticateInput = {
+  connectionId: number;
+};
+
+/** OAuth 再認証成功時の結果型 */
+export type ReauthenticateResult = {
+  connectionId: number;
+  serverId: number;
+  serverName: string;
+  connectionName: string;
 };

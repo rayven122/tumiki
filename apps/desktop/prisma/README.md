@@ -58,14 +58,21 @@ erDiagram
   String command "nullable"
   String args
   String url "nullable"
-  String credentials
   AuthType authType
+  String iconPath "nullable"
   Boolean isEnabled
   Int displayOrder
   DateTime createdAt
   DateTime updatedAt
   Int serverId FK
   Int catalogId FK "nullable"
+  Int secretId FK
+}
+"McpSecret" {
+  Int id PK
+  String credentials
+  DateTime createdAt
+  DateTime updatedAt
 }
 "McpTool" {
   Int id PK
@@ -119,6 +126,7 @@ erDiagram
 }
 "McpConnection" }o--|| "McpServer" : server
 "McpConnection" }o--o| "McpCatalog" : catalog
+"McpConnection" }o--|| "McpSecret" : secret
 "McpTool" }o--|| "McpConnection" : connection
 "AuditLog" }o--|| "McpServer" : server
 ```
@@ -152,14 +160,28 @@ MCP接続（個別のMCPサーバーへの接続設定）
   - `command`: STDIO用コマンド（例: "npx", "uvx", "node"）
   - `args`: STDIO用引数（JSON配列文字列）
   - `url`: SSE/Streamable HTTP用URL
-  - `credentials`: 接続設定値（STDIO: 環境変数 / SSE・Streamable HTTP: HTTPヘッダー）
   - `authType`: 認証タイプ
+  - `iconPath`: アイコンパス（カスタムMCPのfavicon URL等）
   - `isEnabled`: 有効/無効フラグ
   - `displayOrder`: 統合サーバー内での表示順序
   - `createdAt`: 
   - `updatedAt`: 
   - `serverId`: 所属するMcpServer
   - `catalogId`: カタログ参照（カタログから登録した場合）
+  - `secretId`
+    > 暗号化済み credentials の格納先（仮想MCPは元コネクタと同じ secretId を共有する）
+    > onDelete: Restrict + アプリ側の参照カウントで孤立した secret のみ削除する運用
+
+### `McpSecret`
+MCP接続の認証情報（暗号化済み credentials を保持し、複数の McpConnection から共有される）
+
+**Properties**
+  - `id`: 
+  - `credentials`
+    > 暗号化済み credentials JSON（STDIO: 環境変数 / SSE・Streamable HTTP: HTTPヘッダー / OAuth: トークン）
+    > 必ず encryptToken で暗号化した値を渡す（schema 上のデフォルトを設けると平文 "{}" が紛れ込むため）
+  - `createdAt`: 
+  - `updatedAt`: 
 
 ### `McpTool`
 MCPツール（接続が提供するツールの定義・権限管理）

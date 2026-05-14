@@ -24,8 +24,10 @@
  *   node scripts/download-runtimes.mjs --platform darwin-x64
  *   node scripts/download-runtimes.mjs --force      # 既存を再ダウンロード
  *
- * CI 環境（CI=true）では取得をスキップする。
- * typecheck / lint / test はランタイム実体を使わないため。
+ * CI 環境（CI=true）では postinstall からの暗黙呼び出しをスキップする
+ * （typecheck / lint / test はランタイム実体を使わないため）。
+ * `--all` / `--platform` / `--force` を明示した場合は CI でも取得する
+ * （リリースビルドでの配布バイナリ同梱用）。
  */
 
 import { spawn } from "node:child_process";
@@ -52,7 +54,9 @@ const RUNTIME_ROOT = path.join(DESKTOP_DIR, "resources", "runtime");
 
 const VERSIONS = {
   node: "22.11.0",
-  uv: "0.5.10",
+  // 0.5.25 以降が `uv-aarch64-pc-windows-msvc.zip` を公式リリースしているため、
+  // win32-arm64 を含む `--all` 取得が成立するバージョンに揃える。
+  uv: "0.5.31",
 };
 
 /**
@@ -373,14 +377,21 @@ const setupPlatform = async (platform, force) => {
 };
 
 const main = async () => {
-  // CI 環境ではランタイム実体を使わない（typecheck/lint/test のみ）ためスキップ
-  // 必要なら CI 上で `--force` 付きで明示実行することは可能（force だけではスキップは外れない設計）
-  if (process.env.CI === "true") {
-    log("CI 環境を検出 - ランタイム取得をスキップします");
+  const { platforms, force } = parseArgs();
+
+  // CI 環境では postinstall からの暗黙呼び出し（typecheck/lint/test 用）でランタイム取得をスキップする。
+  // ただし `build:release` のように `--all` / `--platform` / `--force` を明示している場合は
+  // 配布バイナリへの同梱が目的なのでスキップしない。
+  const argv = process.argv.slice(2);
+  const explicitlyRequested =
+    force || argv.includes("--all") || argv.includes("--platform");
+  if (process.env.CI === "true" && !explicitlyRequested) {
+    log(
+      "CI 環境を検出 - ランタイム取得をスキップします（--all/--platform/--force で上書き可能）",
+    );
     return;
   }
 
-  const { platforms, force } = parseArgs();
   log(
     `対象プラットフォーム: ${platforms.join(", ")}${force ? " (--force)" : ""}`,
   );

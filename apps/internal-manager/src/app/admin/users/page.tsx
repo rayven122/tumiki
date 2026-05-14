@@ -47,6 +47,26 @@ const ActionTooltip = ({ id, text }: { id: string; text: string }) => (
   </span>
 );
 
+const UserAvatar = ({
+  image,
+  label,
+  sizeClass = "h-7 w-7",
+}: {
+  image?: string | null;
+  label: string;
+  sizeClass?: string;
+}) => (
+  <div
+    className={`bg-bg-active text-text-secondary flex ${sizeClass} shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-medium`}
+  >
+    {image ? (
+      <img src={image} alt="" className="h-full w-full object-cover" />
+    ) : (
+      label.charAt(0).toUpperCase()
+    )}
+  </div>
+);
+
 const SYNC_SOURCE_LABELS: Record<string, string | undefined> = {
   entra: "Entra ID",
   google: "Google",
@@ -157,21 +177,20 @@ const AdminUsersPage = () => {
         : isSelf
           ? "自分自身のアクセス状態は変更できません。別の管理者に操作してもらってください。"
           : user.isActive
-            ? "このユーザーの internal-manager と Tumiki Desktop の利用を停止します。IdP 側のユーザーは削除されません。"
-            : "このユーザーの internal-manager と Tumiki Desktop の利用を再開します。";
+            ? "このユーザーの Tumiki Manager と Tumiki Desktop の利用を停止します。IdP 側のユーザーは削除されません。"
+            : "このユーザーの Tumiki Manager と Tumiki Desktop の利用を再開します。";
       const deleteTooltip =
         user._count.externalIdentities > 0
           ? "SAML/SCIM/IdPで同期されたユーザーはTumikiから削除できません。IdP側で削除してください。"
           : "Tumikiで追加されたアクセス停止中ユーザーを削除します。削除すると一覧から消え、この操作は取り消せません。";
+      const userLabel = user.name ?? user.email ?? "?";
       return (
         <div
           key={user.id}
           className={`border-b-border-subtle hover:bg-bg-card-hover grid ${USER_GRID_COLUMNS} items-center gap-3 border-b px-5 py-3 text-xs transition-colors last:border-b-0`}
         >
           <div className="flex items-center gap-2.5">
-            <div className="bg-bg-active text-text-secondary flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-              {(user.name ?? user.email ?? "?").charAt(0).toUpperCase()}
-            </div>
+            <UserAvatar image={user.image} label={userLabel} />
             <div>
               <div className="text-text-primary font-medium">
                 {user.name ?? "—"}
@@ -426,14 +445,14 @@ const AdminUsersPage = () => {
             renderUserSection({
               title: "利用中ユーザー",
               description:
-                "internal-manager と Tumiki Desktop の利用を許可しているユーザーです。",
+                "Tumiki Manager と Tumiki Desktop の利用を許可しているユーザーです。",
               sectionUsers: activeUsers,
             })}
           {shouldShowSuspendedUsers &&
             renderUserSection({
               title: "アクセス停止中ユーザー",
               description:
-                "IdP には存在していても、internal-manager と Tumiki Desktop の利用を停止しているユーザーです。",
+                "IdP には存在していても、Tumiki Manager と Tumiki Desktop の利用を停止しているユーザーです。",
               sectionUsers: suspendedUsers,
             })}
         </div>

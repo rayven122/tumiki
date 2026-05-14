@@ -2,6 +2,7 @@ import { ipcMain } from "electron";
 import { z } from "zod";
 import type { AddFromCatalogInput } from "../../../types/catalog";
 import * as catalogService from "./catalog.service";
+import { ToolFetchError } from "../mcp-proxy/mcp-proxy.service";
 import * as logger from "../../shared/utils/logger";
 
 const addFromCatalogSchema = z.object({
@@ -68,6 +69,12 @@ export const setupCatalogIpc = (): void => {
         "Failed to add from catalog",
         error instanceof Error ? error : { error },
       );
+      // ツール取得失敗は接続情報のミスマッチを示すことが多いため、UIで明確に区別する
+      if (error instanceof ToolFetchError) {
+        throw new Error(
+          "MCPサーバーへ接続できずツール一覧を取得できなかったため登録を中止しました。認証情報や接続設定を確認してください。",
+        );
+      }
       throw new Error("カタログからのMCP登録に失敗しました");
     }
   });

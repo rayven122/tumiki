@@ -186,7 +186,7 @@ export const OrgManagementPanel = ({
               {selectedOrg.readonly && (
                 <span className="bg-bg-active text-text-muted inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px]">
                   <Lock size={10} />
-                  readonly
+                  外部 IdP 由来のため編集不可
                 </span>
               )}
             </div>
@@ -198,7 +198,7 @@ export const OrgManagementPanel = ({
             </p>
           </div>
           <Link
-            href={`/admin/roles?targetType=org&targetId=${selectedOrg.id}`}
+            href="/admin/roles"
             className="bg-btn-primary-bg text-btn-primary-text inline-flex min-h-[44px] items-center gap-2 rounded-lg px-3 text-xs font-medium"
           >
             <Shield size={13} />
@@ -310,7 +310,7 @@ export const OrgManagementPanel = ({
                   ))}
               </select>
               <p className="text-text-muted mt-2 text-[10px]">
-                外部 IdP 由来の組織は基本 readonly。Tumiki
+                外部 IdP 由来の組織は基本編集不可。Tumiki
                 側の補正が必要な場合だけ親組織を変更します。
               </p>
             </section>

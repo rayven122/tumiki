@@ -1,4 +1,5 @@
 import { ServerStatus, ServerType } from "@prisma/desktop-client";
+import type { McpToolInfo } from "@tumiki/mcp-core-proxy";
 import { getDb } from "../../shared/db";
 import type { DbClient } from "../../shared/db";
 import * as mcpRepository from "./mcp.repository";
@@ -9,8 +10,8 @@ import {
   SLUG_FALLBACK_PREFIX,
   VIRTUAL_SERVER_MAX_CONNECTIONS,
 } from "../../../shared/mcp.constants";
+import { getFaviconUrlsFromUrl } from "../../../shared/faviconUtils";
 import { encryptToken } from "../../utils/encryption";
-import { decryptCredentials } from "../../utils/credentials";
 import type {
   CreateFromCatalogInput,
   CreateFromManagerCatalogInput,
@@ -77,66 +78,34 @@ const generateUniqueName = async (
 };
 
 /**
- * 登録直後の接続から `tools/list` を取得して `McpTool` テーブルへ保存する。
+ * 取得済みの `McpToolInfo[]` を `McpTool` 行のシード形式に変換する。
+ * `allowedToolNames` 指定時は集合に含まれるツールのみ `isAllowed=true`。
  *
- * いずれの失敗もサーバー登録自体は成功扱いとし呼び出し元へ伝播させない方針だが、
- * ログレベルは原因によって分ける:
- * - MCP接続/取得失敗（外部依存・再現性なしも多い）→ warn
- * - DB書き込み失敗（システム側の深刻な問題の可能性あり）→ error
+ * 入力は `fetchToolsForConnection` / `fetchToolsForConnectionInput` どちらの戻り値でも
+ * 受け取れるよう、共通の `McpToolInfo[]` 型を直接受け取る。
  */
-const fetchAndStoreToolsForConnection = async (
+const toToolSeeds = (
+  tools: McpToolInfo[],
   connectionId: number,
-  options?: { allowedToolNames?: string[] },
-): Promise<void> => {
-  let tools;
-  try {
-    tools = await mcpProxyService.fetchToolsForConnection(connectionId);
-  } catch (error) {
-    logger.warn(
-      `Connection(id=${String(connectionId)}): ツール取得に失敗しました（接続自体は登録済み）`,
-      { error: error instanceof Error ? error.message : String(error) },
-    );
-    return;
-  }
-
-  if (tools.length === 0) {
-    logger.info(
-      `Connection(id=${String(connectionId)}): ツール 0件のため保存をスキップ`,
-    );
-    return;
-  }
-
-  try {
-    const db = await getDb();
-    const allowedToolNameSet = options?.allowedToolNames
-      ? new Set(options.allowedToolNames)
-      : null;
-    await mcpRepository.createTools(
-      db,
-      tools.map((tool) => ({
-        name: tool.name,
-        description: tool.description ?? "",
-        inputSchema: JSON.stringify(tool.inputSchema ?? {}),
-        connectionId,
-        ...(allowedToolNameSet && {
-          isAllowed: allowedToolNameSet.has(tool.name),
-        }),
-      })),
-    );
-    logger.info(
-      `Connection(id=${String(connectionId)}): ツール${String(tools.length)}件を保存しました`,
-    );
-  } catch (error) {
-    logger.error(
-      `Connection(id=${String(connectionId)}): ツールのDB書き込みに失敗しました（接続自体は登録済み）`,
-      { error: error instanceof Error ? error.message : String(error) },
-    );
-  }
+  allowedToolNames?: string[],
+) => {
+  const allowedToolNameSet = allowedToolNames
+    ? new Set(allowedToolNames)
+    : null;
+  return tools.map((tool) => ({
+    name: tool.name,
+    description: tool.description ?? "",
+    inputSchema: JSON.stringify(tool.inputSchema ?? {}),
+    connectionId,
+    ...(allowedToolNameSet && {
+      isAllowed: allowedToolNameSet.has(tool.name),
+    }),
+  }));
 };
 
-/**
- * カタログからMCPサーバーを登録
- */
+// カタログからMCPサーバーを登録
+// tools取得が成功した場合のみ server / secret / connection / tools を一括登録する。
+// 失敗時は ToolFetchError を呼び出し元へ伝播し、DBへ何も書き込まない。
 export const createFromCatalog = async (
   input: CreateFromCatalogInput,
 ): Promise<{ serverId: number; serverName: string }> => {
@@ -144,40 +113,57 @@ export const createFromCatalog = async (
   const uniqueName = await generateUniqueName(db, input.catalogName);
   const slug = await generateUniqueSlug(db, uniqueName);
 
-  // MCPサーバー作成
-  const server = await mcpRepository.createServer(db, {
-    name: uniqueName,
-    slug,
-    description: input.description,
-    serverType: ServerType.OFFICIAL,
-  });
-
-  // MCP接続作成
-  const connection = await mcpRepository.createConnection(db, {
-    name: uniqueName,
-    slug,
+  // 登録前検証: 未永続のままtools取得を試行（失敗時はthrowしてDB書き込みを阻止）
+  const tools = await mcpProxyService.fetchToolsForConnectionInput({
+    name: slug,
     transportType: input.transportType,
     command: input.command,
     args: input.args,
     url: input.url,
-    credentials: await encryptToken(JSON.stringify(input.credentials)),
     authType: input.authType,
-    serverId: server.id,
-    catalogId: input.catalogId,
+    credentials: input.credentials,
   });
 
-  logger.info(`MCP server created from catalog: ${uniqueName}`);
+  const encryptedCredentials = await encryptToken(
+    JSON.stringify(input.credentials),
+  );
 
-  // 登録直後にツール一覧を取得して保存（失敗しても登録自体は成功扱い）
-  await fetchAndStoreToolsForConnection(connection.id);
+  // server / secret / connection / tools を同一トランザクションで作成し、孤立secretを残さない
+  const { serverId } = await db.$transaction(async (tx) => {
+    const server = await mcpRepository.createServer(tx, {
+      name: uniqueName,
+      slug,
+      description: input.description,
+      serverType: ServerType.OFFICIAL,
+    });
+    const secret = await mcpRepository.createSecret(tx, encryptedCredentials);
+    const connection = await mcpRepository.createConnection(tx, {
+      name: uniqueName,
+      slug,
+      transportType: input.transportType,
+      command: input.command,
+      args: input.args,
+      url: input.url,
+      secretId: secret.id,
+      authType: input.authType,
+      serverId: server.id,
+      catalogId: input.catalogId,
+    });
+    if (tools.length > 0) {
+      await mcpRepository.createTools(tx, toToolSeeds(tools, connection.id));
+    }
+    return { serverId: server.id };
+  });
 
-  return { serverId: server.id, serverName: uniqueName };
+  logger.info(
+    `MCP server created from catalog: ${uniqueName} (tools=${String(tools.length)})`,
+  );
+
+  return { serverId, serverName: uniqueName };
 };
 
-/**
- * Manager APIのカタログレスポンスからMCPサーバーを登録
- * ローカルMcpCatalogには紐づけないため、McpConnection.catalogIdはnullで保存する。
- */
+// Manager API のカタログレスポンスから登録（ローカル McpCatalog 参照なし → catalogId は null）
+// tools取得が成功した場合のみ一括登録する。失敗時は呼び出し元へ伝播。
 export const createFromManagerCatalog = async (
   input: CreateFromManagerCatalogInput,
 ): Promise<{ serverId: number; serverName: string }> => {
@@ -190,41 +176,69 @@ export const createFromManagerCatalog = async (
   const uniqueName = await generateUniqueName(db, input.serverName);
   const slug = await generateUniqueSlug(db, uniqueName);
 
-  const server = await mcpRepository.createServer(db, {
-    name: uniqueName,
-    slug,
-    description: input.description,
-    serverType: ServerType.OFFICIAL,
-  });
+  const command = template.transportType === "STDIO" ? template.command : null;
+  const args = JSON.stringify(template.args);
+  const url = template.transportType !== "STDIO" ? template.url : null;
 
-  const connection = await mcpRepository.createConnection(db, {
-    name: uniqueName,
-    slug,
+  const tools = await mcpProxyService.fetchToolsForConnectionInput({
+    name: slug,
     transportType: template.transportType,
-    command: template.transportType === "STDIO" ? template.command : null,
-    args: JSON.stringify(template.args),
-    url: template.transportType !== "STDIO" ? template.url : null,
-    credentials: await encryptToken(JSON.stringify(input.credentials)),
+    command,
+    args,
+    url,
     authType: template.authType,
-    serverId: server.id,
-    catalogId: null,
+    credentials: input.credentials,
   });
 
-  logger.info(`MCP server created from manager catalog: ${uniqueName}`, {
-    managerCatalogId: input.catalogId,
+  const encryptedCredentials = await encryptToken(
+    JSON.stringify(input.credentials),
+  );
+  const allowedToolNames = input.tools
+    .filter((tool) => tool.allowed)
+    .map((tool) => tool.name);
+
+  const { serverId } = await db.$transaction(async (tx) => {
+    const server = await mcpRepository.createServer(tx, {
+      name: uniqueName,
+      slug,
+      description: input.description,
+      serverType: ServerType.OFFICIAL,
+    });
+    const secret = await mcpRepository.createSecret(tx, encryptedCredentials);
+    const connection = await mcpRepository.createConnection(tx, {
+      name: uniqueName,
+      slug,
+      transportType: template.transportType,
+      command,
+      args,
+      url,
+      secretId: secret.id,
+      authType: template.authType,
+      serverId: server.id,
+      catalogId: null,
+    });
+    if (tools.length > 0) {
+      await mcpRepository.createTools(
+        tx,
+        toToolSeeds(tools, connection.id, allowedToolNames),
+      );
+    }
+    return { serverId: server.id };
   });
 
-  await fetchAndStoreToolsForConnection(connection.id, {
-    allowedToolNames: input.tools
-      .filter((tool) => tool.allowed)
-      .map((tool) => tool.name),
-  });
+  logger.info(
+    `MCP server created from manager catalog: ${uniqueName} (tools=${String(tools.length)})`,
+    {
+      managerCatalogId: input.catalogId,
+    },
+  );
 
-  return { serverId: server.id, serverName: uniqueName };
+  return { serverId, serverName: uniqueName };
 };
 
 /**
  * カスタムURLでリモートMCPサーバーを登録（カタログ参照なし）
+ * tools取得が成功した場合のみ一括登録する。失敗時は呼び出し元へ伝播。
  */
 export const createCustomServer = async (
   input: CreateCustomServerInput,
@@ -232,57 +246,63 @@ export const createCustomServer = async (
   const db = await getDb();
   const uniqueName = await generateUniqueName(db, input.serverName);
   const slug = await generateUniqueSlug(db, uniqueName);
-
-  const server = await mcpRepository.createServer(db, {
-    name: uniqueName,
-    slug,
-    description: "",
-    serverType: ServerType.OFFICIAL,
-  });
-
   const command = input.transportType === "STDIO" ? input.command : null;
   const args = input.transportType === "STDIO" ? (input.args ?? "[]") : "[]";
   const url = input.transportType !== "STDIO" ? input.url : null;
-  const connection = await mcpRepository.createConnection(db, {
-    name: uniqueName,
-    slug,
+  // URLがある場合のみfavicon URLを生成（STDIOはURLなしのためnull）
+  const iconPath = url ? (getFaviconUrlsFromUrl(url, 32)[0] ?? null) : null;
+
+  const tools = await mcpProxyService.fetchToolsForConnectionInput({
+    name: slug,
     transportType: input.transportType,
     command,
     args,
     url,
-    credentials: await encryptToken(JSON.stringify(input.credentials)),
     authType: input.authType,
-    serverId: server.id,
-    catalogId: null,
+    credentials: input.credentials,
   });
 
-  logger.info(`Custom MCP server created: ${uniqueName}`);
+  const encryptedCredentials = await encryptToken(
+    JSON.stringify(input.credentials),
+  );
 
-  await fetchAndStoreToolsForConnection(connection.id);
+  const { serverId } = await db.$transaction(async (tx) => {
+    const server = await mcpRepository.createServer(tx, {
+      name: uniqueName,
+      slug,
+      description: "",
+      serverType: ServerType.OFFICIAL,
+    });
+    const secret = await mcpRepository.createSecret(tx, encryptedCredentials);
+    const connection = await mcpRepository.createConnection(tx, {
+      name: uniqueName,
+      slug,
+      transportType: input.transportType,
+      command,
+      args,
+      url,
+      secretId: secret.id,
+      authType: input.authType,
+      serverId: server.id,
+      catalogId: null,
+      iconPath,
+    });
+    if (tools.length > 0) {
+      await mcpRepository.createTools(tx, toToolSeeds(tools, connection.id));
+    }
+    return { serverId: server.id };
+  });
 
-  return { serverId: server.id, serverName: uniqueName };
+  logger.info(
+    `Custom MCP server created: ${uniqueName} (tools=${String(tools.length)})`,
+  );
+
+  return { serverId, serverName: uniqueName };
 };
 
-/**
- * 仮想MCPサーバーを作成
- *
- * DEV-1581: 「コネクト画面で追加済みコネクタ」を束ねる仕様に変更。
- * 元コネクタの McpConnection（接続設定 + 暗号化済み credentials）と McpTool（提供ツール定義 + isAllowed）を
- * 1つの新規 McpServer 配下に丸ごとコピーする。ツール公開可否の初期値は元コネクタの isAllowed をそのまま継承し、
- * 入力で `allowedToolNames` が指定された場合はその一覧で上書きする（UI のチェック編集を反映）。
- *
- * - 接続0件は不正入力として拒否（最低1接続必須）
- * - 各接続のslugはサーバー内で一意（接続名 + 必要に応じてサフィックス）
- *
- * 【既知の制限 / DEV-1624 で対処予定】
- * 現状は credentials を行ごとコピーしているため、OAuth コネクタを含めるとトークンが
- * 元コネクタと仮想MCP配下で独立し、refresh_token ローテーション系IdP では衝突しうる。
- * プレリリース段階では許容し、後続で McpSecret テーブル経由の共有に切り替える。
- *
- * SQLite $transaction タイムアウト回避のため、接続取得（findConnectionsByIdsWithTools）と
- * 接続 slug 計算は tx 外で先行実行する。サーバー名/slug の一意性チェックは名前重複時の
- * サフィックス付与に DB 参照が必要なため tx 内に残す。
- */
+// 既存コネクタを束ねる。元コネクタの secretId を共有することで credentials を単一情報源化する。
+// 元コネクタ削除後も仮想MCP配下が参照を保つ限り secret は保持される（参照カウント運用）。
+// SQLite $transaction タイムアウト回避のため、接続取得と slug 計算は tx 外で先行実行する。
 export const createVirtualServer = async (
   input: CreateVirtualServerInput,
 ): Promise<{ serverId: number; serverName: string }> => {
@@ -371,7 +391,7 @@ export const createVirtualServer = async (
       index,
       connectionSlug,
     } of connectionsWithSlug) {
-      // 暗号化済み credentials はそのまま（再入力なし）コピーする
+      // 元コネクタの secretId を共有する（参照カウントで secret は保持される）
       const newConnection = await mcpRepository.createConnection(tx, {
         name: source.name,
         slug: connectionSlug,
@@ -379,7 +399,7 @@ export const createVirtualServer = async (
         command: source.command,
         args: source.args,
         url: source.url,
-        credentials: source.credentials,
+        secretId: source.secretId,
         authType: source.authType,
         serverId: server.id,
         catalogId: source.catalogId,
@@ -458,30 +478,32 @@ export const getToolsForConnections = async (
   return { items };
 };
 
-/**
- * 登録済みMCPサーバー一覧を取得
- * 接続ごとに Prisma の `_count.tools` を平坦化した `toolCount` を付与する
- */
+// 内部キー（secretId, _count）は明示的に除外し、フィールドが増えても漏れない構成にする
 export const getAllServers = async () => {
   const db = await getDb();
   const servers = await mcpRepository.findAllWithConnections(db);
-  return Promise.all(
-    servers.map(async (server) => ({
-      ...server,
-      connections: await Promise.all(
-        server.connections.map(async (conn) => {
-          const { _count, ...rest } = conn;
-          return {
-            ...rest,
-            credentials: conn.credentials
-              ? await decryptCredentials(conn.credentials)
-              : conn.credentials,
-            toolCount: _count.tools,
-          };
-        }),
-      ),
+  return servers.map((server) => ({
+    ...server,
+    connections: server.connections.map((conn) => ({
+      id: conn.id,
+      name: conn.name,
+      slug: conn.slug,
+      transportType: conn.transportType,
+      command: conn.command,
+      args: conn.args,
+      url: conn.url,
+      authType: conn.authType,
+      isEnabled: conn.isEnabled,
+      displayOrder: conn.displayOrder,
+      serverId: conn.serverId,
+      catalogId: conn.catalogId,
+      iconPath: conn.iconPath,
+      createdAt: conn.createdAt,
+      updatedAt: conn.updatedAt,
+      catalog: conn.catalog,
+      toolCount: conn._count.tools,
     })),
-  );
+  }));
 };
 
 /**
@@ -495,12 +517,17 @@ export const updateServer = async (
   return mcpRepository.updateServer(db, id, data);
 };
 
-/**
- * サーバーを削除
- */
+// cascade で接続削除 → 参照カウント0 の secret を後始末する一連を1トランザクションで実行
 export const deleteServer = async (id: number) => {
   const db = await getDb();
-  return mcpRepository.deleteServer(db, id);
+  return db.$transaction(async (tx) => {
+    const secretIds = await mcpRepository.findSecretIdsByServerId(tx, id);
+    const result = await mcpRepository.deleteServer(tx, id);
+    for (const secretId of secretIds) {
+      await mcpRepository.deleteSecretIfOrphaned(tx, secretId);
+    }
+    return result;
+  });
 };
 
 /**

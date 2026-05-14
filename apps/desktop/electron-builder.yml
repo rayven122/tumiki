@@ -25,6 +25,11 @@ extraResources:
     to: runtime/${platform}-${arch}
     filter:
       - "**/*"
+  # Win/Linux のウィンドウアイコン（BrowserWindow.icon）用に runtime からも参照可能にする
+  - from: resources/icon.png
+    to: icon.png
+  - from: resources/icon.ico
+    to: icon.ico
 
 # 依存関係を自動的にバンドル
 # Prismaクライアントとネイティブモジュール、レンダラーファイルをasarから除外
@@ -49,6 +54,7 @@ protocols:
 # macOS設定
 mac:
   category: public.app-category.productivity
+  icon: resources/icon.icns
   target:
     - target: dmg
       arch: [x64, arm64]

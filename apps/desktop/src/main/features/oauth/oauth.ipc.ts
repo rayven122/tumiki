@@ -3,7 +3,16 @@ import { z } from "zod";
 import type { McpOAuthManager } from "./oauth.service";
 import { DiscoveryError, DISCOVERY_ERROR_CODE } from "./oauth.discovery";
 import { LOOPBACK_PORT_IN_USE } from "./oauth.loopback";
+import { ToolFetchError } from "../mcp-proxy/mcp-proxy.service";
 import * as logger from "../../shared/utils/logger";
+
+/** OAuth成功後のtools取得失敗を識別するためのエラーコード */
+const TOOL_FETCH_FAILED_CODE = "TOOL_FETCH_FAILED";
+
+/** 再認証 IPC 入力のバリデーションスキーマ */
+const ReauthenticateInputSchema = z.object({
+  connectionId: z.number().int().positive(),
+});
 
 /** IPC入力のバリデーションスキーマ */
 const StartOAuthInputSchema = z.object({
@@ -86,6 +95,15 @@ const resolveOAuthErrorInfo = (
     }
   }
 
+  // OAuth認証は成功したがtools取得に失敗したケース。renderer側でDCR分岐と区別するため固有コードを返す
+  if (error instanceof ToolFetchError) {
+    return {
+      code: TOOL_FETCH_FAILED_CODE,
+      message:
+        "MCPサーバーへ接続できずツール一覧を取得できなかったため登録を中止しました。接続設定を確認してください。",
+    };
+  }
+
   // ループバックポート占有
   if (errorCodeOf(error) === LOOPBACK_PORT_IN_USE) {
     return {
@@ -146,6 +164,37 @@ export const setupOAuthIpc = (manager: McpOAuthManager): void => {
         broadcastToWindows("oauth:error", wrapped);
       }
 
+      throw new Error(wrapped);
+    }
+  });
+
+  // 既存コネクションのOAuth再認証（McpSecretのみ更新）
+  ipcMain.handle("oauth:reauthenticate", async (_, input: unknown) => {
+    let parsed: z.infer<typeof ReauthenticateInputSchema>;
+    try {
+      parsed = ReauthenticateInputSchema.parse(input);
+    } catch (error) {
+      logger.error(
+        "Invalid OAuth reauthenticate IPC input",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error("[UNKNOWN] OAuth再認証入力の検証に失敗しました");
+    }
+
+    try {
+      const result = await manager.reauthenticateConnection(parsed);
+      broadcastToWindows("oauth:reauthSuccess", result);
+      return result;
+    } catch (error) {
+      logger.error(
+        "Failed to reauthenticate MCP OAuth connection",
+        error instanceof Error ? error : { error },
+      );
+
+      const { code, message } = resolveOAuthErrorInfo(error);
+      const wrapped = `[${code}] ${message}`;
+      // 再認証エラーは登録フローのリスナー（onOAuthError）と分離して配信する
+      broadcastToWindows("oauth:reauthError", wrapped);
       throw new Error(wrapped);
     }
   });

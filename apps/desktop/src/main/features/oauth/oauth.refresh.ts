@@ -69,15 +69,9 @@ const loadOAuthClientBundle = async (
   };
 };
 
-/**
- * 必要に応じてOAuthトークンをリフレッシュし、新しいcredentialsを返す。
- *
- * - リフレッシュ不要（期限に余裕がある）→ null
- * - リフレッシュ成功 → 新しい復号済みcredentials
- * - リフレッシュ失敗（refresh_tokenなし、OAuthClient未登録、API エラー等）→ null
- */
+// secretId 単位でリフレッシュ。リフレッシュ不要・refresh_token 欠如・API失敗等は null を返す。
 export const refreshOAuthTokenIfNeeded = async (
-  connectionId: number,
+  secretId: number,
   serverUrl: string,
   credentials: Record<string, string>,
 ): Promise<Record<string, string> | null> => {
@@ -89,7 +83,7 @@ export const refreshOAuthTokenIfNeeded = async (
   if (!refreshToken) {
     logger.warn(
       "OAuthトークンが期限切れですが refresh_token がないためリフレッシュできません",
-      { connectionId, serverUrl },
+      { secretId, serverUrl },
     );
     return null;
   }
@@ -98,8 +92,8 @@ export const refreshOAuthTokenIfNeeded = async (
     const bundle = await loadOAuthClientBundle(serverUrl);
     if (!bundle) return null;
 
-    logger.info("OAuthトークン���リフレッシュします", {
-      connectionId,
+    logger.info("OAuthトークンをリフレッシュします", {
+      secretId,
       serverUrl,
     });
 
@@ -111,17 +105,13 @@ export const refreshOAuthTokenIfNeeded = async (
 
     const newCredentials = credentialsPayloadFromTokenData(tokenData);
 
-    // 暗号化してDBに保存
+    // McpSecret を更新することで共有先の全コネクションに反映される
     const db = await getDb();
     const encrypted = await encryptToken(JSON.stringify(newCredentials));
-    await oauthRepository.updateConnectionCredentials(
-      db,
-      connectionId,
-      encrypted,
-    );
+    await oauthRepository.updateSecretCredentials(db, secretId, encrypted);
 
     logger.info("OAuthトークンのリフレッシュが完了しました", {
-      connectionId,
+      secretId,
       serverUrl,
       expiresAt: newCredentials["expires_at"],
     });
@@ -130,7 +120,7 @@ export const refreshOAuthTokenIfNeeded = async (
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logger.error("OAuthトークンのリフレッシュに失敗しました", {
-      connectionId,
+      secretId,
       serverUrl,
       error: message,
     });

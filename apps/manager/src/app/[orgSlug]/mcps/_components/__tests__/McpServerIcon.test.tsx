@@ -144,15 +144,17 @@ describe("McpServerIcon", () => {
     test("デフォルトサイズは32px", () => {
       render(<McpServerIcon iconPath="lucide:Server" />);
 
-      const svg = document.querySelector("svg");
-      expect(svg).toHaveStyle({ width: "32px", height: "32px" });
+      // アイコンはコンテナdivのサイズ（size prop）で確認する
+      // SVGはコンテナ内でsize * 0.65にスケールされるため、コンテナを対象とする
+      const container = document.querySelector(".bg-zinc-100");
+      expect(container).toHaveStyle({ width: "32px", height: "32px" });
     });
 
     test("カスタムサイズを指定できる", () => {
       render(<McpServerIcon iconPath="lucide:Server" size={48} />);
 
-      const svg = document.querySelector("svg");
-      expect(svg).toHaveStyle({ width: "48px", height: "48px" });
+      const container = document.querySelector(".bg-zinc-100");
+      expect(container).toHaveStyle({ width: "48px", height: "48px" });
     });
   });
 });

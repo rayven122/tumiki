@@ -35,7 +35,10 @@ ENV CI=true
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
   pnpm install --frozen-lockfile --prod=false
 
-RUN pnpm --filter @tumiki/lp run build
+# NEXT_PUBLIC_* は Next.js が build 時に静的展開するため、production image 用の値を build 時に明示する。
+ARG NEXT_PUBLIC_CALENDAR_URL=
+RUN NEXT_PUBLIC_CALENDAR_URL="${NEXT_PUBLIC_CALENDAR_URL}" \
+  pnpm --filter @tumiki/lp run build
 
 # ========================================
 # Stage 3: Production

@@ -238,8 +238,10 @@ export const AddMcpModal = ({
         credentials,
       });
       onSuccess(result.serverName);
-    } catch {
-      setError("MCPサーバーの登録に失敗しました");
+    } catch (err) {
+      // メイン側でtools取得失敗時に整形した日本語メッセージを返すため、Errorのmessageを優先表示する
+      const message = err instanceof Error ? err.message : "";
+      setError(message || "MCPサーバーの登録に失敗しました");
     } finally {
       setLoading(false);
     }
@@ -399,8 +401,8 @@ export const AddMcpModal = ({
           </div>
         </div>
 
-        {/* OAuthクライアント設定（アコーディオン、OAUTH時のみ表示） */}
-        {isOAuth && (
+        {/* OAuthクライアント設定（DCR非対応時のみ表示） */}
+        {isOAuth && needsManualOAuthClient && (
           <div className="mb-6 overflow-hidden rounded-lg border border-[var(--border-subtle)]">
             <button
               type="button"

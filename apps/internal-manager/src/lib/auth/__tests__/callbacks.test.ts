@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 const mockEnsureJacksonOidcClients = vi.hoisted(() => vi.fn());
 const mockFindUnique = vi.hoisted(() => vi.fn());
+const mockUpdateMany = vi.hoisted(() => vi.fn());
 const mockGetTumikiClaims = vi.hoisted(() => vi.fn());
 const MockOidcNotConfiguredError = vi.hoisted(
   () =>
@@ -21,6 +22,7 @@ vi.mock("@tumiki/internal-db/server", () => ({
   db: {
     user: {
       findUnique: mockFindUnique,
+      updateMany: mockUpdateMany,
     },
   },
 }));
@@ -50,6 +52,7 @@ describe("jwtCallback", () => {
       OIDC_DESKTOP_CLIENT_ID: "desktop-client",
     });
     mockFindUnique.mockResolvedValue({ role: "SYSTEM_ADMIN" });
+    mockUpdateMany.mockResolvedValue({ count: 1 });
     mockGetTumikiClaims.mockResolvedValue({
       org_slugs: ["engineering"],
       org_id: "org-1",
@@ -226,6 +229,7 @@ describe("jwtCallback", () => {
         sub: "oidc-sub-1",
         email: "user@example.com",
         name: "Tumiki User",
+        picture: "https://example.com/avatar.png",
         tumiki: { group_roles: ["group-admin"] },
       },
     });
@@ -239,6 +243,7 @@ describe("jwtCallback", () => {
       oidcSub: "oidc-sub-1",
       email: "user@example.com",
       name: "Tumiki User",
+      picture: "https://example.com/avatar.png",
       provider: "oidc",
       tumiki: {
         org_slugs: ["engineering"],
@@ -255,6 +260,10 @@ describe("jwtCallback", () => {
       "oidc-sub-1",
       ["group-admin"],
     );
+    expect(mockUpdateMany).toHaveBeenCalledWith({
+      where: { id: "user-1" },
+      data: { image: "https://example.com/avatar.png" },
+    });
   });
 
   test("セッション更新時はtumikiクレームとroleをDBから再取得する", async () => {

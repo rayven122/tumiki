@@ -32,7 +32,7 @@ export type McpConnectionMeta = {
 // McpConnection.args のバリデーション（string[] としてJSON.parse可能）
 const connectionArgsSchema = z.array(z.string());
 
-// McpConnection.credentials（復号後）の env バリデーション
+// McpSecret.credentials（復号後）の env バリデーション
 // 値は string のみ受け付ける（環境変数は文字列のため）
 const connectionEnvSchema = z.record(z.string(), z.string());
 
@@ -101,6 +101,8 @@ const toProxyAuthType = (prismaAuthType: string): AuthType => {
 type EnabledConnection = Awaited<
   ReturnType<typeof mcpRepository.findEnabledConnections>
 >[number];
+// findEnabledConnections（tools あり）と findConnectionByIdWithServer（tools なし）を共通で受ける型。
+// secret はどちらの finder も include しているため EnabledConnection から継承する。
 type ConnectionForConfig = Omit<EnabledConnection, "tools"> & {
   tools?: Array<{ name: string; isAllowed: boolean }>;
 };
@@ -122,29 +124,39 @@ const withAllowedTools = <T extends McpServerConfig>(
  * 単一接続からMcpServerConfigを生成する共通ヘルパー。
  * credentials復号 → Zodバリデーション → OAuthリフレッシュ → config組み立て。
  * 生成不可（urlなし等）の場合は null を返す。
+ *
+ * `oauthCache` は同一 secretId を共有する複数接続のリフレッシュを冪等化するための
+ * 接続ループ単位の状態。同じ secret を指す2件目以降は1件目で得た新トークンを参照し、
+ * 古い refresh_token で再叩きして refresh_token rotation で `invalid_grant` を起こすのを防ぐ。
  */
 const buildConfigFromConnection = async (
   conn: ConnectionForConfig,
+  oauthCache: Map<number, Record<string, string>> = new Map(),
 ): Promise<{ config: McpServerConfig; meta: McpConnectionMeta } | null> => {
   const connLabel = `${conn.server.slug}/${conn.slug}`;
   const name = `${conn.server.slug}-${conn.slug}`;
 
-  const plainCredentials = await decryptCredentials(conn.credentials);
+  const plainCredentials = await decryptCredentials(conn.secret.credentials);
   let credentials = parseAndValidate(
     plainCredentials,
     connectionEnvSchema,
     `connection(${connLabel}).credentials`,
   );
 
-  // OAuth接続: トークンの期限チェック & 必要ならリフレッシュ
+  // OAuth接続: トークンの期限チェック & 必要ならリフレッシュ（secretId 単位で冪等化）
   if (conn.authType === "OAUTH" && conn.url) {
-    const refreshed = await refreshOAuthTokenIfNeeded(
-      conn.id,
-      conn.url,
-      credentials,
-    );
-    if (refreshed) {
-      credentials = refreshed;
+    const cached = oauthCache.get(conn.secretId);
+    if (cached) {
+      credentials = cached;
+    } else {
+      const refreshed = await refreshOAuthTokenIfNeeded(
+        conn.secretId,
+        conn.url,
+        credentials,
+      );
+      if (refreshed) credentials = refreshed;
+      // リフレッシュ実行後・スキップ後どちらでも、後続接続が古いスナップショットで再叩きしないようキャッシュ
+      oauthCache.set(conn.secretId, credentials);
     }
   }
 
@@ -255,9 +267,13 @@ const buildConfigsFromConnections = async (
 
   const configs: McpServerConfig[] = [];
   const meta: McpConnectionMeta[] = [];
+  // 同じ secretId を共有する複数接続でのリフレッシュ重複を防ぐ（refresh_token rotation 衝突対策）。
+  // 暗黙の前提: 同一 secretId の接続は同一 url を持つ（仮想MCPは元コネクタの url をコピーするため）。
+  // 将来 secret 共有ながら url が異なるケースを許容する場合は、キャッシュキーを `secretId:url` に拡張する必要がある。
+  const oauthCache = new Map<number, Record<string, string>>();
   for (const conn of connections) {
     try {
-      const result = await buildConfigFromConnection(conn);
+      const result = await buildConfigFromConnection(conn, oauthCache);
       if (result) {
         configs.push(result.config);
         meta.push(result.meta);
@@ -294,13 +310,90 @@ export const getEnabledConfigsWithMeta = async (
 };
 
 /**
+ * カタログ登録前のtools取得検証で発生するエラー。
+ * IPC層で識別してUIに「ツール取得失敗」を伝える用途で使う。
+ */
+export class ToolFetchError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options);
+    this.name = "ToolFetchError";
+  }
+}
+
+/**
+ * 与えられた `McpServerConfig` に対して `tools/list` を呼び出す共通処理。
+ *
+ * - タイムアウト時は失敗扱いにし、Client/Transport を確実にcloseする
+ * - 失敗は `ToolFetchError` でラップし、呼び出し元で識別可能にする
+ */
+const fetchToolsForConfig = async (
+  config: McpServerConfig,
+  options?: { timeoutMs?: number },
+): Promise<McpToolInfo[]> => {
+  const timeoutMs = options?.timeoutMs ?? DEFAULT_TOOL_FETCH_TIMEOUT_MS;
+  const { client, transport } = createMcpClient(config);
+
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(
+        new ToolFetchError(
+          `MCP接続 "${config.name}" のツール取得がタイムアウト (${String(timeoutMs)}ms) しました`,
+        ),
+      );
+    }, timeoutMs);
+  });
+
+  // タイムアウト時、内部の async IIFE は Promise.race の解決後も継続実行される。
+  // STDIO の場合、connect 中だった子プロセスは finally の client.close() に
+  // よって停止するが、その挙動は SDK の実装に依存するため完全な保証ではない。
+  // 現状の MCP SDK では transport.close() がプロセスに SIGTERM を送るため、
+  // タイムアウト後でもプロセスリークは発生しない想定。
+  const innerPromise = (async (): Promise<McpToolInfo[]> => {
+    await client.connect(transport);
+    const result = await client.listTools();
+    return result.tools.map((tool) => ({
+      name: tool.name,
+      description: tool.description,
+      inputSchema: tool.inputSchema,
+    }));
+  })();
+  // タイムアウトが先に勝った場合 innerPromise は arrives-late で reject する可能性があり、
+  // 誰も await しなくなって unhandled rejection になる。明示的に握りつぶして抑制する
+  // （race 側ですでに別経路としてエラーが捕捉済みのため安全）。
+  innerPromise.catch(() => {});
+
+  try {
+    const tools = await Promise.race([innerPromise, timeoutPromise]);
+    return tools;
+  } catch (error) {
+    if (error instanceof ToolFetchError) throw error;
+    const message = error instanceof Error ? error.message : String(error);
+    throw new ToolFetchError(
+      `MCP接続 "${config.name}" のツール取得に失敗しました: ${message}`,
+      { cause: error },
+    );
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+    try {
+      await client.close();
+    } catch (closeError) {
+      // close失敗は警告のみ（既にツール取得結果は確定しているため致命傷ではない）
+      logger.warn(`MCP接続 "${config.name}" の終了処理でエラー`, {
+        error:
+          closeError instanceof Error ? closeError.message : String(closeError),
+      });
+    }
+  }
+};
+
+/**
  * 単一接続に対して `tools/list` を呼び出してツール一覧を取得する。
  * カタログ登録直後など「接続情報は保存済みだがプロキシは起動していない」状態で使用する。
  *
- * - タイムアウトを過ぎた場合は失敗扱いにし、Client/Transport を確実にcloseする
  * - isEnabled / authType の制限はかけない（OAUTH接続も登録時に1度はツール取得を試みる）
  *
- * @throws 接続不存在 / config組み立て失敗 / 接続/ツール取得タイムアウト等
+ * @throws 接続不存在 / config組み立て失敗 / `ToolFetchError`（接続/ツール取得失敗）
  */
 export const fetchToolsForConnection = async (
   connectionId: number,
@@ -322,49 +415,94 @@ export const fetchToolsForConnection = async (
     );
   }
 
-  const timeoutMs = options?.timeoutMs ?? DEFAULT_TOOL_FETCH_TIMEOUT_MS;
-  const { client, transport } = createMcpClient(built.config);
+  return fetchToolsForConfig(built.config, options);
+};
 
-  let timeoutId: ReturnType<typeof setTimeout> | undefined;
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => {
-      reject(
-        new Error(
-          `MCP接続 "${built.meta.configName}" のツール取得がタイムアウト (${String(timeoutMs)}ms) しました`,
-        ),
+/**
+ * カタログ登録「前」に未永続の接続情報からtools取得を試みる。
+ * 成功した場合のみ呼び出し元はDB登録に進める。
+ *
+ * 既存の `buildConfigFromConnection` は DB の `McpConnection` を入力とするため、
+ * ここでは登録前の生credentials/argsから `McpServerConfig` を直接組み立てる。
+ *
+ * @throws `ToolFetchError`（タイムアウト含むtools取得失敗）/ 設定不正
+ */
+export const fetchToolsForConnectionInput = async (
+  input: {
+    name: string;
+    transportType: TransportType;
+    command: string | null;
+    args: string;
+    url: string | null;
+    authType: string;
+    credentials: Record<string, string>;
+  },
+  options?: { timeoutMs?: number },
+): Promise<McpToolInfo[]> => {
+  const config = buildConfigFromInput(input);
+  return fetchToolsForConfig(config, options);
+};
+
+/**
+ * 生入力（credentials復号済み・args文字列）から `McpServerConfig` を組み立てる。
+ * `buildConfigFromConnection` が DB レコード前提なのに対し、こちらは登録前検証で使う。
+ */
+const buildConfigFromInput = (input: {
+  name: string;
+  transportType: TransportType;
+  command: string | null;
+  args: string;
+  url: string | null;
+  authType: string;
+  credentials: Record<string, string>;
+}): McpServerConfig => {
+  switch (input.transportType) {
+    case "STDIO": {
+      if (!input.command) {
+        throw new Error("STDIO接続にはcommandが必要です");
+      }
+      const args = parseAndValidate(
+        input.args,
+        connectionArgsSchema,
+        `connection(${input.name}).args`,
       );
-    }, timeoutMs);
-  });
-
-  try {
-    // タイムアウト時、内部の async IIFE は Promise.race の解決後も継続実行される。
-    // STDIO の場合、connect 中だった子プロセスは finally の client.close() に
-    // よって停止するが、その挙動は SDK の実装に依存するため完全な保証ではない。
-    // 現状の MCP SDK では transport.close() がプロセスに SIGTERM を送るため、
-    // タイムアウト後でもプロセスリークは発生しない想定。
-    const tools = await Promise.race([
-      (async (): Promise<McpToolInfo[]> => {
-        await client.connect(transport);
-        const result = await client.listTools();
-        return result.tools.map((tool) => ({
-          name: tool.name,
-          description: tool.description,
-          inputSchema: tool.inputSchema,
-        }));
-      })(),
-      timeoutPromise,
-    ]);
-    return tools;
-  } finally {
-    if (timeoutId) clearTimeout(timeoutId);
-    try {
-      await client.close();
-    } catch (closeError) {
-      // close失敗は警告のみ（既にツール取得結果は確定しているため致命傷ではない）
-      logger.warn(`MCP接続 "${built.meta.configName}" の終了処理でエラー`, {
-        error:
-          closeError instanceof Error ? closeError.message : String(closeError),
-      });
+      return {
+        name: input.name,
+        transportType: "STDIO",
+        command: resolveValue(input.command),
+        args: resolveArgs(args),
+        env: buildChildEnv(process.env, input.credentials),
+      };
     }
+    case "SSE": {
+      if (!input.url) {
+        throw new Error("SSE接続にはurlが必要です");
+      }
+      const sseAuthType = toProxyAuthType(input.authType);
+      return {
+        name: input.name,
+        transportType: "SSE",
+        url: input.url,
+        authType: sseAuthType,
+        headers: buildHeaders(sseAuthType, input.credentials),
+      };
+    }
+    case "STREAMABLE_HTTP": {
+      if (!input.url) {
+        throw new Error("STREAMABLE_HTTP接続にはurlが必要です");
+      }
+      const httpAuthType = toProxyAuthType(input.authType);
+      return {
+        name: input.name,
+        transportType: "STREAMABLE_HTTP",
+        url: input.url,
+        authType: httpAuthType,
+        headers: buildHeaders(httpAuthType, input.credentials),
+      };
+    }
+    default:
+      throw new Error(
+        `未対応のトランスポートタイプです: ${String(input.transportType)}`,
+      );
   }
 };

@@ -5,6 +5,7 @@
  */
 
 import type { PrismaClient } from "@prisma/desktop-client";
+import type { DbClient } from "../../shared/db";
 import { encryptToken, decryptToken } from "../../utils/encryption";
 
 /** DB 行（findUnique 取得成功時） */
@@ -107,17 +108,17 @@ export const upsertOAuthClient = async (
   });
 };
 
-/**
- * 接続のcredentialsを更新（OAuthトークンリフレッシュ後のDB保存用）
- */
-export const updateConnectionCredentials = async (
-  db: PrismaClient,
-  connectionId: number,
+// secretId 単位で更新することで、同じ secret を指す全コネクションが最新トークンを参照する
+// DbClient を受けることで $transaction 内（mcp.repository と同じ慣例）からも呼べる
+export const updateSecretCredentials = async (
+  db: DbClient,
+  secretId: number,
   credentials: string,
-) => {
-  return db.mcpConnection.update({
-    where: { id: connectionId },
+): Promise<void> => {
+  await db.mcpSecret.update({
+    where: { id: secretId },
     data: { credentials },
+    select: { id: true },
   });
 };
 

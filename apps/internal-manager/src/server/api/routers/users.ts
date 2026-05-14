@@ -12,6 +12,7 @@ const userSelect = {
   id: true,
   name: true,
   email: true,
+  image: true,
   role: true,
   isActive: true,
   lastLoginAt: true,
@@ -107,6 +108,80 @@ export const usersRouter = createTRPCRouter({
         ...user,
         lastUsedAt: lastUsedAtByUserId.get(user.id) ?? null,
       }));
+    }),
+
+  getDetail: adminProcedure
+    .input(z.object({ userId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const user = await ctx.db.user.findUnique({
+        where: { id: input.userId },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true,
+          role: true,
+          isActive: true,
+          lastLoginAt: true,
+          scimDepartment: true,
+          scimManagerDisplayName: true,
+          createdAt: true,
+          externalIdentities: {
+            select: {
+              provider: true,
+              sub: true,
+              lastSyncedAt: true,
+            },
+            orderBy: { lastSyncedAt: "desc" },
+          },
+          orgUnitMemberships: {
+            select: {
+              id: true,
+              isPrimary: true,
+              orgUnit: {
+                select: {
+                  id: true,
+                  name: true,
+                  path: true,
+                  source: true,
+                  parentId: true,
+                },
+              },
+            },
+            orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+          },
+          groupMemberships: {
+            select: {
+              id: true,
+              source: true,
+              group: {
+                select: {
+                  id: true,
+                  name: true,
+                  description: true,
+                  source: true,
+                  provider: true,
+                  externalId: true,
+                },
+              },
+            },
+            orderBy: { createdAt: "asc" },
+          },
+        },
+      });
+
+      if (!user) return null;
+
+      const lastUsage = await ctx.db.desktopAuditLog.findFirst({
+        where: { userId: input.userId },
+        orderBy: { occurredAt: "desc" },
+        select: { occurredAt: true },
+      });
+
+      return {
+        ...user,
+        lastUsedAt: lastUsage?.occurredAt ?? null,
+      };
     }),
 
   updateActive: adminProcedure

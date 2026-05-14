@@ -4,6 +4,7 @@ import { GroupSource, Prisma } from "@tumiki/internal-db";
 import { adminProcedure, createTRPCRouter } from "@/server/api/trpc";
 
 export const GROUP_LIST_LIMIT = 200;
+export const GROUP_MEMBER_LIST_LIMIT = 1000;
 
 const groupNameSchema = z.string().trim().min(1).max(100);
 
@@ -31,6 +32,7 @@ const membershipSelect = {
       id: true,
       name: true,
       email: true,
+      image: true,
     },
   },
 } as const;
@@ -47,12 +49,20 @@ const groupListSelect = {
   updatedAt: true,
   memberships: {
     select: membershipSelect,
+    orderBy: { createdAt: "asc" },
   },
 } as const;
 
-const assertTumikiGroup = (group: { source: GroupSource } | null) => {
+type AssertTumikiGroup = <T extends { source: GroupSource }>(
+  group: T | null,
+) => asserts group is T & { source: typeof GroupSource.TUMIKI };
+
+const assertTumikiGroup: AssertTumikiGroup = (group) => {
   if (!group) {
-    throw new TRPCError({ code: "NOT_FOUND" });
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "グループが見つかりません",
+    });
   }
   if (group.source !== GroupSource.TUMIKI) {
     throw new TRPCError({
@@ -63,7 +73,6 @@ const assertTumikiGroup = (group: { source: GroupSource } | null) => {
 };
 
 export const groupsRouter = createTRPCRouter({
-  /** グループ一覧をメンバーシップカウント付きで取得 */
   list: adminProcedure.query(async ({ ctx }) => {
     return ctx.db.group.findMany({
       select: groupListSelect,
@@ -72,19 +81,19 @@ export const groupsRouter = createTRPCRouter({
     });
   }),
 
-  /** 特定グループのメンバー一覧を取得 */
   getMembers: adminProcedure
-    .input(z.object({ groupId: z.string() }))
+    .input(z.object({ groupId: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       return ctx.db.userGroupMembership.findMany({
         where: { groupId: input.groupId },
         select: membershipSelect,
+        orderBy: { createdAt: "asc" },
+        take: GROUP_MEMBER_LIST_LIMIT,
       });
     }),
 
-  /** 特定グループの同期ログ（最新20件）を取得 */
   getSyncLogs: adminProcedure
-    .input(z.object({ groupId: z.string() }))
+    .input(z.object({ groupId: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       return ctx.db.idpSyncLog.findMany({
         where: { groupId: input.groupId },
@@ -103,7 +112,6 @@ export const groupsRouter = createTRPCRouter({
       });
     }),
 
-  /** Tumiki独自グループを作成する */
   createTumikiGroup: adminProcedure
     .input(
       z.object({
@@ -124,7 +132,7 @@ export const groupsRouter = createTRPCRouter({
       });
     }),
 
-  /** Tumiki独自グループの表示情報を更新する */
+  // IdP mapping を触らず名称・説明だけ更新する既存呼び出し元のために残す。
   updateTumikiGroup: adminProcedure
     .input(
       z.object({
@@ -134,39 +142,93 @@ export const groupsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const group = await ctx.db.group.findUnique({
-        where: { id: input.groupId },
-        select: { source: true },
-      });
-      assertTumikiGroup(group);
+      return ctx.db.$transaction(async (tx) => {
+        const group = await tx.group.findUnique({
+          where: { id: input.groupId },
+          select: { source: true },
+        });
+        assertTumikiGroup(group);
 
-      return ctx.db.group.update({
-        where: { id: input.groupId },
-        data: {
-          name: input.name,
-          description: input.description ?? null,
-        },
-        select: groupListSelect,
+        return tx.group.update({
+          where: { id: input.groupId },
+          data: {
+            name: input.name,
+            description: input.description ?? null,
+          },
+          select: groupListSelect,
+        });
       });
     }),
 
-  /** Tumiki独自グループを削除する */
+  updateTumikiGroupWithMapping: adminProcedure
+    .input(
+      z.object({
+        groupId: z.string().min(1),
+        name: groupNameSchema,
+        description: groupDescriptionSchema,
+        // 管理UIの手動mappingはSCIM/JIT共通のTumiki group mappingとして扱う。
+        provider: z.literal("scim-map").default("scim-map"),
+        externalId: idpExternalIdSchema,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.$transaction(async (tx) => {
+        const group = await tx.group.findUnique({
+          where: { id: input.groupId },
+          select: { source: true },
+        });
+        assertTumikiGroup(group);
+
+        try {
+          return await tx.group.update({
+            where: { id: input.groupId },
+            data: {
+              name: input.name,
+              description: input.description ?? null,
+              provider: input.externalId ? input.provider : null,
+              externalId: input.externalId,
+            },
+            select: groupListSelect,
+          });
+        } catch (error) {
+          if (
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error.code === "P2002"
+          ) {
+            throw new TRPCError({
+              code: "CONFLICT",
+              message:
+                "そのIdPグループ識別子は既に別のグループに使用されています",
+            });
+          }
+          throw error;
+        }
+      });
+    }),
+
   deleteTumikiGroup: adminProcedure
     .input(z.object({ groupId: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
-      const group = await ctx.db.group.findUnique({
-        where: { id: input.groupId },
-        select: { source: true },
-      });
-      assertTumikiGroup(group);
+      return ctx.db.$transaction(async (tx) => {
+        const group = await tx.group.findUnique({
+          where: { id: input.groupId },
+          select: { source: true, _count: { select: { memberships: true } } },
+        });
+        assertTumikiGroup(group);
+        if (group._count.memberships > 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "メンバーが残っているグループは削除できません",
+          });
+        }
 
-      return ctx.db.group.delete({
-        where: { id: input.groupId },
-        select: { id: true },
+        return tx.group.delete({
+          where: { id: input.groupId },
+          select: { id: true },
+        });
       });
     }),
 
-  /** Tumiki独自グループに手動メンバーを追加する */
   addMember: adminProcedure
     .input(
       z.object({
@@ -175,88 +237,92 @@ export const groupsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const group = await ctx.db.group.findUnique({
-        where: { id: input.groupId },
-        select: { source: true },
-      });
-      assertTumikiGroup(group);
-
-      const user = await ctx.db.user.findUnique({
-        where: { id: input.userId },
-        select: { id: true, isActive: true },
-      });
-      if (!user) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "ユーザーが見つかりません",
-        });
-      }
-      if (!user.isActive) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "無効化されたユーザーは追加できません",
-        });
-      }
-
-      try {
-        return await ctx.db.userGroupMembership.create({
-          data: {
-            groupId: input.groupId,
-            userId: input.userId,
-            source: GroupSource.TUMIKI,
-          },
-          select: membershipSelect,
-        });
-      } catch (error) {
-        if (
-          error instanceof Prisma.PrismaClientKnownRequestError &&
-          error.code === "P2002"
-        ) {
+      return ctx.db.$transaction(async (tx) => {
+        const [group, user] = await Promise.all([
+          tx.group.findUnique({
+            where: { id: input.groupId },
+            select: { id: true },
+          }),
+          tx.user.findUnique({
+            where: { id: input.userId },
+            select: { id: true, isActive: true },
+          }),
+        ]);
+        if (!group) {
           throw new TRPCError({
-            code: "CONFLICT",
-            message: "このユーザーは既にグループに所属しています",
+            code: "NOT_FOUND",
+            message: "グループが見つかりません",
           });
         }
-        throw error;
-      }
+        if (!user) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "ユーザーが見つかりません",
+          });
+        }
+        if (!user.isActive) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "無効化されたユーザーは追加できません",
+          });
+        }
+
+        try {
+          return await tx.userGroupMembership.create({
+            data: {
+              groupId: input.groupId,
+              userId: input.userId,
+              source: GroupSource.TUMIKI,
+            },
+            select: membershipSelect,
+          });
+        } catch (error) {
+          if (
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error.code === "P2002"
+          ) {
+            throw new TRPCError({
+              code: "CONFLICT",
+              message: "このユーザーは既にグループに所属しています",
+            });
+          }
+          throw error;
+        }
+      });
     }),
 
-  /** Tumiki独自グループの手動メンバーを削除する */
   removeMember: adminProcedure
     .input(z.object({ membershipId: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
-      const membership = await ctx.db.userGroupMembership.findUnique({
-        where: { id: input.membershipId },
-        select: {
-          id: true,
-          source: true,
-          group: { select: { source: true } },
-        },
-      });
-      if (!membership) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "メンバーシップが見つかりません",
+      return ctx.db.$transaction(async (tx) => {
+        const membership = await tx.userGroupMembership.findUnique({
+          where: { id: input.membershipId },
+          select: {
+            id: true,
+            source: true,
+          },
         });
-      }
-      if (
-        membership.group.source !== GroupSource.TUMIKI ||
-        membership.source !== GroupSource.TUMIKI
-      ) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message:
-            "IdPグループまたはIdP由来のメンバーシップは管理画面から削除できません",
-        });
-      }
+        if (!membership) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "メンバーシップが見つかりません",
+          });
+        }
+        if (membership.source !== GroupSource.TUMIKI) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "IdP由来のメンバーシップは管理画面から削除できません",
+          });
+        }
 
-      return ctx.db.userGroupMembership.delete({
-        where: { id: input.membershipId },
-        select: { id: true },
+        return tx.userGroupMembership.delete({
+          where: { id: input.membershipId },
+          select: { id: true },
+        });
       });
     }),
 
-  /** Tumikiグループに対応するIdPグループ識別子を設定する */
+  // 表示フィールドを変更せず IdP mapping のみ更新する既存呼び出し元のために残す
   updateIdpMapping: adminProcedure
     .input(
       z.object({
@@ -267,38 +333,40 @@ export const groupsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const group = await ctx.db.group.findUnique({
-        where: { id: input.groupId },
-        select: { source: true },
-      });
-      assertTumikiGroup(group);
-
-      try {
-        return await ctx.db.group.update({
+      return ctx.db.$transaction(async (tx) => {
+        const group = await tx.group.findUnique({
           where: { id: input.groupId },
-          data: {
-            provider: input.externalId ? input.provider : null,
-            externalId: input.externalId,
-          },
-          select: {
-            id: true,
-            provider: true,
-            externalId: true,
-            updatedAt: true,
-          },
+          select: { source: true },
         });
-      } catch (error) {
-        if (
-          error instanceof Prisma.PrismaClientKnownRequestError &&
-          error.code === "P2002"
-        ) {
-          throw new TRPCError({
-            code: "CONFLICT",
-            message:
-              "そのIdPグループ識別子は既に別のグループに使用されています",
+        assertTumikiGroup(group);
+
+        try {
+          return await tx.group.update({
+            where: { id: input.groupId },
+            data: {
+              provider: input.externalId ? input.provider : null,
+              externalId: input.externalId,
+            },
+            select: {
+              id: true,
+              provider: true,
+              externalId: true,
+              updatedAt: true,
+            },
           });
+        } catch (error) {
+          if (
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error.code === "P2002"
+          ) {
+            throw new TRPCError({
+              code: "CONFLICT",
+              message:
+                "そのIdPグループ識別子は既に別のグループに使用されています",
+            });
+          }
+          throw error;
         }
-        throw error;
-      }
+      });
     }),
 });
