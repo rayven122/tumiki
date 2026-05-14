@@ -15,7 +15,7 @@ import {
   KeyRound,
   AlertTriangle,
 } from "lucide-react";
-import { themeAtom } from "../store/atoms";
+import { themeAtom, reauthCompletedSignalAtom } from "../store/atoms";
 import { AI_CLIENTS, type AiClient } from "../data/ai-clients";
 import { useMcpProxyLaunchCommand } from "../hooks/useMcpProxyLaunchCommand";
 import { buildMcpSnippet } from "../utils/mcp-snippet";
@@ -207,6 +207,8 @@ const DEFAULT_FEATURE_SETTINGS: FeatureSettings = {
 
 export const ToolDetail = (): JSX.Element => {
   const theme = useAtomValue(themeAtom);
+  // deeplink 経由の再認証完了シグナル。変化したら getDetail を再フェッチして needsReauth バナーを更新する。
+  const reauthSignal = useAtomValue(reauthCompletedSignalAtom);
   const { toolId } = useParams<{ toolId: string }>();
   const serverId = Number(toolId);
 
@@ -285,7 +287,8 @@ export const ToolDetail = (): JSX.Element => {
       })
       .catch(() => setServer(null))
       .finally(() => setServerLoading(false));
-  }, [serverId]);
+    // reauthSignal が変化するとフックが再実行され、最新の needsReauth で再描画される
+  }, [serverId, reauthSignal]);
 
   // 機能設定トグルを localStorage から復元（サーバーごと）
   useEffect(() => {

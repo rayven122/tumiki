@@ -1,6 +1,8 @@
 import { useEffect, useRef, type JSX } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSetAtom } from "jotai";
 import { toast } from "./Toast";
+import { reauthCompletedSignalAtom } from "../store/atoms";
 
 /**
  * main プロセスからのディープリンク（AI クライアントが踏む `tumiki://reauth?...`）を受け取り、
@@ -15,6 +17,7 @@ import { toast } from "./Toast";
 export const DeeplinkHandler = (): JSX.Element | null => {
   const navigate = useNavigate();
   const deeplinkInFlight = useRef(false);
+  const bumpReauthSignal = useSetAtom(reauthCompletedSignalAtom);
 
   useEffect(() => {
     const unsubscribeNav = window.electronAPI.mcp.onReauthDeeplink(
@@ -33,6 +36,8 @@ export const DeeplinkHandler = (): JSX.Element | null => {
       toast.success(
         "OAuth再認証が完了しました。MCPサーバーの再起動後に新トークンが反映されます",
       );
+      // ToolDetail / 同じデータを読む画面に再フェッチを促す（バナー解消・needsReauth クリア反映）
+      bumpReauthSignal((prev) => prev + 1);
     });
     const unsubscribeError = window.electronAPI.oauth.onReauthError((error) => {
       if (!deeplinkInFlight.current) return;
@@ -44,7 +49,7 @@ export const DeeplinkHandler = (): JSX.Element | null => {
       unsubscribeSuccess();
       unsubscribeError();
     };
-  }, [navigate]);
+  }, [navigate, bumpReauthSignal]);
 
   return null;
 };
