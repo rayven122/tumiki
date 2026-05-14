@@ -34,6 +34,8 @@ beforeEach(() => {
   vi.mocked(repository.storeTraces).mockResolvedValue(undefined);
   vi.mocked(repository.getSummary).mockResolvedValue([]);
   vi.mocked(repository.getDailyUsage).mockResolvedValue([]);
+  vi.mocked(repository.deleteOldMetrics).mockResolvedValue(0);
+  vi.mocked(repository.deleteOldTraces).mockResolvedValue(0);
 });
 
 describe("storeOtlpMetrics", () => {
@@ -504,5 +506,79 @@ describe("autoReapplyMismatchedPorts", () => {
 
     expect(applyOtlpToTool).toHaveBeenCalled();
     expect(mockStore.set).not.toHaveBeenCalled();
+  });
+
+  test("electron-store の未知のツールキーはスキップする", async () => {
+    vi.mocked(mockStore.get).mockReturnValue({
+      tools: {
+        // 過去バージョンが書いた未知ツール（型上は弾けない）
+        "unknown-tool": {
+          enabled: true,
+          appliedAt: "2026-01-01T00:00:00.000Z",
+          appliedPort: 4318,
+        },
+      },
+    });
+
+    await service.autoReapplyMismatchedPorts(5000);
+
+    expect(applyOtlpToTool).not.toHaveBeenCalled();
+    expect(mockStore.set).not.toHaveBeenCalled();
+  });
+});
+
+describe("pruneOldTelemetry", () => {
+  test("デフォルトでは 90 日より古いメトリクス・トレースを削除する", async () => {
+    vi.mocked(repository.deleteOldMetrics).mockResolvedValue(10);
+    vi.mocked(repository.deleteOldTraces).mockResolvedValue(3);
+
+    const before = Date.now();
+    const result = await service.pruneOldTelemetry();
+    const after = Date.now();
+
+    expect(result).toStrictEqual({ metrics: 10, traces: 3 });
+    expect(repository.deleteOldMetrics).toHaveBeenCalledWith(
+      mockDb,
+      expect.any(Date),
+    );
+    expect(repository.deleteOldTraces).toHaveBeenCalledWith(
+      mockDb,
+      expect.any(Date),
+    );
+
+    // cutoff が およそ 90 日前を指していることを検証
+    const [[, cutoff]] = vi.mocked(repository.deleteOldMetrics).mock.calls as [
+      [unknown, Date],
+    ];
+    const ninetyDaysMs = 90 * 86400_000;
+    expect(cutoff.getTime()).toBeGreaterThanOrEqual(
+      before - ninetyDaysMs - 100,
+    );
+    expect(cutoff.getTime()).toBeLessThanOrEqual(after - ninetyDaysMs + 100);
+  });
+
+  test("retentionDays を指定するとその日数前を cutoff にする", async () => {
+    vi.mocked(repository.deleteOldMetrics).mockResolvedValue(0);
+    vi.mocked(repository.deleteOldTraces).mockResolvedValue(0);
+
+    const before = Date.now();
+    await service.pruneOldTelemetry(7);
+    const after = Date.now();
+
+    const [[, cutoff]] = vi.mocked(repository.deleteOldMetrics).mock.calls as [
+      [unknown, Date],
+    ];
+    const sevenDaysMs = 7 * 86400_000;
+    expect(cutoff.getTime()).toBeGreaterThanOrEqual(before - sevenDaysMs - 100);
+    expect(cutoff.getTime()).toBeLessThanOrEqual(after - sevenDaysMs + 100);
+  });
+
+  test("削除件数 0 でも例外を投げず { metrics: 0, traces: 0 } を返す", async () => {
+    vi.mocked(repository.deleteOldMetrics).mockResolvedValue(0);
+    vi.mocked(repository.deleteOldTraces).mockResolvedValue(0);
+
+    const result = await service.pruneOldTelemetry();
+
+    expect(result).toStrictEqual({ metrics: 0, traces: 0 });
   });
 });

@@ -20,6 +20,7 @@ import type {
 import type { McpServerWithRuntime } from "../hooks/useMcpServers";
 import { toast } from "./Toast";
 import { useAiCodingToolSettings } from "../hooks/useAiCodingTelemetry";
+import { TRACKING_TOOL_MAP } from "../utils/ai-coding-telemetry-tools";
 
 type Props = {
   client: AiClient;
@@ -28,12 +29,6 @@ type Props = {
   theme: string;
   port: number;
   onClose: () => void;
-};
-
-/** クライアント ID → AiCodingTool マッピング（対応ツールのみ） */
-const TRACKING_TOOL_MAP: Partial<Record<string, AiCodingTool>> = {
-  "claude-code": "claude-code",
-  "codex-cli": "codex",
 };
 
 /** 使用量記録セクション（フック呼び出しを安定させるためサブコンポーネント化） */

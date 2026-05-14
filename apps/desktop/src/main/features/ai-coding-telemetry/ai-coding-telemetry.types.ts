@@ -1,6 +1,16 @@
 // AI コーディングツールの種類
 export type AiCodingTool = "claude-code" | "codex";
 
+// AI コーディングツールの正規値一覧（外部入力の検証に利用）
+export const AI_CODING_TOOLS: readonly AiCodingTool[] = [
+  "claude-code",
+  "codex",
+] as const;
+
+// 文字列が正規の AiCodingTool か判定するタイプガード
+export const isAiCodingTool = (value: string): value is AiCodingTool =>
+  (AI_CODING_TOOLS as readonly string[]).includes(value);
+
 // サマリー取得の入力
 export type GetSummaryInput = { days: number };
 

@@ -18,25 +18,32 @@ import { ConnectorManual } from "./pages/ConnectorManual";
 import { AiIntegrations } from "./pages/AiIntegrations";
 import { ProfileSetup } from "./pages/ProfileSetup";
 import { toast } from "./_components/Toast";
-
-const TELEMETRY_TOOL_LABELS: Record<string, string> = {
-  "claude-code": "Claude Code",
-  codex: "Codex CLI",
-};
+import { TRACKING_TOOL_LABELS } from "./utils/ai-coding-telemetry-tools";
 
 /** OTLP ポート不一致時の自動再書き込み通知をトースト表示 */
 const useAutoReapplyToast = (): void => {
   useEffect(() => {
-    const off = window.electronAPI.aiCodingTelemetry.onAutoReapplied(
-      ({ tools, port }) => {
-        const names = tools
-          .map((t) => TELEMETRY_TOOL_LABELS[t] ?? t)
-          .join("・");
-        toast.success(
-          `${names} の使用量記録ポートが ${String(port)} に変わったため設定ファイルを自動更新しました`,
-        );
-      },
-    );
+    const showToast = (payload: {
+      tools: ("claude-code" | "codex")[];
+      port: number;
+    }): void => {
+      const names = payload.tools
+        .map((t) => TRACKING_TOOL_LABELS[t] ?? t)
+        .join("・");
+      toast.success(
+        `${names} の使用量記録ポートが ${String(payload.port)} に変わったため設定ファイルを自動更新しました`,
+      );
+    };
+    // 起動直後の通知取りこぼし対策: マウント時点で保留中の通知を取得する
+    void window.electronAPI.aiCodingTelemetry
+      .getPendingAutoReapplied()
+      .then((pending) => {
+        if (pending && pending.tools.length > 0) showToast(pending);
+      })
+      .catch(() => {
+        // 取得失敗時は無視（後段の onAutoReapplied で拾える可能性がある）
+      });
+    const off = window.electronAPI.aiCodingTelemetry.onAutoReapplied(showToast);
     return off;
   }, []);
 };

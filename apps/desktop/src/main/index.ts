@@ -39,10 +39,14 @@ import type { Prisma } from "@prisma/desktop-client";
 import * as logger from "./shared/utils/logger";
 import { ensureNodeShim } from "./runtime/path-resolver";
 import { startOtlpReceiver } from "./features/ai-coding-telemetry/ai-coding-telemetry.receiver";
-import { autoReapplyMismatchedPorts } from "./features/ai-coding-telemetry/ai-coding-telemetry.service";
+import {
+  autoReapplyMismatchedPorts,
+  pruneOldTelemetry,
+} from "./features/ai-coding-telemetry/ai-coding-telemetry.service";
 import {
   setupAiCodingTelemetryIpc,
   setReceiverPort,
+  setPendingAutoReapplied,
 } from "./features/ai-coding-telemetry/ai-coding-telemetry.ipc";
 
 // Cursor など親プロセス（Electron アプリ）が子プロセスへ ELECTRON_RUN_AS_NODE=1 を継承
@@ -632,14 +636,23 @@ if (isMcpProxyMode) {
           return [] as Awaited<ReturnType<typeof autoReapplyMismatchedPorts>>;
         },
       );
-      // 再書き込みが行われた場合、ウィンドウ読み込み完了後にトーストで通知する
+      // 再書き込みが行われた場合、ウィンドウ読み込み完了後にトーストで通知する。
+      // push 通知に加え、IPC でも取得可能にしておくことで、renderer の
+      // useEffect 登録より先にイベントが送られた場合でも取りこぼさない。
       if (reappliedTools.length > 0) {
+        setPendingAutoReapplied(reappliedTools, otlpPort);
         sendToWindow("aiCodingTelemetry:autoReapplied", {
           tools: reappliedTools,
           port: otlpPort,
         });
       }
       setupAiCodingTelemetryIpc();
+
+      // 90 日より古い AI コーディングテレメトリを削除（SQLite 肥大化防止）。
+      // 起動ブロックしないよう fire-and-forget で実行する。
+      void pruneOldTelemetry().catch((error: unknown) => {
+        logger.error("Failed to prune old AI coding telemetry", { error });
+      });
 
       createWindow();
 

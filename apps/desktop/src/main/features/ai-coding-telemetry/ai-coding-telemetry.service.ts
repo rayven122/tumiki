@@ -3,6 +3,7 @@ import { getAppStore } from "../../shared/app-store";
 import * as logger from "../../shared/utils/logger";
 import * as repository from "./ai-coding-telemetry.repository";
 import { applyOtlpToTool } from "./ai-coding-telemetry.config-writer";
+import { isAiCodingTool } from "./ai-coding-telemetry.types";
 import type {
   AiCodingTool,
   ApplyToolSettingsInput,
@@ -117,8 +118,8 @@ export const storeOtlpTraces = async (body: unknown): Promise<void> => {
   const traces: TraceRecord[] = [];
 
   for (const rs of b.resourceSpans) {
-    const tool = extractToolName(rs);
     if (typeof rs !== "object" || rs === null) continue;
+    const tool = extractToolName(rs);
     const scopeSpans = (rs as Record<string, unknown>).scopeSpans;
     if (!Array.isArray(scopeSpans)) continue;
 
@@ -217,6 +218,28 @@ export const getToolSettings = async (
   };
 };
 
+// 指定日数より古いメトリクス・トレースを削除する（デフォルト 90 日）。
+// 起動時に呼び出すことで、SQLite が長期的に肥大化するのを防ぐ。
+// 戻り値はメトリクス・トレースそれぞれの削除件数。
+export const pruneOldTelemetry = async (
+  retentionDays: number = 90,
+): Promise<{ metrics: number; traces: number }> => {
+  const db = await getDb();
+  const cutoff = new Date(Date.now() - retentionDays * 86400_000);
+  const [metrics, traces] = await Promise.all([
+    repository.deleteOldMetrics(db, cutoff),
+    repository.deleteOldTraces(db, cutoff),
+  ]);
+  if (metrics > 0 || traces > 0) {
+    logger.info("Pruned old AI coding telemetry", {
+      retentionDays,
+      metrics,
+      traces,
+    });
+  }
+  return { metrics, traces };
+};
+
 // OTLP レシーバーのポートが前回と変わった場合、適用済みツールの設定ファイルを
 // 現在のポートで再書き込みする。
 // 起動時に呼び出すことで、ポート変更後も Tumiki と設定ファイルの整合性を保つ。
@@ -230,11 +253,16 @@ export const autoReapplyMismatchedPorts = async (
   const reapplied: AiCodingTool[] = [];
 
   for (const [toolKey, settings] of Object.entries(tools)) {
+    // electron-store は外部入力扱いとし、未知のキーは無視する
+    if (!isAiCodingTool(toolKey)) {
+      logger.warn("Skipping unknown tool key in store", { toolKey });
+      continue;
+    }
+    const tool = toolKey;
     // 過去に書き込み実績があり、かつポートが現在と異なる場合のみ再適用
     if (!settings?.appliedAt) continue;
     if (settings.appliedPort === currentPort) continue;
 
-    const tool = toolKey as AiCodingTool;
     logger.info("Re-applying tool config due to port change", {
       tool,
       oldPort: settings.appliedPort,
