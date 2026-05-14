@@ -173,6 +173,31 @@ describe("mcp-proxy.service", () => {
       ]);
     });
 
+    test("公式カタログ接続でもserverSlugとconnSlugが異なる場合はserverSlug-connSlugをnameに使う", async () => {
+      vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([
+        buildConnection({
+          name: "Backlog Issue",
+          slug: "backlog-issue",
+          catalogId: 1,
+          command: "uvx",
+          args: '["backlog-mcp"]',
+          server: { name: "Backlog", slug: "backlog", serverType: "OFFICIAL" },
+        }),
+      ]);
+
+      const result = await mcpProxyService.getEnabledConfigs();
+
+      expect(result).toStrictEqual([
+        {
+          name: "backlog-backlog-issue",
+          transportType: "STDIO",
+          command: "uvx",
+          args: ["backlog-mcp"],
+          env: {},
+        },
+      ]);
+    });
+
     test("仮想MCP内のカタログ由来接続はserverSlug-connSlugをnameに使う", async () => {
       vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([
         buildConnection({
