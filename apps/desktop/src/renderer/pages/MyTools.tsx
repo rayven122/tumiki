@@ -1,9 +1,17 @@
 import type { JSX } from "react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Search, ArrowRight, Server, Plus, Trash2 } from "lucide-react";
+import {
+  Search,
+  Server,
+  Plus,
+  Trash2,
+  Pencil,
+  AlertTriangle,
+} from "lucide-react";
 import { ToggleSwitch } from "../_components/ToggleSwitch";
 import { ConfirmDialog } from "../_components/ConfirmDialog";
+import { EditMcpServerModal } from "../_components/EditMcpServerModal";
 import { useMcpServers } from "../hooks/useMcpServers";
 import type { McpServerWithRuntime } from "../hooks/useMcpServers";
 import { cardStyle } from "../utils/theme-styles";
@@ -33,7 +41,10 @@ const STATUS_CONFIG: Record<
 
 export const MyTools = (): JSX.Element => {
   const [query, setQuery] = useState("");
-  const { servers, loading, toggleServer, deleteServer } = useMcpServers();
+  const { servers, loading, toggleServer, deleteServer, refresh } =
+    useMcpServers();
+  // サーバーカードから編集モーダルを開く対象（複数カードからの起動を親で一元管理）
+  const [editTargetId, setEditTargetId] = useState<number | null>(null);
 
   const lowerQuery = query.toLowerCase();
   const filteredServers = servers.filter(
@@ -55,22 +66,13 @@ export const MyTools = (): JSX.Element => {
             登録済みのMCPサーバーを管理
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Link
-            to="/tools/catalog"
-            className="flex items-center gap-1 rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 dark:bg-white dark:text-black"
-          >
-            <Plus size={12} />
-            追加
-          </Link>
-          <Link
-            to="/tools/catalog"
-            className="flex items-center gap-1 text-xs text-gray-500 transition-opacity hover:opacity-80 dark:text-zinc-500"
-          >
-            カタログ
-            <ArrowRight size={12} />
-          </Link>
-        </div>
+        <Link
+          to="/tools/catalog"
+          className="flex items-center gap-1 rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 dark:bg-white dark:text-black"
+        >
+          <Plus size={12} />
+          追加
+        </Link>
       </div>
 
       {/* 検索バー */}
@@ -114,6 +116,7 @@ export const MyTools = (): JSX.Element => {
                   void toggleServer(server.id, isEnabled)
                 }
                 onDelete={() => void deleteServer(server.id)}
+                onEdit={() => setEditTargetId(server.id)}
               />
             ))}
           </div>
@@ -130,6 +133,14 @@ export const MyTools = (): JSX.Element => {
             カタログから追加
           </Link>
         </div>
+      )}
+
+      {editTargetId !== null && (
+        <EditMcpServerModal
+          serverId={editTargetId}
+          onClose={() => setEditTargetId(null)}
+          onSuccess={() => void refresh()}
+        />
       )}
     </div>
   );
@@ -149,10 +160,12 @@ const ServerCard = ({
   server,
   onToggle,
   onDelete,
+  onEdit,
 }: {
   server: McpServerWithRuntime;
   onToggle: (isEnabled: boolean) => void;
   onDelete: () => void;
+  onEdit: () => void;
 }): JSX.Element => {
   const status = STATUS_CONFIG[server.serverStatus] ?? {
     badgeClass: "bg-gray-400/10 text-gray-400",
@@ -184,15 +197,26 @@ const ServerCard = ({
               <Server size={18} className="text-gray-500 dark:text-zinc-500" />
             </div>
           )}
-          <span
-            className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-medium ${status.badgeClass}`}
-          >
+          <div className="flex items-center gap-1">
+            {server.needsReauth && (
+              <span
+                className="flex items-center gap-1 rounded bg-red-500/15 px-1.5 py-0.5 text-[9px] font-medium text-red-400"
+                title="OAuth再認証が必要です"
+              >
+                <AlertTriangle size={9} aria-hidden="true" />
+                再認証
+              </span>
+            )}
             <span
-              aria-hidden="true"
-              className="h-1.5 w-1.5 rounded-full bg-current"
-            />
-            {status.label}
-          </span>
+              className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-medium ${status.badgeClass}`}
+            >
+              <span
+                aria-hidden="true"
+                className="h-1.5 w-1.5 rounded-full bg-current"
+              />
+              {status.label}
+            </span>
+          </div>
         </div>
 
         {/* サーバー名 */}
@@ -213,8 +237,17 @@ const ServerCard = ({
         </div>
       </Link>
 
-      {/* フッター: 削除 + 有効/無効トグル */}
+      {/* フッター: 編集 / 削除 + 有効/無効トグル */}
       <div className="flex items-center justify-end gap-2 border-t border-t-gray-100 px-4 py-3 dark:border-t-white/[.03]">
+        <button
+          type="button"
+          onClick={onEdit}
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-gray-400 transition hover:text-gray-900 dark:text-zinc-600 dark:hover:text-white"
+          title="編集"
+          aria-label={`${server.name}を編集`}
+        >
+          <Pencil size={12} />
+        </button>
         <button
           type="button"
           onClick={() => setShowDeleteConfirm(true)}

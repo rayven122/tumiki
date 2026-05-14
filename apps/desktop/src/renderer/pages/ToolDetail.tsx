@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Plug,
   KeyRound,
+  AlertTriangle,
 } from "lucide-react";
 import { themeAtom } from "../store/atoms";
 import { AI_CLIENTS, type AiClient } from "../data/ai-clients";
@@ -29,6 +30,7 @@ import { ClientLogo } from "../_components/ClientLogo";
 import { ToggleSwitch } from "../_components/ToggleSwitch";
 import { AiClientInstallModal } from "../_components/AiClientInstallModal";
 import { OAuthReauthModal } from "../_components/OAuthReauthModal";
+import { EditMcpServerModal } from "../_components/EditMcpServerModal";
 import { toast } from "../_components/Toast";
 import {
   Select,
@@ -234,6 +236,9 @@ export const ToolDetail = (): JSX.Element => {
   const [showReauthModal, setShowReauthModal] = useState(false);
   const [reauthProcessing, setReauthProcessing] = useState(false);
 
+  // サーバー設定編集モーダル開閉
+  const [showEditModal, setShowEditModal] = useState(false);
+
   // 接続先AIサイドバーから選択中のクライアント
   const [selectedClient, setSelectedClient] = useState<AiClient | null>(null);
 
@@ -372,6 +377,10 @@ export const ToolDetail = (): JSX.Element => {
   const oauthConnections: McpConnectionDetailItem[] =
     server?.connections.filter((conn) => conn.authType === "OAUTH") ?? [];
   const hasOAuthConnection = oauthConnections.length > 0;
+  // refresh_token 失効を検知したコネクト（UI 上で「再認証が必要」バナーを出す対象）
+  const needsReauthConnections = oauthConnections.filter(
+    (conn) => conn.needsReauth,
+  );
 
   // 再認証実行: IPC 呼び出し → 成功時にサーバー詳細を再取得 → トースト通知
   const runReauth = useCallback(
@@ -541,6 +550,44 @@ export const ToolDetail = (): JSX.Element => {
       {/* 2カラムレイアウト: メインコンテンツ + 右サイドバー（接続先AI） 高さ合わせ、両側スクロール可 */}
       <div className="mt-4 flex max-h-[calc(100vh-10rem)] min-h-0 items-stretch gap-4">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
+          {/* 再認証バナー: refresh_token が失効した OAuth コネクトがある場合のみ表示 */}
+          {needsReauthConnections.length > 0 && (
+            <div className="rounded-xl border border-red-400/40 bg-red-500/10 p-4 dark:border-red-400/30 dark:bg-red-500/10">
+              <div className="flex items-start gap-3">
+                <AlertTriangle
+                  size={18}
+                  className="mt-0.5 shrink-0 text-red-500 dark:text-red-400"
+                  aria-hidden="true"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-red-700 dark:text-red-200">
+                    OAuth再認証が必要です
+                  </p>
+                  <p className="mt-1 text-xs text-red-600/90 dark:text-red-300/80">
+                    {needsReauthConnections.length === 1
+                      ? `「${needsReauthConnections[0]?.name ?? ""}」のリフレッシュトークンが失効しているため、MCPツールの呼び出しに失敗します。再認証してください。`
+                      : `${String(needsReauthConnections.length)}件のコネクトでリフレッシュトークンが失効しているため、MCPツールの呼び出しに失敗します。再認証してください。`}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {needsReauthConnections.map((conn) => (
+                      <button
+                        key={conn.id}
+                        type="button"
+                        onClick={() => void runReauth(conn.id)}
+                        disabled={reauthProcessing}
+                        className="inline-flex items-center gap-1 rounded-lg bg-red-500 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-red-500 dark:hover:bg-red-600"
+                      >
+                        <KeyRound size={12} aria-hidden="true" />
+                        {needsReauthConnections.length === 1
+                          ? "再認証する"
+                          : `${conn.name}を再認証`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           {/* ヘッダーカード: サーバー概要 + 基本情報 + 機能設定 + 3点リーダー */}
           <div className={`rounded-xl p-5 ${cardStyle}`}>
             {/* 上段: アイコン + 名前 + ステータス + 統計 + 3点リーダー */}
@@ -638,7 +685,7 @@ export const ToolDetail = (): JSX.Element => {
                         type="button"
                         onClick={() => {
                           setShowMenu(false);
-                          toast.success("サーバー設定編集は近日対応予定");
+                          setShowEditModal(true);
                         }}
                         className="block w-full px-4 py-2.5 text-left text-sm text-gray-600 transition hover:bg-black/[.02] hover:text-gray-900 dark:text-zinc-400 dark:hover:bg-white/[.04] dark:hover:text-white"
                       >
@@ -1148,6 +1195,25 @@ export const ToolDetail = (): JSX.Element => {
           if (!reauthProcessing) setShowReauthModal(false);
         }}
       />
+
+      {/* サーバー設定編集モーダル */}
+      {showEditModal && (
+        <EditMcpServerModal
+          serverId={serverId}
+          onClose={() => setShowEditModal(false)}
+          onSuccess={() => {
+            // 保存成功時は詳細を再取得して画面に反映
+            window.electronAPI.mcp
+              .getDetail(serverId)
+              .then((updated) => {
+                if (updated) setServer(updated);
+              })
+              .catch(() => {
+                // 取得失敗時もモーダルの onClose が走るためここでは握りつぶす
+              });
+          }}
+        />
+      )}
     </div>
   );
 };

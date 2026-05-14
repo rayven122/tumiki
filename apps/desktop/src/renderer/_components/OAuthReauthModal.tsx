@@ -1,6 +1,6 @@
 import type { JSX } from "react";
 import { useEffect, useId, useState } from "react";
-import { Plug, X } from "lucide-react";
+import { Plug, X, AlertTriangle } from "lucide-react";
 import type { McpConnectionDetailItem } from "../../main/types";
 
 type OAuthReauthModalProps = {
@@ -24,10 +24,12 @@ export const OAuthReauthModal = ({
   const descId = useId();
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
-  // モーダルを開くたびに先頭のコネクトを既定選択にする
+  // モーダルを開くたびに、needsReauth=true のコネクトを優先して既定選択にする
+  // （ユーザーがまさに直したいのは失効しているコネクトなので、先頭固定より失効優先の方がUI操作を一手減らせる）
   useEffect(() => {
     if (open) {
-      setSelectedId(connections[0]?.id ?? null);
+      const needsReauth = connections.find((conn) => conn.needsReauth);
+      setSelectedId(needsReauth?.id ?? connections[0]?.id ?? null);
     }
   }, [open, connections]);
 
@@ -91,14 +93,18 @@ export const OAuthReauthModal = ({
           ) : (
             connections.map((conn) => {
               const isSelected = selectedId === conn.id;
+              // needsReauth は失効済みコネクトを赤枠で強調する
+              const borderClass = conn.needsReauth
+                ? isSelected
+                  ? "border-red-500 bg-red-500/10 dark:border-red-400 dark:bg-red-500/10"
+                  : "border-red-400/50 bg-red-500/5 hover:border-red-500 dark:border-red-400/40 dark:bg-red-500/5"
+                : isSelected
+                  ? "border-emerald-500 bg-black/[.02] dark:border-emerald-400 dark:bg-white/[.04]"
+                  : "border-gray-100 bg-black/[.01] hover:border-gray-200 dark:border-white/[.03] dark:bg-white/[.02] dark:hover:border-white/[.08]";
               return (
                 <label
                   key={conn.id}
-                  className={`flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 transition ${
-                    isSelected
-                      ? "border-emerald-500 bg-black/[.02] dark:border-emerald-400 dark:bg-white/[.04]"
-                      : "border-gray-100 bg-black/[.01] hover:border-gray-200 dark:border-white/[.03] dark:bg-white/[.02] dark:hover:border-white/[.08]"
-                  }`}
+                  className={`flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 transition ${borderClass}`}
                 >
                   <input
                     type="radio"
@@ -107,7 +113,7 @@ export const OAuthReauthModal = ({
                     checked={isSelected}
                     onChange={() => setSelectedId(conn.id)}
                     disabled={isProcessing}
-                    className="h-3.5 w-3.5 accent-emerald-500 dark:accent-emerald-400"
+                    className={`h-3.5 w-3.5 ${conn.needsReauth ? "accent-red-500 dark:accent-red-400" : "accent-emerald-500 dark:accent-emerald-400"}`}
                   />
                   {conn.catalog?.iconPath ? (
                     <img
@@ -124,9 +130,20 @@ export const OAuthReauthModal = ({
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
-                    <span className="truncate text-sm font-medium text-gray-900 dark:text-white">
-                      {conn.name}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate text-sm font-medium text-gray-900 dark:text-white">
+                        {conn.name}
+                      </span>
+                      {conn.needsReauth && (
+                        <span
+                          className="inline-flex shrink-0 items-center gap-0.5 rounded bg-red-500/15 px-1.5 py-0.5 text-[9px] font-medium text-red-500 dark:text-red-400"
+                          title="リフレッシュトークンが失効しているため再認証が必要です"
+                        >
+                          <AlertTriangle size={9} aria-hidden="true" />
+                          再認証が必要
+                        </span>
+                      )}
+                    </div>
                     <div className="truncate text-[10px] text-gray-500 dark:text-zinc-500">
                       {conn.url ?? conn.command ?? "—"}
                     </div>

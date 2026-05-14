@@ -71,6 +71,8 @@ erDiagram
 "McpSecret" {
   Int id PK
   String credentials
+  Boolean needsReauth
+  DateTime lastAuthErrorAt "nullable"
   DateTime createdAt
   DateTime updatedAt
 }
@@ -180,6 +182,10 @@ MCP接続の認証情報（暗号化済み credentials を保持し、複数の 
   - `credentials`
     > 暗号化済み credentials JSON（STDIO: 環境変数 / SSE・Streamable HTTP: HTTPヘッダー / OAuth: トークン）
     > 必ず encryptToken で暗号化した値を渡す（schema 上のデフォルトを設けると平文 "{}" が紛れ込むため）
+  - `needsReauth`
+    > refresh_token が失効しユーザーの手動再認証が必要な状態か。
+    > FATAL なリフレッシュ失敗（invalid_grant 等）を検知したら true、再認証成功でクリア。
+  - `lastAuthErrorAt`: 最後に認証エラーを検知した時刻（UI 表示・デバッグ用、TRANSIENT 失敗では更新しない）
   - `createdAt`: 
   - `updatedAt`: 
 
