@@ -148,15 +148,15 @@ describe("mcp-proxy.service", () => {
       );
     });
 
-    test("カタログ由来（catalogId !== null）の接続はconnSlugのみをnameに使う", async () => {
+    test("単独公式カタログ接続はconnSlugのみをnameに使う", async () => {
       vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([
         buildConnection({
+          name: "Backlog",
           slug: "backlog",
           catalogId: 1,
           command: "uvx",
           args: '["backlog-mcp"]',
-          credentials: "{}",
-          server: { slug: "backlog" },
+          server: { name: "Backlog", slug: "backlog", serverType: "OFFICIAL" },
         }),
       ]);
 
@@ -168,6 +168,56 @@ describe("mcp-proxy.service", () => {
           transportType: "STDIO",
           command: "uvx",
           args: ["backlog-mcp"],
+          env: {},
+        },
+      ]);
+    });
+
+    test("仮想MCP内のカタログ由来接続はserverSlug-connSlugをnameに使う", async () => {
+      vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([
+        buildConnection({
+          name: "GitHub",
+          slug: "github",
+          catalogId: 1,
+          command: "npx",
+          args: '["@modelcontextprotocol/server-github"]',
+          server: {
+            name: "週次レポート",
+            slug: "weekly-report",
+            serverType: "CUSTOM",
+          },
+        }),
+        buildConnection({
+          id: 2,
+          name: "Slack",
+          slug: "slack",
+          catalogId: 2,
+          command: "npx",
+          args: '["@modelcontextprotocol/server-slack"]',
+          server: {
+            id: 2,
+            name: "週次レポート",
+            slug: "weekly-report",
+            serverType: "CUSTOM",
+          },
+        }),
+      ]);
+
+      const result = await mcpProxyService.getEnabledConfigs();
+
+      expect(result).toStrictEqual([
+        {
+          name: "weekly-report-github",
+          transportType: "STDIO",
+          command: "npx",
+          args: ["@modelcontextprotocol/server-github"],
+          env: {},
+        },
+        {
+          name: "weekly-report-slack",
+          transportType: "STDIO",
+          command: "npx",
+          args: ["@modelcontextprotocol/server-slack"],
           env: {},
         },
       ]);

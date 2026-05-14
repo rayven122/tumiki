@@ -134,10 +134,15 @@ const buildConfigFromConnection = async (
   oauthCache: Map<number, Record<string, string>> = new Map(),
 ): Promise<{ config: McpServerConfig; meta: McpConnectionMeta } | null> => {
   const connLabel = `${conn.server.slug}/${conn.slug}`;
-  // カタログ由来は接続slugのみ（冗長な server-server__ を避ける）、カスタムは serverSlug-connSlug を維持。
-  // 前提: カタログ接続slugはcreateFromCatalog経由でMcpServerのslugと同値が設定され、DB上でグローバルにユニーク（McpServer.slug @unique）。
-  const name =
-    conn.catalogId !== null ? conn.slug : `${conn.server.slug}-${conn.slug}`;
+  // 単独公式カタログ接続のみ connSlug に短縮する。
+  // 仮想MCPなど複数接続を束ねるサーバーでは serverSlug を残し、接続の所属を失わない。
+  const isStandaloneCatalogConnection =
+    conn.catalogId !== null &&
+    conn.server.serverType === "OFFICIAL" &&
+    conn.server.slug === conn.slug;
+  const name = isStandaloneCatalogConnection
+    ? conn.slug
+    : `${conn.server.slug}-${conn.slug}`;
 
   const plainCredentials = await decryptCredentials(conn.secret.credentials);
   let credentials = parseAndValidate(
