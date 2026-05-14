@@ -13,13 +13,8 @@ import {
   useAiCodingToolSettings,
   useOtlpReceiverPort,
 } from "../hooks/useAiCodingTelemetry";
+import { TRACKING_TOOL_MAP } from "../utils/ai-coding-telemetry-tools";
 import type { AiCodingTool } from "../../main/types";
-
-/** クライアント ID → AiCodingTool（使用量記録対応ツールのみ） */
-const TRACKING_TOOL_MAP: Partial<Record<string, AiCodingTool>> = {
-  "claude-code": "claude-code",
-  "codex-cli": "codex",
-};
 
 /** 使用量記録が有効なツールに表示するバッジ（フック安定化のためサブコンポーネント化） */
 const TrackingBadge = ({

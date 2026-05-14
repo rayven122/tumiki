@@ -2,6 +2,7 @@ import { ipcMain } from "electron";
 import { z } from "zod";
 import * as service from "./ai-coding-telemetry.service";
 import * as logger from "../../shared/utils/logger";
+import type { AiCodingTool } from "./ai-coding-telemetry.types";
 
 // IPC 入力のバリデーションスキーマ
 const getSummarySchema = z.object({
@@ -30,6 +31,22 @@ let _receiverPort = 0;
 // レシーバー起動後にポートを設定する
 export const setReceiverPort = (port: number): void => {
   _receiverPort = port;
+};
+
+// 起動時の自動再書き込み結果を保持する（renderer 起動完了後に取得させるため）。
+// `getPendingAutoReapplied` で取得され、消費されるとクリアされる。
+let _pendingAutoReapplied: { tools: AiCodingTool[]; port: number } | null =
+  null;
+
+export const setPendingAutoReapplied = (
+  tools: AiCodingTool[],
+  port: number,
+): void => {
+  if (tools.length === 0) {
+    _pendingAutoReapplied = null;
+    return;
+  }
+  _pendingAutoReapplied = { tools, port };
 };
 
 // AI コーディングツール テレメトリ関連の IPC ハンドラーを登録する
@@ -69,6 +86,14 @@ export const setupAiCodingTelemetryIpc = (): void => {
 
   // OTLP レシーバーポートの取得
   ipcMain.handle("aiCodingTelemetry:getReceiverPort", () => _receiverPort);
+
+  // 起動時の自動再書き込み結果を取得し、取得後はクリアする。
+  // renderer がマウント直後に呼ぶことで、push 通知の取りこぼしを防ぐ。
+  ipcMain.handle("aiCodingTelemetry:getPendingAutoReapplied", () => {
+    const pending = _pendingAutoReapplied;
+    _pendingAutoReapplied = null;
+    return pending;
+  });
 
   // ツールのテレメトリ設定取得
   ipcMain.handle(

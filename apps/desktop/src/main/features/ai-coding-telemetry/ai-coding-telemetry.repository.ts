@@ -24,6 +24,28 @@ export const storeTraces = async (
   await db.aiCodingTrace.createMany({ data: traces });
 };
 
+// 指定日時より古いメトリクスを削除し、削除件数を返す
+export const deleteOldMetrics = async (
+  db: DbClient,
+  before: Date,
+): Promise<number> => {
+  const result = await db.aiCodingMetric.deleteMany({
+    where: { recordedAt: { lt: before } },
+  });
+  return result.count;
+};
+
+// 指定日時より古いトレースを削除し、削除件数を返す
+export const deleteOldTraces = async (
+  db: DbClient,
+  before: Date,
+): Promise<number> => {
+  const result = await db.aiCodingTrace.deleteMany({
+    where: { startedAt: { lt: before } },
+  });
+  return result.count;
+};
+
 // 指定期間のメトリクスをツール・メトリクス名ごとに集計して返す
 export const getSummary = async (
   db: DbClient,

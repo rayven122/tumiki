@@ -12,16 +12,20 @@ import type { MetricRecord, TraceRecord } from "../ai-coding-telemetry.types";
 
 // DbClient のモック
 const mockCreateMany = vi.fn().mockResolvedValue({ count: 0 });
+const mockDeleteMetricMany = vi.fn().mockResolvedValue({ count: 0 });
+const mockDeleteTraceMany = vi.fn().mockResolvedValue({ count: 0 });
 const mockGroupBy = vi.fn().mockResolvedValue([]);
 const mockQueryRaw = vi.fn().mockResolvedValue([]);
 
 const mockDb = {
   aiCodingMetric: {
     createMany: (...args: unknown[]) => mockCreateMany(...args),
+    deleteMany: (...args: unknown[]) => mockDeleteMetricMany(...args),
     groupBy: (...args: unknown[]) => mockGroupBy(...args),
   },
   aiCodingTrace: {
     createMany: (...args: unknown[]) => mockCreateMany(...args),
+    deleteMany: (...args: unknown[]) => mockDeleteTraceMany(...args),
   },
   $queryRaw: (...args: unknown[]) => mockQueryRaw(...args),
 } as unknown as Awaited<ReturnType<typeof getDb>>;
@@ -29,6 +33,8 @@ const mockDb = {
 beforeEach(() => {
   vi.clearAllMocks();
   mockCreateMany.mockResolvedValue({ count: 0 });
+  mockDeleteMetricMany.mockResolvedValue({ count: 0 });
+  mockDeleteTraceMany.mockResolvedValue({ count: 0 });
   mockGroupBy.mockResolvedValue([]);
   mockQueryRaw.mockResolvedValue([]);
 });
@@ -168,5 +174,45 @@ describe("getDailyUsage", () => {
     mockQueryRaw.mockResolvedValue([]);
     const result = await repository.getDailyUsage(mockDb, new Date());
     expect(result).toStrictEqual([]);
+  });
+});
+
+describe("deleteOldMetrics", () => {
+  test("指定日時より前の recordedAt を持つレコードを削除する", async () => {
+    const before = new Date("2026-01-01");
+    mockDeleteMetricMany.mockResolvedValue({ count: 42 });
+
+    const result = await repository.deleteOldMetrics(mockDb, before);
+
+    expect(mockDeleteMetricMany).toHaveBeenCalledWith({
+      where: { recordedAt: { lt: before } },
+    });
+    expect(result).toStrictEqual(42);
+  });
+
+  test("削除対象がない場合は 0 を返す", async () => {
+    mockDeleteMetricMany.mockResolvedValue({ count: 0 });
+    const result = await repository.deleteOldMetrics(mockDb, new Date());
+    expect(result).toStrictEqual(0);
+  });
+});
+
+describe("deleteOldTraces", () => {
+  test("指定日時より前の startedAt を持つレコードを削除する", async () => {
+    const before = new Date("2026-01-01");
+    mockDeleteTraceMany.mockResolvedValue({ count: 7 });
+
+    const result = await repository.deleteOldTraces(mockDb, before);
+
+    expect(mockDeleteTraceMany).toHaveBeenCalledWith({
+      where: { startedAt: { lt: before } },
+    });
+    expect(result).toStrictEqual(7);
+  });
+
+  test("削除対象がない場合は 0 を返す", async () => {
+    mockDeleteTraceMany.mockResolvedValue({ count: 0 });
+    const result = await repository.deleteOldTraces(mockDb, new Date());
+    expect(result).toStrictEqual(0);
   });
 });
