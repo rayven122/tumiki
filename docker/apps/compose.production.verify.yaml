@@ -4,8 +4,8 @@
 # 検証用は別ポート (host:3001 / host:8082) で起動する。Cloudflare Tunnel ingress
 # は触らないため外部疎通は発生しない。
 #
-# WARNING: 本番 DB / 本番 .env を共有するため、up -d だけで entrypoint の
-# `prisma migrate deploy` が本番 DB に対して実行される。
+# WARNING: 本番 DB / 本番 .env を共有する。本ファイルでは SKIP_MIGRATE=true を
+# 明示し、検証起動だけで本番 DB migration が走らないようにする。
 #
 # 使用方法:
 #   docker compose -f compose.production.verify.yaml up -d
@@ -23,6 +23,7 @@ services:
     environment:
       AUTH_URL: ${NEXTAUTH_URL}
       NEXTAUTH_URL: ${NEXTAUTH_URL}
+      SKIP_MIGRATE: "true"
     healthcheck:
       test:
         [

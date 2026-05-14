@@ -84,7 +84,7 @@
 WATCHTOWER_NOTIFICATION_URL=slack://hook:T0000/B0000/XXXXXXXX@channel
 ```
 
-Watchtower は Docker socket をマウントするため、侵害時の影響範囲が大きい。`compose.production.yaml` では現在稼働確認済みの `nickfedor/watchtower:1.16.1` を digest 固定し、更新時はタグ差分を確認してから変更する。将来的に権限をさらに絞る場合は Docker socket proxy の導入を検討する。
+Watchtower は Docker socket をマウントするため、侵害時の影響範囲が大きい。`compose.production.yaml` では現在稼働確認済みの `nickfedor/watchtower:1.16.1` を digest 固定し、更新時はタグ差分を確認してから変更する。将来的に権限をさらに絞る場合は Docker socket proxy の導入を検討する。`WATCHTOWER_NOTIFICATION_URL` が空の場合は通知なし (`notify=no`) として稼働することを `tumiki-sakura-prod` の Watchtower ログで確認済み。
 
 GHCR の `tumiki-manager` / `tumiki-mcp-proxy` image は、`tumiki-sakura-prod` 上で Docker 認証設定なしに `docker pull` できることを確認済み。Private package に変更する場合は、Watchtower から参照できる Docker registry 認証情報を追加する。
 
@@ -151,12 +151,14 @@ set -a; source /etc/infisical/agent.env; set +a
 TOKEN=$(infisical login --method=universal-auth \
   --domain="$INFISICAL_API_URL" \
   --plain --silent)
-infisical export --env=prod --path=/ --format=dotenv \
+INFISICAL_TOKEN="$TOKEN" infisical export --env=prod --path=/ --format=dotenv \
   --domain="$INFISICAL_API_URL" \
-  --projectId="$INFISICAL_PROJECT_ID" --token="$TOKEN" | wc -l
+  --projectId="$INFISICAL_PROJECT_ID" | wc -l
 ```
 
 `> 0` 行が出ればOK。`Project ID is required when using machine identity` が出る場合は `INFISICAL_PROJECT_ID` の確認、`Invalid credentials` の場合は `INFISICAL_API_URL` または client-id/secret を見直す。
+
+本番 VM では `infisical version 0.43.79` で動作確認済み。同等以上の CLI を利用する。
 
 ### 3. ディレクトリ・compose 配置
 
