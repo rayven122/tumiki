@@ -10,7 +10,7 @@ import { PROFILE_CHANGED_EVENT } from "../../shared/events";
 import type { DesktopSession } from "../../main/types";
 import { formatElectronIpcErrorMessage } from "../utils/errorHandling";
 
-/** トグルスイッチ（CSS変数ベース） */
+/** トグルスイッチ */
 const Toggle = ({
   enabled,
   label,

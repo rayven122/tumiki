@@ -23,10 +23,9 @@ const ModalOverlay = ({
 }: {
   onClose: () => void;
   children: React.ReactNode;
-}) => (
+}): JSX.Element => (
   <div
-    className="fixed inset-0 z-50 flex items-center justify-center"
-    style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
     onClick={onClose}
   >
     <div
@@ -39,7 +38,7 @@ const ModalOverlay = ({
 );
 
 /* ===== ロール追加モーダル ===== */
-const AddRoleModal = ({ onClose }: { onClose: () => void }) => {
+const AddRoleModal = ({ onClose }: { onClose: () => void }): JSX.Element => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [selectedColor, setSelectedColor] = useState<string>(ROLE_COLORS[4]);
@@ -137,7 +136,7 @@ const EditMembersModal = ({
   roleName: UserRole;
   roleColor: string;
   onClose: () => void;
-}) => {
+}): JSX.Element => {
   // 全ユーザーに対して、このロールに所属しているかの状態
   const [members, setMembers] = useState<Set<string>>(
     new Set(ORG_USERS.filter((u) => u.role === roleName).map((u) => u.id)),
@@ -269,7 +268,7 @@ const Toggle = ({
   color?: string;
   partial?: boolean;
   onClick?: (e: React.MouseEvent) => void;
-}) => (
+}): JSX.Element => (
   <button
     type="button"
     onClick={onClick}
@@ -369,6 +368,8 @@ export const AdminRoles = (): JSX.Element => {
           return (
             <div
               key={role.name}
+              role="button"
+              tabIndex={0}
               onClick={() => {
                 setActiveRoles((prev) => {
                   const next = new Set(prev);
@@ -379,6 +380,20 @@ export const AdminRoles = (): JSX.Element => {
                   }
                   return next;
                 });
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setActiveRoles((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(ri)) {
+                      next.delete(ri);
+                    } else {
+                      next.add(ri);
+                    }
+                    return next;
+                  });
+                }
               }}
               className={`cursor-pointer rounded-xl bg-white transition-all duration-300 dark:bg-zinc-900 ${isActive ? "" : "border border-gray-200 dark:border-white/[.08]"}`}
               style={
@@ -537,9 +552,6 @@ export const AdminRoles = (): JSX.Element => {
                                       flipTool(ri, si, ti);
                                     }}
                                     className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1 transition-colors"
-                                    style={{
-                                      backgroundColor: "transparent",
-                                    }}
                                   >
                                     <Toggle on={toolOn} color={role.color} />
                                     <span

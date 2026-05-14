@@ -75,7 +75,7 @@ export const AdminDashboard = (): JSX.Element => {
   const cursorColor = theme === "dark" ? "#ffffff" : "#111827";
 
   // テーマ対応の色解決（#fffをcursorColorに差し替え）
-  const resolveColor = (color: string) =>
+  const resolveColor = (color: string): string =>
     color === "#fff" ? cursorColor : color;
 
   return (
@@ -89,6 +89,7 @@ export const AdminDashboard = (): JSX.Element => {
           {PERIODS.map((p) => (
             <button
               key={p}
+              type="button"
               onClick={() => setPeriod(p)}
               className={`rounded px-2.5 py-1 text-[11px] transition-colors ${
                 period === p
@@ -302,6 +303,7 @@ export const AdminDashboard = (): JSX.Element => {
             {AI_CLIENTS.map((ai) => (
               <button
                 key={ai.name}
+                type="button"
                 onClick={() =>
                   setActiveAi(activeAi === ai.name ? null : ai.name)
                 }
