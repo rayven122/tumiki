@@ -31,7 +31,7 @@ export const AI_CLIENTS: AiClient[] = [
     name: "Cursor",
     logoPath: (t) =>
       t === "dark"
-        ? "/logos/ai-clients/cursor.svg"
+        ? "/logos/ai-clients/cursor.webp"
         : "/logos/ai-clients/cursor-light.webp",
     configTargetPath: "~/.cursor/mcp.json",
   },
@@ -70,7 +70,7 @@ export const AI_CLIENTS: AiClient[] = [
     name: "Cline",
     logoPath: (t) =>
       t === "dark"
-        ? "/logos/ai-clients/cline-dark.webp"
+        ? "/logos/ai-clients/cline.webp"
         : "/logos/ai-clients/cline.svg",
     configTargetPath:
       "~/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json",
