@@ -103,6 +103,20 @@ services:
       ALLOW_START: "1"
       ALLOW_STOP: "1"
       ALLOW_RESTARTS: "1"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:2375/version",
+        ]
+      interval: 5s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
 
   watchtower:
     # containrrr/watchtower は最終リリースが古く Docker API v1.40+ に未対応のため
@@ -111,7 +125,8 @@ services:
     container_name: tumiki-watchtower
     restart: unless-stopped
     depends_on:
-      - docker-socket-proxy
+      docker-socket-proxy:
+        condition: service_healthy
     security_opt:
       - no-new-privileges:true
     read_only: true

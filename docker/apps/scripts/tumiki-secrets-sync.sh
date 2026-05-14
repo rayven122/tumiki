@@ -36,8 +36,7 @@ NEW_ENV="$(mktemp --tmpdir tumiki-env.XXXXXX)"
 trap 'rm -f "$NEW_ENV"' EXIT
 
 # === 認証 ===
-# Universal Auth の Client ID / Secret は環境変数から読み込ませ、
-# secret が ps /proc 等のコマンドライン引数に出ないようにする。
+# Universal Auth の Client ID / Secret は環境変数から読み込ませる。
 # TOKEN は export しない bash 変数として保持し、infisical export の子プロセスにだけ渡す。
 TOKEN="$(infisical login \
   --method=universal-auth \
@@ -45,7 +44,8 @@ TOKEN="$(infisical login \
   --plain --silent)"
 
 # === シークレット取得 ===
-# Machine Identity の場合 --projectId が必須。Access token はプロセス引数に出さない。
+# Machine Identity の場合 --projectId が必須。
+# inline env は ps 引数への漏洩を防ぐが、子プロセスの /proc/PID/environ には短時間現れる。
 INFISICAL_TOKEN="$TOKEN" infisical export \
   --env="$INFISICAL_ENV" \
   --path="$INFISICAL_PATH" \
