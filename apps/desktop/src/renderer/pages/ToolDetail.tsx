@@ -29,6 +29,7 @@ import { ClientLogo } from "../_components/ClientLogo";
 import { ToggleSwitch } from "../_components/ToggleSwitch";
 import { AiClientInstallModal } from "../_components/AiClientInstallModal";
 import { OAuthReauthModal } from "../_components/OAuthReauthModal";
+import { EditMcpServerModal } from "../_components/EditMcpServerModal";
 import { toast } from "../_components/Toast";
 import {
   Select,
@@ -233,6 +234,9 @@ export const ToolDetail = (): JSX.Element => {
   // OAuth再認証モーダル開閉と進行中フラグ
   const [showReauthModal, setShowReauthModal] = useState(false);
   const [reauthProcessing, setReauthProcessing] = useState(false);
+
+  // サーバー設定編集モーダル開閉
+  const [showEditModal, setShowEditModal] = useState(false);
 
   // 接続先AIサイドバーから選択中のクライアント
   const [selectedClient, setSelectedClient] = useState<AiClient | null>(null);
@@ -638,7 +642,7 @@ export const ToolDetail = (): JSX.Element => {
                         type="button"
                         onClick={() => {
                           setShowMenu(false);
-                          toast.success("サーバー設定編集は近日対応予定");
+                          setShowEditModal(true);
                         }}
                         className="block w-full px-4 py-2.5 text-left text-sm text-gray-600 transition hover:bg-black/[.02] hover:text-gray-900 dark:text-zinc-400 dark:hover:bg-white/[.04] dark:hover:text-white"
                       >
@@ -1148,6 +1152,25 @@ export const ToolDetail = (): JSX.Element => {
           if (!reauthProcessing) setShowReauthModal(false);
         }}
       />
+
+      {/* サーバー設定編集モーダル */}
+      {showEditModal && (
+        <EditMcpServerModal
+          serverId={serverId}
+          onClose={() => setShowEditModal(false)}
+          onSuccess={() => {
+            // 保存成功時は詳細を再取得して画面に反映
+            window.electronAPI.mcp
+              .getDetail(serverId)
+              .then((updated) => {
+                if (updated) setServer(updated);
+              })
+              .catch(() => {
+                // 取得失敗時もモーダルの onClose が走るためここでは握りつぶす
+              });
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -12,6 +12,9 @@ import {
 } from "../../../shared/mcp.constants";
 import { getFaviconUrlsFromUrl } from "../../../shared/faviconUtils";
 import { encryptToken } from "../../utils/encryption";
+import { decryptCredentials } from "../../utils/credentials";
+import { mergeCredentials } from "./mcp.credentials";
+import { CREDENTIALS_MASK_VALUE } from "../../../shared/mcp.constants";
 import type {
   CreateFromCatalogInput,
   CreateFromManagerCatalogInput,
@@ -19,6 +22,7 @@ import type {
   CreateVirtualServerInput,
   GetToolsForConnectionsInput,
   GetToolsForConnectionsResult,
+  GetServerEditDetailOutput,
 } from "./mcp.types";
 
 // IPC / テストから参照できるよう re-export
@@ -515,6 +519,138 @@ export const updateServer = async (
 ) => {
   const db = await getDb();
   return mcpRepository.updateServer(db, id, data);
+};
+
+/**
+ * 暗号化済み credentials 文字列を復号して Record<string,string> に戻す。
+ * 復号失敗・JSON 解析失敗時は空 Record にフォールバックし warn ログを残す
+ * （apps/manager の getMcpConfig.ts と同等の許容セマンティクス）。
+ */
+const safeDecryptCredentialsRecord = async (
+  encrypted: string,
+): Promise<Record<string, string>> => {
+  try {
+    const decrypted = await decryptCredentials(encrypted);
+    const parsed = JSON.parse(decrypted) as unknown;
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      // 値が string でないキーは除外（破損データへの防御）
+      const record: Record<string, string> = {};
+      for (const [key, value] of Object.entries(
+        parsed as Record<string, unknown>,
+      )) {
+        if (typeof value === "string") {
+          record[key] = value;
+        }
+      }
+      return record;
+    }
+    return {};
+  } catch (error) {
+    logger.warn(
+      "Failed to decrypt or parse credentials, falling back to empty record",
+      { error: error instanceof Error ? error.message : String(error) },
+    );
+    return {};
+  }
+};
+
+/**
+ * サーバー編集画面の初期データを取得（renderer に平文 credentials は返さない）
+ */
+export const getServerEditDetail = async (
+  serverId: number,
+): Promise<GetServerEditDetailOutput> => {
+  const db = await getDb();
+  const server = await mcpRepository.findServerWithConnectionsAndSecrets(
+    db,
+    serverId,
+  );
+  if (!server) {
+    throw new Error("サーバーが見つかりません");
+  }
+
+  const connections = await Promise.all(
+    server.connections.map(async (conn) => {
+      const credentials = await safeDecryptCredentialsRecord(
+        conn.secret.credentials,
+      );
+      return {
+        id: conn.id,
+        name: conn.name,
+        authType: conn.authType,
+        credentialKeys: Object.keys(credentials),
+      };
+    }),
+  );
+
+  return {
+    id: server.id,
+    name: server.name,
+    description: server.description,
+    connections,
+  };
+};
+
+/**
+ * 接続単位の credentials を更新
+ *
+ * 仮想MCPで複数 connection が同一 secretId を共有しうるため、編集対象 connection
+ * 用に新規 McpSecret を作って secretId を差し替える方式を採用する。旧 secret は
+ * 参照カウントが 0 になれば deleteSecretIfOrphaned で削除される。
+ *
+ * OAuth 接続の認証情報は本フローでは更新できない（再認証フローを使う）。
+ */
+export const updateServerConnectionCredentials = async (
+  connectionId: number,
+  inputCredentials: Record<string, string>,
+) => {
+  const db = await getDb();
+  await db.$transaction(async (tx) => {
+    const conn = await mcpRepository.findConnectionByIdWithSecret(
+      tx,
+      connectionId,
+    );
+    if (!conn) {
+      throw new Error("接続が見つかりません");
+    }
+    if (conn.authType === "OAUTH") {
+      throw new Error("OAuth接続の認証情報はOAuth再設定から更新してください");
+    }
+
+    const existing = await safeDecryptCredentialsRecord(
+      conn.secret.credentials,
+    );
+    const merged = mergeCredentials(
+      existing,
+      inputCredentials,
+      CREDENTIALS_MASK_VALUE,
+    );
+
+    // 実質変更がない（全フィールドが MASK or 空文字、もしくは既存に無いキーのみ）場合は
+    // 何もせずトランザクションを閉じる。renderer 側でも canSubmit でガード済みだが、
+    // IPC 直叩きや将来の呼び出し経路から no-op で呼ばれたときに secret 差し替えと
+    // orphan 掃除が走らないようサービス層でも防衛する。
+    // mergeCredentials は既存に無いキーを追加しないため、existing と merged のキー集合は
+    // 常に一致する。全キーの値一致だけ確認すれば充分。
+    const isUnchanged = Object.keys(existing).every(
+      (key) => existing[key] === merged[key],
+    );
+    if (isUnchanged) return;
+
+    const encrypted = await encryptToken(JSON.stringify(merged));
+    const newSecret = await mcpRepository.createSecret(tx, encrypted);
+    const oldSecretId = conn.secretId;
+    await mcpRepository.updateConnectionSecretId(
+      tx,
+      connectionId,
+      newSecret.id,
+    );
+    await mcpRepository.deleteSecretIfOrphaned(tx, oldSecretId);
+  });
+
+  logger.info(
+    `MCP connection credentials updated: connectionId=${String(connectionId)}`,
+  );
 };
 
 // cascade で接続削除 → 参照カウント0 の secret を後始末する一連を1トランザクションで実行
