@@ -577,6 +577,7 @@ describe("mcp.service", () => {
         authType: "NONE",
         serverId: 1,
         catalogId: null,
+        iconPath: "https://www.google.com/s2/favicons?domain=example.com&sz=32",
       });
     });
 

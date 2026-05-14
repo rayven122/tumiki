@@ -25,6 +25,7 @@ export type CreateMcpConnectionInput = {
   authType: "NONE" | "BEARER" | "API_KEY" | "OAUTH";
   serverId: number;
   catalogId: number | null;
+  iconPath?: string | null;
   // 仮想MCPで複数接続を束ねた際の並び順（省略時はDB既定の0）
   displayOrder?: number;
 };
