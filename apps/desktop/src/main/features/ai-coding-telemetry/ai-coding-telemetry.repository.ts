@@ -70,12 +70,14 @@ export const getDailyUsage = async (
   since: Date,
 ): Promise<DailyUsageItem[]> => {
   // Prisma は SQLite の DateTime をミリ秒 Unix タイムスタンプとして保存するため
-  // strftime では unixepoch 変換（÷1000）を使い、WHERE 句では BigInt で比較する
+  // strftime では unixepoch 変換（÷1000）とローカルタイムゾーン補正を使い、
+  // WHERE 句では BigInt で比較する
   const sinceMs = BigInt(since.getTime());
+  const timezoneOffsetSec = -new Date().getTimezoneOffset() * 60;
   const rows = await db.$queryRaw<
     { date: string; tool: string; metricName: string; totalValue: number }[]
   >`
-    SELECT strftime('%Y-%m-%d', "recordedAt" / 1000, 'unixepoch') as date,
+    SELECT strftime('%Y-%m-%d', ("recordedAt" / 1000) + ${timezoneOffsetSec}, 'unixepoch') as date,
            "tool", "metricName", SUM("value") as totalValue
     FROM   "AiCodingMetric"
     WHERE  "recordedAt" >= ${sinceMs}

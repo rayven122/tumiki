@@ -17,6 +17,8 @@ import type {
   TraceRecord,
 } from "./ai-coding-telemetry.types";
 
+const MAX_TOOL_NAME_LENGTH = 128;
+
 // OTLP JSON の resource.attributes から service.name を安全に抽出する
 const extractToolName = (resourceMetric: unknown): string => {
   if (typeof resourceMetric !== "object" || resourceMetric === null)
@@ -32,7 +34,7 @@ const extractToolName = (resourceMetric: unknown): string => {
     if (a.key === "service.name") {
       const val = a.value as Record<string, unknown> | undefined;
       const str = val?.stringValue;
-      if (typeof str === "string") return str;
+      if (typeof str === "string") return str.slice(0, MAX_TOOL_NAME_LENGTH);
     }
   }
   return "unknown";

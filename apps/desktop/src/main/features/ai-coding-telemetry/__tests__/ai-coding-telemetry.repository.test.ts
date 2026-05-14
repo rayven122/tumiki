@@ -138,6 +138,13 @@ describe("getDailyUsage", () => {
     const result = await repository.getDailyUsage(mockDb, since);
 
     expect(mockQueryRaw).toHaveBeenCalledOnce();
+    const [[queryParts, timezoneOffsetSec, sinceMs]] = mockQueryRaw.mock
+      .calls as [[TemplateStringsArray, number, bigint]];
+    expect(queryParts.join("?")).toContain('("recordedAt" / 1000) + ?');
+    expect(timezoneOffsetSec).toStrictEqual(
+      -new Date().getTimezoneOffset() * 60,
+    );
+    expect(sinceMs).toStrictEqual(BigInt(since.getTime()));
     expect(result).toStrictEqual([
       {
         date: "2026-01-01",

@@ -126,18 +126,14 @@ describe("applyOtlpToTool - claude-code", () => {
     expect(mockRm).toHaveBeenCalledOnce();
   });
 
-  test("JSON パース失敗の場合は新規ファイルとして書き込む", async () => {
+  test("JSON パース失敗の場合は既存ファイルを上書きしない", async () => {
     mockReadFile.mockResolvedValue("invalid json {{{");
 
     const result = await applyOtlpToTool("claude-code", 4318);
 
-    expect(result.success).toStrictEqual(true);
-    // 既存ファイルは無視され、OTLP 設定のみ含む
-    const [[, content]] = mockWriteFile.mock.calls as [[string, string]];
-    const written = JSON.parse(content) as Record<string, unknown>;
-    expect(written).toMatchObject({
-      env: { CLAUDE_CODE_ENABLE_TELEMETRY: "1" },
-    });
+    expect(result.success).toStrictEqual(false);
+    expect(result.errorCode).toStrictEqual("WRITE_FAILED");
+    expect(mockWriteFile).not.toHaveBeenCalled();
   });
 });
 
@@ -185,24 +181,18 @@ describe("applyOtlpToTool - codex", () => {
     ).toStrictEqual("http://127.0.0.1:4320");
   });
 
-  test("TOML パース失敗時は空設定として書き込む", async () => {
+  test("TOML パース失敗時は既存ファイルを上書きしない", async () => {
     mockReadFile.mockResolvedValue("invalid toml ===");
     mockParseToml.mockImplementation(() => {
       throw new Error("parse error");
     });
-    mockStringifyToml.mockReturnValue(
-      "[telemetry]\notel_exporter_otlp_endpoint = ...\n",
-    );
 
     const result = await applyOtlpToTool("codex", 4318);
 
-    expect(result.success).toStrictEqual(true);
-    const [[tomlArg]] = mockStringifyToml.mock.calls as [
-      [Record<string, unknown>],
-    ];
-    expect(
-      (tomlArg.telemetry as Record<string, string>).otel_exporter_otlp_endpoint,
-    ).toStrictEqual("http://127.0.0.1:4318");
+    expect(result.success).toStrictEqual(false);
+    expect(result.errorCode).toStrictEqual("WRITE_FAILED");
+    expect(mockStringifyToml).not.toHaveBeenCalled();
+    expect(mockWriteFile).not.toHaveBeenCalled();
   });
 
   test("mkdir 失敗時は success: false を返す", async () => {

@@ -131,6 +131,36 @@ describe("storeOtlpMetrics", () => {
     ]);
   });
 
+  test("service.name が長すぎる場合は 128 文字に切り詰める", async () => {
+    const longToolName = "x".repeat(200);
+
+    await service.storeOtlpMetrics({
+      resourceMetrics: [
+        {
+          resource: {
+            attributes: [
+              { key: "service.name", value: { stringValue: longToolName } },
+            ],
+          },
+          scopeMetrics: [
+            {
+              metrics: [
+                {
+                  name: "test_metric",
+                  sum: { dataPoints: [{ asDouble: 100 }] },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(repository.storeMetrics).toHaveBeenCalledWith(mockDb, [
+      expect.objectContaining({ tool: "x".repeat(128) }),
+    ]);
+  });
+
   test("gauge 型のメトリクスも解析できる", async () => {
     await service.storeOtlpMetrics({
       resourceMetrics: [

@@ -636,15 +636,10 @@ if (isMcpProxyMode) {
           return [] as Awaited<ReturnType<typeof autoReapplyMismatchedPorts>>;
         },
       );
-      // 再書き込みが行われた場合、ウィンドウ読み込み完了後にトーストで通知する。
-      // push 通知に加え、IPC でも取得可能にしておくことで、renderer の
-      // useEffect 登録より先にイベントが送られた場合でも取りこぼさない。
+      // 再書き込みが行われた場合、ウィンドウ読み込み完了後に renderer が
+      // pending IPC から取得してトースト表示する。
       if (reappliedTools.length > 0) {
         setPendingAutoReapplied(reappliedTools, otlpPort);
-        sendToWindow("aiCodingTelemetry:autoReapplied", {
-          tools: reappliedTools,
-          port: otlpPort,
-        });
       }
       setupAiCodingTelemetryIpc();
 

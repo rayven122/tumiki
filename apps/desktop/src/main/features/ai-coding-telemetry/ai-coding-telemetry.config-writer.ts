@@ -17,6 +17,16 @@ const CLAUDE_CODE_SETTINGS_PATH = path.join(
 // Codex CLI の設定ファイルパス
 const CODEX_CONFIG_PATH = path.join(os.homedir(), ".codex", "config.toml");
 
+const isFileNotFoundError = (error: unknown): boolean => {
+  if (typeof error !== "object" || error === null) return false;
+  const maybeError = error as { code?: unknown; message?: unknown };
+  return (
+    maybeError.code === "ENOENT" ||
+    (typeof maybeError.message === "string" &&
+      maybeError.message.includes("ENOENT"))
+  );
+};
+
 // 一時ファイルを使ったアトミック書き込み
 const writeAtomic = async (
   filePath: string,
@@ -42,18 +52,19 @@ const applyToClaudeCode = async (
 
     // 既存ファイルを読み込む（なければ空オブジェクト）
     let existing: Record<string, unknown> = {};
-    try {
-      const content = await fs.readFile(configPath, "utf-8");
+    const content = await fs.readFile(configPath, "utf-8").catch((error) => {
+      if (isFileNotFoundError(error)) return undefined;
+      throw error;
+    });
+    if (content !== undefined) {
       const parsed: unknown = JSON.parse(content);
       if (
-        typeof parsed === "object" &&
-        parsed !== null &&
-        !Array.isArray(parsed)
-      ) {
-        existing = parsed as Record<string, unknown>;
-      }
-    } catch {
-      // ファイルが存在しない場合は空オブジェクトで続行
+        typeof parsed !== "object" ||
+        parsed === null ||
+        Array.isArray(parsed)
+      )
+        throw new Error("Claude Code settings must be a JSON object");
+      existing = parsed as Record<string, unknown>;
     }
 
     // 既存の env キーをマージする
@@ -88,11 +99,12 @@ const applyToCodex = async (port: number): Promise<ApplyToolSettingsResult> => {
 
     // 既存ファイルを読み込む（なければ空オブジェクト）
     let existing: Record<string, unknown> = {};
-    try {
-      const content = await fs.readFile(configPath, "utf-8");
+    const content = await fs.readFile(configPath, "utf-8").catch((error) => {
+      if (isFileNotFoundError(error)) return undefined;
+      throw error;
+    });
+    if (content !== undefined) {
       existing = parseToml(content) as Record<string, unknown>;
-    } catch {
-      // ファイルが存在しない場合は空で続行
     }
 
     // 既存の telemetry セクションをマージする
