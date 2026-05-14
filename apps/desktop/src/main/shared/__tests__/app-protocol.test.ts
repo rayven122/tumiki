@@ -27,6 +27,7 @@ const {
   resolveSafePath,
   registerAppProtocolSchemes,
   handleAppProtocol,
+  parseReauthDeepLink,
 } = await import("../app-protocol");
 
 // `protocol.handle` の第2引数（リクエストハンドラ）の型
@@ -230,5 +231,61 @@ describe("handleAppProtocol", () => {
       expect.any(String),
       expect.objectContaining({ error: "string error" }),
     );
+  });
+});
+
+describe("parseReauthDeepLink", () => {
+  test("正規の URL（tumiki://reauth?connectionId=42）は数値 42 を返す", () => {
+    expect(
+      parseReauthDeepLink("tumiki://reauth?connectionId=42"),
+    ).toStrictEqual(42);
+  });
+
+  test("末尾スラッシュ付きも許容する", () => {
+    expect(
+      parseReauthDeepLink("tumiki://reauth/?connectionId=7"),
+    ).toStrictEqual(7);
+  });
+
+  test("connectionId が未指定の場合 null", () => {
+    expect(parseReauthDeepLink("tumiki://reauth")).toBeNull();
+  });
+
+  test("connectionId が空文字の場合 null", () => {
+    expect(parseReauthDeepLink("tumiki://reauth?connectionId=")).toBeNull();
+  });
+
+  test("connectionId が 0 の場合 null（DB autoincrement は 1 以上）", () => {
+    expect(parseReauthDeepLink("tumiki://reauth?connectionId=0")).toBeNull();
+  });
+
+  test("connectionId が負値の場合 null", () => {
+    expect(parseReauthDeepLink("tumiki://reauth?connectionId=-5")).toBeNull();
+  });
+
+  test("connectionId が小数の場合 null", () => {
+    expect(parseReauthDeepLink("tumiki://reauth?connectionId=1.5")).toBeNull();
+  });
+
+  test("connectionId が非数値の場合 null", () => {
+    expect(parseReauthDeepLink("tumiki://reauth?connectionId=abc")).toBeNull();
+  });
+
+  test("先頭ゼロ付きの数値（例: 042）は null（不正フォーマット）", () => {
+    expect(parseReauthDeepLink("tumiki://reauth?connectionId=042")).toBeNull();
+  });
+
+  test("プロトコルが http の場合 null", () => {
+    expect(parseReauthDeepLink("http://reauth?connectionId=42")).toBeNull();
+  });
+
+  test("hostname が reauth 以外の場合 null（例: tumiki://auth/callback）", () => {
+    expect(
+      parseReauthDeepLink("tumiki://auth/callback?connectionId=42"),
+    ).toBeNull();
+  });
+
+  test("壊れた URL は null（throw しない）", () => {
+    expect(parseReauthDeepLink("not a url")).toBeNull();
   });
 });

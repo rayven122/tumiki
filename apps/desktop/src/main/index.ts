@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { app, BrowserWindow, powerMonitor } from "electron";
 import { createMainWindow } from "./window";
-import { initializeDb, closeDb } from "./shared/db";
+import { initializeDb, closeDb, getDb } from "./shared/db";
 import {
   registerAppProtocolSchemes,
   handleAppProtocol,
@@ -24,6 +24,8 @@ import { getKeycloakEnvOptional } from "./utils/env";
 import { createMcpOAuthManager } from "./features/oauth/oauth.service";
 import { setupOAuthIpc } from "./features/oauth/oauth.ipc";
 import type { McpOAuthManager } from "./features/oauth/oauth.service";
+import { findConnectionByIdWithServer } from "./features/mcp-server-list/mcp.repository";
+import { parseReauthDeepLink } from "./shared/app-protocol";
 import { setupManagerIpc, fetchManagerOidcConfig } from "./ipc/manager";
 import { setupProfileIpc } from "./ipc/profile";
 import { setupShellIpc } from "./ipc/shell";
@@ -278,10 +280,32 @@ if (isMcpProxyMode) {
         );
       }
 
+      // upstream 認証エラー（401/403）→ needsReauth フラグを立て、AI クライアントへ
+      // 再認証ディープリンクを返す（戻り値はエラーメッセージに追記される）
+      const { markSecretNeedsReauth } =
+        await import("./features/oauth/oauth.repository");
+      const onUpstreamAuthError = async (
+        serverName: string,
+      ): Promise<string | null> => {
+        const connMeta = metaMap.get(serverName);
+        if (!connMeta) return null;
+        try {
+          await markSecretNeedsReauth(db, connMeta.secretId);
+        } catch (error) {
+          process.stderr.write(
+            `[tumiki-mcp-proxy] needsReauth フラグ更新に失敗: ${error instanceof Error ? error.message : String(error)}\n`,
+          );
+        }
+        // AI クライアント（Claude Code 等）が Markdown を解釈する前提でディープリンクを返す。
+        // プレーンテキスト URL でも多くのクライアントは自動リンク化するため、両形式を併記しない。
+        return `OAuthトークンが失効している可能性があります。Tumiki Desktop で再認証してください: [Tumiki Desktopで再認証する](tumiki://reauth?connectionId=${String(connMeta.connectionId)})`;
+      };
+
       await mod.runMcpProxy(configs, {
         onToolCall,
         onStatusChange,
         resolveAllowedTools,
+        onUpstreamAuthError,
         disableDefaultFilter,
         enableToonConversion,
         onShutdown: async () => {
@@ -312,6 +336,9 @@ if (isMcpProxyMode) {
   const PROTOCOL = "tumiki";
   const CALLBACK_HOST = "auth";
   const CALLBACK_PATHNAME = "/callback";
+  // AI クライアントから「再認証してください」エラー経由で叩かれるディープリンク。
+  // 例: tumiki://reauth?connectionId=42 → ToolDetail に遷移して即 OAuth ブラウザを開く
+  const REAUTH_HOST = "reauth";
 
   // シングルインスタンスロック（Windows/Linuxでsecond-instanceイベントに必要）
   const gotTheLock = app.requestSingleInstanceLock();
@@ -439,26 +466,116 @@ if (isMcpProxyMode) {
   };
 
   /**
-   * カスタムURLスキームのコールバックを処理（Keycloak のみ）
+   * MCP OAuth 再認証ディープリンクの処理（tumiki://reauth?connectionId=N）
    *
-   * MCP OAuth は loopback HTTP（http://127.0.0.1:<port>/callback）に移行済みのため
-   * ここでは扱わない。tumiki:// は Keycloak ログインコールバック専用。
+   * AI クライアントが MCP プロキシ経由のツール呼び出しに失敗したとき、
+   * エラー文言中の `tumiki://reauth?connectionId=N` リンクを踏むことで起動する。
+   *
+   * フロー:
+   *   1. connectionId をパースして DB から serverId を引く（renderer へ遷移先を伝える）
+   *   2. メインウィンドウを focus してアプリを前面に出す
+   *   3. renderer へ navigation シグナルを送る（ToolDetail に遷移するため）
+   *   4. ここで OAuth ループバック + ブラウザ起動を開始する（即 OAuth ブラウザを開く動作）
+   *      成功/失敗は既存の oauth:reauthSuccess / oauth:reauthError ブロードキャストで通知される
+   */
+  const handleMcpReauthDeepLink = async (url: string): Promise<void> => {
+    const connectionId = parseReauthDeepLink(url);
+    if (connectionId === null) {
+      logger.warn("Invalid MCP reauth deep link URL", { url });
+      return;
+    }
+
+    ensureWindowAndFocus();
+
+    const manager = mcpOAuthManager;
+    if (!manager) {
+      logger.error(
+        "McpOAuthManager not initialized when handling reauth deep link",
+        { connectionId },
+      );
+      sendToWindow(
+        "oauth:reauthError",
+        "[UNKNOWN] 再認証マネージャーが初期化されていません",
+      );
+      return;
+    }
+
+    // serverId を引いて renderer に「この詳細画面に飛んで」と伝える。
+    // 接続が削除されている等で見つからない場合でも、OAuth フロー側で
+    // 同じバリデーションが走ってエラーが返るので、ここでは中断せず進める。
+    try {
+      const db = await getDb();
+      const conn = await findConnectionByIdWithServer(db, connectionId);
+      if (conn) {
+        sendToWindow("mcp:reauthDeeplink", {
+          connectionId,
+          serverId: conn.serverId,
+        });
+      }
+    } catch (error) {
+      logger.warn(
+        "Failed to resolve serverId for reauth deep link (continuing OAuth)",
+        { connectionId, error },
+      );
+    }
+
+    // OAuth ブラウザ起動はユーザー操作不要で即実行（推奨フロー）。
+    // 失敗時は既存の broadcast に乗せて UI 側にエラー表示する。
+    try {
+      const result = await manager.reauthenticateConnection({ connectionId });
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send("oauth:reauthSuccess", result);
+        }
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "OAuth再認証に失敗しました";
+      logger.error("Reauth deep link OAuth flow failed", {
+        connectionId,
+        error: message,
+      });
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send("oauth:reauthError", `[UNKNOWN] ${message}`);
+        }
+      }
+    }
+  };
+
+  /**
+   * カスタムURLスキームのコールバックを処理
+   *
+   * - `tumiki://auth/callback` : Keycloak ログインコールバック
+   * - `tumiki://reauth?connectionId=N` : AI クライアントからの MCP OAuth 再認証要求
+   *
+   * MCP OAuth の loopback HTTP（http://127.0.0.1:<port>/callback）はここでは扱わない。
    */
   const handleDeepLink = async (url: string): Promise<void> => {
-    let isKeycloakCallback = false;
+    let action: "keycloak" | "reauth" | "unknown" = "unknown";
     try {
       const parsed = new URL(url);
-      isKeycloakCallback =
-        parsed.protocol === `${PROTOCOL}:` &&
+      if (parsed.protocol !== `${PROTOCOL}:`) {
+        action = "unknown";
+      } else if (
         parsed.hostname === CALLBACK_HOST &&
-        parsed.pathname === CALLBACK_PATHNAME;
+        parsed.pathname === CALLBACK_PATHNAME
+      ) {
+        action = "keycloak";
+      } else if (parsed.hostname === REAUTH_HOST) {
+        action = "reauth";
+      }
     } catch {
       logger.warn("Received malformed deep link URL", { url });
       return;
     }
 
-    if (isKeycloakCallback) {
+    if (action === "keycloak") {
       await handleKeycloakCallback(url);
+      return;
+    }
+    if (action === "reauth") {
+      await handleMcpReauthDeepLink(url);
       return;
     }
 

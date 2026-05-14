@@ -9,6 +9,7 @@ import type {
   ServerStatus,
 } from "../types.js";
 import type { McpClientConnection } from "./mcp-client.js";
+import { isUpstreamAuthError } from "./auth-error.js";
 import { createMcpClient } from "./mcp-client.js";
 
 // リトライ設定
@@ -38,9 +39,19 @@ export type UpstreamClient = {
 /** null を返すと全ツール許可（フィルタ無効）扱いになる */
 export type ResolveAllowedTools = () => Promise<string[] | null>;
 
+/**
+ * upstream tool 呼び出しが認証エラー（HTTP 401/403, invalid_token 等）で失敗したとき呼ばれる。
+ * 戻り値の文字列は AI クライアントへ返すエラーメッセージに追記される
+ * （Tumiki Desktop では `tumiki://reauth?connectionId=N` リンクを返す想定）。
+ * 副作用として needsReauth フラグを DB に立てるなどに利用する。
+ */
+export type UpstreamAuthErrorHook = () => Promise<string | null>;
+
 export type CreateUpstreamClientOptions = {
   /** 指定時、listTools/callTool 毎に呼ばれて config.allowedTools より優先される（例外時は config.allowedTools にフォールバック） */
   resolveAllowedTools?: ResolveAllowedTools;
+  /** upstream 呼び出しが認証エラーで失敗したとき発火する */
+  onUpstreamAuthError?: UpstreamAuthErrorHook;
 };
 
 /**
@@ -313,10 +324,40 @@ export const createUpstreamClient = (
       throw new Error(`ツール "${name}" は許可されていません`);
     }
 
-    const result = await client.callTool({
-      name,
-      arguments: args,
-    });
+    let result;
+    try {
+      result = await client.callTool({
+        name,
+        arguments: args,
+      });
+    } catch (error) {
+      // upstream HTTP 401/403 等の認証エラーは「再認証してください」のディープリンク等を
+      // エラーメッセージに追記して AI クライアントへ返す（DB 側で needsReauth も立てる）。
+      // hook の戻り値が空のときはオリジナルのエラーをそのまま伝搬する。
+      const hook = options?.onUpstreamAuthError;
+      if (hook && isUpstreamAuthError(error)) {
+        let extra: string | null = null;
+        try {
+          extra = await hook();
+        } catch (hookError) {
+          logger.error(
+            `onUpstreamAuthError hook が失敗しました（サーバー "${config.name}"）`,
+            {
+              error:
+                hookError instanceof Error
+                  ? hookError.message
+                  : String(hookError),
+            },
+          );
+        }
+        if (extra) {
+          const original =
+            error instanceof Error ? error.message : String(error);
+          throw new Error(`${original}\n\n${extra}`);
+        }
+      }
+      throw error;
+    }
 
     // SDK型からCallToolResult型へ変換
     return {

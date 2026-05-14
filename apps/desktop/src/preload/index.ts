@@ -141,6 +141,18 @@ const api = {
       input: UpdateServerConnectionCredentialsInput,
     ): Promise<void> =>
       ipcRenderer.invoke("mcp:updateServerConnectionCredentials", input),
+    // AI クライアントから tumiki://reauth?connectionId=N ディープリンクが飛んできた際の
+    // renderer 側ナビゲーション通知（OAuth フロー自体は main 側が同期的に起動済み）
+    onReauthDeeplink: (
+      callback: (payload: { connectionId: number; serverId: number }) => void,
+    ): (() => void) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        payload: { connectionId: number; serverId: number },
+      ): void => callback(payload);
+      ipcRenderer.on("mcp:reauthDeeplink", listener);
+      return () => ipcRenderer.removeListener("mcp:reauthDeeplink", listener);
+    },
   },
 
   // MCP プロキシ起動コマンド（接続スニペット生成に利用）

@@ -1,4 +1,7 @@
-import type { ResolveAllowedToolsByName } from "./outbound/upstream-pool.js";
+import type {
+  OnUpstreamAuthErrorByName,
+  ResolveAllowedToolsByName,
+} from "./outbound/upstream-pool.js";
 import type {
   CallToolResult,
   Logger,
@@ -29,6 +32,7 @@ export type ProxyCore = {
 
 export type CreateProxyCoreOptions = {
   resolveAllowedTools?: ResolveAllowedToolsByName;
+  onUpstreamAuthError?: OnUpstreamAuthErrorByName;
 };
 
 /**
@@ -40,11 +44,23 @@ export const createSingleServerCore = (
   logger: Logger,
   options?: CreateProxyCoreOptions,
 ): ProxyCore => {
-  // ResolveAllowedToolsByName は server 名を受け取るため、単一サーバー向けに部分適用する
+  // ResolveAllowedToolsByName / OnUpstreamAuthErrorByName は server 名を受け取るため、
+  // 単一サーバー向けに部分適用する
   const byNameResolver = options?.resolveAllowedTools;
-  const clientOptions = byNameResolver
-    ? { resolveAllowedTools: () => byNameResolver(config.name) }
-    : undefined;
+  const byNameAuthErrorHook = options?.onUpstreamAuthError;
+  const clientOptions =
+    byNameResolver || byNameAuthErrorHook
+      ? {
+          ...(byNameResolver
+            ? { resolveAllowedTools: () => byNameResolver(config.name) }
+            : {}),
+          ...(byNameAuthErrorHook
+            ? {
+                onUpstreamAuthError: () => byNameAuthErrorHook(config.name),
+              }
+            : {}),
+        }
+      : undefined;
   const client = createUpstreamClient(config, logger, clientOptions);
 
   return {
@@ -95,7 +111,10 @@ export const createProxyCore = (
   logger: Logger,
   options?: CreateProxyCoreOptions,
 ): ProxyCore => {
-  const pool = createUpstreamPool(logger, options);
+  const pool = createUpstreamPool(logger, {
+    resolveAllowedTools: options?.resolveAllowedTools,
+    onUpstreamAuthError: options?.onUpstreamAuthError,
+  });
   for (const config of configs) {
     pool.addServer(config);
   }
