@@ -11,6 +11,8 @@ import type {
   ToggleServerInput,
   UpdatePiiMaskingInput,
   UpdateToonConversionInput,
+  GetServerEditDetailInput,
+  UpdateServerConnectionCredentialsInput,
 } from "./mcp.types";
 import * as logger from "../../shared/utils/logger";
 import { VIRTUAL_SERVER_MAX_CONNECTIONS } from "../../../shared/mcp.constants";
@@ -40,6 +42,15 @@ const updateToonConversionSchema = z.object({
   serverId: z.number().int(),
   enabled: z.boolean(),
 }) satisfies z.ZodType<UpdateToonConversionInput>;
+
+const getServerEditDetailSchema = z.object({
+  id: z.number().int().positive(),
+}) satisfies z.ZodType<GetServerEditDetailInput>;
+
+const updateServerConnectionCredentialsSchema = z.object({
+  connectionId: z.number().int().positive(),
+  credentials: z.record(z.string(), z.string()),
+}) satisfies z.ZodType<UpdateServerConnectionCredentialsInput>;
 
 const createFromCatalogSchema = z.object({
   catalogId: z.number().int(),
@@ -293,6 +304,42 @@ export const setupMcpIpc = (): void => {
       throw new Error(`PIIマスキング設定の更新に失敗しました: ${message}`);
     }
   });
+
+  // 編集画面初期表示用: サーバー + 各接続の認証情報キー一覧（値はマスク）
+  ipcMain.handle("mcp:getServerEditDetail", async (_, input: unknown) => {
+    try {
+      const validated = getServerEditDetailSchema.parse(input);
+      return await mcpService.getServerEditDetail(validated.id);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "不明なエラー";
+      logger.error(
+        "Failed to get MCP server edit detail",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error(`サーバー編集情報の取得に失敗しました: ${message}`);
+    }
+  });
+
+  // 接続単位の credentials を更新（共有 secret は差し替え + orphan 掃除）
+  ipcMain.handle(
+    "mcp:updateServerConnectionCredentials",
+    async (_, input: unknown) => {
+      try {
+        const validated = updateServerConnectionCredentialsSchema.parse(input);
+        await mcpService.updateServerConnectionCredentials(
+          validated.connectionId,
+          validated.credentials,
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "不明なエラー";
+        logger.error(
+          "Failed to update MCP connection credentials",
+          error instanceof Error ? error : { error },
+        );
+        throw new Error(`認証情報の更新に失敗しました: ${message}`);
+      }
+    },
+  );
 
   // TOON変換（レスポンス圧縮）有効状態を更新（次回プロキシ起動時に反映）
   ipcMain.handle("mcp:updateToonConversion", async (_, input: unknown) => {

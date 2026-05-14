@@ -88,6 +88,44 @@ export type DeleteServerInput = {
 };
 
 /**
+ * 編集画面初期表示用の取得入力（renderer → main）
+ */
+export type GetServerEditDetailInput = {
+  id: number;
+};
+
+/**
+ * 編集画面初期表示用の取得結果（main → renderer）
+ *
+ * credentials の平文値は含まない。`credentialKeys` は現在保存されている
+ * credentials の Object.keys 集合のみで、値は renderer 側でマスク表示する。
+ */
+export type GetServerEditDetailOutput = {
+  id: number;
+  name: string;
+  description: string;
+  connections: GetServerEditDetailConnection[];
+};
+
+export type GetServerEditDetailConnection = {
+  id: number;
+  name: string;
+  authType: McpConnection["authType"];
+  credentialKeys: string[];
+};
+
+/**
+ * 接続単位の credentials 更新入力（renderer → main）
+ *
+ * `credentials` の値が MASK 値（`•••••`）または空文字のキーは既存値が維持される。
+ * 既存に存在しないキーは追加されない（キー追加/削除はスコープ外）。
+ */
+export type UpdateServerConnectionCredentialsInput = {
+  connectionId: number;
+  credentials: Record<string, string>;
+};
+
+/**
  * MCPサーバーenabled切り替えの入力型（renderer → main）
  */
 export type ToggleServerInput = {

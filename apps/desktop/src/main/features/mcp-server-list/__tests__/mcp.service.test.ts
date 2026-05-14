@@ -1486,6 +1486,246 @@ describe("mcp.service", () => {
     });
   });
 
+  describe("getServerEditDetail", () => {
+    type ServerWithConnectionsAndSecrets = NonNullable<
+      Awaited<
+        ReturnType<typeof mcpRepository.findServerWithConnectionsAndSecrets>
+      >
+    >;
+
+    test("各接続の credentials を復号して credentialKeys を返す", async () => {
+      vi.mocked(
+        mcpRepository.findServerWithConnectionsAndSecrets,
+      ).mockResolvedValue({
+        id: 10,
+        name: "Server",
+        description: "desc",
+        connections: [
+          {
+            id: 100,
+            name: "conn-a",
+            authType: "API_KEY",
+            secret: {
+              credentials: JSON.stringify({ TOKEN: "secret", EXTRA: "x" }),
+            },
+          },
+          {
+            id: 101,
+            name: "conn-b",
+            authType: "OAUTH",
+            secret: { credentials: JSON.stringify({ accessToken: "t" }) },
+          },
+        ],
+      } as unknown as ServerWithConnectionsAndSecrets);
+
+      const result = await mcpService.getServerEditDetail(10);
+
+      expect(result).toStrictEqual({
+        id: 10,
+        name: "Server",
+        description: "desc",
+        connections: [
+          {
+            id: 100,
+            name: "conn-a",
+            authType: "API_KEY",
+            credentialKeys: ["TOKEN", "EXTRA"],
+          },
+          {
+            id: 101,
+            name: "conn-b",
+            authType: "OAUTH",
+            credentialKeys: ["accessToken"],
+          },
+        ],
+      });
+    });
+
+    test("サーバーが見つからない場合はエラーになる", async () => {
+      vi.mocked(
+        mcpRepository.findServerWithConnectionsAndSecrets,
+      ).mockResolvedValue(null);
+
+      await expect(mcpService.getServerEditDetail(999)).rejects.toThrow(
+        "サーバーが見つかりません",
+      );
+    });
+
+    test("復号失敗時は空の credentialKeys にフォールバックする", async () => {
+      vi.mocked(
+        mcpRepository.findServerWithConnectionsAndSecrets,
+      ).mockResolvedValue({
+        id: 11,
+        name: "broken",
+        description: "",
+        connections: [
+          {
+            id: 200,
+            name: "broken-conn",
+            authType: "API_KEY",
+            secret: { credentials: "not-json-and-not-encrypted" },
+          },
+        ],
+      } as unknown as ServerWithConnectionsAndSecrets);
+
+      const result = await mcpService.getServerEditDetail(11);
+
+      expect(result.connections[0]?.credentialKeys).toStrictEqual([]);
+    });
+
+    test("接続が無いサーバーでも空の connections 配列で正常応答する", async () => {
+      vi.mocked(
+        mcpRepository.findServerWithConnectionsAndSecrets,
+      ).mockResolvedValue({
+        id: 12,
+        name: "no-conn",
+        description: "no connections yet",
+        connections: [],
+      } as unknown as ServerWithConnectionsAndSecrets);
+
+      const result = await mcpService.getServerEditDetail(12);
+
+      expect(result).toStrictEqual({
+        id: 12,
+        name: "no-conn",
+        description: "no connections yet",
+        connections: [],
+      });
+    });
+  });
+
+  describe("updateServerConnectionCredentials", () => {
+    type ConnectionWithSecret = NonNullable<
+      Awaited<ReturnType<typeof mcpRepository.findConnectionByIdWithSecret>>
+    >;
+
+    const buildConn = (overrides: Partial<ConnectionWithSecret> = {}) =>
+      ({
+        id: 300,
+        secretId: 50,
+        authType: "API_KEY",
+        secret: { credentials: JSON.stringify({ TOKEN: "old" }) },
+        ...overrides,
+      }) as unknown as ConnectionWithSecret;
+
+    test("新規 secret を作成して接続の secretId を差し替え、旧 secret を孤立判定する", async () => {
+      vi.mocked(mcpRepository.findConnectionByIdWithSecret).mockResolvedValue(
+        buildConn(),
+      );
+      vi.mocked(mcpRepository.createSecret).mockResolvedValue({
+        id: 51,
+        credentials: "encrypted:",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      await mcpService.updateServerConnectionCredentials(300, {
+        TOKEN: "new-value",
+      });
+
+      // 新値が暗号化対象に含まれる
+      expect(encryptToken).toHaveBeenCalledWith(
+        JSON.stringify({ TOKEN: "new-value" }),
+      );
+      expect(mcpRepository.createSecret).toHaveBeenCalledTimes(1);
+      expect(mcpRepository.updateConnectionSecretId).toHaveBeenCalledWith(
+        mockDb,
+        300,
+        51,
+      );
+      // 旧 secretId が孤立判定の対象になる
+      expect(mcpRepository.deleteSecretIfOrphaned).toHaveBeenCalledWith(
+        mockDb,
+        50,
+      );
+    });
+
+    test("MASK 値・空文字は既存値で維持され、新値だけが上書きされる", async () => {
+      vi.mocked(mcpRepository.findConnectionByIdWithSecret).mockResolvedValue(
+        buildConn({
+          secret: {
+            credentials: JSON.stringify({
+              A: "old-a",
+              B: "old-b",
+              C: "old-c",
+            }),
+          },
+        } as Partial<ConnectionWithSecret>),
+      );
+      vi.mocked(mcpRepository.createSecret).mockResolvedValue({
+        id: 99,
+        credentials: "encrypted:",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      await mcpService.updateServerConnectionCredentials(300, {
+        A: "•••••",
+        B: "",
+        C: "new-c",
+      });
+
+      // A は MASK 維持・B は空維持・C のみ新値で上書きされる
+      expect(encryptToken).toHaveBeenCalledWith(
+        JSON.stringify({ A: "old-a", B: "old-b", C: "new-c" }),
+      );
+    });
+
+    test("OAuth 接続は更新できずエラーになる", async () => {
+      vi.mocked(mcpRepository.findConnectionByIdWithSecret).mockResolvedValue(
+        buildConn({ authType: "OAUTH" } as Partial<ConnectionWithSecret>),
+      );
+
+      await expect(
+        mcpService.updateServerConnectionCredentials(300, { token: "x" }),
+      ).rejects.toThrow("OAuth接続の認証情報はOAuth再設定から更新してください");
+      expect(mcpRepository.createSecret).not.toHaveBeenCalled();
+      expect(mcpRepository.updateConnectionSecretId).not.toHaveBeenCalled();
+    });
+
+    test("接続が見つからない場合はエラーになる", async () => {
+      vi.mocked(mcpRepository.findConnectionByIdWithSecret).mockResolvedValue(
+        null,
+      );
+
+      await expect(
+        mcpService.updateServerConnectionCredentials(999, {}),
+      ).rejects.toThrow("接続が見つかりません");
+    });
+
+    test("実質変更がない（全 MASK 値）場合は secret を更新せず早期 return する", async () => {
+      vi.mocked(mcpRepository.findConnectionByIdWithSecret).mockResolvedValue(
+        buildConn({
+          secret: { credentials: JSON.stringify({ A: "old-a", B: "old-b" }) },
+        } as Partial<ConnectionWithSecret>),
+      );
+
+      await mcpService.updateServerConnectionCredentials(300, {
+        A: "•••••",
+        B: "•••••",
+      });
+
+      expect(mcpRepository.createSecret).not.toHaveBeenCalled();
+      expect(mcpRepository.updateConnectionSecretId).not.toHaveBeenCalled();
+      expect(mcpRepository.deleteSecretIfOrphaned).not.toHaveBeenCalled();
+    });
+
+    test("既存に無いキーだけが入力された場合も no-op として扱う", async () => {
+      vi.mocked(mcpRepository.findConnectionByIdWithSecret).mockResolvedValue(
+        buildConn({
+          secret: { credentials: JSON.stringify({ TOKEN: "old" }) },
+        } as Partial<ConnectionWithSecret>),
+      );
+
+      await mcpService.updateServerConnectionCredentials(300, {
+        UNKNOWN_KEY: "new-value",
+      });
+
+      expect(mcpRepository.createSecret).not.toHaveBeenCalled();
+      expect(mcpRepository.updateConnectionSecretId).not.toHaveBeenCalled();
+    });
+  });
+
   describe("deleteServer", () => {
     test("サーバーを削除する（参照カウント0の secret も後始末する）", async () => {
       vi.mocked(mcpRepository.deleteServer).mockResolvedValue(
