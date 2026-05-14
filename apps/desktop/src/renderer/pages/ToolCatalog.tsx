@@ -323,7 +323,7 @@ export const ToolCatalog = (): JSX.Element => {
                     {item.iconUrl ? (
                       <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
                         <img
-                          src={getThemeIconUrl(item.iconUrl, theme) ?? ""}
+                          src={getThemeIconUrl(item.iconUrl, theme)}
                           alt={item.name}
                           className="h-8 w-8 object-contain"
                         />

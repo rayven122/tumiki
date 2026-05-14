@@ -13,7 +13,7 @@ export const DARK_VARIANT_ICONS = new Set([
  * テーマに応じたアイコンURLを返す（ライト/ダーク各バリアントを優先）。
  * バリアントが存在しない場合は元のURLをそのまま返す。
  */
-export const getThemeIconUrl = (
+export const getThemeIconUrl = ((
   iconUrl: string | null | undefined,
   theme: "light" | "dark",
 ): string | null | undefined => {
@@ -28,4 +28,10 @@ export const getThemeIconUrl = (
     return iconUrl.replace(/(\.[a-zA-Z0-9]+)(?=[?#]|$)/, "-dark$1");
   }
   return iconUrl;
+}) as {
+  (iconUrl: string, theme: "light" | "dark"): string;
+  (
+    iconUrl: string | null | undefined,
+    theme: "light" | "dark",
+  ): string | null | undefined;
 };
