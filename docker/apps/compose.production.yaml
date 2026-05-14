@@ -99,7 +99,6 @@ services:
       CONTAINERS: "1"
       IMAGES: "1"
       INFO: "1"
-      NETWORKS: "1"
       POST: "1"
       ALLOW_START: "1"
       ALLOW_STOP: "1"
@@ -127,8 +126,8 @@ services:
       # ラベル付きコンテナのみ監視対象とする
       WATCHTOWER_LABEL_ENABLE: "true"
       WATCHTOWER_POLL_INTERVAL: ${WATCHTOWER_POLL_INTERVAL:-300}
-      # 古い image を自動削除（ディスク逼迫対策）
-      WATCHTOWER_CLEANUP: "true"
+      # docker-socket-proxy で DELETE を許可しないため、image prune は別運用で実施する
+      WATCHTOWER_CLEANUP: "false"
       WATCHTOWER_INCLUDE_RESTARTING: "false"
       WATCHTOWER_NOTIFICATION_REPORT: "true"
       WATCHTOWER_NOTIFICATION_TITLE_TAG: tumiki-prod

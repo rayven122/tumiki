@@ -63,7 +63,7 @@ fi
 
 # === 差分検知 ===
 DIFF=0
-if ! cmp -s "$NEW_ENV" "$ENV_FILE" 2>/dev/null; then
+if [[ ! -f "$ENV_FILE" ]] || ! diff -q <(sort "$NEW_ENV") <(sort "$ENV_FILE") >/dev/null 2>&1; then
   install -m 600 "$NEW_ENV" "$ENV_FILE"
   DIFF=1
 fi
