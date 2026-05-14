@@ -161,6 +161,52 @@ describe("storeOtlpMetrics", () => {
     ]);
   });
 
+  test("metric 名と attributes が長すぎる場合は切り詰める", async () => {
+    const longMetricName = "m".repeat(300);
+    const longAttributeValue = "a".repeat(5000);
+
+    await service.storeOtlpMetrics({
+      resourceMetrics: [
+        {
+          resource: {
+            attributes: [
+              { key: "service.name", value: { stringValue: "claude-code" } },
+            ],
+          },
+          scopeMetrics: [
+            {
+              metrics: [
+                {
+                  name: longMetricName,
+                  sum: {
+                    dataPoints: [
+                      {
+                        asDouble: 100,
+                        attributes: [
+                          {
+                            key: "long",
+                            value: { stringValue: longAttributeValue },
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(repository.storeMetrics).toHaveBeenCalledWith(mockDb, [
+      expect.objectContaining({
+        metricName: "m".repeat(255),
+        attributes: expect.stringMatching(/^.{4096}$/s),
+      }),
+    ]);
+  });
+
   test("gauge 型のメトリクスも解析できる", async () => {
     await service.storeOtlpMetrics({
       resourceMetrics: [
@@ -279,6 +325,47 @@ describe("storeOtlpTraces", () => {
     ]);
   });
 
+  test("traceId、span 名、attributes が長すぎる場合は切り詰める", async () => {
+    const longTraceId = "t".repeat(300);
+    const longSpanName = "s".repeat(300);
+    const longAttributeValue = "a".repeat(5000);
+
+    await service.storeOtlpTraces({
+      resourceSpans: [
+        {
+          resource: {
+            attributes: [
+              { key: "service.name", value: { stringValue: "claude-code" } },
+            ],
+          },
+          scopeSpans: [
+            {
+              spans: [
+                {
+                  traceId: longTraceId,
+                  name: longSpanName,
+                  startTimeUnixNano: "1000000000",
+                  endTimeUnixNano: "2000000000",
+                  attributes: [
+                    { key: "long", value: { stringValue: longAttributeValue } },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(repository.storeTraces).toHaveBeenCalledWith(mockDb, [
+      expect.objectContaining({
+        traceId: "t".repeat(255),
+        spanName: "s".repeat(255),
+        attributes: expect.stringMatching(/^.{4096}$/s),
+      }),
+    ]);
+  });
+
   test("durationMs が負にならない（endTime < startTime のケース）", async () => {
     await service.storeOtlpTraces({
       resourceSpans: [
@@ -393,11 +480,13 @@ describe("saveToolEnabled", () => {
     const [[, saved]] = vi.mocked(mockStore.set).mock.calls as unknown as [
       [string, { tools: { "claude-code": Record<string, unknown> } }],
     ];
-    expect(saved.tools["claude-code"]).toMatchObject({
-      enabled: true,
-      appliedAt: "2026-01-01T00:00:00.000Z",
-      appliedPort: 4318,
-    });
+    expect(saved.tools["claude-code"]).toStrictEqual(
+      expect.objectContaining({
+        enabled: true,
+        appliedAt: "2026-01-01T00:00:00.000Z",
+        appliedPort: 4318,
+      }),
+    );
   });
 });
 
@@ -442,11 +531,13 @@ describe("applyToolSettings", () => {
         },
       ],
     ];
-    expect(saved.tools.codex).toMatchObject({
-      enabled: true,
-      appliedAt: "2026-01-01T00:00:00.000Z",
-      appliedPort: 4318,
-    });
+    expect(saved.tools.codex).toStrictEqual(
+      expect.objectContaining({
+        enabled: true,
+        appliedAt: "2026-01-01T00:00:00.000Z",
+        appliedPort: 4318,
+      }),
+    );
     expect(saved.tools["claude-code"].appliedPort).toStrictEqual(4318);
   });
 

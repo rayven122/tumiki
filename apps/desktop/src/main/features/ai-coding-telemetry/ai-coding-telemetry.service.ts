@@ -18,6 +18,11 @@ import type {
 } from "./ai-coding-telemetry.types";
 
 const MAX_TOOL_NAME_LENGTH = 128;
+const MAX_RECORD_FIELD_LENGTH = 255;
+const MAX_ATTRIBUTES_LENGTH = 4096;
+
+const truncateString = (value: string, maxLength: number): string =>
+  value.length > maxLength ? value.slice(0, maxLength) : value;
 
 // OTLP JSON の resource.attributes から service.name を安全に抽出する
 const extractToolName = (resourceMetric: unknown): string => {
@@ -34,7 +39,8 @@ const extractToolName = (resourceMetric: unknown): string => {
     if (a.key === "service.name") {
       const val = a.value as Record<string, unknown> | undefined;
       const str = val?.stringValue;
-      if (typeof str === "string") return str.slice(0, MAX_TOOL_NAME_LENGTH);
+      if (typeof str === "string")
+        return truncateString(str, MAX_TOOL_NAME_LENGTH);
     }
   }
   return "unknown";
@@ -55,7 +61,7 @@ const extractAttributes = (dataPoint: unknown): string | undefined => {
   if (!Array.isArray(dp.attributes) || dp.attributes.length === 0)
     return undefined;
   try {
-    return JSON.stringify(dp.attributes);
+    return truncateString(JSON.stringify(dp.attributes), MAX_ATTRIBUTES_LENGTH);
   } catch {
     return undefined;
   }
@@ -83,7 +89,10 @@ export const storeOtlpMetrics = async (body: unknown): Promise<void> => {
       for (const metric of smMetrics) {
         if (typeof metric !== "object" || metric === null) continue;
         const m = metric as Record<string, unknown>;
-        const metricName = typeof m.name === "string" ? m.name : "unknown";
+        const metricName =
+          typeof m.name === "string"
+            ? truncateString(m.name, MAX_RECORD_FIELD_LENGTH)
+            : "unknown";
         const dataPointContainer = m.sum ?? m.gauge;
         if (
           typeof dataPointContainer !== "object" ||
@@ -133,8 +142,14 @@ export const storeOtlpTraces = async (body: unknown): Promise<void> => {
       for (const span of spans) {
         if (typeof span !== "object" || span === null) continue;
         const s = span as Record<string, unknown>;
-        const traceId = typeof s.traceId === "string" ? s.traceId : "unknown";
-        const spanName = typeof s.name === "string" ? s.name : "unknown";
+        const traceId =
+          typeof s.traceId === "string"
+            ? truncateString(s.traceId, MAX_RECORD_FIELD_LENGTH)
+            : "unknown";
+        const spanName =
+          typeof s.name === "string"
+            ? truncateString(s.name, MAX_RECORD_FIELD_LENGTH)
+            : "unknown";
         // OTLP の時刻は Unix ナノ秒の文字列
         const startNs =
           typeof s.startTimeUnixNano === "string"
@@ -152,7 +167,10 @@ export const storeOtlpTraces = async (body: unknown): Promise<void> => {
           durationMs: Math.max(0, durationMs),
           attributes:
             Array.isArray(s.attributes) && s.attributes.length > 0
-              ? JSON.stringify(s.attributes)
+              ? truncateString(
+                  JSON.stringify(s.attributes),
+                  MAX_ATTRIBUTES_LENGTH,
+                )
               : undefined,
         });
       }

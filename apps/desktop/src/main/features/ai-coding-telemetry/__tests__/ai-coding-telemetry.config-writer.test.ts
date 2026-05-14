@@ -60,12 +60,14 @@ describe("applyOtlpToTool - claude-code", () => {
     expect(mockWriteFile).toHaveBeenCalledOnce();
     const [[, content]] = mockWriteFile.mock.calls as [[string, string]];
     const written = JSON.parse(content) as Record<string, unknown>;
-    expect(written).toMatchObject({
-      env: {
-        CLAUDE_CODE_ENABLE_TELEMETRY: "1",
-        OTEL_EXPORTER_OTLP_ENDPOINT: "http://127.0.0.1:4318",
-      },
-    });
+    expect(written).toStrictEqual(
+      expect.objectContaining({
+        env: {
+          CLAUDE_CODE_ENABLE_TELEMETRY: "1",
+          OTEL_EXPORTER_OTLP_ENDPOINT: "http://127.0.0.1:4318",
+        },
+      }),
+    );
   });
 
   test("既存設定ファイルとマージする", async () => {
@@ -102,7 +104,9 @@ describe("applyOtlpToTool - claude-code", () => {
     const [[, content]] = mockWriteFile.mock.calls as [[string, string]];
     const written = JSON.parse(content) as Record<string, unknown>;
     // 配列は無視されて env オブジェクトが作成される
-    expect(written.env).toMatchObject({ CLAUDE_CODE_ENABLE_TELEMETRY: "1" });
+    expect(written.env).toStrictEqual(
+      expect.objectContaining({ CLAUDE_CODE_ENABLE_TELEMETRY: "1" }),
+    );
   });
 
   test("アトミック書き込みを使用する（tmp ファイル → rename）", async () => {
