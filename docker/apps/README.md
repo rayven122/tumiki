@@ -104,6 +104,16 @@ docker compose -f compose.production.yaml up -d
 
 ロールバック中は Watchtower が再度 `:latest` に上書きしないよう、対象サービスから `com.centurylinklabs.watchtower.enable=true` ラベルを一時的に外すか、Watchtower 自体を停止することを推奨。
 
+Watchtower を止めてから特定サービスだけ戻す場合は、以下の順で実施する。
+
+```bash
+cd ~/tumiki
+docker compose -f compose.production.yaml stop watchtower
+# compose.production.yaml の manager / mcp-proxy image を戻したいタグに変更
+docker compose -f compose.production.yaml pull manager mcp-proxy
+docker compose -f compose.production.yaml up -d --no-deps manager mcp-proxy
+```
+
 ## production への初回セットアップ
 
 > 既存の systemd unit (`tumiki-manager.service` / `tumiki-mcp-proxy.service`) で稼働している環境を Docker Compose に移行する手順。
@@ -171,6 +181,8 @@ scp docker/apps/compose.production.yaml tumiki-sakura-prod:~/tumiki/
 
 ### 4. secrets-sync スクリプト + systemd unit 配置
 
+`tumiki-secrets-sync.service` は `User=ubuntu` / `Group=ubuntu` を前提にしている。別ユーザーで運用する場合は unit 内のユーザー名、`Environment=HOME`、`Environment=TUMIKI_DIR`、および `/etc/infisical/agent.env` の group ownership を実環境に合わせて変更する。
+
 ```bash
 # ローカルから
 scp docker/apps/scripts/tumiki-secrets-sync.sh tumiki-sakura-prod:/tmp/
@@ -184,6 +196,15 @@ sudo install -m 644 /tmp/tumiki-secrets-sync.service /etc/systemd/system/
 sudo install -m 644 /tmp/tumiki-secrets-sync.timer /etc/systemd/system/
 sudo systemctl daemon-reload
 ```
+
+GitHub Actions の production job で使う `DEPLOY_USER` には、少なくとも `tumiki-secrets-sync.service` の起動と状態確認を非対話で実行できる sudoers 設定が必要。
+
+```sudoers
+# /etc/sudoers.d/tumiki-deploy
+deploy-user ALL=(ALL) NOPASSWD: /bin/systemctl start tumiki-secrets-sync.service, /bin/systemctl status --no-pager tumiki-secrets-sync.service
+```
+
+`deploy-user` は実際の `vars.DEPLOY_USER` に置き換える。`systemctl` の実パスが異なる場合は `command -v systemctl` で確認して合わせる。
 
 ### 5. 初回 secrets 同期 + コンテナ起動
 

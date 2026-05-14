@@ -63,6 +63,6 @@ EXPECTED=$(docker compose -f "$COMPOSE_FILE" config --services 2>/dev/null \
   | awk '/^[A-Za-z0-9_.-]+$/ { count++ } END { print count + 0 }')
 
 if [[ "$DIFF" -eq 1 || "$RUNNING" -lt "$EXPECTED" ]]; then
-  docker compose -f "$COMPOSE_FILE" up -d
+  docker compose -f "$COMPOSE_FILE" up -d --remove-orphans
   echo "compose reconciled (diff=$DIFF, running=${RUNNING}/${EXPECTED})"
 fi
