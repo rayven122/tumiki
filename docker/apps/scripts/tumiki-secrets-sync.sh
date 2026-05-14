@@ -13,6 +13,8 @@ TUMIKI_DIR="${TUMIKI_DIR:-$HOME/tumiki}"
 COMPOSE_FILE="${COMPOSE_FILE:-compose.production.yaml}"
 INFISICAL_ENV="${INFISICAL_ENV:-prod}"
 INFISICAL_PATH="${INFISICAL_PATH:-/}"
+RECONCILE_COUNT_EXCLUDE_PATTERN="${RECONCILE_COUNT_EXCLUDE_PATTERN:-^watchtower$}"
+WATCHTOWER_RECONCILE_GRACE_SEC="${WATCHTOWER_RECONCILE_GRACE_SEC:-60}"
 
 : "${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID:?env not set}"
 : "${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET:?env not set}"
@@ -34,6 +36,7 @@ trap 'rm -f "$NEW_ENV"' EXIT
 # === 認証 ===
 # Universal Auth の Client ID / Secret は環境変数から読み込ませ、
 # secret が ps /proc 等のコマンドライン引数に出ないようにする。
+# TOKEN は export しない bash 変数として保持し、infisical export の子プロセスにだけ渡す。
 TOKEN="$(infisical login \
   --method=universal-auth \
   --domain="$INFISICAL_API_URL" \
@@ -68,19 +71,19 @@ fi
 # watchtower 自体は secrets 変更で再起動不要なため、同時実行時の過剰 reconcile を避ける。
 # docker-socket-proxy は Watchtower の Docker API 経路なので停止時に復旧対象へ含める。
 cd "$TUMIKI_DIR"
-if ! docker info >/dev/null; then
+if ! docker info >/dev/null 2>&1; then
   echo "ERROR: docker daemon is not running" >&2
   exit 1
 fi
 
 count_running_services() {
   docker compose -f "$COMPOSE_FILE" ps --status running --services \
-    | awk '$0 != "watchtower" && NF { count++ } END { print count + 0 }'
+    | awk -v exclude="$RECONCILE_COUNT_EXCLUDE_PATTERN" '$0 !~ exclude && NF { count++ } END { print count + 0 }'
 }
 
 count_expected_services() {
   docker compose -f "$COMPOSE_FILE" config --services \
-    | awk '$0 != "watchtower" && /^[A-Za-z0-9_.-]+$/ { count++ } END { print count + 0 }'
+    | awk -v exclude="$RECONCILE_COUNT_EXCLUDE_PATTERN" '$0 !~ exclude && /^[A-Za-z0-9_.-]+$/ { count++ } END { print count + 0 }'
 }
 
 RUNNING=$(count_running_services)
@@ -93,7 +96,7 @@ fi
 
 if [[ "$DIFF" -eq 0 && "$RUNNING" -lt "$EXPECTED" ]]; then
   # Watchtower の更新中は一時的に running 数が減るため、短く待って再確認する。
-  sleep 30
+  sleep "$WATCHTOWER_RECONCILE_GRACE_SEC"
   RUNNING=$(count_running_services)
 fi
 

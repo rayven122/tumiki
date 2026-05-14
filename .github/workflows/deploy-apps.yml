@@ -166,6 +166,7 @@ jobs:
           # systemd の oneshot サービスを発火することで Infisical から最新の .env を取り込み、
           # 必要があれば docker compose up -d を実行する。
           # NoNewPrivileges 等の制限を尊重し、journal にログを残すため systemctl start を使用。
+          # DEPLOY_USER の sudoers は tumiki-secrets-sync.service の start / status のみに絞る。
           ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash << 'REMOTE_SCRIPT'
             set -euo pipefail
             # oneshot service の完了まで systemctl start がブロックし、失敗時は非ゼロで終了する。
@@ -176,6 +177,8 @@ jobs:
       - name: ✅ Verify health endpoints
         run: |
           ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash << 'HEALTHCHECK'
+            # compose.production.yaml の host bind:
+            # manager 127.0.0.1:3000->8080 / mcp-proxy 127.0.0.1:8080->8080
             for i in $(seq 1 20); do
               if curl -sf http://localhost:3000/api/health > /dev/null 2>&1 && \
                  curl -sf http://localhost:8080/health > /dev/null 2>&1; then
