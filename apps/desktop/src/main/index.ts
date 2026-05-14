@@ -326,6 +326,25 @@ if (isMcpProxyMode) {
         return buildReauthErrorMessage(connMeta.connectionId);
       };
 
+      // 動的検索: --server <slug> 指定時のみ DB の McpServer.dynamicSearch を反映する。
+      // 有効時は実ツール一覧を AI クライアントに直接公開せず、search/describe/execute の3メタツールだけを公開する。
+      const { createDesktopToolSearchProvider } =
+        await import("./features/tool-search/tool-search.service");
+      const dynamicSearch =
+        serverRecord?.dynamicSearch === true
+          ? {
+              enabled: true,
+              provider: createDesktopToolSearchProvider({
+                serverId: serverRecord.id,
+              }),
+            }
+          : undefined;
+      if (dynamicSearch) {
+        process.stderr.write(
+          `[tumiki-mcp-proxy] 動的検索が有効です (server="${serverSlug}")\n`,
+        );
+      }
+
       await mod.runMcpProxy(configs, {
         onToolCall,
         onStatusChange,
@@ -334,6 +353,7 @@ if (isMcpProxyMode) {
         onUpstreamAuthError,
         disableDefaultFilter,
         enableToonConversion,
+        dynamicSearch,
         onShutdown: async () => {
           await stopAuditLogManagerSyncScheduler();
           await resetAllServerStatus().catch(() => {});

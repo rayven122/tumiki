@@ -22,11 +22,30 @@ vi.mock("electron", () => ({
 }));
 
 vi.mock("../../../shared/utils/logger");
-vi.mock("../mcp.service");
+vi.mock("../mcp.service", () => ({
+  createFromCatalog: vi.fn(),
+  createFromManagerCatalog: vi.fn(),
+  createCustomServer: vi.fn(),
+  createVirtualServer: vi.fn(),
+  getToolsForConnections: vi.fn(),
+  getAllServers: vi.fn(),
+  updateServer: vi.fn(),
+  refreshTools: vi.fn(),
+  deleteServer: vi.fn(),
+  toggleServer: vi.fn(),
+  updateIsPiiMaskingEnabled: vi.fn(),
+  updateIsToonConversionEnabled: vi.fn(),
+  getServerEditDetail: vi.fn(),
+  updateServerConnectionCredentials: vi.fn(),
+}));
+vi.mock("../../tool-search/tool-search.service", () => ({
+  setDynamicSearchEnabled: vi.fn(),
+}));
 
 // テスト対象のインポート（モックの後に行う）
 import { setupMcpIpc } from "../mcp.ipc";
 import * as mcpService from "../mcp.service";
+import * as toolSearchService from "../../tool-search/tool-search.service";
 
 describe("setupMcpIpc", () => {
   beforeEach(() => {
@@ -638,6 +657,92 @@ describe("setupMcpIpc", () => {
     });
   });
 
+  describe("mcp:updateDynamicSearch", () => {
+    test("動的検索を有効化する", async () => {
+      vi.mocked(toolSearchService.setDynamicSearchEnabled).mockResolvedValue({
+        id: 1,
+        dynamicSearch: true,
+      } as Awaited<
+        ReturnType<typeof toolSearchService.setDynamicSearchEnabled>
+      >);
+      const handler = mockIpcHandlers.get("mcp:updateDynamicSearch");
+
+      const result = await handler!({} as IpcMainInvokeEvent, {
+        serverId: 1,
+        enabled: true,
+      });
+
+      expect(result).toBeUndefined();
+      expect(toolSearchService.setDynamicSearchEnabled).toHaveBeenCalledWith(
+        1,
+        true,
+      );
+    });
+
+    test("入力が不正な場合はZodバリデーションエラーになる", async () => {
+      const handler = mockIpcHandlers.get("mcp:updateDynamicSearch");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, {
+          serverId: "invalid",
+          enabled: true,
+        }),
+      ).rejects.toThrow("動的検索設定の更新に失敗しました");
+      expect(toolSearchService.setDynamicSearchEnabled).not.toHaveBeenCalled();
+    });
+
+    test("サービスがエラーを投げた場合はラップして再スローする", async () => {
+      vi.mocked(toolSearchService.setDynamicSearchEnabled).mockRejectedValue(
+        new Error("DB接続エラー"),
+      );
+      const handler = mockIpcHandlers.get("mcp:updateDynamicSearch");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, {
+          serverId: 1,
+          enabled: true,
+        }),
+      ).rejects.toThrow("動的検索設定の更新に失敗しました: DB接続エラー");
+    });
+  });
+
+  describe("mcp:refreshTools", () => {
+    test("ツール一覧を再取得する", async () => {
+      const mockResult = {
+        totalTools: 12,
+      };
+      vi.mocked(mcpService.refreshTools).mockResolvedValue(mockResult);
+      const handler = mockIpcHandlers.get("mcp:refreshTools");
+
+      const result = await handler!({} as IpcMainInvokeEvent, {
+        serverId: 1,
+      });
+
+      expect(result).toStrictEqual(mockResult);
+      expect(mcpService.refreshTools).toHaveBeenCalledWith(1);
+    });
+
+    test("serverId が不正な場合はエラーになる", async () => {
+      const handler = mockIpcHandlers.get("mcp:refreshTools");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, { serverId: 0 }),
+      ).rejects.toThrow("ツール一覧の再取得に失敗しました");
+      expect(mcpService.refreshTools).not.toHaveBeenCalled();
+    });
+
+    test("サービスがエラーを投げた場合はラップして再スローする", async () => {
+      vi.mocked(mcpService.refreshTools).mockRejectedValue(
+        new Error("接続エラー"),
+      );
+      const handler = mockIpcHandlers.get("mcp:refreshTools");
+
+      await expect(
+        handler!({} as IpcMainInvokeEvent, { serverId: 1 }),
+      ).rejects.toThrow("ツール一覧の再取得に失敗しました: 接続エラー");
+    });
+  });
+
   describe("mcp:updateServerConnectionCredentials", () => {
     test("有効な入力で credentials を更新する", async () => {
       vi.mocked(
@@ -708,6 +813,8 @@ describe("setupMcpIpc", () => {
       expect(mockIpcHandlers.has("mcp:toggleServer")).toBe(true);
       expect(mockIpcHandlers.has("mcp:updatePiiMasking")).toBe(true);
       expect(mockIpcHandlers.has("mcp:updateToonConversion")).toBe(true);
+      expect(mockIpcHandlers.has("mcp:updateDynamicSearch")).toBe(true);
+      expect(mockIpcHandlers.has("mcp:refreshTools")).toBe(true);
       expect(mockIpcHandlers.has("mcp:getServerEditDetail")).toBe(true);
       expect(mockIpcHandlers.has("mcp:updateServerConnectionCredentials")).toBe(
         true,

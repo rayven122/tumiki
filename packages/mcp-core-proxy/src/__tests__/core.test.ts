@@ -123,6 +123,53 @@ describe("createProxyCore", () => {
     expect(tools).toHaveLength(1);
   });
 
+  test("dynamicSearch有効時はメタツールのみを返す", async () => {
+    const core = createProxyCore([], mockLogger, {
+      dynamicSearch: {
+        enabled: true,
+        provider: {
+          searchTools: vi.fn(),
+          describeTools: vi.fn(),
+        },
+      },
+    });
+
+    const tools = await core.listTools();
+
+    expect(mockListTools).not.toHaveBeenCalled();
+    expect(tools.map((tool) => tool.name)).toStrictEqual([
+      "search_tools",
+      "describe_tools",
+      "execute_tool",
+    ]);
+  });
+
+  test("dynamicSearchのexecute_toolは既存Aggregatorルーティングへ委譲する", async () => {
+    mockCallTool.mockResolvedValue({
+      content: [{ type: "text", text: "ok" }],
+      isError: false,
+    });
+    const core = createProxyCore([], mockLogger, {
+      dynamicSearch: {
+        enabled: true,
+        provider: {
+          searchTools: vi.fn(),
+          describeTools: vi.fn(),
+        },
+      },
+    });
+
+    const result = await core.callTool("execute_tool", {
+      name: "server__tool1",
+      arguments: { key: "value" },
+    });
+
+    expect(mockCallTool).toHaveBeenCalledWith("server__tool1", {
+      key: "value",
+    });
+    expect(result.content).toHaveLength(1);
+  });
+
   test("callTool()がAggregator経由で正しいサーバーに転送する", async () => {
     mockCallTool.mockResolvedValue({
       content: [{ type: "text", text: "ok" }],

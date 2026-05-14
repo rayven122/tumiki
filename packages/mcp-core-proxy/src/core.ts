@@ -5,12 +5,14 @@ import type {
 } from "./outbound/upstream-pool.js";
 import type {
   CallToolResult,
+  DynamicSearchOptions,
   Logger,
   McpServerConfig,
   McpServerState,
   McpToolInfo,
   ServerStatus,
 } from "./types.js";
+import { createDynamicSearchToolLayer } from "./dynamic-search.js";
 import { createToolAggregator } from "./outbound/tool-aggregator.js";
 import { createUpstreamClient } from "./outbound/upstream-client.js";
 import { createUpstreamPool } from "./outbound/upstream-pool.js";
@@ -35,6 +37,7 @@ export type CreateProxyCoreOptions = {
   resolveAllowedTools?: ResolveAllowedToolsByName;
   onBeforeToolCall?: OnBeforeToolCallByName;
   onUpstreamAuthError?: OnUpstreamAuthErrorByName;
+  dynamicSearch?: DynamicSearchOptions;
 };
 
 /**
@@ -127,7 +130,10 @@ export const createProxyCore = (
   }
 
   // pool.getClients を getter として渡し、listTools/callTool 時に最新のMapを参照する
-  const aggregator = createToolAggregator(() => pool.getClients(), logger);
+  const aggregator = createDynamicSearchToolLayer(
+    createToolAggregator(() => pool.getClients(), logger),
+    options?.dynamicSearch,
+  );
 
   return {
     startAll: () => pool.startAll(),

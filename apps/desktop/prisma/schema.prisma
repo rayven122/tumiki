@@ -85,39 +85,37 @@ model AuthToken {
   expiresAt    DateTime
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-
 }
 
 /// MCPカタログ（プリセットMCPサーバーのテンプレート）
 /// @namespace McpServer
 model McpCatalog {
-  id            Int           @id @default(autoincrement())
+  id             Int           @id @default(autoincrement())
   /// カタログ表示名
-  name          String        @unique
+  name           String        @unique
   /// カタログ説明
-  description   String        @default("")
+  description    String        @default("")
   /// アイコンパス
-  iconPath      String?
+  iconPath       String?
   /// トランスポートタイプ
-  transportType TransportType @default(STDIO)
+  transportType  TransportType @default(STDIO)
   /// STDIO用コマンド
-  command       String?
+  command        String?
   /// STDIO用引数（JSON配列文字列）
-  args          String        @default("[]")
+  args           String        @default("[]")
   /// SSE/Streamable HTTP用URL
-  url           String?
+  url            String?
   /// 必要な設定キー名（STDIO: 環境変数キー / SSE・Streamable HTTP: ヘッダー名、JSON配列文字列）
-  credentialKeys String       @default("[]")
+  credentialKeys String        @default("[]")
   /// 認証タイプ
-  authType      AuthType      @default(NONE)
+  authType       AuthType      @default(NONE)
   /// 公式カタログフラグ
-  isOfficial    Boolean       @default(false)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  isOfficial     Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   /// このカタログから作成された接続一覧
   connections McpConnection[]
-
 }
 
 /// MCP接続（個別のMCPサーバーへの接続設定）
@@ -169,17 +167,17 @@ model McpConnection {
 /// MCP接続の認証情報（暗号化済み credentials を保持し、複数の McpConnection から共有される）
 /// @namespace McpServer
 model McpSecret {
-  id           Int             @id @default(autoincrement())
+  id              Int       @id @default(autoincrement())
   /// 暗号化済み credentials JSON（STDIO: 環境変数 / SSE・Streamable HTTP: HTTPヘッダー / OAuth: トークン）
   /// 必ず encryptToken で暗号化した値を渡す（schema 上のデフォルトを設けると平文 "{}" が紛れ込むため）
-  credentials  String
+  credentials     String
   /// refresh_token が失効しユーザーの手動再認証が必要な状態か。
   /// FATAL なリフレッシュ失敗（invalid_grant 等）を検知したら true、再認証成功でクリア。
   needsReauth     Boolean   @default(false)
   /// 最後に認証エラーを検知した時刻（UI 表示・デバッグ用、TRANSIENT 失敗では更新しない）
   lastAuthErrorAt DateTime?
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   /// この secret を参照している接続一覧（参照カウント0で削除可能）
   connections McpConnection[]
@@ -188,19 +186,19 @@ model McpSecret {
 /// MCPツール（接続が提供するツールの定義・権限管理）
 /// @namespace McpServer
 model McpTool {
-  id                Int     @id @default(autoincrement())
+  id                Int      @id @default(autoincrement())
   /// ツール名（大元のMCPから取得、ルーティングに使用）
   name              String
   /// ツール説明（大元のMCPから取得）
-  description       String  @default("")
+  description       String   @default("")
   /// 入力スキーマ（JSON Schema文字列）
-  inputSchema       String  @default("{}")
+  inputSchema       String   @default("{}")
   /// カスタム表示名（nullなら元のnameを使用）
   customName        String?
   /// カスタム説明（nullなら元のdescriptionを使用）
   customDescription String?
   /// ツールの使用を許可するか
-  isAllowed         Boolean @default(true)
+  isAllowed         Boolean  @default(true)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -208,42 +206,69 @@ model McpTool {
   connectionId Int
   connection   McpConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
 
+  /// 動的検索用のツールembeddingキャッシュ
+  embeddingCaches McpToolEmbeddingCache[]
+
   @@unique([connectionId, name])
 }
 
+/// 動的検索用ツールembeddingキャッシュ
+/// @namespace McpServer
+model McpToolEmbeddingCache {
+  id          Int      @id @default(autoincrement())
+  /// 対象ツール
+  toolId      Int
+  tool        McpTool  @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  /// embeddingモデルID
+  modelId     String
+  /// 検索テキスト生成ロジックのバージョン
+  textVersion Int
+  /// embedding次元数
+  dim         Int
+  /// 検索テキストのSHA-256
+  contentHash String
+  /// Float32Arrayをそのまま保存したBLOB
+  vector      Bytes
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([toolId, modelId, textVersion])
+  @@index([modelId, textVersion])
+}
 
 /// MCPサーバー（仮想・統合サーバー = Proxyエンドポイント）
 /// 1つ以上のMcpConnectionを束ねて1つのMCPサーバーとして公開する
 /// @namespace McpServer
 model McpServer {
-  id           Int          @id @default(autoincrement())
+  id                      Int          @id @default(autoincrement())
   /// サーバー表示名
-  name         String
+  name                    String
   /// URL識別子（小文字・ハイフン区切り）
-  slug         String       @unique
+  slug                    String       @unique
   /// サーバー説明
-  description  String       @default("")
+  description             String       @default("")
   /// サーバーの種類（OFFICIAL = 単独コネクタ / CUSTOM = 仮想MCP）
   /// 仮想MCP（CUSTOM）の接続を新たな仮想MCPの素材として再ネストするのを防ぐためのフラグ
-  serverType   ServerType   @default(OFFICIAL)
+  serverType              ServerType   @default(OFFICIAL)
   /// サーバー状態
-  serverStatus ServerStatus @default(STOPPED)
+  serverStatus            ServerStatus @default(STOPPED)
   /// 有効/無効フラグ（トグル用）
-  isEnabled    Boolean      @default(true)
+  isEnabled               Boolean      @default(true)
   /// PII マスキングを有効化するか（false なら upstream に生 args をそのまま渡す）
-  isPiiMaskingEnabled Boolean @default(true)
+  isPiiMaskingEnabled     Boolean      @default(true)
   /// TOON 変換（レスポンス圧縮）を有効化するか（true なら tools/call の content[].text を TOON エンコードして AI クライアントに返す）
-  isToonConversionEnabled Boolean @default(false)
+  isToonConversionEnabled Boolean      @default(false)
+  /// 動的検索を有効化するか（有効時は AI クライアントにメタツールのみ公開する）
+  dynamicSearch           Boolean      @default(false)
   /// 一覧画面での表示順序
-  displayOrder Int          @default(0)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  displayOrder            Int          @default(0)
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
 
   /// 個別MCP接続一覧
   connections McpConnection[]
   /// 監査ログ一覧
   auditLogs   AuditLog[]
-
 }
 
 /// OAuthクライアント登録キャッシュ（DCR結果）
@@ -273,47 +298,47 @@ model OAuthClient {
 /// 7日以上のレコードは自動削除対象
 /// @namespace McpServer
 model AuditLog {
-  id             Int           @id @default(autoincrement())
+  id              Int                @id @default(autoincrement())
   /// 実行されたツール名
-  toolName       String
+  toolName        String
   /// MCPメソッド（例: "tools/call", "resources/read"）
-  method         String
+  method          String
   /// リクエスト時のトランスポートタイプ
-  transportType  TransportType
+  transportType   TransportType
   /// 実行時間（ミリ秒）
-  durationMs     Int
+  durationMs      Int
   /// 入力データサイズ（バイト）
-  inputBytes     Int           @default(0)
+  inputBytes      Int                @default(0)
   /// 出力データサイズ（バイト）
-  outputBytes    Int           @default(0)
+  outputBytes     Int                @default(0)
   /// 成功/失敗フラグ
-  isSuccess      Boolean       @default(true)
+  isSuccess       Boolean            @default(true)
   /// MCPエラーコード（エラー時のみ）
-  errorCode      Int?
+  errorCode       Int?
   /// エラーメッセージ要約
-  errorSummary   String?
+  errorSummary    String?
   /// 操作の補足情報（例: 引数の概要やリソースパス等）
-  detail         String?
+  detail          String?
   /// PII マスキング検出記録 { summary: { TYPE: { count, tokens } }, maskedArgs: {...} }
   /// summary は type 別の件数とマスク後トークン、maskedArgs は upstream に渡された args 全体
   /// null の場合はフィルタ無効 or 検出なし
-  piiDetections  Json?
+  piiDetections   Json?
   /// 検出時に適用したマスキングポリシー（mask / detect-only / block）
   /// null の場合はフィルタ無効
-  piiPolicy      String?
+  piiPolicy       String?
   /// 管理サーバーへの同期状態
-  syncStatus     AuditLogSyncStatus @default(PENDING)
+  syncStatus      AuditLogSyncStatus @default(PENDING)
   /// 管理サーバーへの同期完了日時
-  syncedAt       DateTime?
+  syncedAt        DateTime?
   /// 管理サーバーへの同期試行回数
-  retryCount     Int                @default(0)
+  retryCount      Int                @default(0)
   /// 最後の同期試行日時
   lastSyncTriedAt DateTime?
-  createdAt      DateTime      @default(now())
+  createdAt       DateTime           @default(now())
 
   /// 対象MCPサーバー
   serverId       Int
-  server         McpServer     @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  server         McpServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
   /// 対象MCP接続名（接続削除後もログで識別可能にするため名前で保持）
   connectionName String?
   /// AIクライアント名（例: "claude-code", "cursor"）
