@@ -7,7 +7,7 @@ export type AiClientInfo = {
   id: string;
   name: string;
   /** ロゴ参照（テーマ別）。無い場合は頭文字プレースホルダ */
-  logoPath?: (theme: string) => string;
+  logoPath?: (theme: "light" | "dark") => string;
 };
 
 type Props = {
@@ -17,7 +17,7 @@ type Props = {
   configSnippet: string;
   /** 設定ファイルのパス表示（ユーザー向け案内） */
   targetPath: string;
-  theme: string;
+  theme: "light" | "dark";
   onClose: () => void;
 };
 

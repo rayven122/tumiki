@@ -29,7 +29,7 @@ type Props = {
   client: AiClient;
   servers: McpServerWithRuntime[];
   launchCommand: McpProxyLaunchCommand | null;
-  theme: string;
+  theme: "light" | "dark";
   port: number;
   onClose: () => void;
 };
