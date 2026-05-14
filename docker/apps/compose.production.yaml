@@ -17,6 +17,8 @@ services:
     image: ghcr.io/rayven122/tumiki-manager:latest
     container_name: tumiki-manager
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     ports:
       # Cloudflare Tunnel ingress は localhost:3000 に接続するため、外部 NIC へ公開しない
       - "127.0.0.1:3000:8080"
@@ -49,6 +51,8 @@ services:
     image: ghcr.io/rayven122/tumiki-mcp-proxy:latest
     container_name: tumiki-mcp-proxy
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     ports:
       # Cloudflare Tunnel ingress は localhost:8080 に接続するため、外部 NIC へ公開しない
       - "127.0.0.1:8080:8080"
@@ -76,6 +80,11 @@ services:
     image: nickfedor/watchtower:1.16.1@sha256:62bec6c1a89e9882970130a311f0ac27faf11f26520b8755ca6a78802a1a6d8f
     container_name: tumiki-watchtower
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
     volumes:
       # TODO: Docker socket proxy を介して必要な API のみに絞る。
       # 暫定運用では digest 固定と label 限定監視で攻撃面を抑える。

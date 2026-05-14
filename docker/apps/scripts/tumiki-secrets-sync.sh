@@ -62,6 +62,11 @@ RUNNING=$(docker compose -f "$COMPOSE_FILE" ps --status running --services 2>/de
 EXPECTED=$(docker compose -f "$COMPOSE_FILE" config --services 2>/dev/null \
   | awk '/^[A-Za-z0-9_.-]+$/ { count++ } END { print count + 0 }')
 
+if [[ "$EXPECTED" -eq 0 ]]; then
+  echo "ERROR: docker compose config returned 0 services; aborting" >&2
+  exit 1
+fi
+
 if [[ "$DIFF" -eq 1 || "$RUNNING" -lt "$EXPECTED" ]]; then
   docker compose -f "$COMPOSE_FILE" up -d --remove-orphans
   echo "compose reconciled (diff=$DIFF, running=${RUNNING}/${EXPECTED})"
