@@ -76,7 +76,7 @@ export const AdminDashboard = (): JSX.Element => {
 
   // テーマ対応の色解決（#fffをcursorColorに差し替え）
   const resolveColor = (color: string): string =>
-    color === "#fff" ? cursorColor : color;
+    color === "#fff" || color === "#ffffff" ? cursorColor : color;
 
   return (
     <div className="space-y-4 p-6">
