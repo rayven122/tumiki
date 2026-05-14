@@ -41,10 +41,8 @@ const useAutoReapplyToast = (): void => {
         if (pending && pending.tools.length > 0) showToast(pending);
       })
       .catch(() => {
-        // 取得失敗時は無視（後段の onAutoReapplied で拾える可能性がある）
+        // 取得失敗時は無視（トーストは補助通知のため）
       });
-    const off = window.electronAPI.aiCodingTelemetry.onAutoReapplied(showToast);
-    return off;
   }, []);
 };
 

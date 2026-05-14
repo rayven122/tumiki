@@ -17,6 +17,13 @@ vi.mock("node:fs", () => ({
   },
 }));
 
+vi.mock("../../../shared/utils/logger", () => ({
+  debug: vi.fn(),
+  error: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+}));
+
 // smol-toml のモック
 const mockParseToml = vi.fn();
 const mockStringifyToml = vi

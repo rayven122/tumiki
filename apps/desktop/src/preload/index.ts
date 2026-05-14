@@ -234,18 +234,6 @@ const api = {
       port: number;
     } | null> =>
       ipcRenderer.invoke("aiCodingTelemetry:getPendingAutoReapplied"),
-    // ポート不一致時の自動再書き込み通知（トースト表示用）
-    onAutoReapplied: (
-      callback: (payload: { tools: AiCodingTool[]; port: number }) => void,
-    ): (() => void) => {
-      const listener = (
-        _event: Electron.IpcRendererEvent,
-        payload: { tools: AiCodingTool[]; port: number },
-      ): void => callback(payload);
-      ipcRenderer.on("aiCodingTelemetry:autoReapplied", listener);
-      return () =>
-        ipcRenderer.removeListener("aiCodingTelemetry:autoReapplied", listener);
-    },
   },
 
   // MCP OAuth認証 API

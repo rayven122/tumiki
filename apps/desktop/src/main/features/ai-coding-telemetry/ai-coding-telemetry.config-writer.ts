@@ -2,6 +2,7 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
+import * as logger from "../../shared/utils/logger";
 import type {
   AiCodingTool,
   ApplyToolSettingsResult,
@@ -86,7 +87,11 @@ const applyToClaudeCode = async (
 
     await writeAtomic(configPath, JSON.stringify(merged, null, 2) + "\n");
     return { success: true, configPath };
-  } catch {
+  } catch (error) {
+    logger.warn("Claude Code テレメトリ設定ファイルの更新に失敗しました", {
+      configPath,
+      error,
+    });
     return { success: false, configPath, errorCode: "WRITE_FAILED" };
   }
 };
@@ -123,7 +128,11 @@ const applyToCodex = async (port: number): Promise<ApplyToolSettingsResult> => {
 
     await writeAtomic(configPath, stringifyToml(merged) + "\n");
     return { success: true, configPath };
-  } catch {
+  } catch (error) {
+    logger.warn("Codex テレメトリ設定ファイルの更新に失敗しました", {
+      configPath,
+      error,
+    });
     return { success: false, configPath, errorCode: "WRITE_FAILED" };
   }
 };

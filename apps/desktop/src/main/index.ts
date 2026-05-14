@@ -616,17 +616,9 @@ if (isMcpProxyMode) {
       // 競合時のみ OS 割り当てにフォールバックし、4318 が再び空けば次回は 4318 に戻る。
       // これにより通常は同じポートに収束し、設定ファイル再書き込み（およびトースト通知）が
       // 最小限に抑えられる。
-      const appStore = await getAppStore();
       const { server, port: otlpPort } = await startOtlpReceiver();
       otlpHttpServer = server;
       setReceiverPort(otlpPort);
-      // 実際にバインドできたポートを保存（フォールバック後も更新する）
-      const currentTelemetry = appStore.get("aiCodingTelemetry");
-      appStore.set("aiCodingTelemetry", {
-        ...currentTelemetry,
-        receiverPort: otlpPort,
-        tools: currentTelemetry?.tools ?? {},
-      });
       // 過去に適用したツールでポートが変わっていれば自動で再書き込みする。
       // OTLP ポートがフォールバックで変わったり、ユーザー設定で変更されても
       // 設定ファイル（~/.claude/settings.json 等）と Tumiki 受信ポートの整合性を保つ。

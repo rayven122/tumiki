@@ -379,16 +379,25 @@ describe("saveToolEnabled", () => {
     );
   });
 
-  test("既存の receiverPort を保持したまま更新する", async () => {
+  test("既存のツール設定を保持したまま更新する", async () => {
     vi.mocked(mockStore.get).mockReturnValue({
-      receiverPort: 4318,
-      tools: {},
+      tools: {
+        "claude-code": {
+          enabled: false,
+          appliedAt: "2026-01-01T00:00:00.000Z",
+          appliedPort: 4318,
+        },
+      },
     });
     await service.saveToolEnabled("claude-code", true);
     const [[, saved]] = vi.mocked(mockStore.set).mock.calls as unknown as [
-      [string, Record<string, unknown>],
+      [string, { tools: { "claude-code": Record<string, unknown> } }],
     ];
-    expect(saved.receiverPort).toStrictEqual(4318);
+    expect(saved.tools["claude-code"]).toMatchObject({
+      enabled: true,
+      appliedAt: "2026-01-01T00:00:00.000Z",
+      appliedPort: 4318,
+    });
   });
 });
 
@@ -407,20 +416,38 @@ describe("applyToolSettings", () => {
     expect(mockStore.set).toHaveBeenCalled();
   });
 
-  test("既存の receiverPort を保持したまま更新する", async () => {
+  test("既存の別ツール設定を保持したまま更新する", async () => {
     vi.mocked(applyOtlpToTool).mockResolvedValue({
       success: true,
       configPath: "/path/to/config",
     });
     vi.mocked(mockStore.get).mockReturnValue({
-      receiverPort: 4318,
-      tools: {},
+      tools: {
+        codex: {
+          enabled: true,
+          appliedAt: "2026-01-01T00:00:00.000Z",
+          appliedPort: 4318,
+        },
+      },
     });
     await service.applyToolSettings({ tool: "claude-code", port: 4318 });
     const [[, saved]] = vi.mocked(mockStore.set).mock.calls as unknown as [
-      [string, Record<string, unknown>],
+      [
+        string,
+        {
+          tools: {
+            "claude-code": Record<string, unknown>;
+            codex: Record<string, unknown>;
+          };
+        },
+      ],
     ];
-    expect(saved.receiverPort).toStrictEqual(4318);
+    expect(saved.tools.codex).toMatchObject({
+      enabled: true,
+      appliedAt: "2026-01-01T00:00:00.000Z",
+      appliedPort: 4318,
+    });
+    expect(saved.tools["claude-code"].appliedPort).toStrictEqual(4318);
   });
 
   test("config-writer が失敗した場合は electron-store を更新しない", async () => {
@@ -441,7 +468,6 @@ describe("applyToolSettings", () => {
 describe("autoReapplyMismatchedPorts", () => {
   test("適用済みツールでポートが異なる場合は再書き込みする", async () => {
     vi.mocked(mockStore.get).mockReturnValue({
-      receiverPort: 5000,
       tools: {
         "claude-code": {
           enabled: true,
