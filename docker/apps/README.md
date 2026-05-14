@@ -9,6 +9,7 @@
 | `compose.yaml`                        | base 定義（`db` / `redis` / `manager` / `mcp-proxy` / `internal-manager` 共通） |
 | `compose.staging.yaml`                | staging 用 override（`minio` 追加、`internal-manager` 環境変数差分）            |
 | `compose.production.yaml`             | **production 専用 standalone 定義**。base は使わず単独で起動する                |
+| `compose.production.verify.yaml`      | 旧 systemd と並行して疎通確認するための一時検証用 compose                       |
 | `.env.example`                        | compose 実行に必要な環境変数のリスト（Infisical 登録の参照用）                  |
 | `scripts/tumiki-secrets-sync.sh`      | VM 上で `infisical export` を実行し `.env` 同期 + compose 再同期するスクリプト  |
 | `systemd/tumiki-secrets-sync.service` | 上記スクリプトを oneshot 実行する systemd unit                                  |
@@ -40,6 +41,7 @@
 │                                                         │
 │  ┌──────────────────────────────────────┐               │
 │  │ tumiki-watchtower (5分ごと :latest)  │               │
+│  │  → docker-socket-proxy 経由で Docker │               │
 │  └──────────────────────────────────────┘               │
 └─────────────────┬─────────────┬─────────────────────────┘
                   │             │
@@ -84,9 +86,31 @@
 WATCHTOWER_NOTIFICATION_URL=slack://hook:T0000/B0000/XXXXXXXX@channel
 ```
 
-Watchtower は Docker socket をマウントするため、侵害時の影響範囲が大きい。`compose.production.yaml` では現在稼働確認済みの `nickfedor/watchtower:1.16.1` を digest 固定し、更新時はタグ差分を確認してから変更する。将来的に権限をさらに絞る場合は Docker socket proxy の導入を検討する。`WATCHTOWER_NOTIFICATION_URL` が空の場合は通知なし (`notify=no`) として稼働することを `tumiki-sakura-prod` の Watchtower ログで確認済み。
+Watchtower は Docker API を操作するため、`compose.production.yaml` では `tecnativa/docker-socket-proxy` を介して Docker socket へのアクセス範囲を絞る。Watchtower 本体は現在稼働確認済みの `nickfedor/watchtower:1.16.1` を digest 固定し、更新時はタグ差分を確認してから変更する。`WATCHTOWER_NOTIFICATION_URL` が空の場合は通知なし (`notify=no`) として稼働することを `tumiki-sakura-prod` の Watchtower ログで確認済み。
 
-GHCR の `tumiki-manager` / `tumiki-mcp-proxy` image は、`tumiki-sakura-prod` 上で Docker 認証設定なしに `docker pull` できることを確認済み。Private package に変更する場合は、Watchtower から参照できる Docker registry 認証情報を追加する。
+GHCR の `tumiki-manager` / `tumiki-mcp-proxy` image は、`tumiki-sakura-prod` 上で Docker 認証設定なしに `docker pull` できることを確認済み。Private package に変更する場合は、VM 上で `docker login ghcr.io` を実行し、生成された Docker config を Watchtower に読ませる。
+
+```yaml
+watchtower:
+  volumes:
+    - /home/ubuntu/.docker/config.json:/config.json:ro
+```
+
+`config.json` は owner / permission を絞り、不要になった credential は GHCR 側で revoke する。
+
+### production verify compose
+
+`compose.production.verify.yaml` は、旧 systemd サービスを止めずに別ポートで image の疎通確認を行うための一時検証用。`restart: "no"`、`127.0.0.1` bind、`SKIP_MIGRATE=true` でリスクを下げているが、本番 `.env` / 本番 DB を共有するため長時間稼働させない。
+
+```bash
+docker compose -f compose.production.verify.yaml up -d
+curl -sf http://localhost:3001/api/health
+curl -sf http://localhost:8082/health
+docker compose -f compose.production.verify.yaml down
+docker compose -f compose.production.verify.yaml ps
+```
+
+検証後は `down` 済みであることを必ず確認する。将来的に検証を頻繁に行う場合は、read-only DB ユーザーまたは staging DB を参照する `.env.verify` に切り替える。
 
 ### image ロールバック
 

@@ -74,22 +74,47 @@ services:
       start_period: 30s
       retries: 3
 
+  docker-socket-proxy:
+    # Watchtower に Docker API の必要範囲だけを公開する。
+    # https://github.com/Tecnativa/docker-socket-proxy
+    image: tecnativa/docker-socket-proxy@sha256:1f3a6f303320723d199d2316a3e82b2e2685d86c275d5e3deeaf182573b47476
+    container_name: tumiki-docker-socket-proxy
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /run
+      - /tmp
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      LOG_LEVEL: warning
+      AUTH: "1"
+      CONTAINERS: "1"
+      IMAGES: "1"
+      INFO: "1"
+      NETWORKS: "1"
+      POST: "1"
+      ALLOW_START: "1"
+      ALLOW_STOP: "1"
+      ALLOW_RESTARTS: "1"
+
   watchtower:
     # containrrr/watchtower は最終リリースが古く Docker API v1.40+ に未対応のため
     # 互換性が維持されている active fork (nickfedor/watchtower) を採用する。
     image: nickfedor/watchtower:1.16.1@sha256:62bec6c1a89e9882970130a311f0ac27faf11f26520b8755ca6a78802a1a6d8f
     container_name: tumiki-watchtower
     restart: unless-stopped
+    depends_on:
+      - docker-socket-proxy
     security_opt:
       - no-new-privileges:true
     read_only: true
     tmpfs:
       - /tmp
-    volumes:
-      # TODO: Docker socket proxy を介して必要な API のみに絞る。
-      # 暫定運用では digest 固定と label 限定監視で攻撃面を抑える。
-      - /var/run/docker.sock:/var/run/docker.sock
     environment:
+      DOCKER_HOST: tcp://docker-socket-proxy:2375
       # ラベル付きコンテナのみ監視対象とする
       WATCHTOWER_LABEL_ENABLE: "true"
       WATCHTOWER_POLL_INTERVAL: ${WATCHTOWER_POLL_INTERVAL:-300}

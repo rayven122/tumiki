@@ -20,6 +20,14 @@ INFISICAL_PATH="${INFISICAL_PATH:-/}"
 : "${INFISICAL_PROJECT_ID:?env not set}"
 
 ENV_FILE="$TUMIKI_DIR/.env"
+LOCK_FILE="$TUMIKI_DIR/.tumiki-secrets-sync.lock"
+
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
+  echo "Another tumiki-secrets-sync instance is running; exiting"
+  exit 0
+fi
+
 NEW_ENV="$(mktemp --tmpdir tumiki-env.XXXXXX)"
 trap 'rm -f "$NEW_ENV"' EXIT
 
@@ -59,9 +67,14 @@ fi
 # 差分が無くても、初期化やクラッシュでアプリコンテナが落ちていた場合に再立ち上げする。
 # watchtower 自体は secrets 変更で再起動不要なため、同時実行時の過剰 reconcile を避ける。
 cd "$TUMIKI_DIR"
-RUNNING=$(docker compose -f "$COMPOSE_FILE" ps --status running --services 2>/dev/null \
+if ! docker info >/dev/null; then
+  echo "ERROR: docker daemon is not running" >&2
+  exit 1
+fi
+
+RUNNING=$(docker compose -f "$COMPOSE_FILE" ps --status running --services \
   | awk '$0 != "watchtower" && NF { count++ } END { print count + 0 }')
-EXPECTED=$(docker compose -f "$COMPOSE_FILE" config --services 2>/dev/null \
+EXPECTED=$(docker compose -f "$COMPOSE_FILE" config --services \
   | awk '$0 != "watchtower" && /^[A-Za-z0-9_.-]+$/ { count++ } END { print count + 0 }')
 
 if [[ "$EXPECTED" -eq 0 ]]; then
