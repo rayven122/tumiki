@@ -94,5 +94,11 @@ describe("getThemeIconUrl", () => {
         getThemeIconUrl("/logos/services/notion.svg?v=1", "light"),
       ).toStrictEqual("/logos/services/notion-light.svg?v=1");
     });
+
+    test("ハッシュフラグメント付きURLのベース名を正しく抽出する", () => {
+      expect(
+        getThemeIconUrl("/logos/services/notion.svg#icon", "light"),
+      ).toStrictEqual("/logos/services/notion-light.svg#icon");
+    });
   });
 });
