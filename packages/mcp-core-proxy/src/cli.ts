@@ -26,6 +26,11 @@ import {
 } from "./security/config.js";
 import { allCustomPatterns } from "./security/patterns/index.js";
 import { createRedactionFilter } from "./security/redaction-filter.js";
+import {
+  createOrphanWatchdog,
+  createShutdownTimer,
+  isOrphanedByPpid,
+} from "./shutdown-guard.js";
 import { stderrLogger as logger } from "./stderr-logger.js";
 
 // PII マスキングフィルタをデフォルト設定で構築（呼び出し側で hooks.filter を渡せば上書き可能）
@@ -121,12 +126,34 @@ export const runMcpProxy = async (
 
   logger.info("tumiki-mcp-proxy の起動が完了しました");
 
-  // シグナルでクリーンシャットダウン（SIGINT+SIGTERM同時受信の二重実行を防止）
+  // 親プロセス（AI クライアント）終了時にゾンビ化しないための保証:
+  //   1. shutdown ハードタイムアウト ... shutdown 内部の hang を 5 秒で打ち切って強制 exit
+  //   2. orphan watchdog ... 親プロセス死亡（ppid===1）を 5 秒間隔で検知してシャットダウン起動
+  // 詳しくは shutdown-guard.ts の冒頭コメント参照。
+  const SHUTDOWN_FORCE_EXIT_MS = 5_000;
+  const ORPHAN_CHECK_INTERVAL_MS = 5_000;
+
   let shuttingDown = false;
+  let orphanWatchdog: ReturnType<typeof createOrphanWatchdog> | null = null;
   const shutdown = (): void => {
     if (shuttingDown) return;
     shuttingDown = true;
     logger.info("シャットダウン中...");
+
+    // shutdown 開始後は watchdog を止める（多重発火防止）
+    orphanWatchdog?.stop();
+
+    // shutdown 処理が hang しても確実に exit する保険
+    const forceExitTimer = createShutdownTimer({
+      timeoutMs: SHUTDOWN_FORCE_EXIT_MS,
+      onTimeout: () => {
+        process.stderr.write(
+          `[tumiki-mcp-proxy] シャットダウンが ${String(SHUTDOWN_FORCE_EXIT_MS)}ms 以内に完了しなかったため強制終了します\n`,
+        );
+        process.exit(1);
+      },
+    });
+
     let exitCode = 0;
     void core
       .stopAll()
@@ -143,12 +170,16 @@ export const runMcpProxy = async (
         exitCode = 1;
       })
       .finally(() => {
+        forceExitTimer.cancel();
         process.exit(exitCode);
       });
   };
 
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
+  // SIGHUP（ターミナル切断・親プロセス終了の伝統的シグナル）でも shutdown する。
+  // Node 既定は exit(0) だが、後段の DB クローズ等が走らないため明示的に shutdown を呼ぶ。
+  process.on("SIGHUP", shutdown);
 
   // stdin EOF（AI クライアントが接続を切断）でシャットダウン。
   // StdioClientTransport.close() は SIGTERM より先に stdin.end() を呼ぶため、
@@ -158,6 +189,19 @@ export const runMcpProxy = async (
   process.stdin.once("end", () => {
     logger.info("stdin EOF を検知。シャットダウンします");
     shutdown();
+  });
+
+  // 親プロセスが SIGTERM を子に伝播しなかった or AI クライアントがクラッシュした等で
+  // 上記 signal / stdin EOF どれも飛んでこないケースの保険。
+  orphanWatchdog = createOrphanWatchdog({
+    intervalMs: ORPHAN_CHECK_INTERVAL_MS,
+    isOrphaned: isOrphanedByPpid,
+    onOrphaned: () => {
+      process.stderr.write(
+        "[tumiki-mcp-proxy] 親プロセス終了を検知（ppid===1）。シャットダウンします\n",
+      );
+      shutdown();
+    },
   });
 };
 
