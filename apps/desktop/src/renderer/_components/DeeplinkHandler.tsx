@@ -25,7 +25,7 @@ export const DeeplinkHandler = (): JSX.Element | null => {
         deeplinkInFlight.current = true;
         navigate(`/tools/${String(serverId)}`);
         toast.success(
-          "OAuth再認証ブラウザを起動しました。認証完了後にこの画面へ戻ってください",
+          "OAuth再認証ブラウザを起動しています。認証完了後にこの画面へ戻ってください",
         );
       },
     );

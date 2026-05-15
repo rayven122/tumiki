@@ -292,7 +292,7 @@ if (isMcpProxyMode) {
       // LLM 向けの指示文も含めず、ユーザーに直接見せても問題ない 1 行にとどめる
       // （Markdown リンク + 生 URL の両併記でクライアント差を吸収）。
       const buildReauthErrorMessage = (connectionId: number): string => {
-        const url = `tumiki://reauth?connectionId=${String(connectionId)}`;
+        const url = `tumiki://reauth?connectionId=${connectionId}`;
         return `OAuthトークンが失効しています。再認証してください: [Tumiki Desktopで再認証](${url}) (${url})`;
       };
 
@@ -521,23 +521,28 @@ if (isMcpProxyMode) {
       );
       sendToWindow(
         "oauth:reauthError",
-        "[UNKNOWN] 再認証マネージャーが初期化されていません",
+        "再認証マネージャーが初期化されていません",
       );
       return;
     }
 
     // serverId を引いて renderer に「この詳細画面に飛んで」と伝える。
-    // 接続が削除されている等で見つからない場合でも、OAuth フロー側で
-    // 同じバリデーションが走ってエラーが返るので、ここでは中断せず進める。
+    // 接続が削除されている場合はユーザーへエラー通知して早期 return する
+    // （後続の OAuth でも同様にエラーになるが、ユーザー向けの文言を明示するため）。
     try {
       const db = await getDb();
       const conn = await findConnectionByIdWithServer(db, connectionId);
-      if (conn) {
-        sendToWindow("mcp:reauthDeeplink", {
-          connectionId,
-          serverId: conn.serverId,
-        });
+      if (!conn) {
+        sendToWindow(
+          "oauth:reauthError",
+          "接続情報が見つかりません。Tumiki Desktopで該当のコネクタを確認してください",
+        );
+        return;
       }
+      sendToWindow("mcp:reauthDeeplink", {
+        connectionId,
+        serverId: conn.serverId,
+      });
     } catch (error) {
       logger.warn(
         "Failed to resolve serverId for reauth deep link (continuing OAuth)",
@@ -563,7 +568,7 @@ if (isMcpProxyMode) {
       });
       for (const win of BrowserWindow.getAllWindows()) {
         if (!win.isDestroyed()) {
-          win.webContents.send("oauth:reauthError", `[UNKNOWN] ${message}`);
+          win.webContents.send("oauth:reauthError", message);
         }
       }
     }

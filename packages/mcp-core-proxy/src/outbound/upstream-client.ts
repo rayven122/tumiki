@@ -353,7 +353,7 @@ export const createUpstreamClient = (
           },
         );
       }
-      if (blockMessage) {
+      if (blockMessage !== null) {
         throw new Error(blockMessage);
       }
     }
