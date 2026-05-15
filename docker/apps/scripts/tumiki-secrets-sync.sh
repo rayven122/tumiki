@@ -73,7 +73,7 @@ fi
 
 # === 差分検知 ===
 DIFF=0
-if [[ ! -f "$ENV_FILE" ]] || ! diff -q <(sort "$NEW_ENV") <(sort "$ENV_FILE") >/dev/null 2>&1; then
+if [[ ! -f "$ENV_FILE" ]] || ! cmp -s "$NEW_ENV" "$ENV_FILE"; then
   install -m 600 "$NEW_ENV" "$ENV_FILE"
   DIFF=1
 fi
@@ -107,8 +107,13 @@ if [[ "$EXPECTED" -eq 0 ]]; then
 fi
 
 if [[ "$DIFF" -eq 0 && "$RUNNING" -lt "$EXPECTED" ]]; then
-  # Watchtower の更新中は一時的に running 数が減るため、短く待って再確認する。
-  sleep "$WATCHTOWER_RECONCILE_GRACE_SEC"
+  # Watchtower の更新中は一時的に running 数が減るため、猶予内で段階的に再確認する。
+  ELAPSED=0
+  while [[ "$RUNNING" -lt "$EXPECTED" && "$ELAPSED" -lt "$WATCHTOWER_RECONCILE_GRACE_SEC" ]]; do
+    sleep 10
+    ELAPSED=$((ELAPSED + 10))
+    RUNNING=$(count_running_services)
+  done
   RUNNING=$(count_running_services)
 fi
 

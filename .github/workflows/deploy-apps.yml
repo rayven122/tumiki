@@ -98,7 +98,7 @@ jobs:
       - name: ✅ Verify health endpoints
         run: |
           ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash << 'HEALTHCHECK'
-            for i in $(seq 1 20); do
+            for i in $(seq 1 30); do
               if curl -sf http://localhost:8080/api/health > /dev/null 2>&1 && \
                  curl -sf http://localhost:8081/health > /dev/null 2>&1 && \
                  curl -sf http://localhost:3100/api/health > /dev/null 2>&1 && \
@@ -109,7 +109,7 @@ jobs:
                 echo "=== MinIO ===" && curl -sf http://localhost:9000/minio/health/live
                 exit 0
               fi
-              echo "Waiting... ($i/20)" && sleep 5
+              echo "Waiting... ($i/30)" && sleep 5
             done
             echo "Timeout: コンテナが起動しませんでした"
             cd ~/tumiki && docker compose logs --tail=50
@@ -184,14 +184,14 @@ jobs:
           ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash << 'HEALTHCHECK'
             # compose.production.yaml の host bind:
             # manager 127.0.0.1:3000->8080 / mcp-proxy 127.0.0.1:8080->8080
-            for i in $(seq 1 20); do
+            for i in $(seq 1 30); do
               if curl -sf http://localhost:3000/api/health > /dev/null 2>&1 && \
                  curl -sf http://localhost:8080/health > /dev/null 2>&1; then
                 echo "=== Manager ===" && curl -sf http://localhost:3000/api/health | jq .
                 echo "=== MCP Proxy ===" && curl -sf http://localhost:8080/health | jq .
                 exit 0
               fi
-              echo "Waiting... ($i/20)" && sleep 5
+              echo "Waiting... ($i/30)" && sleep 5
             done
             echo "Timeout: コンテナが起動しませんでした"
             cd ~/tumiki && docker compose -f compose.production.yaml logs --tail=50

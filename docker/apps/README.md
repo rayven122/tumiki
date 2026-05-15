@@ -109,7 +109,7 @@ watchtower:
 
 ### production verify compose
 
-`compose.production.verify.yaml` は、旧 systemd サービスを止めずに別ポートで image の疎通確認を行うための一時検証用。`restart: "no"`、`127.0.0.1` bind、`SKIP_MIGRATE=true` でリスクを下げているが、本番 `.env` / 本番 DB を共有する。migration は抑止されるがアプリロジックからの本番 DB 書き込みは防げないため、短時間の health check だけに使う。
+`compose.production.verify.yaml` は、旧 systemd サービスを止めずに別ポートで image の疎通確認を行うための一時検証用。`restart: "no"`、`127.0.0.1` bind、`SKIP_MIGRATE=true` でリスクを下げているが、本番 `.env` / 本番 DB を共有する。migration は抑止されるがアプリロジックからの本番 DB 書き込みは防げないため、短時間の health check だけに使う。Docker Compose への本番切替確認が終わったら、この verify compose は削除する。
 
 ```bash
 docker compose -f compose.production.verify.yaml up -d

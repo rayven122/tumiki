@@ -1,5 +1,8 @@
 # 検証用 standalone compose（旧 systemd と並行稼働して動作確認するため）
 #
+# DEPRECATED: Docker Compose 移行完了後に削除する一時ファイル。
+# マージ後の本番切替確認でのみ使用し、継続運用には使わない。
+#
 # 旧 systemd は host:3000 (manager) / host:8080 (mcp-proxy) で稼働中のため、
 # 検証用は別ポート (127.0.0.1:3001 / 127.0.0.1:8082) で起動する。Cloudflare Tunnel ingress
 # は触らないため外部疎通は発生しない。

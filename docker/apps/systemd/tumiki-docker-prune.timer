@@ -2,8 +2,8 @@
 Description=Weekly Tumiki Docker image prune
 
 [Timer]
-# Watchtower が残した未使用 image を週次で削除する。
-OnCalendar=Sun 04:00
+# Watchtower が残した未使用 image を週次で削除する（Asia/Tokyo）。
+OnCalendar=Sun 04:00 Asia/Tokyo
 RandomizedDelaySec=30min
 Persistent=true
 Unit=tumiki-docker-prune.service
