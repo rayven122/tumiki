@@ -107,7 +107,7 @@ describe("getThemeIconUrl", () => {
       ).toStrictEqual("/logos/services/attio-light.svg");
     });
 
-    test("ドットを含むベース名は最後の拡張子のみ変換する", () => {
+    test("ドットを含むベース名はセットにないためそのまま返す", () => {
       expect(
         getThemeIconUrl("/logos/services/my.service.svg", "light"),
       ).toStrictEqual("/logos/services/my.service.svg");
