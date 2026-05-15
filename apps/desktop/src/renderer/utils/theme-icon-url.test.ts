@@ -100,5 +100,17 @@ describe("getThemeIconUrl", () => {
         getThemeIconUrl("/logos/services/notion.svg#icon", "light"),
       ).toStrictEqual("/logos/services/notion-light.svg#icon");
     });
+
+    test("既にバリアントサフィックス付きのURLは二重変換されない", () => {
+      expect(
+        getThemeIconUrl("/logos/services/notion-light.svg", "light"),
+      ).toStrictEqual("/logos/services/notion-light.svg");
+    });
+
+    test("ドットを含むベース名は最後の拡張子のみ変換する", () => {
+      expect(
+        getThemeIconUrl("/logos/services/my.service.svg", "light"),
+      ).toStrictEqual("/logos/services/my.service.svg");
+    });
   });
 });

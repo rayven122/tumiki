@@ -48,14 +48,14 @@ export const AiClientInstallModal = ({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  const handleCopy = () => {
+  const handleCopy = (): void => {
     void navigator.clipboard.writeText(configSnippet).then(() => {
       setCopied(true);
       timerRef.current = setTimeout(() => setCopied(false), 1500);
     });
   };
 
-  const handleInstall = () => {
+  const handleInstall = (): void => {
     // Phase 2: 各 AI クライアント設定ファイルへの自動書き込み（未実装）
     toast.success("設定ファイルへの自動書き込みは近日対応予定");
     onClose();
