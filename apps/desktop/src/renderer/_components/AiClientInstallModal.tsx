@@ -17,7 +17,6 @@ type Props = {
   configSnippet: string;
   /** 設定ファイルのパス表示（ユーザー向け案内） */
   targetPath: string;
-  theme: "light" | "dark";
   onClose: () => void;
 };
 
@@ -26,7 +25,6 @@ export const AiClientInstallModal = ({
   serverName,
   configSnippet,
   targetPath,
-  theme,
   onClose,
 }: Props): JSX.Element => {
   const [copied, setCopied] = useState(false);
@@ -61,7 +59,7 @@ export const AiClientInstallModal = ({
     onClose();
   };
 
-  const logo = client.logoPath?.(theme);
+  const logo = client.logoPath?.("light");
 
   return (
     <div
@@ -80,7 +78,7 @@ export const AiClientInstallModal = ({
         <div className="mb-5 flex items-start justify-between">
           <div className="flex items-center gap-3">
             {logo ? (
-              <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
+              <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-zinc-100">
                 <img
                   src={logo}
                   alt={client.name}
@@ -88,7 +86,7 @@ export const AiClientInstallModal = ({
                 />
               </div>
             ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-100 text-sm font-bold text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-100 text-sm font-bold text-zinc-400 dark:text-zinc-500">
                 {client.name.charAt(0)}
               </div>
             )}

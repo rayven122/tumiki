@@ -1,7 +1,6 @@
 import type { JSX } from "react";
 import { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
-import { useAtomValue } from "jotai";
 import {
   ArrowLeft,
   Server,
@@ -16,7 +15,8 @@ import {
   KeyRound,
   AlertTriangle,
 } from "lucide-react";
-import { themeAtom, reauthCompletedSignalAtom } from "../store/atoms";
+import { useAtomValue } from "jotai";
+import { reauthCompletedSignalAtom } from "../store/atoms";
 import { AI_CLIENTS, type AiClient } from "../data/ai-clients";
 import { useMcpProxyLaunchCommand } from "../hooks/useMcpProxyLaunchCommand";
 import { buildMcpSnippet } from "../utils/mcp-snippet";
@@ -191,7 +191,6 @@ const SAMPLE_TOOLS: DisplayTool[] = [
 ];
 
 export const ToolDetail = (): JSX.Element => {
-  const theme = useAtomValue(themeAtom);
   // deeplink 経由の再認証完了シグナル。変化したら getDetail を再フェッチして needsReauth バナーを更新する。
   const reauthSignal = useAtomValue(reauthCompletedSignalAtom);
   const { toolId } = useParams<{ toolId: string }>();
@@ -933,7 +932,7 @@ export const ToolDetail = (): JSX.Element => {
             </div>
             <div className="flex-1 space-y-1 overflow-y-auto pr-1">
               {AI_CLIENTS.map((client) => {
-                const logo = client.logoPath?.(theme);
+                const logo = client.logoPath?.("light");
                 return (
                   <button
                     key={client.id}
@@ -1218,7 +1217,6 @@ export const ToolDetail = (): JSX.Element => {
           serverName={server.name}
           configSnippet={buildConfigSnippet()}
           targetPath={selectedClient.configTargetPath}
-          theme={theme}
           onClose={() => setSelectedClient(null)}
         />
       )}
