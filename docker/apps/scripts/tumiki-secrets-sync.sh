@@ -38,6 +38,13 @@ trap 'rm -f "$NEW_ENV"' EXIT
 # === 認証 ===
 # Universal Auth の Client ID / Secret は環境変数から読み込ませる。
 # TOKEN は export しない bash 変数として保持し、infisical export の子プロセスにだけ渡す。
+XTRACE_WAS_ENABLED=0
+case "$-" in
+  *x*)
+    XTRACE_WAS_ENABLED=1
+    set +x
+    ;;
+esac
 TOKEN="$(infisical login \
   --method=universal-auth \
   --domain="$INFISICAL_API_URL" \
@@ -54,6 +61,9 @@ INFISICAL_TOKEN="$TOKEN" infisical export \
   --projectId="$INFISICAL_PROJECT_ID" \
   > "$NEW_ENV"
 unset TOKEN
+if [[ "$XTRACE_WAS_ENABLED" -eq 1 ]]; then
+  set -x
+fi
 
 # 空応答ガード: CLI バグや一時障害で .env を空にしてサービス停止しないようにする
 if [[ ! -s "$NEW_ENV" ]]; then

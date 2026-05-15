@@ -5,6 +5,15 @@ Requires=docker.service
 
 [Service]
 Type=oneshot
+User=ubuntu
+Group=ubuntu
+SupplementaryGroups=docker
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateDevices=yes
+RestrictSUIDSGID=yes
 # Watchtower cleanup は docker-socket-proxy の DELETE 権限を開けないため無効化している。
 # 古い未使用 image は VM 側の Docker CLI で低頻度に削除する。
 ExecStart=/usr/bin/docker image prune -f
