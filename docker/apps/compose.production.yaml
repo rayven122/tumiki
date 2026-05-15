@@ -10,6 +10,14 @@
 #   - PostgreSQL は外部ホストを使用（DATABASE_URL で接続）
 #   - GHCR の :latest はリリースタグ (v*) push でのみ更新される
 #   - Watchtower が :latest の digest 変化を監視し、自動 pull + 再起動
+name: tumiki
+
+x-default-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   manager:
     # WARNING: image タグを固定してロールバックする場合は Watchtower を先に停止する
@@ -19,6 +27,12 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1g
     ports:
       # Cloudflare Tunnel ingress は localhost:3000 に接続するため、外部 NIC へ公開しない
       - "127.0.0.1:3000:8080"
@@ -55,6 +69,12 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "0.75"
+          memory: 768m
     ports:
       # Cloudflare Tunnel ingress は localhost:8080 に接続するため、外部 NIC へ公開しない
       - "127.0.0.1:8080:8080"
@@ -81,12 +101,19 @@ services:
   docker-socket-proxy:
     # Watchtower に Docker API の必要範囲だけを公開する。
     # https://github.com/Tecnativa/docker-socket-proxy
+    # digest-only pin: 更新時は upstream の release/changelog を確認して digest を差し替える。
     image: tecnativa/docker-socket-proxy@sha256:1f3a6f303320723d199d2316a3e82b2e2685d86c275d5e3deeaf182573b47476
     container_name: tumiki-docker-socket-proxy
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
     read_only: true
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256m
     tmpfs:
       - /run
       - /tmp
@@ -99,6 +126,8 @@ services:
       CONTAINERS: "1"
       IMAGES: "1"
       INFO: "1"
+      # Watchtower が image pull 後にコンテナを再作成するため POST /containers/create が必要。
+      # DELETE は許可せず、start/stop/restart 系のみ ALLOW_* で明示許可する。
       POST: "1"
       ALLOW_START: "1"
       ALLOW_STOP: "1"
@@ -130,6 +159,12 @@ services:
     security_opt:
       - no-new-privileges:true
     read_only: true
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128m
     tmpfs:
       - /tmp
     networks:
@@ -142,6 +177,7 @@ services:
       WATCHTOWER_LABEL_ENABLE: "true"
       WATCHTOWER_POLL_INTERVAL: ${WATCHTOWER_POLL_INTERVAL:-300}
       # docker-socket-proxy で DELETE を許可しないため、image prune は別運用で実施する
+      # tumiki-sakura-prod では DELETE なしで image 更新が成功することを確認済み
       WATCHTOWER_CLEANUP: "false"
       WATCHTOWER_INCLUDE_RESTARTING: "false"
       WATCHTOWER_NOTIFICATION_REPORT: "true"

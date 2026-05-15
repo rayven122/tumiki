@@ -9,7 +9,6 @@
 | `compose.yaml`                        | base 定義（`db` / `redis` / `manager` / `mcp-proxy` / `internal-manager` 共通） |
 | `compose.staging.yaml`                | staging 用 override（`minio` 追加、`internal-manager` 環境変数差分）            |
 | `compose.production.yaml`             | **production 専用 standalone 定義**。base は使わず単独で起動する                |
-| `compose.production.verify.yaml`      | 旧 systemd と並行して疎通確認するための一時検証用 compose                       |
 | `.env.example`                        | compose 実行に必要な環境変数のリスト（Infisical 登録の参照用）                  |
 | `scripts/tumiki-secrets-sync.sh`      | VM 上で `infisical export` を実行し `.env` 同期 + compose 再同期するスクリプト  |
 | `systemd/tumiki-secrets-sync.service` | 上記スクリプトを oneshot 実行する systemd unit                                  |
@@ -86,11 +85,15 @@
 WATCHTOWER_NOTIFICATION_URL=slack://hook:T0000/B0000/XXXXXXXX@channel
 ```
 
-Watchtower は Docker API を操作するため、`compose.production.yaml` では `tecnativa/docker-socket-proxy` を介して Docker socket へのアクセス範囲を絞る。Watchtower 本体は現在稼働確認済みの `nickfedor/watchtower:1.16.1` を digest 固定し、更新時はタグ差分を確認してから変更する。`WATCHTOWER_NOTIFICATION_URL` が空の場合は通知なし (`notify=no`) として稼働することを `tumiki-sakura-prod` の Watchtower ログで確認済み。
+Watchtower は Docker API を操作するため、`compose.production.yaml` では `tecnativa/docker-socket-proxy` を介して Docker socket へのアクセス範囲を絞る。Watchtower 本体は現在稼働確認済みの `nickfedor/watchtower:1.16.1` を digest 固定し、更新時はタグ差分を確認してから変更する。`nickfedor/watchtower` を更新する場合は、少なくとも四半期に 1 回 fork の upstream tracking 状況と changelog を確認し、必要に応じて digest を差し替える。`containrrr/watchtower` 側の upstream が再び active になった場合は fork 継続可否も同時に見直す。`WATCHTOWER_NOTIFICATION_URL` が空の場合は通知なし (`notify=no`) として稼働することを `tumiki-sakura-prod` の Watchtower ログで確認済み。
 
 `docker-socket-proxy` は `socket-proxy` internal network に隔離し、`manager` / `mcp-proxy` からは到達できない。Watchtower は GHCR と通知先へ外向き通信するため `app` network にも参加する。`DELETE` は許可していないため、Watchtower の image cleanup は無効化している。ディスク使用量は別途 `docker image prune` などの運用で管理する。
 
-長期運用では、VM 側の `tumiki-docker-prune.timer` で週次 prune する。
+`docker-socket-proxy` は Docker API レベルで label filter を強制しないため、production VM は tumiki 専用とし、同一 Docker daemon 上に tumiki 以外の継続運用コンテナを配置しない。別用途のコンテナが必要になった場合は VM / Docker daemon を分離し、Watchtower の操作範囲を共有しない。
+
+production の app image は Watchtower 自動更新のため `ghcr.io/rayven122/tumiki-manager:latest` / `tumiki-mcp-proxy:latest` を追従する。`:latest` は `docker-publish.yml` のリリースタグ (`v*`) push でのみ更新される前提のため、GHCR package の write 権限と repository tag protection を変更する場合はこの運用前提も再確認する。
+
+長期運用では、VM 側の `tumiki-docker-prune.timer` で週次 prune する。prune は Docker image の `org.opencontainers.image.source=https://github.com/rayven122/tumiki` label で絞り込み、同一 VM 上の tumiki 以外の dangling image は対象にしない。`docker image prune` は dangling image のみを削除するため、明示タグ付きの古い image が残っていないかは定期的に `docker image ls` で確認する。
 
 ```bash
 sudo systemctl enable --now tumiki-docker-prune.timer
@@ -106,20 +109,6 @@ watchtower:
 ```
 
 `config.json` は owner / permission を絞り、不要になった credential は GHCR 側で revoke する。
-
-### production verify compose
-
-`compose.production.verify.yaml` は、旧 systemd サービスを止めずに別ポートで image の疎通確認を行うための一時検証用。`restart: "no"`、`127.0.0.1` bind、`SKIP_MIGRATE=true` でリスクを下げているが、本番 `.env` / 本番 DB を共有する。migration は抑止されるがアプリロジックからの本番 DB 書き込みは防げないため、短時間の health check だけに使う。Docker Compose への本番切替確認が終わったら、この verify compose は削除する。
-
-```bash
-docker compose -f compose.production.verify.yaml up -d
-curl -sf http://localhost:3001/api/health
-curl -sf http://localhost:8082/health
-docker compose -f compose.production.verify.yaml down
-docker compose -f compose.production.verify.yaml ps
-```
-
-検証後は `down` 済みであることを必ず確認する。将来的に検証を頻繁に行う場合は、read-only DB ユーザーまたは staging DB を参照する `.env.verify` に切り替える。
 
 ### image ロールバック
 
@@ -155,9 +144,9 @@ docker compose -f compose.production.yaml up -d --no-deps manager mcp-proxy
 
 ```bash
 ssh tumiki-sakura-prod
-# 本番環境では Docker 公式 apt リポジトリ経由のインストールを推奨:
-# https://docs.docker.com/engine/install/ubuntu/
-curl -fsSL https://get.docker.com | sh
+# systemd timer の timezone 指定に systemd 248+ が必要なため Ubuntu 22.04+ を前提にする
+# 本番環境では Docker 公式 apt リポジトリ経由でインストールする:
+#   https://docs.docker.com/engine/install/ubuntu/
 sudo usermod -aG docker $USER
 sudo apt-get install -y docker-compose-plugin
 # 反映のため一度ログアウトして入り直す
@@ -191,17 +180,11 @@ EOF
 # 権限確認 (-rw-r----- 1 root ubuntu)
 ls -la /etc/infisical/agent.env
 
-# 動作テスト
-set -a; source /etc/infisical/agent.env; set +a
-TOKEN=$(infisical login --method=universal-auth \
-  --domain="$INFISICAL_API_URL" \
-  --plain --silent)
-INFISICAL_TOKEN="$TOKEN" infisical export --env=prod --path=/ --format=dotenv \
-  --domain="$INFISICAL_API_URL" \
-  --projectId="$INFISICAL_PROJECT_ID" | wc -l
+# ここでは配置と権限だけ確認する。クレデンシャルを対話シェルへ source しない。
+# 動作テストは systemd unit 配置後の「初回 secrets 同期 + コンテナ起動」で実施する。
 ```
 
-`> 0` 行が出ればOK。`Project ID is required when using machine identity` が出る場合は `INFISICAL_PROJECT_ID` の確認、`Invalid credentials` の場合は `INFISICAL_API_URL` または client-id/secret を見直す。
+`Project ID is required when using machine identity` が出る場合は `INFISICAL_PROJECT_ID` の確認、`Invalid credentials` の場合は `INFISICAL_API_URL` または client-id/secret を見直す。
 
 本番 VM では `infisical version 0.43.79` で動作確認済み。同等以上の CLI を利用する。
 
@@ -216,7 +199,7 @@ scp docker/apps/compose.production.yaml tumiki-sakura-prod:~/tumiki/
 
 ### 4. secrets-sync スクリプト + systemd unit 配置
 
-`tumiki-secrets-sync.service` は `User=ubuntu` / `Group=ubuntu` を前提にしている。別ユーザーで運用する場合は unit 内のユーザー名、`Environment=HOME`、`Environment=TUMIKI_DIR`、および `/etc/infisical/agent.env` の group ownership を実環境に合わせて変更する。
+`tumiki-secrets-sync.service` は `User=ubuntu` / `Group=ubuntu` を前提にしている。別ユーザーで運用する場合は unit 内のユーザー名、`Environment=HOME`、`Environment=TUMIKI_DIR`、および `/etc/infisical/agent.env` の group ownership を実環境に合わせて変更する。`SupplementaryGroups=docker` は Docker socket への書き込み権限を持つため実質 root-equivalent だが、この service は VM 上で `docker compose up -d` を実行するため必要。
 
 ```bash
 # ローカルから
@@ -254,6 +237,7 @@ sudo systemctl stop tumiki-manager tumiki-mcp-proxy
 # 手動で初回同期実行（.env 生成 + compose up -d）
 sudo systemctl start tumiki-secrets-sync.service
 sudo systemctl status --no-pager tumiki-secrets-sync.service
+sudo journalctl -u tumiki-secrets-sync.service --no-pager -n 20
 ```
 
 `active (exited)` で終了し、`~/tumiki/.env` が生成されてコンテナが起動していれば成功。
@@ -314,3 +298,5 @@ docker compose -f compose.production.yaml up -d
 # Watchtower のログ
 docker logs -f tumiki-watchtower
 ```
+
+staging ではデプロイ後に VM 上の `.env` を削除する設計のため、staging で `docker compose up -d` を手動実行する場合は GitHub Actions と同じ `.env` を `~/tumiki/.env` に再配置してから実行する。production は `tumiki-secrets-sync.service` が `.env` を管理するため、手動 compose 操作前に `sudo systemctl start tumiki-secrets-sync.service` を実行する。

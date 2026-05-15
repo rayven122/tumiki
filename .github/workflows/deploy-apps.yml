@@ -74,8 +74,7 @@ jobs:
 
       - name: 📤 Transfer compose files and .env
         run: |
-          # 前回 cleanup が失敗していた場合に備えて既存 .env を削除（リカバリ）
-          ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" "mkdir -p ~/tumiki && rm -f ~/tumiki/.env"
+          ssh -o ConnectTimeout=30 -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" "mkdir -p ~/tumiki"
           scp -i ~/.ssh/id_ed25519 docker/apps/compose.yaml "${SSH_USER}@${SSH_HOST}:~/tumiki/compose.yaml"
           scp -i ~/.ssh/id_ed25519 docker/apps/compose.staging.yaml "${SSH_USER}@${SSH_HOST}:~/tumiki/compose.staging.yaml"
           # install -m 600 でファイル作成と権限設定をアトミックに実施（scp + chmod のウィンドウを排除）
@@ -98,7 +97,7 @@ jobs:
       - name: ✅ Verify health endpoints
         run: |
           ssh -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" bash << 'HEALTHCHECK'
-            for i in $(seq 1 30); do
+            for i in $(seq 1 40); do
               if curl -sf http://localhost:8080/api/health > /dev/null 2>&1 && \
                  curl -sf http://localhost:8081/health > /dev/null 2>&1 && \
                  curl -sf http://localhost:3100/api/health > /dev/null 2>&1 && \
@@ -109,7 +108,7 @@ jobs:
                 echo "=== MinIO ===" && curl -sf http://localhost:9000/minio/health/live
                 exit 0
               fi
-              echo "Waiting... ($i/30)" && sleep 5
+              echo "Waiting... ($i/40)" && sleep 5
             done
             echo "Timeout: コンテナが起動しませんでした"
             cd ~/tumiki && docker compose logs --tail=50
@@ -156,8 +155,10 @@ jobs:
 
       - name: ⚠️ Warn ignored image tag
         if: inputs.image_tag != ''
+        env:
+          IMAGE_TAG_INPUT: ${{ inputs.image_tag }}
         run: |
-          echo "::warning::production では image_tag='${{ inputs.image_tag }}' は使用されません。:latest を Watchtower が自動追従します。"
+          echo "::warning::production では image_tag='${IMAGE_TAG_INPUT}' は使用されません。:latest を Watchtower が自動追従します。"
 
       - name: 📤 Transfer compose.production.yaml
         run: |
@@ -193,8 +194,8 @@ jobs:
               fi
               echo "Waiting... ($i/30)" && sleep 5
             done
-            echo "Timeout: コンテナが起動しませんでした"
-            cd ~/tumiki && docker compose -f compose.production.yaml logs --tail=50
+            echo "Timeout: コンテナが起動しませんでした。ログは VM 上で確認してください。"
+            cd ~/tumiki && docker compose -f compose.production.yaml ps
             exit 1
           HEALTHCHECK
 
