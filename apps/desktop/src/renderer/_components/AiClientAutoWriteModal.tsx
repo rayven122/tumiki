@@ -29,7 +29,6 @@ type Props = {
   client: AiClient;
   servers: McpServerWithRuntime[];
   launchCommand: McpProxyLaunchCommand | null;
-  theme: "light" | "dark";
   port: number;
   onClose: () => void;
 };
@@ -197,7 +196,6 @@ export const AiClientAutoWriteModal = ({
   client,
   servers,
   launchCommand,
-  theme,
   port,
   onClose,
 }: Props): JSX.Element => {
@@ -352,7 +350,7 @@ export const AiClientAutoWriteModal = ({
     }
   };
 
-  const logo = client.logoPath?.(theme);
+  const logo = client.logoPath?.("light");
   const allChecked =
     servers.length > 0 && selectedSlugs.size === servers.length;
   const isReady = launchCommand !== null && preview !== null;
@@ -375,7 +373,7 @@ export const AiClientAutoWriteModal = ({
         <div className="mb-5 flex items-start justify-between">
           <div className="flex items-center gap-3">
             {logo ? (
-              <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
+              <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-zinc-100">
                 <img
                   src={logo}
                   alt={client.name}
@@ -383,7 +381,7 @@ export const AiClientAutoWriteModal = ({
                 />
               </div>
             ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-100 text-sm font-bold text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-100 text-sm font-bold text-zinc-400 dark:text-zinc-500">
                 {client.name.charAt(0)}
               </div>
             )}
