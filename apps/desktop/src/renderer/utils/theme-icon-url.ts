@@ -21,7 +21,7 @@ type GetThemeIconUrl = {
  * テーマに応じたアイコンURLを返す（ライト/ダーク各バリアントを優先）。
  * バリアントが存在しない場合は元のURLをそのまま返す。
  */
-export const getThemeIconUrl: GetThemeIconUrl = (
+export const getThemeIconUrl = ((
   iconUrl: string | null | undefined,
   theme: "light" | "dark",
 ): string | null | undefined => {
@@ -36,4 +36,4 @@ export const getThemeIconUrl: GetThemeIconUrl = (
     return iconUrl.replace(/(\.[a-zA-Z0-9]+)(?=[?#]|$)/, "-dark$1");
   }
   return iconUrl;
-};
+}) as GetThemeIconUrl;
