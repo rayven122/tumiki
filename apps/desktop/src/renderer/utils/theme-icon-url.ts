@@ -1,12 +1,10 @@
 /** ライトモード用の `-light` バリアントが存在するアイコンのベース名。新規アイコン追加時はここに追記する */
-export const LIGHT_VARIANT_ICONS = new Set(["notion", "attio"]);
+export const LIGHT_VARIANT_ICONS = new Set(["attio"]);
 
 /** ダークモード用の `-dark` バリアントが存在するアイコンのベース名。新規アイコン追加時はここに追記する */
 export const DARK_VARIANT_ICONS = new Set([
-  "outline",
   "sequential-thinking",
   "github_black",
-  "moneyforward",
 ]);
 
 type GetThemeIconUrl = {

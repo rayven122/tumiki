@@ -1,6 +1,5 @@
 import type { JSX } from "react";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useAtomValue } from "jotai";
 import { Link, useNavigate } from "react-router-dom";
 import { Search, Plus, ArrowLeft, RefreshCcw } from "lucide-react";
 import type { CatalogItem } from "../../types/catalog";
@@ -9,7 +8,6 @@ import { AddCustomMcpModal } from "../_components/AddCustomMcpModal";
 import { toast } from "../_components/Toast";
 import { cardStyle } from "../utils/theme-styles";
 import { authTypeLabel } from "../../shared/catalog.helpers";
-import { themeAtom } from "../store/atoms";
 import { getThemeIconUrl } from "../utils/theme-icon-url";
 
 /** 認証種別バッジスタイル */
@@ -56,7 +54,6 @@ const addButtonLabel = (item: CatalogItem) => {
 
 export const ToolCatalog = (): JSX.Element => {
   const navigate = useNavigate();
-  const theme = useAtomValue(themeAtom);
   const [catalogs, setCatalogs] = useState<CatalogItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -321,15 +318,15 @@ export const ToolCatalog = (): JSX.Element => {
                   {/* アイコン + 認証種別 */}
                   <div className="mb-3 flex items-start justify-between">
                     {item.iconUrl ? (
-                      <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
+                      <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-zinc-100">
                         <img
-                          src={getThemeIconUrl(item.iconUrl, theme)}
+                          src={getThemeIconUrl(item.iconUrl, "light")}
                           alt={item.name}
                           className="h-8 w-8 object-contain"
                         />
                       </div>
                     ) : (
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100 text-xs text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100 text-xs text-zinc-400 dark:text-zinc-500">
                         MCP
                       </div>
                     )}
