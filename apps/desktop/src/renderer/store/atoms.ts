@@ -32,4 +32,4 @@ export const themeAtom = atom(
  * deeplink 経由の reauth は main プロセスが直接 manager.reauthenticateConnection を
  * 呼ぶため、画面上の runReauth を経由しない → ToolDetail が古いデータのままになる問題を解消する。
  */
-export const reauthCompletedSignalAtom = atom(0);
+export const reauthCompletedSignalAtom = atom<number>(0);
