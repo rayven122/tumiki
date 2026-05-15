@@ -70,12 +70,32 @@ if (!app) {
 // --mcp-proxy モード: GUI不要、stdioでMCPプロキシとして動作
 const isMcpProxyMode = process.argv.includes("--mcp-proxy");
 
+const hideMcpProxyFromMacDock = (): void => {
+  if (process.platform !== "darwin") return;
+
+  const macApp = app as typeof app & {
+    setActivationPolicy?: (
+      policy: "regular" | "accessory" | "prohibited",
+    ) => void;
+  };
+
+  // app.whenReady() 前に activation policy を落として、起動直後の Dock 表示も抑える。
+  try {
+    macApp.setActivationPolicy?.("prohibited");
+    app.dock?.hide();
+  } catch {
+    // Dock 抑制に失敗しても MCP proxy の stdio 起動は継続する。
+  }
+};
+
 if (isMcpProxyMode) {
+  hideMcpProxyFromMacDock();
+
   // Electronのready後にDB初期化 → 設定読み込み → cli.tsのrunMcpProxyを実行
   // stdioを使うためGUI・シングルインスタンスロック等は不要
   void app.whenReady().then(async () => {
     // macOSでDockアイコンを非表示にする（CLIモードのためGUI不要）
-    app.dock?.hide();
+    hideMcpProxyFromMacDock();
 
     // バンドル済みランタイムの Node shim を userData 配下に生成（DEV-1597）
     // MCPコネクタ spawn 前に必ず存在させる必要がある。失敗してもプロキシ起動は継続
