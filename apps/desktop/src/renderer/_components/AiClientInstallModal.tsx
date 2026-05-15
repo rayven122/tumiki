@@ -65,10 +65,14 @@ export const AiClientInstallModal = ({
 
   return (
     <div
+      role="presentation"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={onClose}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ai-client-install-modal-title"
         className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-gray-200 bg-white p-8 dark:border-white/[.08] dark:bg-zinc-900"
         onClick={(e) => e.stopPropagation()}
       >
@@ -89,7 +93,10 @@ export const AiClientInstallModal = ({
               </div>
             )}
             <div>
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+              <h2
+                id="ai-client-install-modal-title"
+                className="text-lg font-bold text-gray-900 dark:text-white"
+              >
                 {client.name}に接続
               </h2>
               <p className="text-xs text-gray-500 dark:text-zinc-500">

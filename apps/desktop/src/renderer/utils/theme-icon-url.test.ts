@@ -4,11 +4,11 @@ import { getThemeIconUrl } from "./theme-icon-url";
 describe("getThemeIconUrl", () => {
   describe("null / undefined / 空文字入力", () => {
     test("nullはそのまま返す", () => {
-      expect(getThemeIconUrl(null, "light")).toBeNull();
+      expect(getThemeIconUrl(null, "light")).toStrictEqual(null);
     });
 
     test("undefinedはそのまま返す", () => {
-      expect(getThemeIconUrl(undefined, "dark")).toBeUndefined();
+      expect(getThemeIconUrl(undefined, "dark")).toStrictEqual(undefined);
     });
 
     test("空文字はそのまま返す", () => {
