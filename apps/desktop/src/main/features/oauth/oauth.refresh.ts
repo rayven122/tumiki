@@ -6,7 +6,7 @@
  * リフレッシュ後の新しいcredentialsはDBに暗号化保存される。
  */
 
-import type * as oauth from "oauth4webapi";
+import * as oauth from "oauth4webapi";
 import { getDb } from "../../shared/db";
 import * as logger from "../../shared/utils/logger";
 import { encryptToken } from "../../utils/encryption";
@@ -17,6 +17,40 @@ import {
   credentialsPayloadFromTokenData,
   isCacheableAuthorizationServerMetadata,
 } from "./oauth.service";
+
+/**
+ * refresh 失敗時の分類。
+ * - FATAL: refresh_token そのものが無効化されているため、ユーザー再認証が必要
+ * - TRANSIENT: ネットワーク・5xx 等の一時的失敗。次回再試行で復活する可能性あり
+ */
+type RefreshFailureKind = "FATAL" | "TRANSIENT";
+
+/**
+ * 認可サーバーが「refresh_token 自体が無効」を示す際に返す代表的なエラーコード集合。
+ * RFC 6749 §5.2 + 各プロバイダの慣習に基づく（invalid_grant が最一般）。
+ */
+const FATAL_OAUTH_ERROR_CODES = new Set([
+  "invalid_grant",
+  "invalid_token",
+  "expired_token",
+  "unauthorized_client",
+  "invalid_client",
+]);
+
+/**
+ * refreshTokenGrantRequest が投げたエラーを FATAL / TRANSIENT に分類する。
+ * 判定材料が無いケース（不明）は誤検知防止のため TRANSIENT 側に倒す。
+ */
+export const classifyRefreshError = (error: unknown): RefreshFailureKind => {
+  if (error instanceof oauth.ResponseBodyError) {
+    if (FATAL_OAUTH_ERROR_CODES.has(error.error)) return "FATAL";
+    // 401/403 のみ FATAL とする。429 (rate limit) や 408 (timeout) のような
+    // 一時的な 4xx は TRANSIENT 側に倒し、誤った needsReauth フラグ立てを防ぐ
+    if (error.status === 401 || error.status === 403) return "FATAL";
+    return "TRANSIENT";
+  }
+  return "TRANSIENT";
+};
 
 /** リフレッシュ実行の閾値（秒）: 期限切れまでこの値以下ならリフレッシュ */
 const REFRESH_THRESHOLD_SECONDS = 5 * 60;
@@ -118,12 +152,30 @@ export const refreshOAuthTokenIfNeeded = async (
 
     return newCredentials;
   } catch (error) {
+    const kind = classifyRefreshError(error);
     const message = error instanceof Error ? error.message : String(error);
     logger.error("OAuthトークンのリフレッシュに失敗しました", {
       secretId,
       serverUrl,
+      kind,
       error: message,
     });
+
+    // FATAL のときだけ「要再認証」フラグを立てる。TRANSIENT で立てると
+    // ネットワーク不調で偽陽性が出て、ユーザーに不必要な再認証を促してしまう。
+    if (kind === "FATAL") {
+      try {
+        const db = await getDb();
+        await oauthRepository.markSecretNeedsReauth(db, secretId);
+      } catch (markError) {
+        logger.error("needsReauth フラグ更新に失敗しました", {
+          secretId,
+          error:
+            markError instanceof Error ? markError.message : String(markError),
+        });
+      }
+    }
+
     return null;
   }
 };

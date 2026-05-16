@@ -19,3 +19,9 @@ export const SLUG_FALLBACK_PREFIX = "connector";
  * 実際の乱数値はmain側で確定するため、UIでは固定文字列で代用する
  */
 export const FALLBACK_SLUG_PLACEHOLDER = `${SLUG_FALLBACK_PREFIX}-xxxx`;
+
+/**
+ * 認証情報フィールドのマスク表示用文字列
+ * IPC 戻り値・UI 入力欄初期値の双方で同一の値を使うため main / renderer 共通の定数として定義する
+ */
+export const CREDENTIALS_MASK_VALUE = "•••••";

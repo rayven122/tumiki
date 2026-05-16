@@ -4,11 +4,11 @@ import { CheckCircle, AlertCircle, AlertTriangle } from "lucide-react";
 
 const iconsByType: Record<"success" | "error" | "warning", JSX.Element> = {
   success: (
-    <CheckCircle size={16} style={{ color: "var(--badge-success-text)" }} />
+    <CheckCircle size={16} className="text-emerald-600 dark:text-emerald-400" />
   ),
-  error: <AlertCircle size={16} style={{ color: "var(--badge-error-text)" }} />,
+  error: <AlertCircle size={16} className="text-red-600 dark:text-red-400" />,
   warning: (
-    <AlertTriangle size={16} style={{ color: "var(--badge-warn-text)" }} />
+    <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400" />
   ),
 };
 
@@ -22,15 +22,10 @@ const Toast = ({ id, type, description }: ToastProps): JSX.Element => (
   <div className="flex w-full justify-center">
     <div
       key={id}
-      className="flex w-fit items-center gap-2.5 rounded-lg px-4 py-2.5"
-      style={{
-        backgroundColor: "var(--bg-card)",
-        border: "1px solid var(--border)",
-        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-      }}
+      className="flex w-fit items-center gap-2.5 rounded-lg border border-gray-200 bg-white px-4 py-2.5 shadow-xl dark:border-white/[.08] dark:bg-zinc-900"
     >
       {iconsByType[type]}
-      <span className="text-sm" style={{ color: "var(--text-primary)" }}>
+      <span className="text-sm text-gray-900 dark:text-white">
         {description}
       </span>
     </div>

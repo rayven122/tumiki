@@ -38,6 +38,10 @@ import {
   createFromManagerCatalog,
   createCustomServer,
 } from "../mcp-server-list/mcp.service";
+import {
+  fetchToolsForConnection,
+  ToolFetchError,
+} from "../mcp-proxy/mcp-proxy.service";
 import type {
   McpOAuthSession,
   StartOAuthInput,
@@ -563,11 +567,45 @@ export const createMcpOAuthManager = (): McpOAuthManager => {
       const encrypted = await encryptToken(JSON.stringify(credentials));
       await oauthRepository.updateSecretCredentials(db, secretId, encrypted);
 
-      logger.info("MCP OAuth reauthentication completed", {
-        connectionId: input.connectionId,
-        serverId: connection.serverId,
-        serverUrl,
-      });
+      // 取得した新トークンが実際に upstream で使えるかを tools/list で検証する。
+      // OAuth フロー自体は成功していても、provider 側で aud/scope が不一致で
+      // MCP エンドポイントが受け付けない場合がある（Figma 等で観測）。
+      // 失敗時は needsReauth フラグを戻して UI に再認証が必要であることを示す。
+      try {
+        await fetchToolsForConnection(input.connectionId);
+        logger.info("MCP OAuth reauthentication completed", {
+          connectionId: input.connectionId,
+          serverId: connection.serverId,
+          serverUrl,
+        });
+      } catch (verifyError) {
+        const detail =
+          verifyError instanceof Error
+            ? verifyError.message
+            : String(verifyError);
+        logger.error("MCP OAuth 再認証後の tools/list 検証に失敗", {
+          connectionId: input.connectionId,
+          serverUrl,
+          error: detail,
+        });
+        // 検証失敗 → token は実質使えないので、フラグを再度立てる
+        try {
+          await oauthRepository.markSecretNeedsReauth(db, secretId);
+        } catch (markError) {
+          logger.error("needsReauth 復帰のフラグ更新に失敗", {
+            secretId,
+            error:
+              markError instanceof Error
+                ? markError.message
+                : String(markError),
+          });
+        }
+        const summary =
+          verifyError instanceof ToolFetchError
+            ? "新しいOAuthトークンでツール一覧の取得に失敗しました（プロバイダ側でトークンが受け付けられていません）"
+            : `新しいOAuthトークンの検証に失敗しました: ${detail}`;
+        throw new Error(summary);
+      }
 
       return {
         connectionId: input.connectionId,

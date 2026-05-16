@@ -83,10 +83,10 @@ export const HistoryList = (): JSX.Element => {
     <div className="space-y-4 p-6">
       {/* ヘッダー */}
       <div>
-        <h1 className="text-lg font-semibold text-[var(--text-primary)]">
+        <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
           操作履歴
         </h1>
-        <p className="mt-1 text-xs text-[var(--text-secondary)]">
+        <p className="mt-1 text-xs text-gray-600 dark:text-zinc-400">
           あなたのAIエージェント操作の記録
         </p>
       </div>
@@ -97,35 +97,32 @@ export const HistoryList = (): JSX.Element => {
           {
             label: "総件数",
             value: overallCount,
-            color: "var(--text-primary)",
+            colorClass: "text-gray-900 dark:text-white",
           },
           {
             label: "成功率",
             value: `${successRate}%`,
-            color: "var(--badge-success-text)",
+            colorClass: "text-emerald-600 dark:text-emerald-400",
           },
           {
             label: "エラー",
             value: errorCount,
-            color: "var(--badge-error-text)",
+            colorClass: "text-red-600 dark:text-red-400",
           },
           {
             label: "平均応答",
             value: `${Math.round(avgDuration)}ms`,
-            color: "var(--badge-warn-text)",
+            colorClass: "text-amber-600 dark:text-amber-400",
           },
         ].map((card) => (
           <div
             key={card.label}
-            className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-4 shadow-[var(--shadow-card)]"
+            className="rounded-xl border border-gray-200 bg-white p-4 dark:border-white/[.08] dark:bg-zinc-900"
           >
-            <span className="text-xs text-[var(--text-muted)]">
+            <span className="text-xs text-gray-500 dark:text-zinc-500">
               {card.label}
             </span>
-            <div
-              className="mt-2 text-2xl font-semibold"
-              style={{ color: card.color }}
-            >
+            <div className={`mt-2 text-2xl font-semibold ${card.colorClass}`}>
               {card.value}
             </div>
           </div>
@@ -133,15 +130,15 @@ export const HistoryList = (): JSX.Element => {
       </div>
 
       {/* メインカード（フィルタ + テーブル） */}
-      <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg-card)] shadow-[var(--shadow-card)]">
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[.08] dark:bg-zinc-900">
         {/* フィルタバー */}
-        <div className="flex items-center justify-between border-b border-b-[var(--border)] px-5 py-3">
+        <div className="flex items-center justify-between border-b border-b-gray-200 px-5 py-3 dark:border-b-white/[.08]">
           <div className="flex items-center gap-2">
-            <Activity className="h-4 w-4 text-[var(--text-muted)]" />
-            <span className="text-sm font-medium text-[var(--text-primary)]">
+            <Activity className="h-4 w-4 text-gray-500 dark:text-zinc-500" />
+            <span className="text-sm font-medium text-gray-900 dark:text-white">
               コネクタログ
             </span>
-            <span className="ml-1 text-xs text-[var(--text-muted)]">
+            <span className="ml-1 text-xs text-gray-500 dark:text-zinc-500">
               {totalCount}件
             </span>
           </div>
@@ -152,8 +149,7 @@ export const HistoryList = (): JSX.Element => {
                 setToolFilter(e.target.value);
                 setPage(1);
               }}
-              className="rounded-lg px-2 py-1 text-xs outline-none"
-              style={selectStyle}
+              className={`rounded-lg px-2 py-1 text-xs outline-none ${selectStyle}`}
             >
               <option value="all">すべてのツール</option>
               {tools.map((t) => (
@@ -168,8 +164,7 @@ export const HistoryList = (): JSX.Element => {
                 setStatusFilter(e.target.value as "all" | "success" | "error");
                 setPage(1);
               }}
-              className="rounded-lg px-2 py-1 text-xs outline-none"
-              style={selectStyle}
+              className={`rounded-lg px-2 py-1 text-xs outline-none ${selectStyle}`}
             >
               <option value="all">すべてのステータス</option>
               <option value="success">成功</option>
@@ -177,8 +172,7 @@ export const HistoryList = (): JSX.Element => {
             </select>
             <button
               type="button"
-              className="flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs hover:opacity-80"
-              style={selectStyle}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs hover:opacity-80 ${selectStyle}`}
               onClick={() => downloadCsv(filtered)}
             >
               <Download className="h-3 w-3" />
@@ -188,7 +182,7 @@ export const HistoryList = (): JSX.Element => {
         </div>
 
         {/* テーブルヘッダー */}
-        <div className="grid grid-cols-[80px_90px_120px_1fr_85px_56px] items-center gap-2 border-b border-b-[var(--border)] px-5 py-2 text-[10px] text-[var(--text-subtle)]">
+        <div className="grid grid-cols-[80px_90px_120px_1fr_85px_56px] items-center gap-2 border-b border-b-gray-200 px-5 py-2 text-[10px] text-gray-400 dark:border-b-white/[.08] dark:text-zinc-600">
           <span>日時</span>
           <span>AIクライアント</span>
           <span>接続先</span>
@@ -199,14 +193,14 @@ export const HistoryList = (): JSX.Element => {
 
         {/* ローディング */}
         {loading && (
-          <div className="py-12 text-center text-sm text-[var(--text-muted)]">
+          <div className="py-12 text-center text-sm text-gray-500 dark:text-zinc-500">
             読み込み中...
           </div>
         )}
 
         {/* 空状態 */}
         {!loading && filtered.length === 0 && (
-          <div className="py-12 text-center text-sm text-[var(--text-muted)]">
+          <div className="py-12 text-center text-sm text-gray-500 dark:text-zinc-500">
             操作履歴がありません
           </div>
         )}
@@ -221,41 +215,40 @@ export const HistoryList = (): JSX.Element => {
                 key={item.id}
                 to={`/history/${item.id}`}
                 state={{ auditLog: item }}
-                className={`grid grid-cols-[80px_90px_120px_1fr_85px_56px] items-center gap-2 border-b border-b-[var(--border-subtle)] px-5 py-2.5 text-xs transition-colors hover:opacity-90 ${isErrorRow(status) ? "bg-red-500/[0.03]" : ""}`}
+                className={`grid grid-cols-[80px_90px_120px_1fr_85px_56px] items-center gap-2 border-b border-b-gray-100 px-5 py-2.5 text-xs transition-colors hover:opacity-90 dark:border-b-white/[.03] ${isErrorRow(status) ? "bg-red-500/[0.03]" : ""}`}
               >
                 {/* 日時 */}
-                <span className="font-mono text-[11px] text-[var(--text-subtle)]">
+                <span className="font-mono text-[11px] text-gray-400 dark:text-zinc-600">
                   {formatTime(item.createdAt)}
                 </span>
 
                 {/* AIクライアント */}
                 <div className="flex items-center gap-1.5 overflow-hidden">
                   <ClientLogo clientName={item.clientName} />
-                  <span className="truncate text-[11px] text-[var(--text-muted)]">
+                  <span className="truncate text-[11px] text-gray-500 dark:text-zinc-500">
                     {item.clientName ?? "-"}
                   </span>
                 </div>
 
                 {/* 接続先 */}
-                <span className="truncate text-[var(--text-secondary)]">
+                <span className="truncate text-gray-600 dark:text-zinc-400">
                   {item.connectionName ?? "不明"}
                 </span>
 
                 {/* ツール / メソッド */}
-                <span className="truncate font-mono text-[11px] text-[var(--text-muted)]">
+                <span className="truncate font-mono text-[11px] text-gray-500 dark:text-zinc-500">
                   {item.toolName}
                 </span>
 
                 {/* ステータス */}
                 <span
-                  className="rounded-full px-1.5 py-0.5 text-center text-[9px] font-medium"
-                  style={{ backgroundColor: badge.bg, color: badge.text }}
+                  className={`rounded-full px-1.5 py-0.5 text-center text-[9px] font-medium ${badge.className}`}
                 >
                   {badge.label}
                 </span>
 
                 {/* 応答時間 */}
-                <span className="text-right font-mono text-[11px] text-[var(--text-subtle)]">
+                <span className="text-right font-mono text-[11px] text-gray-400 dark:text-zinc-600">
                   {item.durationMs}ms
                 </span>
               </Link>
@@ -264,8 +257,8 @@ export const HistoryList = (): JSX.Element => {
 
         {/* ページネーション */}
         {result && result.totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-t-[var(--border)] px-5 py-2.5">
-            <span className="text-xs text-[var(--text-muted)]">
+          <div className="flex items-center justify-between border-t border-t-gray-200 px-5 py-2.5 dark:border-t-white/[.08]">
+            <span className="text-xs text-gray-500 dark:text-zinc-500">
               {result.currentPage} / {result.totalPages} ページ
             </span>
             <div className="flex items-center gap-1">
@@ -273,7 +266,7 @@ export const HistoryList = (): JSX.Element => {
                 type="button"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="rounded p-1 text-[var(--text-muted)] hover:opacity-80 disabled:opacity-30"
+                className="rounded p-1 text-gray-500 hover:opacity-80 disabled:opacity-30 dark:text-zinc-500"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
@@ -281,7 +274,7 @@ export const HistoryList = (): JSX.Element => {
                 type="button"
                 disabled={page >= result.totalPages}
                 onClick={() => setPage((p) => p + 1)}
-                className="rounded p-1 text-[var(--text-muted)] hover:opacity-80 disabled:opacity-30"
+                className="rounded p-1 text-gray-500 hover:opacity-80 disabled:opacity-30 dark:text-zinc-500"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>

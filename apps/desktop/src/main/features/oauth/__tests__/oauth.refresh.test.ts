@@ -1,4 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
+import * as oauth from "oauth4webapi";
 
 vi.mock("electron", () => ({
   app: {
@@ -26,6 +27,7 @@ import * as oauthRepository from "../oauth.repository";
 import {
   refreshOAuthTokenIfNeeded,
   isTokenExpiringSoon,
+  classifyRefreshError,
 } from "../oauth.refresh";
 
 describe("oauth.refresh", () => {
@@ -191,6 +193,78 @@ describe("oauth.refresh", () => {
       expect(result).toBeNull();
     });
 
+    test("FATAL (invalid_grant) で失敗した場合 markSecretNeedsReauth を呼び null を返す", async () => {
+      const credentials = {
+        access_token: "expired-token",
+        refresh_token: "old-rt",
+        expires_at: String(Math.floor(Date.now() / 1000) - 100),
+      };
+
+      vi.mocked(oauthRepository.findByServerUrl).mockResolvedValue({
+        id: 1,
+        serverUrl,
+        issuer: "https://www.figma.com",
+        clientId: "client-id",
+        clientSecret: null,
+        tokenEndpointAuthMethod: "none",
+        authServerMetadata: JSON.stringify({
+          issuer: "https://www.figma.com",
+          authorization_endpoint: "https://www.figma.com/oauth",
+          token_endpoint: "https://www.figma.com/api/oauth/token",
+        }),
+        isDcr: true,
+      });
+
+      const fatalError = new oauth.ResponseBodyError("invalid_grant", {
+        cause: { error: "invalid_grant" },
+        response: new Response(null, { status: 400 }),
+      });
+      vi.mocked(refreshAccessToken).mockRejectedValue(fatalError);
+      vi.mocked(oauthRepository.markSecretNeedsReauth).mockResolvedValue();
+
+      const result = await refreshOAuthTokenIfNeeded(7, serverUrl, credentials);
+
+      expect(result).toBeNull();
+      expect(oauthRepository.markSecretNeedsReauth).toHaveBeenCalledWith(
+        mockDb,
+        7,
+      );
+    });
+
+    test("TRANSIENT (500 server error) で失敗した場合 markSecretNeedsReauth は呼ばれない", async () => {
+      const credentials = {
+        access_token: "expired-token",
+        refresh_token: "old-rt",
+        expires_at: String(Math.floor(Date.now() / 1000) - 100),
+      };
+
+      vi.mocked(oauthRepository.findByServerUrl).mockResolvedValue({
+        id: 1,
+        serverUrl,
+        issuer: "https://www.figma.com",
+        clientId: "client-id",
+        clientSecret: null,
+        tokenEndpointAuthMethod: "none",
+        authServerMetadata: JSON.stringify({
+          issuer: "https://www.figma.com",
+          authorization_endpoint: "https://www.figma.com/oauth",
+          token_endpoint: "https://www.figma.com/api/oauth/token",
+        }),
+        isDcr: true,
+      });
+
+      const transientError = new oauth.ResponseBodyError("server_error", {
+        cause: { error: "server_error" },
+        response: new Response(null, { status: 500 }),
+      });
+      vi.mocked(refreshAccessToken).mockRejectedValue(transientError);
+
+      const result = await refreshOAuthTokenIfNeeded(7, serverUrl, credentials);
+
+      expect(result).toBeNull();
+      expect(oauthRepository.markSecretNeedsReauth).not.toHaveBeenCalled();
+    });
+
     test("authServerMetadata が不正な場合は null を返す", async () => {
       const credentials = {
         access_token: "expired-token",
@@ -213,6 +287,52 @@ describe("oauth.refresh", () => {
 
       expect(result).toBeNull();
       expect(refreshAccessToken).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("classifyRefreshError", () => {
+    test("FATAL系のerrorコード(invalid_grant)は FATAL を返す", () => {
+      const err = new oauth.ResponseBodyError("invalid_grant", {
+        cause: { error: "invalid_grant" },
+        response: new Response(null, { status: 400 }),
+      });
+      expect(classifyRefreshError(err)).toBe("FATAL");
+    });
+
+    test("FATAL系のerrorコード(invalid_token)は FATAL を返す", () => {
+      const err = new oauth.ResponseBodyError("invalid_token", {
+        cause: { error: "invalid_token" },
+        response: new Response(null, { status: 400 }),
+      });
+      expect(classifyRefreshError(err)).toBe("FATAL");
+    });
+
+    test("status 401 は FATAL を返す", () => {
+      const err = new oauth.ResponseBodyError("unauthorized", {
+        cause: { error: "unauthorized" },
+        response: new Response(null, { status: 401 }),
+      });
+      expect(classifyRefreshError(err)).toBe("FATAL");
+    });
+
+    test("status 500 は TRANSIENT を返す", () => {
+      const err = new oauth.ResponseBodyError("server_error", {
+        cause: { error: "server_error" },
+        response: new Response(null, { status: 500 }),
+      });
+      expect(classifyRefreshError(err)).toBe("TRANSIENT");
+    });
+
+    test("status 429 (rate limit) は TRANSIENT を返す", () => {
+      const err = new oauth.ResponseBodyError("rate_limited", {
+        cause: { error: "rate_limited" },
+        response: new Response(null, { status: 429 }),
+      });
+      expect(classifyRefreshError(err)).toBe("TRANSIENT");
+    });
+
+    test("ネットワークエラー（非 ResponseBodyError）は TRANSIENT を返す", () => {
+      expect(classifyRefreshError(new Error("ECONNRESET"))).toBe("TRANSIENT");
     });
   });
 });

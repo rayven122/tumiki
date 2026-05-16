@@ -11,10 +11,12 @@ import { authTypeLabel } from "../../shared/catalog.helpers";
 
 /** 認証種別バッジスタイル */
 const authBadgeClass: Record<CatalogItem["authType"], string> = {
-  NONE: "bg-[var(--badge-success-bg)] text-[var(--badge-success-text)]",
-  BEARER: "bg-[var(--badge-warn-bg)] text-[var(--badge-warn-text)]",
-  API_KEY: "bg-[var(--badge-warn-bg)] text-[var(--badge-warn-text)]",
-  OAUTH: "bg-[var(--badge-info-bg)] text-[var(--badge-info-text)]",
+  NONE: "bg-emerald-500/10 dark:bg-emerald-400/10 text-emerald-600 dark:text-emerald-400",
+  BEARER:
+    "bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400",
+  API_KEY:
+    "bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400",
+  OAUTH: "bg-blue-600/10 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400",
 };
 
 /** フィルター用の認証種別定義 */
@@ -32,9 +34,11 @@ const statusLabel: Record<CatalogItem["status"], string> = {
 };
 
 const statusBadgeClass: Record<CatalogItem["status"], string> = {
-  available: "bg-[var(--badge-success-bg)] text-[var(--badge-success-text)]",
-  request_required: "bg-[var(--badge-warn-bg)] text-[var(--badge-warn-text)]",
-  disabled: "bg-[var(--badge-error-bg)] text-[var(--badge-error-text)]",
+  available:
+    "bg-emerald-500/10 dark:bg-emerald-400/10 text-emerald-600 dark:text-emerald-400",
+  request_required:
+    "bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400",
+  disabled: "bg-red-500/10 dark:bg-red-400/10 text-red-600 dark:text-red-400",
 };
 
 const canAddCatalog = (item: CatalogItem) =>
@@ -175,7 +179,7 @@ export const ToolCatalog = (): JSX.Element => {
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center text-sm text-[var(--text-subtle)]">
+      <div className="flex h-full items-center justify-center text-sm text-gray-400 dark:text-zinc-600">
         読み込み中...
       </div>
     );
@@ -184,15 +188,17 @@ export const ToolCatalog = (): JSX.Element => {
   if (loadError) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <div className="max-w-md rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 text-center shadow-[var(--shadow-card)]">
-          <h1 className="text-base font-semibold text-[var(--text-primary)]">
+        <div className="max-w-md rounded-xl border border-gray-200 bg-white p-6 text-center dark:border-white/[.08] dark:bg-zinc-900">
+          <h1 className="text-base font-semibold text-gray-900 dark:text-white">
             カタログの取得に失敗しました
           </h1>
-          <p className="mt-2 text-sm text-[var(--text-muted)]">{loadError}</p>
+          <p className="mt-2 text-sm text-gray-500 dark:text-zinc-500">
+            {loadError}
+          </p>
           <button
             type="button"
             onClick={loadCatalogs}
-            className="mt-4 inline-flex items-center gap-2 rounded-md bg-[var(--text-primary)] px-4 py-2 text-sm font-medium text-[var(--bg-card)] transition hover:opacity-90"
+            className="mt-4 inline-flex items-center gap-2 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 dark:bg-white dark:text-zinc-900"
           >
             <RefreshCcw size={14} />
             再読み込み
@@ -207,16 +213,16 @@ export const ToolCatalog = (): JSX.Element => {
       {/* ヘッダー */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--text-primary)]">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             ツールカタログ
           </h1>
-          <p className="mt-1 text-sm text-[var(--text-muted)]">
+          <p className="mt-1 text-sm text-gray-500 dark:text-zinc-500">
             利用可能なMCPサーバーを検索・追加できます
           </p>
         </div>
         <Link
           to="/tools"
-          className="flex items-center gap-1 text-xs text-[var(--text-muted)] transition-opacity hover:opacity-80"
+          className="flex items-center gap-1 text-xs text-gray-500 transition-opacity hover:opacity-80 dark:text-zinc-500"
         >
           <ArrowLeft size={12} />
           コネクトに戻る
@@ -228,20 +234,20 @@ export const ToolCatalog = (): JSX.Element => {
         <div className="relative min-w-[200px]">
           <Search
             size={14}
-            className="absolute top-1/2 left-3 -translate-y-1/2 text-[var(--text-subtle)]"
+            className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-400 dark:text-zinc-600"
           />
           <input
             type="text"
             placeholder="ツールを検索..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] py-2 pr-3 pl-9 text-sm text-[var(--text-primary)] outline-none"
+            className="w-full rounded-lg border border-gray-200 bg-white py-2 pr-3 pl-9 text-sm text-gray-900 outline-none dark:border-white/[.08] dark:bg-zinc-900 dark:text-white"
           />
         </div>
 
         {/* 認証種別フィルター */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[10px] text-[var(--text-subtle)]">
+          <span className="text-[10px] text-gray-400 dark:text-zinc-600">
             認証種別:
           </span>
           {AUTH_TYPE_FILTERS.map(({ value, label }) => (
@@ -252,8 +258,8 @@ export const ToolCatalog = (): JSX.Element => {
               onClick={() => toggleAuthType(value)}
               className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-colors ${
                 selectedAuthTypes.includes(value)
-                  ? `${authBadgeClass[value]} ring-1 ring-[var(--text-muted)]`
-                  : "bg-[var(--bg-card)] text-[var(--text-muted)] ring-1 ring-[var(--border)] hover:ring-[var(--text-subtle)]"
+                  ? `${authBadgeClass[value]} ring-1 ring-gray-300 dark:ring-zinc-700`
+                  : "bg-white text-gray-500 ring-1 ring-gray-200 hover:ring-gray-400 dark:bg-zinc-900 dark:text-zinc-500 dark:ring-white/[.08] dark:hover:ring-zinc-600"
               }`}
             >
               {label}
@@ -263,7 +269,7 @@ export const ToolCatalog = (): JSX.Element => {
             <button
               type="button"
               onClick={clearAllFilters}
-              className="ml-1 text-[10px] text-[var(--text-muted)] transition-opacity hover:opacity-70"
+              className="ml-1 text-[10px] text-gray-500 transition-opacity hover:opacity-70 dark:text-zinc-500"
             >
               クリア
             </button>
@@ -274,11 +280,11 @@ export const ToolCatalog = (): JSX.Element => {
       {/* カタログ一覧 */}
       {filtered.length > 0 && (
         <div>
-          <div className="mb-4 flex items-center justify-between border-b border-b-[var(--border)] pb-2">
-            <h2 className="text-sm font-medium text-[var(--text-muted)]">
+          <div className="mb-4 flex items-center justify-between border-b border-b-gray-200 pb-2 dark:border-b-white/[.08]">
+            <h2 className="text-sm font-medium text-gray-500 dark:text-zinc-500">
               MCPカタログ
             </h2>
-            <span className="text-[10px] text-[var(--text-subtle)]">
+            <span className="text-[10px] text-gray-400 dark:text-zinc-600">
               {filtered.length}件
             </span>
           </div>
@@ -287,13 +293,16 @@ export const ToolCatalog = (): JSX.Element => {
             <button
               type="button"
               onClick={() => setShowCustomModal(true)}
-              className="flex min-h-[180px] flex-col items-center justify-center rounded-xl border-2 border-dashed border-[var(--border)] p-4 transition-all hover:-translate-y-0.5 hover:border-[var(--text-muted)] hover:shadow-lg"
+              className="flex min-h-[180px] flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 p-4 transition-all hover:-translate-y-0.5 hover:border-gray-400 hover:shadow-lg dark:border-white/[.08] dark:hover:border-zinc-600"
             >
-              <Plus size={28} className="mb-2 text-[var(--text-subtle)]" />
-              <span className="text-sm font-medium text-[var(--text-secondary)]">
+              <Plus
+                size={28}
+                className="mb-2 text-gray-400 dark:text-zinc-600"
+              />
+              <span className="text-sm font-medium text-gray-600 dark:text-zinc-400">
                 カスタムMCPを追加
               </span>
-              <span className="mt-1 text-[10px] text-[var(--text-subtle)]">
+              <span className="mt-1 text-[10px] text-gray-400 dark:text-zinc-600">
                 URLを指定してリモートMCPを登録
               </span>
             </button>
@@ -303,8 +312,7 @@ export const ToolCatalog = (): JSX.Element => {
               return (
                 <div
                   key={item.id}
-                  className="flex flex-col rounded-xl p-4 transition-all hover:-translate-y-0.5 hover:shadow-lg"
-                  style={cardStyle}
+                  className={`flex flex-col rounded-xl p-4 transition-all hover:-translate-y-0.5 hover:shadow-lg ${cardStyle}`}
                 >
                   {/* アイコン + 認証種別 */}
                   <div className="mb-3 flex items-start justify-between">
@@ -333,11 +341,11 @@ export const ToolCatalog = (): JSX.Element => {
                     </span>
                   </div>
                   {/* 名前 */}
-                  <div className="mb-2 text-sm font-medium text-[var(--text-primary)]">
+                  <div className="mb-2 text-sm font-medium text-gray-900 dark:text-white">
                     {item.name}
                   </div>
                   {/* 説明 */}
-                  <div className="mb-3 line-clamp-2 text-[10px] leading-relaxed text-[var(--text-subtle)]">
+                  <div className="mb-3 line-clamp-2 text-[10px] leading-relaxed text-gray-400 dark:text-zinc-600">
                     {item.description}
                   </div>
                   {/* 追加ボタン */}
@@ -345,7 +353,7 @@ export const ToolCatalog = (): JSX.Element => {
                     type="button"
                     onClick={() => void handleAddClick(item)}
                     disabled={!addable}
-                    className="mt-auto flex w-full items-center justify-center gap-1 rounded-md bg-[var(--text-primary)] py-1.5 text-[10px] font-medium text-[var(--bg-card)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="mt-auto flex w-full items-center justify-center gap-1 rounded-md bg-gray-900 py-1.5 text-[10px] font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-zinc-900"
                   >
                     {addable && <Plus size={10} />}
                     {addButtonLabel(item)}
@@ -358,12 +366,12 @@ export const ToolCatalog = (): JSX.Element => {
       )}
 
       {filtered.length === 0 && (
-        <div className="py-12 text-center text-sm text-[var(--text-subtle)]">
+        <div className="py-12 text-center text-sm text-gray-400 dark:text-zinc-600">
           <p>条件に一致するツールが見つかりません</p>
           <button
             type="button"
             onClick={() => setShowCustomModal(true)}
-            className="mt-4 inline-flex items-center gap-1 rounded-md bg-[var(--text-primary)] px-4 py-2 text-sm font-medium text-[var(--bg-card)] transition hover:opacity-90"
+            className="mt-4 inline-flex items-center gap-1 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 dark:bg-white dark:text-zinc-900"
           >
             <Plus size={14} />
             カスタムMCPを追加

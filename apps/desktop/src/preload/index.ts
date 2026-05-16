@@ -20,6 +20,9 @@ import type {
   ToggleServerInput,
   UpdatePiiMaskingInput,
   UpdateToonConversionInput,
+  GetServerEditDetailInput,
+  GetServerEditDetailOutput,
+  UpdateServerConnectionCredentialsInput,
   StartOAuthInput,
   OAuthResult,
   ReauthenticateInput,
@@ -130,6 +133,14 @@ const api = {
       isAllowed: boolean;
     }): Promise<void> =>
       ipcRenderer.invoke("mcp-server:toggleTool", input).then(() => undefined),
+    getServerEditDetail: (
+      input: GetServerEditDetailInput,
+    ): Promise<GetServerEditDetailOutput> =>
+      ipcRenderer.invoke("mcp:getServerEditDetail", input),
+    updateServerConnectionCredentials: (
+      input: UpdateServerConnectionCredentialsInput,
+    ): Promise<void> =>
+      ipcRenderer.invoke("mcp:updateServerConnectionCredentials", input),
   },
 
   // MCP プロキシ起動コマンド（接続スニペット生成に利用）

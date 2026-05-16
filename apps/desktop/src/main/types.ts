@@ -19,6 +19,10 @@ export type {
   ToggleServerInput,
   UpdatePiiMaskingInput,
   UpdateToonConversionInput,
+  GetServerEditDetailInput,
+  GetServerEditDetailOutput,
+  GetServerEditDetailConnection,
+  UpdateServerConnectionCredentialsInput,
 } from "./features/mcp-server-list/mcp.types";
 
 // OAuth feature

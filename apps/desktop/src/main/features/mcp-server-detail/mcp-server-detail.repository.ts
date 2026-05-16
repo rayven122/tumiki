@@ -16,6 +16,8 @@ export const findByIdWithDetails = async (
             select: { id: true, name: true, description: true, iconPath: true },
           },
           tools: true,
+          // needsReauth フラグだけ参照（暗号化済 credentials は UI に流したくない）
+          secret: { select: { needsReauth: true } },
         },
         orderBy: { displayOrder: "asc" },
       },

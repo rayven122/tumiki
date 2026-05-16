@@ -74,6 +74,7 @@ describe("mcp-server-detail.service", () => {
                 updatedAt: toolUpdatedAt,
               },
             ],
+            secret: { needsReauth: false },
           },
         ],
       } as Awaited<ReturnType<typeof repository.findByIdWithDetails>>);
@@ -120,6 +121,7 @@ describe("mcp-server-detail.service", () => {
                 updatedAt: "2026-04-01T12:00:00.000Z",
               },
             ],
+            needsReauth: false,
           },
         ],
       });
