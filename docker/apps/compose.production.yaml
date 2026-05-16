@@ -1,0 +1,192 @@
+# 本番環境用 Docker Compose
+#
+# 使用方法:
+#   cd ~/tumiki
+#   docker compose -f compose.production.yaml pull
+#   docker compose -f compose.production.yaml up -d
+#
+# 前提条件:
+#   - .env を同ディレクトリに配置（権限 600）
+#   - PostgreSQL は外部ホストを使用（DATABASE_URL で接続）
+#   - GHCR の :latest はリリースタグ (v*) push でのみ更新される
+#   - Watchtower が :latest の digest 変化を監視し、自動 pull + 再起動
+name: tumiki
+
+x-default-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  manager:
+    # WARNING: image タグを固定してロールバックする場合は Watchtower を先に停止する
+    #   docker compose -f compose.production.yaml stop watchtower
+    image: ghcr.io/rayven122/tumiki-manager:latest
+    container_name: tumiki-manager
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1g
+    ports:
+      # Cloudflare Tunnel ingress は localhost:3000 に接続するため、外部 NIC へ公開しない
+      - "127.0.0.1:3000:8080"
+    networks:
+      - app
+    env_file: .env
+    environment:
+      # apps/manager/.env として image に焼き込まれた AUTH_URL=http://localhost:3000 を上書き
+      # AUTH_URL は NEXTAUTH_URL より優先されるため両方設定する
+      AUTH_URL: ${NEXTAUTH_URL:?NEXTAUTH_URL is required}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:?NEXTAUTH_URL is required}
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/api/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+
+  mcp-proxy:
+    # WARNING: image タグを固定してロールバックする場合は Watchtower を先に停止する
+    #   docker compose -f compose.production.yaml stop watchtower
+    image: ghcr.io/rayven122/tumiki-mcp-proxy:latest
+    container_name: tumiki-mcp-proxy
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "0.75"
+          memory: 768m
+    ports:
+      # Cloudflare Tunnel ingress は localhost:8080 に接続するため、外部 NIC へ公開しない
+      - "127.0.0.1:8080:8080"
+    networks:
+      - app
+    env_file: .env
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+
+  docker-socket-proxy:
+    # Watchtower に Docker API の必要範囲だけを公開する。
+    # https://github.com/Tecnativa/docker-socket-proxy
+    # digest-only pin: 更新時は upstream の release/changelog を確認して digest を差し替える。
+    image: tecnativa/docker-socket-proxy@sha256:1f3a6f303320723d199d2316a3e82b2e2685d86c275d5e3deeaf182573b47476
+    container_name: tumiki-docker-socket-proxy
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256m
+    tmpfs:
+      - /run
+      - /tmp
+    networks:
+      - socket-proxy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      LOG_LEVEL: warning
+      CONTAINERS: "1"
+      IMAGES: "1"
+      INFO: "1"
+      # Watchtower が image pull 後にコンテナを再作成するため POST /containers/create が必要。
+      # DELETE は許可せず、start/stop/restart 系のみ ALLOW_* で明示許可する。
+      POST: "1"
+      ALLOW_START: "1"
+      ALLOW_STOP: "1"
+      ALLOW_RESTARTS: "1"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:2375/version",
+        ]
+      interval: 5s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+
+  watchtower:
+    # containrrr/watchtower は最終リリースが古く Docker API v1.40+ に未対応のため
+    # 互換性が維持されている active fork (nickfedor/watchtower) を採用する。
+    image: nickfedor/watchtower:1.16.1@sha256:62bec6c1a89e9882970130a311f0ac27faf11f26520b8755ca6a78802a1a6d8f
+    container_name: tumiki-watchtower
+    restart: unless-stopped
+    depends_on:
+      docker-socket-proxy:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128m
+    tmpfs:
+      - /tmp
+    networks:
+      # app network は GHCR / 通知先への外向き通信、socket-proxy は Docker API 用
+      - app
+      - socket-proxy
+    environment:
+      DOCKER_HOST: tcp://docker-socket-proxy:2375
+      # ラベル付きコンテナのみ監視対象とする
+      WATCHTOWER_LABEL_ENABLE: "true"
+      WATCHTOWER_POLL_INTERVAL: ${WATCHTOWER_POLL_INTERVAL:-300}
+      # docker-socket-proxy で DELETE を許可しないため、image prune は別運用で実施する
+      # tumiki-sakura-prod では DELETE なしで image 更新が成功することを確認済み
+      WATCHTOWER_CLEANUP: "false"
+      WATCHTOWER_INCLUDE_RESTARTING: "false"
+      WATCHTOWER_NOTIFICATION_REPORT: "true"
+      WATCHTOWER_NOTIFICATION_TITLE_TAG: tumiki-prod
+      # Shoutrrr 形式の URL（例: slack://hook:TOKEN@channel）。空なら通知無効
+      WATCHTOWER_NOTIFICATION_URL: ${WATCHTOWER_NOTIFICATION_URL:-}
+      TZ: Asia/Tokyo
+
+networks:
+  app:
+  socket-proxy:
+    internal: true
