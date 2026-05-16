@@ -38,6 +38,17 @@ const isFileNotFoundError = (error: unknown): boolean => {
 const isValidPort = (port: number): boolean =>
   Number.isInteger(port) && port >= 1 && port <= 65535;
 
+const CONFIG_PARSE_ERROR_NAME = "ConfigParseError";
+
+const createConfigParseError = (message: string): Error => {
+  const error = new Error(message);
+  error.name = CONFIG_PARSE_ERROR_NAME;
+  return error;
+};
+
+const isConfigParseError = (error: unknown): boolean =>
+  error instanceof Error && error.name === CONFIG_PARSE_ERROR_NAME;
+
 const getAnalyticsMcpEntry = (): McpEntry => {
   const rawAppEntry = process.argv[1];
   const appEntry = rawAppEntry ? path.resolve(rawAppEntry) : null;
@@ -76,9 +87,14 @@ const readJsonObject = async (
     throw error;
   });
   if (content === undefined) return {};
-  const parsed: unknown = JSON.parse(content);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    throw createConfigParseError(`JSON config parse failed: ${filePath}`);
+  }
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-    throw new Error("JSON config must be an object");
+    throw createConfigParseError(`JSON config must be an object: ${filePath}`);
   }
   return parsed as Record<string, unknown>;
 };
@@ -145,7 +161,11 @@ const applyToClaudeCode = async (
       configPath,
       error,
     });
-    return { success: false, configPath, errorCode: "WRITE_FAILED" };
+    return {
+      success: false,
+      configPath,
+      errorCode: isConfigParseError(error) ? "PARSE_FAILED" : "WRITE_FAILED",
+    };
   }
 };
 
@@ -162,13 +182,20 @@ const applyToCodex = async (port: number): Promise<ApplyToolSettingsResult> => {
       throw error;
     });
     if (content !== undefined) {
-      const parsed: unknown = parseToml(content);
+      let parsed: unknown;
+      try {
+        parsed = parseToml(content);
+      } catch {
+        throw createConfigParseError(`TOML config parse failed: ${configPath}`);
+      }
       if (
         typeof parsed !== "object" ||
         parsed === null ||
         Array.isArray(parsed)
       )
-        throw new Error("Codex config must be a TOML object");
+        throw createConfigParseError(
+          `Codex config must be a TOML object: ${configPath}`,
+        );
       existing = parsed as Record<string, unknown>;
     }
 
@@ -205,7 +232,11 @@ const applyToCodex = async (port: number): Promise<ApplyToolSettingsResult> => {
       configPath,
       error,
     });
-    return { success: false, configPath, errorCode: "WRITE_FAILED" };
+    return {
+      success: false,
+      configPath,
+      errorCode: isConfigParseError(error) ? "PARSE_FAILED" : "WRITE_FAILED",
+    };
   }
 };
 

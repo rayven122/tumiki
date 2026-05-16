@@ -160,7 +160,7 @@ describe("applyOtlpToTool - claude-code", () => {
     const result = await applyOtlpToTool("claude-code", 4318);
 
     expect(result.success).toStrictEqual(false);
-    expect(result.errorCode).toStrictEqual("WRITE_FAILED");
+    expect(result.errorCode).toStrictEqual("PARSE_FAILED");
     expect(mockWriteFile).not.toHaveBeenCalled();
   });
 });
@@ -245,7 +245,7 @@ describe("applyOtlpToTool - codex", () => {
     const result = await applyOtlpToTool("codex", 4318);
 
     expect(result.success).toStrictEqual(false);
-    expect(result.errorCode).toStrictEqual("WRITE_FAILED");
+    expect(result.errorCode).toStrictEqual("PARSE_FAILED");
     expect(mockStringifyToml).not.toHaveBeenCalled();
     expect(mockWriteFile).not.toHaveBeenCalled();
   });
@@ -257,7 +257,7 @@ describe("applyOtlpToTool - codex", () => {
     const result = await applyOtlpToTool("codex", 4318);
 
     expect(result.success).toStrictEqual(false);
-    expect(result.errorCode).toStrictEqual("WRITE_FAILED");
+    expect(result.errorCode).toStrictEqual("PARSE_FAILED");
     expect(mockStringifyToml).not.toHaveBeenCalled();
     expect(mockWriteFile).not.toHaveBeenCalled();
   });

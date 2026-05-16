@@ -375,7 +375,7 @@ export const saveToolEnabled = async (
 const canConnectToPort = (port: number): Promise<boolean> =>
   new Promise((resolve) => {
     const socket = net.createConnection({ host: "127.0.0.1", port });
-    socket.setTimeout(500);
+    socket.setTimeout(200);
     socket.once("connect", () => {
       socket.destroy();
       resolve(true);

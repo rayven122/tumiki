@@ -44,6 +44,7 @@ export type ApplyToolSettingsResult = {
   errorCode?:
     | "UNSUPPORTED_PLATFORM"
     | "INVALID_PORT"
+    | "PARSE_FAILED"
     | "WRITE_FAILED"
     | "UNKNOWN";
 };
