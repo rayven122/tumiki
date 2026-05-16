@@ -12,6 +12,8 @@ type JsonRpcMessage = {
   params?: unknown;
 };
 
+type JsonRpcId = NonNullable<JsonRpcMessage["id"]> | null;
+
 type AnalyticsSidecarRuntime = {
   receiverStarted: boolean;
   server: Server | null;
@@ -49,67 +51,74 @@ const writeMessage = (message: unknown): void => {
   );
 };
 
-const writeResult = (id: string | number | null, result: unknown): void => {
-  if (id === undefined) return;
-  writeMessage({ jsonrpc: "2.0", id, result });
+const writeError = (id: JsonRpcId, code: number, message: string): void => {
+  writeMessage({ jsonrpc: "2.0", id, error: { code, message } });
 };
 
-const writeError = (
-  id: string | number | null,
-  code: number,
-  message: string,
-): void => {
-  if (id === undefined) return;
-  writeMessage({ jsonrpc: "2.0", id, error: { code, message } });
+export const createAnalyticsMcpResponse = (
+  message: JsonRpcMessage,
+  runtime: AnalyticsSidecarRuntime,
+): unknown | null => {
+  const id = message.id;
+  if (id === undefined) return null;
+
+  switch (message.method) {
+    case "initialize":
+      return {
+        jsonrpc: "2.0",
+        id,
+        result: {
+          protocolVersion:
+            typeof message.params === "object" &&
+            message.params !== null &&
+            "protocolVersion" in message.params &&
+            typeof (message.params as { protocolVersion?: unknown })
+              .protocolVersion === "string"
+              ? (message.params as { protocolVersion: string }).protocolVersion
+              : "2024-11-05",
+          capabilities: { tools: {} },
+          serverInfo: {
+            name: "tumiki-analytics",
+            version: "0.1.0",
+          },
+        },
+      };
+    case "ping":
+      return { jsonrpc: "2.0", id, result: {} };
+    case "tools/list":
+      return { jsonrpc: "2.0", id, result: { tools: [] } };
+    case "resources/list":
+      return { jsonrpc: "2.0", id, result: { resources: [] } };
+    case "prompts/list":
+      return { jsonrpc: "2.0", id, result: { prompts: [] } };
+    case "tumiki/analytics/status":
+      return {
+        jsonrpc: "2.0",
+        id,
+        result: {
+          port: OTLP_DEFAULT_PORT,
+          receiverStarted: runtime.receiverStarted,
+          listening: true,
+        },
+      };
+    default:
+      return {
+        jsonrpc: "2.0",
+        id,
+        error: {
+          code: -32601,
+          message: `Method not found: ${message.method ?? ""}`,
+        },
+      };
+  }
 };
 
 const handleRequest = (
   message: JsonRpcMessage,
   runtime: AnalyticsSidecarRuntime,
 ): void => {
-  const id = message.id;
-  if (id === undefined) return;
-
-  switch (message.method) {
-    case "initialize":
-      writeResult(id, {
-        protocolVersion:
-          typeof message.params === "object" &&
-          message.params !== null &&
-          "protocolVersion" in message.params &&
-          typeof (message.params as { protocolVersion?: unknown })
-            .protocolVersion === "string"
-            ? (message.params as { protocolVersion: string }).protocolVersion
-            : "2024-11-05",
-        capabilities: { tools: {} },
-        serverInfo: {
-          name: "tumiki-analytics",
-          version: "0.1.0",
-        },
-      });
-      return;
-    case "ping":
-      writeResult(id, {});
-      return;
-    case "tools/list":
-      writeResult(id, { tools: [] });
-      return;
-    case "resources/list":
-      writeResult(id, { resources: [] });
-      return;
-    case "prompts/list":
-      writeResult(id, { prompts: [] });
-      return;
-    case "tumiki/analytics/status":
-      writeResult(id, {
-        port: OTLP_DEFAULT_PORT,
-        receiverStarted: runtime.receiverStarted,
-        listening: true,
-      });
-      return;
-    default:
-      writeError(id, -32601, `Method not found: ${message.method ?? ""}`);
-  }
+  const response = createAnalyticsMcpResponse(message, runtime);
+  if (response) writeMessage(response);
 };
 
 const extractContentLength = (headers: string): number | null => {

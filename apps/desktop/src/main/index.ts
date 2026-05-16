@@ -716,7 +716,6 @@ if (appMode === "mcp-proxy") {
       }
 
       if (otlpHttpServer) {
-        const otlpPort = OTLP_DEFAULT_PORT;
         // 過去に適用したツールでポートが変わっていれば自動で再書き込みする。
         // OTLP ポートがフォールバックで変わったり、ユーザー設定で変更されても
         // 設定ファイル（~/.claude/settings.json 等）と Tumiki 受信ポートの整合性を保つ。
