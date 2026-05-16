@@ -20,7 +20,7 @@ permissions:
 jobs:
   deploy:
     name: 🔑 Deploy Keycloak to Staging
-    runs-on: ubuntu-latest
+    runs-on: { group: self-arc }
     environment: staging
     timeout-minutes: 30
 

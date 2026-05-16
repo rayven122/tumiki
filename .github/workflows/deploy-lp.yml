@@ -18,7 +18,7 @@ concurrency:
 jobs:
   deploy:
     name: 🚀 Deploy LP to Vercel
-    runs-on: ubuntu-latest
+    runs-on: { group: self-arc }
     environment:
       name: production
       url: https://lp.tumiki.cloud
