@@ -50,10 +50,8 @@ export const AI_CLIENTS: AiClient[] = [
   {
     id: "antigravity",
     name: "Antigravity",
-    logoPath: (t) =>
-      t === "dark"
-        ? "/logos/ai-clients/antigravity.webp"
-        : "/logos/ai-clients/antigravity.svg",
+    // ライト/ダーク共通で webp を使用（旧 SVG は中身が base64 ラスタの 2.3MB ファイルだったため削除）
+    logoPath: () => "/logos/ai-clients/antigravity.webp",
     configTargetPath: "Antigravity → Settings → MCP",
   },
   {
