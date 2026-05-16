@@ -4,15 +4,13 @@ import { renderHook, waitFor, act } from "@testing-library/react";
 import {
   useAiCodingToolSettings,
   useOtlpReceiverPort,
-  useAiCodingTelemetryBackground,
+  useAiCodingTelemetryReceiverStatus,
 } from "../useAiCodingTelemetry";
 
 // electronAPI のモック
 const mockGetToolSettings = vi.fn();
 const mockGetReceiverPort = vi.fn();
 const mockGetReceiverStatus = vi.fn();
-const mockGetBackgroundStatus = vi.fn();
-const mockSetBackgroundCollectionEnabled = vi.fn();
 const mockSaveToolEnabled = vi.fn();
 
 // electronAPI を window に直接追加（window 全体の置き換えは React を壊すため回避）
@@ -22,8 +20,6 @@ Object.defineProperty(window, "electronAPI", {
       getToolSettings: mockGetToolSettings,
       getReceiverPort: mockGetReceiverPort,
       getReceiverStatus: mockGetReceiverStatus,
-      getBackgroundStatus: mockGetBackgroundStatus,
-      setBackgroundCollectionEnabled: mockSetBackgroundCollectionEnabled,
       saveToolEnabled: mockSaveToolEnabled,
     },
   },
@@ -33,13 +29,6 @@ Object.defineProperty(window, "electronAPI", {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGetBackgroundStatus.mockResolvedValue({
-    supported: true,
-    enabled: false,
-    installed: false,
-    loaded: false,
-    port: 4318,
-  });
   mockGetReceiverStatus.mockResolvedValue({
     port: 4318,
     listening: false,
@@ -174,64 +163,47 @@ describe("useOtlpReceiverPort", () => {
   });
 });
 
-describe("useAiCodingTelemetryBackground", () => {
-  test("バックグラウンド収集状態と受信状態を取得する", async () => {
-    mockGetBackgroundStatus.mockResolvedValue({
-      supported: true,
-      enabled: true,
-      installed: true,
-      loaded: true,
-      port: 4318,
-    });
+describe("useAiCodingTelemetryReceiverStatus", () => {
+  test("受信状態を取得する", async () => {
     mockGetReceiverStatus.mockResolvedValue({
       port: 4318,
       listening: true,
-      mode: "background",
+      mode: "analytics",
     });
 
-    const { result } = renderHook(() => useAiCodingTelemetryBackground());
+    const { result } = renderHook(() => useAiCodingTelemetryReceiverStatus());
 
     await waitFor(() => expect(result.current.isLoading).toStrictEqual(false));
-    expect(result.current.status).toStrictEqual({
-      supported: true,
-      enabled: true,
-      installed: true,
-      loaded: true,
-      port: 4318,
-    });
     expect(result.current.receiverStatus).toStrictEqual({
       port: 4318,
       listening: true,
-      mode: "background",
+      mode: "analytics",
     });
   });
 
-  test("setEnabled で状態を更新する", async () => {
-    mockSetBackgroundCollectionEnabled.mockResolvedValue({
-      supported: true,
-      enabled: true,
-      installed: true,
-      loaded: true,
-      port: 4318,
-    });
-    mockGetReceiverStatus.mockResolvedValue({
-      port: 4318,
-      listening: true,
-      mode: "background",
-    });
+  test("refresh で受信状態を再取得する", async () => {
+    mockGetReceiverStatus
+      .mockResolvedValueOnce({
+        port: 4318,
+        listening: false,
+        mode: "stopped",
+      })
+      .mockResolvedValueOnce({
+        port: 4318,
+        listening: true,
+        mode: "analytics",
+      });
 
-    const { result } = renderHook(() => useAiCodingTelemetryBackground());
+    const { result } = renderHook(() => useAiCodingTelemetryReceiverStatus());
     await waitFor(() => expect(result.current.isLoading).toStrictEqual(false));
 
     act(() => {
-      result.current.setEnabled(true);
+      result.current.refresh();
     });
 
     await waitFor(() =>
-      expect(mockSetBackgroundCollectionEnabled).toHaveBeenCalledWith(true),
+      expect(result.current.receiverStatus?.mode).toStrictEqual("analytics"),
     );
-    await waitFor(() =>
-      expect(result.current.status?.enabled).toStrictEqual(true),
-    );
+    expect(mockGetReceiverStatus).toHaveBeenCalledTimes(2);
   });
 });

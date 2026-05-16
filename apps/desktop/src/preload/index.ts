@@ -42,7 +42,6 @@ import type {
   DailyUsageItem,
   ApplyToolSettingsResult,
   GetToolSettingsResult,
-  BackgroundCollectionStatus,
   ReceiverStatus,
 } from "../main/types";
 
@@ -222,14 +221,6 @@ const api = {
       ipcRenderer.invoke("aiCodingTelemetry:getReceiverPort"),
     getReceiverStatus: (): Promise<ReceiverStatus> =>
       ipcRenderer.invoke("aiCodingTelemetry:getReceiverStatus"),
-    getBackgroundStatus: (): Promise<BackgroundCollectionStatus> =>
-      ipcRenderer.invoke("aiCodingTelemetry:getBackgroundStatus"),
-    setBackgroundCollectionEnabled: (
-      enabled: boolean,
-    ): Promise<BackgroundCollectionStatus> =>
-      ipcRenderer.invoke("aiCodingTelemetry:setBackgroundCollectionEnabled", {
-        enabled,
-      }),
     getToolSettings: (tool: AiCodingTool): Promise<GetToolSettingsResult> =>
       ipcRenderer.invoke("aiCodingTelemetry:getToolSettings", tool),
     saveToolEnabled: (tool: AiCodingTool, enabled: boolean): Promise<void> =>

@@ -25,10 +25,6 @@ const applyToToolSchema = z.object({
   tool: toolSchema,
 });
 
-const setBackgroundCollectionEnabledSchema = z.object({
-  enabled: z.boolean(),
-});
-
 // 起動中の OTLP レシーバーポートを保持する
 let _receiverPort = 0;
 
@@ -105,40 +101,6 @@ export const setupAiCodingTelemetryIpc = (): void => {
       throw new Error(`受信サーバー状態の取得に失敗しました: ${message}`);
     }
   });
-
-  ipcMain.handle("aiCodingTelemetry:getBackgroundStatus", async () => {
-    try {
-      return await service.getBackgroundCollectionStatus();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "不明なエラー";
-      logger.error(
-        "Failed to get AI coding telemetry background status",
-        error instanceof Error ? error : { error },
-      );
-      throw new Error(
-        `バックグラウンド収集状態の取得に失敗しました: ${message}`,
-      );
-    }
-  });
-
-  ipcMain.handle(
-    "aiCodingTelemetry:setBackgroundCollectionEnabled",
-    async (_, input: unknown) => {
-      try {
-        const validated = setBackgroundCollectionEnabledSchema.parse(input);
-        return await service.setBackgroundCollectionEnabled(validated.enabled);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "不明なエラー";
-        logger.error(
-          "Failed to update AI coding telemetry background status",
-          error instanceof Error ? error : { error },
-        );
-        throw new Error(
-          `バックグラウンド収集設定の更新に失敗しました: ${message}`,
-        );
-      }
-    },
-  );
 
   // 起動時の自動再書き込み結果を取得し、取得後はクリアする。
   // renderer がマウント直後に呼ぶことで、push 通知の取りこぼしを防ぐ。

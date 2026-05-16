@@ -1,4 +1,4 @@
-export type DesktopAppMode = "gui" | "mcp-proxy" | "telemetry-receiver";
+export type DesktopAppMode = "gui" | "mcp-proxy" | "analytics";
 
 export const ANALYTICS_RECEIVER_FLAG = "--analytics";
 export const LEGACY_TELEMETRY_RECEIVER_FLAG = "--telemetry-receiver";
@@ -11,7 +11,7 @@ export const resolveDesktopAppMode = (
     argv.includes(ANALYTICS_RECEIVER_FLAG) ||
     argv.includes(LEGACY_TELEMETRY_RECEIVER_FLAG)
   ) {
-    return "telemetry-receiver";
+    return "analytics";
   }
   return "gui";
 };

@@ -5,16 +5,10 @@ import * as repository from "./ai-coding-telemetry.repository";
 import { applyOtlpToTool } from "./ai-coding-telemetry.config-writer";
 import { isAiCodingTool } from "./ai-coding-telemetry.types";
 import { OTLP_DEFAULT_PORT } from "./ai-coding-telemetry.receiver";
-import {
-  getTelemetryLaunchAgentRuntimeStatus,
-  installTelemetryLaunchAgent,
-  uninstallTelemetryLaunchAgent,
-} from "./ai-coding-telemetry.launch-agent";
 import type {
   AiCodingTool,
   ApplyToolSettingsInput,
   ApplyToolSettingsResult,
-  BackgroundCollectionStatus,
   DailyUsageItem,
   GetDailyUsageInput,
   GetSummaryInput,
@@ -252,7 +246,6 @@ export const applyToolSettings = async (
     const store = await getAppStore();
     const current = store.get("aiCodingTelemetry") ?? { tools: {} };
     store.set("aiCodingTelemetry", {
-      backgroundCollectionEnabled: current.backgroundCollectionEnabled,
       tools: {
         ...current.tools,
         [input.tool]: {
@@ -339,7 +332,6 @@ export const autoReapplyMismatchedPorts = async (
       // electron-store を最新ポートで更新
       const latest = store.get("aiCodingTelemetry") ?? { tools: {} };
       store.set("aiCodingTelemetry", {
-        backgroundCollectionEnabled: latest.backgroundCollectionEnabled,
         tools: {
           ...latest.tools,
           [tool]: {
@@ -370,7 +362,6 @@ export const saveToolEnabled = async (
   const store = await getAppStore();
   const current = store.get("aiCodingTelemetry") ?? { tools: {} };
   store.set("aiCodingTelemetry", {
-    backgroundCollectionEnabled: current.backgroundCollectionEnabled,
     tools: {
       ...current.tools,
       [tool]: {
@@ -379,44 +370,6 @@ export const saveToolEnabled = async (
       },
     },
   });
-};
-
-export const isBackgroundCollectionEnabled = async (): Promise<boolean> => {
-  const store = await getAppStore();
-  return store.get("aiCodingTelemetry")?.backgroundCollectionEnabled === true;
-};
-
-export const getBackgroundCollectionStatus =
-  async (): Promise<BackgroundCollectionStatus> => {
-    const store = await getAppStore();
-    const runtime = await getTelemetryLaunchAgentRuntimeStatus();
-    return {
-      supported: runtime.supported,
-      enabled:
-        store.get("aiCodingTelemetry")?.backgroundCollectionEnabled === true,
-      installed: runtime.installed,
-      loaded: runtime.loaded,
-      port: OTLP_DEFAULT_PORT,
-    };
-  };
-
-export const setBackgroundCollectionEnabled = async (
-  enabled: boolean,
-): Promise<BackgroundCollectionStatus> => {
-  if (enabled) {
-    await installTelemetryLaunchAgent();
-  } else {
-    await uninstallTelemetryLaunchAgent();
-  }
-
-  const store = await getAppStore();
-  const current = store.get("aiCodingTelemetry") ?? { tools: {} };
-  store.set("aiCodingTelemetry", {
-    backgroundCollectionEnabled: enabled,
-    tools: current.tools,
-  });
-
-  return getBackgroundCollectionStatus();
 };
 
 const canConnectToPort = (port: number): Promise<boolean> =>
@@ -452,6 +405,6 @@ export const getReceiverStatus = async (
   return {
     port: OTLP_DEFAULT_PORT,
     listening,
-    mode: listening ? "background" : "stopped",
+    mode: listening ? "analytics" : "stopped",
   };
 };

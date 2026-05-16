@@ -57,8 +57,11 @@ describe("applyOtlpToTool - claude-code", () => {
 
     expect(result.success).toStrictEqual(true);
     expect(result.configPath).toContain("settings.json");
-    expect(mockWriteFile).toHaveBeenCalledOnce();
-    const [[, content]] = mockWriteFile.mock.calls as [[string, string]];
+    expect(mockWriteFile).toHaveBeenCalledTimes(2);
+    const [[, content], [, mcpContent]] = mockWriteFile.mock.calls as [
+      [string, string],
+      [string, string],
+    ];
     const written = JSON.parse(content) as Record<string, unknown>;
     expect(written).toStrictEqual(
       expect.objectContaining({
@@ -66,6 +69,15 @@ describe("applyOtlpToTool - claude-code", () => {
           CLAUDE_CODE_ENABLE_TELEMETRY: "1",
           OTEL_EXPORTER_OTLP_ENDPOINT: "http://127.0.0.1:4318",
         },
+      }),
+    );
+    const mcpWritten = JSON.parse(mcpContent) as Record<string, unknown>;
+    expect(
+      (mcpWritten.mcpServers as Record<string, unknown>)["tumiki-analytics"],
+    ).toStrictEqual(
+      expect.objectContaining({
+        command: expect.any(String),
+        args: expect.arrayContaining(["--analytics"]),
       }),
     );
   });
@@ -78,7 +90,10 @@ describe("applyOtlpToTool - claude-code", () => {
     const result = await applyOtlpToTool("claude-code", 4319);
 
     expect(result.success).toStrictEqual(true);
-    const [[, content]] = mockWriteFile.mock.calls as [[string, string]];
+    const [[, content], [, mcpContent]] = mockWriteFile.mock.calls as [
+      [string, string],
+      [string, string],
+    ];
     const written = JSON.parse(content) as Record<string, unknown>;
     // 既存キーが保持されている
     expect((written as { theme?: string }).theme).toStrictEqual("dark");
@@ -93,6 +108,8 @@ describe("applyOtlpToTool - claude-code", () => {
     expect(
       (written.env as Record<string, string>).OTEL_EXPORTER_OTLP_ENDPOINT,
     ).toStrictEqual("http://127.0.0.1:4319");
+    const mcpWritten = JSON.parse(mcpContent) as Record<string, unknown>;
+    expect(mcpWritten.mcpServers).toHaveProperty("tumiki-analytics");
   });
 
   test("既存の env が配列の場合は上書きされる", async () => {
@@ -118,7 +135,7 @@ describe("applyOtlpToTool - claude-code", () => {
     const [[tmpPath]] = mockWriteFile.mock.calls as [[string, string]];
     expect(tmpPath).toContain(".tmp.");
     // rename でファイルを確定させる
-    expect(mockRename).toHaveBeenCalledOnce();
+    expect(mockRename).toHaveBeenCalledTimes(2);
     const [[src, dest]] = mockRename.mock.calls as [[string, string]];
     expect(src).toStrictEqual(tmpPath);
     expect(dest).toContain("settings.json");
@@ -167,6 +184,14 @@ describe("applyOtlpToTool - codex", () => {
     expect(
       (tomlArg.telemetry as Record<string, string>).otel_exporter_otlp_endpoint,
     ).toStrictEqual("http://127.0.0.1:4318");
+    expect(
+      (tomlArg.mcp_servers as Record<string, unknown>)["tumiki-analytics"],
+    ).toStrictEqual(
+      expect.objectContaining({
+        command: expect.any(String),
+        args: expect.arrayContaining(["--analytics"]),
+      }),
+    );
   });
 
   test("既存設定とマージする", async () => {
@@ -190,6 +215,7 @@ describe("applyOtlpToTool - codex", () => {
     expect(
       (tomlArg.telemetry as Record<string, string>).otel_exporter_otlp_endpoint,
     ).toStrictEqual("http://127.0.0.1:4320");
+    expect(tomlArg.mcp_servers).toHaveProperty("tumiki-analytics");
   });
 
   test("既存 telemetry が配列の場合はマージ対象にしない", async () => {

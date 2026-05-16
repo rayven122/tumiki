@@ -8,6 +8,8 @@ import type {
   AiCodingTool,
   ApplyToolSettingsResult,
 } from "./ai-coding-telemetry.types";
+import type { McpEntry } from "../ai-client/ai-client.types";
+import { ANALYTICS_RECEIVER_FLAG } from "../../app-mode";
 
 // Claude Code のユーザー設定ファイルパス（env セクションで環境変数を定義できる）
 const CLAUDE_CODE_SETTINGS_PATH = path.join(
@@ -16,8 +18,12 @@ const CLAUDE_CODE_SETTINGS_PATH = path.join(
   "settings.json",
 );
 
+const CLAUDE_CODE_MCP_CONFIG_PATH = path.join(os.homedir(), ".claude.json");
+
 // Codex CLI の設定ファイルパス
 const CODEX_CONFIG_PATH = path.join(os.homedir(), ".codex", "config.toml");
+
+export const ANALYTICS_MCP_SERVER_NAME = "tumiki-analytics";
 
 const isFileNotFoundError = (error: unknown): boolean => {
   if (typeof error !== "object" || error === null) return false;
@@ -31,6 +37,21 @@ const isFileNotFoundError = (error: unknown): boolean => {
 
 const isValidPort = (port: number): boolean =>
   Number.isInteger(port) && port >= 1 && port <= 65535;
+
+const getAnalyticsMcpEntry = (): McpEntry => {
+  const rawAppEntry = process.argv[1];
+  const appEntry = rawAppEntry ? path.resolve(rawAppEntry) : null;
+  const isDefaultApp =
+    (process as NodeJS.Process & { defaultApp?: boolean }).defaultApp === true;
+  const args =
+    isDefaultApp && appEntry
+      ? [appEntry, ANALYTICS_RECEIVER_FLAG]
+      : [ANALYTICS_RECEIVER_FLAG];
+  return {
+    command: process.execPath,
+    args,
+  };
+};
 
 // 一時ファイルを使ったアトミック書き込み
 const writeAtomic = async (
@@ -47,6 +68,39 @@ const writeAtomic = async (
   }
 };
 
+const readJsonObject = async (
+  filePath: string,
+): Promise<Record<string, unknown>> => {
+  const content = await fs.readFile(filePath, "utf-8").catch((error) => {
+    if (isFileNotFoundError(error)) return undefined;
+    throw error;
+  });
+  if (content === undefined) return {};
+  const parsed: unknown = JSON.parse(content);
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new Error("JSON config must be an object");
+  }
+  return parsed as Record<string, unknown>;
+};
+
+const mergeAnalyticsMcpServer = (
+  existing: Record<string, unknown>,
+): Record<string, unknown> => {
+  const existingMcpServers =
+    typeof existing.mcpServers === "object" &&
+    existing.mcpServers !== null &&
+    !Array.isArray(existing.mcpServers)
+      ? (existing.mcpServers as Record<string, unknown>)
+      : {};
+  return {
+    ...existing,
+    mcpServers: {
+      ...existingMcpServers,
+      [ANALYTICS_MCP_SERVER_NAME]: getAnalyticsMcpEntry(),
+    },
+  };
+};
+
 // Claude Code の settings.json に OTLP env vars を書き込む
 const applyToClaudeCode = async (
   port: number,
@@ -54,23 +108,13 @@ const applyToClaudeCode = async (
   const configPath = CLAUDE_CODE_SETTINGS_PATH;
   try {
     await fs.mkdir(path.dirname(configPath), { recursive: true });
+    await fs.mkdir(path.dirname(CLAUDE_CODE_MCP_CONFIG_PATH), {
+      recursive: true,
+    });
 
     // 既存ファイルを読み込む（なければ空オブジェクト）
-    let existing: Record<string, unknown> = {};
-    const content = await fs.readFile(configPath, "utf-8").catch((error) => {
-      if (isFileNotFoundError(error)) return undefined;
-      throw error;
-    });
-    if (content !== undefined) {
-      const parsed: unknown = JSON.parse(content);
-      if (
-        typeof parsed !== "object" ||
-        parsed === null ||
-        Array.isArray(parsed)
-      )
-        throw new Error("Claude Code settings must be a JSON object");
-      existing = parsed as Record<string, unknown>;
-    }
+    const existing = await readJsonObject(configPath);
+    const existingMcpConfig = await readJsonObject(CLAUDE_CODE_MCP_CONFIG_PATH);
 
     // 既存の env キーをマージする
     const existingEnv =
@@ -90,6 +134,11 @@ const applyToClaudeCode = async (
     };
 
     await writeAtomic(configPath, JSON.stringify(merged, null, 2) + "\n");
+    await writeAtomic(
+      CLAUDE_CODE_MCP_CONFIG_PATH,
+      JSON.stringify(mergeAnalyticsMcpServer(existingMcpConfig), null, 2) +
+        "\n",
+    );
     return { success: true, configPath };
   } catch (error) {
     logger.warn("Claude Code テレメトリ設定ファイルの更新に失敗しました", {
@@ -130,12 +179,22 @@ const applyToCodex = async (port: number): Promise<ApplyToolSettingsResult> => {
       !Array.isArray(existing.telemetry)
         ? (existing.telemetry as Record<string, unknown>)
         : {};
+    const existingMcpServers =
+      typeof existing.mcp_servers === "object" &&
+      existing.mcp_servers !== null &&
+      !Array.isArray(existing.mcp_servers)
+        ? (existing.mcp_servers as Record<string, unknown>)
+        : {};
 
     const merged = {
       ...existing,
       telemetry: {
         ...existingTelemetry,
         otel_exporter_otlp_endpoint: `http://127.0.0.1:${port}`,
+      },
+      mcp_servers: {
+        ...existingMcpServers,
+        [ANALYTICS_MCP_SERVER_NAME]: getAnalyticsMcpEntry(),
       },
     };
 

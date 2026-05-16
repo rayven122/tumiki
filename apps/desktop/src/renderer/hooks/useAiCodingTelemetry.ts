@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type {
   AiCodingTool,
-  BackgroundCollectionStatus,
   GetToolSettingsResult,
   ReceiverStatus,
 } from "../../main/types";
@@ -12,12 +11,9 @@ type ToolSettingsResult = {
   refresh: () => void;
 };
 
-type BackgroundCollectionResult = {
-  status: BackgroundCollectionStatus | null;
+type ReceiverStatusResult = {
   receiverStatus: ReceiverStatus | null;
   isLoading: boolean;
-  isUpdating: boolean;
-  setEnabled: (enabled: boolean) => void;
   refresh: () => void;
 };
 
@@ -94,74 +90,43 @@ export const useOtlpReceiverPort = (): number => {
   return port;
 };
 
-export const useAiCodingTelemetryBackground =
-  (): BackgroundCollectionResult => {
-    const [status, setStatus] = useState<BackgroundCollectionStatus | null>(
-      null,
-    );
-    const [receiverStatus, setReceiverStatus] = useState<ReceiverStatus | null>(
-      null,
-    );
-    const [isLoading, setIsLoading] = useState(true);
-    const [isUpdating, setIsUpdating] = useState(false);
-    const cancelRef = useRef<{ value: boolean }>({ value: false });
+export const useAiCodingTelemetryReceiverStatus = (): ReceiverStatusResult => {
+  const [receiverStatus, setReceiverStatus] = useState<ReceiverStatus | null>(
+    null,
+  );
+  const [isLoading, setIsLoading] = useState(true);
+  const cancelRef = useRef<{ value: boolean }>({ value: false });
 
-    const load = useCallback((): void => {
+  const load = useCallback((): void => {
+    cancelRef.current.value = true;
+    const cancelled = { value: false };
+    cancelRef.current = cancelled;
+    setIsLoading(true);
+    window.electronAPI.aiCodingTelemetry
+      .getReceiverStatus()
+      .then((nextReceiverStatus) => {
+        if (cancelled.value) return;
+        setReceiverStatus(nextReceiverStatus);
+      })
+      .catch(() => {
+        if (cancelled.value) return;
+        setReceiverStatus(null);
+      })
+      .finally(() => {
+        if (!cancelled.value) setIsLoading(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    load();
+    return () => {
       cancelRef.current.value = true;
-      const cancelled = { value: false };
-      cancelRef.current = cancelled;
-      setIsLoading(true);
-      Promise.all([
-        window.electronAPI.aiCodingTelemetry.getBackgroundStatus(),
-        window.electronAPI.aiCodingTelemetry.getReceiverStatus(),
-      ])
-        .then(([nextStatus, nextReceiverStatus]) => {
-          if (cancelled.value) return;
-          setStatus(nextStatus);
-          setReceiverStatus(nextReceiverStatus);
-        })
-        .catch(() => {
-          if (cancelled.value) return;
-          setStatus(null);
-          setReceiverStatus(null);
-        })
-        .finally(() => {
-          if (!cancelled.value) setIsLoading(false);
-        });
-    }, []);
-
-    const setEnabled = useCallback(
-      (enabled: boolean): void => {
-        if (isUpdating) return;
-        setIsUpdating(true);
-        window.electronAPI.aiCodingTelemetry
-          .setBackgroundCollectionEnabled(enabled)
-          .then((nextStatus) => {
-            setStatus(nextStatus);
-            return window.electronAPI.aiCodingTelemetry.getReceiverStatus();
-          })
-          .then((nextReceiverStatus) => setReceiverStatus(nextReceiverStatus))
-          .catch(() => {
-            load();
-          })
-          .finally(() => setIsUpdating(false));
-      },
-      [isUpdating, load],
-    );
-
-    useEffect(() => {
-      load();
-      return () => {
-        cancelRef.current.value = true;
-      };
-    }, [load]);
-
-    return {
-      status,
-      receiverStatus,
-      isLoading,
-      isUpdating,
-      setEnabled,
-      refresh: load,
     };
+  }, [load]);
+
+  return {
+    receiverStatus,
+    isLoading,
+    refresh: load,
   };
+};

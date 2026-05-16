@@ -44,7 +44,6 @@ import {
 } from "./features/ai-coding-telemetry/ai-coding-telemetry.receiver";
 import {
   autoReapplyMismatchedPorts,
-  isBackgroundCollectionEnabled,
   pruneOldTelemetry,
 } from "./features/ai-coding-telemetry/ai-coding-telemetry.service";
 import {
@@ -53,6 +52,10 @@ import {
   setPendingAutoReapplied,
 } from "./features/ai-coding-telemetry/ai-coding-telemetry.ipc";
 import { resolveDesktopAppMode } from "./app-mode";
+import {
+  startAnalyticsMcpServer,
+  startAnalyticsReceiverSingleton,
+} from "./features/ai-coding-telemetry/ai-coding-telemetry.analytics-sidecar";
 
 // Cursor など親プロセス（Electron アプリ）が子プロセスへ ELECTRON_RUN_AS_NODE=1 を継承
 // させたケース対応。Electron が Node モードで起動すると `import { app } from "electron"` が
@@ -85,13 +88,11 @@ if (!app) {
 // --mcp-proxy モード: GUI不要、stdioでMCPプロキシとして動作
 const appMode = resolveDesktopAppMode(process.argv);
 
-const startTelemetryReceiverMode = async (): Promise<void> => {
+const startAnalyticsSidecarMode = async (): Promise<void> => {
   app.dock?.hide();
   await initializeDb();
 
-  const { server } = await startOtlpReceiver(OTLP_DEFAULT_PORT, {
-    allowFallback: false,
-  });
+  const runtime = await startAnalyticsReceiverSingleton();
 
   const runTelemetryPrune = (): void => {
     void pruneOldTelemetry().catch((error: unknown) => {
@@ -109,17 +110,25 @@ const startTelemetryReceiverMode = async (): Promise<void> => {
     if (isShuttingDown) return;
     isShuttingDown = true;
     clearInterval(telemetryPruneInterval);
-    server.close(() => {
+    const closeDbAndExit = (): void => {
       void closeDb()
         .catch((error: unknown) => {
           logger.error("Failed to close telemetry receiver DB", { error });
         })
         .finally(() => app.exit(0));
-    });
+    };
+    if (runtime.server) {
+      runtime.server.close(closeDbAndExit);
+    } else {
+      closeDbAndExit();
+    }
   };
+
+  startAnalyticsMcpServer(runtime);
 
   process.once("SIGINT", shutdown);
   process.once("SIGTERM", shutdown);
+  process.stdin.once("end", shutdown);
   app.once("will-quit", (event) => {
     if (isShuttingDown) return;
     event.preventDefault();
@@ -365,14 +374,14 @@ if (appMode === "mcp-proxy") {
       process.exit(1);
     }
   });
-} else if (appMode === "telemetry-receiver") {
+} else if (appMode === "analytics") {
   void app
     .whenReady()
-    .then(startTelemetryReceiverMode)
+    .then(startAnalyticsSidecarMode)
     .catch(async (error) => {
       if (isAddressInUseError(error)) {
         logger.warn(
-          "Telemetry receiver port is already in use; background receiver will not restart",
+          "Telemetry receiver port is already in use; analytics sidecar will reuse existing receiver",
           { port: OTLP_DEFAULT_PORT },
         );
         await closeDb().catch((closeError: unknown) => {
@@ -691,24 +700,22 @@ if (appMode === "mcp-proxy") {
       // OTLP レシーバーを起動する
       // OTLP HTTP の標準ポート 4318 を常に優先する。
       // 設定ファイルの endpoint も 4318 固定のため、競合時は random port へ逃がさず
-      // 状態表示で停止として扱う。バックグラウンド収集が有効なら GUI 側では起動しない。
-      const backgroundTelemetryEnabled = await isBackgroundCollectionEnabled();
-      if (!backgroundTelemetryEnabled) {
-        const receiverResult = await startOtlpReceiver(OTLP_DEFAULT_PORT, {
-          allowFallback: false,
-        }).catch((error: unknown) => {
-          logger.error("Failed to start OTLP receiver", { error });
-          return null;
-        });
-        const otlpPort = receiverResult?.port ?? 0;
-        otlpHttpServer = receiverResult?.server ?? null;
-        setReceiverPort(otlpPort);
-        if (receiverResult === null) {
-          logger.warn("OTLP receiver is not running in GUI process");
-        }
+      // 状態表示で停止として扱う。AI 起動時の tumiki-analytics MCP sidecar が既に
+      // 4318 を使っている場合、GUI 側では二重起動しない。
+      const receiverResult = await startOtlpReceiver(OTLP_DEFAULT_PORT, {
+        allowFallback: false,
+      }).catch((error: unknown) => {
+        logger.error("Failed to start OTLP receiver", { error });
+        return null;
+      });
+      const otlpPort = receiverResult?.port ?? 0;
+      otlpHttpServer = receiverResult?.server ?? null;
+      setReceiverPort(otlpPort);
+      if (receiverResult === null) {
+        logger.warn("OTLP receiver is not running in GUI process");
       }
 
-      if (!backgroundTelemetryEnabled && otlpHttpServer) {
+      if (otlpHttpServer) {
         const otlpPort = OTLP_DEFAULT_PORT;
         // 過去に適用したツールでポートが変わっていれば自動で再書き込みする。
         // OTLP ポートがフォールバックで変わったり、ユーザー設定で変更されても

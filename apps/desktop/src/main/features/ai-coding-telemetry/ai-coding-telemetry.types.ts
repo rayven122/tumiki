@@ -56,18 +56,10 @@ export type GetToolSettingsResult = {
   appliedPort?: number;
 };
 
-export type BackgroundCollectionStatus = {
-  supported: boolean;
-  enabled: boolean;
-  installed: boolean;
-  loaded: boolean;
-  port: number;
-};
-
 export type ReceiverStatus = {
   port: number;
   listening: boolean;
-  mode: "gui" | "background" | "stopped";
+  mode: "gui" | "analytics" | "stopped";
 };
 
 // メトリクスの記録

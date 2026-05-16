@@ -8,16 +8,16 @@ describe("resolveDesktopAppMode", () => {
     );
   });
 
-  test("--analytics は telemetry receiver mode を返す", () => {
+  test("--analytics は analytics mode を返す", () => {
     expect(resolveDesktopAppMode(["Tumiki", "--analytics"])).toStrictEqual(
-      "telemetry-receiver",
+      "analytics",
     );
   });
 
-  test("--telemetry-receiver は互換 alias として telemetry receiver mode を返す", () => {
+  test("--telemetry-receiver は互換 alias として analytics mode を返す", () => {
     expect(
       resolveDesktopAppMode(["Tumiki", "--telemetry-receiver"]),
-    ).toStrictEqual("telemetry-receiver");
+    ).toStrictEqual("analytics");
   });
 
   test("特別な flag がなければ GUI mode を返す", () => {
