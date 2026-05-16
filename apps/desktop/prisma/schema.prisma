@@ -265,6 +265,11 @@ model OAuthClient {
   authServerMetadata      String
   /// DCRで自動登録されたクライアントかどうか（falseの場合はユーザー手動入力）
   isDcr                   Boolean  @default(true)
+  /// ランタイム自動リフレッシュを無効化するか。
+  /// 一部プロバイダ (Figma, Atlassian 等) で refresh_token grant が MCP の audience/scope を
+  /// 保持しないトークンを返すケースがあり、ランタイムリフレッシュが上流401を招くため。
+  /// true の場合は起動時の refreshOAuthTokenIfNeeded のみが走り、ランタイム resolveHeaders は静的ヘッダーのまま。
+  disableRuntimeRefresh   Boolean  @default(false)
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 }

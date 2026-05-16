@@ -10,6 +10,7 @@ vi.mock("electron", () => ({
 vi.mock("../../../shared/db");
 vi.mock("../../../shared/utils/logger");
 vi.mock("../../../utils/encryption");
+vi.mock("../../../utils/credentials");
 vi.mock("../oauth.token");
 vi.mock("../oauth.repository");
 vi.mock("../oauth.service", async (importOriginal) => {
@@ -22,10 +23,14 @@ vi.mock("../oauth.service", async (importOriginal) => {
 
 import { getDb } from "../../../shared/db";
 import { encryptToken } from "../../../utils/encryption";
+import { decryptCredentials } from "../../../utils/credentials";
 import { refreshAccessToken } from "../oauth.token";
 import * as oauthRepository from "../oauth.repository";
 import {
   refreshOAuthTokenIfNeeded,
+  refreshOAuthTokenIfNeededOnce,
+  resolveOAuthHeaders,
+  _resetResolveOAuthHeadersCache,
   isTokenExpiringSoon,
   classifyRefreshError,
 } from "../oauth.refresh";
@@ -37,6 +42,7 @@ describe("oauth.refresh", () => {
     vi.clearAllMocks();
     vi.mocked(getDb).mockResolvedValue(mockDb);
     vi.mocked(encryptToken).mockImplementation(async (v) => `encrypted:${v}`);
+    _resetResolveOAuthHeadersCache();
   });
 
   describe("isTokenExpiringSoon", () => {
@@ -333,6 +339,259 @@ describe("oauth.refresh", () => {
 
     test("ネットワークエラー（非 ResponseBodyError）は TRANSIENT を返す", () => {
       expect(classifyRefreshError(new Error("ECONNRESET"))).toBe("TRANSIENT");
+    });
+  });
+
+  describe("refreshOAuthTokenIfNeededOnce", () => {
+    test("同一 secretId の並行呼び出しは1回だけリフレッシュする", async () => {
+      const credentials = {
+        access_token: "expired",
+        refresh_token: "rt",
+        expires_at: String(Math.floor(Date.now() / 1000) - 100),
+      };
+
+      vi.mocked(oauthRepository.findByServerUrl).mockResolvedValue({
+        id: 1,
+        serverUrl: "https://example.com",
+        issuer: "https://example.com",
+        clientId: "cid",
+        clientSecret: null,
+        tokenEndpointAuthMethod: "none",
+        authServerMetadata: JSON.stringify({
+          issuer: "https://example.com",
+          authorization_endpoint: "https://example.com/auth",
+          token_endpoint: "https://example.com/token",
+        }),
+        isDcr: true,
+      });
+      vi.mocked(refreshAccessToken).mockResolvedValue({
+        access_token: "new-token",
+        token_type: "bearer",
+        refresh_token: "new-rt",
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+      });
+      vi.mocked(oauthRepository.updateSecretCredentials).mockResolvedValue();
+
+      // 並行3件で同じ secretId
+      const [r1, r2, r3] = await Promise.all([
+        refreshOAuthTokenIfNeededOnce(99, "https://example.com", credentials),
+        refreshOAuthTokenIfNeededOnce(99, "https://example.com", credentials),
+        refreshOAuthTokenIfNeededOnce(99, "https://example.com", credentials),
+      ]);
+
+      expect(r1).toStrictEqual(r2);
+      expect(r2).toStrictEqual(r3);
+      expect(refreshAccessToken).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("scope passthrough", () => {
+    test("credentials に scope があればリフレッシュ要求にも渡される", async () => {
+      const credentials = {
+        access_token: "expired",
+        refresh_token: "rt",
+        expires_at: String(Math.floor(Date.now() / 1000) - 100),
+        scope: "files:read current_user",
+      };
+
+      vi.mocked(oauthRepository.findByServerUrl).mockResolvedValue({
+        id: 1,
+        serverUrl: "https://example.com",
+        issuer: "https://example.com",
+        clientId: "cid",
+        clientSecret: null,
+        tokenEndpointAuthMethod: "none",
+        authServerMetadata: JSON.stringify({
+          issuer: "https://example.com",
+          authorization_endpoint: "https://example.com/auth",
+          token_endpoint: "https://example.com/token",
+        }),
+        isDcr: true,
+      });
+      vi.mocked(refreshAccessToken).mockResolvedValue({
+        access_token: "new",
+        token_type: "bearer",
+        refresh_token: "rt2",
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+      });
+      vi.mocked(oauthRepository.updateSecretCredentials).mockResolvedValue();
+
+      await refreshOAuthTokenIfNeeded(1, "https://example.com", credentials);
+
+      // refreshAccessToken の第4引数に scope が渡る
+      expect(refreshAccessToken).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        "rt",
+        "files:read current_user",
+      );
+    });
+
+    test("credentials に scope が無ければ undefined を渡す", async () => {
+      const credentials = {
+        access_token: "expired",
+        refresh_token: "rt",
+        expires_at: String(Math.floor(Date.now() / 1000) - 100),
+      };
+
+      vi.mocked(oauthRepository.findByServerUrl).mockResolvedValue({
+        id: 1,
+        serverUrl: "https://example.com",
+        issuer: "https://example.com",
+        clientId: "cid",
+        clientSecret: null,
+        tokenEndpointAuthMethod: "none",
+        authServerMetadata: JSON.stringify({
+          issuer: "https://example.com",
+          authorization_endpoint: "https://example.com/auth",
+          token_endpoint: "https://example.com/token",
+        }),
+        isDcr: true,
+      });
+      vi.mocked(refreshAccessToken).mockResolvedValue({
+        access_token: "new",
+        token_type: "bearer",
+        refresh_token: "rt2",
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+      });
+      vi.mocked(oauthRepository.updateSecretCredentials).mockResolvedValue();
+
+      await refreshOAuthTokenIfNeeded(1, "https://example.com", credentials);
+
+      expect(refreshAccessToken).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        "rt",
+        undefined,
+      );
+    });
+  });
+
+  describe("resolveOAuthHeaders", () => {
+    /** db.mcpSecret.findUnique を返すMockDbを作る */
+    const buildMockDb = (findUniqueResult: unknown) =>
+      ({
+        mcpSecret: {
+          findUnique: vi.fn(async () => findUniqueResult),
+        },
+      }) as unknown as Awaited<ReturnType<typeof getDb>>;
+
+    test("有効なトークンがある場合は Authorization ヘッダーを返す", async () => {
+      const validCreds = {
+        access_token: "valid-token",
+        expires_at: String(Math.floor(Date.now() / 1000) + 3600),
+      };
+      vi.mocked(getDb).mockResolvedValue(
+        buildMockDb({ credentials: "encrypted-blob" }),
+      );
+      vi.mocked(decryptCredentials).mockResolvedValue(
+        JSON.stringify(validCreds),
+      );
+
+      const headers = await resolveOAuthHeaders(1, "https://example.com");
+
+      expect(headers).toStrictEqual({
+        Authorization: "Bearer valid-token",
+      });
+      expect(refreshAccessToken).not.toHaveBeenCalled();
+    });
+
+    test("McpSecret が見つからない場合は空オブジェクトを返す", async () => {
+      vi.mocked(getDb).mockResolvedValue(buildMockDb(null));
+
+      const headers = await resolveOAuthHeaders(999, "https://example.com");
+
+      expect(headers).toStrictEqual({});
+    });
+
+    test("credentials の復号失敗時は空オブジェクトを返し例外を投げない", async () => {
+      vi.mocked(getDb).mockResolvedValue(
+        buildMockDb({ credentials: "corrupted" }),
+      );
+      vi.mocked(decryptCredentials).mockRejectedValue(
+        new Error("decrypt fail"),
+      );
+
+      const headers = await resolveOAuthHeaders(1, "https://example.com");
+      expect(headers).toStrictEqual({});
+    });
+
+    test("credentials の形式が不正な場合は空オブジェクトを返す", async () => {
+      vi.mocked(getDb).mockResolvedValue(
+        buildMockDb({ credentials: "encrypted-blob" }),
+      );
+      // 値が数値 → Record<string,string> スキーマに失敗する
+      vi.mocked(decryptCredentials).mockResolvedValue(
+        JSON.stringify({ access_token: 123 }),
+      );
+
+      const headers = await resolveOAuthHeaders(1, "https://example.com");
+      expect(headers).toStrictEqual({});
+    });
+
+    test("期限切れ間近の場合はリフレッシュが実行され、新トークンが返る", async () => {
+      const expiredCreds = {
+        access_token: "old",
+        refresh_token: "rt",
+        expires_at: String(Math.floor(Date.now() / 1000) - 100),
+      };
+      vi.mocked(getDb).mockResolvedValue(
+        buildMockDb({ credentials: "encrypted-blob" }),
+      );
+      vi.mocked(decryptCredentials).mockResolvedValue(
+        JSON.stringify(expiredCreds),
+      );
+      vi.mocked(oauthRepository.findByServerUrl).mockResolvedValue({
+        id: 1,
+        serverUrl: "https://example.com",
+        issuer: "https://example.com",
+        clientId: "cid",
+        clientSecret: null,
+        tokenEndpointAuthMethod: "none",
+        authServerMetadata: JSON.stringify({
+          issuer: "https://example.com",
+          authorization_endpoint: "https://example.com/auth",
+          token_endpoint: "https://example.com/token",
+        }),
+        isDcr: true,
+      });
+      vi.mocked(refreshAccessToken).mockResolvedValue({
+        access_token: "fresh",
+        token_type: "bearer",
+        refresh_token: "rt2",
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+      });
+      vi.mocked(oauthRepository.updateSecretCredentials).mockResolvedValue();
+
+      const headers = await resolveOAuthHeaders(1, "https://example.com");
+
+      expect(headers).toStrictEqual({
+        Authorization: "Bearer fresh",
+      });
+      expect(refreshAccessToken).toHaveBeenCalledTimes(1);
+    });
+
+    test("インメモリキャッシュ: 2回目の呼び出しはDBを叩かない", async () => {
+      const validCreds = {
+        access_token: "cached-token",
+        expires_at: String(Math.floor(Date.now() / 1000) + 3600),
+      };
+      const findUniqueMock = vi.fn(async () => ({ credentials: "encrypted" }));
+      vi.mocked(getDb).mockResolvedValue({
+        mcpSecret: { findUnique: findUniqueMock },
+      } as unknown as Awaited<ReturnType<typeof getDb>>);
+      vi.mocked(decryptCredentials).mockResolvedValue(
+        JSON.stringify(validCreds),
+      );
+
+      const h1 = await resolveOAuthHeaders(1, "https://example.com");
+      const h2 = await resolveOAuthHeaders(1, "https://example.com");
+      const h3 = await resolveOAuthHeaders(1, "https://example.com");
+
+      expect(h1).toStrictEqual(h2);
+      expect(h2).toStrictEqual(h3);
+      // findUnique は1回だけ呼ばれる（残りはキャッシュヒット）
+      expect(findUniqueMock).toHaveBeenCalledTimes(1);
     });
   });
 });

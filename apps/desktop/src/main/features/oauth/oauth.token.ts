@@ -153,11 +153,17 @@ export const exchangeCodeForToken = async (
 /**
  * リフレッシュトークンでアクセストークンを更新
  * 呼び出し元: oauth.refresh.ts (refreshOAuthTokenIfNeeded)
+ *
+ * @param scope 元の認可で得た scope。指定時は refresh リクエストに同 scope を明示し、
+ *   一部プロバイダ (Figma, Atlassian 等) で refresh-grant トークンが audience/scope を
+ *   保持しない問題への保険とする。RFC 6749 §6 では `scope` パラメータは optional で、
+ *   指定する場合は元の grant の subset でなければならない。
  */
 export const refreshAccessToken = async (
   authServer: oauth.AuthorizationServer,
   client: oauth.Client,
   refreshToken: string,
+  scope?: string,
 ): Promise<McpOAuthTokenData> => {
   const clientAuth = getClientAuth(client);
 
@@ -166,7 +172,13 @@ export const refreshAccessToken = async (
     client,
     clientAuth,
     refreshToken,
-    { [oauth.customFetch]: customFetch },
+    {
+      [oauth.customFetch]: customFetch,
+      // scope が判明している場合のみ追加（不要に空文字列を送らない）
+      ...(scope
+        ? { additionalParameters: new URLSearchParams({ scope }) }
+        : {}),
+    },
   );
 
   const result = await oauth.processRefreshTokenResponse(

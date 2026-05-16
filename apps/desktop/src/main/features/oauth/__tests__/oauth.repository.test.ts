@@ -18,6 +18,7 @@ import {
   updateSecretCredentials,
   markSecretNeedsReauth,
   findSecretNeedsReauthById,
+  isRuntimeRefreshDisabled,
 } from "../oauth.repository";
 import { encryptToken, decryptToken } from "../../../utils/encryption";
 
@@ -53,6 +54,7 @@ describe("oauth.repository", () => {
         tokenEndpointAuthMethod: "client_secret_post",
         authServerMetadata: '{"issuer":"https://www.figma.com"}',
         isDcr: true,
+        disableRuntimeRefresh: false,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -88,6 +90,7 @@ describe("oauth.repository", () => {
         tokenEndpointAuthMethod: "none",
         authServerMetadata: "{}",
         isDcr: true,
+        disableRuntimeRefresh: false,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -164,6 +167,7 @@ describe("oauth.repository", () => {
         tokenEndpointAuthMethod: "client_secret_post",
         authServerMetadata: "{}",
         isDcr: false,
+        disableRuntimeRefresh: false,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -189,6 +193,7 @@ describe("oauth.repository", () => {
         tokenEndpointAuthMethod: "client_secret_post",
         authServerMetadata: "{}",
         isDcr: true,
+        disableRuntimeRefresh: false,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -222,6 +227,7 @@ describe("oauth.repository", () => {
         tokenEndpointAuthMethod: "none",
         authServerMetadata: "{}",
         isDcr: false,
+        disableRuntimeRefresh: false,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -296,6 +302,44 @@ describe("oauth.repository", () => {
       findMock.mockResolvedValueOnce(null);
       const result = await findSecretNeedsReauthById(mockDb, 9999);
       expect(result).toBeNull();
+    });
+  });
+
+  describe("isRuntimeRefreshDisabled", () => {
+    test("disableRuntimeRefresh=true なら true を返す", async () => {
+      const findMock = mockDb.oAuthClient.findUnique as ReturnType<
+        typeof vi.fn
+      >;
+      findMock.mockResolvedValueOnce({ disableRuntimeRefresh: true });
+      const result = await isRuntimeRefreshDisabled(
+        mockDb,
+        "https://api.figma.com/mcp",
+      );
+      expect(result).toBe(true);
+    });
+
+    test("disableRuntimeRefresh=false なら false を返す", async () => {
+      const findMock = mockDb.oAuthClient.findUnique as ReturnType<
+        typeof vi.fn
+      >;
+      findMock.mockResolvedValueOnce({ disableRuntimeRefresh: false });
+      const result = await isRuntimeRefreshDisabled(
+        mockDb,
+        "https://example.com",
+      );
+      expect(result).toBe(false);
+    });
+
+    test("OAuthClient レコードが存在しない場合は false を返す（=ランタイムリフレッシュ有効）", async () => {
+      const findMock = mockDb.oAuthClient.findUnique as ReturnType<
+        typeof vi.fn
+      >;
+      findMock.mockResolvedValueOnce(null);
+      const result = await isRuntimeRefreshDisabled(
+        mockDb,
+        "https://unknown.example.com",
+      );
+      expect(result).toBe(false);
     });
   });
 });
