@@ -1,4 +1,5 @@
 import type { Server } from "node:http";
+import { isAddressInUseError } from "../../shared/utils/error";
 import * as logger from "../../shared/utils/logger";
 import {
   OTLP_DEFAULT_PORT,
@@ -14,14 +15,21 @@ type JsonRpcMessage = {
 
 type JsonRpcId = NonNullable<JsonRpcMessage["id"]> | null;
 
-type AnalyticsSidecarRuntime = {
-  receiverStarted: boolean;
-  server: Server | null;
+type JsonRpcResponse = {
+  jsonrpc: "2.0";
+  id: JsonRpcId;
+  result?: unknown;
+  error?: {
+    code: number;
+    message: string;
+  };
 };
 
-const isAddressInUseError = (error: unknown): boolean =>
-  error instanceof Error &&
-  (error as NodeJS.ErrnoException).code === "EADDRINUSE";
+type AnalyticsSidecarRuntime = {
+  receiverStarted: boolean;
+  receiverListening: boolean;
+  server: Server | null;
+};
 
 export const startAnalyticsReceiverSingleton =
   async (): Promise<AnalyticsSidecarRuntime> => {
@@ -32,13 +40,17 @@ export const startAnalyticsReceiverSingleton =
       process.stderr.write(
         `[tumiki-analytics] OTLP receiver started on 127.0.0.1:${String(OTLP_DEFAULT_PORT)}\n`,
       );
-      return { receiverStarted: true, server };
+      return { receiverStarted: true, receiverListening: true, server };
     } catch (error) {
       if (isAddressInUseError(error)) {
         process.stderr.write(
           `[tumiki-analytics] OTLP receiver already running on 127.0.0.1:${String(OTLP_DEFAULT_PORT)}\n`,
         );
-        return { receiverStarted: false, server: null };
+        return {
+          receiverStarted: false,
+          receiverListening: true,
+          server: null,
+        };
       }
       throw error;
     }
@@ -58,7 +70,7 @@ const writeError = (id: JsonRpcId, code: number, message: string): void => {
 export const createAnalyticsMcpResponse = (
   message: JsonRpcMessage,
   runtime: AnalyticsSidecarRuntime,
-): unknown | null => {
+): JsonRpcResponse | null => {
   const id = message.id;
   if (id === undefined) return null;
 
@@ -98,7 +110,7 @@ export const createAnalyticsMcpResponse = (
         result: {
           port: OTLP_DEFAULT_PORT,
           receiverStarted: runtime.receiverStarted,
-          listening: true,
+          listening: runtime.receiverListening,
         },
       };
     default:
@@ -118,7 +130,7 @@ const handleRequest = (
   runtime: AnalyticsSidecarRuntime,
 ): void => {
   const response = createAnalyticsMcpResponse(message, runtime);
-  if (response) writeMessage(response);
+  if (response !== null) writeMessage(response);
 };
 
 const extractContentLength = (headers: string): number | null => {

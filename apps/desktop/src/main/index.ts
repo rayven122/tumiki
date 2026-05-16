@@ -37,6 +37,7 @@ import { activateOrganizationProfile } from "./shared/profile-store";
 import { ServerStatus } from "@prisma/desktop-client";
 import type { Prisma } from "@prisma/desktop-client";
 import * as logger from "./shared/utils/logger";
+import { isAddressInUseError } from "./shared/utils/error";
 import { ensureNodeShim } from "./runtime/path-resolver";
 import {
   OTLP_DEFAULT_PORT,
@@ -135,10 +136,6 @@ const startAnalyticsSidecarMode = async (): Promise<void> => {
     shutdown();
   });
 };
-
-const isAddressInUseError = (error: unknown): boolean =>
-  error instanceof Error &&
-  (error as NodeJS.ErrnoException).code === "EADDRINUSE";
 
 if (appMode === "mcp-proxy") {
   // Electronのready後にDB初期化 → 設定読み込み → cli.tsのrunMcpProxyを実行

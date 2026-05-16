@@ -19,7 +19,11 @@ import {
 import { startOtlpReceiver } from "../ai-coding-telemetry.receiver";
 
 describe("createAnalyticsMcpResponse", () => {
-  const runtime = { receiverStarted: true, server: null };
+  const runtime = {
+    receiverStarted: true,
+    receiverListening: true,
+    server: null,
+  };
 
   test("initialize は tumiki-analytics の MCP serverInfo を返す", () => {
     expect(
@@ -63,7 +67,7 @@ describe("createAnalyticsMcpResponse", () => {
     expect(
       createAnalyticsMcpResponse(
         { jsonrpc: "2.0", id: "status", method: "tumiki/analytics/status" },
-        { receiverStarted: false, server: null },
+        { receiverStarted: false, receiverListening: true, server: null },
       ),
     ).toStrictEqual({
       jsonrpc: "2.0",
@@ -118,6 +122,7 @@ describe("startAnalyticsReceiverSingleton", () => {
 
     await expect(startAnalyticsReceiverSingleton()).resolves.toStrictEqual({
       receiverStarted: true,
+      receiverListening: true,
       server,
     });
     expect(startOtlpReceiver).toHaveBeenCalledWith(4318, {
@@ -135,6 +140,7 @@ describe("startAnalyticsReceiverSingleton", () => {
 
     await expect(startAnalyticsReceiverSingleton()).resolves.toStrictEqual({
       receiverStarted: false,
+      receiverListening: true,
       server: null,
     });
     expect(process.stderr.write).toHaveBeenCalledWith(
