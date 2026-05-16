@@ -62,6 +62,14 @@ vi.mock("next/server", () => {
       });
     }
 
+    json() {
+      return Promise.resolve(JSON.parse(this.body as string));
+    }
+
+    get status() {
+      return this.init?.status ?? 200;
+    }
+
     static redirect(url: string, status?: number) {
       return new MockNextResponse(null, {
         status: status ?? 307,
