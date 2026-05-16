@@ -27,10 +27,7 @@ vi.mock("electron", () => ({
   },
 }));
 
-const mockEnsureNodeShim = vi.fn();
-
 vi.mock("../../../runtime/path-resolver", () => ({
-  ensureNodeShim: () => mockEnsureNodeShim(),
   resolveValue: (value: string) =>
     value === "${runtime:node}"
       ? "/user-data/userData/runtime/bin/node"
@@ -64,7 +61,6 @@ beforeEach(() => {
   mockRename.mockResolvedValue(undefined);
   mockRm.mockResolvedValue(undefined);
   mockExistsSync.mockReturnValue(true);
-  mockEnsureNodeShim.mockClear();
   mockReadFile.mockRejectedValue(new Error("ENOENT"));
   mockStringifyToml.mockReturnValue(
     "[telemetry]\notel_exporter_otlp_endpoint = ...",
@@ -116,7 +112,6 @@ describe("applyOtlpToTool - claude-code", () => {
         ] as { env?: Record<string, string> }
       ).env,
     ).toBeUndefined();
-    expect(mockEnsureNodeShim).toHaveBeenCalled();
   });
 
   test("既存設定ファイルとマージする", async () => {

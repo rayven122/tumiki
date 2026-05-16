@@ -49,7 +49,6 @@ import { ServerStatus } from "@prisma/desktop-client";
 import type { Prisma } from "@prisma/desktop-client";
 import * as logger from "./shared/utils/logger";
 import { isAddressInUseError } from "./shared/utils/error";
-import { ensureNodeShim } from "./runtime/path-resolver";
 import {
   OTLP_DEFAULT_PORT,
   startOtlpReceiver,
@@ -166,24 +165,17 @@ const startAnalyticsSidecarMode = async (): Promise<void> => {
 };
 
 if (appMode === "mcp-proxy") {
+  // Dock アイコン・メニューバーを最初から表示させない（CLIモードはGUI不要）。
+  // whenReady 後の app.dock.hide() だと ready 完了までの間にアイコンが一瞬点灯し、
+  // 上流STDIO MCP の spawn タイミングと重なって Dock に残って見えるため、
+  // ready 前に同期的に setActivationPolicy("prohibited") を呼ぶ。
+  // "prohibited" は Dock 非表示に加えてウィンドウ作成自体も禁止する純粋デーモンモード。
+  // macOS 専用 API だが Windows/Linux では no-op のため platform 分岐は不要。
+  app.setActivationPolicy("prohibited");
+
   // Electronのready後にDB初期化 → 設定読み込み → cli.tsのrunMcpProxyを実行
   // stdioを使うためGUI・シングルインスタンスロック等は不要
   void app.whenReady().then(async () => {
-    // macOSでDockアイコンを非表示にする（CLIモードのためGUI不要）
-    app.dock?.hide();
-
-    // バンドル済みランタイムの Node shim を userData 配下に生成（DEV-1597）
-    // MCPコネクタ spawn 前に必ず存在させる必要がある。失敗してもプロキシ起動は継続
-    // （shim 不在時は MCP コネクタ spawn が後段でエラーになる）。
-    try {
-      ensureNodeShim();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      process.stderr.write(
-        `[tumiki-mcp-proxy] Node shim 生成失敗（MCP起動に影響する可能性）: ${message}\n`,
-      );
-    }
-
     try {
       // --server <slug> で起動する仮想MCPサーバーを指定（省略時は全有効サーバー）
       const serverIdx = process.argv.indexOf("--server");
@@ -818,18 +810,6 @@ if (appMode === "mcp-proxy") {
       // 現在の app path も引数として明示して毎回上書き登録する。
       registerDeepLinkProtocolClient(PROTOCOL);
 
-      // バンドル済みランタイムの Node shim を userData 配下に生成（DEV-1597）
-      // MCPコネクタ spawn 前に必ず存在させる必要がある。失敗しても GUI 起動は継続
-      // （shim 不在時は MCP コネクタ起動のみが影響を受ける）。
-      try {
-        ensureNodeShim();
-      } catch (error) {
-        logger.error(
-          "Node shim の生成に失敗しました（MCPコネクタが起動できない可能性）",
-          { error: error instanceof Error ? error.message : String(error) },
-        );
-      }
-
       // production 用の tumiki-bundle:// プロトコルハンドラを登録（dev では vite dev server を使うため不要）
       // レンダラー dist の絶対パス基点で配信し、`<img src="/logos/foo.svg">` を解決可能にする
       if (!process.env["ELECTRON_RENDERER_URL"]) {
@@ -1038,4 +1018,4 @@ if (appMode === "mcp-proxy") {
         app.exit();
       });
   });
-} // if (isMcpProxyMode)
+} // if (appMode === "mcp-proxy")

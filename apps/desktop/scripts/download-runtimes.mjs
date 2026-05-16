@@ -5,14 +5,16 @@
  * Node.js / uv の公式配布物をプラットフォーム別に取得し、
  * `apps/desktop/resources/runtime/<platform>/` 配下に展開する。
  *
- * Node 本体（bin/node）は Electron に内包されたランタイムを再利用するため
- * **同梱しない**（実行時に userData/runtime/bin/node という shim スクリプトを
- * 生成して `ELECTRON_RUN_AS_NODE=1` で Electron バイナリを exec する設計）。
- * これにより約 119MB / プラットフォーム のサイズ削減を達成する。
+ * Node 本体（bin/node）も同梱する。以前は Electron バイナリを
+ * `ELECTRON_RUN_AS_NODE=1` で exec する shim 方式でサイズを節約していたが、
+ * macOS では shim 経由で Electron を起動するたびに Launch Services が
+ * Dock にアプリを登録してしまう既知問題があり、CLI モードでも
+ * 上流 STDIO MCP の起動毎に Dock アイコンが点灯した。サイズより UX を優先し、
+ * 公式 Node を同梱して shim を廃止する。
  *
  * 配置後の構造:
  *   resources/runtime/<platform>/
- *   ├── bin/   (npm/npx スクリプト + uv/uvx バイナリ)
+ *   ├── bin/   (node + npm/npx スクリプト + uv/uvx バイナリ)
  *   └── lib/   (POSIXのみ。Node 配布物の lib/node_modules/{npm,corepack})
  *
  * electron-builder の extraResources で同梱され、本番では
@@ -40,7 +42,6 @@ import {
   mkdtemp,
   readFile,
   rm,
-  unlink,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -274,6 +275,10 @@ const installNode = async (platform, target) => {
       // Windows 配布物は全ファイルが root に平置き。
       // npm/npx の .cmd は ../node_modules を見るため、bin/ 配下に同居させる。
       await cp(
+        path.join(extractedRoot, "node.exe"),
+        path.join(binDir, "node.exe"),
+      );
+      await cp(
         path.join(extractedRoot, "npm.cmd"),
         path.join(binDir, "npm.cmd"),
       );
@@ -286,9 +291,9 @@ const installNode = async (platform, target) => {
         path.join(binDir, "node_modules"),
         { recursive: true, verbatimSymlinks: true },
       );
-      // node.exe は Electron 同梱を流用するため同梱しない
     } else {
       // POSIX: bin/ と lib/ をそのまま採用（include/, share/ は不要）
+      // bin/node も同梱する（macOS の Dock アイコン問題回避のため Electron-as-Node を使わない）
       await cp(path.join(extractedRoot, "bin"), binDir, {
         recursive: true,
         verbatimSymlinks: true,
@@ -297,12 +302,6 @@ const installNode = async (platform, target) => {
         recursive: true,
         verbatimSymlinks: true,
       });
-      // bin/node は Electron 同梱の Node を流用するため削除（~119MB節約）
-      try {
-        await unlink(path.join(binDir, "node"));
-      } catch (error) {
-        if (error?.code !== "ENOENT") throw error;
-      }
     }
   } finally {
     await rm(tmpDir, { recursive: true, force: true });

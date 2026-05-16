@@ -1,59 +1,40 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-
-// userData は実ファイルシステムを汚さないよう各テストで一時ディレクトリを返す
-let tmpUserData = "";
 
 vi.mock("electron", () => ({
   app: {
     isPackaged: false,
     getAppPath: () => "/app",
     getPath: (name: string) => {
-      if (name === "userData") return tmpUserData;
+      if (name === "userData") return "/test/userData";
       return "/test";
     },
   },
 }));
 
-import {
-  buildChildEnv,
-  ensureNodeShim,
-  resolveArgs,
-  resolveValue,
-} from "../path-resolver";
+import { buildChildEnv, resolveArgs, resolveValue } from "../path-resolver";
 
 describe("path-resolver", () => {
   // process.platform / process.arch を defineProperty で一時的に上書きする
   const originalPlatform = process.platform;
   const originalArch = process.arch;
-  const originalExecPath = process.execPath;
 
   const setPlatform = (platform: NodeJS.Platform, arch: string) => {
     Object.defineProperty(process, "platform", { value: platform });
     Object.defineProperty(process, "arch", { value: arch });
   };
 
-  const setExecPath = (execPath: string) => {
-    Object.defineProperty(process, "execPath", { value: execPath });
-  };
-
   beforeEach(() => {
     setPlatform("darwin", "arm64");
-    tmpUserData = mkdtempSync(path.join(tmpdir(), "tumiki-resolver-"));
   });
 
   afterEach(() => {
     setPlatform(originalPlatform, originalArch);
-    setExecPath(originalExecPath);
-    if (tmpUserData) rmSync(tmpUserData, { recursive: true, force: true });
   });
 
   describe("resolveValue", () => {
-    test("${runtime:node}は userData の shim パスに解決する", () => {
+    test("${runtime:node}はバンドル binディレクトリの絶対パスに解決する", () => {
       expect(resolveValue("${runtime:node}")).toStrictEqual(
-        path.join(tmpUserData, "runtime", "bin", "node"),
+        "/app/resources/runtime/darwin-arm64/bin/node",
       );
     });
 
@@ -81,9 +62,9 @@ describe("path-resolver", () => {
       );
     });
 
-    test("素の 'node' (後方互換) は shim パスに解決する", () => {
+    test("素の 'node' (後方互換) はバンドル binに解決する", () => {
       expect(resolveValue("node")).toStrictEqual(
-        path.join(tmpUserData, "runtime", "bin", "node"),
+        "/app/resources/runtime/darwin-arm64/bin/node",
       );
     });
 
@@ -116,6 +97,9 @@ describe("path-resolver", () => {
       // 実行ホストがmacOSの場合 path.join は POSIX セパレータを使うため、
       // 末尾の .exe 付与のみを検証する（実Windows上では path.join が \\ を返す）
       setPlatform("win32", "x64");
+      expect(resolveValue("${runtime:node}")).toMatch(
+        /\/win32-x64\/bin\/node\.exe$/,
+      );
       expect(resolveValue("${runtime:npx}")).toMatch(
         /\/win32-x64\/bin\/npx\.exe$/,
       );
@@ -139,21 +123,21 @@ describe("path-resolver", () => {
   });
 
   describe("buildChildEnv", () => {
-    test("PATHが shim → バンドル bin → 既存 の優先順で組み立てられる", () => {
+    test("PATHが バンドル bin → 既存 の優先順で組み立てられる", () => {
       const result = buildChildEnv(
         { PATH: "/usr/bin:/bin" },
         { API_KEY: "test" },
       );
       expect(result.PATH).toStrictEqual(
-        `${path.join(tmpUserData, "runtime", "bin")}:/app/resources/runtime/darwin-arm64/bin:/usr/bin:/bin`,
+        `/app/resources/runtime/darwin-arm64/bin:/usr/bin:/bin`,
       );
       expect(result.API_KEY).toStrictEqual("test");
     });
 
-    test("PATHが未設定の場合は shim とバンドル binのみが入る", () => {
+    test("PATHが未設定の場合はバンドル binのみが入る", () => {
       const result = buildChildEnv({});
       expect(result.PATH).toStrictEqual(
-        `${path.join(tmpUserData, "runtime", "bin")}:/app/resources/runtime/darwin-arm64/bin`,
+        `/app/resources/runtime/darwin-arm64/bin`,
       );
     });
 
@@ -175,72 +159,6 @@ describe("path-resolver", () => {
     test("extra引数は base より優先される", () => {
       const result = buildChildEnv({ FOO: "base" }, { FOO: "override" });
       expect(result.FOO).toStrictEqual("override");
-    });
-  });
-
-  describe("ensureNodeShim", () => {
-    test("Electron バイナリを ELECTRON_RUN_AS_NODE で exec する shim を生成する", () => {
-      setExecPath("/path/to/Electron");
-      ensureNodeShim();
-
-      const shimPath = path.join(tmpUserData, "runtime", "bin", "node");
-      expect(existsSync(shimPath)).toStrictEqual(true);
-      const content = readFileSync(shimPath, "utf8");
-      expect(content).toContain("#!/bin/sh");
-      expect(content).toContain(
-        `export TUMIKI_DESKTOP_USER_DATA_DIR='${tmpUserData}'`,
-      );
-      expect(content).toContain("ELECTRON_RUN_AS_NODE=1");
-      expect(content).toContain("'/path/to/Electron'");
-      expect(content).toContain('"$@"');
-    });
-
-    test("execPath に単一引用符が含まれていてもエスケープされる", () => {
-      setExecPath("/Users/foo's/Electron");
-      ensureNodeShim();
-
-      const content = readFileSync(
-        path.join(tmpUserData, "runtime", "bin", "node"),
-        "utf8",
-      );
-      // 'foo'\''s' のエスケープ（POSIX sh 標準）
-      expect(content).toContain(`'/Users/foo'\\''s/Electron'`);
-    });
-
-    test("既存 shim と内容が同一ならファイルを書き換えない", () => {
-      setExecPath("/path/to/Electron");
-      ensureNodeShim();
-      const shimPath = path.join(tmpUserData, "runtime", "bin", "node");
-      const firstContent = readFileSync(shimPath, "utf8");
-
-      ensureNodeShim();
-      const secondContent = readFileSync(shimPath, "utf8");
-
-      expect(secondContent).toStrictEqual(firstContent);
-    });
-
-    test("execPath が変わったら shim を上書きする（アプリ更新時想定）", () => {
-      setExecPath("/old/Electron");
-      ensureNodeShim();
-
-      setExecPath("/new/Electron");
-      ensureNodeShim();
-
-      const content = readFileSync(
-        path.join(tmpUserData, "runtime", "bin", "node"),
-        "utf8",
-      );
-      expect(content).toContain("'/new/Electron'");
-      expect(content).not.toContain("'/old/Electron'");
-    });
-
-    test("Windows ではスキップする (現状未対応)", () => {
-      setPlatform("win32", "x64");
-      ensureNodeShim();
-      // shim ファイルが作られないこと
-      expect(
-        existsSync(path.join(tmpUserData, "runtime", "bin", "node")),
-      ).toStrictEqual(false);
     });
   });
 });
