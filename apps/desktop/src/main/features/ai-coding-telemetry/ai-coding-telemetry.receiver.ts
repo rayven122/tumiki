@@ -1,6 +1,7 @@
 import http from "node:http";
 import * as service from "./ai-coding-telemetry.service";
 import * as logger from "../../shared/utils/logger";
+import { isAddressInUseError } from "../../shared/utils/error";
 
 // OTLP HTTP のデフォルトポート
 export const OTLP_DEFAULT_PORT = 4318;
@@ -139,9 +140,7 @@ export const startOtlpReceiver = async (
     port = await tryListen(server, preferredPort);
     logger.info("OTLP receiver を起動しました", { port });
   } catch (err) {
-    const code =
-      err instanceof Error ? (err as NodeJS.ErrnoException).code : undefined;
-    if (code === "EADDRINUSE") {
+    if (isAddressInUseError(err)) {
       if (!allowFallback) {
         throw err;
       }

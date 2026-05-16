@@ -31,6 +31,14 @@ type AnalyticsSidecarRuntime = {
   server: Server | null;
 };
 
+const extractProtocolVersion = (params: unknown): string => {
+  if (typeof params !== "object" || params === null) return "2024-11-05";
+  const values = params as Record<string, unknown>;
+  return typeof values.protocolVersion === "string"
+    ? values.protocolVersion
+    : "2024-11-05";
+};
+
 export const startAnalyticsReceiverSingleton =
   async (): Promise<AnalyticsSidecarRuntime> => {
     try {
@@ -80,14 +88,7 @@ export const createAnalyticsMcpResponse = (
         jsonrpc: "2.0",
         id,
         result: {
-          protocolVersion:
-            typeof message.params === "object" &&
-            message.params !== null &&
-            "protocolVersion" in message.params &&
-            typeof (message.params as { protocolVersion?: unknown })
-              .protocolVersion === "string"
-              ? (message.params as { protocolVersion: string }).protocolVersion
-              : "2024-11-05",
+          protocolVersion: extractProtocolVersion(message.params),
           capabilities: { tools: {} },
           serverInfo: {
             name: "tumiki-analytics",
@@ -155,7 +156,7 @@ export const startAnalyticsMcpServer = (
 
       const headers = buffer.subarray(0, headerEnd).toString("utf8");
       const contentLength = extractContentLength(headers);
-      if (!contentLength || contentLength < 0) {
+      if (contentLength === null || contentLength <= 0) {
         buffer = buffer.subarray(headerEnd + 4);
         continue;
       }
