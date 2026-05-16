@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { app } from "electron";
+import { ANALYTICS_RECEIVER_FLAG } from "../../app-mode";
 
 const execFileAsync = promisify(execFile);
 
@@ -34,7 +35,7 @@ export type TelemetryReceiverLaunchCommand = {
 export const getTelemetryReceiverLaunchCommand =
   (): TelemetryReceiverLaunchCommand => {
     if (app.isPackaged) {
-      return { command: process.execPath, args: ["--telemetry-receiver"] };
+      return { command: process.execPath, args: [ANALYTICS_RECEIVER_FLAG] };
     }
 
     const rawAppEntry = process.argv[1];
@@ -42,8 +43,8 @@ export const getTelemetryReceiverLaunchCommand =
     return {
       command: process.execPath,
       args: appEntry
-        ? [appEntry, "--telemetry-receiver"]
-        : ["--telemetry-receiver"],
+        ? [appEntry, ANALYTICS_RECEIVER_FLAG]
+        : [ANALYTICS_RECEIVER_FLAG],
     };
   };
 

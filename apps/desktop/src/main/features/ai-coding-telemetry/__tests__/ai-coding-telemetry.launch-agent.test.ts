@@ -34,7 +34,7 @@ describe("getTelemetryReceiverLaunchCommand", () => {
     });
   });
 
-  test("packaged ではアプリ実行ファイルに --telemetry-receiver を渡す", () => {
+  test("packaged ではアプリ実行ファイルに --analytics を渡す", () => {
     Object.defineProperty(app, "isPackaged", { value: true, writable: true });
     Object.defineProperty(process, "execPath", {
       value: "/Applications/Tumiki.app/Contents/MacOS/Tumiki",
@@ -43,11 +43,11 @@ describe("getTelemetryReceiverLaunchCommand", () => {
 
     expect(getTelemetryReceiverLaunchCommand()).toStrictEqual({
       command: "/Applications/Tumiki.app/Contents/MacOS/Tumiki",
-      args: ["--telemetry-receiver"],
+      args: ["--analytics"],
     });
   });
 
-  test("dev では Electron と entrypoint に --telemetry-receiver を渡す", () => {
+  test("dev では Electron と entrypoint に --analytics を渡す", () => {
     Object.defineProperty(app, "isPackaged", { value: false, writable: true });
     Object.defineProperty(process, "execPath", {
       value: "/repo/node_modules/.bin/electron",
@@ -60,10 +60,7 @@ describe("getTelemetryReceiverLaunchCommand", () => {
 
     expect(getTelemetryReceiverLaunchCommand()).toStrictEqual({
       command: "/repo/node_modules/.bin/electron",
-      args: [
-        "/repo/apps/desktop/dist-electron/main/index.js",
-        "--telemetry-receiver",
-      ],
+      args: ["/repo/apps/desktop/dist-electron/main/index.js", "--analytics"],
     });
   });
 });
@@ -72,7 +69,7 @@ describe("buildTelemetryLaunchAgentPlist", () => {
   test("LaunchAgent に headless receiver 起動設定を書き出す", () => {
     const plist = buildTelemetryLaunchAgentPlist({
       command: "/Applications/Tumiki.app/Contents/MacOS/Tumiki",
-      args: ["--telemetry-receiver"],
+      args: ["--analytics"],
     });
 
     expect(plist).toContain(`<string>${TELEMETRY_LAUNCH_AGENT_LABEL}</string>`);
@@ -83,7 +80,7 @@ describe("buildTelemetryLaunchAgentPlist", () => {
     expect(plist).toContain(
       "<string>/Applications/Tumiki.app/Contents/MacOS/Tumiki</string>",
     );
-    expect(plist).toContain("<string>--telemetry-receiver</string>");
+    expect(plist).toContain("<string>--analytics</string>");
     expect(plist).toContain("telemetry-receiver.out.log");
     expect(plist).toContain("telemetry-receiver.err.log");
   });
