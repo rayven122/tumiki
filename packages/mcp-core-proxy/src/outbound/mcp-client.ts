@@ -39,11 +39,23 @@ const createCustomFetch = (
     init?: RequestInit,
   ): Promise<Response> => {
     const dynamicHeaders = resolveHeaders ? await resolveHeaders() : {};
-    const existingHeaders = normalizeHeaders(init?.headers);
-    return fetch(input, {
-      ...init,
-      headers: { ...existingHeaders, ...staticHeaders, ...dynamicHeaders },
-    });
+
+    // Headers の case-insensitive 重複を防ぐため、必ず Headers インスタンス経由でマージする。
+    // plain object で `{ Authorization, authorization }` の両方を保持して fetch に渡すと、
+    // Headers コンストラクタが両方を残してカンマ結合し、不正な
+    // "Bearer X, Bearer Y" を送ってしまう（SDK は init.headers に小文字 `authorization` を
+    // 入れるため、`Authorization` キーで上書きしようとしても保てない）。
+    const merged = new Headers();
+    for (const [k, v] of Object.entries(normalizeHeaders(init?.headers))) {
+      merged.set(k, v);
+    }
+    for (const [k, v] of Object.entries(staticHeaders)) {
+      merged.set(k, v);
+    }
+    for (const [k, v] of Object.entries(dynamicHeaders)) {
+      merged.set(k, v);
+    }
+    return fetch(input, { ...init, headers: merged });
   };
 };
 

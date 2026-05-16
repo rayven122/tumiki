@@ -672,12 +672,12 @@ describe("UpstreamClient", () => {
         headers: { "Content-Type": "text/event-stream" },
       });
 
-      expect(mockFetchFn).toHaveBeenCalledWith("http://localhost:3000/sse", {
-        headers: {
-          "Content-Type": "text/event-stream",
-          Authorization: "Bearer injected",
-        },
-      });
+      // customFetch は Headers インスタンスでマージするため、構造はオブジェクトでなく Headers
+      const fetchArgs = mockFetchFn.mock.calls[0] as [string, RequestInit];
+      expect(fetchArgs[0]).toBe("http://localhost:3000/sse");
+      const headers = fetchArgs[1].headers as Headers;
+      expect(headers.get("authorization")).toBe("Bearer injected");
+      expect(headers.get("content-type")).toBe("text/event-stream");
 
       vi.unstubAllGlobals();
     });
