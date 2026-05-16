@@ -278,6 +278,25 @@ export const _resetResolveOAuthHeadersCache = (): void => {
 };
 
 /**
+ * 起動時 refresh で得た credentials を resolveOAuthHeaders のキャッシュにプリロードする。
+ *
+ * 目的: mcp-proxy.service の buildConfigFromConnection で refreshOAuthTokenIfNeeded を実行した
+ * 直後に、SDK の transport 初期化で resolveOAuthHeaders が呼ばれる。
+ * プリロードしないと「キャッシュ無し → DB 読込 → 期限内判定 → さらに refresh」と
+ * 連続 2 回 refresh が走り、refresh_token rotation を採用するプロバイダで
+ * 短時間連続 refresh による拒否が発生しうる（Linear で観測）。
+ *
+ * このヘルパーで起動時 refresh の結果をキャッシュに反映しておけば、初回 resolveOAuthHeaders は
+ * cache hit になり、無駄な refresh と DB 読込をスキップできる。
+ */
+export const primeResolveOAuthHeadersCache = (
+  secretId: number,
+  credentials: Record<string, string>,
+): void => {
+  credentialsCache.set(secretId, { credentials });
+};
+
+/**
  * DBから credentials を読込み復号する。失敗時は null を返す。
  */
 const loadCredentialsFromDb = async (

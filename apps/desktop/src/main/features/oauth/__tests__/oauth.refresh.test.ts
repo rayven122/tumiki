@@ -31,6 +31,7 @@ import {
   refreshOAuthTokenIfNeededOnce,
   resolveOAuthHeaders,
   _resetResolveOAuthHeadersCache,
+  primeResolveOAuthHeadersCache,
   isTokenExpiringSoon,
   classifyRefreshError,
 } from "../oauth.refresh";
@@ -592,6 +593,81 @@ describe("oauth.refresh", () => {
       expect(h2).toStrictEqual(h3);
       // findUnique は1回だけ呼ばれる（残りはキャッシュヒット）
       expect(findUniqueMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("primeResolveOAuthHeadersCache", () => {
+    test("プリロード後の resolveOAuthHeaders は DB を叩かずに cache hit する", async () => {
+      const validCreds = {
+        access_token: "preloaded-token",
+        refresh_token: "rt",
+        expires_at: String(Math.floor(Date.now() / 1000) + 3600),
+      };
+
+      const findUniqueMock = vi.fn();
+      vi.mocked(getDb).mockResolvedValue({
+        mcpSecret: { findUnique: findUniqueMock },
+      } as unknown as Awaited<ReturnType<typeof getDb>>);
+
+      // 起動時 refresh で得た credentials をプリロード
+      primeResolveOAuthHeadersCache(42, validCreds);
+
+      // 初回 resolveOAuthHeaders はキャッシュヒットで DB を一切叩かない
+      const headers = await resolveOAuthHeaders(42, "https://example.com");
+
+      expect(headers).toStrictEqual({
+        Authorization: "Bearer preloaded-token",
+      });
+      expect(findUniqueMock).not.toHaveBeenCalled();
+      expect(refreshAccessToken).not.toHaveBeenCalled();
+    });
+
+    test("プリロードしたトークンが期限切れ間近なら refresh パスに入る（プリロードは bypass されない）", async () => {
+      const expiringCreds = {
+        access_token: "soon-expiring",
+        refresh_token: "rt",
+        expires_at: String(Math.floor(Date.now() / 1000) + 60), // 1分後に切れる
+      };
+      const newExpiresAt = Math.floor(Date.now() / 1000) + 3600;
+
+      primeResolveOAuthHeadersCache(7, expiringCreds);
+
+      vi.mocked(getDb).mockResolvedValue({
+        mcpSecret: {
+          findUnique: vi
+            .fn()
+            .mockResolvedValue({ credentials: "encrypted-blob" }),
+        },
+      } as unknown as Awaited<ReturnType<typeof getDb>>);
+      vi.mocked(decryptCredentials).mockResolvedValue(
+        JSON.stringify(expiringCreds),
+      );
+      vi.mocked(oauthRepository.findByServerUrl).mockResolvedValue({
+        id: 1,
+        serverUrl: "https://example.com",
+        issuer: "https://example.com",
+        clientId: "cid",
+        clientSecret: null,
+        tokenEndpointAuthMethod: "none",
+        authServerMetadata: JSON.stringify({
+          issuer: "https://example.com",
+          authorization_endpoint: "https://example.com/auth",
+          token_endpoint: "https://example.com/token",
+        }),
+        isDcr: true,
+      });
+      vi.mocked(refreshAccessToken).mockResolvedValue({
+        access_token: "fresh",
+        token_type: "bearer",
+        refresh_token: "rt2",
+        expires_at: newExpiresAt,
+      });
+      vi.mocked(oauthRepository.updateSecretCredentials).mockResolvedValue();
+
+      const headers = await resolveOAuthHeaders(7, "https://example.com");
+
+      expect(headers).toStrictEqual({ Authorization: "Bearer fresh" });
+      expect(refreshAccessToken).toHaveBeenCalledTimes(1);
     });
   });
 });

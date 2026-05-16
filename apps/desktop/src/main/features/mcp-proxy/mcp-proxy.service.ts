@@ -13,6 +13,7 @@ import * as oauthRepository from "../oauth/oauth.repository";
 import * as logger from "../../shared/utils/logger";
 import { decryptCredentials } from "../../utils/credentials";
 import {
+  primeResolveOAuthHeadersCache,
   refreshOAuthTokenIfNeeded,
   resolveOAuthHeaders,
 } from "../oauth/oauth.refresh";
@@ -206,6 +207,10 @@ const buildConfigFromConnection = async (
       // リフレッシュ実行後・スキップ後どちらでも、後続接続が古いスナップショットで再叩きしないようキャッシュ
       oauthCache.set(conn.secretId, credentials);
     }
+    // resolveOAuthHeaders のキャッシュにもプリロードし、SDK 初期化直後の
+    // 不要な「DB 再読込 + 再 refresh」を回避する。短時間連続 refresh で
+    // refresh_token rotation 採用プロバイダ (Linear 等) が token を拒否する事象を防ぐ。
+    primeResolveOAuthHeadersCache(conn.secretId, credentials);
   }
 
   let config: McpServerConfig;
