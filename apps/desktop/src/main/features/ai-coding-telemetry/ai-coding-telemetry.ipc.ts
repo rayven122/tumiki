@@ -3,6 +3,7 @@ import { z } from "zod";
 import * as service from "./ai-coding-telemetry.service";
 import * as logger from "../../shared/utils/logger";
 import type { AiCodingTool } from "./ai-coding-telemetry.types";
+import { OTLP_DEFAULT_PORT } from "./ai-coding-telemetry.receiver";
 
 // IPC 入力のバリデーションスキーマ
 const getSummarySchema = z.object({
@@ -22,6 +23,10 @@ const saveToolEnabledSchema = z.object({
 
 const applyToToolSchema = z.object({
   tool: toolSchema,
+});
+
+const setBackgroundCollectionEnabledSchema = z.object({
+  enabled: z.boolean(),
 });
 
 // 起動中の OTLP レシーバーポートを保持する
@@ -86,7 +91,54 @@ export const setupAiCodingTelemetryIpc = (): void => {
   );
 
   // OTLP レシーバーポートの取得
-  ipcMain.handle("aiCodingTelemetry:getReceiverPort", () => _receiverPort);
+  ipcMain.handle("aiCodingTelemetry:getReceiverPort", () => OTLP_DEFAULT_PORT);
+
+  ipcMain.handle("aiCodingTelemetry:getReceiverStatus", async () => {
+    try {
+      return await service.getReceiverStatus(_receiverPort);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "不明なエラー";
+      logger.error(
+        "Failed to get AI coding telemetry receiver status",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error(`受信サーバー状態の取得に失敗しました: ${message}`);
+    }
+  });
+
+  ipcMain.handle("aiCodingTelemetry:getBackgroundStatus", async () => {
+    try {
+      return await service.getBackgroundCollectionStatus();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "不明なエラー";
+      logger.error(
+        "Failed to get AI coding telemetry background status",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error(
+        `バックグラウンド収集状態の取得に失敗しました: ${message}`,
+      );
+    }
+  });
+
+  ipcMain.handle(
+    "aiCodingTelemetry:setBackgroundCollectionEnabled",
+    async (_, input: unknown) => {
+      try {
+        const validated = setBackgroundCollectionEnabledSchema.parse(input);
+        return await service.setBackgroundCollectionEnabled(validated.enabled);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "不明なエラー";
+        logger.error(
+          "Failed to update AI coding telemetry background status",
+          error instanceof Error ? error : { error },
+        );
+        throw new Error(
+          `バックグラウンド収集設定の更新に失敗しました: ${message}`,
+        );
+      }
+    },
+  );
 
   // 起動時の自動再書き込み結果を取得し、取得後はクリアする。
   // renderer がマウント直後に呼ぶことで、push 通知の取りこぼしを防ぐ。
@@ -136,12 +188,8 @@ export const setupAiCodingTelemetryIpc = (): void => {
   ipcMain.handle("aiCodingTelemetry:applyToTool", async (_, input: unknown) => {
     try {
       const validated = applyToToolSchema.parse(input);
-      if (_receiverPort <= 0) {
-        throw new Error("OTLP レシーバーが起動していません");
-      }
       return await service.applyToolSettings({
         tool: validated.tool,
-        port: _receiverPort,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "不明なエラー";

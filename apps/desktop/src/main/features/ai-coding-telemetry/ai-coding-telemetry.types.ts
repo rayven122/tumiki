@@ -35,7 +35,6 @@ export type DailyUsageItem = {
 // ツール設定適用の入力
 export type ApplyToolSettingsInput = {
   tool: AiCodingTool;
-  port: number;
 };
 
 // ツール設定適用の結果
@@ -55,6 +54,20 @@ export type GetToolSettingsResult = {
   enabled: boolean;
   appliedAt?: string;
   appliedPort?: number;
+};
+
+export type BackgroundCollectionStatus = {
+  supported: boolean;
+  enabled: boolean;
+  installed: boolean;
+  loaded: boolean;
+  port: number;
+};
+
+export type ReceiverStatus = {
+  port: number;
+  listening: boolean;
+  mode: "gui" | "background" | "stopped";
 };
 
 // メトリクスの記録

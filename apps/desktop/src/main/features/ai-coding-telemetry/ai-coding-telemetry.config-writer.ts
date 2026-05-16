@@ -125,7 +125,9 @@ const applyToCodex = async (port: number): Promise<ApplyToolSettingsResult> => {
 
     // 既存の telemetry セクションをマージする
     const existingTelemetry =
-      typeof existing.telemetry === "object" && existing.telemetry !== null
+      typeof existing.telemetry === "object" &&
+      existing.telemetry !== null &&
+      !Array.isArray(existing.telemetry)
         ? (existing.telemetry as Record<string, unknown>)
         : {};
 

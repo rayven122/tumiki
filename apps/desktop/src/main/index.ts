@@ -38,9 +38,13 @@ import { ServerStatus } from "@prisma/desktop-client";
 import type { Prisma } from "@prisma/desktop-client";
 import * as logger from "./shared/utils/logger";
 import { ensureNodeShim } from "./runtime/path-resolver";
-import { startOtlpReceiver } from "./features/ai-coding-telemetry/ai-coding-telemetry.receiver";
+import {
+  OTLP_DEFAULT_PORT,
+  startOtlpReceiver,
+} from "./features/ai-coding-telemetry/ai-coding-telemetry.receiver";
 import {
   autoReapplyMismatchedPorts,
+  isBackgroundCollectionEnabled,
   pruneOldTelemetry,
 } from "./features/ai-coding-telemetry/ai-coding-telemetry.service";
 import {
@@ -48,6 +52,7 @@ import {
   setReceiverPort,
   setPendingAutoReapplied,
 } from "./features/ai-coding-telemetry/ai-coding-telemetry.ipc";
+import { resolveDesktopAppMode } from "./app-mode";
 
 // Cursor など親プロセス（Electron アプリ）が子プロセスへ ELECTRON_RUN_AS_NODE=1 を継承
 // させたケース対応。Electron が Node モードで起動すると `import { app } from "electron"` が
@@ -78,9 +83,55 @@ if (!app) {
 }
 
 // --mcp-proxy モード: GUI不要、stdioでMCPプロキシとして動作
-const isMcpProxyMode = process.argv.includes("--mcp-proxy");
+const appMode = resolveDesktopAppMode(process.argv);
 
-if (isMcpProxyMode) {
+const startTelemetryReceiverMode = async (): Promise<void> => {
+  app.dock?.hide();
+  await initializeDb();
+
+  const { server } = await startOtlpReceiver(OTLP_DEFAULT_PORT, {
+    allowFallback: false,
+  });
+
+  const runTelemetryPrune = (): void => {
+    void pruneOldTelemetry().catch((error: unknown) => {
+      logger.error("Failed to prune old AI coding telemetry", { error });
+    });
+  };
+  runTelemetryPrune();
+  const telemetryPruneInterval = setInterval(
+    runTelemetryPrune,
+    24 * 60 * 60 * 1000,
+  );
+
+  let isShuttingDown = false;
+  const shutdown = (): void => {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    clearInterval(telemetryPruneInterval);
+    server.close(() => {
+      void closeDb()
+        .catch((error: unknown) => {
+          logger.error("Failed to close telemetry receiver DB", { error });
+        })
+        .finally(() => app.exit(0));
+    });
+  };
+
+  process.once("SIGINT", shutdown);
+  process.once("SIGTERM", shutdown);
+  app.once("will-quit", (event) => {
+    if (isShuttingDown) return;
+    event.preventDefault();
+    shutdown();
+  });
+};
+
+const isAddressInUseError = (error: unknown): boolean =>
+  error instanceof Error &&
+  (error as NodeJS.ErrnoException).code === "EADDRINUSE";
+
+if (appMode === "mcp-proxy") {
   // Electronのready後にDB初期化 → 設定読み込み → cli.tsのrunMcpProxyを実行
   // stdioを使うためGUI・シングルインスタンスロック等は不要
   void app.whenReady().then(async () => {
@@ -314,6 +365,31 @@ if (isMcpProxyMode) {
       process.exit(1);
     }
   });
+} else if (appMode === "telemetry-receiver") {
+  void app
+    .whenReady()
+    .then(startTelemetryReceiverMode)
+    .catch(async (error) => {
+      if (isAddressInUseError(error)) {
+        logger.warn(
+          "Telemetry receiver port is already in use; background receiver will not restart",
+          { port: OTLP_DEFAULT_PORT },
+        );
+        await closeDb().catch((closeError: unknown) => {
+          logger.error("Failed to close telemetry receiver DB", {
+            error: closeError,
+          });
+        });
+        process.exit(0);
+      }
+      logger.error("Failed to initialize telemetry receiver", error);
+      await closeDb().catch((closeError: unknown) => {
+        logger.error("Failed to close telemetry receiver DB", {
+          error: closeError,
+        });
+      });
+      process.exit(1);
+    });
 } else {
   // GUI モード: `app.ready` 前にカスタム tumiki-bundle:// スキームを privileged 登録する
   // （Electronの仕様上、registerSchemesAsPrivileged は ready 前に呼ぶ必要がある）
@@ -614,25 +690,40 @@ if (isMcpProxyMode) {
 
       // OTLP レシーバーを起動する
       // OTLP HTTP の標準ポート 4318 を常に優先する。
-      // 競合時のみ OS 割り当てにフォールバックし、4318 が再び空けば次回は 4318 に戻る。
-      // これにより通常は同じポートに収束し、設定ファイル再書き込み（およびトースト通知）が
-      // 最小限に抑えられる。
-      const { server, port: otlpPort } = await startOtlpReceiver();
-      otlpHttpServer = server;
-      setReceiverPort(otlpPort);
-      // 過去に適用したツールでポートが変わっていれば自動で再書き込みする。
-      // OTLP ポートがフォールバックで変わったり、ユーザー設定で変更されても
-      // 設定ファイル（~/.claude/settings.json 等）と Tumiki 受信ポートの整合性を保つ。
-      const reappliedTools = await autoReapplyMismatchedPorts(otlpPort).catch(
-        (error: unknown) => {
-          logger.error("Failed auto re-apply of tool configs", { error });
-          return [] as Awaited<ReturnType<typeof autoReapplyMismatchedPorts>>;
-        },
-      );
-      // 再書き込みが行われた場合、ウィンドウ読み込み完了後に renderer が
-      // pending IPC から取得してトースト表示する。
-      if (reappliedTools.length > 0) {
-        setPendingAutoReapplied(reappliedTools, otlpPort);
+      // 設定ファイルの endpoint も 4318 固定のため、競合時は random port へ逃がさず
+      // 状態表示で停止として扱う。バックグラウンド収集が有効なら GUI 側では起動しない。
+      const backgroundTelemetryEnabled = await isBackgroundCollectionEnabled();
+      if (!backgroundTelemetryEnabled) {
+        const receiverResult = await startOtlpReceiver(OTLP_DEFAULT_PORT, {
+          allowFallback: false,
+        }).catch((error: unknown) => {
+          logger.error("Failed to start OTLP receiver", { error });
+          return null;
+        });
+        const otlpPort = receiverResult?.port ?? 0;
+        otlpHttpServer = receiverResult?.server ?? null;
+        setReceiverPort(otlpPort);
+        if (receiverResult === null) {
+          logger.warn("OTLP receiver is not running in GUI process");
+        }
+      }
+
+      if (!backgroundTelemetryEnabled && otlpHttpServer) {
+        const otlpPort = OTLP_DEFAULT_PORT;
+        // 過去に適用したツールでポートが変わっていれば自動で再書き込みする。
+        // OTLP ポートがフォールバックで変わったり、ユーザー設定で変更されても
+        // 設定ファイル（~/.claude/settings.json 等）と Tumiki 受信ポートの整合性を保つ。
+        const reappliedTools = await autoReapplyMismatchedPorts(otlpPort).catch(
+          (error: unknown) => {
+            logger.error("Failed auto re-apply of tool configs", { error });
+            return [] as Awaited<ReturnType<typeof autoReapplyMismatchedPorts>>;
+          },
+        );
+        // 再書き込みが行われた場合、ウィンドウ読み込み完了後に renderer が
+        // pending IPC から取得してトースト表示する。
+        if (reappliedTools.length > 0) {
+          setPendingAutoReapplied(reappliedTools, otlpPort);
+        }
       }
       setupAiCodingTelemetryIpc();
 

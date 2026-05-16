@@ -4,18 +4,27 @@ import * as logger from "../../shared/utils/logger";
 import * as repository from "./ai-coding-telemetry.repository";
 import { applyOtlpToTool } from "./ai-coding-telemetry.config-writer";
 import { isAiCodingTool } from "./ai-coding-telemetry.types";
+import { OTLP_DEFAULT_PORT } from "./ai-coding-telemetry.receiver";
+import {
+  getTelemetryLaunchAgentRuntimeStatus,
+  installTelemetryLaunchAgent,
+  uninstallTelemetryLaunchAgent,
+} from "./ai-coding-telemetry.launch-agent";
 import type {
   AiCodingTool,
   ApplyToolSettingsInput,
   ApplyToolSettingsResult,
+  BackgroundCollectionStatus,
   DailyUsageItem,
   GetDailyUsageInput,
   GetSummaryInput,
   GetToolSettingsResult,
   MetricRecord,
+  ReceiverStatus,
   TelemetrySummaryItem,
   TraceRecord,
 } from "./ai-coding-telemetry.types";
+import net from "node:net";
 
 const MAX_TOOL_NAME_LENGTH = 128;
 const MAX_RECORD_FIELD_LENGTH = 255;
@@ -237,18 +246,19 @@ export const getDailyUsage = async (
 export const applyToolSettings = async (
   input: ApplyToolSettingsInput,
 ): Promise<ApplyToolSettingsResult> => {
-  const result = await applyOtlpToTool(input.tool, input.port);
+  const port = OTLP_DEFAULT_PORT;
+  const result = await applyOtlpToTool(input.tool, port);
   if (result.success) {
     const store = await getAppStore();
     const current = store.get("aiCodingTelemetry") ?? { tools: {} };
     store.set("aiCodingTelemetry", {
-      ...current,
+      backgroundCollectionEnabled: current.backgroundCollectionEnabled,
       tools: {
         ...current.tools,
         [input.tool]: {
           ...(current.tools[input.tool] ?? { enabled: false }),
           appliedAt: new Date().toISOString(),
-          appliedPort: input.port,
+          appliedPort: port,
         },
       },
     });
@@ -329,7 +339,7 @@ export const autoReapplyMismatchedPorts = async (
       // electron-store を最新ポートで更新
       const latest = store.get("aiCodingTelemetry") ?? { tools: {} };
       store.set("aiCodingTelemetry", {
-        ...latest,
+        backgroundCollectionEnabled: latest.backgroundCollectionEnabled,
         tools: {
           ...latest.tools,
           [tool]: {
@@ -360,7 +370,7 @@ export const saveToolEnabled = async (
   const store = await getAppStore();
   const current = store.get("aiCodingTelemetry") ?? { tools: {} };
   store.set("aiCodingTelemetry", {
-    ...current,
+    backgroundCollectionEnabled: current.backgroundCollectionEnabled,
     tools: {
       ...current.tools,
       [tool]: {
@@ -369,4 +379,79 @@ export const saveToolEnabled = async (
       },
     },
   });
+};
+
+export const isBackgroundCollectionEnabled = async (): Promise<boolean> => {
+  const store = await getAppStore();
+  return store.get("aiCodingTelemetry")?.backgroundCollectionEnabled === true;
+};
+
+export const getBackgroundCollectionStatus =
+  async (): Promise<BackgroundCollectionStatus> => {
+    const store = await getAppStore();
+    const runtime = await getTelemetryLaunchAgentRuntimeStatus();
+    return {
+      supported: runtime.supported,
+      enabled:
+        store.get("aiCodingTelemetry")?.backgroundCollectionEnabled === true,
+      installed: runtime.installed,
+      loaded: runtime.loaded,
+      port: OTLP_DEFAULT_PORT,
+    };
+  };
+
+export const setBackgroundCollectionEnabled = async (
+  enabled: boolean,
+): Promise<BackgroundCollectionStatus> => {
+  if (enabled) {
+    await installTelemetryLaunchAgent();
+  } else {
+    await uninstallTelemetryLaunchAgent();
+  }
+
+  const store = await getAppStore();
+  const current = store.get("aiCodingTelemetry") ?? { tools: {} };
+  store.set("aiCodingTelemetry", {
+    backgroundCollectionEnabled: enabled,
+    tools: current.tools,
+  });
+
+  return getBackgroundCollectionStatus();
+};
+
+const canConnectToPort = (port: number): Promise<boolean> =>
+  new Promise((resolve) => {
+    const socket = net.createConnection({ host: "127.0.0.1", port });
+    socket.setTimeout(500);
+    socket.once("connect", () => {
+      socket.destroy();
+      resolve(true);
+    });
+    socket.once("timeout", () => {
+      socket.destroy();
+      resolve(false);
+    });
+    socket.once("error", () => {
+      socket.destroy();
+      resolve(false);
+    });
+  });
+
+export const getReceiverStatus = async (
+  currentProcessPort: number,
+): Promise<ReceiverStatus> => {
+  if (currentProcessPort > 0) {
+    return {
+      port: currentProcessPort,
+      listening: true,
+      mode: "gui",
+    };
+  }
+
+  const listening = await canConnectToPort(OTLP_DEFAULT_PORT);
+  return {
+    port: OTLP_DEFAULT_PORT,
+    listening,
+    mode: listening ? "background" : "stopped",
+  };
 };

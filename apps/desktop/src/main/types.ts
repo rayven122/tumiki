@@ -90,4 +90,6 @@ export type {
   DailyUsageItem,
   ApplyToolSettingsResult,
   GetToolSettingsResult,
+  BackgroundCollectionStatus,
+  ReceiverStatus,
 } from "./features/ai-coding-telemetry/ai-coding-telemetry.types";

@@ -20,6 +20,8 @@ type AppStoreSchema = {
   hasCompletedInitialProfileSetup?: boolean;
   // AI コーディングツール テレメトリ設定
   aiCodingTelemetry?: {
+    // desktop app 未起動時も LaunchAgent で収集するか
+    backgroundCollectionEnabled?: boolean;
     tools: {
       "claude-code"?: AiCodingTelemetryToolSetting;
       codex?: AiCodingTelemetryToolSetting;

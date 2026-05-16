@@ -19,7 +19,10 @@ import type {
 } from "../../main/types";
 import type { McpServerWithRuntime } from "../hooks/useMcpServers";
 import { toast } from "./Toast";
-import { useAiCodingToolSettings } from "../hooks/useAiCodingTelemetry";
+import {
+  useAiCodingTelemetryBackground,
+  useAiCodingToolSettings,
+} from "../hooks/useAiCodingTelemetry";
 import { TRACKING_TOOL_MAP } from "../utils/ai-coding-telemetry-tools";
 
 type Props = {
@@ -40,6 +43,13 @@ const TrackingSection = ({
   port: number;
 }): JSX.Element => {
   const { settings, isLoading, refresh } = useAiCodingToolSettings(tool);
+  const {
+    status: backgroundStatus,
+    receiverStatus,
+    isLoading: isBackgroundLoading,
+    isUpdating: isBackgroundUpdating,
+    setEnabled: setBackgroundEnabled,
+  } = useAiCodingTelemetryBackground();
   const [isApplying, setIsApplying] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
 
@@ -56,6 +66,11 @@ const TrackingSection = ({
         refresh();
       })
       .finally(() => setIsToggling(false));
+  };
+
+  const handleBackgroundToggle = (): void => {
+    if (isBackgroundUpdating || !backgroundStatus?.supported) return;
+    setBackgroundEnabled(!(backgroundStatus?.enabled ?? false));
   };
 
   const handleApply = (): void => {
@@ -133,6 +148,50 @@ const TrackingSection = ({
             </button>
           )}
         </div>
+        <div className="mt-3 border-t border-gray-200 pt-3 dark:border-zinc-800">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-gray-900 dark:text-white">
+                バックグラウンド収集
+              </p>
+              <p className="mt-0.5 text-[10px] text-gray-500 dark:text-zinc-500">
+                {backgroundStatus?.supported === false
+                  ? "macOSのみ対応"
+                  : receiverStatus?.listening
+                    ? `受信中 (port: ${String(receiverStatus.port)})`
+                    : "停止中"}
+              </p>
+            </div>
+            {!isBackgroundLoading && (
+              <button
+                type="button"
+                role="switch"
+                aria-checked={backgroundStatus?.enabled ?? false}
+                aria-label="バックグラウンド収集を有効化"
+                disabled={
+                  isBackgroundUpdating || backgroundStatus?.supported === false
+                }
+                onClick={handleBackgroundToggle}
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <div
+                  className={`relative h-5 w-9 rounded-full transition-colors ${
+                    backgroundStatus?.enabled
+                      ? "bg-emerald-500"
+                      : "bg-gray-300 dark:bg-zinc-600"
+                  }`}
+                >
+                  <div
+                    className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${
+                      backgroundStatus?.enabled ? "left-[18px]" : "left-0.5"
+                    }`}
+                  />
+                </div>
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* 自動設定ボタン */}
         <button
           type="button"

@@ -193,4 +193,10 @@ describe("ポートフォールバック", () => {
       result2.server.close();
     }
   });
+
+  test("fallback 無効時に preferredPort が使用中なら起動に失敗する", async () => {
+    await expect(
+      startOtlpReceiver(testPort, { allowFallback: false }),
+    ).rejects.toMatchObject({ code: "EADDRINUSE" });
+  });
 });

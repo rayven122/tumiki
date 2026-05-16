@@ -192,6 +192,24 @@ describe("applyOtlpToTool - codex", () => {
     ).toStrictEqual("http://127.0.0.1:4320");
   });
 
+  test("既存 telemetry が配列の場合はマージ対象にしない", async () => {
+    mockReadFile.mockResolvedValue("telemetry = ['invalid']");
+    mockParseToml.mockReturnValue({ telemetry: ["invalid"] });
+    mockStringifyToml.mockReturnValue(
+      "[telemetry]\notel_exporter_otlp_endpoint = ...\n",
+    );
+
+    const result = await applyOtlpToTool("codex", 4321);
+
+    expect(result.success).toStrictEqual(true);
+    const [[tomlArg]] = mockStringifyToml.mock.calls as [
+      [Record<string, unknown>],
+    ];
+    expect(tomlArg.telemetry).toStrictEqual({
+      otel_exporter_otlp_endpoint: "http://127.0.0.1:4321",
+    });
+  });
+
   test("TOML パース失敗時は既存ファイルを上書きしない", async () => {
     mockReadFile.mockResolvedValue("invalid toml ===");
     mockParseToml.mockImplementation(() => {

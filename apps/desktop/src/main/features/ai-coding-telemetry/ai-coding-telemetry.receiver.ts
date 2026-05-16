@@ -36,10 +36,16 @@ const tryListen = (server: http.Server, port: number): Promise<number> =>
     server.listen(port, "127.0.0.1");
   });
 
-// preferredPort を優先してバインド。競合時は OS 割り当てにフォールバック。返却ポートを electron-store に保存すること
+type StartOtlpReceiverOptions = {
+  allowFallback?: boolean;
+};
+
+// preferredPort を優先してバインド。競合時は必要に応じて OS 割り当てにフォールバックする
 export const startOtlpReceiver = async (
   preferredPort: number = OTLP_DEFAULT_PORT,
+  options: StartOtlpReceiverOptions = {},
 ): Promise<{ server: http.Server; port: number }> => {
+  const { allowFallback = true } = options;
   const server = http.createServer((req, res) => {
     const sendJsonResponse = (statusCode: number): void => {
       if (res.headersSent || res.writableEnded) return;
@@ -136,6 +142,9 @@ export const startOtlpReceiver = async (
     const code =
       err instanceof Error ? (err as NodeJS.ErrnoException).code : undefined;
     if (code === "EADDRINUSE") {
+      if (!allowFallback) {
+        throw err;
+      }
       logger.warn(
         `OTLP receiver: ポート ${String(preferredPort)} が使用中のため空きポートにフォールバックします`,
       );

@@ -10,12 +10,22 @@ vi.mock("../../../shared/utils/logger");
 vi.mock("../../../shared/app-store");
 vi.mock("../ai-coding-telemetry.repository");
 vi.mock("../ai-coding-telemetry.config-writer");
+vi.mock("../ai-coding-telemetry.launch-agent", () => ({
+  getTelemetryLaunchAgentRuntimeStatus: vi.fn(),
+  installTelemetryLaunchAgent: vi.fn().mockResolvedValue(undefined),
+  uninstallTelemetryLaunchAgent: vi.fn().mockResolvedValue(undefined),
+}));
 
 import * as service from "../ai-coding-telemetry.service";
 import { getDb } from "../../../shared/db";
 import { getAppStore } from "../../../shared/app-store";
 import * as repository from "../ai-coding-telemetry.repository";
 import { applyOtlpToTool } from "../ai-coding-telemetry.config-writer";
+import {
+  getTelemetryLaunchAgentRuntimeStatus,
+  installTelemetryLaunchAgent,
+  uninstallTelemetryLaunchAgent,
+} from "../ai-coding-telemetry.launch-agent";
 
 const mockDb = {} as ReturnType<typeof getDb> extends Promise<infer T>
   ? T
@@ -41,6 +51,11 @@ beforeEach(() => {
   vi.mocked(repository.getDailyUsage).mockResolvedValue([]);
   vi.mocked(repository.deleteOldMetrics).mockResolvedValue(0);
   vi.mocked(repository.deleteOldTraces).mockResolvedValue(0);
+  vi.mocked(getTelemetryLaunchAgentRuntimeStatus).mockResolvedValue({
+    supported: true,
+    installed: false,
+    loaded: false,
+  });
 });
 
 describe("storeOtlpMetrics", () => {
@@ -720,7 +735,6 @@ describe("applyToolSettings", () => {
     vi.mocked(mockStore.get).mockReturnValue({ tools: {} });
     const result = await service.applyToolSettings({
       tool: "claude-code",
-      port: 4318,
     });
     expect(result.success).toStrictEqual(true);
     expect(mockStore.set).toHaveBeenCalled();
@@ -744,7 +758,7 @@ describe("applyToolSettings", () => {
         },
       },
     });
-    await service.applyToolSettings({ tool: "claude-code", port: 4318 });
+    await service.applyToolSettings({ tool: "claude-code" });
     const [[, saved]] = vi.mocked(mockStore.set).mock.calls as unknown as [
       [
         string,
@@ -779,7 +793,6 @@ describe("applyToolSettings", () => {
     });
     const result = await service.applyToolSettings({
       tool: "claude-code",
-      port: 4318,
     });
     expect(result.success).toStrictEqual(false);
     expect(mockStore.set).not.toHaveBeenCalled();
@@ -957,5 +970,70 @@ describe("pruneOldTelemetry", () => {
     const result = await service.pruneOldTelemetry();
 
     expect(result).toStrictEqual({ metrics: 0, traces: 0 });
+  });
+});
+
+describe("background collection", () => {
+  test("保存済み backgroundCollectionEnabled を返す", async () => {
+    vi.mocked(mockStore.get).mockReturnValue({
+      backgroundCollectionEnabled: true,
+      tools: {},
+    });
+
+    await expect(
+      service.isBackgroundCollectionEnabled(),
+    ).resolves.toStrictEqual(true);
+  });
+
+  test("バックグラウンド収集を有効化すると LaunchAgent を登録して store を更新する", async () => {
+    vi.mocked(mockStore.get)
+      .mockReturnValueOnce({ tools: {} })
+      .mockReturnValue({
+        backgroundCollectionEnabled: true,
+        tools: {},
+      });
+    vi.mocked(getTelemetryLaunchAgentRuntimeStatus).mockResolvedValue({
+      supported: true,
+      installed: true,
+      loaded: true,
+    });
+
+    const result = await service.setBackgroundCollectionEnabled(true);
+
+    expect(installTelemetryLaunchAgent).toHaveBeenCalledOnce();
+    expect(uninstallTelemetryLaunchAgent).not.toHaveBeenCalled();
+    expect(mockStore.set).toHaveBeenCalledWith(
+      "aiCodingTelemetry",
+      expect.objectContaining({
+        backgroundCollectionEnabled: true,
+      }),
+    );
+    expect(result).toStrictEqual({
+      supported: true,
+      enabled: true,
+      installed: true,
+      loaded: true,
+      port: 4318,
+    });
+  });
+
+  test("バックグラウンド収集を無効化すると LaunchAgent を解除する", async () => {
+    await service.setBackgroundCollectionEnabled(false);
+
+    expect(uninstallTelemetryLaunchAgent).toHaveBeenCalledOnce();
+    expect(mockStore.set).toHaveBeenCalledWith(
+      "aiCodingTelemetry",
+      expect.objectContaining({
+        backgroundCollectionEnabled: false,
+      }),
+    );
+  });
+
+  test("receiver status は GUI ポートがあれば GUI として返す", async () => {
+    await expect(service.getReceiverStatus(4318)).resolves.toStrictEqual({
+      port: 4318,
+      listening: true,
+      mode: "gui",
+    });
   });
 });
