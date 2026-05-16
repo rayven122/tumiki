@@ -16,6 +16,7 @@ import { setupMcpServerDetailIpc } from "./features/mcp-server-detail/mcp-server
 import { setupAuditLogIpc } from "./features/audit-log/audit-log.ipc";
 import { setupDashboardIpc } from "./features/dashboard/dashboard.ipc";
 import { setupDesktopSessionIpc } from "./features/desktop-session/desktop-session.ipc";
+import { setupMcpPolicySyncIpc } from "./features/mcp-policy-sync/mcp-policy-sync.ipc";
 import { seedCatalogs } from "./features/catalog/catalog.seed";
 import { createOAuthManager } from "./auth/oauth-manager";
 import { resolveOidcEndpoints } from "./auth/oidc-client";
@@ -597,6 +598,7 @@ if (isMcpProxyMode) {
       setupAuditLogIpc();
       setupDashboardIpc();
       setupDesktopSessionIpc();
+      setupMcpPolicySyncIpc();
       setupShellIpc();
 
       createWindow();
