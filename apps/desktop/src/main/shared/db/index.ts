@@ -67,7 +67,7 @@ const withTimeout = <T>(
  * データベースパスを取得
  * 常にElectronのuserDataディレクトリを使用（CLIモード・Desktopモード共通）
  */
-const getDatabasePath = (): string => {
+export const getDatabaseFilePath = (): string => {
   const userDataPath = app.getPath("userData");
   const dbPath = join(userDataPath, "desktop.db");
 
@@ -75,7 +75,11 @@ const getDatabasePath = (): string => {
     mkdirSync(userDataPath, { recursive: true });
   }
 
-  return `file:${dbPath}`;
+  return dbPath;
+};
+
+const getDatabasePath = (): string => {
+  return `file:${getDatabaseFilePath()}`;
 };
 
 /**

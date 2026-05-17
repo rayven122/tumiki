@@ -23,6 +23,7 @@ import type {
   GetToolsForConnectionsInput,
   GetToolsForConnectionsResult,
   GetServerEditDetailOutput,
+  RefreshToolsOutput,
 } from "./mcp.types";
 
 // IPC / テストから参照できるよう re-export
@@ -520,6 +521,47 @@ export const updateServer = async (
 ) => {
   const db = await getDb();
   return mcpRepository.updateServer(db, id, data);
+};
+
+export const refreshTools = async (
+  serverId: number,
+): Promise<RefreshToolsOutput> => {
+  const db = await getDb();
+  const connections = await mcpRepository.findConnectionsByServerId(
+    db,
+    serverId,
+  );
+  if (connections.length === 0) {
+    throw new Error("サーバーに接続がありません");
+  }
+
+  const fetchedToolsByConnection = await Promise.all(
+    connections.map(async (connection) => ({
+      connectionId: connection.id,
+      tools: await mcpProxyService.fetchToolsForConnection(connection.id),
+    })),
+  );
+
+  await db.$transaction(async (tx) => {
+    for (const { connectionId, tools } of fetchedToolsByConnection) {
+      await mcpRepository.syncToolsForConnection(
+        tx,
+        connectionId,
+        tools.map((tool) => ({
+          name: tool.name,
+          description: tool.description ?? "",
+          inputSchema: JSON.stringify(tool.inputSchema ?? {}),
+        })),
+      );
+    }
+  });
+
+  return {
+    totalTools: fetchedToolsByConnection.reduce(
+      (total, item) => total + item.tools.length,
+      0,
+    ),
+  };
 };
 
 /**

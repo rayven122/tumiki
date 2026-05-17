@@ -474,6 +474,7 @@ describe("oauth.service", () => {
         isEnabled: true,
         isPiiMaskingEnabled: false,
         isToonConversionEnabled: false,
+        dynamicSearch: false,
         displayOrder: 0,
         createdAt: new Date(),
         updatedAt: new Date(),
