@@ -14,6 +14,15 @@ export type StdioServerConfig = {
   allowedTools?: string[];
 };
 
+/**
+ * 動的ヘッダ取得関数。
+ * OAuth のように上位レイヤで token がバックグラウンドリフレッシュされるケースで、
+ * transport 生成時に焼き込んだ headers ではなく、毎リクエスト時に最新値を取得するために使う。
+ * - 未指定: 従来通り static な `headers` がそのまま使われる
+ * - 指定済み: リクエスト毎に呼び出され、戻り値が static `headers` に上書きマージされる
+ */
+export type GetHeadersFn = () => Promise<Record<string, string>>;
+
 // SSE トランスポート設定
 export type SseServerConfig = {
   name: string;
@@ -21,6 +30,7 @@ export type SseServerConfig = {
   url: string;
   authType: AuthType;
   headers: Record<string, string>;
+  getHeaders?: GetHeadersFn;
   allowedTools?: string[];
 };
 
@@ -31,6 +41,7 @@ export type StreamableHttpServerConfig = {
   url: string;
   authType: AuthType;
   headers: Record<string, string>;
+  getHeaders?: GetHeadersFn;
   allowedTools?: string[];
 };
 

@@ -34,6 +34,11 @@ import {
   stopAuditLogManagerSyncScheduler,
   syncPendingAuditLogsToManager,
 } from "./features/audit-log-manager-sync/audit-log-manager-sync.service";
+import {
+  refreshAllOAuthSecrets,
+  startOAuthRefreshScheduler,
+  stopOAuthRefreshScheduler,
+} from "./features/oauth/oauth.scheduler";
 import { getAppStore } from "./shared/app-store";
 import { activateOrganizationProfile } from "./shared/profile-store";
 import { ServerStatus } from "@prisma/desktop-client";
@@ -119,8 +124,12 @@ if (isMcpProxyMode) {
         );
       }
       startAuditLogManagerSyncScheduler();
+      // OAuth トークンの定期リフレッシュを開始（数日プロセスが生き続けるユースケース対応）
+      startOAuthRefreshScheduler();
       powerMonitor.on("resume", () => {
         void syncPendingAuditLogsToManager();
+        // 長時間スリープ後の停滞解消のため、resume 時に即時 1 回 refresh を走らせる
+        void refreshAllOAuthSecrets().catch(() => {});
       });
 
       // 有効なMCPサーバー設定 + 監査ログ用メタデータを取得
@@ -335,6 +344,7 @@ if (isMcpProxyMode) {
         disableDefaultFilter,
         enableToonConversion,
         onShutdown: async () => {
+          stopOAuthRefreshScheduler();
           await stopAuditLogManagerSyncScheduler();
           await resetAllServerStatus().catch(() => {});
           await closeDb();
