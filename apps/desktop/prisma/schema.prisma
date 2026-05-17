@@ -206,7 +206,33 @@ model McpTool {
   connectionId Int
   connection   McpConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
 
+  /// 動的検索用のツールembeddingキャッシュ
+  embeddingCaches McpToolEmbeddingCache[]
+
   @@unique([connectionId, name])
+}
+
+/// 動的検索用ツールembeddingキャッシュ
+/// @namespace McpServer
+model McpToolEmbeddingCache {
+  id          Int      @id @default(autoincrement())
+  /// 対象ツール
+  toolId      Int
+  tool        McpTool  @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  /// embeddingモデルID
+  modelId     String
+  /// 検索テキスト生成ロジックのバージョン
+  textVersion Int
+  /// embedding次元数
+  dim         Int
+  /// 検索テキストのSHA-256
+  contentHash String
+  /// Float32Arrayをそのまま保存したBLOB
+  vector      Bytes
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([toolId, modelId, textVersion])
 }
 
 /// MCPサーバー（仮想・統合サーバー = Proxyエンドポイント）
