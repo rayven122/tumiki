@@ -13,6 +13,7 @@ vi.mock("../../mcp-server-list/mcp.repository");
 vi.mock("../../../utils/encryption");
 vi.mock("../../../utils/credentials");
 vi.mock("../../oauth/oauth.refresh");
+vi.mock("../../oauth/oauth.repository");
 // @tumiki/mcp-core-proxy の createMcpClient をモック化（実際のSDK Clientは生成しない）
 vi.mock("@tumiki/mcp-core-proxy", async () => {
   const actual = await vi.importActual<typeof import("@tumiki/mcp-core-proxy")>(
@@ -40,6 +41,7 @@ import * as mcpRepository from "../../mcp-server-list/mcp.repository";
 import { decryptToken } from "../../../utils/encryption";
 import { decryptCredentials } from "../../../utils/credentials";
 import { refreshOAuthTokenIfNeeded } from "../../oauth/oauth.refresh";
+import * as oauthRepository from "../../oauth/oauth.repository";
 
 describe("mcp-proxy.service", () => {
   const mockDb = {} as Awaited<ReturnType<typeof getDb>>;
@@ -53,6 +55,10 @@ describe("mcp-proxy.service", () => {
     );
     // decryptCredentials: デフォルトでは入力をそのまま返す（平文扱い）
     vi.mocked(decryptCredentials).mockImplementation(async (v) => v);
+    // ランタイムリフレッシュは既定で有効（OAuthClient が無い場合も false）
+    vi.mocked(oauthRepository.isRuntimeRefreshDisabled).mockResolvedValue(
+      false,
+    );
   });
 
   describe("getEnabledConfigs", () => {
@@ -484,6 +490,7 @@ describe("mcp-proxy.service", () => {
           url: "https://api.figma.com/mcp",
           authType: "BEARER",
           headers: { Authorization: "Bearer oauth-token" },
+          resolveHeaders: expect.any(Function),
         },
       ]);
     });
@@ -520,6 +527,7 @@ describe("mcp-proxy.service", () => {
           url: "https://api.figma.com/sse",
           authType: "BEARER",
           headers: { Authorization: "Bearer refreshed-token" },
+          resolveHeaders: expect.any(Function),
         },
       ]);
       // 第1引数は connectionId ではなく secretId（共有 secret 単位でトークン更新）
@@ -577,6 +585,7 @@ describe("mcp-proxy.service", () => {
           url: "https://api.figma.com/sse",
           authType: "BEARER",
           headers: { Authorization: "Bearer refreshed" },
+          resolveHeaders: expect.any(Function),
         },
         {
           name: "virtual-figma-virtual",
@@ -584,6 +593,7 @@ describe("mcp-proxy.service", () => {
           url: "https://api.figma.com/sse",
           authType: "BEARER",
           headers: { Authorization: "Bearer refreshed" },
+          resolveHeaders: expect.any(Function),
         },
       ]);
     });
@@ -627,6 +637,39 @@ describe("mcp-proxy.service", () => {
 
       // secretId が違えば各接続でリフレッシュ判定が走る
       expect(refreshOAuthTokenIfNeeded).toHaveBeenCalledTimes(2);
+    });
+
+    test("OAuthClient.disableRuntimeRefresh=true のサーバーには resolveHeaders が付かない（既知問題プロバイダ opt-out）", async () => {
+      vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([
+        buildConnection({
+          name: "Figma OAuth",
+          slug: "figma",
+          transportType: "STREAMABLE_HTTP",
+          command: null,
+          url: "https://api.figma.com/mcp",
+          credentials:
+            '{"access_token":"oauth-token","expires_at":"9999999999"}',
+          authType: "OAUTH",
+          server: { slug: "figma" },
+        }),
+      ]);
+      vi.mocked(refreshOAuthTokenIfNeeded).mockResolvedValue(null);
+      vi.mocked(oauthRepository.isRuntimeRefreshDisabled).mockResolvedValue(
+        true,
+      );
+
+      const result = await mcpProxyService.getEnabledConfigs();
+
+      // resolveHeaders キーが含まれていない＝ランタイムリフレッシュ無効
+      expect(result).toStrictEqual([
+        {
+          name: "figma-figma",
+          transportType: "STREAMABLE_HTTP",
+          url: "https://api.figma.com/mcp",
+          authType: "BEARER",
+          headers: { Authorization: "Bearer oauth-token" },
+        },
+      ]);
     });
   });
 

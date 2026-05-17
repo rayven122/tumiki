@@ -2,15 +2,21 @@ import type {
   AuthType,
   McpServerConfig,
   McpToolInfo,
+  ResolveHeaders,
 } from "@tumiki/mcp-core-proxy";
 import { createMcpClient } from "@tumiki/mcp-core-proxy";
 import type { TransportType } from "@prisma/desktop-client";
 import { z } from "zod";
 import { getDb } from "../../shared/db";
 import * as mcpRepository from "../mcp-server-list/mcp.repository";
+import * as oauthRepository from "../oauth/oauth.repository";
 import * as logger from "../../shared/utils/logger";
 import { decryptCredentials } from "../../utils/credentials";
-import { refreshOAuthTokenIfNeeded } from "../oauth/oauth.refresh";
+import {
+  primeResolveOAuthHeadersCache,
+  refreshOAuthTokenIfNeeded,
+  resolveOAuthHeaders,
+} from "../oauth/oauth.refresh";
 import {
   buildChildEnv,
   resolveArgs,
@@ -114,6 +120,39 @@ const getAllowedToolNames = (conn: ConnectionForConfig) =>
     ? conn.tools.filter((tool) => tool.isAllowed).map((tool) => tool.name)
     : undefined;
 
+/**
+ * OAuth接続にランタイム resolveHeaders を配線するか判定して結果オブジェクトを返す。
+ *
+ * 仕様:
+ * - 非OAuth接続: 何も返さない（既存挙動を保つ）
+ * - OAuthClient.disableRuntimeRefresh=true: 何も返さない（起動時リフレッシュのみで運用）
+ * - その他: resolveHeaders コールバックを返す
+ *
+ * disableRuntimeRefresh は Figma 等の「refresh-grant トークンが MCP audience を保持しない」
+ * 既知の問題プロバイダ用のオプトアウト。手動で OAuthClient.disableRuntimeRefresh=true を
+ * セットすると、そのプロバイダはmain と同じ「起動時リフレッシュのみ」挙動に戻る。
+ */
+const buildResolveHeaders = async (
+  conn: ConnectionForConfig,
+): Promise<{ resolveHeaders?: ResolveHeaders }> => {
+  if (conn.authType !== "OAUTH" || !conn.url) return {};
+  const db = await getDb();
+  const disabled = await oauthRepository.isRuntimeRefreshDisabled(db, conn.url);
+  if (disabled) {
+    logger.debug(
+      "ランタイムリフレッシュは disableRuntimeRefresh=true のため無効化",
+      {
+        secretId: conn.secretId,
+        serverUrl: conn.url,
+      },
+    );
+    return {};
+  }
+  const url = conn.url;
+  const secretId = conn.secretId;
+  return { resolveHeaders: () => resolveOAuthHeaders(secretId, url) };
+};
+
 const withAllowedTools = <T extends McpServerConfig>(
   config: T,
   conn: ConnectionForConfig,
@@ -168,6 +207,10 @@ const buildConfigFromConnection = async (
       // リフレッシュ実行後・スキップ後どちらでも、後続接続が古いスナップショットで再叩きしないようキャッシュ
       oauthCache.set(conn.secretId, credentials);
     }
+    // resolveOAuthHeaders のキャッシュにもプリロードし、SDK 初期化直後の
+    // 不要な「DB 再読込 + 再 refresh」を回避する。短時間連続 refresh で
+    // refresh_token rotation 採用プロバイダ (Linear 等) が token を拒否する事象を防ぐ。
+    primeResolveOAuthHeadersCache(conn.secretId, credentials);
   }
 
   let config: McpServerConfig;
@@ -213,6 +256,7 @@ const buildConfigFromConnection = async (
           url: conn.url,
           authType: sseAuthType,
           headers: buildHeaders(sseAuthType, credentials),
+          ...(await buildResolveHeaders(conn)),
         },
         conn,
       );
@@ -233,6 +277,7 @@ const buildConfigFromConnection = async (
           url: conn.url,
           authType: httpAuthType,
           headers: buildHeaders(httpAuthType, credentials),
+          ...(await buildResolveHeaders(conn)),
         },
         conn,
       );

@@ -92,6 +92,22 @@ export const findByServerUrl = async (
 };
 
 /**
+ * serverUrl から disableRuntimeRefresh フラグだけ取得する軽量lookup。
+ * mcp-proxy.service のconfig構築時にランタイムリフレッシュを配線するか判定するのに使う。
+ * OAuthClient が存在しない場合は false（=ランタイムリフレッシュ有効）を返す。
+ */
+export const isRuntimeRefreshDisabled = async (
+  db: DbClient,
+  serverUrl: string,
+): Promise<boolean> => {
+  const record = await db.oAuthClient.findUnique({
+    where: { serverUrl },
+    select: { disableRuntimeRefresh: true },
+  });
+  return record?.disableRuntimeRefresh ?? false;
+};
+
+/**
  * OAuthClientを作成または更新（serverUrlで一意）
  */
 export const upsertOAuthClient = async (
