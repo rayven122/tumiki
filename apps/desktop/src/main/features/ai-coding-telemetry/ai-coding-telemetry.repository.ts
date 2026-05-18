@@ -70,6 +70,50 @@ const buildMetricWhereClause = (
   return where;
 };
 
+const buildMetricSqlWhereClause = (
+  params: Omit<TraceQueryParams, "skip" | "take">,
+): Prisma.Sql => {
+  const conditions: Prisma.Sql[] = [];
+
+  if (params.toolFilter) {
+    conditions.push(Prisma.sql`"tool" = ${params.toolFilter}`);
+  }
+
+  if (params.metricSearch) {
+    conditions.push(
+      Prisma.sql`"metricName" LIKE ${`%${params.metricSearch}%`}`,
+    );
+  }
+
+  const categoryTerms = getMetricCategoryTerms(params.categoryFilter);
+  if (categoryTerms.length > 0) {
+    const categoryConditions = categoryTerms.map(
+      (term) => Prisma.sql`"metricName" LIKE ${`%${term}%`}`,
+    );
+    const categorySql = Prisma.join(categoryConditions, " OR ");
+    conditions.push(
+      params.categoryFilter === "other"
+        ? Prisma.sql`NOT (${categorySql})`
+        : Prisma.sql`(${categorySql})`,
+    );
+  }
+
+  if (params.dateFrom) {
+    conditions.push(
+      Prisma.sql`"recordedAt" >= ${new Date(`${params.dateFrom}T00:00:00`)}`,
+    );
+  }
+
+  if (params.dateTo) {
+    conditions.push(
+      Prisma.sql`"recordedAt" <= ${new Date(`${params.dateTo}T23:59:59.999`)}`,
+    );
+  }
+
+  if (conditions.length === 0) return Prisma.empty;
+  return Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}`;
+};
+
 const getMetricCategoryTerms = (
   category: AiCodingMetricCategory | undefined,
 ): string[] => {
@@ -162,12 +206,19 @@ export const countTraces = async (
     toolFilter?: string;
   },
 ): Promise<number> => {
-  const groups = await db.aiCodingMetric.groupBy({
-    by: ["recordedAt", "tool", "metricName"],
-    where: buildMetricWhereClause(params),
-    _count: { _all: true },
-  });
-  return groups.length;
+  const whereClause = buildMetricSqlWhereClause(params);
+  const [row] = await db.$queryRaw<Array<{ total: bigint | number }>>(
+    Prisma.sql`
+      SELECT COUNT(*) AS total
+      FROM (
+        SELECT 1
+        FROM "AiCodingMetric"
+        ${whereClause}
+        GROUP BY "recordedAt", "tool", "metricName"
+      ) grouped_metrics
+    `,
+  );
+  return Number(row?.total ?? 0);
 };
 
 // DBに存在するAIコーディングメトリクスのツール一覧を、件数の多い順で返す

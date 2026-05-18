@@ -257,7 +257,7 @@ export const getDailyUsage = async (
 ): Promise<DailyUsageItem[]> => {
   const since = new Date(Date.now() - input.days * 86400_000);
   const db = await getDb();
-  return repository.getDailyUsage(db, since, input.days <= 1 ? "hour" : "day");
+  return repository.getDailyUsage(db, since, input.days <= 7 ? "hour" : "day");
 };
 
 export const getDailyModelUsage = async (

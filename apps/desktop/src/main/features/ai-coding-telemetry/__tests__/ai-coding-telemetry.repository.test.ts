@@ -14,10 +14,6 @@ import type { MetricRecord, TraceRecord } from "../ai-coding-telemetry.types";
 const mockCreateMany = vi.fn().mockResolvedValue({ count: 0 });
 const mockDeleteMetricMany = vi.fn().mockResolvedValue({ count: 0 });
 const mockDeleteTraceMany = vi.fn().mockResolvedValue({ count: 0 });
-const mockFindMetricMany = vi.fn().mockResolvedValue([]);
-const mockFindTraceMany = vi.fn().mockResolvedValue([]);
-const mockCountMetric = vi.fn().mockResolvedValue(0);
-const mockCountTrace = vi.fn().mockResolvedValue(0);
 const mockGroupBy = vi.fn().mockResolvedValue([]);
 const mockQueryRaw = vi.fn().mockResolvedValue([]);
 
@@ -25,15 +21,11 @@ const mockDb = {
   aiCodingMetric: {
     createMany: (...args: unknown[]) => mockCreateMany(...args),
     deleteMany: (...args: unknown[]) => mockDeleteMetricMany(...args),
-    findMany: (...args: unknown[]) => mockFindMetricMany(...args),
-    count: (...args: unknown[]) => mockCountMetric(...args),
     groupBy: (...args: unknown[]) => mockGroupBy(...args),
   },
   aiCodingTrace: {
     createMany: (...args: unknown[]) => mockCreateMany(...args),
     deleteMany: (...args: unknown[]) => mockDeleteTraceMany(...args),
-    findMany: (...args: unknown[]) => mockFindTraceMany(...args),
-    count: (...args: unknown[]) => mockCountTrace(...args),
   },
   $queryRaw: (...args: unknown[]) => mockQueryRaw(...args),
 } as unknown as Awaited<ReturnType<typeof getDb>>;
@@ -43,10 +35,6 @@ beforeEach(() => {
   mockCreateMany.mockResolvedValue({ count: 0 });
   mockDeleteMetricMany.mockResolvedValue({ count: 0 });
   mockDeleteTraceMany.mockResolvedValue({ count: 0 });
-  mockFindMetricMany.mockResolvedValue([]);
-  mockFindTraceMany.mockResolvedValue([]);
-  mockCountMetric.mockResolvedValue(0);
-  mockCountTrace.mockResolvedValue(0);
   mockGroupBy.mockResolvedValue([]);
   mockQueryRaw.mockResolvedValue([]);
 });
@@ -145,19 +133,13 @@ describe("listTraces", () => {
 
 describe("countTraces", () => {
   test("フィルター条件に一致するメトリクス件数を返す", async () => {
-    mockGroupBy.mockResolvedValue(Array.from({ length: 8 }, () => ({})));
+    mockQueryRaw.mockResolvedValue([{ total: 8n }]);
 
     const result = await repository.countTraces(mockDb, {
       toolFilter: "claude-code",
     });
 
-    expect(mockGroupBy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        by: ["recordedAt", "tool", "metricName"],
-        where: { tool: "claude-code" },
-        _count: { _all: true },
-      }),
-    );
+    expect(mockQueryRaw).toHaveBeenCalledOnce();
     expect(result).toStrictEqual(8);
   });
 });

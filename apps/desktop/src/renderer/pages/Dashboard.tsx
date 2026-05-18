@@ -45,6 +45,23 @@ import type {
 /** AIクライアント円グラフの色パレット */
 const AI_PIE_PALETTE = ["#fff", "#10a37f", "#DA704E", "#A259FF", "#8b949e"];
 
+const COLOR_DOT_CLASS_BY_HEX: Record<string, string> = {
+  "#fff": "bg-gray-900 dark:bg-white",
+  "#ffffff": "bg-gray-900 dark:bg-white",
+  "#10a37f": "bg-[#10a37f]",
+  "#da704e": "bg-[#DA704E]",
+  "#a259ff": "bg-[#A259FF]",
+  "#8b949e": "bg-[#8b949e]",
+  "#3b82f6": "bg-[#3b82f6]",
+  "#14b8a6": "bg-[#14b8a6]",
+  "#22c55e": "bg-[#22c55e]",
+  "#f59e0b": "bg-[#f59e0b]",
+  "#ef4444": "bg-[#ef4444]",
+};
+
+const getDotColorClass = (color: string): string =>
+  COLOR_DOT_CLASS_BY_HEX[color.toLowerCase()] ?? "bg-zinc-500";
+
 /** 期間ごとの前期比ラベル */
 const PERIOD_DELTA_LABEL: Record<Period, string> = {
   "24h": "前日比",
@@ -251,8 +268,7 @@ const AiClientsSection = ({
             {pieData.map((item) => (
               <div key={item.name} className="flex items-center gap-2 text-xs">
                 <span
-                  className="h-2 w-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: resolveColor(item.color) }}
+                  className={`h-2 w-2 shrink-0 rounded-full ${getDotColorClass(resolveColor(item.color))}`}
                 />
                 <span className="truncate text-gray-600 dark:text-zinc-400">
                   {item.name}
@@ -512,10 +528,7 @@ const AiCodingAnalyticsSection = ({
               {modelTrend.modelLabels.map((modelLabel) => (
                 <span key={modelLabel} className="flex items-center gap-1">
                   <span
-                    className="inline-block h-1.5 w-1.5 rounded-full"
-                    style={{
-                      backgroundColor: getModelColor(modelLabel),
-                    }}
+                    className={`inline-block h-1.5 w-1.5 rounded-full ${getDotColorClass(getModelColor(modelLabel))}`}
                   />
                   <span className="max-w-[150px] truncate">{modelLabel}</span>
                 </span>
@@ -610,10 +623,7 @@ const AiCodingAnalyticsSection = ({
                       className="flex items-center gap-2 text-[10px]"
                     >
                       <span
-                        className="h-2 w-2 shrink-0 rounded-full"
-                        style={{
-                          backgroundColor: getModelColor(item.name),
-                        }}
+                        className={`h-2 w-2 shrink-0 rounded-full ${getDotColorClass(getModelColor(item.name))}`}
                       />
                       <span className="min-w-0 flex-1 truncate text-gray-600 dark:text-zinc-400">
                         {item.name}
@@ -779,8 +789,7 @@ export const Dashboard = (): JSX.Element => {
             {series.map((s) => (
               <span key={s.key} className="flex items-center gap-1">
                 <span
-                  className="inline-block h-1.5 w-1.5 rounded-full"
-                  style={{ backgroundColor: resolveColor(s.color) }}
+                  className={`inline-block h-1.5 w-1.5 rounded-full ${getDotColorClass(resolveColor(s.color))}`}
                 />
                 {s.label}
               </span>

@@ -45,8 +45,6 @@ import type {
   TelemetrySummaryItem,
   DailyUsageItem,
   DailyModelUsageItem,
-  ListTracesInput,
-  ListTracesResult,
   ListMetricLogsInput,
   ListMetricLogsResult,
   ApplyToolSettingsResult,
@@ -248,8 +246,6 @@ const api = {
       days: number,
     ): Promise<AiCodingDashboardDetailsResult> =>
       ipcRenderer.invoke("aiCodingTelemetry:getDashboardDetails", { days }),
-    listTraces: (input: ListTracesInput): Promise<ListTracesResult> =>
-      ipcRenderer.invoke("aiCodingTelemetry:listTraces", input),
     listMetricLogs: (
       input: ListMetricLogsInput,
     ): Promise<ListMetricLogsResult> =>

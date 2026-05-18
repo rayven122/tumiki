@@ -128,21 +128,6 @@ export const setupAiCodingTelemetryIpc = (): void => {
     },
   );
 
-  // AIコーディングトレース履歴取得
-  ipcMain.handle("aiCodingTelemetry:listTraces", async (_, input: unknown) => {
-    try {
-      const validated = listTracesSchema.parse(input);
-      return await service.listTraces(validated);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "不明なエラー";
-      logger.error(
-        "Failed to list AI coding telemetry traces",
-        error instanceof Error ? error : { error },
-      );
-      throw new Error(`AI実行ログの取得に失敗しました: ${message}`);
-    }
-  });
-
   ipcMain.handle(
     "aiCodingTelemetry:listMetricLogs",
     async (_, input: unknown) => {

@@ -728,6 +728,15 @@ describe("getDailyUsage", () => {
       "hour",
     );
   });
+
+  test("7d の場合も時間別集計で repository を呼び出す", async () => {
+    await service.getDailyUsage({ days: 7 });
+    expect(repository.getDailyUsage).toHaveBeenCalledWith(
+      mockDb,
+      expect.any(Date),
+      "hour",
+    );
+  });
 });
 
 describe("getDashboardDetails", () => {
