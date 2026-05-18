@@ -68,8 +68,14 @@ const getTumikiCloudBearerToken = async (
   }
   const encryptedBearerToken = token.idToken ?? token.accessToken;
   if (!encryptedBearerToken) return null;
-  const bearerToken = await decryptToken(encryptedBearerToken);
-  return bearerToken || null;
+
+  try {
+    const bearerToken = await decryptToken(encryptedBearerToken);
+    return bearerToken || null;
+  } catch (err) {
+    console.warn("[tumiki-cloud-api-client] Failed to decrypt token:", err);
+    return null;
+  }
 };
 
 const getTumikiCloudApiBaseUrl = (): string => {

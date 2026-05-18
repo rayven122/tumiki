@@ -43,6 +43,7 @@ let serverMetadataCache: openidClient.ServerMetadata | null = null;
 let metadataDiscoveringPromise: Promise<openidClient.ServerMetadata> | null =
   null;
 let cachedJwks: JwksCacheEntry | null = null;
+let cachedAllowedAudiences: string[] | null = null;
 
 const isLocalhostUrl = (issuerUrl: string): boolean => {
   try {
@@ -134,10 +135,13 @@ const toVerifiedTumikiJwt = (
 };
 
 const getAllowedAudiences = (): string[] => {
-  const audiences = process.env.KEYCLOAK_ALLOWED_AUDIENCES?.split(",")
-    .map((audience) => audience.trim())
-    .filter((audience) => audience.length > 0);
-  return audiences ?? [];
+  if (cachedAllowedAudiences !== null) return cachedAllowedAudiences;
+
+  cachedAllowedAudiences =
+    process.env.KEYCLOAK_ALLOWED_AUDIENCES?.split(",")
+      .map((audience) => audience.trim())
+      .filter((audience) => audience.length > 0) ?? [];
+  return cachedAllowedAudiences;
 };
 
 const isInvalidJwtError = (err: unknown): boolean =>
@@ -153,6 +157,7 @@ export const resetTumikiJwtCache = (): void => {
   serverMetadataCache = null;
   metadataDiscoveringPromise = null;
   cachedJwks = null;
+  cachedAllowedAudiences = null;
 };
 
 export const verifyTumikiBearerToken = async (

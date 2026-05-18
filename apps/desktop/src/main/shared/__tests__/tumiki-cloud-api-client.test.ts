@@ -145,6 +145,24 @@ describe("tumiki-cloud-api-client", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  test("復号に失敗したらリクエストしない", async () => {
+    mockFindFirst.mockResolvedValue({
+      id: 1,
+      accessToken: "encrypted:access-token",
+      refreshToken: null,
+      idToken: "encrypted:id-token",
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    vi.mocked(decryptToken).mockRejectedValue(new Error("decrypt failed"));
+
+    const result = await requestTumikiCloudApi("/v1/tool-search/embeddings");
+
+    expect(result).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   test("idTokenがnullの場合はaccessTokenをbearerとして使う", async () => {
     mockFindFirst.mockResolvedValue({
       id: 1,
