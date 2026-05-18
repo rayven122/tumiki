@@ -51,6 +51,7 @@ export const setupManagerIpc = (
     pendingProfile: DesktopProfile,
   ): Promise<void> => {
     const normalizedUrl = url.replace(/\/$/, "");
+    // manager:connect は組織接続専用のため、個人利用の固定URLは受け付けない。
     if (
       pendingProfile === "organization" &&
       normalizedUrl === PERSONAL_PROFILE_MANAGER_URL
