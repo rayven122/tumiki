@@ -121,6 +121,7 @@ const toVerifiedTumikiJwt = (
   const name = payload.name;
 
   return {
+    // requiredClaims で sub の存在を保証済み。
     sub: payload.sub!,
     issuer,
     email: typeof email === "string" ? email : undefined,

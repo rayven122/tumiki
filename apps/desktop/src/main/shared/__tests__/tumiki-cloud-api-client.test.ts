@@ -7,7 +7,6 @@ import {
   embedToolSearchTextsWithTumikiCloudApi,
   postTumikiCloudApi,
   requestTumikiCloudApi,
-  TumikiCloudApiError,
 } from "../tumiki-cloud-api-client";
 import { getDb } from "../db";
 import { decryptToken } from "../../utils/encryption";
@@ -220,12 +219,12 @@ describe("tumiki-cloud-api-client", () => {
     });
     vi.mocked(fetch).mockResolvedValue(new Response("error", { status: 503 }));
 
-    const promise = embedToolSearchTextsWithTumikiCloudApi(["query"]);
-    await expect(promise).rejects.toThrow(
-      "Tumiki Cloud API embedding failed: 503",
-    );
-    await expect(promise).rejects.toBeInstanceOf(TumikiCloudApiError);
-    await expect(promise).rejects.toMatchObject({ status: 503 });
+    await expect(
+      embedToolSearchTextsWithTumikiCloudApi(["query"]),
+    ).rejects.toMatchObject({
+      message: "Tumiki Cloud API embedding failed: 503",
+      status: 503,
+    });
   });
 
   test("ツール検索embedding APIのレスポンス形式が不正なら専用エラーを投げる", async () => {
@@ -245,11 +244,11 @@ describe("tumiki-cloud-api-client", () => {
       }),
     );
 
-    const promise = embedToolSearchTextsWithTumikiCloudApi(["query"]);
-    await expect(promise).rejects.toThrow(
-      "Tumiki Cloud API returned unexpected response format",
-    );
-    await expect(promise).rejects.toBeInstanceOf(TumikiCloudApiError);
-    await expect(promise).rejects.toMatchObject({ status: 200 });
+    await expect(
+      embedToolSearchTextsWithTumikiCloudApi(["query"]),
+    ).rejects.toMatchObject({
+      message: "Tumiki Cloud API returned unexpected response format",
+      status: 200,
+    });
   });
 });

@@ -101,6 +101,11 @@ export const resetToolSearchEmbeddingsRateLimit = (): void => {
   rateLimitBuckets.clear();
 };
 
+/** @internal テスト専用 */
+export const stopToolSearchEmbeddingsRateLimitCleanup = (): void => {
+  clearInterval(rateLimitCleanupInterval);
+};
+
 toolSearchEmbeddingsRoute.use(
   "/v1/tool-search/*",
   bodyLimit({ maxSize: TOOL_SEARCH_EMBEDDING_CONFIG.maxRequestBodySize }),
