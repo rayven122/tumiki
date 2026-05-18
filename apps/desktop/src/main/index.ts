@@ -42,6 +42,7 @@ import { getAppStore } from "./shared/app-store";
 import {
   activateOrganizationProfile,
   activatePersonalProfile,
+  resolvePendingProfile,
 } from "./shared/profile-store";
 import { ServerStatus } from "@prisma/desktop-client";
 import type { Prisma } from "@prisma/desktop-client";
@@ -599,17 +600,14 @@ if (appMode === "mcp-proxy") {
       const store = await getAppStore();
       const managerUrl = store.get("managerUrl");
       const pendingProfile = store.get("pendingProfile");
-      const isPersonalManagerUrl = managerUrl === PERSONAL_PROFILE_MANAGER_URL;
-      if (
-        pendingProfile === "personal" ||
-        // 古いストアに pendingProfile が無い場合でも、tumiki.cloud の認証は個人利用として扱う。
-        (!pendingProfile && isPersonalManagerUrl)
-      ) {
+      const resolvedProfile = resolvePendingProfile(
+        pendingProfile,
+        managerUrl,
+        PERSONAL_PROFILE_MANAGER_URL,
+      );
+      if (resolvedProfile === "personal") {
         await activatePersonalProfile();
-      } else if (
-        managerUrl &&
-        (pendingProfile === "organization" || !pendingProfile)
-      ) {
+      } else if (resolvedProfile === "organization" && managerUrl) {
         await activateOrganizationProfile(managerUrl);
       } else {
         logger.error("Auth callback could not activate profile", {

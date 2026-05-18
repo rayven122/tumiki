@@ -113,6 +113,23 @@ describe("setupManagerIpc", () => {
     expect(storeData.get("pendingProfile")).toBe("personal");
   });
 
+  test("管理サーバーURLが未設定の場合はnullを返す", async () => {
+    const handler = mockIpcHandlers.get("manager:getUrl");
+
+    const result = await handler!({} as IpcMainInvokeEvent);
+
+    expect(result).toBeNull();
+  });
+
+  test("保存済みの管理サーバーURLを返す", async () => {
+    storeData.set("managerUrl", "https://manager.example.com");
+    const handler = mockIpcHandlers.get("manager:getUrl");
+
+    const result = await handler!({} as IpcMainInvokeEvent);
+
+    expect(result).toBe("https://manager.example.com");
+  });
+
   test("接続失敗時はプロファイル状態を確定しない", async () => {
     initOAuthManager.mockRejectedValue(new Error("init failed"));
     const handler = mockIpcHandlers.get("manager:connect");
@@ -168,6 +185,21 @@ describe("setupManagerIpc", () => {
     await expect(handler!({} as IpcMainInvokeEvent, "not-url")).rejects.toThrow(
       "管理サーバーURLはhttp://またはhttps://で指定してください",
     );
+  });
+
+  test("個人プロファイル用URLを組織URLとして指定した場合は拒否する", async () => {
+    const handler = mockIpcHandlers.get("manager:connect");
+
+    await expect(
+      handler!({} as IpcMainInvokeEvent, `${PERSONAL_PROFILE_MANAGER_URL}/`),
+    ).rejects.toThrow(
+      "個人利用の場合は「個人利用を始める」ボタンを使用してください",
+    );
+
+    expect(fetch).not.toHaveBeenCalled();
+    expect(initOAuthManager).not.toHaveBeenCalled();
+    expect(storeData.get("managerUrl")).toBeUndefined();
+    expect(storeData.get("pendingProfile")).toBeUndefined();
   });
 
   test("httpの管理サーバーURLも接続を許可する", async () => {

@@ -51,6 +51,14 @@ export const setupManagerIpc = (
     pendingProfile: DesktopProfile,
   ): Promise<void> => {
     const normalizedUrl = url.replace(/\/$/, "");
+    if (
+      pendingProfile === "organization" &&
+      normalizedUrl === PERSONAL_PROFILE_MANAGER_URL
+    ) {
+      throw new Error(
+        "個人利用の場合は「個人利用を始める」ボタンを使用してください",
+      );
+    }
     const config = await fetchManagerOidcConfig(normalizedUrl);
     await initOAuthManager(normalizedUrl, config.issuer, config.clientId);
 

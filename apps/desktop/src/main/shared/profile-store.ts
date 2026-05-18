@@ -1,5 +1,24 @@
 import { getAppStore } from "./app-store";
-import type { ProfileState } from "../../shared/types";
+import type { DesktopProfile, ProfileState } from "../../shared/types";
+
+export type PendingProfileResolution = DesktopProfile | "error";
+
+export const resolvePendingProfile = (
+  pendingProfile: DesktopProfile | undefined,
+  managerUrl: string | undefined,
+  personalManagerUrl: string,
+): PendingProfileResolution => {
+  if (pendingProfile === "personal") {
+    return "personal";
+  }
+  if (!pendingProfile && managerUrl === personalManagerUrl) {
+    return "personal";
+  }
+  if (managerUrl && (pendingProfile === "organization" || !pendingProfile)) {
+    return "organization";
+  }
+  return "error";
+};
 
 export const getProfileState = async (): Promise<ProfileState> => {
   const store = await getAppStore();

@@ -158,8 +158,9 @@ export const ProfileSetup = (): JSX.Element => {
   const managerUrlProtocol = getManagerUrlProtocol(managerUrl);
   const shouldWarnHttp = managerUrlProtocol === "http:";
 
-  const cancelPersonalSetup = async (): Promise<void> => {
-    setupCancelledRef.current = true;
+  const cancelPendingInitialSetup = async (
+    fallbackMessage: string,
+  ): Promise<void> => {
     try {
       await window.electronAPI.auth.cancelLogin();
     } catch {
@@ -174,11 +175,7 @@ export const ProfileSetup = (): JSX.Element => {
       }
     } catch (err) {
       if (mountedRef.current) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "個人利用セットアップのキャンセルに失敗しました",
-        );
+        setError(err instanceof Error ? err.message : fallbackMessage);
       }
     } finally {
       if (mountedRef.current) {
@@ -186,6 +183,13 @@ export const ProfileSetup = (): JSX.Element => {
         setIsWaitingForCallback(false);
       }
     }
+  };
+
+  const cancelPersonalSetup = async (): Promise<void> => {
+    setupCancelledRef.current = true;
+    await cancelPendingInitialSetup(
+      "個人利用セットアップのキャンセルに失敗しました",
+    );
   };
 
   const cancelOrganizationSetup = async (): Promise<void> => {
@@ -205,32 +209,9 @@ export const ProfileSetup = (): JSX.Element => {
       return;
     }
 
-    try {
-      await window.electronAPI.auth.cancelLogin();
-    } catch {
-      // ブラウザ起動前後の状態にかかわらず、ローカルの pending setup cleanup は続行する。
-    }
-
-    try {
-      await window.electronAPI.profile.cancelPendingSetup();
-      if (mountedRef.current) {
-        setError(null);
-        setView("choice");
-      }
-    } catch (err) {
-      if (mountedRef.current) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "組織セットアップのキャンセルに失敗しました",
-        );
-      }
-    } finally {
-      if (mountedRef.current) {
-        setIsSubmitting(false);
-        setIsWaitingForCallback(false);
-      }
-    }
+    await cancelPendingInitialSetup(
+      "組織セットアップのキャンセルに失敗しました",
+    );
   };
 
   return (

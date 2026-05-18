@@ -49,9 +49,11 @@ vi.mock("../../auth/manager-registry", () => ({
 vi.mock("../../shared/utils/logger");
 
 import { setupProfileIpc } from "../profile";
+import { PERSONAL_PROFILE_MANAGER_URL } from "../manager";
 import {
   activateOrganizationProfile,
   activatePersonalProfile,
+  resolvePendingProfile,
 } from "../../shared/profile-store";
 
 const resetTestState = (): void => {
@@ -68,13 +70,13 @@ describe("profile-store", () => {
   beforeEach(resetTestState);
 
   test("認証コールバック経由で個人プロファイルを保存する", async () => {
-    storeData.set("managerUrl", "https://manager.example.com");
+    storeData.set("managerUrl", PERSONAL_PROFILE_MANAGER_URL);
     storeData.set("pendingProfile", "personal");
 
     // 個人利用の確定は profile IPC ではなく認証コールバック経由で行う。
     const result = await activatePersonalProfile();
 
-    expect(storeData.get("managerUrl")).toBe("https://manager.example.com");
+    expect(storeData.get("managerUrl")).toBe(PERSONAL_PROFILE_MANAGER_URL);
     expect(storeData.has("pendingProfile")).toBe(false);
     expect(result).toStrictEqual({
       activeProfile: "personal",
@@ -89,6 +91,32 @@ describe("profile-store", () => {
     await expect(activatePersonalProfile()).rejects.toThrow(
       "組織利用中は個人利用に切り替えられません",
     );
+  });
+
+  test("pendingProfileが無くtumiki.cloudの場合は個人利用として解決する", () => {
+    expect(
+      resolvePendingProfile(
+        undefined,
+        PERSONAL_PROFILE_MANAGER_URL,
+        PERSONAL_PROFILE_MANAGER_URL,
+      ),
+    ).toBe("personal");
+  });
+
+  test("pendingProfileが無く組織URLがある場合は組織利用として解決する", () => {
+    expect(
+      resolvePendingProfile(
+        undefined,
+        "https://manager.example.com",
+        PERSONAL_PROFILE_MANAGER_URL,
+      ),
+    ).toBe("organization");
+  });
+
+  test("pendingProfileもmanagerUrlも無い場合はエラーとして解決する", () => {
+    expect(
+      resolvePendingProfile(undefined, undefined, PERSONAL_PROFILE_MANAGER_URL),
+    ).toBe("error");
   });
 });
 
