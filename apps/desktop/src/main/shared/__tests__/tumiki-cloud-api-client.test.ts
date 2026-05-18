@@ -7,6 +7,7 @@ import {
   embedToolSearchTextsWithTumikiCloudApi,
   postTumikiCloudApi,
   requestTumikiCloudApi,
+  TumikiCloudApiError,
 } from "../tumiki-cloud-api-client";
 import { getDb } from "../db";
 import { decryptToken } from "../../utils/encryption";
@@ -218,8 +219,11 @@ describe("tumiki-cloud-api-client", () => {
     });
     vi.mocked(fetch).mockResolvedValue(new Response("error", { status: 503 }));
 
-    await expect(
-      embedToolSearchTextsWithTumikiCloudApi(["query"]),
-    ).rejects.toThrow("Tumiki Cloud API embedding failed: 503");
+    const promise = embedToolSearchTextsWithTumikiCloudApi(["query"]);
+    await expect(promise).rejects.toThrow(
+      "Tumiki Cloud API embedding failed: 503",
+    );
+    await expect(promise).rejects.toBeInstanceOf(TumikiCloudApiError);
+    await expect(promise).rejects.toMatchObject({ status: 503 });
   });
 });

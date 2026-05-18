@@ -48,18 +48,32 @@ const verifyRateLimit = (): MiddlewareHandler<{
     const subject = c.var.tumikiJwt.sub;
     const current = rateLimitBuckets.get(subject);
     const windowMs = TOOL_SEARCH_EMBEDDING_CONFIG.rateLimitWindowMs;
+    const currentIsActive = current !== undefined && current.resetAt > now;
 
-    const bucket =
-      current && current.resetAt > now
-        ? current
-        : { count: 0, resetAt: now + windowMs };
+    if (
+      !currentIsActive &&
+      rateLimitBuckets.size >= TOOL_SEARCH_EMBEDDING_CONFIG.maxRateLimitBuckets
+    ) {
+      deleteExpiredRateLimitBuckets(now);
+      if (
+        rateLimitBuckets.size >=
+        TOOL_SEARCH_EMBEDDING_CONFIG.maxRateLimitBuckets
+      ) {
+        return c.json({ error: "Too Many Requests" }, 429, {
+          "Retry-After": String(Math.ceil(windowMs / 1000)),
+        });
+      }
+    }
+
+    const bucket = currentIsActive
+      ? current
+      : { count: 0, resetAt: now + windowMs };
     bucket.count += 1;
     rateLimitBuckets.set(subject, bucket);
 
     if (
       rateLimitBuckets.size > TOOL_SEARCH_EMBEDDING_CONFIG.maxRateLimitBuckets
     ) {
-      // 全バケットが有効な場合は次リクエストでも再走査するが、上限は小さくPod単位の軽い防御に留める。
       deleteExpiredRateLimitBuckets(now);
     }
 

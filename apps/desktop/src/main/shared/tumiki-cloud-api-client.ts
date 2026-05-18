@@ -14,6 +14,16 @@ const toolSearchEmbeddingsResponseSchema = z.object({
   embeddings: z.array(z.array(z.number())),
 });
 
+export class TumikiCloudApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message);
+    this.name = "TumikiCloudApiError";
+  }
+}
+
 const findValidAuthToken = async (): Promise<AuthToken | null> => {
   const db = await getDb();
   const now = new Date();
@@ -104,7 +114,10 @@ export const embedToolSearchTextsWithTumikiCloudApi = async (
   if (!response) return null;
 
   if (!response.ok) {
-    throw new Error(`Tumiki Cloud API embedding failed: ${response.status}`);
+    throw new TumikiCloudApiError(
+      `Tumiki Cloud API embedding failed: ${response.status}`,
+      response.status,
+    );
   }
 
   const parsed = toolSearchEmbeddingsResponseSchema.parse(

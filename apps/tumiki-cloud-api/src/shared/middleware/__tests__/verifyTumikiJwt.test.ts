@@ -129,6 +129,7 @@ describe("verifyTumikiJwtMiddleware", () => {
   test("Authorizationなしは401", async () => {
     stubKeycloakEnv();
 
+    // Authorization ヘッダがなければ discovery / JWKS fetch 前に早期 return する。
     const res = await buildTestApp().request("/protected");
 
     expect(res.status).toBe(401);

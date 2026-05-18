@@ -138,6 +138,7 @@ export const verifyTumikiBearerToken = async (
       issuer: metadata.issuer,
       // apps/mcp-proxy と同じ検証境界に揃えるため audience / azp はここでは検証しない。
       // Desktop が保持する idToken を受け取り、issuer・署名・exp・sub を API 境界で確認する。
+      // TODO: Keycloak 側で api.tumiki.cloud 専用 audience を発行できるようになったら検証を追加する。
       clockTolerance: 60,
       requiredClaims: ["exp", "sub"],
     });
