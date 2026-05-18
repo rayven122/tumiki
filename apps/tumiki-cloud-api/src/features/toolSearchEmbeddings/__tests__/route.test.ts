@@ -17,7 +17,6 @@ import { TOOL_SEARCH_EMBEDDING_CONFIG } from "../../../shared/constants/config.j
 import { resetTumikiJwtCache } from "../../../shared/middleware/verifyTumikiJwt.js";
 import {
   resetToolSearchEmbeddingsRateLimit,
-  stopToolSearchEmbeddingsRateLimitCleanup,
   toolSearchEmbeddingsRoute,
 } from "../route.js";
 
@@ -105,7 +104,6 @@ afterEach(() => {
   vi.clearAllMocks();
   resetTumikiJwtCache();
   resetToolSearchEmbeddingsRateLimit();
-  stopToolSearchEmbeddingsRateLimitCleanup();
 });
 
 describe("POST /v1/tool-search/embeddings", () => {

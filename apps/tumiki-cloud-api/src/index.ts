@@ -4,6 +4,7 @@
 import { serve } from "@hono/node-server";
 
 import app from "./app.js";
+import { startToolSearchEmbeddingsRateLimitCleanup } from "./features/toolSearchEmbeddings/route.js";
 import { DEFAULT_PORT } from "./shared/constants/config.js";
 
 const port = Number(process.env.PORT) || DEFAULT_PORT;
@@ -14,6 +15,7 @@ const requiredEnvVars = [
   "LICENSE_PUBLIC_KEY",
   "AI_GATEWAY_API_KEY",
   "KEYCLOAK_ISSUER",
+  "KEYCLOAK_ALLOWED_AUDIENCES",
 ];
 const missing = requiredEnvVars.filter((key) => !process.env[key]);
 if (missing.length > 0) {
@@ -29,11 +31,7 @@ if (missing.length > 0) {
   }
 }
 
-if (!process.env.KEYCLOAK_ALLOWED_AUDIENCES?.trim()) {
-  console.warn(
-    "[tumiki-cloud-api] WARNING: KEYCLOAK_ALLOWED_AUDIENCES is not set; Tumiki JWT audience validation is disabled until #1351 is completed.",
-  );
-}
+startToolSearchEmbeddingsRateLimitCleanup();
 
 // HTTP モードのみ（TLS は Cloudflare Tunnel で終端する）
 serve({ fetch: app.fetch, port }, (info) => {

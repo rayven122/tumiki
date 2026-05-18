@@ -40,16 +40,17 @@ const deleteExpiredRateLimitBuckets = (now: number): void => {
   }
 };
 
-const rateLimitCleanupInterval = setInterval(
-  () => deleteExpiredRateLimitBuckets(Date.now()),
-  Math.max(TOOL_SEARCH_EMBEDDING_CONFIG.rateLimitWindowMs, 5 * 60 * 1000),
-);
-if (
-  typeof rateLimitCleanupInterval === "object" &&
-  "unref" in rateLimitCleanupInterval
-) {
+let rateLimitCleanupInterval: NodeJS.Timeout | null = null;
+
+export const startToolSearchEmbeddingsRateLimitCleanup = (): void => {
+  if (rateLimitCleanupInterval) return;
+
+  rateLimitCleanupInterval = setInterval(
+    () => deleteExpiredRateLimitBuckets(Date.now()),
+    Math.max(TOOL_SEARCH_EMBEDDING_CONFIG.rateLimitWindowMs, 5 * 60 * 1000),
+  );
   rateLimitCleanupInterval.unref();
-}
+};
 
 const verifyRateLimit = (): MiddlewareHandler<{
   Variables: TumikiJwtContextVariables;
@@ -79,6 +80,7 @@ const verifyRateLimit = (): MiddlewareHandler<{
     const bucket = currentIsActive
       ? current
       : { count: 0, resetAt: now + windowMs };
+    // 拒否したリクエストも同一 window 内の試行としてカウントする。
     bucket.count += 1;
     rateLimitBuckets.set(subject, bucket);
 
@@ -103,7 +105,9 @@ export const resetToolSearchEmbeddingsRateLimit = (): void => {
 
 /** @internal テスト専用 */
 export const stopToolSearchEmbeddingsRateLimitCleanup = (): void => {
+  if (!rateLimitCleanupInterval) return;
   clearInterval(rateLimitCleanupInterval);
+  rateLimitCleanupInterval = null;
 };
 
 toolSearchEmbeddingsRoute.use(
