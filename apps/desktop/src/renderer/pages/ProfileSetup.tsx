@@ -274,7 +274,7 @@ export const ProfileSetup = (): JSX.Element => {
               </span>
             </button>
 
-            {isWaitingForCallback && (
+            {isSubmitting && (
               <button
                 type="button"
                 onClick={() => void cancelPersonalSetup()}

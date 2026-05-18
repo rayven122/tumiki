@@ -49,7 +49,7 @@ export const setupManagerIpc = (
 ): void => {
   const connectToManager = async (
     url: string,
-    pendingProfile: DesktopProfile = "organization",
+    pendingProfile: DesktopProfile,
   ): Promise<void> => {
     const config = await fetchManagerOidcConfig(url);
     await initOAuthManager(url, config.issuer, config.clientId);

@@ -111,6 +111,25 @@ describe("setupManagerIpc", () => {
     expect(storeData.get("hasCompletedInitialProfileSetup")).toBeUndefined();
   });
 
+  test("OIDC設定取得に失敗した場合はエラーをスローする", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 503,
+        json: () => Promise.resolve({}),
+      }),
+    );
+    const handler = mockIpcHandlers.get("manager:connect");
+
+    await expect(
+      handler!({} as IpcMainInvokeEvent, "https://manager.example.com"),
+    ).rejects.toThrow("OIDC設定の取得に失敗しました（503）");
+
+    expect(storeData.get("managerUrl")).toBeUndefined();
+    expect(storeData.get("pendingProfile")).toBeUndefined();
+  });
+
   test("個人プロファイル接続失敗時はpendingProfileを保存しない", async () => {
     initOAuthManager.mockRejectedValue(new Error("init failed"));
     const handler = mockIpcHandlers.get("manager:connectPersonal");
