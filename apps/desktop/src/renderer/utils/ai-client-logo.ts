@@ -2,7 +2,7 @@
 const AI_CLIENT_LOGOS: Record<string, { dark: string; light: string }> = {
   cursor: {
     dark: "/logos/ai-clients/cursor.webp",
-    light: "/logos/ai-clients/cursor-light.webp",
+    light: "/logos/ai-clients/cursor.svg",
   },
   "claude code": {
     dark: "/logos/ai-clients/claude.webp",
@@ -11,6 +11,18 @@ const AI_CLIENT_LOGOS: Record<string, { dark: string; light: string }> = {
   "claude desktop": {
     dark: "/logos/ai-clients/claude.webp",
     light: "/logos/ai-clients/claude.svg",
+  },
+  codex: {
+    dark: "/logos/ai-clients/codex-cli.svg",
+    light: "/logos/ai-clients/codex-cli.svg",
+  },
+  "codex app server": {
+    dark: "/logos/ai-clients/codex-cli.svg",
+    light: "/logos/ai-clients/codex-cli.svg",
+  },
+  "codex cli": {
+    dark: "/logos/ai-clients/codex-cli.svg",
+    light: "/logos/ai-clients/codex-cli.svg",
   },
   chatgpt: {
     dark: "/logos/ai-clients/chatgpt.webp",

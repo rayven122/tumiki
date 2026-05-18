@@ -75,6 +75,75 @@ describe("storeTraces", () => {
   });
 });
 
+describe("listTraces", () => {
+  test("recordedAt 降順でメトリクスを取得する", async () => {
+    const recordedAt = new Date("2026-01-03T00:00:00.000Z");
+    mockGroupBy.mockResolvedValue([
+      {
+        tool: "codex",
+        metricName: "codex.turn.token_usage.total_tokens",
+        recordedAt,
+        _sum: { value: 1234 },
+        _count: { _all: 4, attributes: 3 },
+      },
+    ]);
+
+    const result = await repository.listTraces(mockDb, {
+      skip: 20,
+      take: 10,
+      toolFilter: "codex",
+      dateFrom: "2026-01-01",
+      dateTo: "2026-01-31",
+    });
+
+    expect(mockGroupBy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        by: ["recordedAt", "tool", "metricName"],
+        where: {
+          tool: "codex",
+          recordedAt: {
+            gte: new Date("2026-01-01T00:00:00"),
+            lte: new Date("2026-01-31T23:59:59.999"),
+          },
+        },
+        orderBy: [
+          { recordedAt: "desc" },
+          { tool: "asc" },
+          { metricName: "asc" },
+        ],
+        skip: 20,
+        take: 10,
+        _sum: { value: true },
+        _count: { _all: true, attributes: true },
+      }),
+    );
+    expect(result).toStrictEqual([
+      {
+        id: `${recordedAt.getTime()}:codex:codex.turn.token_usage.total_tokens`,
+        tool: "codex",
+        metricName: "codex.turn.token_usage.total_tokens",
+        value: 1234,
+        startedAt: recordedAt,
+        hasAttributes: true,
+        sampleCount: 4,
+      },
+    ]);
+  });
+});
+
+describe("countTraces", () => {
+  test("フィルター条件に一致するメトリクス件数を返す", async () => {
+    mockQueryRaw.mockResolvedValue([{ total: 8n }]);
+
+    const result = await repository.countTraces(mockDb, {
+      toolFilter: "claude-code",
+    });
+
+    expect(mockQueryRaw).toHaveBeenCalledOnce();
+    expect(result).toStrictEqual(8);
+  });
+});
+
 describe("getSummary", () => {
   test("since 以降のデータを groupBy で集計する", async () => {
     const since = new Date("2026-01-01");
@@ -138,13 +207,13 @@ describe("getDailyUsage", () => {
     const result = await repository.getDailyUsage(mockDb, since);
 
     expect(mockQueryRaw).toHaveBeenCalledOnce();
-    const [[queryParts, sinceMs]] = mockQueryRaw.mock.calls as [
-      [TemplateStringsArray, bigint],
+    const [[query]] = mockQueryRaw.mock.calls as [
+      [{ strings?: string[]; values?: unknown[] }],
     ];
-    expect(queryParts.join("?")).toContain(
+    expect(query.strings?.join("?")).toContain(
       `"recordedAt" / 1000, 'unixepoch', 'localtime'`,
     );
-    expect(sinceMs).toStrictEqual(BigInt(since.getTime()));
+    expect(query.values).toContain(BigInt(since.getTime()));
     expect(result).toStrictEqual([
       {
         date: "2026-01-01",
@@ -157,6 +226,32 @@ describe("getDailyUsage", () => {
         tool: "claude-code",
         metricName: "tokens_total",
         totalValue: 300,
+      },
+    ]);
+  });
+
+  test("時間別指定の場合は1時間単位で集計する", async () => {
+    const since = new Date("2026-01-01");
+    mockQueryRaw.mockResolvedValue([
+      {
+        date: "2026-01-01 09:00",
+        tool: "claude-code",
+        metricName: "claude_code.cost.usage",
+        totalValue: 1.2,
+      },
+    ]);
+
+    const result = await repository.getDailyUsage(mockDb, since, "hour");
+
+    expect(mockQueryRaw).toHaveBeenCalledOnce();
+    const [[query]] = mockQueryRaw.mock.calls as [[{ strings?: string[] }]];
+    expect(query.strings?.join("?")).toContain("%Y-%m-%d %H:00");
+    expect(result).toStrictEqual([
+      {
+        date: "2026-01-01 09:00",
+        tool: "claude-code",
+        metricName: "claude_code.cost.usage",
+        totalValue: 1.2,
       },
     ]);
   });

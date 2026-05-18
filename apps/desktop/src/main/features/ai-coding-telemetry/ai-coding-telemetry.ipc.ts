@@ -2,7 +2,7 @@ import { ipcMain } from "electron";
 import { z } from "zod";
 import * as service from "./ai-coding-telemetry.service";
 import * as logger from "../../shared/utils/logger";
-import type { AiCodingTool } from "./ai-coding-telemetry.types";
+import type { ConfigurableAiCodingTool } from "./ai-coding-telemetry.types";
 import { OTLP_DEFAULT_PORT } from "./ai-coding-telemetry.receiver";
 
 // IPC 入力のバリデーションスキーマ
@@ -15,6 +15,29 @@ const getDailyUsageSchema = z.object({
 });
 
 const toolSchema = z.enum(["claude-code", "codex"]);
+
+const listTracesSchema = z.object({
+  page: z.number().int().min(1).optional(),
+  perPage: z.number().int().min(1).max(100).optional(),
+  toolFilter: z
+    .union([z.literal("all"), z.string().min(1).max(128)])
+    .optional(),
+  categoryFilter: z
+    .enum([
+      "all",
+      "tokens",
+      "cost",
+      "active_time",
+      "session",
+      "tool_call",
+      "api",
+      "other",
+    ])
+    .optional(),
+  metricSearch: z.string().max(255).optional(),
+  dateFrom: z.iso.date().optional(),
+  dateTo: z.iso.date().optional(),
+});
 
 const saveToolEnabledSchema = z.object({
   tool: toolSchema,
@@ -37,11 +60,13 @@ export const setReceiverPort = (port: number): void => {
 // `getPendingAutoReapplied` で取得され、消費されるとクリアされる。
 // TODO: マルチウィンドウ対応時は全ウィンドウへ push 通知する方式に変更する。
 // 現在はシングルウィンドウ前提のため、最初の renderer が取得した時点で消費する。
-let _pendingAutoReapplied: { tools: AiCodingTool[]; port: number } | null =
-  null;
+let _pendingAutoReapplied: {
+  tools: ConfigurableAiCodingTool[];
+  port: number;
+} | null = null;
 
 export const setPendingAutoReapplied = (
-  tools: AiCodingTool[],
+  tools: ConfigurableAiCodingTool[],
   port: number,
 ): void => {
   if (tools.length === 0) {
@@ -82,6 +107,70 @@ export const setupAiCodingTelemetryIpc = (): void => {
           error instanceof Error ? error : { error },
         );
         throw new Error(`日別使用量の取得に失敗しました: ${message}`);
+      }
+    },
+  );
+
+  ipcMain.handle(
+    "aiCodingTelemetry:getDailyModelUsage",
+    async (_, input: unknown) => {
+      try {
+        const validated = getDailyUsageSchema.parse(input);
+        return await service.getDailyModelUsage(validated);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "不明なエラー";
+        logger.error(
+          "Failed to get AI coding telemetry daily model usage",
+          error instanceof Error ? error : { error },
+        );
+        throw new Error(`モデル別推移の取得に失敗しました: ${message}`);
+      }
+    },
+  );
+
+  ipcMain.handle(
+    "aiCodingTelemetry:listMetricLogs",
+    async (_, input: unknown) => {
+      try {
+        const validated = listTracesSchema.parse(input);
+        return await service.listTraces(validated);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "不明なエラー";
+        logger.error(
+          "Failed to list AI coding telemetry metric logs",
+          error instanceof Error ? error : { error },
+        );
+        throw new Error(`AI実行ログの取得に失敗しました: ${message}`);
+      }
+    },
+  );
+
+  ipcMain.handle("aiCodingTelemetry:listMetricTools", async () => {
+    try {
+      return await service.listMetricTools();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "不明なエラー";
+      logger.error(
+        "Failed to list AI coding telemetry metric tools",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error(`AIツール一覧の取得に失敗しました: ${message}`);
+    }
+  });
+
+  ipcMain.handle(
+    "aiCodingTelemetry:getDashboardDetails",
+    async (_, input: unknown) => {
+      try {
+        const validated = getSummarySchema.parse(input);
+        return await service.getDashboardDetails(validated);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "不明なエラー";
+        logger.error(
+          "Failed to get AI coding telemetry dashboard details",
+          error instanceof Error ? error : { error },
+        );
+        throw new Error(`AI分析詳細の取得に失敗しました: ${message}`);
       }
     },
   );
