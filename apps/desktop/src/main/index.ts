@@ -39,7 +39,26 @@ import { activateOrganizationProfile } from "./shared/profile-store";
 import { ServerStatus } from "@prisma/desktop-client";
 import type { Prisma } from "@prisma/desktop-client";
 import * as logger from "./shared/utils/logger";
+import { isAddressInUseError } from "./shared/utils/error";
 import { ensureNodeShim } from "./runtime/path-resolver";
+import {
+  OTLP_DEFAULT_PORT,
+  startOtlpReceiver,
+} from "./features/ai-coding-telemetry/ai-coding-telemetry.receiver";
+import {
+  autoReapplyMismatchedPorts,
+  pruneOldTelemetry,
+} from "./features/ai-coding-telemetry/ai-coding-telemetry.service";
+import {
+  setupAiCodingTelemetryIpc,
+  setReceiverPort,
+  setPendingAutoReapplied,
+} from "./features/ai-coding-telemetry/ai-coding-telemetry.ipc";
+import { resolveDesktopAppMode } from "./app-mode";
+import {
+  startAnalyticsMcpServer,
+  startAnalyticsReceiverSingleton,
+} from "./features/ai-coding-telemetry/ai-coding-telemetry.analytics-sidecar";
 
 // Cursor など親プロセス（Electron アプリ）が子プロセスへ ELECTRON_RUN_AS_NODE=1 を継承
 // させたケース対応。Electron が Node モードで起動すると `import { app } from "electron"` が
@@ -70,9 +89,57 @@ if (!app) {
 }
 
 // --mcp-proxy モード: GUI不要、stdioでMCPプロキシとして動作
-const isMcpProxyMode = process.argv.includes("--mcp-proxy");
+const appMode = resolveDesktopAppMode(process.argv);
 
-if (isMcpProxyMode) {
+const startAnalyticsSidecarMode = async (): Promise<void> => {
+  app.dock?.hide();
+  await initializeDb();
+
+  const runtime = await startAnalyticsReceiverSingleton();
+
+  const runTelemetryPrune = (): void => {
+    void pruneOldTelemetry().catch((error: unknown) => {
+      logger.error("Failed to prune old AI coding telemetry", { error });
+    });
+  };
+  runTelemetryPrune();
+  const telemetryPruneInterval = setInterval(
+    runTelemetryPrune,
+    24 * 60 * 60 * 1000,
+  );
+
+  let isShuttingDown = false;
+  const shutdown = (): void => {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    clearInterval(telemetryPruneInterval);
+    const closeDbAndExit = (): void => {
+      void closeDb()
+        .catch((error: unknown) => {
+          logger.error("Failed to close telemetry receiver DB", { error });
+        })
+        .finally(() => app.exit(0));
+    };
+    if (runtime.server) {
+      runtime.server.close(closeDbAndExit);
+    } else {
+      closeDbAndExit();
+    }
+  };
+
+  startAnalyticsMcpServer(runtime);
+
+  process.once("SIGINT", shutdown);
+  process.once("SIGTERM", shutdown);
+  process.stdin.once("end", shutdown);
+  app.once("will-quit", (event) => {
+    if (isShuttingDown) return;
+    event.preventDefault();
+    shutdown();
+  });
+};
+
+if (appMode === "mcp-proxy") {
   // Electronのready後にDB初期化 → 設定読み込み → cli.tsのrunMcpProxyを実行
   // stdioを使うためGUI・シングルインスタンスロック等は不要
   void app.whenReady().then(async () => {
@@ -374,6 +441,31 @@ if (isMcpProxyMode) {
       process.exit(1);
     }
   });
+} else if (appMode === "analytics") {
+  void app
+    .whenReady()
+    .then(startAnalyticsSidecarMode)
+    .catch(async (error) => {
+      if (isAddressInUseError(error)) {
+        logger.warn(
+          "Telemetry receiver port is already in use; analytics sidecar will reuse existing receiver",
+          { port: OTLP_DEFAULT_PORT },
+        );
+        await closeDb().catch((closeError: unknown) => {
+          logger.error("Failed to close telemetry receiver DB", {
+            error: closeError,
+          });
+        });
+        process.exit(0);
+      }
+      logger.error("Failed to initialize telemetry receiver", error);
+      await closeDb().catch((closeError: unknown) => {
+        logger.error("Failed to close telemetry receiver DB", {
+          error: closeError,
+        });
+      });
+      process.exit(1);
+    });
 } else {
   // GUI モード: `app.ready` 前にカスタム tumiki-bundle:// スキームを privileged 登録する
   // （Electronの仕様上、registerSchemesAsPrivileged は ready 前に呼ぶ必要がある）
@@ -394,6 +486,9 @@ if (isMcpProxyMode) {
 
   let mainWindow: BrowserWindow | null = null;
   let mcpOAuthManager: McpOAuthManager | null = null;
+  // OTLP レシーバーのサーバーインスタンス（will-quit で close するため外側スコープで保持）
+  let otlpHttpServer: import("http").Server | null = null;
+  let telemetryPruneInterval: ReturnType<typeof setInterval> | null = null;
 
   /**
    * 管理サーバーURLとOIDC設定からOAuthManagerを初期化（or 再初期化）
@@ -767,6 +862,55 @@ if (isMcpProxyMode) {
       setupDesktopSessionIpc();
       setupShellIpc();
 
+      // OTLP レシーバーを起動する
+      // OTLP HTTP の標準ポート 4318 を常に優先する。
+      // 設定ファイルの endpoint も 4318 固定のため、競合時は random port へ逃がさず
+      // 状態表示で停止として扱う。AI 起動時の tumiki-analytics MCP sidecar が既に
+      // 4318 を使っている場合、GUI 側では二重起動しない。
+      const receiverResult = await startOtlpReceiver(OTLP_DEFAULT_PORT, {
+        allowFallback: false,
+      }).catch((error: unknown) => {
+        logger.error("Failed to start OTLP receiver", { error });
+        return null;
+      });
+      const otlpPort = receiverResult?.port ?? 0;
+      otlpHttpServer = receiverResult?.server ?? null;
+      setReceiverPort(otlpPort);
+      if (receiverResult === null) {
+        logger.warn("OTLP receiver is not running in GUI process");
+      }
+
+      if (otlpHttpServer) {
+        // 過去に適用したツールでポートが変わっていれば自動で再書き込みする。
+        // OTLP ポートがフォールバックで変わったり、ユーザー設定で変更されても
+        // 設定ファイル（~/.claude/settings.json 等）と Tumiki 受信ポートの整合性を保つ。
+        const reappliedTools = await autoReapplyMismatchedPorts(otlpPort).catch(
+          (error: unknown) => {
+            logger.error("Failed auto re-apply of tool configs", { error });
+            return [] as Awaited<ReturnType<typeof autoReapplyMismatchedPorts>>;
+          },
+        );
+        // 再書き込みが行われた場合、ウィンドウ読み込み完了後に renderer が
+        // pending IPC から取得してトースト表示する。
+        if (reappliedTools.length > 0) {
+          setPendingAutoReapplied(reappliedTools, otlpPort);
+        }
+      }
+      setupAiCodingTelemetryIpc();
+
+      // 90 日より古い AI コーディングテレメトリを削除（SQLite 肥大化防止）。
+      // 起動ブロックしないよう fire-and-forget で実行し、長時間起動に備えて日次でも実行する。
+      const runTelemetryPrune = (): void => {
+        void pruneOldTelemetry().catch((error: unknown) => {
+          logger.error("Failed to prune old AI coding telemetry", { error });
+        });
+      };
+      runTelemetryPrune();
+      telemetryPruneInterval = setInterval(
+        runTelemetryPrune,
+        24 * 60 * 60 * 1000,
+      );
+
       createWindow();
 
       // スリープ復帰時にトークンの有効期限を再チェック
@@ -816,9 +960,20 @@ if (isMcpProxyMode) {
     event.preventDefault();
     const oauthManager = getOAuthManager();
     oauthManager?.stopAutoRefresh();
+    if (telemetryPruneInterval) {
+      clearInterval(telemetryPruneInterval);
+      telemetryPruneInterval = null;
+    }
+    // OTLP サーバーのクローズを Promise でラップして DB クローズ前に完了を保証する
+    const closeOtlpServer = (): Promise<void> =>
+      new Promise((resolve) => {
+        if (otlpHttpServer) otlpHttpServer.close(() => resolve());
+        else resolve();
+      });
     Promise.all([
       stopAuditLogManagerSyncScheduler(),
       oauthManager?.waitForPendingRefresh() ?? Promise.resolve(),
+      closeOtlpServer(),
     ])
       .then(() => closeDb())
       .then(() => {

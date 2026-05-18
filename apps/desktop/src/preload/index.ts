@@ -40,6 +40,12 @@ import type {
   AiClientPreview,
   AiClientWriteRequest,
   AiClientWriteResult,
+  AiCodingTool,
+  TelemetrySummaryItem,
+  DailyUsageItem,
+  ApplyToolSettingsResult,
+  GetToolSettingsResult,
+  ReceiverStatus,
 } from "../main/types";
 
 // Electron APIを安全に公開
@@ -222,6 +228,34 @@ const api = {
   shell: {
     openExternal: (url: string): Promise<void> =>
       ipcRenderer.invoke("shell:openExternal", url),
+  },
+
+  // AI コーディングツール テレメトリ API
+  aiCodingTelemetry: {
+    getSummary: (days: number): Promise<TelemetrySummaryItem[]> =>
+      ipcRenderer.invoke("aiCodingTelemetry:getSummary", { days }),
+    getDailyUsage: (days: number): Promise<DailyUsageItem[]> =>
+      ipcRenderer.invoke("aiCodingTelemetry:getDailyUsage", { days }),
+    getReceiverPort: (): Promise<number> =>
+      ipcRenderer.invoke("aiCodingTelemetry:getReceiverPort"),
+    getReceiverStatus: (): Promise<ReceiverStatus> =>
+      ipcRenderer.invoke("aiCodingTelemetry:getReceiverStatus"),
+    getToolSettings: (tool: AiCodingTool): Promise<GetToolSettingsResult> =>
+      ipcRenderer.invoke("aiCodingTelemetry:getToolSettings", tool),
+    saveToolEnabled: (tool: AiCodingTool, enabled: boolean): Promise<void> =>
+      ipcRenderer.invoke("aiCodingTelemetry:saveToolEnabled", {
+        tool,
+        enabled,
+      }),
+    applyToTool: (tool: AiCodingTool): Promise<ApplyToolSettingsResult> =>
+      ipcRenderer.invoke("aiCodingTelemetry:applyToTool", { tool }),
+    // 起動時の自動再書き込み結果を取得（マウント時の取りこぼし対策）。
+    // 取得後は main 側でクリアされるため、複数回呼んでも重複表示されない。
+    getPendingAutoReapplied: (): Promise<{
+      tools: AiCodingTool[];
+      port: number;
+    } | null> =>
+      ipcRenderer.invoke("aiCodingTelemetry:getPendingAutoReapplied"),
   },
 
   // MCP OAuth認証 API

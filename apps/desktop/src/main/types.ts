@@ -85,3 +85,13 @@ export type {
   AiClientWriteRequest,
   AiClientWriteResult,
 } from "./features/ai-client/ai-client.types";
+
+// AI コーディングツール テレメトリ
+export type {
+  AiCodingTool,
+  TelemetrySummaryItem,
+  DailyUsageItem,
+  ApplyToolSettingsResult,
+  GetToolSettingsResult,
+  ReceiverStatus,
+} from "./features/ai-coding-telemetry/ai-coding-telemetry.types";
