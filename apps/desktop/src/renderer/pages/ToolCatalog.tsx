@@ -7,7 +7,10 @@ import { AddMcpModal } from "../_components/AddMcpModal";
 import { AddCustomMcpModal } from "../_components/AddCustomMcpModal";
 import { toast } from "../_components/Toast";
 import { cardStyle } from "../utils/theme-styles";
-import { authTypeLabel } from "../../shared/catalog.helpers";
+import {
+  authTypeLabel,
+  formatCatalogDisplayName,
+} from "../../shared/catalog.helpers";
 
 /** 認証種別バッジスタイル */
 const authBadgeClass: Record<CatalogItem["authType"], string> = {
@@ -309,6 +312,7 @@ export const ToolCatalog = (): JSX.Element => {
             {filtered.map((item) => {
               const template = item.connectionTemplate;
               const addable = canAddCatalog(item);
+              const displayName = formatCatalogDisplayName(item.name);
               return (
                 <div
                   key={item.id}
@@ -319,7 +323,7 @@ export const ToolCatalog = (): JSX.Element => {
                     {item.iconUrl ? (
                       <img
                         src={item.iconUrl}
-                        alt={item.name}
+                        alt={displayName}
                         className="h-8 w-8 rounded-lg"
                       />
                     ) : (
@@ -342,7 +346,7 @@ export const ToolCatalog = (): JSX.Element => {
                   </div>
                   {/* 名前 */}
                   <div className="mb-2 text-sm font-medium text-gray-900 dark:text-white">
-                    {item.name}
+                    {displayName}
                   </div>
                   {/* 説明 */}
                   <div className="mb-3 line-clamp-2 text-[10px] leading-relaxed text-gray-400 dark:text-zinc-600">

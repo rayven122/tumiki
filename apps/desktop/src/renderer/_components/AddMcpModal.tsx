@@ -6,6 +6,7 @@ import {
   FILESYSTEM_STDIO_NAME,
   OUTLINE_MCP_NAME,
 } from "../../shared/catalog.constants";
+import { formatCatalogDisplayName } from "../../shared/catalog.helpers";
 import { toSlug } from "../../shared/mcp.slug";
 import {
   FALLBACK_SLUG_PLACEHOLDER,
@@ -55,7 +56,9 @@ export const AddMcpModal = ({
   const template = catalog.connectionTemplate;
   const credentialKeys: string[] = template.credentialKeys;
 
-  const [serverName, setServerName] = useState(catalog.name);
+  const [serverName, setServerName] = useState(
+    formatCatalogDisplayName(catalog.name),
+  );
   const [credentials, setCredentials] = useState<Record<string, string>>(
     Object.fromEntries(credentialKeys.map((key) => [key, ""])),
   );
