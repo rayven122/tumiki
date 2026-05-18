@@ -198,7 +198,7 @@ export const EditMcpServerModal = ({
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-gray-500 transition hover:opacity-70 disabled:opacity-50 dark:text-zinc-400"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-gray-500 transition hover:opacity-70 disabled:opacity-50 dark:text-zinc-500"
             aria-label="閉じる"
           >
             <X size={20} />
@@ -208,7 +208,7 @@ export const EditMcpServerModal = ({
         {phase === "success-with-restart" ? (
           <RestartGuidance onClose={onClose} />
         ) : loading ? (
-          <p className="py-10 text-center text-sm text-gray-500 dark:text-zinc-400">
+          <p className="py-10 text-center text-sm text-gray-500 dark:text-zinc-500">
             読み込み中...
           </p>
         ) : error ? (
@@ -269,7 +269,7 @@ const EditingForm = ({
 
   return (
     <>
-      <p className="mb-6 text-sm text-gray-500 dark:text-zinc-400">
+      <p className="mb-6 text-sm text-gray-500 dark:text-zinc-500">
         サーバー名・説明と、接続単位の認証情報を更新できます。
       </p>
 
@@ -312,7 +312,7 @@ const EditingForm = ({
 
       {/* 認証情報セクション */}
       <div className="mb-6 space-y-3">
-        <div className="flex items-start gap-2 rounded-lg border border-gray-200 bg-black/[.02] px-3 py-2 text-xs text-gray-500 dark:border-white/[.08] dark:bg-white/[.03] dark:text-zinc-400">
+        <div className="flex items-start gap-2 rounded-lg border border-gray-200 bg-black/[.02] px-3 py-2 text-xs text-gray-500 dark:border-white/[.08] dark:bg-white/[.03] dark:text-zinc-500">
           <Info size={14} className="mt-0.5 shrink-0" />
           <span>
             キーの追加・削除はこの画面では行えません。既存キーの値のみ更新できます。
@@ -344,7 +344,7 @@ const EditingForm = ({
           type="button"
           onClick={onSubmit}
           disabled={!canSubmit}
-          className="rounded-lg bg-zinc-900 px-6 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50 dark:bg-white dark:text-zinc-900"
+          className="rounded-lg bg-gray-900 px-6 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50 dark:bg-white dark:text-zinc-900"
         >
           {submitting ? "保存中..." : "保存"}
         </button>
@@ -369,14 +369,14 @@ const CredentialsSection = ({
 }): JSX.Element => {
   const body =
     connection.authType === "OAUTH" ? (
-      <div className="flex items-start gap-2 px-3 py-2 text-xs text-gray-500 dark:text-zinc-400">
+      <div className="flex items-start gap-2 px-3 py-2 text-xs text-gray-500 dark:text-zinc-500">
         <KeyRound size={14} className="mt-0.5 shrink-0" />
         <span>
           OAuth認証情報はメニューの「OAuthを再設定」から更新してください。
         </span>
       </div>
     ) : connection.credentialKeys.length === 0 ? (
-      <p className="px-3 py-2 text-xs text-gray-500 dark:text-zinc-400">
+      <p className="px-3 py-2 text-xs text-gray-500 dark:text-zinc-500">
         認証情報なし
       </p>
     ) : (
@@ -425,13 +425,13 @@ const CredentialsSection = ({
       <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm text-gray-900 dark:text-white">
         <span className="truncate">{connection.name}</span>
         <div className="flex shrink-0 items-center gap-2">
-          <span className="rounded-full bg-black/[.06] px-2 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-white/[.08] dark:text-zinc-400">
+          <span className="rounded-full bg-black/[.06] px-2 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-white/[.08] dark:text-zinc-500">
             {connection.authType}
           </span>
           {/* list-none で標準の▶が消えるため、ChevronDown で開閉状態を明示する */}
           <ChevronDown
             size={14}
-            className="text-gray-500 transition-transform group-open:rotate-180 dark:text-zinc-400"
+            className="text-gray-500 transition-transform group-open:rotate-180 dark:text-zinc-500"
           />
         </div>
       </summary>
@@ -450,7 +450,7 @@ const RestartGuidance = ({ onClose }: { onClose: () => void }): JSX.Element => (
       />
       <div className="space-y-1 text-sm text-gray-900 dark:text-white">
         <p className="font-medium">保存しました</p>
-        <p className="text-xs text-gray-500 dark:text-zinc-400">
+        <p className="text-xs text-gray-500 dark:text-zinc-500">
           認証情報の変更を反映するには、接続中のAIクライアントを再起動してください。
         </p>
       </div>
@@ -459,7 +459,7 @@ const RestartGuidance = ({ onClose }: { onClose: () => void }): JSX.Element => (
       <button
         type="button"
         onClick={onClose}
-        className="rounded-lg bg-zinc-900 px-6 py-2.5 text-sm font-medium text-white transition hover:opacity-90 dark:bg-white dark:text-zinc-900"
+        className="rounded-lg bg-gray-900 px-6 py-2.5 text-sm font-medium text-white transition hover:opacity-90 dark:bg-white dark:text-zinc-900"
       >
         閉じる
       </button>
