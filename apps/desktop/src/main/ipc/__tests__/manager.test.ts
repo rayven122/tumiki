@@ -83,6 +83,10 @@ describe("setupManagerIpc", () => {
 
     await handler!({} as IpcMainInvokeEvent);
 
+    expect(fetch).toHaveBeenCalledWith(
+      "https://www.tumiki.cloud/api/auth/config",
+      { signal: expect.any(AbortSignal) },
+    );
     expect(initOAuthManager).toHaveBeenCalledWith(
       "https://www.tumiki.cloud",
       "https://issuer.example.com",

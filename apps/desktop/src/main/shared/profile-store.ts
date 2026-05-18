@@ -20,6 +20,7 @@ const confirmPersonalProfile = async (
   store.set("activeProfile", "personal");
   store.delete("pendingProfile");
   store.delete("organizationProfile");
+  // managerUrl は tumiki.cloud 認証セッション維持のため意図的に保持する。
   store.set("hasCompletedInitialProfileSetup", true);
 };
 
@@ -46,8 +47,7 @@ export const activateOrganizationProfile = async (
 
 export const clearOrganizationProfile = async (): Promise<ProfileState> => {
   const store = await getAppStore();
-  // managerUrl は認証完了前のセットアップ再開と起動時OAuth初期化に使うステージングキー。
-  // organizationProfile.managerUrl は認証完了後のUI表示用として保持する。
+  // pending setup のキャンセルと組織切断の両方で、managerUrl を含む profile 状態をクリアする。
   store.delete("managerUrl");
   store.delete("pendingProfile");
   store.delete("organizationProfile");

@@ -140,6 +140,11 @@ export const ProfileSetup = (): JSX.Element => {
       await window.electronAPI.auth.login();
       setIsWaitingForCallback(true);
     } catch (err) {
+      try {
+        await window.electronAPI.profile.cancelPendingSetup();
+      } catch {
+        // 元のログイン失敗を優先して表示する。再試行時は manager.connect で状態を上書きする。
+      }
       if (mountedRef.current) {
         setError(
           err instanceof Error ? err.message : "組織利用の設定に失敗しました",
