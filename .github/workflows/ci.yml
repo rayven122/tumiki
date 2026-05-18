@@ -8,10 +8,52 @@ on:
     branches: [main]
 
 jobs:
+  changes:
+    name: 🔎 Detect changes
+    runs-on:
+      group: self-arc
+    outputs:
+      manager: ${{ steps.filter.outputs.manager }}
+    steps:
+      - name: 📥 Checkout branch
+        uses: actions/checkout@v6
+
+      - name: 🔎 Detect manager-affecting changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            manager:
+              - '.github/actions/**'
+              - '.github/workflows/ci.yml'
+              - '.env.example'
+              - '.npmrc'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+              - 'patches/**'
+              - 'tooling/**'
+              - 'apps/manager/**'
+              - 'packages/db/**'
+              - 'packages/keycloak/**'
+              - 'packages/mailer/**'
+              - 'packages/oauth-token-manager/**'
+              - 'packages/slack/**'
+              - 'packages/license/**'
+              - 'packages/prompts/**'
+              - 'packages/shared/**'
+              - 'packages/ui/**'
+              - 'packages/tailwind-config/**'
+              - 'packages/tsconfig/**'
+              - 'packages/vitest-config/**'
+
   build:
     name: 🔧 Build
     runs-on:
       group: self-arc
+    needs: changes
+    if: needs.changes.outputs.manager == 'true'
     env:
       NODE_OPTIONS: --max-old-space-size=4096
     steps:
@@ -35,6 +77,7 @@ jobs:
     runs-on:
       group: self-arc
     needs: build
+    if: ${{ !cancelled() && needs.build.result != 'failure' }}
     steps:
       - name: 📥 Checkout branch
         uses: actions/checkout@v6
@@ -50,6 +93,7 @@ jobs:
     runs-on:
       group: self-arc
     needs: lint
+    if: ${{ !cancelled() && needs.lint.result == 'success' }}
     steps:
       - name: 📥 Checkout branch
         uses: actions/checkout@v6
@@ -65,6 +109,7 @@ jobs:
     runs-on:
       group: self-arc
     needs: format
+    if: ${{ !cancelled() && needs.format.result == 'success' }}
     env:
       NODE_OPTIONS: --max-old-space-size=4096
     steps:
@@ -88,6 +133,7 @@ jobs:
     runs-on:
       group: self-arc
     needs: typecheck
+    if: ${{ !cancelled() && needs.typecheck.result == 'success' }}
     steps:
       - name: 📥 Checkout branch
         uses: actions/checkout@v6
