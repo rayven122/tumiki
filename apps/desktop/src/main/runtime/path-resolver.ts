@@ -71,6 +71,9 @@ const getShimDir = (): string => {
 const withExeSuffix = (name: string): string =>
   process.platform === "win32" ? `${name}.exe` : name;
 
+const shellQuote = (value: string): string =>
+  `'${value.replace(/'/g, `'\\''`)}'`;
+
 /**
  * 既知ランタイムを実パスに解決する。
  * - node: shim ディレクトリの shim を返す（要 `ensureNodeShim()` 事前呼び出し）
@@ -166,9 +169,13 @@ export const ensureNodeShim = (): void => {
 
   const shimPath = path.join(shimDir, "node");
   const electronPath = process.execPath;
-  // sh の単一引用符でエスケープ。電子パスに ' が含まれる極端なケースに対応。
-  const escaped = `'${electronPath.replace(/'/g, `'\\''`)}'`;
-  const content = `#!/bin/sh\nELECTRON_RUN_AS_NODE=1 exec ${escaped} "$@"\n`;
+  const userDataPath = app.getPath("userData");
+  const content = [
+    "#!/bin/sh",
+    `export TUMIKI_DESKTOP_USER_DATA_DIR=${shellQuote(userDataPath)}`,
+    `ELECTRON_RUN_AS_NODE=1 exec ${shellQuote(electronPath)} "$@"`,
+    "",
+  ].join("\n");
 
   // 既存 shim と内容が同一ならスキップ（書き込み回数とinode変更を最小化）
   try {

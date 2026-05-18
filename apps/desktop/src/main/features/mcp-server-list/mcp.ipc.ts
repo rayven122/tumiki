@@ -1,6 +1,7 @@
 import { ipcMain } from "electron";
 import { z } from "zod";
 import * as mcpService from "./mcp.service";
+import * as toolSearchService from "../tool-search/tool-search.service";
 import type {
   CreateFromCatalogInput,
   CreateFromManagerCatalogInput,
@@ -11,6 +12,8 @@ import type {
   ToggleServerInput,
   UpdatePiiMaskingInput,
   UpdateToonConversionInput,
+  UpdateDynamicSearchInput,
+  RefreshToolsInput,
   GetServerEditDetailInput,
   UpdateServerConnectionCredentialsInput,
 } from "./mcp.types";
@@ -42,6 +45,15 @@ const updateToonConversionSchema = z.object({
   serverId: z.number().int(),
   enabled: z.boolean(),
 }) satisfies z.ZodType<UpdateToonConversionInput>;
+
+const updateDynamicSearchSchema = z.object({
+  serverId: z.number().int(),
+  enabled: z.boolean(),
+}) satisfies z.ZodType<UpdateDynamicSearchInput>;
+
+const refreshToolsSchema = z.object({
+  serverId: z.number().int().positive(),
+}) satisfies z.ZodType<RefreshToolsInput>;
 
 const getServerEditDetailSchema = z.object({
   id: z.number().int().positive(),
@@ -357,6 +369,40 @@ export const setupMcpIpc = (): void => {
         error instanceof Error ? error : { error },
       );
       throw new Error(`レスポンス圧縮設定の更新に失敗しました: ${message}`);
+    }
+  });
+
+  // 動的ツール検索有効状態を更新
+  ipcMain.handle("mcp:updateDynamicSearch", async (_, input: unknown) => {
+    try {
+      const validated = updateDynamicSearchSchema.parse(input);
+      // preload 側は Promise<void> を期待するため、Prisma レコードは返さない
+      await toolSearchService.setDynamicSearchEnabled(
+        validated.serverId,
+        validated.enabled,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "不明なエラー";
+      logger.error(
+        "Failed to update dynamic search flag",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error(`動的検索設定の更新に失敗しました: ${message}`);
+    }
+  });
+
+  // 動的検索用のツール一覧を再取得
+  ipcMain.handle("mcp:refreshTools", async (_, input: unknown) => {
+    try {
+      const validated = refreshToolsSchema.parse(input);
+      return await mcpService.refreshTools(validated.serverId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "不明なエラー";
+      logger.error(
+        "Failed to refresh MCP tools",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error(`ツール一覧の再取得に失敗しました: ${message}`);
     }
   });
 };

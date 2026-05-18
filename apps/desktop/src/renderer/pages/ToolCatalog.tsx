@@ -8,6 +8,7 @@ import { AddCustomMcpModal } from "../_components/AddCustomMcpModal";
 import { toast } from "../_components/Toast";
 import { cardStyle } from "../utils/theme-styles";
 import { authTypeLabel } from "../../shared/catalog.helpers";
+import { getThemeIconUrl } from "../utils/theme-icon-url";
 
 /** 認証種別バッジスタイル */
 const authBadgeClass: Record<CatalogItem["authType"], string> = {
@@ -317,13 +318,15 @@ export const ToolCatalog = (): JSX.Element => {
                   {/* アイコン + 認証種別 */}
                   <div className="mb-3 flex items-start justify-between">
                     {item.iconUrl ? (
-                      <img
-                        src={item.iconUrl}
-                        alt={item.name}
-                        className="h-8 w-8 rounded-lg"
-                      />
+                      <div className="flex items-center justify-center overflow-hidden rounded-lg bg-zinc-100/95 p-[2px]">
+                        <img
+                          src={getThemeIconUrl(item.iconUrl, "light")}
+                          alt={item.name}
+                          className="h-8 w-8 rounded-lg object-contain"
+                        />
+                      </div>
                     ) : (
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-700 text-xs text-gray-400">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100/95 p-[2px] text-xs text-zinc-400 dark:text-zinc-500">
                         MCP
                       </div>
                     )}

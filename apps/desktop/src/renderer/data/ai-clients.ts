@@ -32,7 +32,7 @@ export const AI_CLIENTS: AiClient[] = [
     logoPath: (t) =>
       t === "dark"
         ? "/logos/ai-clients/cursor.webp"
-        : "/logos/ai-clients/cursor.svg",
+        : "/logos/ai-clients/cursor-light.webp",
     configTargetPath: "~/.cursor/mcp.json",
   },
   {
@@ -57,7 +57,10 @@ export const AI_CLIENTS: AiClient[] = [
   {
     id: "windsurf",
     name: "Windsurf",
-    logoPath: () => "/logos/ai-clients/windsurf.svg",
+    logoPath: (t) =>
+      t === "dark"
+        ? "/logos/ai-clients/windsurf-dark.svg"
+        : "/logos/ai-clients/windsurf.svg",
     configTargetPath: "~/.codeium/windsurf/mcp_config.json",
   },
   {
@@ -79,20 +82,29 @@ export const AI_CLIENTS: AiClient[] = [
   {
     id: "zed",
     name: "Zed",
-    logoPath: () => "/logos/ai-clients/zed.svg",
+    logoPath: (t) =>
+      t === "dark"
+        ? "/logos/ai-clients/zed.svg"
+        : "/logos/ai-clients/zed-light.svg",
     configTargetPath: "~/.config/zed/settings.json",
   },
   {
     id: "roo-code",
     name: "Roo Code",
-    logoPath: () => "/logos/ai-clients/roo-code.svg",
+    logoPath: (t) =>
+      t === "dark"
+        ? "/logos/ai-clients/roo-code-dark.svg"
+        : "/logos/ai-clients/roo-code.svg",
     configTargetPath:
       "~/Library/Application Support/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/mcp_settings.json",
   },
   {
     id: "warp",
     name: "Warp",
-    logoPath: () => "/logos/ai-clients/warp.svg",
+    logoPath: (t) =>
+      t === "dark"
+        ? "/logos/ai-clients/warp.svg"
+        : "/logos/ai-clients/warp-light.svg",
     configTargetPath: "Warp → Settings → AI → MCP Servers",
   },
   {

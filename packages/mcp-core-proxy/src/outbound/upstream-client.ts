@@ -9,6 +9,7 @@ import type {
   ServerStatus,
 } from "../types.js";
 import type { McpClientConnection } from "./mcp-client.js";
+import { isUpstreamAuthError } from "./auth-error.js";
 import { createMcpClient } from "./mcp-client.js";
 
 // リトライ設定
@@ -38,9 +39,30 @@ export type UpstreamClient = {
 /** null を返すと全ツール許可（フィルタ無効）扱いになる */
 export type ResolveAllowedTools = () => Promise<string[] | null>;
 
+/**
+ * upstream tool 呼び出しが認証エラー（HTTP 401/403, invalid_token 等）で失敗したとき呼ばれる。
+ * 戻り値の文字列は AI クライアントへ返すエラーメッセージに追記される
+ * （Tumiki Desktop では `tumiki://reauth?connectionId=N` リンクを返す想定）。
+ * 副作用として needsReauth フラグを DB に立てるなどに利用する。
+ */
+export type UpstreamAuthErrorHook = () => Promise<string | null>;
+
+/**
+ * tool 呼び出し前に「このコネクトは現時点で呼んで良いか？」を判定するフック。
+ * 戻り値が null なら通常通り upstream へ転送、文字列なら upstream に投げず
+ * その文字列を Error メッセージにして即拒否する（AI へ deeplink 等を返す用途）。
+ *
+ * needsReauth=true のコネクトに対して proactive にツール呼び出しを止めるのに使う。
+ */
+export type BeforeToolCallHook = () => Promise<string | null>;
+
 export type CreateUpstreamClientOptions = {
   /** 指定時、listTools/callTool 毎に呼ばれて config.allowedTools より優先される（例外時は config.allowedTools にフォールバック） */
   resolveAllowedTools?: ResolveAllowedTools;
+  /** upstream 呼び出し前の事前チェック（needsReauth 等で proactive に止める用途） */
+  onBeforeToolCall?: BeforeToolCallHook;
+  /** upstream 呼び出しが認証エラーで失敗したとき発火する */
+  onUpstreamAuthError?: UpstreamAuthErrorHook;
 };
 
 /**
@@ -313,10 +335,63 @@ export const createUpstreamClient = (
       throw new Error(`ツール "${name}" は許可されていません`);
     }
 
-    const result = await client.callTool({
-      name,
-      arguments: args,
-    });
+    // proactive な事前チェック: needsReauth=true 等で upstream へ投げる前に止める。
+    // フック自体が落ちた場合は upstream へそのまま転送する（フックの失敗で正常な呼び出しを巻き込まないため）。
+    const beforeHook = options?.onBeforeToolCall;
+    if (beforeHook) {
+      let blockMessage: string | null = null;
+      try {
+        blockMessage = await beforeHook();
+      } catch (hookError) {
+        logger.error(
+          `onBeforeToolCall hook が失敗しました（サーバー "${config.name}"・upstream 呼び出しは継続）`,
+          {
+            error:
+              hookError instanceof Error
+                ? hookError.message
+                : String(hookError),
+          },
+        );
+      }
+      if (blockMessage !== null) {
+        throw new Error(blockMessage);
+      }
+    }
+
+    let result;
+    try {
+      result = await client.callTool({
+        name,
+        arguments: args,
+      });
+    } catch (error) {
+      // upstream HTTP 401/403 等の認証エラーは「再認証してください」のディープリンク等を
+      // エラーメッセージに追記して AI クライアントへ返す（DB 側で needsReauth も立てる）。
+      // hook の戻り値が空のときはオリジナルのエラーをそのまま伝搬する。
+      const hook = options?.onUpstreamAuthError;
+      if (hook && isUpstreamAuthError(error)) {
+        let extra: string | null = null;
+        try {
+          extra = await hook();
+        } catch (hookError) {
+          logger.error(
+            `onUpstreamAuthError hook が失敗しました（サーバー "${config.name}"）`,
+            {
+              error:
+                hookError instanceof Error
+                  ? hookError.message
+                  : String(hookError),
+            },
+          );
+        }
+        if (extra) {
+          const original =
+            error instanceof Error ? error.message : String(error);
+          throw new Error(`${original}\n\n${extra}`);
+        }
+      }
+      throw error;
+    }
 
     // SDK型からCallToolResult型へ変換
     return {

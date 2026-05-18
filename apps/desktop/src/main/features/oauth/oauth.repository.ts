@@ -139,6 +139,21 @@ export const markSecretNeedsReauth = async (
 };
 
 /**
+ * tool 呼び出し前の proactive チェック用に needsReauth フラグだけ取得する。
+ * 存在しない secretId の場合は null（呼び出し側で「フラグ無し扱い」にフォールバック）。
+ */
+export const findSecretNeedsReauthById = async (
+  db: DbClient,
+  secretId: number,
+): Promise<boolean | null> => {
+  const result = await db.mcpSecret.findUnique({
+    where: { id: secretId },
+    select: { needsReauth: true },
+  });
+  return result?.needsReauth ?? null;
+};
+
+/**
  * MCPサーバーURLでOAuthClientを削除（DCR再登録用）
  */
 export const deleteByServerUrl = async (
