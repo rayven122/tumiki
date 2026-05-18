@@ -139,6 +139,16 @@ describe("profile-store", () => {
     ).toBe("organization");
   });
 
+  test("pendingProfileがorganizationでも個人URLの場合はエラーとして解決する", () => {
+    expect(
+      resolvePendingProfile(
+        "organization",
+        PERSONAL_PROFILE_MANAGER_URL,
+        PERSONAL_PROFILE_MANAGER_URL,
+      ),
+    ).toBe("error");
+  });
+
   test("pendingProfileがpersonalの場合はmanagerUrlが無くても個人指定として解決する", () => {
     expect(
       resolvePendingProfile(

@@ -165,7 +165,10 @@ export const ProfileSetup = (): JSX.Element => {
       await window.electronAPI.auth.cancelLogin();
     } catch (err) {
       // ブラウザ起動前後の状態にかかわらず、ローカルの pending setup cleanup は続行する。
-      console.warn("cancelLogin failed while cancelling setup:", err);
+      console.warn(
+        "セットアップキャンセル中の cancelLogin に失敗しました:",
+        err,
+      );
     }
 
     try {
@@ -200,10 +203,7 @@ export const ProfileSetup = (): JSX.Element => {
         await window.electronAPI.auth.cancelLogin();
       } catch (err) {
         // 設定画面からの変更キャンセルでは、ブラウザ状態にかかわらず設定画面へ戻す。
-        console.warn(
-          "cancelLogin failed while cancelling organization change:",
-          err,
-        );
+        console.warn("組織変更キャンセル中の cancelLogin に失敗しました:", err);
       }
 
       try {

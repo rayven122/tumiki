@@ -14,6 +14,9 @@ export const resolvePendingProfile = (
   if (!pendingProfile && managerUrl === personalManagerUrl) {
     return "personal";
   }
+  if (pendingProfile === "organization" && managerUrl === personalManagerUrl) {
+    return "error";
+  }
   // 後方互換: pendingProfile 導入前の組織利用ストアは managerUrl のみで判定する。
   if (managerUrl && (pendingProfile === "organization" || !pendingProfile)) {
     return "organization";

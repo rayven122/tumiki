@@ -13,14 +13,20 @@ export type OidcConfig = z.infer<typeof oidcConfigResponseSchema>;
 
 const FETCH_TIMEOUT_MS = 10_000;
 export const PERSONAL_PROFILE_MANAGER_URL = "https://www.tumiki.cloud";
+// electron-vite の define で build 時に埋め込まれる値。
+// 未設定ビルドでは Tumiki Cloud の既定 Keycloak client を使う。
 export const CLOUD_KEYCLOAK_ISSUER =
   process.env.KEYCLOAK_ISSUER || "https://auth.tumiki.cloud/realms/tumiki";
 export const CLOUD_KEYCLOAK_DESKTOP_CLIENT_ID =
   process.env.KEYCLOAK_DESKTOP_CLIENT_ID || "tumiki-desktop";
 
 export const isSelfHostedManagerUrl = (managerUrl: string): boolean => {
-  const hostname = new URL(managerUrl).hostname;
-  return hostname !== "tumiki.cloud" && !hostname.endsWith(".tumiki.cloud");
+  try {
+    const hostname = new URL(managerUrl).hostname;
+    return hostname !== "tumiki.cloud" && !hostname.endsWith(".tumiki.cloud");
+  } catch {
+    return true;
+  }
 };
 
 /**
