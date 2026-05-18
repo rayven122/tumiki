@@ -383,17 +383,6 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "Jグランツ MCP",
-    description:
-      "jGrants MCP - 補助金電子申請（デジタル庁）向けのデータ参照・操作（ローカルサーバー接続）",
-    iconPath: "/logos/services/jgrants.svg",
-    transportType: "STREAMABLE_HTTP",
-    url: "http://127.0.0.1:8000/mcp",
-    credentialKeys: [],
-    authType: "NONE",
-    isOfficial: true,
-  },
-  {
     name: "Outline MCP",
     description:
       "Outline ナレッジベース MCP - コレクション・ドキュメントの検索と参照",

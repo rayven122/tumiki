@@ -62,6 +62,34 @@ export type McpToolInfo = {
   serverName?: string;
 };
 
+export type ToolSearchResult = {
+  toolName: string;
+  description?: string;
+  relevanceScore: number;
+};
+
+export type ToolDescriptionResult = {
+  toolName: string;
+  description?: string;
+  inputSchema: unknown;
+  found: boolean;
+};
+
+export type ToolSearchProvider = {
+  searchTools: (input: {
+    query: string;
+    limit?: number;
+  }) => Promise<ToolSearchResult[]>;
+  describeTools: (input: {
+    toolNames: string[];
+  }) => Promise<ToolDescriptionResult[]>;
+};
+
+export type DynamicSearchOptions = {
+  enabled: boolean;
+  provider: ToolSearchProvider;
+};
+
 // ツール実行結果
 export type CallToolResult = {
   content: unknown[];

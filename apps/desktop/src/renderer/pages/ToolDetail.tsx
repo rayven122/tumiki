@@ -1,7 +1,6 @@
 import type { JSX } from "react";
 import { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
-import { useAtomValue } from "jotai";
 import {
   ArrowLeft,
   Server,
@@ -10,12 +9,14 @@ import {
   EyeOff,
   Archive,
   SearchCode,
+  RefreshCw,
   ChevronRight,
   Plug,
   KeyRound,
   AlertTriangle,
 } from "lucide-react";
-import { themeAtom } from "../store/atoms";
+import { useAtomValue } from "jotai";
+import { reauthCompletedSignalAtom } from "../store/atoms";
 import { AI_CLIENTS, type AiClient } from "../data/ai-clients";
 import { useMcpProxyLaunchCommand } from "../hooks/useMcpProxyLaunchCommand";
 import { buildMcpSnippet } from "../utils/mcp-snippet";
@@ -69,13 +70,6 @@ const serverStatusBadge: Record<
 
 /** 監査ログ1ページあたりの件数 */
 const AUDIT_LOG_LIMIT = 20;
-
-/**
- * 機能設定トグル（dynamicSearch のみ）の localStorage 永続化キー。
- * masking / compression(TOON) は DB 永続化のため対象外。
- */
-const FEATURE_SETTINGS_KEY = (serverId: number): string =>
-  `tumiki:server:${serverId}:features`;
 
 /** 提供ツール表示用の拡張型（connectionName を含む） */
 type DisplayTool = McpToolItem & { connectionName: string };
@@ -196,17 +190,9 @@ const SAMPLE_TOOLS: DisplayTool[] = [
   },
 ];
 
-// masking / compression(TOON) は DB に永続化するため、本型からは除外
-type FeatureSettings = {
-  dynamicSearch: boolean;
-};
-
-const DEFAULT_FEATURE_SETTINGS: FeatureSettings = {
-  dynamicSearch: false,
-};
-
 export const ToolDetail = (): JSX.Element => {
-  const theme = useAtomValue(themeAtom);
+  // deeplink 経由の再認証完了シグナル。変化したら getDetail を再フェッチして needsReauth バナーを更新する。
+  const reauthSignal = useAtomValue(reauthCompletedSignalAtom);
   const { toolId } = useParams<{ toolId: string }>();
   const serverId = Number(toolId);
 
@@ -224,9 +210,15 @@ export const ToolDetail = (): JSX.Element => {
   const [maskingEnabled, setMaskingEnabled] = useState(true);
   // レスポンス圧縮（TOON 変換）: DB 永続化（McpServer.isToonConversionEnabled）。初期値は getDetail 取得後に上書き
   const [compressionEnabled, setCompressionEnabled] = useState(false);
-  // dynamicSearch: localStorage 永続化（バックエンド未実装、別 Issue で対応予定）
-  const [featureSettings, setFeatureSettings] = useState<FeatureSettings>(
-    DEFAULT_FEATURE_SETTINGS,
+  // 動的検索: DB 永続化（McpServer.dynamicSearch）。初期値は getDetail 取得後に上書き
+  const [dynamicSearchEnabled, setDynamicSearchEnabled] = useState(false);
+  const [dynamicSearchUpdating, setDynamicSearchUpdating] = useState(false);
+  const [dynamicSearchError, setDynamicSearchError] = useState<string | null>(
+    null,
+  );
+  const [toolsRefreshing, setToolsRefreshing] = useState(false);
+  const [toolsRefreshError, setToolsRefreshError] = useState<string | null>(
+    null,
   );
 
   // ヘッダーの3点リーダーメニュー開閉
@@ -241,6 +233,25 @@ export const ToolDetail = (): JSX.Element => {
 
   // 接続先AIサイドバーから選択中のクライアント
   const [selectedClient, setSelectedClient] = useState<AiClient | null>(null);
+
+  const applyServerDetail = useCallback(
+    (detail: McpServerDetailItem | null): void => {
+      setServer(detail);
+      if (!detail) return;
+
+      const nextToolAllowedMap: Record<number, boolean> = {};
+      for (const conn of detail.connections) {
+        for (const tool of conn.tools) {
+          nextToolAllowedMap[tool.id] = tool.isAllowed;
+        }
+      }
+      setToolAllowedMap(nextToolAllowedMap);
+      setMaskingEnabled(detail.isPiiMaskingEnabled);
+      setCompressionEnabled(detail.isToonConversionEnabled);
+      setDynamicSearchEnabled(detail.dynamicSearch);
+    },
+    [],
+  );
 
   // MCP プロキシ起動コマンド（接続スニペット生成に利用）
   const launchCommand = useMcpProxyLaunchCommand();
@@ -269,55 +280,11 @@ export const ToolDetail = (): JSX.Element => {
     }
     window.electronAPI.mcp
       .getDetail(serverId)
-      .then((detail) => {
-        setServer(detail);
-        if (detail) {
-          const initialMap: Record<number, boolean> = {};
-          for (const conn of detail.connections) {
-            for (const tool of conn.tools) {
-              initialMap[tool.id] = tool.isAllowed;
-            }
-          }
-          setToolAllowedMap(initialMap);
-          setMaskingEnabled(detail.isPiiMaskingEnabled);
-          setCompressionEnabled(detail.isToonConversionEnabled);
-        }
-      })
+      .then(applyServerDetail)
       .catch(() => setServer(null))
       .finally(() => setServerLoading(false));
-  }, [serverId]);
-
-  // 機能設定トグルを localStorage から復元（サーバーごと）
-  useEffect(() => {
-    if (Number.isNaN(serverId)) return;
-    try {
-      const raw = localStorage.getItem(FEATURE_SETTINGS_KEY(serverId));
-      if (raw) {
-        const parsed: unknown = JSON.parse(raw);
-        if (parsed && typeof parsed === "object") {
-          setFeatureSettings({
-            ...DEFAULT_FEATURE_SETTINGS,
-            ...(parsed as Partial<FeatureSettings>),
-          });
-        }
-      }
-    } catch {
-      // パース失敗時はデフォルトのまま
-    }
-  }, [serverId]);
-
-  const updateFeature = (key: keyof FeatureSettings, value: boolean): void => {
-    const next = { ...featureSettings, [key]: value };
-    setFeatureSettings(next);
-    try {
-      localStorage.setItem(
-        FEATURE_SETTINGS_KEY(serverId),
-        JSON.stringify(next),
-      );
-    } catch {
-      // localStorage 書き込み失敗時は state のみ更新
-    }
-  };
+    // reauthSignal が変化するとフックが再実行され、最新の needsReauth で再描画される
+  }, [applyServerDetail, serverId, reauthSignal]);
 
   // PII マスキング切替: DB 更新（即時反映）。実プロキシへは次回 spawn 時に反映されるため
   // ユーザーへ「再起動後に反映」を案内する。失敗時は state をロールバック。
@@ -360,6 +327,48 @@ export const ToolDetail = (): JSX.Element => {
     },
     [compressionEnabled, serverId],
   );
+
+  const updateDynamicSearch = useCallback(
+    (value: boolean): void => {
+      const previous = dynamicSearchEnabled;
+      setDynamicSearchEnabled(value);
+      setDynamicSearchUpdating(true);
+      setDynamicSearchError(null);
+      window.electronAPI.mcp
+        .updateDynamicSearch({ serverId, enabled: value })
+        .then(() => {
+          toast.success(
+            "動的検索設定を更新しました。MCPサーバーの再起動後に反映されます",
+          );
+        })
+        .catch(() => {
+          setDynamicSearchEnabled(previous);
+          setDynamicSearchError("動的検索設定の更新に失敗しました");
+          toast.error("動的検索設定の更新に失敗しました");
+        })
+        .finally(() => setDynamicSearchUpdating(false));
+    },
+    [dynamicSearchEnabled, serverId],
+  );
+
+  const refreshTools = useCallback(async (): Promise<void> => {
+    if (Number.isNaN(serverId) || toolsRefreshing) return;
+    setToolsRefreshing(true);
+    setToolsRefreshError(null);
+    try {
+      const result = await window.electronAPI.mcp.refreshTools({ serverId });
+      const detail = await window.electronAPI.mcp.getDetail(serverId);
+      applyServerDetail(detail);
+      toast.success(
+        `ツール一覧を再取得しました（対象 ${result.totalTools.toLocaleString()}件）`,
+      );
+    } catch {
+      setToolsRefreshError("ツール一覧の再取得に失敗しました");
+      toast.error("ツール一覧の再取得に失敗しました");
+    } finally {
+      setToolsRefreshing(false);
+    }
+  }, [applyServerDetail, serverId, toolsRefreshing]);
 
   // ツール on/off（即時反映、失敗時はロールバック。サンプルID は IPC スキップ）
   const toggleTool = (toolId: number, isAllowed: boolean): void => {
@@ -747,7 +756,7 @@ export const ToolDetail = (): JSX.Element => {
                 機能設定
               </div>
               <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-                {/* マスキング / 圧縮(TOON) は DB 永続化（再起動後に反映）、dynamicSearch は localStorage のみ（別 Issue で対応） */}
+                {/* マスキング / 圧縮(TOON) / dynamicSearch は DB 永続化 */}
                 <div
                   title="機密情報を自動マスクします（再起動後に反映）"
                   className="flex items-center justify-between gap-2 rounded-lg bg-black/[.02] px-3 py-2 dark:bg-white/[.04]"
@@ -782,34 +791,40 @@ export const ToolDetail = (): JSX.Element => {
                     onChange={updateCompression}
                   />
                 </div>
-                {[
-                  {
-                    key: "dynamicSearch" as const,
-                    icon: <SearchCode size={13} />,
-                    label: "動的検索",
-                    desc: "ツールをオンデマンドで検索します",
-                  },
-                ].map((f) => (
-                  <div
-                    key={f.key}
-                    title={f.desc}
-                    className="flex items-center justify-between gap-2 rounded-lg bg-black/[.02] px-3 py-2 dark:bg-white/[.04]"
-                  >
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className="shrink-0 text-gray-500 dark:text-zinc-500">
-                        {f.icon}
+                <div
+                  title={
+                    dynamicSearchUpdating
+                      ? "動的検索設定を更新中です"
+                      : (dynamicSearchError ??
+                        "ツールをオンデマンドで検索します")
+                  }
+                  className="flex items-center justify-between gap-2 rounded-lg bg-black/[.02] px-3 py-2 dark:bg-white/[.04]"
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="shrink-0 text-gray-500 dark:text-zinc-500">
+                      <SearchCode size={13} />
+                    </span>
+                    <span className="truncate text-xs text-gray-900 dark:text-white">
+                      動的検索
+                    </span>
+                    {dynamicSearchUpdating && (
+                      <span className="shrink-0 text-[10px] text-gray-400 dark:text-zinc-600">
+                        更新中
                       </span>
-                      <span className="truncate text-xs text-gray-900 dark:text-white">
-                        {f.label}
-                      </span>
-                    </div>
-                    <ToggleSwitch
-                      checked={featureSettings[f.key]}
-                      onChange={(v) => updateFeature(f.key, v)}
-                    />
+                    )}
                   </div>
-                ))}
+                  <ToggleSwitch
+                    checked={dynamicSearchEnabled}
+                    disabled={dynamicSearchUpdating}
+                    onChange={updateDynamicSearch}
+                  />
+                </div>
               </div>
+              {dynamicSearchError && (
+                <p className="mt-2 text-[11px] text-red-500 dark:text-red-400">
+                  {dynamicSearchError}
+                </p>
+              )}
             </div>
           </div>
 
@@ -817,7 +832,7 @@ export const ToolDetail = (): JSX.Element => {
           <div
             className={`flex min-h-0 flex-1 flex-col rounded-xl p-4 ${cardStyle}`}
           >
-            <div className="mb-2 flex items-center justify-between">
+            <div className="mb-2 flex items-center justify-between gap-2">
               <h2 className="text-sm font-medium text-gray-900 dark:text-white">
                 提供ツール
                 <span className="ml-2 text-xs text-gray-400 dark:text-zinc-600">
@@ -829,7 +844,29 @@ export const ToolDetail = (): JSX.Element => {
                   )}
                 </span>
               </h2>
+              <button
+                type="button"
+                onClick={() => void refreshTools()}
+                disabled={toolsRefreshing || server.connections.length === 0}
+                title={
+                  server.connections.length === 0
+                    ? "再取得できるツールがありません"
+                    : (toolsRefreshError ?? "ツール一覧を再取得します")
+                }
+                className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-gray-200 px-2 py-1 text-[11px] text-gray-600 transition hover:bg-black/[.02] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/[.08] dark:text-zinc-400 dark:hover:bg-white/[.04]"
+              >
+                <RefreshCw
+                  size={12}
+                  className={toolsRefreshing ? "animate-spin" : ""}
+                />
+                {toolsRefreshing ? "更新中" : "再取得"}
+              </button>
             </div>
+            {toolsRefreshError && (
+              <p className="mb-2 text-[11px] text-red-500 dark:text-red-400">
+                {toolsRefreshError}
+              </p>
+            )}
             <div className="relative mb-2">
               <Search
                 size={12}
@@ -895,7 +932,7 @@ export const ToolDetail = (): JSX.Element => {
             </div>
             <div className="flex-1 space-y-1 overflow-y-auto pr-1">
               {AI_CLIENTS.map((client) => {
-                const logo = client.logoPath?.(theme);
+                const logo = client.logoPath?.("light");
                 return (
                   <button
                     key={client.id}
@@ -904,13 +941,15 @@ export const ToolDetail = (): JSX.Element => {
                     className="flex w-full items-center gap-2 rounded-lg border border-gray-100 bg-black/[.02] px-2.5 py-1.5 text-left transition hover:border-gray-200 hover:bg-black/[.06] dark:border-white/[.08] dark:bg-white/[.08]"
                   >
                     {logo ? (
-                      <img
-                        src={logo}
-                        alt={client.name}
-                        className="h-4 w-4 shrink-0 rounded"
-                      />
+                      <div className="flex shrink-0 items-center justify-center overflow-hidden rounded bg-zinc-100/95 p-[2px]">
+                        <img
+                          src={logo}
+                          alt={client.name}
+                          className="h-4 w-4 rounded-lg object-contain"
+                        />
+                      </div>
                     ) : (
-                      <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-black/[.06] text-[8px] font-bold text-gray-500 dark:bg-white/[.08] dark:text-zinc-500">
+                      <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-zinc-100/95 p-[2px] text-[8px] font-bold text-gray-500 dark:text-zinc-500">
                         {client.name.charAt(0)}
                       </div>
                     )}
@@ -1180,7 +1219,6 @@ export const ToolDetail = (): JSX.Element => {
           serverName={server.name}
           configSnippet={buildConfigSnippet()}
           targetPath={selectedClient.configTargetPath}
-          theme={theme}
           onClose={() => setSelectedClient(null)}
         />
       )}
