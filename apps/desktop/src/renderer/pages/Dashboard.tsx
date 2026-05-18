@@ -7,8 +7,13 @@ import { themeAtom } from "../store/atoms";
 import { ANNOUNCEMENTS } from "../data/mock";
 import { DEFAULT_KPI, PERIODS, type Period } from "../data/dashboard-data";
 import { useDashboard } from "../hooks/useDashboard";
+import {
+  useAiCodingTelemetryUsage,
+  useAiCodingToolSettings,
+} from "../hooks/useAiCodingTelemetry";
 import { getClientLogo } from "../utils/ai-client-logo";
 import { statusBadge, isErrorRow } from "../utils/theme-styles";
+import { TRACKING_TOOL_LABELS } from "../utils/ai-coding-telemetry-tools";
 import {
   Area,
   AreaChart,
@@ -29,6 +34,13 @@ import type {
   DashboardLogItem,
   DashboardTimePoint,
 } from "../../main/types";
+import type {
+  AiCodingAttributeUsageItem,
+  AiCodingMemberUsageItem,
+  ConfigurableAiCodingTool,
+  DailyModelUsageItem,
+  TelemetrySummaryItem,
+} from "../../main/types";
 
 /** AIクライアント円グラフの色パレット */
 const AI_PIE_PALETTE = ["#fff", "#10a37f", "#DA704E", "#A259FF", "#8b949e"];
@@ -38,6 +50,58 @@ const PERIOD_DELTA_LABEL: Record<Period, string> = {
   "24h": "前日比",
   "7d": "前週比",
   "30d": "前月比",
+};
+
+const PERIOD_TO_TELEMETRY_DAYS: Record<Period, number> = {
+  "24h": 1,
+  "7d": 7,
+  "30d": 30,
+};
+
+const AI_CODING_TOOLS: readonly ConfigurableAiCodingTool[] = [
+  "claude-code",
+  "codex",
+];
+
+const AI_TOOL_CHART_COLORS = [
+  "#10a37f",
+  "#DA704E",
+  "#A259FF",
+  "#3b82f6",
+  "#f59e0b",
+  "#8b949e",
+];
+
+const GPT_MODEL_COLORS = ["#10a37f", "#3b82f6", "#14b8a6", "#22c55e"];
+const CLAUDE_MODEL_COLORS = ["#DA704E", "#A259FF", "#f59e0b", "#ef4444"];
+
+const getModelFamily = (modelName: string): "gpt" | "claude" | "other" => {
+  const normalized = modelName.toLowerCase();
+  if (normalized.includes("gpt")) return "gpt";
+  if (normalized.includes("claude")) return "claude";
+  return "other";
+};
+
+const buildModelColorMap = (modelNames: string[]): Map<string, string> => {
+  const familyCounts = {
+    gpt: 0,
+    claude: 0,
+    other: 0,
+  };
+  return new Map(
+    modelNames.map((modelName) => {
+      const family = getModelFamily(modelName);
+      const index = familyCounts[family];
+      familyCounts[family] += 1;
+      const palette =
+        family === "gpt"
+          ? GPT_MODEL_COLORS
+          : family === "claude"
+            ? CLAUDE_MODEL_COLORS
+            : AI_TOOL_CHART_COLORS;
+      return [modelName, palette[index % palette.length] ?? "#8b949e"];
+    }),
+  );
 };
 
 /** 符号付きの差分整数表示（パーセント表示と揃えて0は ±0 を返す） */
@@ -118,25 +182,10 @@ const buildKpiCards = (kpi: DashboardKpi, period: Period) => {
       colorClass: "text-gray-900 dark:text-white",
     },
     {
-      label: "ブロック",
-      value: kpi.blocks.toLocaleString(),
-      sub: `${kpi.blockRate.toFixed(1)}%`,
-      colorClass: "text-red-600 dark:text-red-400",
-    },
-    {
       label: "成功率",
       value: `${kpi.successRate.toFixed(1)}%`,
       sub: `${deltaLabel} ${formatSignedPercent(kpi.successRateDelta)}`,
       colorClass: "text-emerald-600 dark:text-emerald-400",
-    },
-    {
-      label: "コネクタ",
-      value: kpi.connectors.toLocaleString(),
-      sub:
-        kpi.connectorsDegraded > 0
-          ? `${kpi.connectorsDegraded} 要確認`
-          : "全稼働",
-      colorClass: "text-gray-900 dark:text-white",
     },
   ];
 };
@@ -249,6 +298,338 @@ const AiClientsSection = ({
   );
 };
 
+const AiToolStatusPill = ({
+  tool,
+}: {
+  tool: ConfigurableAiCodingTool;
+}): JSX.Element => {
+  const { settings, isLoading } = useAiCodingToolSettings(tool);
+  const enabled = settings?.enabled === true;
+  return (
+    <span
+      className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+        enabled
+          ? "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/10 dark:text-emerald-400"
+          : "bg-gray-100 text-gray-500 dark:bg-white/[.06] dark:text-zinc-500"
+      }`}
+    >
+      {TRACKING_TOOL_LABELS[tool]}{" "}
+      {isLoading ? "確認中" : enabled ? "記録中" : "停止"}
+    </span>
+  );
+};
+
+const formatCompactNumber = (value: number): string => {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
+  return Number.isInteger(value) ? value.toLocaleString() : value.toFixed(1);
+};
+
+const formatCurrency = (value: number): string =>
+  `$${value.toFixed(value < 1 ? 4 : 2)}`;
+
+const isTokenMetric = (metricName: string): boolean =>
+  metricName.toLowerCase().includes("token");
+
+const isCostMetric = (metricName: string): boolean =>
+  metricName.toLowerCase().includes("cost");
+
+const sumSummary = (
+  summary: TelemetrySummaryItem[],
+  predicate: (metricName: string) => boolean,
+): number =>
+  summary
+    .filter((item) => predicate(item.metricName))
+    .reduce((sum, item) => sum + item.totalValue, 0);
+
+const buildAiKpiCards = (
+  memberUsage: AiCodingMemberUsageItem[],
+  summary: TelemetrySummaryItem[],
+  period: Period,
+) => {
+  const inputTokens = memberUsage.reduce(
+    (sum, item) => sum + item.inputTokens,
+    0,
+  );
+  const outputTokens = memberUsage.reduce(
+    (sum, item) => sum + item.outputTokens,
+    0,
+  );
+  const totalTokens = sumSummary(summary, isTokenMetric);
+  const costTotal =
+    memberUsage.reduce((sum, item) => sum + item.costUsd, 0) ||
+    sumSummary(summary, isCostMetric);
+
+  return [
+    {
+      label: `入出力トークン / ${period}`,
+      value: formatCompactNumber((inputTokens || totalTokens) + outputTokens),
+      sub: `入力 ${formatCompactNumber(inputTokens || totalTokens)} / 出力 ${formatCompactNumber(outputTokens)}`,
+      colorClass: "text-sky-600 dark:text-sky-400",
+    },
+    {
+      label: `推定コスト / ${period}`,
+      value: formatCurrency(costTotal),
+      sub: "USD",
+      colorClass: "text-violet-600 dark:text-violet-400",
+    },
+  ];
+};
+
+const buildDailyModelRows = (
+  dailyModelUsage: DailyModelUsageItem[],
+  period: Period,
+): { rows: Array<Record<string, string | number>>; modelLabels: string[] } => {
+  const rows = new Map<string, Record<string, string | number>>();
+  const totals = new Map<string, number>();
+  const isHourly = period === "24h";
+
+  for (const item of dailyModelUsage) {
+    const modelLabel = item.model;
+    totals.set(modelLabel, (totals.get(modelLabel) ?? 0) + item.sampleCount);
+    const rowLabel = item.date.includes(" ")
+      ? item.date.slice(11)
+      : item.date.slice(5);
+    const row = rows.get(item.date) ?? { date: rowLabel };
+    row[modelLabel] = Number(row[modelLabel] ?? 0) + item.sampleCount;
+    rows.set(item.date, row);
+  }
+
+  const modelLabels = [...totals.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([label]) => label)
+    .slice(0, 6);
+
+  if (isHourly) {
+    const now = new Date();
+    now.setMinutes(0, 0, 0);
+    for (let index = 23; index >= 0; index -= 1) {
+      const bucket = new Date(now.getTime() - index * 3600_000);
+      const key = `${bucket.getFullYear()}-${String(bucket.getMonth() + 1).padStart(2, "0")}-${String(bucket.getDate()).padStart(2, "0")} ${String(bucket.getHours()).padStart(2, "0")}:00`;
+      rows.set(
+        key,
+        rows.get(key) ?? {
+          date: `${String(bucket.getHours()).padStart(2, "0")}:00`,
+        },
+      );
+    }
+  }
+
+  for (const row of rows.values()) {
+    for (const modelLabel of modelLabels) row[modelLabel] ??= 0;
+  }
+
+  return {
+    rows: [...rows.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([, row]) => row),
+    modelLabels,
+  };
+};
+
+const buildModelRows = (
+  modelUsage: Array<{
+    attributeValue: string;
+    sampleCount: number;
+  }>,
+): Array<{ name: string; value: number }> => {
+  const totals = new Map<string, number>();
+  for (const item of modelUsage) {
+    totals.set(
+      item.attributeValue,
+      (totals.get(item.attributeValue) ?? 0) + item.sampleCount,
+    );
+  }
+  return [...totals.entries()]
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 8);
+};
+
+const AiCodingAnalyticsSection = ({
+  period,
+  resolveColor,
+  summary,
+  dailyModelUsage,
+  modelUsage,
+  isLoading,
+}: {
+  period: Period;
+  resolveColor: (color: string) => string;
+  summary: TelemetrySummaryItem[];
+  dailyModelUsage: DailyModelUsageItem[];
+  modelUsage: AiCodingAttributeUsageItem[];
+  isLoading: boolean;
+}): JSX.Element => {
+  const theme = useAtomValue(themeAtom);
+  const hasData = summary.length > 0;
+  const gridColor = theme === "dark" ? "rgba(255,255,255,0.08)" : "#e5e7eb";
+
+  const modelTrend = useMemo(
+    () => buildDailyModelRows(dailyModelUsage, period),
+    [dailyModelUsage, period],
+  );
+  const modelRows = useMemo(() => buildModelRows(modelUsage), [modelUsage]);
+  const modelColorMap = useMemo(() => {
+    const labels = [
+      ...new Set([
+        ...modelTrend.modelLabels,
+        ...modelRows.map((row) => row.name),
+      ]),
+    ];
+    return buildModelColorMap(labels);
+  }, [modelRows, modelTrend.modelLabels]);
+  const getModelColor = (modelName: string): string =>
+    resolveColor(modelColorMap.get(modelName) ?? "#8b949e");
+
+  if (!hasData && !isLoading) {
+    return <></>;
+  }
+
+  return (
+    <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-5 dark:border-white/[.08] dark:bg-zinc-900">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Activity className="h-4 w-4 text-gray-500 dark:text-zinc-500" />
+          <span className="text-sm font-medium text-gray-900 dark:text-white">
+            AI利用分析
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {AI_CODING_TOOLS.map((tool) => (
+            <AiToolStatusPill key={tool} tool={tool} />
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="rounded-lg bg-black/[.02] p-3 dark:bg-white/[.04]">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <p className="text-xs text-gray-500 dark:text-zinc-500">
+              モデル別推移
+            </p>
+            <div className="flex flex-wrap justify-end gap-x-3 gap-y-1 text-[10px] text-gray-400 dark:text-zinc-600">
+              {modelTrend.modelLabels.map((modelLabel) => (
+                <span key={modelLabel} className="flex items-center gap-1">
+                  <span
+                    className="inline-block h-1.5 w-1.5 rounded-full"
+                    style={{
+                      backgroundColor: getModelColor(modelLabel),
+                    }}
+                  />
+                  <span className="max-w-[150px] truncate">{modelLabel}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="h-[220px]">
+            {modelTrend.rows.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-xs text-gray-500 dark:text-zinc-500">
+                モデル別推移はまだありません
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={modelTrend.rows}>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke={gridColor}
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey="date"
+                    tick={{
+                      fill: theme === "dark" ? "#71717a" : "#9ca3af",
+                      fontSize: 10,
+                    }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis hide />
+                  <Tooltip content={<ChartTooltip />} />
+                  {modelTrend.modelLabels.map((modelLabel) => {
+                    const color = getModelColor(modelLabel);
+                    return (
+                      <Area
+                        key={modelLabel}
+                        type="monotone"
+                        dataKey={modelLabel}
+                        name={modelLabel}
+                        stroke={color}
+                        fill={color}
+                        fillOpacity={0.1}
+                        strokeWidth={1.5}
+                      />
+                    );
+                  })}
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-lg bg-black/[.02] p-3 dark:bg-white/[.04]">
+          <p className="mb-3 text-xs text-gray-500 dark:text-zinc-500">
+            モデル別使用状況
+          </p>
+          <div className="h-[180px]">
+            {modelRows.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-xs text-gray-500 dark:text-zinc-500">
+                モデル情報はまだありません
+              </div>
+            ) : (
+              <div className="flex h-full items-center gap-3">
+                <div className="h-full min-w-0 flex-1">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={modelRows}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={36}
+                        outerRadius={50}
+                        dataKey="value"
+                        nameKey="name"
+                        stroke="none"
+                        paddingAngle={2}
+                      >
+                        {modelRows.map((entry) => (
+                          <Cell
+                            key={entry.name}
+                            fill={getModelColor(entry.name)}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<ChartTooltip />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="flex w-[112px] shrink-0 flex-col gap-2">
+                  {modelRows.slice(0, 6).map((item) => (
+                    <div
+                      key={item.name}
+                      className="flex items-center gap-2 text-[10px]"
+                    >
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{
+                          backgroundColor: getModelColor(item.name),
+                        }}
+                      />
+                      <span className="min-w-0 flex-1 truncate text-gray-600 dark:text-zinc-400">
+                        {item.name}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 /* ===== コネクタログ行 ===== */
 
 const RecentLogRow = ({ item }: { item: DashboardLogItem }): JSX.Element => {
@@ -308,6 +689,8 @@ export const Dashboard = (): JSX.Element => {
   const [activeAi, setActiveAi] = useState<string | null>(null);
   const theme = useAtomValue(themeAtom);
   const { result, loading } = useDashboard(period);
+  const telemetryDays = PERIOD_TO_TELEMETRY_DAYS[period];
+  const aiUsage = useAiCodingTelemetryUsage(telemetryDays);
 
   const cursorColor = theme === "dark" ? "#ffffff" : "#111827";
   const resolveColor = (color: string): string =>
@@ -330,8 +713,11 @@ export const Dashboard = (): JSX.Element => {
   );
 
   const kpiCards = useMemo(
-    () => buildKpiCards(result?.kpi ?? DEFAULT_KPI, period),
-    [result, period],
+    () => [
+      ...buildKpiCards(result?.kpi ?? DEFAULT_KPI, period),
+      ...buildAiKpiCards(aiUsage.memberUsage, aiUsage.summary, period),
+    ],
+    [aiUsage.memberUsage, aiUsage.summary, result, period],
   );
 
   const handleToggleAi = (name: string): void => {
@@ -363,7 +749,7 @@ export const Dashboard = (): JSX.Element => {
         </div>
       </div>
 
-      {/* KPIカード 4つ */}
+      {/* KPIカード */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {kpiCards.map((card) => (
           <div
@@ -466,6 +852,15 @@ export const Dashboard = (): JSX.Element => {
           )}
         </div>
       </div>
+
+      <AiCodingAnalyticsSection
+        period={period}
+        resolveColor={resolveColor}
+        summary={aiUsage.summary}
+        dailyModelUsage={aiUsage.dailyModelUsage}
+        modelUsage={aiUsage.modelUsage}
+        isLoading={aiUsage.isLoading}
+      />
 
       {/* 2カラム: AIクライアント別 + コネクタ */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
