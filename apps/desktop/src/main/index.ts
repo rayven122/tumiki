@@ -26,7 +26,12 @@ import { setupOAuthIpc } from "./features/oauth/oauth.ipc";
 import type { McpOAuthManager } from "./features/oauth/oauth.service";
 import { findConnectionByIdWithServer } from "./features/mcp-server-list/mcp.repository";
 import { parseReauthDeepLink } from "./shared/app-protocol";
-import { setupManagerIpc, fetchManagerOidcConfig } from "./ipc/manager";
+import {
+  PERSONAL_PROFILE_MANAGER_URL,
+  setupManagerIpc,
+  resolveManagerOidcConfig,
+} from "./ipc/manager";
+import { MCP_OAUTH_REDIRECT_URI } from "../shared/oauth/redirect-uri";
 import { setupProfileIpc } from "./ipc/profile";
 import { setupShellIpc } from "./ipc/shell";
 import {
@@ -35,7 +40,11 @@ import {
   syncPendingAuditLogsToManager,
 } from "./features/audit-log-manager-sync/audit-log-manager-sync.service";
 import { getAppStore } from "./shared/app-store";
-import { activateOrganizationProfile } from "./shared/profile-store";
+import {
+  activateOrganizationProfile,
+  activatePersonalProfile,
+  resolvePendingProfile,
+} from "./shared/profile-store";
 import { ServerStatus } from "@prisma/desktop-client";
 import type { Prisma } from "@prisma/desktop-client";
 import * as logger from "./shared/utils/logger";
@@ -90,6 +99,23 @@ if (!app) {
 
 // --mcp-proxy モード: GUI不要、stdioでMCPプロキシとして動作
 const appMode = resolveDesktopAppMode(process.argv);
+
+const registerDeepLinkProtocolClient = (protocol: string): void => {
+  const isPackaged = app.isPackaged;
+  const registered = isPackaged
+    ? app.setAsDefaultProtocolClient(protocol)
+    : app.setAsDefaultProtocolClient(protocol, process.execPath, [
+        app.getAppPath(),
+      ]);
+
+  logger.info("Deep link protocol client registered", {
+    protocol,
+    registered,
+    mode: isPackaged ? "packaged" : "development",
+    executable: process.execPath,
+    appPath: isPackaged ? undefined : app.getAppPath(),
+  });
+};
 
 const startAnalyticsSidecarMode = async (): Promise<void> => {
   app.dock?.hide();
@@ -508,7 +534,7 @@ if (appMode === "mcp-proxy") {
       {
         issuer,
         clientId,
-        redirectUri: `${PROTOCOL}://${CALLBACK_HOST}${CALLBACK_PATHNAME}`,
+        redirectUri: MCP_OAUTH_REDIRECT_URI,
         endpoints,
       },
       {
@@ -517,6 +543,10 @@ if (appMode === "mcp-proxy") {
             "auth:sessionExpired",
             "認証セッションの有効期限が切れました。再度ログインしてください。",
           );
+        },
+        onAuthCallback: handleKeycloakCallback,
+        onAuthCallbackError: (message) => {
+          sendToWindow("auth:callbackError", message);
         },
       },
     );
@@ -591,8 +621,26 @@ if (appMode === "mcp-proxy") {
       await manager.handleAuthCallback(url);
       const store = await getAppStore();
       const managerUrl = store.get("managerUrl");
-      if (managerUrl) {
+      const pendingProfile = store.get("pendingProfile");
+      const resolvedProfile = resolvePendingProfile(
+        pendingProfile,
+        managerUrl,
+        PERSONAL_PROFILE_MANAGER_URL,
+      );
+      if (resolvedProfile === "personal") {
+        await activatePersonalProfile();
+      } else if (resolvedProfile === "organization" && managerUrl) {
         await activateOrganizationProfile(managerUrl);
+      } else {
+        logger.error("Auth callback could not activate profile", {
+          managerUrl,
+          pendingProfile,
+        });
+        sendToWindow(
+          "auth:callbackError",
+          "プロファイル設定が見つかりません。再度サインインしてください。",
+        );
+        return;
       }
       sendToWindow("auth:callbackSuccess");
       logger.info("Deep link auth callback handled successfully");
@@ -766,9 +814,9 @@ if (appMode === "mcp-proxy") {
     .whenReady()
     .then(async () => {
       // カスタムURLスキームを登録（Linuxではready後に呼ぶ必要がある）
-      // dev モードでは Electron 実行パスが起動ごとに変わる可能性があるため、
-      // 起動時に毎回上書き登録する（setAsDefaultProtocolClient は冪等）
-      app.setAsDefaultProtocolClient(PROTOCOL);
+      // dev モードでは Electron.app だけを登録すると、コールバック時に default_app が開くため、
+      // 現在の app path も引数として明示して毎回上書き登録する。
+      registerDeepLinkProtocolClient(PROTOCOL);
 
       // バンドル済みランタイムの Node shim を userData 配下に生成（DEV-1597）
       // MCPコネクタ spawn 前に必ず存在させる必要がある。失敗しても GUI 起動は継続
@@ -792,11 +840,12 @@ if (appMode === "mcp-proxy") {
       await initializeDb();
       startAuditLogManagerSyncScheduler();
 
-      // OAuthManager初期化: electron-store保存済みURLを優先、フォールバックで環境変数
+      // OAuthManager初期化: electron-store保存済みURLを優先、フォールバックで環境変数。
+      // 個人利用でも tumiki.cloud の認証セッション維持に managerUrl を使う。
       const savedManagerUrl = (await getAppStore()).get("managerUrl");
       if (savedManagerUrl) {
         try {
-          const config = await fetchManagerOidcConfig(savedManagerUrl);
+          const config = await resolveManagerOidcConfig(savedManagerUrl);
           await initOAuthManagerFromUrl(
             savedManagerUrl,
             config.issuer,

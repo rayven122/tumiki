@@ -208,6 +208,8 @@ const api = {
     getUrl: (): Promise<string | null> => ipcRenderer.invoke("manager:getUrl"),
     connect: (url: string): Promise<void> =>
       ipcRenderer.invoke("manager:connect", url),
+    connectPersonal: (): Promise<void> =>
+      ipcRenderer.invoke("manager:connectPersonal"),
   },
 
   // Desktopセッション API
@@ -220,10 +222,10 @@ const api = {
   profile: {
     getState: (): Promise<ProfileState> =>
       ipcRenderer.invoke("profile:getState"),
-    selectPersonal: (): Promise<ProfileState> =>
-      ipcRenderer.invoke("profile:selectPersonal"),
-    cancelOrganizationSetup: (): Promise<ProfileState> =>
-      ipcRenderer.invoke("profile:cancelOrganizationSetup"),
+    cancelPendingSetup: (): Promise<ProfileState> =>
+      ipcRenderer.invoke("profile:cancelPendingSetup"),
+    cancelOrganizationChange: (): Promise<ProfileState> =>
+      ipcRenderer.invoke("profile:cancelOrganizationChange"),
     disconnectOrganization: (): Promise<ProfileState> =>
       ipcRenderer.invoke("profile:disconnectOrganization"),
   },

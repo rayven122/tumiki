@@ -131,6 +131,7 @@ variable "desktop_redirect_uris" {
   description = "Desktop App リダイレクトURI一覧"
   type        = list(string)
   default = [
+    "http://127.0.0.1:33418/callback",
     "tumiki://auth/callback"
   ]
 }

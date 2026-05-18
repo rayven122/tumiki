@@ -11,6 +11,7 @@
 # - TF_VAR_smtp_password
 
 # Keycloak接続設定（VM上でローカル実行するため localhost を使用）
+# 外部公開ドメインは staging の Infisical から docker/keycloak-staging/compose.yaml の KC_HOSTNAME に注入する
 keycloak_url = "http://localhost:8080"
 
 # Realm設定
@@ -23,6 +24,14 @@ manager_redirect_uris = [
 ]
 manager_web_origins = [
   "https://stg.tumiki.cloud"
+]
+
+# Desktop Appクライアント設定
+# Desktop は Keycloak を直接開くため、custom scheme の redirect URI を Keycloak 側で許可する
+desktop_client_id = "tumiki-desktop"
+desktop_redirect_uris = [
+  "http://127.0.0.1:33418/callback",
+  "tumiki://auth/callback"
 ]
 
 # MCP Proxyクライアント設定

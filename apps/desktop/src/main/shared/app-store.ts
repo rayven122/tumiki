@@ -15,6 +15,7 @@ type AiCodingTelemetryToolSetting = {
 type AppStoreSchema = {
   installationId?: string;
   managerUrl?: string;
+  pendingProfile?: DesktopProfile;
   activeProfile?: DesktopProfile;
   organizationProfile?: OrganizationProfile;
   hasCompletedInitialProfileSetup?: boolean;

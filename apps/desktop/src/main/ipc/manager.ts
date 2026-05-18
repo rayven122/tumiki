@@ -2,6 +2,7 @@ import { ipcMain } from "electron";
 import { z } from "zod";
 import { getAppStore } from "../shared/app-store";
 import * as logger from "../shared/utils/logger";
+import type { DesktopProfile } from "../../shared/types";
 
 const oidcConfigResponseSchema = z.object({
   issuer: z.string().url(),
@@ -11,9 +12,26 @@ const oidcConfigResponseSchema = z.object({
 export type OidcConfig = z.infer<typeof oidcConfigResponseSchema>;
 
 const FETCH_TIMEOUT_MS = 10_000;
+export const PERSONAL_PROFILE_MANAGER_URL = "https://www.tumiki.cloud";
+// electron-vite の define で build 時に埋め込まれる値。
+// 未設定ビルドでは Tumiki Cloud の既定 Keycloak client を使う。
+export const CLOUD_KEYCLOAK_ISSUER =
+  process.env.KEYCLOAK_ISSUER || "https://auth.tumiki.cloud/realms/tumiki";
+export const CLOUD_KEYCLOAK_DESKTOP_CLIENT_ID =
+  process.env.KEYCLOAK_DESKTOP_CLIENT_ID || "tumiki-desktop";
+
+export const isSelfHostedManagerUrl = (managerUrl: string): boolean => {
+  try {
+    const hostname = new URL(managerUrl).hostname;
+    return hostname !== "tumiki.cloud" && !hostname.endsWith(".tumiki.cloud");
+  } catch {
+    return true;
+  }
+};
 
 /**
- * 管理サーバーからOIDC設定を取得する
+ * internal-manager から組織用 OIDC 設定を取得する。
+ * tumiki.cloud 配下は Keycloak に直接接続し、self-host / private tenant のみこの API を使う。
  */
 export const fetchManagerOidcConfig = async (
   managerUrl: string,
@@ -27,6 +45,18 @@ export const fetchManagerOidcConfig = async (
   }
   const data: unknown = await res.json();
   return oidcConfigResponseSchema.parse(data);
+};
+
+export const resolveManagerOidcConfig = async (
+  managerUrl: string,
+): Promise<OidcConfig> => {
+  if (isSelfHostedManagerUrl(managerUrl)) {
+    return fetchManagerOidcConfig(managerUrl);
+  }
+  return {
+    issuer: CLOUD_KEYCLOAK_ISSUER,
+    clientId: CLOUD_KEYCLOAK_DESKTOP_CLIENT_ID,
+  };
 };
 
 /**
@@ -44,6 +74,33 @@ export const setupManagerIpc = (
     clientId: string,
   ) => Promise<void>,
 ): void => {
+  const connectToManager = async (
+    url: string,
+    pendingProfile: DesktopProfile,
+  ): Promise<void> => {
+    const normalizedUrl = url.replace(/\/$/, "");
+    // manager:connect は組織接続専用のため、個人利用の固定URLは受け付けない。
+    if (
+      pendingProfile === "organization" &&
+      normalizedUrl === PERSONAL_PROFILE_MANAGER_URL
+    ) {
+      throw new Error(
+        "個人利用の場合は「個人利用を始める」ボタンを使用してください",
+      );
+    }
+    const config = await resolveManagerOidcConfig(normalizedUrl);
+    await initOAuthManager(normalizedUrl, config.issuer, config.clientId);
+
+    const store = await getAppStore();
+    store.set("managerUrl", normalizedUrl);
+    store.set("pendingProfile", pendingProfile);
+
+    logger.info("Manager URL connected", {
+      url: normalizedUrl,
+      pendingProfile,
+    });
+  };
+
   ipcMain.handle("manager:getUrl", async () => {
     const store = await getAppStore();
     return store.get("managerUrl") ?? null;
@@ -64,12 +121,10 @@ export const setupManagerIpc = (
       );
     }
 
-    const config = await fetchManagerOidcConfig(url);
-    await initOAuthManager(url, config.issuer, config.clientId);
-
-    const store = await getAppStore();
-    store.set("managerUrl", url);
-
-    logger.info("Manager URL connected", { url });
+    await connectToManager(url, "organization");
   });
+
+  ipcMain.handle("manager:connectPersonal", () =>
+    connectToManager(PERSONAL_PROFILE_MANAGER_URL, "personal"),
+  );
 };
