@@ -10,7 +10,11 @@ const port = Number(process.env.PORT) || DEFAULT_PORT;
 
 // 必須環境変数の事前検証（本番のみ厳密チェック）
 const isProduction = process.env.NODE_ENV === "production";
-const requiredEnvVars = ["LICENSE_PUBLIC_KEY", "AI_GATEWAY_API_KEY"];
+const requiredEnvVars = [
+  "LICENSE_PUBLIC_KEY",
+  "AI_GATEWAY_API_KEY",
+  "KEYCLOAK_ISSUER",
+];
 const missing = requiredEnvVars.filter((key) => !process.env[key]);
 if (missing.length > 0) {
   if (isProduction) {

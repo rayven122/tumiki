@@ -16,6 +16,7 @@ import {
   LICENSE_KEY_PREFIX,
 } from "../../../shared/constants/config.js";
 import { resetLicensePublicKeyCache } from "../../../shared/middleware/verifyLicense.js";
+import app from "../../../app.js";
 import { dynamicSearchRoute } from "../route.js";
 
 let publicKeyPem: string;
@@ -55,6 +56,7 @@ beforeAll(async () => {
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
   resetLicensePublicKeyCache();
 });
 
@@ -152,5 +154,28 @@ describe("POST /v1/dynamic-search/search（動的ツール検索エンドポイ�
     };
     expect(body.results).toHaveLength(2);
     expect(body.results[0]?.toolName).toBe("send_message");
+  });
+
+  test("app全体に載せてもライセンス認証のdynamic-searchはproxy middlewareに遮られない", async () => {
+    vi.stubEnv("LICENSE_PUBLIC_KEY", publicKeyPem);
+    const licenseKey = await issueTestLicense({
+      sub: "user_abc",
+      type: "personal",
+      features: ["dynamic-search"],
+    });
+
+    const res = await app.request("/v1/dynamic-search/search", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${licenseKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query: "Slack にメッセージ送信",
+        tools: [{ name: "send_message" }],
+      }),
+    });
+
+    expect(res.status).toBe(200);
   });
 });

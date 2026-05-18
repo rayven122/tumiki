@@ -10,15 +10,59 @@
 
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
+import type { MiddlewareHandler } from "hono";
 
+import { LICENSE_KEY_PREFIX } from "../../shared/constants/config.js";
 import {
-  verifyLicenseMiddleware,
+  verifyLicenseKey,
   type LicenseContextVariables,
 } from "../../shared/middleware/verifyLicense.js";
 import { searchRequestSchema } from "./schema.js";
 import { searchTools } from "./service.js";
 
-const dynamicSearchRoute = new Hono<{ Variables: LicenseContextVariables }>();
+type DynamicSearchVariables = LicenseContextVariables;
+
+const dynamicSearchRoute = new Hono<{ Variables: DynamicSearchVariables }>();
+
+const verifyDynamicSearchAuth = (): MiddlewareHandler<{
+  Variables: DynamicSearchVariables;
+}> => {
+  return async (c, next) => {
+    const authHeader = c.req.header("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return c.json({ error: "Missing or invalid Authorization header" }, 401);
+    }
+
+    const bearerToken = authHeader.slice(7);
+
+    if (bearerToken.startsWith(LICENSE_KEY_PREFIX)) {
+      const publicKeyPem = process.env.LICENSE_PUBLIC_KEY;
+      if (!publicKeyPem) {
+        console.error(
+          "[dynamic-search/auth] LICENSE_PUBLIC_KEY env var is not configured",
+        );
+        return c.json({ error: "Server misconfiguration" }, 500);
+      }
+
+      const license = await verifyLicenseKey(bearerToken, publicKeyPem);
+      if (!license) {
+        return c.json({ error: "Invalid or expired license" }, 401);
+      }
+      if (!license.features.includes("dynamic-search")) {
+        return c.json(
+          { error: "License does not include feature: dynamic-search" },
+          403,
+        );
+      }
+
+      c.set("license", license);
+      await next();
+      return;
+    }
+
+    return c.json({ error: "Invalid or expired license" }, 401);
+  };
+};
 
 // ツールリストが大きくなる可能性があるため 200KB に制限
 dynamicSearchRoute.use(
@@ -26,10 +70,7 @@ dynamicSearchRoute.use(
   bodyLimit({ maxSize: 200 * 1024 }),
 );
 
-dynamicSearchRoute.use(
-  "/v1/dynamic-search/*",
-  verifyLicenseMiddleware("dynamic-search"),
-);
+dynamicSearchRoute.use("/v1/dynamic-search/*", verifyDynamicSearchAuth());
 
 dynamicSearchRoute.post("/v1/dynamic-search/search", async (c) => {
   let body: unknown;
@@ -52,12 +93,10 @@ dynamicSearchRoute.post("/v1/dynamic-search/search", async (c) => {
     return c.json({ error: "Invalid request body" }, 400);
   }
 
-  const license = c.var.license;
-
   try {
     const result = await searchTools(parsed.data);
     console.log(
-      `[dynamic-search/search] sub=${license.sub} type=${license.type} tools=${parsed.data.tools.length} results=${result.results.length}`,
+      `[dynamic-search/search] sub=${c.var.license.sub} tools=${parsed.data.tools.length} results=${result.results.length}`,
     );
     return c.json(result);
   } catch (err) {
