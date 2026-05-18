@@ -949,7 +949,7 @@ export const ToolDetail = (): JSX.Element => {
                         />
                       </div>
                     ) : (
-                      <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-zinc-100/50 p-1 text-[8px] font-bold text-gray-500 dark:text-zinc-500">
+                      <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-zinc-100/50 p-2 text-[8px] font-bold text-gray-500 dark:text-zinc-500">
                         {client.name.charAt(0)}
                       </div>
                     )}

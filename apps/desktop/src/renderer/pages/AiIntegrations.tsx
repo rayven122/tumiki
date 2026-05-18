@@ -96,7 +96,7 @@ export const AiIntegrations = (): JSX.Element => {
             >
               <div className="flex w-full items-center justify-between">
                 {logo ? (
-                  <div className="flex items-center justify-center overflow-hidden rounded-lg bg-zinc-100/50 p-1.5">
+                  <div className="flex items-center justify-center overflow-hidden rounded-lg bg-zinc-100/50 p-2">
                     <img
                       src={logo}
                       alt={client.name}
@@ -104,7 +104,7 @@ export const AiIntegrations = (): JSX.Element => {
                     />
                   </div>
                 ) : (
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-100/50 p-1.5 text-sm font-bold text-zinc-400 dark:text-zinc-500">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-100/50 p-2 text-sm font-bold text-zinc-400 dark:text-zinc-500">
                     {client.name.charAt(0)}
                   </div>
                 )}

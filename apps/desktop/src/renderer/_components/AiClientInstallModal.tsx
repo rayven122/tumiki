@@ -78,7 +78,7 @@ export const AiClientInstallModal = ({
         <div className="mb-5 flex items-start justify-between">
           <div className="flex items-center gap-3">
             {logo ? (
-              <div className="flex items-center justify-center overflow-hidden rounded-lg bg-zinc-100/50 p-1.5">
+              <div className="flex items-center justify-center overflow-hidden rounded-lg bg-zinc-100/50 p-2">
                 <img
                   src={logo}
                   alt={client.name}
@@ -86,7 +86,7 @@ export const AiClientInstallModal = ({
                 />
               </div>
             ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-100/50 p-1.5 text-sm font-bold text-zinc-400 dark:text-zinc-500">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-100/50 p-2 text-sm font-bold text-zinc-400 dark:text-zinc-500">
                 {client.name.charAt(0)}
               </div>
             )}
