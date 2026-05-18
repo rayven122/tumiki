@@ -6,8 +6,10 @@ const mockReadFile = vi.fn();
 const mockWriteFile = vi.fn().mockResolvedValue(undefined);
 const mockRename = vi.fn().mockResolvedValue(undefined);
 const mockRm = vi.fn().mockResolvedValue(undefined);
+const mockExistsSync = vi.fn().mockReturnValue(true);
 
 vi.mock("node:fs", () => ({
+  existsSync: (...args: unknown[]) => mockExistsSync(...args),
   promises: {
     mkdir: (...args: unknown[]) => mockMkdir(...args),
     readFile: (...args: unknown[]) => mockReadFile(...args),
@@ -15,6 +17,24 @@ vi.mock("node:fs", () => ({
     rename: (...args: unknown[]) => mockRename(...args),
     rm: (...args: unknown[]) => mockRm(...args),
   },
+}));
+
+vi.mock("electron", () => ({
+  app: {
+    isPackaged: false,
+    getAppPath: () => "/app",
+    getPath: (name: string) => `/user-data/${name}`,
+  },
+}));
+
+const mockEnsureNodeShim = vi.fn();
+
+vi.mock("../../../runtime/path-resolver", () => ({
+  ensureNodeShim: () => mockEnsureNodeShim(),
+  resolveValue: (value: string) =>
+    value === "${runtime:node}"
+      ? "/user-data/userData/runtime/bin/node"
+      : value,
 }));
 
 vi.mock("../../../shared/utils/logger", () => ({
@@ -43,6 +63,8 @@ beforeEach(() => {
   mockWriteFile.mockResolvedValue(undefined);
   mockRename.mockResolvedValue(undefined);
   mockRm.mockResolvedValue(undefined);
+  mockExistsSync.mockReturnValue(true);
+  mockEnsureNodeShim.mockClear();
   mockReadFile.mockRejectedValue(new Error("ENOENT"));
   mockStringifyToml.mockReturnValue(
     "[telemetry]\notel_exporter_otlp_endpoint = ...",
@@ -76,10 +98,22 @@ describe("applyOtlpToTool - claude-code", () => {
       (mcpWritten.mcpServers as Record<string, unknown>)["tumiki-analytics"],
     ).toStrictEqual(
       expect.objectContaining({
-        command: expect.any(String),
+        command: "/user-data/userData/runtime/bin/node",
         args: expect.arrayContaining(["--analytics"]),
+        env: {
+          TUMIKI_DESKTOP_MIGRATIONS_DIR: "/app/prisma/migrations",
+          TUMIKI_DESKTOP_USER_DATA_DIR: "/user-data/userData",
+        },
       }),
     );
+    expect(
+      (
+        (mcpWritten.mcpServers as Record<string, unknown>)[
+          "tumiki-analytics"
+        ] as { args: string[] }
+      ).args[0],
+    ).toStrictEqual("/app/dist-electron/main/analytics-node.cjs");
+    expect(mockEnsureNodeShim).toHaveBeenCalled();
   });
 
   test("既存設定ファイルとマージする", async () => {
@@ -188,7 +222,7 @@ describe("applyOtlpToTool - codex", () => {
       (tomlArg.mcp_servers as Record<string, unknown>)["tumiki-analytics"],
     ).toStrictEqual(
       expect.objectContaining({
-        command: expect.any(String),
+        command: "/user-data/userData/runtime/bin/node",
         args: expect.arrayContaining(["--analytics"]),
       }),
     );

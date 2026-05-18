@@ -10,6 +10,13 @@ import * as logger from "../utils/logger";
  * 開発時とプロダクションビルドでパスが異なる
  */
 const getMigrationsDir = (): string => {
+  const explicit = process.env.TUMIKI_DESKTOP_MIGRATIONS_DIR;
+  if (explicit && explicit.trim().length > 0) return explicit;
+
+  if (!app || !app.getAppPath) {
+    return join(process.cwd(), "apps", "desktop", "prisma", "migrations");
+  }
+
   if (app.isPackaged) {
     // asarUnpackされたファイルは app.asar.unpacked に展開される
     const appPath = app.getAppPath();

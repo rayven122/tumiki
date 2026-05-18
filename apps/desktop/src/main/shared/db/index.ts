@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/desktop-client";
 import type { Prisma } from "@prisma/desktop-client";
 import { join } from "path";
+import { homedir } from "os";
 import { app } from "electron";
 import { existsSync, mkdirSync } from "fs";
 import { env } from "../env";
@@ -35,6 +36,33 @@ const toError = (error: unknown): Error => {
   return new Error(String(error));
 };
 
+const getFallbackUserDataPath = (): string => {
+  const explicit = process.env.TUMIKI_DESKTOP_USER_DATA_DIR;
+  if (explicit && explicit.trim().length > 0) return explicit;
+
+  if (process.platform === "darwin") {
+    return join(
+      homedir(),
+      "Library",
+      "Application Support",
+      "@tumiki",
+      "desktop",
+    );
+  }
+  if (process.platform === "win32") {
+    return join(
+      process.env.APPDATA ?? join(homedir(), "AppData", "Roaming"),
+      "@tumiki",
+      "desktop",
+    );
+  }
+  return join(
+    process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"),
+    "@tumiki",
+    "desktop",
+  );
+};
+
 /**
  * タイムアウト付きでPromiseを実行
  * @param promise 実行するPromise
@@ -65,10 +93,12 @@ const withTimeout = <T>(
 
 /**
  * データベースパスを取得
- * 常にElectronのuserDataディレクトリを使用（CLIモード・Desktopモード共通）
+ * Electronが利用できる場合は userData、Node shim 経由の analytics mode では
+ * 同じ保存先を指す環境変数またはOS標準パスを使用する。
  */
 export const getDatabaseFilePath = (): string => {
-  const userDataPath = app.getPath("userData");
+  const userDataPath =
+    app && app.getPath ? app.getPath("userData") : getFallbackUserDataPath();
   const dbPath = join(userDataPath, "desktop.db");
 
   if (!existsSync(userDataPath)) {

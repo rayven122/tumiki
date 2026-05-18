@@ -1,7 +1,9 @@
 import { promises as fs } from "node:fs";
+import { existsSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import os from "node:os";
 import path from "node:path";
+import { app } from "electron";
 import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
 import * as logger from "../../shared/utils/logger";
 import type {
@@ -10,6 +12,7 @@ import type {
 } from "./ai-coding-telemetry.types";
 import type { McpEntry } from "../ai-client/ai-client.types";
 import { ANALYTICS_RECEIVER_FLAG } from "../../app-mode";
+import { ensureNodeShim, resolveValue } from "../../runtime/path-resolver";
 
 // Claude Code のユーザー設定ファイルパス（env セクションで環境変数を定義できる）
 const CLAUDE_CODE_SETTINGS_PATH = path.join(
@@ -24,6 +27,8 @@ const CLAUDE_CODE_MCP_CONFIG_PATH = path.join(os.homedir(), ".claude.json");
 const CODEX_CONFIG_PATH = path.join(os.homedir(), ".codex", "config.toml");
 
 export const ANALYTICS_MCP_SERVER_NAME = "tumiki-analytics";
+
+const ANALYTICS_NODE_ENTRY = "analytics-node.cjs";
 
 const isFileNotFoundError = (error: unknown): boolean => {
   if (typeof error !== "object" || error === null) return false;
@@ -49,18 +54,49 @@ const createConfigParseError = (message: string): Error => {
 const isConfigParseError = (error: unknown): boolean =>
   error instanceof Error && error.name === CONFIG_PARSE_ERROR_NAME;
 
-const getAnalyticsMcpEntry = (): McpEntry => {
+const getAppPath = (): string => app.getAppPath();
+
+const getAnalyticsNodeEntryPath = (): string => {
+  const appPath = getAppPath();
+  const appPathEntry = path.join(
+    appPath,
+    "dist-electron",
+    "main",
+    ANALYTICS_NODE_ENTRY,
+  );
+  if (existsSync(appPathEntry)) return appPathEntry;
+
   const rawAppEntry = process.argv[1];
-  const appEntry = rawAppEntry ? path.resolve(rawAppEntry) : null;
-  const isDefaultApp =
-    (process as NodeJS.Process & { defaultApp?: boolean }).defaultApp === true;
-  const args =
-    isDefaultApp && appEntry
-      ? [appEntry, ANALYTICS_RECEIVER_FLAG]
-      : [ANALYTICS_RECEIVER_FLAG];
+  if (rawAppEntry) {
+    return path.join(
+      path.dirname(path.resolve(rawAppEntry)),
+      ANALYTICS_NODE_ENTRY,
+    );
+  }
+  return appPathEntry;
+};
+
+const getMigrationsDir = (): string => {
+  const appPath = getAppPath();
+  if (app.isPackaged) {
+    return path.join(
+      appPath.replace(/app\.asar$/, "app.asar.unpacked"),
+      "prisma",
+      "migrations",
+    );
+  }
+  return path.join(appPath, "prisma", "migrations");
+};
+
+const getAnalyticsMcpEntry = (): McpEntry => {
+  ensureNodeShim();
   return {
-    command: process.execPath,
-    args,
+    command: resolveValue("${runtime:node}"),
+    args: [getAnalyticsNodeEntryPath(), ANALYTICS_RECEIVER_FLAG],
+    env: {
+      TUMIKI_DESKTOP_USER_DATA_DIR: app.getPath("userData"),
+      TUMIKI_DESKTOP_MIGRATIONS_DIR: getMigrationsDir(),
+    },
   };
 };
 
