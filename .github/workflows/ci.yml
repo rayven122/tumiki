@@ -101,6 +101,9 @@ jobs:
       - name: 🔧 Build packages (apps は除外・テストに必要なパッケージのみ)
         run: pnpm turbo build --filter="./packages/*"
 
+      - name: 🗃️ Generate app Prisma clients for tests
+        run: pnpm turbo db:generate --filter=@tumiki/desktop --filter=@tumiki/tenant-console
+
       - name: 🧪 Run tests
         run: pnpm test
 
