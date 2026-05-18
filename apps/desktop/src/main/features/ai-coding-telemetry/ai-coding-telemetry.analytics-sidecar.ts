@@ -147,6 +147,10 @@ export const startAnalyticsMcpServer = (
 ): void => {
   let buffer = Buffer.alloc(0);
 
+  process.stdin.on("error", (error: Error) => {
+    logger.warn("Analytics MCP stdin error", { error });
+  });
+
   process.stdin.on("data", (chunk: Buffer) => {
     buffer = Buffer.concat([buffer, chunk]);
 

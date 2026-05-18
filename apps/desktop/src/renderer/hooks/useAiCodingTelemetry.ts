@@ -105,12 +105,10 @@ export const useAiCodingTelemetryReceiverStatus = (): ReceiverStatusResult => {
     window.electronAPI.aiCodingTelemetry
       .getReceiverStatus()
       .then((nextReceiverStatus) => {
-        if (cancelled.value) return;
-        setReceiverStatus(nextReceiverStatus);
+        if (!cancelled.value) setReceiverStatus(nextReceiverStatus);
       })
       .catch(() => {
-        if (cancelled.value) return;
-        setReceiverStatus(null);
+        if (!cancelled.value) setReceiverStatus(null);
       })
       .finally(() => {
         if (!cancelled.value) setIsLoading(false);
