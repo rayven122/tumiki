@@ -286,6 +286,7 @@ describe("POST /v1/tool-search/embeddings", () => {
     );
 
     expect(res.status).toBe(429);
+    expect(res.headers.get("Retry-After")).toBeTruthy();
   });
 
   test("app全体で /v1/tool-search/embeddings を使える", async () => {

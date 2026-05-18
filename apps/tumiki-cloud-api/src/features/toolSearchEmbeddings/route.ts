@@ -31,6 +31,7 @@ type RateLimitBucket = {
 
 const rateLimitBuckets = new Map<string, RateLimitBucket>();
 
+// Podごとの軽い防御。複数Pod環境ではIngress/Cloudflare側の制限と組み合わせる。
 const deleteExpiredRateLimitBuckets = (now: number): void => {
   for (const [subject, bucket] of rateLimitBuckets) {
     if (bucket.resetAt <= now) {
@@ -62,7 +63,13 @@ const verifyRateLimit = (): MiddlewareHandler<{
     }
 
     if (bucket.count > TOOL_SEARCH_EMBEDDING_CONFIG.maxRequestsPerWindow) {
-      return c.json({ error: "Too Many Requests" }, 429);
+      const retryAfterSec = Math.max(
+        1,
+        Math.ceil((bucket.resetAt - now) / 1000),
+      );
+      return c.json({ error: "Too Many Requests" }, 429, {
+        "Retry-After": String(retryAfterSec),
+      });
     }
 
     await next();
@@ -103,7 +110,7 @@ toolSearchEmbeddingsRoute.post("/v1/tool-search/embeddings", async (c) => {
   try {
     const result = await embedToolSearchTexts(parsed.data);
     console.log(
-      `[tool-search/embeddings] sub=${c.var.tumikiJwt.sub} texts=${parsed.data.texts.length} model=${result.model}`,
+      `[tool-search/embeddings] texts=${parsed.data.texts.length} model=${result.model}`,
     );
     return c.json(result);
   } catch (err) {

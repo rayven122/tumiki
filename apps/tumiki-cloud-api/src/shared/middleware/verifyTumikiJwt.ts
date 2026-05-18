@@ -29,6 +29,7 @@ type JwksCacheEntry = {
   jwksUri: string;
 };
 
+// Keycloak issuer / jwks_uri の変更を反映するにはプロセス再起動が必要。
 let serverMetadataCache: openidClient.ServerMetadata | null = null;
 let metadataDiscoveringPromise: Promise<openidClient.ServerMetadata> | null =
   null;
