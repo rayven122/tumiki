@@ -32,7 +32,10 @@ let storeInstance: Store<AppStoreSchema> | null = null;
 export const getAppStore = async (): Promise<Store<AppStoreSchema>> => {
   if (!storeInstance) {
     const { default: StoreClass } = await import("electron-store");
-    storeInstance = new StoreClass<AppStoreSchema>();
+    const userDataDir = process.env.TUMIKI_DESKTOP_USER_DATA_DIR;
+    storeInstance = new StoreClass<AppStoreSchema>(
+      userDataDir ? { cwd: userDataDir } : undefined,
+    );
   }
   return storeInstance;
 };
