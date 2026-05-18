@@ -25,6 +25,7 @@ describe("tumiki-cloud-api-client", () => {
   beforeEach(() => {
     vi.mocked(getDb).mockResolvedValue(mockDb);
     vi.mocked(decryptToken).mockResolvedValue("jwt-token");
+    mockDeleteMany.mockResolvedValue({ count: 0 });
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(new Response("ok", { status: 200 })),

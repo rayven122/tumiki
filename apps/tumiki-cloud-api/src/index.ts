@@ -29,6 +29,12 @@ if (missing.length > 0) {
   }
 }
 
+if (!process.env.KEYCLOAK_ALLOWED_AUDIENCES?.trim()) {
+  console.warn(
+    "[tumiki-cloud-api] WARNING: KEYCLOAK_ALLOWED_AUDIENCES is not set; Tumiki JWT audience validation is disabled until #1351 is completed.",
+  );
+}
+
 // HTTP モードのみ（TLS は Cloudflare Tunnel で終端する）
 serve({ fetch: app.fetch, port }, (info) => {
   console.log(

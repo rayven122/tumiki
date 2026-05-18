@@ -41,6 +41,17 @@ const findValidAuthToken = async (): Promise<AuthToken | null> => {
     return null;
   }
 
+  void db.authToken
+    .deleteMany({
+      where: { expiresAt: { lte: now } },
+    })
+    .catch((err: unknown) => {
+      console.warn(
+        "[tumiki-cloud-api-client] Failed to clean expired tokens:",
+        err,
+      );
+    });
+
   return token;
 };
 

@@ -40,6 +40,17 @@ const deleteExpiredRateLimitBuckets = (now: number): void => {
   }
 };
 
+const rateLimitCleanupInterval = setInterval(
+  () => deleteExpiredRateLimitBuckets(Date.now()),
+  Math.max(TOOL_SEARCH_EMBEDDING_CONFIG.rateLimitWindowMs, 5 * 60 * 1000),
+);
+if (
+  typeof rateLimitCleanupInterval === "object" &&
+  "unref" in rateLimitCleanupInterval
+) {
+  rateLimitCleanupInterval.unref();
+}
+
 const verifyRateLimit = (): MiddlewareHandler<{
   Variables: TumikiJwtContextVariables;
 }> => {

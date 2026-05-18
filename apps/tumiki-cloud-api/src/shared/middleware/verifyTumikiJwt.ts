@@ -116,14 +116,12 @@ const getJwks = async (): Promise<ReturnType<typeof createRemoteJWKSet>> => {
 const toVerifiedTumikiJwt = (
   payload: JWTPayload,
   issuer: string,
-): VerifiedTumikiJwt | null => {
-  if (!payload.sub) return null;
-
+): VerifiedTumikiJwt => {
   const email = payload.email;
   const name = payload.name;
 
   return {
-    sub: payload.sub,
+    sub: payload.sub!,
     issuer,
     email: typeof email === "string" ? email : undefined,
     name: typeof name === "string" ? name : undefined,
@@ -154,7 +152,7 @@ export const resetTumikiJwtCache = (): void => {
 
 export const verifyTumikiBearerToken = async (
   bearerToken: string,
-): Promise<VerifiedTumikiJwt | null> => {
+): Promise<VerifiedTumikiJwt> => {
   const metadata = await getKeycloakServerMetadata();
   const jwks = await getJwks();
   const allowedAudiences = getAllowedAudiences();
@@ -180,7 +178,7 @@ export const verifyTumikiJwtMiddleware =
       return c.json({ error: "Missing or invalid Authorization header" }, 401);
     }
 
-    let jwt: VerifiedTumikiJwt | null;
+    let jwt: VerifiedTumikiJwt;
     try {
       jwt = await verifyTumikiBearerToken(authHeader.slice(7));
     } catch (err) {
@@ -189,10 +187,6 @@ export const verifyTumikiJwtMiddleware =
       }
       console.error("[verifyTumikiJwt] Server misconfiguration:", err);
       return c.json({ error: "Server misconfiguration" }, 500);
-    }
-
-    if (!jwt) {
-      return c.json({ error: "Invalid or expired token" }, 401);
     }
 
     c.set("tumikiJwt", jwt);
