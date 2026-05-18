@@ -205,6 +205,22 @@ describe("verifyTumikiJwtMiddleware", () => {
     expect(res.status).toBe(200);
   });
 
+  test("KEYCLOAK_ALLOWED_AUDIENCES空白のみ時はaudienceを検証しない", async () => {
+    stubKeycloakEnv();
+    vi.stubEnv("KEYCLOAK_ALLOWED_AUDIENCES", "   ");
+    stubKeycloakFetch();
+
+    const token = await issueJwt(
+      { sub: "user_abc" },
+      { audience: "other-client" },
+    );
+    const res = await buildTestApp().request("/protected", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    expect(res.status).toBe(200);
+  });
+
   test("KEYCLOAK_ALLOWED_AUDIENCES設定時はaudience一致で認証が通る", async () => {
     stubKeycloakEnv();
     vi.stubEnv("KEYCLOAK_ALLOWED_AUDIENCES", "tumiki-cloud-api, other-client");

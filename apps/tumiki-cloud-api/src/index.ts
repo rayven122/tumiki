@@ -17,7 +17,7 @@ const requiredEnvVars = [
   "KEYCLOAK_ISSUER",
   "KEYCLOAK_ALLOWED_AUDIENCES",
 ];
-const missing = requiredEnvVars.filter((key) => !process.env[key]);
+const missing = requiredEnvVars.filter((key) => !process.env[key]?.trim());
 if (missing.length > 0) {
   if (isProduction) {
     console.error(
