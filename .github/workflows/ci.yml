@@ -10,7 +10,8 @@ on:
 jobs:
   build:
     name: 🔧 Build
-    runs-on: { group: self-arc }
+    runs-on:
+      group: self-arc
     env:
       NODE_OPTIONS: --max-old-space-size=4096
     steps:
@@ -31,7 +32,8 @@ jobs:
 
   lint:
     name: 🔍 Lint
-    runs-on: { group: self-arc }
+    runs-on:
+      group: self-arc
     steps:
       - name: 📥 Checkout branch
         uses: actions/checkout@v6
@@ -44,7 +46,8 @@ jobs:
 
   format:
     name: 💅 Format
-    runs-on: { group: self-arc }
+    runs-on:
+      group: self-arc
     steps:
       - name: 📥 Checkout branch
         uses: actions/checkout@v6
@@ -57,7 +60,8 @@ jobs:
 
   typecheck:
     name: 🔬 Typecheck
-    runs-on: { group: self-arc }
+    runs-on:
+      group: self-arc
     env:
       NODE_OPTIONS: --max-old-space-size=4096
     steps:
@@ -78,7 +82,8 @@ jobs:
 
   test:
     name: 🧪 Test
-    runs-on: { group: self-arc }
+    runs-on:
+      group: self-arc
     steps:
       - name: 📥 Checkout branch
         uses: actions/checkout@v6
@@ -97,7 +102,8 @@ jobs:
 
   docker-smoke-changes:
     name: 🐳 Docker Smoke Changes
-    runs-on: { group: self-arc }
+    runs-on:
+      group: self-arc
     outputs:
       manager: ${{ steps.filter.outputs.manager }}
       mcp_proxy: ${{ steps.filter.outputs.mcp_proxy }}
@@ -169,7 +175,8 @@ jobs:
 
   docker-smoke-images:
     name: 🐳 Docker Smoke Image (${{ matrix.app }})
-    runs-on: { group: self-arc }
+    runs-on:
+      group: self-arc
     needs: docker-smoke-changes
     strategy:
       fail-fast: false
@@ -278,7 +285,8 @@ jobs:
 
   docker-smoke-test:
     name: 🐳 Docker Smoke Test
-    runs-on: { group: self-arc }
+    runs-on:
+      group: self-arc
     needs: docker-smoke-images
     if: always()
     steps:
@@ -292,7 +300,8 @@ jobs:
 
   desktop-migration-check:
     name: 🗄️ Desktop Migration Check
-    runs-on: { group: self-arc }
+    runs-on:
+      group: self-arc
     steps:
       - name: 📥 Checkout branch
         uses: actions/checkout@v6

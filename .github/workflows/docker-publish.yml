@@ -17,7 +17,8 @@ concurrency:
 jobs:
   publish:
     name: 📦 Docker Publish (${{ matrix.app }})
-    runs-on: { group: self-arc }
+    runs-on:
+      group: self-arc
     strategy:
       fail-fast: false
       matrix:

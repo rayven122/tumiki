@@ -25,7 +25,8 @@ permissions:
 jobs:
   deploy-staging:
     name: 🚀 Deploy to staging
-    runs-on: { group: self-arc }
+    runs-on:
+      group: self-arc
     timeout-minutes: 30
     if: |
       (github.event_name == 'workflow_run' &&
@@ -129,7 +130,8 @@ jobs:
 
   deploy-production:
     name: 🚀 Deploy to production
-    runs-on: { group: self-arc }
+    runs-on:
+      group: self-arc
     timeout-minutes: 30
     if: |
       (github.event_name == 'workflow_run' &&

@@ -96,7 +96,8 @@ jobs:
   create-release:
     name: 📢 GitHub Release 作成
     needs: [build-macos]
-    runs-on: { group: self-arc }
+    runs-on:
+      group: self-arc
     permissions:
       contents: write
     outputs:
@@ -188,7 +189,8 @@ jobs:
     name: 📢 Slack通知
     needs: [create-release]
     if: always()
-    runs-on: { group: self-arc }
+    runs-on:
+      group: self-arc
     steps:
       - name: 📨 Send Slack notification
         if: ${{ vars.SLACK_ENABLED == 'true' }}
