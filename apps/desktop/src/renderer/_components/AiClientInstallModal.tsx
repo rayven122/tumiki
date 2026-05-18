@@ -7,7 +7,7 @@ export type AiClientInfo = {
   id: string;
   name: string;
   /** ロゴ参照（テーマ別）。無い場合は頭文字プレースホルダ */
-  logoPath?: (theme: "light" | "dark") => string;
+  logoPath?: (theme: string) => string;
 };
 
 type Props = {
@@ -17,6 +17,7 @@ type Props = {
   configSnippet: string;
   /** 設定ファイルのパス表示（ユーザー向け案内） */
   targetPath: string;
+  theme: string;
   onClose: () => void;
 };
 
@@ -25,6 +26,7 @@ export const AiClientInstallModal = ({
   serverName,
   configSnippet,
   targetPath,
+  theme,
   onClose,
 }: Props): JSX.Element => {
   const [copied, setCopied] = useState(false);
@@ -46,31 +48,27 @@ export const AiClientInstallModal = ({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  const handleCopy = (): void => {
+  const handleCopy = () => {
     void navigator.clipboard.writeText(configSnippet).then(() => {
       setCopied(true);
       timerRef.current = setTimeout(() => setCopied(false), 1500);
     });
   };
 
-  const handleInstall = (): void => {
+  const handleInstall = () => {
     // Phase 2: 各 AI クライアント設定ファイルへの自動書き込み（未実装）
     toast.success("設定ファイルへの自動書き込みは近日対応予定");
     onClose();
   };
 
-  const logo = client.logoPath?.("light");
+  const logo = client.logoPath?.(theme);
 
   return (
     <div
-      role="presentation"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={onClose}
     >
       <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="ai-client-install-modal-title"
         className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-gray-200 bg-white p-8 dark:border-white/[.08] dark:bg-zinc-900"
         onClick={(e) => e.stopPropagation()}
       >
@@ -78,23 +76,18 @@ export const AiClientInstallModal = ({
         <div className="mb-5 flex items-start justify-between">
           <div className="flex items-center gap-3">
             {logo ? (
-              <div className="flex items-center justify-center overflow-hidden rounded-lg bg-zinc-100/95 p-[2px]">
-                <img
-                  src={logo}
-                  alt={client.name}
-                  className="h-9 w-9 rounded-lg object-contain"
-                />
-              </div>
+              <img
+                src={logo}
+                alt={client.name}
+                className="h-9 w-9 rounded-lg"
+              />
             ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-100/95 p-[2px] text-sm font-bold text-zinc-400 dark:text-zinc-500">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-black/[.06] text-sm font-bold text-gray-500 dark:bg-white/[.08] dark:text-zinc-500">
                 {client.name.charAt(0)}
               </div>
             )}
             <div>
-              <h2
-                id="ai-client-install-modal-title"
-                className="text-lg font-bold text-gray-900 dark:text-white"
-              >
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">
                 {client.name}に接続
               </h2>
               <p className="text-xs text-gray-500 dark:text-zinc-500">
