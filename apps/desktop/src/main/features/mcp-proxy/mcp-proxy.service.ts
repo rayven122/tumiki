@@ -12,6 +12,10 @@ import * as logger from "../../shared/utils/logger";
 import { decryptCredentials } from "../../utils/credentials";
 import { refreshOAuthTokenIfNeeded } from "../oauth/oauth.refresh";
 import {
+  getCachedCredentials,
+  setCachedCredentials,
+} from "../oauth/credentials-cache";
+import {
   buildChildEnv,
   resolveArgs,
   resolveValue,
@@ -123,6 +127,27 @@ const withAllowedTools = <T extends McpServerConfig>(
 };
 
 /**
+ * SSE / STREAMABLE_HTTP transport 用の getHeaders コールバックを生成する。
+ * OAuth 接続だけ対象。非 OAuth は静的 headers で十分なので undefined を返す。
+ *
+ * scheduler が credentials-cache に書き込んだ最新値を毎リクエスト時に読み、
+ * 既存 transport を作り直さずに新しい access_token を反映する。
+ * cache 未投入のフォールバックとして「config 生成時点の credentials」を使うため、
+ * scheduler が一度も走っていない瞬間でも認証が壊れない。
+ */
+const buildGetHeaders = (
+  conn: ConnectionForConfig,
+  authType: AuthType,
+  initialCredentials: Record<string, string>,
+): (() => Promise<Record<string, string>>) | undefined => {
+  if (conn.authType !== "OAUTH") return undefined;
+  return async () => {
+    const latest = getCachedCredentials(conn.secretId) ?? initialCredentials;
+    return buildHeaders(authType, latest);
+  };
+};
+
+/**
  * 単一接続からMcpServerConfigを生成する共通ヘルパー。
  * credentials復号 → Zodバリデーション → OAuthリフレッシュ → config組み立て。
  * 生成不可（urlなし等）の場合は null を返す。
@@ -168,6 +193,9 @@ const buildConfigFromConnection = async (
       // リフレッシュ実行後・スキップ後どちらでも、後続接続が古いスナップショットで再叩きしないようキャッシュ
       oauthCache.set(conn.secretId, credentials);
     }
+    // 動的ヘッダ用 in-memory cache を初期化。scheduler が以後この cache を更新するため、
+    // getHeaders コールバックは常に最新値を返せる。
+    setCachedCredentials(conn.secretId, credentials);
   }
 
   let config: McpServerConfig;
@@ -206,6 +234,7 @@ const buildConfigFromConnection = async (
         return null;
       }
       const sseAuthType = toProxyAuthType(conn.authType);
+      const sseGetHeaders = buildGetHeaders(conn, sseAuthType, credentials);
       config = withAllowedTools(
         {
           name,
@@ -213,6 +242,7 @@ const buildConfigFromConnection = async (
           url: conn.url,
           authType: sseAuthType,
           headers: buildHeaders(sseAuthType, credentials),
+          ...(sseGetHeaders && { getHeaders: sseGetHeaders }),
         },
         conn,
       );
@@ -226,6 +256,7 @@ const buildConfigFromConnection = async (
         return null;
       }
       const httpAuthType = toProxyAuthType(conn.authType);
+      const httpGetHeaders = buildGetHeaders(conn, httpAuthType, credentials);
       config = withAllowedTools(
         {
           name,
@@ -233,6 +264,7 @@ const buildConfigFromConnection = async (
           url: conn.url,
           authType: httpAuthType,
           headers: buildHeaders(httpAuthType, credentials),
+          ...(httpGetHeaders && { getHeaders: httpGetHeaders }),
         },
         conn,
       );

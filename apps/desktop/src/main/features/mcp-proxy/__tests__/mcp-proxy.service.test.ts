@@ -485,6 +485,7 @@ describe("mcp-proxy.service", () => {
           url: "https://api.figma.com/mcp",
           authType: "BEARER",
           headers: { Authorization: "Bearer oauth-token" },
+          getHeaders: expect.any(Function),
         },
       ]);
     });
@@ -521,6 +522,7 @@ describe("mcp-proxy.service", () => {
           url: "https://api.figma.com/sse",
           authType: "BEARER",
           headers: { Authorization: "Bearer refreshed-token" },
+          getHeaders: expect.any(Function),
         },
       ]);
       // 第1引数は connectionId ではなく secretId（共有 secret 単位でトークン更新）
@@ -578,6 +580,7 @@ describe("mcp-proxy.service", () => {
           url: "https://api.figma.com/sse",
           authType: "BEARER",
           headers: { Authorization: "Bearer refreshed" },
+          getHeaders: expect.any(Function),
         },
         {
           name: "virtual-figma-virtual",
@@ -585,6 +588,7 @@ describe("mcp-proxy.service", () => {
           url: "https://api.figma.com/sse",
           authType: "BEARER",
           headers: { Authorization: "Bearer refreshed" },
+          getHeaders: expect.any(Function),
         },
       ]);
     });

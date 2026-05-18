@@ -34,6 +34,11 @@ import {
   stopAuditLogManagerSyncScheduler,
   syncPendingAuditLogsToManager,
 } from "./features/audit-log-manager-sync/audit-log-manager-sync.service";
+import {
+  refreshAllOAuthSecrets,
+  startOAuthRefreshScheduler,
+  stopOAuthRefreshScheduler,
+} from "./features/oauth/oauth.scheduler";
 import { getAppStore } from "./shared/app-store";
 import { activateOrganizationProfile } from "./shared/profile-store";
 import { ServerStatus } from "@prisma/desktop-client";
@@ -186,8 +191,19 @@ if (appMode === "mcp-proxy") {
         );
       }
       startAuditLogManagerSyncScheduler();
+      // OAuth トークンの定期リフレッシュを開始（数日プロセスが生き続けるユースケース対応）
+      startOAuthRefreshScheduler();
       powerMonitor.on("resume", () => {
         void syncPendingAuditLogsToManager();
+        // 長時間スリープ後の停滞解消のため、resume 時に即時 1 回 refresh を走らせる。
+        // 失敗を握り潰すと resume 後の不調がデバッグ不能になるため、エラーは必ずログに出す。
+        void refreshAllOAuthSecrets().catch((error: unknown) => {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          logger.error("OAuth scheduler: resume 後の refresh に失敗", {
+            error: message,
+          });
+        });
       });
 
       // 有効なMCPサーバー設定 + 監査ログ用メタデータを取得
@@ -422,6 +438,7 @@ if (appMode === "mcp-proxy") {
         enableToonConversion,
         dynamicSearch,
         onShutdown: async () => {
+          stopOAuthRefreshScheduler();
           await stopAuditLogManagerSyncScheduler();
           await resetAllServerStatus().catch(() => {});
           await closeDb();
