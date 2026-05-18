@@ -167,7 +167,7 @@ describe("tumiki-cloud-api-client", () => {
     );
   });
 
-  test("tool-search embeddings APIのレスポンスをnumber[][]で返す", async () => {
+  test("ツール検索embedding APIのレスポンスをnumber[][]で返す", async () => {
     mockFindFirst.mockResolvedValue({
       id: 1,
       accessToken: "encrypted:access-token",
@@ -208,7 +208,7 @@ describe("tumiki-cloud-api-client", () => {
     );
   });
 
-  test("tool-search embeddings APIが失敗したらエラーを投げる", async () => {
+  test("ツール検索embedding APIが失敗したらエラーを投げる", async () => {
     mockFindFirst.mockResolvedValue({
       id: 1,
       accessToken: "encrypted:access-token",
@@ -228,7 +228,7 @@ describe("tumiki-cloud-api-client", () => {
     await expect(promise).rejects.toMatchObject({ status: 503 });
   });
 
-  test("tool-search embeddings APIのレスポンス形式が不正なら専用エラーを投げる", async () => {
+  test("ツール検索embedding APIのレスポンス形式が不正なら専用エラーを投げる", async () => {
     mockFindFirst.mockResolvedValue({
       id: 1,
       accessToken: "encrypted:access-token",

@@ -121,7 +121,7 @@ describe("POST /v1/tool-search/embeddings", () => {
     expect(res.status).toBe(401);
   });
 
-  test("invalid body は 400", async () => {
+  test("不正なリクエストボディは400", async () => {
     stubEnv();
     stubKeycloakFetch();
     const token = await issueJwt();
@@ -272,7 +272,7 @@ describe("POST /v1/tool-search/embeddings", () => {
     );
   });
 
-  test("body size 超過は 413", async () => {
+  test("ボディサイズ超過は413", async () => {
     stubEnv();
     const body = JSON.stringify({ texts: ["x".repeat(200 * 1024)] });
 
