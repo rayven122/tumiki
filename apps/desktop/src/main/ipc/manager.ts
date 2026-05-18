@@ -50,14 +50,18 @@ export const setupManagerIpc = (
     url: string,
     pendingProfile: DesktopProfile,
   ): Promise<void> => {
-    const config = await fetchManagerOidcConfig(url);
-    await initOAuthManager(url, config.issuer, config.clientId);
+    const normalizedUrl = url.replace(/\/$/, "");
+    const config = await fetchManagerOidcConfig(normalizedUrl);
+    await initOAuthManager(normalizedUrl, config.issuer, config.clientId);
 
     const store = await getAppStore();
-    store.set("managerUrl", url);
+    store.set("managerUrl", normalizedUrl);
     store.set("pendingProfile", pendingProfile);
 
-    logger.info("Manager URL connected", { url, pendingProfile });
+    logger.info("Manager URL connected", {
+      url: normalizedUrl,
+      pendingProfile,
+    });
   };
 
   ipcMain.handle("manager:getUrl", async () => {

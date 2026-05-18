@@ -78,6 +78,23 @@ describe("setupManagerIpc", () => {
     expect(storeData.get("hasCompletedInitialProfileSetup")).toBeUndefined();
   });
 
+  test("管理サーバーURLの末尾スラッシュを除去して保存する", async () => {
+    const handler = mockIpcHandlers.get("manager:connect");
+
+    await handler!({} as IpcMainInvokeEvent, "https://manager.example.com/");
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://manager.example.com/api/auth/config",
+      { signal: expect.any(AbortSignal) },
+    );
+    expect(initOAuthManager).toHaveBeenCalledWith(
+      "https://manager.example.com",
+      "https://issuer.example.com",
+      "desktop-client",
+    );
+    expect(storeData.get("managerUrl")).toBe("https://manager.example.com");
+  });
+
   test("個人プロファイル用の接続ではtumiki.cloudを使いpendingProfileをpersonalとして保存する", async () => {
     const handler = mockIpcHandlers.get("manager:connectPersonal");
 

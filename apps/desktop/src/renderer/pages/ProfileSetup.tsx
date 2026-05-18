@@ -193,6 +193,8 @@ export const ProfileSetup = (): JSX.Element => {
     if (isOrganizationChange) {
       try {
         await window.electronAPI.auth.cancelLogin();
+      } catch {
+        // 設定画面からの変更キャンセルでは、ブラウザ状態にかかわらず設定画面へ戻す。
       } finally {
         if (mountedRef.current) {
           setIsSubmitting(false);

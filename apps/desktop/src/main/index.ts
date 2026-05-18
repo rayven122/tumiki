@@ -602,18 +602,23 @@ if (appMode === "mcp-proxy") {
       const isPersonalManagerUrl = managerUrl === PERSONAL_PROFILE_MANAGER_URL;
       if (
         pendingProfile === "personal" ||
+        // 古いストアに pendingProfile が無い場合でも、tumiki.cloud の認証は個人利用として扱う。
         (!pendingProfile && isPersonalManagerUrl)
       ) {
         await activatePersonalProfile();
-      } else if (managerUrl) {
+      } else if (
+        managerUrl &&
+        (pendingProfile === "organization" || !pendingProfile)
+      ) {
         await activateOrganizationProfile(managerUrl);
       } else {
-        logger.error(
-          "Auth callback could not activate organization profile: managerUrl is missing",
-        );
+        logger.error("Auth callback could not activate profile", {
+          managerUrl,
+          pendingProfile,
+        });
         sendToWindow(
           "auth:callbackError",
-          "管理サーバーURLが見つかりません。再度サインインしてください。",
+          "プロファイル設定が見つかりません。再度サインインしてください。",
         );
         return;
       }
