@@ -39,7 +39,7 @@ jobs:
           node-version: "22"
           cache: pnpm
 
-      - uses: rayven122/actions/setup-npm-proxy@v1
+      - uses: ./.github/actions/setup-npm-proxy
 
       - name: Install Vercel CLI
         run: pnpm add -g vercel@latest

@@ -235,7 +235,7 @@ jobs:
 
       - name: ⚙️ Setup NPM proxy
         if: needs.docker-smoke-changes.outputs[matrix.change_output] == 'true'
-        uses: rayven122/actions/setup-npm-proxy@v1
+        uses: ./.github/actions/setup-npm-proxy
 
       - name: 🔨 Build image
         if: needs.docker-smoke-changes.outputs[matrix.change_output] == 'true'
