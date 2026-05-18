@@ -28,6 +28,7 @@ export class TumikiCloudApiError extends Error {
 const findValidAuthToken = async (): Promise<AuthToken | null> => {
   const db = await getDb();
   const now = new Date();
+  // 通常は1件運用だが、残存時は最も長く使えるトークンを選ぶ。
   const token = await db.authToken.findFirst({
     orderBy: { expiresAt: "desc" },
   });

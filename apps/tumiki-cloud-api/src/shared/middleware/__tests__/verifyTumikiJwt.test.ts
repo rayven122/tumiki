@@ -174,7 +174,7 @@ describe("verifyTumikiJwtMiddleware", () => {
     expect(res.status).toBe(401);
   });
 
-  test("audienceはmcp-proxyと同様に検証しない", async () => {
+  test("KEYCLOAK_ALLOWED_AUDIENCES未設定時はaudienceを検証しない", async () => {
     stubKeycloakEnv();
     stubKeycloakFetch();
 

@@ -40,6 +40,16 @@ const deleteExpiredRateLimitBuckets = (now: number): void => {
   }
 };
 
+const getEarliestRateLimitBucketExpiry = (): number | null => {
+  let earliestExpiry: number | null = null;
+  for (const bucket of rateLimitBuckets.values()) {
+    if (earliestExpiry === null || bucket.resetAt < earliestExpiry) {
+      earliestExpiry = bucket.resetAt;
+    }
+  }
+  return earliestExpiry;
+};
+
 let rateLimitCleanupInterval: NodeJS.Timeout | null = null;
 
 export const startToolSearchEmbeddingsRateLimitCleanup = (): void => {
@@ -71,8 +81,14 @@ const verifyRateLimit = (): MiddlewareHandler<{
         rateLimitBuckets.size >=
         TOOL_SEARCH_EMBEDDING_CONFIG.maxRateLimitBuckets
       ) {
+        const earliestExpiry =
+          getEarliestRateLimitBucketExpiry() ?? now + windowMs;
+        const retryAfterSec = Math.max(
+          1,
+          Math.ceil((earliestExpiry - now) / 1000),
+        );
         return c.json({ error: "Too Many Requests" }, 429, {
-          "Retry-After": String(Math.ceil(windowMs / 1000)),
+          "Retry-After": String(retryAfterSec),
         });
       }
     }
@@ -140,7 +156,7 @@ toolSearchEmbeddingsRoute.post("/v1/tool-search/embeddings", async (c) => {
   try {
     const result = await embedToolSearchTexts(parsed.data);
     console.log(
-      `[tool-search/embeddings] texts=${parsed.data.texts.length} model=${result.model}`,
+      `[tool-search/embeddings] sub=${c.var.tumikiJwt.sub} texts=${parsed.data.texts.length} model=${result.model}`,
     );
     return c.json(result);
   } catch (err) {

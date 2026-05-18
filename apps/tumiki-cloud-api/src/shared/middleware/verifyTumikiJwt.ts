@@ -117,12 +117,16 @@ const toVerifiedTumikiJwt = (
   payload: JWTPayload,
   issuer: string,
 ): VerifiedTumikiJwt => {
+  const sub = payload.sub;
+  if (!sub) {
+    throw new Error("JWT sub claim is missing despite requiredClaims");
+  }
+
   const email = payload.email;
   const name = payload.name;
 
   return {
-    // requiredClaims で sub の存在を保証済み。
-    sub: payload.sub!,
+    sub,
     issuer,
     email: typeof email === "string" ? email : undefined,
     name: typeof name === "string" ? name : undefined,
@@ -161,9 +165,9 @@ export const verifyTumikiBearerToken = async (
   const { payload } = await jwtVerify(bearerToken, jwks, {
     issuer: metadata.issuer,
     ...(allowedAudiences.length > 0 ? { audience: allowedAudiences } : {}),
-    // apps/mcp-proxy と同じ検証境界に揃えるため、未設定時は audience / azp を検証しない。
-    // 専用 audience を発行できる環境では KEYCLOAK_ALLOWED_AUDIENCES で任意検証する。
-    // TODO(#1351): api.tumiki.cloud 専用 audience を発行できるようになったら検証を追加する。
+    // 本番では required env の KEYCLOAK_ALLOWED_AUDIENCES で audience を検証する。
+    // 開発・テスト環境では未設定時に apps/mcp-proxy と同様の検証境界へ戻す。
+    // TODO(#1351): api.tumiki.cloud 専用 audience 設定後に運用環境での検証結果を確認する。
     clockTolerance: 60,
     requiredClaims: ["exp", "sub"],
   });
