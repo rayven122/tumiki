@@ -62,21 +62,21 @@ describe("setupManagerIpc", () => {
     setupManagerIpc(initOAuthManager);
   });
 
-  test("URL検証とOIDC設定取得後にOAuthManagerを初期化しURLを保存する", async () => {
+  test("self-hostのinternal-manager URLではOIDC設定取得後にOAuthManagerを初期化しURLを保存する", async () => {
     const handler = mockIpcHandlers.get("manager:connect");
 
-    await handler!({} as IpcMainInvokeEvent, "https://manager.example.com");
+    await handler!({} as IpcMainInvokeEvent, "https://internal.example.com");
 
     expect(fetch).toHaveBeenCalledWith(
-      "https://manager.example.com/api/auth/config",
+      "https://internal.example.com/api/auth/config",
       { signal: expect.any(AbortSignal) },
     );
     expect(initOAuthManager).toHaveBeenCalledWith(
-      "https://manager.example.com",
+      "https://internal.example.com",
       "https://issuer.example.com",
       "desktop-client",
     );
-    expect(storeData.get("managerUrl")).toBe("https://manager.example.com");
+    expect(storeData.get("managerUrl")).toBe("https://internal.example.com");
     expect(storeData.get("pendingProfile")).toBe("organization");
     expect(storeData.get("activeProfile")).toBeUndefined();
     expect(storeData.get("organizationProfile")).toBeUndefined();
@@ -86,18 +86,18 @@ describe("setupManagerIpc", () => {
   test("管理サーバーURLの末尾スラッシュを除去して保存する", async () => {
     const handler = mockIpcHandlers.get("manager:connect");
 
-    await handler!({} as IpcMainInvokeEvent, "https://manager.example.com/");
+    await handler!({} as IpcMainInvokeEvent, "https://internal.example.com/");
 
     expect(fetch).toHaveBeenCalledWith(
-      "https://manager.example.com/api/auth/config",
+      "https://internal.example.com/api/auth/config",
       { signal: expect.any(AbortSignal) },
     );
     expect(initOAuthManager).toHaveBeenCalledWith(
-      "https://manager.example.com",
+      "https://internal.example.com",
       "https://issuer.example.com",
       "desktop-client",
     );
-    expect(storeData.get("managerUrl")).toBe("https://manager.example.com");
+    expect(storeData.get("managerUrl")).toBe("https://internal.example.com");
   });
 
   test("クラウド組織URLではKeycloakへ直接接続してpendingProfileをorganizationとして保存する", async () => {
@@ -139,12 +139,12 @@ describe("setupManagerIpc", () => {
   });
 
   test("保存済みの管理サーバーURLを返す", async () => {
-    storeData.set("managerUrl", "https://manager.example.com");
+    storeData.set("managerUrl", "https://internal.example.com");
     const handler = mockIpcHandlers.get("manager:getUrl");
 
     const result = await handler!({} as IpcMainInvokeEvent);
 
-    expect(result).toBe("https://manager.example.com");
+    expect(result).toBe("https://internal.example.com");
   });
 
   test("接続失敗時はプロファイル状態を確定しない", async () => {
@@ -152,7 +152,7 @@ describe("setupManagerIpc", () => {
     const handler = mockIpcHandlers.get("manager:connect");
 
     await expect(
-      handler!({} as IpcMainInvokeEvent, "https://manager.example.com"),
+      handler!({} as IpcMainInvokeEvent, "https://internal.example.com"),
     ).rejects.toThrow("init failed");
 
     expect(storeData.get("managerUrl")).toBeUndefined();
@@ -174,7 +174,7 @@ describe("setupManagerIpc", () => {
     const handler = mockIpcHandlers.get("manager:connect");
 
     await expect(
-      handler!({} as IpcMainInvokeEvent, "https://manager.example.com"),
+      handler!({} as IpcMainInvokeEvent, "https://internal.example.com"),
     ).rejects.toThrow("OIDC設定の取得に失敗しました（503）");
 
     expect(storeData.get("managerUrl")).toBeUndefined();

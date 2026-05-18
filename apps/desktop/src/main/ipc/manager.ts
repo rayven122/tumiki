@@ -24,7 +24,8 @@ export const isSelfHostedManagerUrl = (managerUrl: string): boolean => {
 };
 
 /**
- * 管理サーバーからOIDC設定を取得する
+ * internal-manager から組織用 OIDC 設定を取得する。
+ * tumiki.cloud 配下は Keycloak に直接接続し、self-host / private tenant のみこの API を使う。
  */
 export const fetchManagerOidcConfig = async (
   managerUrl: string,
