@@ -187,15 +187,13 @@ const ServerCard = ({
         {/* アイコン + ステータスバッジ */}
         <div className="mb-3 flex items-start justify-between gap-2">
           {getServerIcon(server) ? (
-            <div className="flex items-center justify-center overflow-hidden rounded-lg bg-zinc-100/95 p-[2px]">
-              <img
-                src={getServerIcon(server)!}
-                alt={server.name}
-                className="h-8 w-8 rounded-lg object-contain"
-              />
-            </div>
+            <img
+              src={getServerIcon(server)!}
+              alt={server.name}
+              className="h-8 w-8 rounded-lg"
+            />
           ) : (
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100/95 p-[2px]">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-black/[.02] dark:bg-white/[.04]">
               <Server size={18} className="text-gray-500 dark:text-zinc-500" />
             </div>
           )}
