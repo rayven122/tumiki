@@ -1,4 +1,4 @@
-import { type JSX, useEffect, useState } from "react";
+import { type JSX, useEffect, useRef, useState } from "react";
 import { HashRouter, Navigate, Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
 import { useAtom } from "jotai";
@@ -53,6 +53,8 @@ export const App = (): JSX.Element => {
   const [theme, setTheme] = useAtom(themeAtom);
   // electron-store からの復元が終わるまでは store への保存をスキップする
   const [hydrated, setHydrated] = useState(false);
+  // ハイドレーション直後の初回実行（読み取り直後の冗長な書き戻し）をスキップする
+  const skipFirstWrite = useRef(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,6 +80,10 @@ export const App = (): JSX.Element => {
 
   useEffect(() => {
     if (!hydrated) return;
+    if (skipFirstWrite.current) {
+      skipFirstWrite.current = false;
+      return;
+    }
     void window.electronAPI.appConfig.setTheme(theme).catch(() => {
       // 永続化失敗はユーザー操作を妨げないため握りつぶす
     });

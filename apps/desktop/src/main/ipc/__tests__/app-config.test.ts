@@ -91,10 +91,37 @@ describe("setupAppConfigIpc", () => {
     expect(result).toStrictEqual("dark");
   });
 
-  test("light/dark 以外の値は拒否する", async () => {
+  test("light/dark 以外の文字列は拒否する", async () => {
     const handler = mockIpcHandlers.get("appConfig:setTheme");
 
     await expect(handler!({} as IpcMainInvokeEvent, "system")).rejects.toThrow(
+      "テーマは 'light' または 'dark' で指定してください",
+    );
+    expect(storeData.has("theme")).toStrictEqual(false);
+  });
+
+  test("null を渡すと appConfig:setTheme が拒否する", async () => {
+    const handler = mockIpcHandlers.get("appConfig:setTheme");
+
+    await expect(handler!({} as IpcMainInvokeEvent, null)).rejects.toThrow(
+      "テーマは 'light' または 'dark' で指定してください",
+    );
+    expect(storeData.has("theme")).toStrictEqual(false);
+  });
+
+  test("undefined を渡すと appConfig:setTheme が拒否する", async () => {
+    const handler = mockIpcHandlers.get("appConfig:setTheme");
+
+    await expect(handler!({} as IpcMainInvokeEvent, undefined)).rejects.toThrow(
+      "テーマは 'light' または 'dark' で指定してください",
+    );
+    expect(storeData.has("theme")).toStrictEqual(false);
+  });
+
+  test("数値を渡すと appConfig:setTheme が拒否する", async () => {
+    const handler = mockIpcHandlers.get("appConfig:setTheme");
+
+    await expect(handler!({} as IpcMainInvokeEvent, 1)).rejects.toThrow(
       "テーマは 'light' または 'dark' で指定してください",
     );
     expect(storeData.has("theme")).toStrictEqual(false);
