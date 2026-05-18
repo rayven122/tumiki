@@ -1,7 +1,6 @@
 import type { JSX } from "react";
 import { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
-import { useAtomValue } from "jotai";
 import {
   ArrowLeft,
   Server,
@@ -16,7 +15,8 @@ import {
   KeyRound,
   AlertTriangle,
 } from "lucide-react";
-import { themeAtom, reauthCompletedSignalAtom } from "../store/atoms";
+import { useAtomValue } from "jotai";
+import { reauthCompletedSignalAtom } from "../store/atoms";
 import { AI_CLIENTS, type AiClient } from "../data/ai-clients";
 import { useMcpProxyLaunchCommand } from "../hooks/useMcpProxyLaunchCommand";
 import { buildMcpSnippet } from "../utils/mcp-snippet";
@@ -191,7 +191,6 @@ const SAMPLE_TOOLS: DisplayTool[] = [
 ];
 
 export const ToolDetail = (): JSX.Element => {
-  const theme = useAtomValue(themeAtom);
   // deeplink 経由の再認証完了シグナル。変化したら getDetail を再フェッチして needsReauth バナーを更新する。
   const reauthSignal = useAtomValue(reauthCompletedSignalAtom);
   const { toolId } = useParams<{ toolId: string }>();
@@ -933,7 +932,7 @@ export const ToolDetail = (): JSX.Element => {
             </div>
             <div className="flex-1 space-y-1 overflow-y-auto pr-1">
               {AI_CLIENTS.map((client) => {
-                const logo = client.logoPath?.(theme);
+                const logo = client.logoPath?.("light");
                 return (
                   <button
                     key={client.id}
@@ -942,13 +941,15 @@ export const ToolDetail = (): JSX.Element => {
                     className="flex w-full items-center gap-2 rounded-lg border border-gray-100 bg-black/[.02] px-2.5 py-1.5 text-left transition hover:border-gray-200 hover:bg-black/[.06] dark:border-white/[.08] dark:bg-white/[.08]"
                   >
                     {logo ? (
-                      <img
-                        src={logo}
-                        alt={client.name}
-                        className="h-4 w-4 shrink-0 rounded"
-                      />
+                      <div className="flex shrink-0 items-center justify-center overflow-hidden rounded bg-zinc-100/95 p-[2px]">
+                        <img
+                          src={logo}
+                          alt={client.name}
+                          className="h-4 w-4 rounded-lg object-contain"
+                        />
+                      </div>
                     ) : (
-                      <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-black/[.06] text-[8px] font-bold text-gray-500 dark:bg-white/[.08] dark:text-zinc-500">
+                      <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-zinc-100/95 p-[2px] text-[8px] font-bold text-gray-500 dark:text-zinc-500">
                         {client.name.charAt(0)}
                       </div>
                     )}
@@ -1218,7 +1219,6 @@ export const ToolDetail = (): JSX.Element => {
           serverName={server.name}
           configSnippet={buildConfigSnippet()}
           targetPath={selectedClient.configTargetPath}
-          theme={theme}
           onClose={() => setSelectedClient(null)}
         />
       )}
