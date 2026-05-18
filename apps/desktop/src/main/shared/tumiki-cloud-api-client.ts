@@ -4,6 +4,7 @@ import { decryptToken } from "../utils/encryption";
 import { getDb } from "./db";
 
 const DEFAULT_TUMIKI_CLOUD_API_URL = "https://api.tumiki.cloud";
+const DEFAULT_TUMIKI_CLOUD_API_TIMEOUT_MS = 30_000;
 
 type TumikiCloudRequestOptions = Omit<RequestInit, "headers"> & {
   headers?: HeadersInit;
@@ -110,6 +111,9 @@ export const requestTumikiCloudApi = async (
   return fetch(buildTumikiCloudApiUrl(path), {
     ...options,
     headers,
+    signal:
+      options.signal ??
+      AbortSignal.timeout(DEFAULT_TUMIKI_CLOUD_API_TIMEOUT_MS),
   });
 };
 

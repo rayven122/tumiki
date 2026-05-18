@@ -150,7 +150,7 @@ describe("verifyTumikiJwtMiddleware", () => {
     expect(body.jwt.name).toBe("Tumiki User");
   });
 
-  test("Authorizationなしは401", async () => {
+  test("Authorizationヘッダなしは401", async () => {
     stubKeycloakEnv();
 
     // Authorization ヘッダがなければ discovery / JWKS fetch 前に早期 return する。
@@ -221,7 +221,7 @@ describe("verifyTumikiJwtMiddleware", () => {
     expect(res.status).toBe(200);
   });
 
-  test("productionでKEYCLOAK_ALLOWED_AUDIENCES空白のみなら500", async () => {
+  test("本番環境でKEYCLOAK_ALLOWED_AUDIENCES空白のみなら500", async () => {
     stubKeycloakEnv();
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("KEYCLOAK_ALLOWED_AUDIENCES", "   ");
@@ -292,7 +292,7 @@ describe("verifyTumikiJwtMiddleware", () => {
     expect(res.status).toBe(500);
   });
 
-  test("JWKS fetch失敗は500", async () => {
+  test("JWKS取得失敗は500", async () => {
     stubKeycloakEnv();
     stubKeycloakFetchWithJwksFailure();
 

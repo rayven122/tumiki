@@ -91,6 +91,43 @@ describe("tumiki-cloud-api-client", () => {
     );
   });
 
+  test("signal未指定ならデフォルトタイムアウトを付ける", async () => {
+    mockFindFirst.mockResolvedValue({
+      id: 1,
+      accessToken: "encrypted:access-token",
+      refreshToken: null,
+      idToken: "encrypted:id-token",
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await requestTumikiCloudApi("/v1/tool-search/embeddings");
+
+    const [, init] = vi.mocked(fetch).mock.calls[0] ?? [];
+    expect(init?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  test("呼び出し元のsignalを優先する", async () => {
+    mockFindFirst.mockResolvedValue({
+      id: 1,
+      accessToken: "encrypted:access-token",
+      refreshToken: null,
+      idToken: "encrypted:id-token",
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const controller = new AbortController();
+
+    await requestTumikiCloudApi("/v1/tool-search/embeddings", {
+      signal: controller.signal,
+    });
+
+    const [, init] = vi.mocked(fetch).mock.calls[0] ?? [];
+    expect(init?.signal).toBe(controller.signal);
+  });
+
   test("トークンがなければリクエストしない", async () => {
     mockFindFirst.mockResolvedValue(null);
 
