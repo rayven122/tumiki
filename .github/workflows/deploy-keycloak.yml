@@ -100,6 +100,11 @@ jobs:
           mkdir -p /tmp/terraform-bin
           install -m 755 "$(command -v terraform)" /tmp/terraform-bin/terraform
 
+      - name: 🧰 Setup Node.js for theme build
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+
       - name: 📤 Transfer Terraform files
         run: |
           # 前回 cleanup が失敗していた場合に備えて既存 .env を削除（リカバリ）
@@ -307,6 +312,11 @@ jobs:
           # GitHub Actions runner と Keycloak VM が同一アーキテクチャ（linux/amd64）である前提
           mkdir -p /tmp/terraform-bin
           install -m 755 "$(command -v terraform)" /tmp/terraform-bin/terraform
+
+      - name: 🧰 Setup Node.js for theme build
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
 
       - name: 📤 Transfer Terraform files
         run: |
