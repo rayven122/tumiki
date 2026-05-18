@@ -29,7 +29,7 @@ const findValidAuthToken = async (): Promise<AuthToken | null> => {
   const db = await getDb();
   const now = new Date();
   const token = await db.authToken.findFirst({
-    orderBy: { createdAt: "desc" },
+    orderBy: { expiresAt: "desc" },
   });
 
   if (!token) return null;

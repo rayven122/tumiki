@@ -83,6 +83,30 @@ const stubKeycloakFetch = () => {
   );
 };
 
+const stubKeycloakFetchWithJwksFailure = () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: string | URL | Request) => {
+      const url = toUrlString(input);
+      if (url.includes("/.well-known/openid-configuration")) {
+        return new Response(
+          JSON.stringify({
+            issuer,
+            jwks_uri: `${issuer}/protocol/openid-connect/certs`,
+          }),
+          { headers: { "Content-Type": "application/json" } },
+        );
+      }
+
+      if (url === `${issuer}/protocol/openid-connect/certs`) {
+        throw new TypeError("JWKS endpoint is unavailable");
+      }
+
+      return new Response("Not Found", { status: 404 });
+    }),
+  );
+};
+
 beforeAll(async () => {
   const pair = await generateKeyPair("RS256", {
     modulusLength: 2048,
@@ -179,6 +203,18 @@ describe("verifyTumikiJwtMiddleware", () => {
 
   test("KEYCLOAK_ISSUER未設定は500", async () => {
     vi.stubEnv("KEYCLOAK_ISSUER", "");
+    const token = await issueJwt({ sub: "user_abc" });
+    const res = await buildTestApp().request("/protected", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    expect(res.status).toBe(500);
+  });
+
+  test("JWKS fetch失敗は500", async () => {
+    stubKeycloakEnv();
+    stubKeycloakFetchWithJwksFailure();
+
     const token = await issueJwt({ sub: "user_abc" });
     const res = await buildTestApp().request("/protected", {
       headers: { Authorization: `Bearer ${token}` },

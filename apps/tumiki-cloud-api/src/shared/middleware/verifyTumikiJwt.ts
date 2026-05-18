@@ -10,6 +10,15 @@
 
 import type { Context, MiddlewareHandler, Next } from "hono";
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
+import {
+  JOSEAlgNotAllowed,
+  JWSInvalid,
+  JWSSignatureVerificationFailed,
+  JWKSNoMatchingKey,
+  JWTClaimValidationFailed,
+  JWTExpired,
+  JWTInvalid,
+} from "jose/errors";
 import * as openidClient from "openid-client";
 import { allowInsecureRequests } from "openid-client";
 
@@ -121,6 +130,15 @@ const toVerifiedTumikiJwt = (
   };
 };
 
+const isInvalidJwtError = (err: unknown): boolean =>
+  err instanceof JWTExpired ||
+  err instanceof JWTClaimValidationFailed ||
+  err instanceof JWTInvalid ||
+  err instanceof JWSInvalid ||
+  err instanceof JWSSignatureVerificationFailed ||
+  err instanceof JOSEAlgNotAllowed ||
+  err instanceof JWKSNoMatchingKey;
+
 export const resetTumikiJwtCache = (): void => {
   serverMetadataCache = null;
   metadataDiscoveringPromise = null;
@@ -133,20 +151,16 @@ export const verifyTumikiBearerToken = async (
   const metadata = await getKeycloakServerMetadata();
   const jwks = await getJwks();
 
-  try {
-    const { payload } = await jwtVerify(bearerToken, jwks, {
-      issuer: metadata.issuer,
-      // apps/mcp-proxy と同じ検証境界に揃えるため audience / azp はここでは検証しない。
-      // Desktop が保持する idToken を受け取り、issuer・署名・exp・sub を API 境界で確認する。
-      // TODO(#1351): api.tumiki.cloud 専用 audience を発行できるようになったら検証を追加する。
-      clockTolerance: 60,
-      requiredClaims: ["exp", "sub"],
-    });
+  const { payload } = await jwtVerify(bearerToken, jwks, {
+    issuer: metadata.issuer,
+    // apps/mcp-proxy と同じ検証境界に揃えるため audience / azp はここでは検証しない。
+    // Desktop が保持する idToken を受け取り、issuer・署名・exp・sub を API 境界で確認する。
+    // TODO(#1351): api.tumiki.cloud 専用 audience を発行できるようになったら検証を追加する。
+    clockTolerance: 60,
+    requiredClaims: ["exp", "sub"],
+  });
 
-    return toVerifiedTumikiJwt(payload, metadata.issuer);
-  } catch {
-    return null;
-  }
+  return toVerifiedTumikiJwt(payload, metadata.issuer);
 };
 
 export const verifyTumikiJwtMiddleware =
@@ -161,6 +175,9 @@ export const verifyTumikiJwtMiddleware =
     try {
       jwt = await verifyTumikiBearerToken(authHeader.slice(7));
     } catch (err) {
+      if (isInvalidJwtError(err)) {
+        return c.json({ error: "Invalid or expired token" }, 401);
+      }
       console.error("[verifyTumikiJwt] Server misconfiguration:", err);
       return c.json({ error: "Server misconfiguration" }, 500);
     }

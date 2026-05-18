@@ -98,7 +98,7 @@ describe("tumiki-cloud-api-client", () => {
 
     expect(result).toBeNull();
     expect(mockFindFirst).toHaveBeenCalledWith({
-      orderBy: { createdAt: "desc" },
+      orderBy: { expiresAt: "desc" },
     });
     expect(mockDeleteMany).not.toHaveBeenCalled();
     expect(fetch).not.toHaveBeenCalled();
@@ -119,7 +119,7 @@ describe("tumiki-cloud-api-client", () => {
 
     expect(result).toBeNull();
     expect(mockFindFirst).toHaveBeenCalledWith({
-      orderBy: { createdAt: "desc" },
+      orderBy: { expiresAt: "desc" },
     });
     expect(mockDeleteMany).toHaveBeenCalledWith({
       where: { expiresAt: { lte: expect.any(Date) } },
