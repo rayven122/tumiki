@@ -63,6 +63,19 @@ export const activateOrganizationProfile = async (
   return getProfileState();
 };
 
+export const restoreOrganizationProfileManagerUrl =
+  async (): Promise<ProfileState> => {
+    const store = await getAppStore();
+    const organizationProfile = store.get("organizationProfile");
+    if (store.get("activeProfile") !== "organization" || !organizationProfile) {
+      throw new Error("復元できる組織利用プロファイルがありません");
+    }
+    store.set("managerUrl", organizationProfile.managerUrl);
+    store.delete("pendingProfile");
+    store.set("hasCompletedInitialProfileSetup", true);
+    return getProfileState();
+  };
+
 export const resetProfileState = async (): Promise<ProfileState> => {
   const store = await getAppStore();
   // pending setup のキャンセルと組織切断の両方で、managerUrl を含む profile 状態をクリアする。

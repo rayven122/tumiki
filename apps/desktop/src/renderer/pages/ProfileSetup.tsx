@@ -199,11 +199,24 @@ export const ProfileSetup = (): JSX.Element => {
         await window.electronAPI.auth.cancelLogin();
       } catch {
         // 設定画面からの変更キャンセルでは、ブラウザ状態にかかわらず設定画面へ戻す。
-      } finally {
+      }
+
+      try {
+        await window.electronAPI.profile.cancelOrganizationChange();
         if (mountedRef.current) {
           setIsSubmitting(false);
           setIsWaitingForCallback(false);
           navigate("/settings", { replace: true });
+        }
+      } catch (err) {
+        if (mountedRef.current) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "組織変更のキャンセルに失敗しました",
+          );
+          setIsSubmitting(false);
+          setIsWaitingForCallback(false);
         }
       }
       return;

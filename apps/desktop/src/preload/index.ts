@@ -220,6 +220,8 @@ const api = {
       ipcRenderer.invoke("profile:getState"),
     cancelPendingSetup: (): Promise<ProfileState> =>
       ipcRenderer.invoke("profile:cancelPendingSetup"),
+    cancelOrganizationChange: (): Promise<ProfileState> =>
+      ipcRenderer.invoke("profile:cancelOrganizationChange"),
     disconnectOrganization: (): Promise<ProfileState> =>
       ipcRenderer.invoke("profile:disconnectOrganization"),
   },

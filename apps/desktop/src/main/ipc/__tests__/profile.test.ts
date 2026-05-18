@@ -118,6 +118,36 @@ describe("profile-store", () => {
       resolvePendingProfile(undefined, undefined, PERSONAL_PROFILE_MANAGER_URL),
     ).toBe("error");
   });
+
+  test("pendingProfileがpersonalの場合はmanagerUrlより個人指定を優先する", () => {
+    expect(
+      resolvePendingProfile(
+        "personal",
+        "https://other.example.com",
+        PERSONAL_PROFILE_MANAGER_URL,
+      ),
+    ).toBe("personal");
+  });
+
+  test("pendingProfileがorganizationの場合は組織指定として解決する", () => {
+    expect(
+      resolvePendingProfile(
+        "organization",
+        "https://manager.example.com",
+        PERSONAL_PROFILE_MANAGER_URL,
+      ),
+    ).toBe("organization");
+  });
+
+  test("pendingProfileがpersonalの場合はmanagerUrlが無くても個人指定として解決する", () => {
+    expect(
+      resolvePendingProfile(
+        "personal",
+        undefined,
+        PERSONAL_PROFILE_MANAGER_URL,
+      ),
+    ).toBe("personal");
+  });
 });
 
 describe("setupProfileIpc", () => {
@@ -173,6 +203,60 @@ describe("setupProfileIpc", () => {
     expect(stopAutoRefresh).not.toHaveBeenCalled();
     expect(mockSetOAuthManager).not.toHaveBeenCalled();
     expect(storeData.get("managerUrl")).toBe("https://manager.example.com");
+  });
+
+  test("組織変更キャンセルで既存組織URLを復元しpendingProfileをクリアする", async () => {
+    const cancelAuthFlow = vi.fn();
+    const stopAutoRefresh = vi.fn();
+    mockGetOAuthManager.mockReturnValue({ cancelAuthFlow, stopAutoRefresh });
+    storeData.set("activeProfile", "organization");
+    storeData.set("organizationProfile", {
+      managerUrl: "https://current-manager.example.com",
+      connectedAt: "2026-05-18T00:00:00.000Z",
+    });
+    storeData.set("hasCompletedInitialProfileSetup", true);
+    storeData.set("managerUrl", "https://new-manager.example.com");
+    storeData.set("pendingProfile", "organization");
+
+    const handler = mockIpcHandlers.get("profile:cancelOrganizationChange");
+    const result = await handler!({} as IpcMainInvokeEvent);
+
+    expect(cancelAuthFlow).toHaveBeenCalled();
+    expect(stopAutoRefresh).toHaveBeenCalled();
+    expect(mockSetOAuthManager).toHaveBeenCalledWith(null);
+    expect(storeData.get("managerUrl")).toBe(
+      "https://current-manager.example.com",
+    );
+    expect(storeData.has("pendingProfile")).toBe(false);
+    expect(result).toStrictEqual({
+      activeProfile: "organization",
+      organizationProfile: {
+        managerUrl: "https://current-manager.example.com",
+        connectedAt: "2026-05-18T00:00:00.000Z",
+      },
+      hasCompletedInitialProfileSetup: true,
+    });
+  });
+
+  test("復元できる組織プロファイルが無い場合は組織変更キャンセルを拒否する", async () => {
+    const cancelAuthFlow = vi.fn();
+    const stopAutoRefresh = vi.fn();
+    mockGetOAuthManager.mockReturnValue({ cancelAuthFlow, stopAutoRefresh });
+    storeData.set("activeProfile", "personal");
+    storeData.set("managerUrl", "https://new-manager.example.com");
+    storeData.set("pendingProfile", "organization");
+
+    const handler = mockIpcHandlers.get("profile:cancelOrganizationChange");
+
+    await expect(handler!({} as IpcMainInvokeEvent)).rejects.toThrow(
+      "組織変更のキャンセルに失敗しました",
+    );
+
+    expect(cancelAuthFlow).not.toHaveBeenCalled();
+    expect(stopAutoRefresh).not.toHaveBeenCalled();
+    expect(mockSetOAuthManager).not.toHaveBeenCalled();
+    expect(storeData.get("managerUrl")).toBe("https://new-manager.example.com");
+    expect(storeData.get("pendingProfile")).toBe("organization");
   });
 
   test("組織切断で認証とプロファイル状態をクリアする", async () => {

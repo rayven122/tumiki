@@ -1,6 +1,10 @@
 import { ipcMain } from "electron";
 import { getDb } from "../shared/db";
-import { getProfileState, resetProfileState } from "../shared/profile-store";
+import {
+  getProfileState,
+  resetProfileState,
+  restoreOrganizationProfileManagerUrl,
+} from "../shared/profile-store";
 import { getOAuthManager, setOAuthManager } from "../auth/manager-registry";
 import * as logger from "../shared/utils/logger";
 import type { ProfileState } from "../../shared/types";
@@ -25,6 +29,25 @@ export const setupProfileIpc = (): void => {
         error instanceof Error ? error : { error },
       );
       throw new Error("セットアップのキャンセルに失敗しました", {
+        cause: error,
+      });
+    }
+
+    stopOAuthManager();
+
+    return profileState;
+  });
+
+  ipcMain.handle("profile:cancelOrganizationChange", async () => {
+    let profileState: ProfileState;
+    try {
+      profileState = await restoreOrganizationProfileManagerUrl();
+    } catch (error) {
+      logger.error(
+        "Failed to restore organization profile while cancelling organization change",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error("組織変更のキャンセルに失敗しました", {
         cause: error,
       });
     }
