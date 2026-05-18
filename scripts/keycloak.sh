@@ -4,6 +4,7 @@
 # 使用例:
 #   ./keycloak.sh local init      # ローカル環境を初期化
 #   ./keycloak.sh local apply     # ローカル環境に適用
+#   ./keycloak.sh staging plan    # ステージング環境のプレビュー
 #   ./keycloak.sh prod plan       # 本番環境のプレビュー
 #   ./keycloak.sh prod apply      # 本番環境に適用
 set -euo pipefail
@@ -116,10 +117,11 @@ trap restore_cloud EXIT
 
 # 使用方法
 usage() {
-  echo "Usage: $0 {local|prod} {init|plan|apply|destroy}"
+  echo "Usage: $0 {local|staging|prod} {init|plan|apply|destroy}"
   echo ""
-  echo "  local  ローカル開発環境（cloud.tfを無効化）"
-  echo "  prod   本番環境（Terraform Cloud）"
+  echo "  local    ローカル開発環境（cloud.tfを無効化）"
+  echo "  staging  ステージング環境"
+  echo "  prod     本番環境"
   exit 1
 }
 
@@ -127,19 +129,30 @@ usage() {
 ENV="$1"
 COMMAND="${2:-}"
 shift 2 || usage
+TF_VAR_FILE=""
 
 case "$ENV" in
   local)
     disable_cloud
     log_info "ローカルモード"
     ;;
+  staging)
+    TF_VAR_FILE="terraform.tfvars.staging"
+    log_info "ステージングモード"
+    ;;
   prod|production)
-    log_info "本番モード（Terraform Cloud）"
+    TF_VAR_FILE="terraform.tfvars.production"
+    log_info "本番モード"
     ;;
   *)
     usage
     ;;
 esac
+
+terraform_args=()
+if [ -n "$TF_VAR_FILE" ]; then
+  terraform_args+=("-var-file=${TF_VAR_FILE}")
+fi
 
 case "$COMMAND" in
   init)
@@ -148,15 +161,15 @@ case "$COMMAND" in
     ;;
   plan)
     export_tf_vars
-    terraform plan "$@"
+    terraform plan "${terraform_args[@]}" "$@"
     ;;
   apply)
     export_tf_vars
-    terraform apply -auto-approve "$@"
+    terraform apply -auto-approve "${terraform_args[@]}" "$@"
     ;;
   destroy)
     export_tf_vars
-    terraform destroy -auto-approve "$@"
+    terraform destroy -auto-approve "${terraform_args[@]}" "$@"
     ;;
   *)
     usage
