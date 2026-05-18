@@ -1,6 +1,8 @@
 import type { JSX } from "react";
 import { useMemo, useState } from "react";
+import { useAtomValue } from "jotai";
 import { ArrowRight, Lock, Plug, Activity } from "lucide-react";
+import { themeAtom } from "../store/atoms";
 import { AI_CLIENTS, type AiClient } from "../data/ai-clients";
 import { cardStyle } from "../utils/theme-styles";
 import { toast } from "../_components/Toast";
@@ -12,13 +14,13 @@ import {
   useOtlpReceiverPort,
 } from "../hooks/useAiCodingTelemetry";
 import { TRACKING_TOOL_MAP } from "../utils/ai-coding-telemetry-tools";
-import type { AiCodingTool } from "../../main/types";
+import type { ConfigurableAiCodingTool } from "../../main/types";
 
 /** 使用量記録が有効なツールに表示するバッジ（フック安定化のためサブコンポーネント化） */
 const TrackingBadge = ({
   tool,
 }: {
-  tool: AiCodingTool;
+  tool: ConfigurableAiCodingTool;
 }): JSX.Element | null => {
   const { settings } = useAiCodingToolSettings(tool);
   if (!settings?.enabled) return null;
@@ -43,7 +45,31 @@ const AUTO_WRITE_SUPPORTED_IDS = new Set([
   "codex-cli",
 ]);
 
+const TRACKING_CLIENT_ORDER = ["codex-cli", "claude-code"];
+
+const sortAiClients = (clients: AiClient[]): AiClient[] =>
+  clients
+    .map((client, index) => ({ client, index }))
+    .sort((a, b) => {
+      const aTracking = TRACKING_TOOL_MAP[a.client.id] !== undefined;
+      const bTracking = TRACKING_TOOL_MAP[b.client.id] !== undefined;
+      if (aTracking || bTracking) {
+        if (aTracking !== bTracking) return aTracking ? -1 : 1;
+        const aTrackingOrder = TRACKING_CLIENT_ORDER.indexOf(a.client.id);
+        const bTrackingOrder = TRACKING_CLIENT_ORDER.indexOf(b.client.id);
+        return aTrackingOrder - bTrackingOrder;
+      }
+
+      const aSupported = AUTO_WRITE_SUPPORTED_IDS.has(a.client.id);
+      const bSupported = AUTO_WRITE_SUPPORTED_IDS.has(b.client.id);
+      if (aSupported !== bSupported) return aSupported ? -1 : 1;
+
+      return a.index - b.index;
+    })
+    .map(({ client }) => client);
+
 export const AiIntegrations = (): JSX.Element => {
+  const theme = useAtomValue(themeAtom);
   const { servers } = useMcpServers();
   const launchCommand = useMcpProxyLaunchCommand();
   const [activeClient, setActiveClient] = useState<AiClient | null>(null);
@@ -55,6 +81,7 @@ export const AiIntegrations = (): JSX.Element => {
     () => servers.filter((s) => s.isEnabled),
     [servers],
   );
+  const sortedClients = useMemo(() => sortAiClients(AI_CLIENTS), []);
 
   const handleClick = (client: AiClient): void => {
     if (AUTO_WRITE_SUPPORTED_IDS.has(client.id)) {
@@ -83,8 +110,8 @@ export const AiIntegrations = (): JSX.Element => {
 
       {/* AIクライアントカード一覧 */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-        {AI_CLIENTS.map((client) => {
-          const logo = client.logoPath?.("light");
+        {sortedClients.map((client) => {
+          const logo = client.logoPath?.(theme);
           const supported = AUTO_WRITE_SUPPORTED_IDS.has(client.id);
           const trackingTool = TRACKING_TOOL_MAP[client.id];
           return (
@@ -96,15 +123,13 @@ export const AiIntegrations = (): JSX.Element => {
             >
               <div className="flex w-full items-center justify-between">
                 {logo ? (
-                  <div className="flex items-center justify-center overflow-hidden rounded-lg bg-zinc-100/95 p-[2px]">
-                    <img
-                      src={logo}
-                      alt={client.name}
-                      className="h-10 w-10 rounded-lg object-contain"
-                    />
-                  </div>
+                  <img
+                    src={logo}
+                    alt={client.name}
+                    className="h-10 w-10 rounded-lg"
+                  />
                 ) : (
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-100/95 p-[2px] text-sm font-bold text-zinc-400 dark:text-zinc-500">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-black/[.06] text-sm font-bold text-gray-500 dark:bg-white/[.08] dark:text-zinc-500">
                     {client.name.charAt(0)}
                   </div>
                 )}
@@ -155,6 +180,7 @@ export const AiIntegrations = (): JSX.Element => {
           client={activeClient}
           servers={enabledServers}
           launchCommand={launchCommand}
+          theme={theme}
           port={port}
           onClose={() => setActiveClient(null)}
         />
