@@ -1,5 +1,5 @@
 import { readdir, readFile } from "fs/promises";
-import { join } from "path";
+import { dirname, join, resolve } from "path";
 import { app } from "electron";
 import { randomUUID } from "crypto";
 import type { PrismaClient } from "@prisma/desktop-client";
@@ -14,7 +14,13 @@ const getMigrationsDir = (): string => {
   if (explicit && explicit.trim().length > 0) return explicit;
 
   if (!app || !app.getAppPath) {
-    return join(process.cwd(), "apps", "desktop", "prisma", "migrations");
+    const entryPath = process.argv[1];
+    if (!entryPath) {
+      return join(process.cwd(), "apps", "desktop", "prisma", "migrations");
+    }
+    const appRoot = resolve(dirname(entryPath), "../..");
+    const migrationsRoot = appRoot.replace(/app\.asar$/, "app.asar.unpacked");
+    return join(migrationsRoot, "prisma", "migrations");
   }
 
   if (app.isPackaged) {

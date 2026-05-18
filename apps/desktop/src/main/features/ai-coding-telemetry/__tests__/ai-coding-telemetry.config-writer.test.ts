@@ -100,10 +100,6 @@ describe("applyOtlpToTool - claude-code", () => {
       expect.objectContaining({
         command: "/user-data/userData/runtime/bin/node",
         args: expect.arrayContaining(["--analytics"]),
-        env: {
-          TUMIKI_DESKTOP_MIGRATIONS_DIR: "/app/prisma/migrations",
-          TUMIKI_DESKTOP_USER_DATA_DIR: "/user-data/userData",
-        },
       }),
     );
     expect(
@@ -113,6 +109,13 @@ describe("applyOtlpToTool - claude-code", () => {
         ] as { args: string[] }
       ).args[0],
     ).toStrictEqual("/app/dist-electron/main/analytics-node.cjs");
+    expect(
+      (
+        (mcpWritten.mcpServers as Record<string, unknown>)[
+          "tumiki-analytics"
+        ] as { env?: Record<string, string> }
+      ).env,
+    ).toBeUndefined();
     expect(mockEnsureNodeShim).toHaveBeenCalled();
   });
 

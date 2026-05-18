@@ -187,6 +187,9 @@ describe("path-resolver", () => {
       expect(existsSync(shimPath)).toStrictEqual(true);
       const content = readFileSync(shimPath, "utf8");
       expect(content).toContain("#!/bin/sh");
+      expect(content).toContain(
+        `export TUMIKI_DESKTOP_USER_DATA_DIR='${tmpUserData}'`,
+      );
       expect(content).toContain("ELECTRON_RUN_AS_NODE=1");
       expect(content).toContain("'/path/to/Electron'");
       expect(content).toContain('"$@"');

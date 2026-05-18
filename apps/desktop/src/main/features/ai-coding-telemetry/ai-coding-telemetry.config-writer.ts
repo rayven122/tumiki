@@ -76,27 +76,11 @@ const getAnalyticsNodeEntryPath = (): string => {
   return appPathEntry;
 };
 
-const getMigrationsDir = (): string => {
-  const appPath = getAppPath();
-  if (app.isPackaged) {
-    return path.join(
-      appPath.replace(/app\.asar$/, "app.asar.unpacked"),
-      "prisma",
-      "migrations",
-    );
-  }
-  return path.join(appPath, "prisma", "migrations");
-};
-
 const getAnalyticsMcpEntry = (): McpEntry => {
   ensureNodeShim();
   return {
     command: resolveValue("${runtime:node}"),
     args: [getAnalyticsNodeEntryPath(), ANALYTICS_RECEIVER_FLAG],
-    env: {
-      TUMIKI_DESKTOP_USER_DATA_DIR: app.getPath("userData"),
-      TUMIKI_DESKTOP_MIGRATIONS_DIR: getMigrationsDir(),
-    },
   };
 };
 
