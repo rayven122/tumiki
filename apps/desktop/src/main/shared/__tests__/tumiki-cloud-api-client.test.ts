@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+vi.mock("electron", () => ({
+  app: {
+    getPath: (name: string) =>
+      name === "userData" ? "/test/user/data" : "/test",
+  },
+}));
 vi.mock("../db");
 vi.mock("../../utils/encryption");
 
