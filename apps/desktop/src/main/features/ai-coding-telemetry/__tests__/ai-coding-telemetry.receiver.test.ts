@@ -2,6 +2,7 @@ import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import http from "node:http";
 
 vi.mock("../../../shared/utils/logger", () => ({
+  debug: vi.fn(),
   info: vi.fn(),
   warn: vi.fn(),
   error: vi.fn(),
@@ -124,6 +125,14 @@ describe("エンドポイントルーティング", () => {
     await sendRequest(testPort, "/v1/traces", payload);
     expect(service.storeOtlpTraces).toHaveBeenCalledOnce();
     expect(service.storeOtlpMetrics).not.toHaveBeenCalled();
+  });
+
+  test("/v1/logs は受信成功を返し、メトリクスやトレース保存は呼ばない", async () => {
+    const payload = JSON.stringify({ resourceLogs: [] });
+    const res = await sendRequest(testPort, "/v1/logs", payload);
+    expect(res.status).toStrictEqual(200);
+    expect(service.storeOtlpMetrics).not.toHaveBeenCalled();
+    expect(service.storeOtlpTraces).not.toHaveBeenCalled();
   });
 
   test("保存処理が失敗した場合は 500 を返す", async () => {

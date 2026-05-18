@@ -206,9 +206,7 @@ describe("applyOtlpToTool - codex", () => {
   test("設定ファイルが存在しない場合は新規作成する", async () => {
     mockReadFile.mockRejectedValue(new Error("ENOENT"));
     mockParseToml.mockReturnValue({});
-    mockStringifyToml.mockReturnValue(
-      "[telemetry]\notel_exporter_otlp_endpoint = ...\n",
-    );
+    mockStringifyToml.mockReturnValue("[otel]\ntrace_exporter = ...\n");
 
     const result = await applyOtlpToTool("codex", 4318);
 
@@ -218,9 +216,30 @@ describe("applyOtlpToTool - codex", () => {
     const [[tomlArg]] = mockStringifyToml.mock.calls as [
       [Record<string, unknown>],
     ];
+    const otel = tomlArg.otel as Record<string, unknown>;
+    expect(otel.log_user_prompt).toStrictEqual(false);
     expect(
-      (tomlArg.telemetry as Record<string, string>).otel_exporter_otlp_endpoint,
-    ).toStrictEqual("http://127.0.0.1:4318");
+      (otel.exporter as Record<string, Record<string, string>>)["otlp-http"],
+    ).toStrictEqual({
+      endpoint: "http://127.0.0.1:4318/v1/logs",
+      protocol: "json",
+    });
+    expect(
+      (otel.trace_exporter as Record<string, Record<string, string>>)[
+        "otlp-http"
+      ],
+    ).toStrictEqual({
+      endpoint: "http://127.0.0.1:4318/v1/traces",
+      protocol: "json",
+    });
+    expect(
+      (otel.metrics_exporter as Record<string, Record<string, string>>)[
+        "otlp-http"
+      ],
+    ).toStrictEqual({
+      endpoint: "http://127.0.0.1:4318/v1/metrics",
+      protocol: "json",
+    });
     expect(
       (tomlArg.mcp_servers as Record<string, unknown>)["tumiki-analytics"],
     ).toStrictEqual(
@@ -232,11 +251,18 @@ describe("applyOtlpToTool - codex", () => {
   });
 
   test("既存設定とマージする", async () => {
-    mockReadFile.mockResolvedValue("[telemetry]\nexisting_key = 'val'\n");
-    mockParseToml.mockReturnValue({ telemetry: { existing_key: "val" } });
-    mockStringifyToml.mockReturnValue(
-      "[telemetry]\nexisting_key = 'val'\notel_exporter_otlp_endpoint = ...\n",
-    );
+    mockReadFile.mockResolvedValue("[otel]\nenvironment = 'prod'\n");
+    mockParseToml.mockReturnValue({
+      otel: {
+        environment: "prod",
+        trace_exporter: {
+          "otlp-http": {
+            headers: { "x-existing": "1" },
+          },
+        },
+      },
+    });
+    mockStringifyToml.mockReturnValue("[otel]\ntrace_exporter = ...\n");
 
     const result = await applyOtlpToTool("codex", 4320);
 
@@ -244,23 +270,24 @@ describe("applyOtlpToTool - codex", () => {
     const [[tomlArg]] = mockStringifyToml.mock.calls as [
       [Record<string, unknown>],
     ];
-    // 既存 telemetry キーが保持されている
+    const otel = tomlArg.otel as Record<string, unknown>;
+    expect(otel.environment).toStrictEqual("prod");
     expect(
-      (tomlArg.telemetry as Record<string, string>).existing_key,
-    ).toStrictEqual("val");
-    // OTLP エンドポイントが追加されている
-    expect(
-      (tomlArg.telemetry as Record<string, string>).otel_exporter_otlp_endpoint,
-    ).toStrictEqual("http://127.0.0.1:4320");
+      (otel.trace_exporter as Record<string, Record<string, unknown>>)[
+        "otlp-http"
+      ],
+    ).toStrictEqual({
+      headers: { "x-existing": "1" },
+      endpoint: "http://127.0.0.1:4320/v1/traces",
+      protocol: "json",
+    });
     expect(tomlArg.mcp_servers).toHaveProperty("tumiki-analytics");
   });
 
-  test("既存 telemetry が配列の場合はマージ対象にしない", async () => {
-    mockReadFile.mockResolvedValue("telemetry = ['invalid']");
-    mockParseToml.mockReturnValue({ telemetry: ["invalid"] });
-    mockStringifyToml.mockReturnValue(
-      "[telemetry]\notel_exporter_otlp_endpoint = ...\n",
-    );
+  test("既存 otel が配列の場合はマージ対象にしない", async () => {
+    mockReadFile.mockResolvedValue("otel = ['invalid']");
+    mockParseToml.mockReturnValue({ otel: ["invalid"] });
+    mockStringifyToml.mockReturnValue("[otel]\ntrace_exporter = ...\n");
 
     const result = await applyOtlpToTool("codex", 4321);
 
@@ -268,9 +295,14 @@ describe("applyOtlpToTool - codex", () => {
     const [[tomlArg]] = mockStringifyToml.mock.calls as [
       [Record<string, unknown>],
     ];
-    expect(tomlArg.telemetry).toStrictEqual({
-      otel_exporter_otlp_endpoint: "http://127.0.0.1:4321",
-    });
+    const otel = tomlArg.otel as Record<string, unknown>;
+    expect(otel.log_user_prompt).toStrictEqual(false);
+    const traceOtlpHttp = (
+      otel.trace_exporter as Record<string, Record<string, string>>
+    )["otlp-http"];
+    expect(traceOtlpHttp?.endpoint).toStrictEqual(
+      "http://127.0.0.1:4321/v1/traces",
+    );
   });
 
   test("TOML パース失敗時は既存ファイルを上書きしない", async () => {
