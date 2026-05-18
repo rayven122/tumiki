@@ -32,17 +32,11 @@ const TrackingBadge = ({
   );
 };
 
+// 動作確認済みのクライアントのみ自動書き込み対象とする。それ以外は鍵アイコン + 「近日対応予定」表示
 const AUTO_WRITE_SUPPORTED_IDS = new Set([
   "claude-desktop",
   "claude-code",
   "cursor",
-  "windsurf",
-  "cline",
-  "roo-code",
-  "gemini-cli",
-  "vscode",
-  "zed",
-  "codex-cli",
 ]);
 
 const TRACKING_CLIENT_ORDER = ["codex-cli", "claude-code"];
