@@ -941,15 +941,15 @@ export const ToolDetail = (): JSX.Element => {
                     className="flex w-full items-center gap-2 rounded-lg border border-gray-100 bg-black/[.02] px-2.5 py-1.5 text-left transition hover:border-gray-200 hover:bg-black/[.06] dark:border-white/[.08] dark:bg-white/[.08]"
                   >
                     {logo ? (
-                      <div className="flex shrink-0 items-center justify-center overflow-hidden rounded bg-zinc-100/50 p-1">
+                      <div className="flex shrink-0 items-center justify-center overflow-hidden rounded bg-zinc-100/95 p-[2px]">
                         <img
                           src={logo}
                           alt={client.name}
-                          className="h-4 w-4 object-contain"
+                          className="h-4 w-4 rounded-lg object-contain"
                         />
                       </div>
                     ) : (
-                      <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-zinc-100/50 p-2 text-[8px] font-bold text-gray-500 dark:text-zinc-500">
+                      <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-zinc-100/95 p-[2px] text-[8px] font-bold text-gray-500 dark:text-zinc-500">
                         {client.name.charAt(0)}
                       </div>
                     )}
