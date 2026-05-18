@@ -3,6 +3,7 @@ import { HashRouter, Navigate, Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
 import { useAtomValue } from "jotai";
 import { themeAtom } from "./store/atoms";
+import { DeeplinkHandler } from "./_components/DeeplinkHandler";
 import { Layout } from "./_components/Layout";
 import { ProfileGate } from "./_components/ProfileGate";
 import { Dashboard } from "./pages/Dashboard";
@@ -58,6 +59,7 @@ export const App = (): JSX.Element => {
     <>
       <Toaster position="top-center" duration={3000} />
       <HashRouter>
+        <DeeplinkHandler />
         <Routes>
           <Route
             path="/login"

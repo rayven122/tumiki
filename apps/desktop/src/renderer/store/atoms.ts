@@ -24,3 +24,12 @@ export const themeAtom = atom(
     set(appConfigAtom, { ...get(appConfigAtom), theme: newTheme });
   },
 );
+
+/**
+ * deeplink 経由で再認証が完了したことを ToolDetail に伝えるシグナル。
+ * 値はインクリメンタルな番号で、変化すると ToolDetail が getDetail を再フェッチする。
+ *
+ * deeplink 経由の reauth は main プロセスが直接 manager.reauthenticateConnection を
+ * 呼ぶため、画面上の runReauth を経由しない → ToolDetail が古いデータのままになる問題を解消する。
+ */
+export const reauthCompletedSignalAtom = atom<number>(0);

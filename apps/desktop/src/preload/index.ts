@@ -20,6 +20,9 @@ import type {
   ToggleServerInput,
   UpdatePiiMaskingInput,
   UpdateToonConversionInput,
+  UpdateDynamicSearchInput,
+  RefreshToolsInput,
+  RefreshToolsOutput,
   GetServerEditDetailInput,
   GetServerEditDetailOutput,
   UpdateServerConnectionCredentialsInput,
@@ -132,6 +135,10 @@ const api = {
       ipcRenderer.invoke("mcp:updatePiiMasking", input),
     updateToonConversion: (input: UpdateToonConversionInput): Promise<void> =>
       ipcRenderer.invoke("mcp:updateToonConversion", input),
+    updateDynamicSearch: (input: UpdateDynamicSearchInput): Promise<void> =>
+      ipcRenderer.invoke("mcp:updateDynamicSearch", input),
+    refreshTools: (input: RefreshToolsInput): Promise<RefreshToolsOutput> =>
+      ipcRenderer.invoke("mcp:refreshTools", input),
     getDetail: (serverId: number): Promise<McpServerDetailItem | null> =>
       ipcRenderer.invoke("mcp-server:getDetail", serverId),
     toggleTool: (input: {
@@ -147,6 +154,18 @@ const api = {
       input: UpdateServerConnectionCredentialsInput,
     ): Promise<void> =>
       ipcRenderer.invoke("mcp:updateServerConnectionCredentials", input),
+    // AI クライアントから tumiki://reauth?connectionId=N ディープリンクが飛んできた際の
+    // renderer 側ナビゲーション通知（OAuth フロー自体は main 側が同期的に起動済み）
+    onReauthDeeplink: (
+      callback: (payload: { connectionId: number; serverId: number }) => void,
+    ): (() => void) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        payload: { connectionId: number; serverId: number },
+      ): void => callback(payload);
+      ipcRenderer.on("mcp:reauthDeeplink", listener);
+      return () => ipcRenderer.removeListener("mcp:reauthDeeplink", listener);
+    },
   },
 
   // MCP プロキシ起動コマンド（接続スニペット生成に利用）

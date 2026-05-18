@@ -15,7 +15,37 @@ import {
 import type { ProxyHooks } from "../cli.js";
 import type { ProxyCore } from "../core.js";
 import type { Logger } from "../types.js";
+import { DYNAMIC_SEARCH_TOOL_NAMES } from "../dynamic-search.js";
 import { applyToonConversion } from "../toon/toonConverter.js";
+
+const asRecord = (value: unknown): Record<string, unknown> => {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+};
+
+const deriveAuditCall = (
+  name: string,
+  args: Record<string, unknown>,
+): { prefixedToolName: string; args: Record<string, unknown> } => {
+  if (
+    name !== DYNAMIC_SEARCH_TOOL_NAMES.execute ||
+    typeof args.name !== "string"
+  ) {
+    return { prefixedToolName: name, args };
+  }
+
+  const toolName = args.name.trim();
+  if (toolName.length === 0) {
+    return { prefixedToolName: name, args };
+  }
+
+  return {
+    prefixedToolName: toolName,
+    args: asRecord(args.arguments),
+  };
+};
 
 /**
  * stdio inboundサーバーを起動
@@ -175,15 +205,19 @@ export const startStdioInbound = async (
         const piiDetections = hooks.filter?.getDetectionSummary
           ? hooks.filter.getDetectionSummary(filterContext)
           : undefined;
+        const auditCall = deriveAuditCall(name, safeArgs);
         // 検出があった場合のみマスク後 args を渡す（生 PII が DB に残らないよう、未検出時は省略）
-        const maskedArgs = piiDetections ? processedArgs : undefined;
+        const maskedArgs =
+          piiDetections && hooks.filter?.policy === "mask"
+            ? deriveAuditCall(name, processedArgs).args
+            : undefined;
         // フックは非同期でもfire-and-forget（ツール応答を遅延させない）
         // try-catchで同期throwも捕捉する
         try {
           Promise.resolve(
             hooks.onToolCall({
-              prefixedToolName: name,
-              args: safeArgs,
+              prefixedToolName: auditCall.prefixedToolName,
+              args: auditCall.args,
               durationMs,
               isSuccess,
               errorMessage,

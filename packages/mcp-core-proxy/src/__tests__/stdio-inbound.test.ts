@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { ProxyHooks } from "../cli.js";
 import type { ProxyCore } from "../core.js";
-import type { ToolCallEvent } from "../types.js";
+import type { Logger, ToolCallEvent } from "../types.js";
 import { createMockLogger } from "./test-helpers.js";
 
 // MCP SDK のモック
@@ -55,6 +55,36 @@ const getCallToolHandler = () => {
   }) => Promise<unknown>;
 };
 
+const callExecuteToolAndReadEvent = async (
+  core: ProxyCore,
+  logger: Logger,
+  hooks: ProxyHooks = {},
+  input: {
+    toolName?: string;
+    toolArgs?: Record<string, unknown>;
+  } = {},
+): Promise<ToolCallEvent> => {
+  const onToolCall = vi.fn();
+  await startStdioInbound(core, logger, { ...hooks, onToolCall });
+  const handler = getCallToolHandler();
+
+  await handler({
+    params: {
+      name: "execute_tool",
+      arguments: {
+        name: input.toolName ?? "github__create_issue",
+        arguments: input.toolArgs ?? { title: "Bug" },
+      },
+    },
+  });
+
+  await vi.waitFor(() => {
+    expect(onToolCall).toHaveBeenCalledOnce();
+  });
+
+  return onToolCall.mock.calls[0]![0] as ToolCallEvent;
+};
+
 describe("stdio-inbound フック", () => {
   const mockLogger = createMockLogger();
 
@@ -92,6 +122,136 @@ describe("stdio-inbound フック", () => {
     expect(event.errorMessage).toBeUndefined();
     expect(event.resultContent).toStrictEqual(resultContent);
     expect(event.durationMs).toBeGreaterThanOrEqual(0);
+  });
+
+  test("execute_toolは実ツール名と引数でonToolCallを呼ぶ", async () => {
+    const core = createMockCore({
+      callTool: vi.fn().mockResolvedValue({
+        content: [{ type: "text", text: "created" }],
+        isError: false,
+      }),
+    });
+
+    const event = await callExecuteToolAndReadEvent(core, mockLogger);
+    expect(event.prefixedToolName).toBe("github__create_issue");
+    expect(event.args).toStrictEqual({ title: "Bug" });
+  });
+
+  test("execute_toolのnameは前後空白を除去してonToolCallを呼ぶ", async () => {
+    const core = createMockCore({
+      callTool: vi.fn().mockResolvedValue({
+        content: [{ type: "text", text: "created" }],
+        isError: false,
+      }),
+    });
+
+    const event = await callExecuteToolAndReadEvent(
+      core,
+      mockLogger,
+      {},
+      {
+        toolName: " github__create_issue ",
+      },
+    );
+    expect(event.prefixedToolName).toBe("github__create_issue");
+    expect(event.args).toStrictEqual({ title: "Bug" });
+  });
+
+  test("execute_toolの実ツール実行が失敗しても実ツール名と引数でonToolCallを呼ぶ", async () => {
+    const core = createMockCore({
+      callTool: vi.fn().mockRejectedValue(new Error("upstream failed")),
+    });
+
+    const event = await callExecuteToolAndReadEvent(core, mockLogger);
+    expect(event.prefixedToolName).toBe("github__create_issue");
+    expect(event.args).toStrictEqual({ title: "Bug" });
+    expect(event.isSuccess).toBe(false);
+    expect(event.errorMessage).toBe("upstream failed");
+  });
+
+  test("execute_toolのnameが空の場合はメタツール呼び出しとしてonToolCallを呼ぶ", async () => {
+    const core = createMockCore({
+      callTool: vi
+        .fn()
+        .mockRejectedValue(new Error("execute_tool requires name")),
+    });
+
+    const event = await callExecuteToolAndReadEvent(
+      core,
+      mockLogger,
+      {},
+      {
+        toolName: "",
+        toolArgs: {},
+      },
+    );
+    expect(event.prefixedToolName).toBe("execute_tool");
+    expect(event.args).toStrictEqual({ name: "", arguments: {} });
+  });
+
+  test("execute_toolのmaskedArgsはfilter後の実ツール引数を使う", async () => {
+    const core = createMockCore({
+      callTool: vi.fn().mockResolvedValue({
+        content: [{ type: "text", text: "created" }],
+        isError: false,
+      }),
+    });
+    const hooks: ProxyHooks = {
+      filter: {
+        policy: "mask",
+        beforeCall: vi.fn(async (_name, args: Record<string, unknown>) => ({
+          args: {
+            ...args,
+            arguments: { body: "[EMAIL_1234]" },
+          },
+          context: { hasPii: true },
+        })),
+        afterCall: vi.fn(
+          async (_context, result: { content: unknown[] }) => result,
+        ),
+        getDetectionSummary: vi.fn(() => ({
+          EMAIL: { count: 1, tokens: ["[EMAIL_1234]"] },
+        })),
+      },
+    };
+
+    const event = await callExecuteToolAndReadEvent(core, mockLogger, hooks, {
+      toolArgs: { body: "alice@example.com" },
+    });
+
+    expect(event.args).toStrictEqual({ body: "alice@example.com" });
+    expect(event.maskedArgs).toStrictEqual({ body: "[EMAIL_1234]" });
+  });
+
+  test("execute_toolのdetect-onlyではmaskedArgsを保存しない", async () => {
+    const core = createMockCore({
+      callTool: vi.fn().mockResolvedValue({
+        content: [{ type: "text", text: "created" }],
+        isError: false,
+      }),
+    });
+    const hooks: ProxyHooks = {
+      filter: {
+        policy: "detect-only",
+        beforeCall: vi.fn(async (_name, args: Record<string, unknown>) => ({
+          args,
+          context: { hasPii: true },
+        })),
+        afterCall: vi.fn(
+          async (_context, result: { content: unknown[] }) => result,
+        ),
+        getDetectionSummary: vi.fn(() => ({
+          EMAIL: { count: 1, tokens: ["[EMAIL_1234]"] },
+        })),
+      },
+    };
+
+    const event = await callExecuteToolAndReadEvent(core, mockLogger, hooks, {
+      toolArgs: { body: "alice@example.com" },
+    });
+
+    expect(event.args).toStrictEqual({ body: "alice@example.com" });
+    expect(event.maskedArgs).toBeUndefined();
   });
 
   test("ツールがisError=trueの場合にisSuccess=falseとerrorMessageが設定される", async () => {
