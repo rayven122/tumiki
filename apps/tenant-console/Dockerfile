@@ -36,7 +36,10 @@ COPY .env.example .env
 ENV CI=true
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-  pnpm install --frozen-lockfile --prod=false
+  pnpm install --frozen-lockfile --prod=false --ignore-scripts
+
+RUN pnpm --filter @tumiki/db db:generate && \
+    pnpm --filter @tumiki/tenant-console db:generate
 
 RUN pnpm turbo run build --filter=@tumiki/tenant-console^...
 

@@ -49,7 +49,9 @@ COPY .env.example apps/manager/.env
 ENV CI=true
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-  pnpm install --frozen-lockfile --prod=false
+  pnpm install --frozen-lockfile --prod=false --ignore-scripts
+
+RUN pnpm --filter @tumiki/db db:generate
 
 # manager 依存パッケージのみを順序解決してビルド
 RUN pnpm turbo run build --filter=@tumiki/manager^...

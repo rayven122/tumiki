@@ -44,7 +44,9 @@ RUN echo "DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/place
 ENV CI=true
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-  pnpm install --frozen-lockfile --prod=false
+  pnpm install --frozen-lockfile --prod=false --ignore-scripts
+
+RUN pnpm --filter @tumiki/db db:generate
 
 # mcp-proxy の依存に加えて、通知機能で参照する @tumiki/slack もビルド
 RUN pnpm turbo run build --filter=@tumiki/mcp-proxy^... --filter=@tumiki/slack
