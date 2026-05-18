@@ -1,5 +1,5 @@
 import { readdir, readFile } from "fs/promises";
-import { join } from "path";
+import { dirname, join, resolve } from "path";
 import { app } from "electron";
 import { randomUUID } from "crypto";
 import type { PrismaClient } from "@prisma/desktop-client";
@@ -10,6 +10,19 @@ import * as logger from "../utils/logger";
  * 開発時とプロダクションビルドでパスが異なる
  */
 const getMigrationsDir = (): string => {
+  const explicit = process.env.TUMIKI_DESKTOP_MIGRATIONS_DIR;
+  if (explicit && explicit.trim().length > 0) return explicit;
+
+  if (!app || !app.getAppPath) {
+    const entryPath = process.argv[1];
+    if (!entryPath) {
+      return join(process.cwd(), "apps", "desktop", "prisma", "migrations");
+    }
+    const appRoot = resolve(dirname(entryPath), "../..");
+    const migrationsRoot = appRoot.replace(/app\.asar$/, "app.asar.unpacked");
+    return join(migrationsRoot, "prisma", "migrations");
+  }
+
   if (app.isPackaged) {
     // asarUnpackされたファイルは app.asar.unpacked に展開される
     const appPath = app.getAppPath();

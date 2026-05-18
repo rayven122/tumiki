@@ -20,6 +20,9 @@ import type {
   ToggleServerInput,
   UpdatePiiMaskingInput,
   UpdateToonConversionInput,
+  UpdateDynamicSearchInput,
+  RefreshToolsInput,
+  RefreshToolsOutput,
   GetServerEditDetailInput,
   GetServerEditDetailOutput,
   UpdateServerConnectionCredentialsInput,
@@ -37,6 +40,12 @@ import type {
   AiClientPreview,
   AiClientWriteRequest,
   AiClientWriteResult,
+  AiCodingTool,
+  TelemetrySummaryItem,
+  DailyUsageItem,
+  ApplyToolSettingsResult,
+  GetToolSettingsResult,
+  ReceiverStatus,
 } from "../main/types";
 
 // Electron APIを安全に公開
@@ -126,6 +135,10 @@ const api = {
       ipcRenderer.invoke("mcp:updatePiiMasking", input),
     updateToonConversion: (input: UpdateToonConversionInput): Promise<void> =>
       ipcRenderer.invoke("mcp:updateToonConversion", input),
+    updateDynamicSearch: (input: UpdateDynamicSearchInput): Promise<void> =>
+      ipcRenderer.invoke("mcp:updateDynamicSearch", input),
+    refreshTools: (input: RefreshToolsInput): Promise<RefreshToolsOutput> =>
+      ipcRenderer.invoke("mcp:refreshTools", input),
     getDetail: (serverId: number): Promise<McpServerDetailItem | null> =>
       ipcRenderer.invoke("mcp-server:getDetail", serverId),
     toggleTool: (input: {
@@ -141,6 +154,18 @@ const api = {
       input: UpdateServerConnectionCredentialsInput,
     ): Promise<void> =>
       ipcRenderer.invoke("mcp:updateServerConnectionCredentials", input),
+    // AI クライアントから tumiki://reauth?connectionId=N ディープリンクが飛んできた際の
+    // renderer 側ナビゲーション通知（OAuth フロー自体は main 側が同期的に起動済み）
+    onReauthDeeplink: (
+      callback: (payload: { connectionId: number; serverId: number }) => void,
+    ): (() => void) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        payload: { connectionId: number; serverId: number },
+      ): void => callback(payload);
+      ipcRenderer.on("mcp:reauthDeeplink", listener);
+      return () => ipcRenderer.removeListener("mcp:reauthDeeplink", listener);
+    },
   },
 
   // MCP プロキシ起動コマンド（接続スニペット生成に利用）
@@ -203,6 +228,34 @@ const api = {
   shell: {
     openExternal: (url: string): Promise<void> =>
       ipcRenderer.invoke("shell:openExternal", url),
+  },
+
+  // AI コーディングツール テレメトリ API
+  aiCodingTelemetry: {
+    getSummary: (days: number): Promise<TelemetrySummaryItem[]> =>
+      ipcRenderer.invoke("aiCodingTelemetry:getSummary", { days }),
+    getDailyUsage: (days: number): Promise<DailyUsageItem[]> =>
+      ipcRenderer.invoke("aiCodingTelemetry:getDailyUsage", { days }),
+    getReceiverPort: (): Promise<number> =>
+      ipcRenderer.invoke("aiCodingTelemetry:getReceiverPort"),
+    getReceiverStatus: (): Promise<ReceiverStatus> =>
+      ipcRenderer.invoke("aiCodingTelemetry:getReceiverStatus"),
+    getToolSettings: (tool: AiCodingTool): Promise<GetToolSettingsResult> =>
+      ipcRenderer.invoke("aiCodingTelemetry:getToolSettings", tool),
+    saveToolEnabled: (tool: AiCodingTool, enabled: boolean): Promise<void> =>
+      ipcRenderer.invoke("aiCodingTelemetry:saveToolEnabled", {
+        tool,
+        enabled,
+      }),
+    applyToTool: (tool: AiCodingTool): Promise<ApplyToolSettingsResult> =>
+      ipcRenderer.invoke("aiCodingTelemetry:applyToTool", { tool }),
+    // 起動時の自動再書き込み結果を取得（マウント時の取りこぼし対策）。
+    // 取得後は main 側でクリアされるため、複数回呼んでも重複表示されない。
+    getPendingAutoReapplied: (): Promise<{
+      tools: AiCodingTool[];
+      port: number;
+    } | null> =>
+      ipcRenderer.invoke("aiCodingTelemetry:getPendingAutoReapplied"),
   },
 
   // MCP OAuth認証 API

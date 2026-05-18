@@ -1,0 +1,25 @@
+[Unit]
+# この service は tumiki-docker-prune.timer 経由で起動する oneshot。
+# enable する対象は service ではなく timer。
+Description=Prune unused Tumiki Docker images
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+SupplementaryGroups=docker
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectProc=invisible
+ProcSubset=pid
+ProtectSystem=strict
+ProtectHome=yes
+PrivateDevices=yes
+RestrictSUIDSGID=yes
+# Watchtower cleanup は docker-socket-proxy の DELETE 権限を開けないため無効化している。
+# docker/metadata-action が付与する OCI source label で tumiki image だけを対象にする。
+ExecStart=/usr/bin/docker image prune -f --filter label=org.opencontainers.image.source=https://github.com/rayven122/tumiki
+# docker-socket-proxy には DELETE を許可しないため、停止済み compose container は週次でローカル prune する。
+ExecStart=/usr/bin/docker container prune -f --filter label=com.docker.compose.project=tumiki

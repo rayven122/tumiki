@@ -157,6 +157,24 @@ export type UpdateToonConversionInput = {
 };
 
 /**
+ * 動的ツール検索有効状態の更新入力型（renderer → main）
+ */
+export type UpdateDynamicSearchInput = {
+  serverId: number;
+  enabled: boolean;
+};
+
+/** ツール一覧再取得入力型（renderer → main） */
+export type RefreshToolsInput = {
+  serverId: number;
+};
+
+/** ツール一覧再取得結果（main → renderer） */
+export type RefreshToolsOutput = {
+  totalTools: number;
+};
+
+/**
  * STDIO通信のカスタムMCPサーバー入力型
  * OAuthは不可（ローカルプロセスのため）
  */

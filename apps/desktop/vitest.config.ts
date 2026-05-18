@@ -17,6 +17,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "@prisma/desktop-client": resolve(__dirname, "prisma/generated/client"),
+      // React を 1 インスタンスに統一し、複数バージョン共存による hooks エラーを防ぐ
+      react: resolve(__dirname, "node_modules/react"),
+      "react-dom": resolve(__dirname, "node_modules/react-dom"),
     },
   },
 });

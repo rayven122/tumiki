@@ -20,11 +20,13 @@ import {
 /** ツール一覧取得のデフォルトタイムアウト（npx の初回ダウンロードを考慮し30秒） */
 const DEFAULT_TOOL_FETCH_TIMEOUT_MS = 30_000;
 
-/** CLI監査ログ用: configName → DB情報のマッピング */
+/** CLI監査ログ・onUpstreamAuthError 用: configName → DB情報のマッピング */
 export type McpConnectionMeta = {
   configName: string;
   serverId: number;
   connectionId: number;
+  /** needsReauth フラグ更新で使う（同一 secret を共有する全コネクションに伝播する） */
+  secretId: number;
   connectionName: string;
   transportType: TransportType;
 };
@@ -250,6 +252,7 @@ const buildConfigFromConnection = async (
       configName: name,
       serverId: conn.server.id,
       connectionId: conn.id,
+      secretId: conn.secretId,
       connectionName: conn.name,
       transportType: conn.transportType,
     },

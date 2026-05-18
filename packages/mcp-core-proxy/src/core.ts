@@ -1,12 +1,18 @@
-import type { ResolveAllowedToolsByName } from "./outbound/upstream-pool.js";
+import type {
+  OnBeforeToolCallByName,
+  OnUpstreamAuthErrorByName,
+  ResolveAllowedToolsByName,
+} from "./outbound/upstream-pool.js";
 import type {
   CallToolResult,
+  DynamicSearchOptions,
   Logger,
   McpServerConfig,
   McpServerState,
   McpToolInfo,
   ServerStatus,
 } from "./types.js";
+import { createDynamicSearchToolLayer } from "./dynamic-search.js";
 import { createToolAggregator } from "./outbound/tool-aggregator.js";
 import { createUpstreamClient } from "./outbound/upstream-client.js";
 import { createUpstreamPool } from "./outbound/upstream-pool.js";
@@ -29,6 +35,9 @@ export type ProxyCore = {
 
 export type CreateProxyCoreOptions = {
   resolveAllowedTools?: ResolveAllowedToolsByName;
+  onBeforeToolCall?: OnBeforeToolCallByName;
+  onUpstreamAuthError?: OnUpstreamAuthErrorByName;
+  dynamicSearch?: DynamicSearchOptions;
 };
 
 /**
@@ -40,11 +49,27 @@ export const createSingleServerCore = (
   logger: Logger,
   options?: CreateProxyCoreOptions,
 ): ProxyCore => {
-  // ResolveAllowedToolsByName は server 名を受け取るため、単一サーバー向けに部分適用する
+  // ResolveAllowedToolsByName / OnUpstreamAuthErrorByName / OnBeforeToolCallByName は
+  // server 名を受け取るため、単一サーバー向けに部分適用する
   const byNameResolver = options?.resolveAllowedTools;
-  const clientOptions = byNameResolver
-    ? { resolveAllowedTools: () => byNameResolver(config.name) }
-    : undefined;
+  const byNameBeforeHook = options?.onBeforeToolCall;
+  const byNameAuthErrorHook = options?.onUpstreamAuthError;
+  const clientOptions =
+    byNameResolver || byNameBeforeHook || byNameAuthErrorHook
+      ? {
+          ...(byNameResolver
+            ? { resolveAllowedTools: () => byNameResolver(config.name) }
+            : {}),
+          ...(byNameBeforeHook
+            ? { onBeforeToolCall: () => byNameBeforeHook(config.name) }
+            : {}),
+          ...(byNameAuthErrorHook
+            ? {
+                onUpstreamAuthError: () => byNameAuthErrorHook(config.name),
+              }
+            : {}),
+        }
+      : undefined;
   const client = createUpstreamClient(config, logger, clientOptions);
 
   return {
@@ -95,13 +120,20 @@ export const createProxyCore = (
   logger: Logger,
   options?: CreateProxyCoreOptions,
 ): ProxyCore => {
-  const pool = createUpstreamPool(logger, options);
+  const pool = createUpstreamPool(logger, {
+    resolveAllowedTools: options?.resolveAllowedTools,
+    onBeforeToolCall: options?.onBeforeToolCall,
+    onUpstreamAuthError: options?.onUpstreamAuthError,
+  });
   for (const config of configs) {
     pool.addServer(config);
   }
 
   // pool.getClients を getter として渡し、listTools/callTool 時に最新のMapを参照する
-  const aggregator = createToolAggregator(() => pool.getClients(), logger);
+  const aggregator = createDynamicSearchToolLayer(
+    createToolAggregator(() => pool.getClients(), logger),
+    options?.dynamicSearch,
+  );
 
   return {
     startAll: () => pool.startAll(),

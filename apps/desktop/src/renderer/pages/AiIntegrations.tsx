@@ -1,7 +1,7 @@
 import type { JSX } from "react";
 import { useMemo, useState } from "react";
 import { useAtomValue } from "jotai";
-import { ArrowRight, Plug, Lock } from "lucide-react";
+import { ArrowRight, Lock, Plug, Activity } from "lucide-react";
 import { themeAtom } from "../store/atoms";
 import { AI_CLIENTS, type AiClient } from "../data/ai-clients";
 import { cardStyle } from "../utils/theme-styles";
@@ -9,6 +9,28 @@ import { toast } from "../_components/Toast";
 import { AiClientAutoWriteModal } from "../_components/AiClientAutoWriteModal";
 import { useMcpServers } from "../hooks/useMcpServers";
 import { useMcpProxyLaunchCommand } from "../hooks/useMcpProxyLaunchCommand";
+import {
+  useAiCodingToolSettings,
+  useOtlpReceiverPort,
+} from "../hooks/useAiCodingTelemetry";
+import { TRACKING_TOOL_MAP } from "../utils/ai-coding-telemetry-tools";
+import type { AiCodingTool } from "../../main/types";
+
+/** 使用量記録が有効なツールに表示するバッジ（フック安定化のためサブコンポーネント化） */
+const TrackingBadge = ({
+  tool,
+}: {
+  tool: AiCodingTool;
+}): JSX.Element | null => {
+  const { settings } = useAiCodingToolSettings(tool);
+  if (!settings?.enabled) return null;
+  return (
+    <span className="flex items-center gap-0.5 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-medium text-emerald-600 dark:bg-emerald-400/10 dark:text-emerald-400">
+      <Activity size={8} />
+      記録中
+    </span>
+  );
+};
 
 const AUTO_WRITE_SUPPORTED_IDS = new Set([
   "claude-desktop",
@@ -28,6 +50,7 @@ export const AiIntegrations = (): JSX.Element => {
   const { servers } = useMcpServers();
   const launchCommand = useMcpProxyLaunchCommand();
   const [activeClient, setActiveClient] = useState<AiClient | null>(null);
+  const port = useOtlpReceiverPort();
 
   // 有効サーバーのみ書き込み対象として渡す
   // メモ化することで、子モーダルの useEffect([client.id, servers]) を安定させ getPreview IPC の再実行を防ぐ
@@ -66,6 +89,7 @@ export const AiIntegrations = (): JSX.Element => {
         {AI_CLIENTS.map((client) => {
           const logo = client.logoPath?.(theme);
           const supported = AUTO_WRITE_SUPPORTED_IDS.has(client.id);
+          const trackingTool = TRACKING_TOOL_MAP[client.id];
           return (
             <button
               key={client.id}
@@ -100,8 +124,13 @@ export const AiIntegrations = (): JSX.Element => {
                 )}
               </div>
               <div>
-                <div className="text-sm font-medium text-gray-900 dark:text-white">
-                  {client.name}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    {client.name}
+                  </span>
+                  {trackingTool !== undefined && (
+                    <TrackingBadge tool={trackingTool} />
+                  )}
                 </div>
                 <div className="mt-0.5 text-[10px] text-gray-400 dark:text-zinc-600">
                   {supported ? "自動書き込み対応" : "近日対応予定"}
@@ -128,6 +157,7 @@ export const AiIntegrations = (): JSX.Element => {
           servers={enabledServers}
           launchCommand={launchCommand}
           theme={theme}
+          port={port}
           onClose={() => setActiveClient(null)}
         />
       )}

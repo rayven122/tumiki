@@ -23,6 +23,7 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, "src/main/index.ts"),
+          "analytics-node": resolve(__dirname, "src/main/analytics-node.ts"),
           "mcp-process": resolve(
             __dirname,
             "../../packages/mcp-core-proxy/src/process.ts",
@@ -34,6 +35,7 @@ export default defineConfig({
         },
         output: {
           format: "cjs",
+          chunkFileNames: "[name]-[hash].cjs",
           // ビルドホストの絶対パス（CI: /Users/runner/...、開発者ローカル等）が
           // require() に焼き込まれるのを防ぐため、external 化された Prisma client への
           // 参照を出力ディレクトリ（dist-electron/main）からの相対パスに固定する。
