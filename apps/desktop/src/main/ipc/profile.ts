@@ -1,9 +1,6 @@
 import { ipcMain } from "electron";
 import { getDb } from "../shared/db";
-import {
-  clearOrganizationProfile,
-  getProfileState,
-} from "../shared/profile-store";
+import { getProfileState, resetProfileState } from "../shared/profile-store";
 import { getOAuthManager, setOAuthManager } from "../auth/manager-registry";
 import * as logger from "../shared/utils/logger";
 import type { ProfileState } from "../../shared/types";
@@ -21,7 +18,7 @@ export const setupProfileIpc = (): void => {
   ipcMain.handle("profile:cancelPendingSetup", async () => {
     let profileState: ProfileState;
     try {
-      profileState = await clearOrganizationProfile();
+      profileState = await resetProfileState();
     } catch (error) {
       logger.error(
         "Failed to clear profile state while cancelling pending setup",
@@ -40,7 +37,11 @@ export const setupProfileIpc = (): void => {
   ipcMain.handle("profile:disconnectOrganization", async () => {
     let profileState: ProfileState;
     try {
-      profileState = await clearOrganizationProfile();
+      const currentProfileState = await getProfileState();
+      if (currentProfileState.activeProfile !== "organization") {
+        throw new Error("組織利用プロファイルがアクティブではありません");
+      }
+      profileState = await resetProfileState();
     } catch (error) {
       logger.error(
         "Failed to clear organization profile while disconnecting organization profile",

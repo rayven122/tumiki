@@ -13,7 +13,7 @@ export type OidcConfig = z.infer<typeof oidcConfigResponseSchema>;
 
 const FETCH_TIMEOUT_MS = 10_000;
 // 個人プロファイルはセルフホスト先ではなく Tumiki Cloud の共通認証を使う。
-const PERSONAL_PROFILE_MANAGER_URL = "https://www.tumiki.cloud";
+export const PERSONAL_PROFILE_MANAGER_URL = "https://www.tumiki.cloud";
 
 /**
  * 管理サーバーからOIDC設定を取得する

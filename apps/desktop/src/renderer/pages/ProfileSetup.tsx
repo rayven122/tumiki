@@ -204,6 +204,12 @@ export const ProfileSetup = (): JSX.Element => {
     }
 
     try {
+      await window.electronAPI.auth.cancelLogin();
+    } catch {
+      // ブラウザ起動前後の状態にかかわらず、ローカルの pending setup cleanup は続行する。
+    }
+
+    try {
       await window.electronAPI.profile.cancelPendingSetup();
       if (mountedRef.current) {
         setError(null);

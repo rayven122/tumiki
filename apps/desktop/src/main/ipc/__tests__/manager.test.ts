@@ -33,7 +33,7 @@ vi.mock("../../shared/app-store", () => ({
 
 vi.mock("../../shared/utils/logger");
 
-import { setupManagerIpc } from "../manager";
+import { PERSONAL_PROFILE_MANAGER_URL, setupManagerIpc } from "../manager";
 
 describe("setupManagerIpc", () => {
   const initOAuthManager = vi.fn();
@@ -84,15 +84,15 @@ describe("setupManagerIpc", () => {
     await handler!({} as IpcMainInvokeEvent);
 
     expect(fetch).toHaveBeenCalledWith(
-      "https://www.tumiki.cloud/api/auth/config",
+      `${PERSONAL_PROFILE_MANAGER_URL}/api/auth/config`,
       { signal: expect.any(AbortSignal) },
     );
     expect(initOAuthManager).toHaveBeenCalledWith(
-      "https://www.tumiki.cloud",
+      PERSONAL_PROFILE_MANAGER_URL,
       "https://issuer.example.com",
       "desktop-client",
     );
-    expect(storeData.get("managerUrl")).toBe("https://www.tumiki.cloud");
+    expect(storeData.get("managerUrl")).toBe(PERSONAL_PROFILE_MANAGER_URL);
     expect(storeData.get("pendingProfile")).toBe("personal");
   });
 

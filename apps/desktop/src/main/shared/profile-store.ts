@@ -45,7 +45,7 @@ export const activateOrganizationProfile = async (
   return getProfileState();
 };
 
-export const clearOrganizationProfile = async (): Promise<ProfileState> => {
+export const resetProfileState = async (): Promise<ProfileState> => {
   const store = await getAppStore();
   // pending setup のキャンセルと組織切断の両方で、managerUrl を含む profile 状態をクリアする。
   store.delete("managerUrl");

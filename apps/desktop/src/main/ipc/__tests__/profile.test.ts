@@ -54,27 +54,18 @@ import {
   activatePersonalProfile,
 } from "../../shared/profile-store";
 
-describe("setupProfileIpc", () => {
-  beforeEach(() => {
-    mockIpcHandlers.clear();
-    storeData.clear();
-    vi.clearAllMocks();
-    mockStoreDelete.mockImplementation((key: string) => storeData.delete(key));
-    mockDbAuthToken.deleteMany.mockResolvedValue({ count: 1 });
-    mockGetOAuthManager.mockReturnValue(null);
-    setupProfileIpc();
-  });
+const resetTestState = (): void => {
+  mockIpcHandlers.clear();
+  storeData.clear();
+  vi.clearAllMocks();
+  mockStoreDelete.mockImplementation((key: string) => storeData.delete(key));
+  mockDbAuthToken.deleteMany.mockResolvedValue({ count: 1 });
+  mockGetOAuthManager.mockReturnValue(null);
+  setupProfileIpc();
+};
 
-  test("初回状態は未設定として返す", async () => {
-    const handler = mockIpcHandlers.get("profile:getState");
-    const result = await handler!({} as IpcMainInvokeEvent);
-
-    expect(result).toStrictEqual({
-      activeProfile: null,
-      organizationProfile: null,
-      hasCompletedInitialProfileSetup: false,
-    });
-  });
+describe("profile-store", () => {
+  beforeEach(resetTestState);
 
   test("認証コールバック経由で個人プロファイルを保存する", async () => {
     storeData.set("managerUrl", "https://manager.example.com");
@@ -98,6 +89,21 @@ describe("setupProfileIpc", () => {
     await expect(activatePersonalProfile()).rejects.toThrow(
       "組織利用中は個人利用に切り替えられません",
     );
+  });
+});
+
+describe("setupProfileIpc", () => {
+  beforeEach(resetTestState);
+
+  test("初回状態は未設定として返す", async () => {
+    const handler = mockIpcHandlers.get("profile:getState");
+    const result = await handler!({} as IpcMainInvokeEvent);
+
+    expect(result).toStrictEqual({
+      activeProfile: null,
+      organizationProfile: null,
+      hasCompletedInitialProfileSetup: false,
+    });
   });
 
   test("セットアップキャンセルで未確定の管理サーバーURLをクリアする", async () => {
@@ -161,6 +167,27 @@ describe("setupProfileIpc", () => {
       organizationProfile: null,
       hasCompletedInitialProfileSetup: false,
     });
+  });
+
+  test("個人プロファイル中は組織切断を拒否する", async () => {
+    const cancelAuthFlow = vi.fn();
+    const stopAutoRefresh = vi.fn();
+    mockGetOAuthManager.mockReturnValue({ cancelAuthFlow, stopAutoRefresh });
+    storeData.set("activeProfile", "personal");
+    storeData.set("managerUrl", "https://www.tumiki.cloud");
+
+    const handler = mockIpcHandlers.get("profile:disconnectOrganization");
+
+    await expect(handler!({} as IpcMainInvokeEvent)).rejects.toThrow(
+      "組織利用の停止に失敗しました",
+    );
+
+    expect(mockDbAuthToken.deleteMany).not.toHaveBeenCalled();
+    expect(cancelAuthFlow).not.toHaveBeenCalled();
+    expect(stopAutoRefresh).not.toHaveBeenCalled();
+    expect(mockSetOAuthManager).not.toHaveBeenCalled();
+    expect(storeData.get("activeProfile")).toBe("personal");
+    expect(storeData.get("managerUrl")).toBe("https://www.tumiki.cloud");
   });
 
   test("組織切断時にDB削除が失敗してもプロファイル状態はクリアする", async () => {
