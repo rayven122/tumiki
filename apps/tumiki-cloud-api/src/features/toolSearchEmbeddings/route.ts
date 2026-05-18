@@ -57,7 +57,11 @@ export const startToolSearchEmbeddingsRateLimitCleanup = (): void => {
 
   rateLimitCleanupInterval = setInterval(
     () => deleteExpiredRateLimitBuckets(Date.now()),
-    Math.max(TOOL_SEARCH_EMBEDDING_CONFIG.rateLimitWindowMs, 5 * 60 * 1000),
+    // 厳密な即時削除より、timer wakeup を抑えた定期掃除を優先する。
+    Math.max(
+      TOOL_SEARCH_EMBEDDING_CONFIG.rateLimitWindowMs,
+      TOOL_SEARCH_EMBEDDING_CONFIG.cleanupIntervalMs,
+    ),
   );
   rateLimitCleanupInterval.unref();
 };

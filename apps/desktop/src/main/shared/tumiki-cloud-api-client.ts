@@ -61,6 +61,11 @@ const getTumikiCloudBearerToken = async (
 ): Promise<string | null> => {
   // idToken は JWKS 検証可能な OIDC JWT。未保存の場合は accessToken にフォールバックするが、
   // opaque token の場合は api.tumiki.cloud 側の JWT 検証で 401 になる。
+  if (!token.idToken && token.accessToken) {
+    console.warn(
+      "[tumiki-cloud-api-client] idToken not available, falling back to accessToken (may fail JWT verification)",
+    );
+  }
   const encryptedBearerToken = token.idToken ?? token.accessToken;
   if (!encryptedBearerToken) return null;
   const bearerToken = await decryptToken(encryptedBearerToken);

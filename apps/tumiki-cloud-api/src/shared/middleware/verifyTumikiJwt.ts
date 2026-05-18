@@ -161,6 +161,11 @@ export const verifyTumikiBearerToken = async (
   const metadata = await getKeycloakServerMetadata();
   const jwks = await getJwks();
   const allowedAudiences = getAllowedAudiences();
+  if (process.env.NODE_ENV === "production" && allowedAudiences.length === 0) {
+    console.warn(
+      "[verifyTumikiJwt] audience validation is disabled in production",
+    );
+  }
 
   const { payload } = await jwtVerify(bearerToken, jwks, {
     issuer: metadata.issuer,
@@ -169,7 +174,7 @@ export const verifyTumikiBearerToken = async (
     // 開発・テスト環境では未設定時に apps/mcp-proxy と同様の検証境界へ戻す。
     // TODO(#1351): api.tumiki.cloud 専用 audience 設定後に運用環境での検証結果を確認する。
     clockTolerance: 60,
-    requiredClaims: ["exp", "sub"],
+    requiredClaims: ["sub"],
   });
 
   return toVerifiedTumikiJwt(payload, metadata.issuer);
