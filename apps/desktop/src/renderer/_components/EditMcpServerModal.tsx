@@ -336,7 +336,7 @@ const EditingForm = ({
           type="button"
           onClick={onClose}
           disabled={submitting}
-          className="rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-700 transition hover:opacity-80 disabled:opacity-50 dark:border-white/[.08] dark:text-zinc-300"
+          className="rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-600 transition hover:opacity-80 disabled:opacity-50 dark:border-white/[.08] dark:text-zinc-400"
         >
           キャンセル
         </button>
@@ -406,7 +406,7 @@ const CredentialsSection = ({
             </div>
           );
         })}
-        <p className="text-[10px] text-gray-400 dark:text-zinc-500">
+        <p className="text-[10px] text-gray-500 dark:text-zinc-500">
           空欄またはマスク表示のままだと、既存の値が維持されます。
         </p>
       </div>
