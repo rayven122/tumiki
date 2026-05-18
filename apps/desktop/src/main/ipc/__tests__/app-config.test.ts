@@ -66,12 +66,29 @@ describe("setupAppConfigIpc", () => {
     expect(result).toBeNull();
   });
 
-  test("appConfig:setTheme がテーマを永続化する", async () => {
+  test("appConfig:setTheme が dark テーマを永続化する", async () => {
     const handler = mockIpcHandlers.get("appConfig:setTheme");
 
     await handler!({} as IpcMainInvokeEvent, "dark");
 
     expect(storeData.get("theme")).toStrictEqual("dark");
+  });
+
+  test("appConfig:setTheme が light テーマを永続化する", async () => {
+    const handler = mockIpcHandlers.get("appConfig:setTheme");
+
+    await handler!({} as IpcMainInvokeEvent, "light");
+
+    expect(storeData.get("theme")).toStrictEqual("light");
+  });
+
+  test("dark テーマを appConfig:getTheme が返す", async () => {
+    storeData.set("theme", "dark");
+    const handler = mockIpcHandlers.get("appConfig:getTheme");
+
+    const result = await handler!({} as IpcMainInvokeEvent);
+
+    expect(result).toStrictEqual("dark");
   });
 
   test("light/dark 以外の値は拒否する", async () => {

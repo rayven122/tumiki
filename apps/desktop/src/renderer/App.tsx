@@ -1,4 +1,4 @@
-import { type JSX, useEffect, useRef, useState } from "react";
+import { type JSX, useEffect, useState } from "react";
 import { HashRouter, Navigate, Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
 import { useAtom } from "jotai";
@@ -52,9 +52,7 @@ export const App = (): JSX.Element => {
   useAutoReapplyToast();
   const [theme, setTheme] = useAtom(themeAtom);
   // electron-store からの復元が終わるまでは store への保存をスキップする
-  // （マウント直後の atom 既定値をそのまま書き戻してしまうのを防ぐ）
   const [hydrated, setHydrated] = useState(false);
-  const hydratedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -63,12 +61,11 @@ export const App = (): JSX.Element => {
       .then((saved) => {
         if (cancelled) return;
         if (saved !== null) setTheme(saved);
-        hydratedRef.current = true;
         setHydrated(true);
       })
       .catch(() => {
+        if (cancelled) return;
         // 取得失敗時は atom 既定値で続行する
-        hydratedRef.current = true;
         setHydrated(true);
       });
     return () => {
@@ -78,7 +75,7 @@ export const App = (): JSX.Element => {
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
-    if (!hydratedRef.current) return;
+    if (!hydrated) return;
     void window.electronAPI.appConfig.setTheme(theme).catch(() => {
       // 永続化失敗はユーザー操作を妨げないため握りつぶす
     });

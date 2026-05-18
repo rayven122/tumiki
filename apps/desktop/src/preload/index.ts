@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
+import type { ThemeMode } from "../main/ipc/app-config";
 import type { AuthTokenResult } from "../types/auth";
 import type {
   CatalogItem,
@@ -226,9 +227,9 @@ const api = {
 
   // アプリ設定の永続化 API
   appConfig: {
-    getTheme: (): Promise<"light" | "dark" | null> =>
+    getTheme: (): Promise<ThemeMode | null> =>
       ipcRenderer.invoke("appConfig:getTheme"),
-    setTheme: (theme: "light" | "dark"): Promise<void> =>
+    setTheme: (theme: ThemeMode): Promise<void> =>
       ipcRenderer.invoke("appConfig:setTheme", theme),
   },
 
