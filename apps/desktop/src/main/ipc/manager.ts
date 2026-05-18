@@ -12,7 +12,7 @@ const oidcConfigResponseSchema = z.object({
 export type OidcConfig = z.infer<typeof oidcConfigResponseSchema>;
 
 const FETCH_TIMEOUT_MS = 10_000;
-const profileSchema = z.enum(["personal", "organization"]);
+// 個人プロファイルはセルフホスト先ではなく Tumiki Cloud の共通認証を使う。
 const PERSONAL_PROFILE_MANAGER_URL = "https://www.tumiki.cloud";
 
 /**
@@ -49,9 +49,8 @@ export const setupManagerIpc = (
 ): void => {
   const connectToManager = async (
     url: string,
-    profile: unknown = "organization",
+    pendingProfile: DesktopProfile = "organization",
   ): Promise<void> => {
-    const pendingProfile: DesktopProfile = profileSchema.parse(profile);
     const config = await fetchManagerOidcConfig(url);
     await initOAuthManager(url, config.issuer, config.clientId);
 

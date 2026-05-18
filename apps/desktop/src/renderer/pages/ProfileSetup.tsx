@@ -102,6 +102,11 @@ export const ProfileSetup = (): JSX.Element => {
       await window.electronAPI.auth.login();
       setIsWaitingForCallback(true);
     } catch (err) {
+      try {
+        await window.electronAPI.profile.cancelPendingSetup();
+      } catch {
+        // 元のログイン失敗を優先して表示する。pending setup は次回操作でも上書きされる。
+      }
       if (mountedRef.current) {
         setError(
           err instanceof Error ? err.message : "個人利用の設定に失敗しました",
@@ -152,9 +157,15 @@ export const ProfileSetup = (): JSX.Element => {
     setupCancelledRef.current = true;
     try {
       await window.electronAPI.auth.cancelLogin();
+    } catch {
+      // ブラウザ起動前後の状態にかかわらず、ローカルの pending setup cleanup は続行する。
+    }
+
+    try {
       await window.electronAPI.profile.cancelPendingSetup();
       if (mountedRef.current) {
         setError(null);
+        setView("choice");
       }
     } catch (err) {
       if (mountedRef.current) {

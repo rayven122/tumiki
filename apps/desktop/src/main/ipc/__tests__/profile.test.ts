@@ -80,6 +80,7 @@ describe("setupProfileIpc", () => {
     storeData.set("managerUrl", "https://manager.example.com");
     storeData.set("pendingProfile", "personal");
 
+    // 個人利用の確定は profile IPC ではなく認証コールバック経由で行う。
     const result = await activatePersonalProfile();
 
     expect(storeData.get("managerUrl")).toBe("https://manager.example.com");
