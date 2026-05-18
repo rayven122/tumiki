@@ -136,13 +136,14 @@ const buildConfigFromConnection = async (
   oauthCache: Map<number, Record<string, string>> = new Map(),
 ): Promise<{ config: McpServerConfig; meta: McpConnectionMeta } | null> => {
   const connLabel = `${conn.server.slug}/${conn.slug}`;
-  // 単独公式カタログ接続のみ connSlug に短縮する。
-  // 仮想MCPなど複数接続を束ねるサーバーでは serverSlug を残し、接続の所属を失わない。
-  const isStandaloneCatalogConnection =
-    conn.catalogId !== null &&
-    conn.server.serverType === "OFFICIAL" &&
-    conn.server.slug === conn.slug;
-  const name = isStandaloneCatalogConnection
+  // 単独コネクタ（OFFICIAL かつ server.slug === conn.slug）は connSlug のみに短縮する。
+  // ローカルカタログ / Manager API カタログ / カスタムURL のいずれの登録経路でも
+  // server.slug === conn.slug を満たすため、catalogId の有無に関係なく一貫して短縮する。
+  // 仮想MCP（serverType === "CUSTOM" かつ server.slug !== conn.slug）は serverSlug を残し、
+  // 接続の所属を失わないようにする。
+  const isStandaloneConnection =
+    conn.server.serverType === "OFFICIAL" && conn.server.slug === conn.slug;
+  const name = isStandaloneConnection
     ? conn.slug
     : `${conn.server.slug}-${conn.slug}`;
 

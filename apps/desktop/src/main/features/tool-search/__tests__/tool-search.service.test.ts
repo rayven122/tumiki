@@ -110,7 +110,7 @@ describe("tool-search サービス", () => {
     expect(results).toHaveLength(1);
     expect(results[0]).toStrictEqual({
       toolId: tool.id,
-      toolName: "github-github__search_issues",
+      toolName: "github__search_issues",
       displayName: "search_issues",
       description: "Find\nproject   issues",
       inputSchema: "{}",
@@ -191,10 +191,10 @@ describe("tool-search サービス", () => {
     const provider = createDesktopToolSearchProvider({ db });
 
     await expect(
-      provider.describeTools({ toolNames: ["github-github__search_issues"] }),
+      provider.describeTools({ toolNames: ["github__search_issues"] }),
     ).resolves.toStrictEqual([
       {
-        toolName: "github-github__search_issues",
+        toolName: "github__search_issues",
         description: "Find\nproject   issues",
         inputSchema: {},
         found: true,

@@ -150,7 +150,7 @@ describe("mcp-proxy.service", () => {
       );
     });
 
-    test("単独公式カタログ接続はconnSlugのみをnameに使う", async () => {
+    test("単独公式接続（ローカルカタログ経由）はconnSlugのみをnameに使う", async () => {
       vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([
         buildConnection({
           name: "Backlog",
@@ -170,6 +170,61 @@ describe("mcp-proxy.service", () => {
           transportType: "STDIO",
           command: "uvx",
           args: ["backlog-mcp"],
+          env: {},
+        },
+      ]);
+    });
+
+    test("単独公式接続（カスタムURL登録経路: catalogId=null）もconnSlugのみをnameに使う", async () => {
+      // createCustomServer 経路で登録された接続を想定。
+      // server.slug === conn.slug かつ OFFICIAL なので catalogId が null でも短縮される。
+      vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([
+        buildConnection({
+          name: "Rayven",
+          slug: "rayven",
+          catalogId: null,
+          transportType: "STREAMABLE_HTTP",
+          command: null,
+          args: "[]",
+          url: "https://example.com/mcp",
+          server: { name: "Rayven", slug: "rayven", serverType: "OFFICIAL" },
+        }),
+      ]);
+
+      const result = await mcpProxyService.getEnabledConfigs();
+
+      expect(result).toStrictEqual([
+        {
+          name: "rayven",
+          transportType: "STREAMABLE_HTTP",
+          url: "https://example.com/mcp",
+          authType: "NONE",
+          headers: {},
+        },
+      ]);
+    });
+
+    test("単独公式接続（Manager APIカタログ経路: catalogId=null）もconnSlugのみをnameに使う", async () => {
+      // createFromManagerCatalog 経路を想定。ローカル McpCatalog 参照なしのため catalogId は null。
+      vi.mocked(mcpRepository.findEnabledConnections).mockResolvedValue([
+        buildConnection({
+          name: "Notion",
+          slug: "notion",
+          catalogId: null,
+          command: "npx",
+          args: '["@notionhq/notion-mcp-server"]',
+          server: { name: "Notion", slug: "notion", serverType: "OFFICIAL" },
+        }),
+      ]);
+
+      const result = await mcpProxyService.getEnabledConfigs();
+
+      expect(result).toStrictEqual([
+        {
+          name: "notion",
+          transportType: "STDIO",
+          command: "npx",
+          args: ["@notionhq/notion-mcp-server"],
           env: {},
         },
       ]);

@@ -60,11 +60,12 @@ const getDynamicSearchEmbeddingModel = (): string => {
 };
 
 const getConfigName = (tool: ToolSearchRow): string => {
-  const isStandaloneCatalogConnection =
-    tool.connection.catalogId !== null &&
+  // mcp-proxy.service.ts の buildConfigFromConnection と同じ短縮ルールを使う。
+  // 不一致だと Dynamic Search 経路で proxy 側の config name と齟齬が出てツール呼び出しが失敗する。
+  const isStandaloneConnection =
     tool.connection.server.serverType === "OFFICIAL" &&
     tool.connection.server.slug === tool.connection.slug;
-  return isStandaloneCatalogConnection
+  return isStandaloneConnection
     ? tool.connection.slug
     : `${tool.connection.server.slug}-${tool.connection.slug}`;
 };
