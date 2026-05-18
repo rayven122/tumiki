@@ -29,7 +29,7 @@ import { parseReauthDeepLink } from "./shared/app-protocol";
 import {
   PERSONAL_PROFILE_MANAGER_URL,
   setupManagerIpc,
-  fetchManagerOidcConfig,
+  resolveManagerOidcConfig,
 } from "./ipc/manager";
 import { setupProfileIpc } from "./ipc/profile";
 import { setupShellIpc } from "./ipc/shell";
@@ -823,7 +823,7 @@ if (appMode === "mcp-proxy") {
       const savedManagerUrl = (await getAppStore()).get("managerUrl");
       if (savedManagerUrl) {
         try {
-          const config = await fetchManagerOidcConfig(savedManagerUrl);
+          const config = await resolveManagerOidcConfig(savedManagerUrl);
           await initOAuthManagerFromUrl(
             savedManagerUrl,
             config.issuer,

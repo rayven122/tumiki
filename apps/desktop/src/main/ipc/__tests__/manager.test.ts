@@ -33,7 +33,12 @@ vi.mock("../../shared/app-store", () => ({
 
 vi.mock("../../shared/utils/logger");
 
-import { PERSONAL_PROFILE_MANAGER_URL, setupManagerIpc } from "../manager";
+import {
+  CLOUD_KEYCLOAK_DESKTOP_CLIENT_ID,
+  CLOUD_KEYCLOAK_ISSUER,
+  PERSONAL_PROFILE_MANAGER_URL,
+  setupManagerIpc,
+} from "../manager";
 
 describe("setupManagerIpc", () => {
   const initOAuthManager = vi.fn();
@@ -95,19 +100,31 @@ describe("setupManagerIpc", () => {
     expect(storeData.get("managerUrl")).toBe("https://manager.example.com");
   });
 
-  test("個人プロファイル用の接続ではtumiki.cloudを使いpendingProfileをpersonalとして保存する", async () => {
+  test("クラウド組織URLではKeycloakへ直接接続してpendingProfileをorganizationとして保存する", async () => {
+    const handler = mockIpcHandlers.get("manager:connect");
+
+    await handler!({} as IpcMainInvokeEvent, "https://manager.tumiki.cloud");
+
+    expect(fetch).not.toHaveBeenCalled();
+    expect(initOAuthManager).toHaveBeenCalledWith(
+      "https://manager.tumiki.cloud",
+      CLOUD_KEYCLOAK_ISSUER,
+      CLOUD_KEYCLOAK_DESKTOP_CLIENT_ID,
+    );
+    expect(storeData.get("managerUrl")).toBe("https://manager.tumiki.cloud");
+    expect(storeData.get("pendingProfile")).toBe("organization");
+  });
+
+  test("個人プロファイル用の接続ではKeycloakへ直接接続してpendingProfileをpersonalとして保存する", async () => {
     const handler = mockIpcHandlers.get("manager:connectPersonal");
 
     await handler!({} as IpcMainInvokeEvent);
 
-    expect(fetch).toHaveBeenCalledWith(
-      `${PERSONAL_PROFILE_MANAGER_URL}/api/auth/config`,
-      { signal: expect.any(AbortSignal) },
-    );
+    expect(fetch).not.toHaveBeenCalled();
     expect(initOAuthManager).toHaveBeenCalledWith(
       PERSONAL_PROFILE_MANAGER_URL,
-      "https://issuer.example.com",
-      "desktop-client",
+      CLOUD_KEYCLOAK_ISSUER,
+      CLOUD_KEYCLOAK_DESKTOP_CLIENT_ID,
     );
     expect(storeData.get("managerUrl")).toBe(PERSONAL_PROFILE_MANAGER_URL);
     expect(storeData.get("pendingProfile")).toBe("personal");
