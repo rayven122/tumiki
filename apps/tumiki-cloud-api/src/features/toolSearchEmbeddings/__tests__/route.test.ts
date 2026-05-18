@@ -9,6 +9,7 @@ import {
   SignJWT,
   type JWK,
 } from "jose";
+import { embedMany } from "ai";
 import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 
 import app from "../../../app.js";
@@ -18,7 +19,6 @@ import {
   resetToolSearchEmbeddingsRateLimit,
   toolSearchEmbeddingsRoute,
 } from "../route.js";
-import { embedMany } from "ai";
 
 vi.mock("ai", () => ({
   embedMany: vi.fn(async () => ({

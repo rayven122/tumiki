@@ -226,4 +226,29 @@ describe("tumiki-cloud-api-client", () => {
     await expect(promise).rejects.toBeInstanceOf(TumikiCloudApiError);
     await expect(promise).rejects.toMatchObject({ status: 503 });
   });
+
+  test("tool-search embeddings APIのレスポンス形式が不正なら専用エラーを投げる", async () => {
+    mockFindFirst.mockResolvedValue({
+      id: 1,
+      accessToken: "encrypted:access-token",
+      refreshToken: null,
+      idToken: "encrypted:id-token",
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(JSON.stringify({ model: "text-embedding-3-small" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    const promise = embedToolSearchTextsWithTumikiCloudApi(["query"]);
+    await expect(promise).rejects.toThrow(
+      "Tumiki Cloud API returned unexpected response format",
+    );
+    await expect(promise).rejects.toBeInstanceOf(TumikiCloudApiError);
+    await expect(promise).rejects.toMatchObject({ status: 200 });
+  });
 });

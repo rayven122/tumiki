@@ -18,8 +18,9 @@ export class TumikiCloudApiError extends Error {
   constructor(
     message: string,
     public readonly status: number,
+    cause?: unknown,
   ) {
-    super(message);
+    super(message, { cause });
     this.name = "TumikiCloudApiError";
   }
 }
@@ -120,8 +121,15 @@ export const embedToolSearchTextsWithTumikiCloudApi = async (
     );
   }
 
-  const parsed = toolSearchEmbeddingsResponseSchema.parse(
-    await response.json(),
-  );
+  const parsed = await response
+    .json()
+    .then((body: unknown) => toolSearchEmbeddingsResponseSchema.parse(body))
+    .catch((err: unknown) => {
+      throw new TumikiCloudApiError(
+        "Tumiki Cloud API returned unexpected response format",
+        response.status,
+        err,
+      );
+    });
   return parsed.embeddings;
 };
