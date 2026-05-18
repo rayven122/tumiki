@@ -45,7 +45,7 @@ describe("setupAppConfigIpc", () => {
 
     const result = await handler!({} as IpcMainInvokeEvent);
 
-    expect(result).toBeNull();
+    expect(result).toStrictEqual(null);
   });
 
   test("保存済みテーマを appConfig:getTheme が返す", async () => {
@@ -63,7 +63,7 @@ describe("setupAppConfigIpc", () => {
 
     const result = await handler!({} as IpcMainInvokeEvent);
 
-    expect(result).toBeNull();
+    expect(result).toStrictEqual(null);
   });
 
   test("appConfig:setTheme が dark テーマを永続化する", async () => {
@@ -97,6 +97,6 @@ describe("setupAppConfigIpc", () => {
     await expect(handler!({} as IpcMainInvokeEvent, "system")).rejects.toThrow(
       "テーマは 'light' または 'dark' で指定してください",
     );
-    expect(storeData.has("theme")).toBe(false);
+    expect(storeData.has("theme")).toStrictEqual(false);
   });
 });

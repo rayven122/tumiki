@@ -59,14 +59,13 @@ export const App = (): JSX.Element => {
     void window.electronAPI.appConfig
       .getTheme()
       .then((saved) => {
-        if (cancelled) return;
         if (saved !== null) setTheme(saved);
-        setHydrated(true);
       })
       .catch(() => {
-        if (cancelled) return;
         // 取得失敗時は atom 既定値で続行する
-        setHydrated(true);
+      })
+      .finally(() => {
+        if (!cancelled) setHydrated(true);
       });
     return () => {
       cancelled = true;
@@ -75,6 +74,9 @@ export const App = (): JSX.Element => {
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
+  }, [theme]);
+
+  useEffect(() => {
     if (!hydrated) return;
     void window.electronAPI.appConfig.setTheme(theme).catch(() => {
       // 永続化失敗はユーザー操作を妨げないため握りつぶす

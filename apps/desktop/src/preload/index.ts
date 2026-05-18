@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { ThemeMode } from "../main/ipc/app-config";
+import type { ThemeMode } from "../main/shared/app-store";
 import type { AuthTokenResult } from "../types/auth";
 import type {
   CatalogItem,
