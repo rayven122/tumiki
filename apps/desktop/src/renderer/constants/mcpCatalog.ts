@@ -16,7 +16,7 @@ export type McpCatalogItem = {
 export const MCP_CATALOG_ITEMS: McpCatalogItem[] = [
   {
     id: "filesystem-stdio",
-    name: "Filesystem STDIO",
+    name: "Filesystem",
     description:
       "ファイルシステム操作 - ローカルファイルの読み書き（開発・テスト用）",
     tags: ["ファイル", "ユーティリティ"],
@@ -28,7 +28,7 @@ export const MCP_CATALOG_ITEMS: McpCatalogItem[] = [
   },
   {
     id: "github-stdio",
-    name: "GitHub STDIO",
+    name: "GitHub",
     description: "GitHub API - リポジトリ、イシュー、PR の操作",
     tags: ["開発", "Git"],
     iconPath: "/logos/github.svg",
@@ -39,7 +39,7 @@ export const MCP_CATALOG_ITEMS: McpCatalogItem[] = [
   },
   {
     id: "gitlab-stdio",
-    name: "GitLab STDIO",
+    name: "GitLab",
     description: "GitLab API - プロジェクト、イシュー、MR の操作",
     tags: ["開発", "Git"],
     iconPath: "/logos/gitlab.svg",
@@ -50,7 +50,7 @@ export const MCP_CATALOG_ITEMS: McpCatalogItem[] = [
   },
   {
     id: "postgresql-stdio",
-    name: "PostgreSQL STDIO",
+    name: "PostgreSQL",
     description: "PostgreSQL データベース - SQL クエリの実行とスキーマ操作",
     tags: ["データベース", "SQL"],
     iconPath: "/logos/postgresql.svg",
@@ -61,7 +61,7 @@ export const MCP_CATALOG_ITEMS: McpCatalogItem[] = [
   },
   {
     id: "slack-stdio",
-    name: "Slack STDIO",
+    name: "Slack",
     description: "Slack API - メッセージの送受信とチャンネル操作",
     tags: ["コミュニケーション", "チャット"],
     iconPath: "/logos/slack.svg",
@@ -72,7 +72,7 @@ export const MCP_CATALOG_ITEMS: McpCatalogItem[] = [
   },
   {
     id: "sequential-thinking-stdio",
-    name: "Sequential Thinking STDIO",
+    name: "Sequential Thinking",
     description: "段階的思考サーバー - 複雑な問題解決のための段階的推論支援",
     tags: ["ユーティリティ", "AI"],
     iconPath: "/logos/thinking.svg",
@@ -83,7 +83,7 @@ export const MCP_CATALOG_ITEMS: McpCatalogItem[] = [
   },
   {
     id: "everything-stdio",
-    name: "Everything STDIO",
+    name: "Everything",
     description:
       "MCP テストサーバー - prompts, tools, resources, sampling などの全機能テスト用",
     tags: ["ユーティリティ", "テスト"],

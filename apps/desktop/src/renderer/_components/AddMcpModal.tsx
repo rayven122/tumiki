@@ -2,11 +2,7 @@ import type { JSX } from "react";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { X, Info, ChevronDown } from "lucide-react";
 import type { CatalogItem } from "../../types/catalog";
-import {
-  FILESYSTEM_STDIO_NAME,
-  OUTLINE_MCP_NAME,
-} from "../../shared/catalog.constants";
-import { formatCatalogDisplayName } from "../../shared/catalog.helpers";
+import { FILESYSTEM_NAME, OUTLINE_NAME } from "../../shared/catalog.constants";
 import { toSlug } from "../../shared/mcp.slug";
 import {
   FALLBACK_SLUG_PLACEHOLDER,
@@ -56,9 +52,7 @@ export const AddMcpModal = ({
   const template = catalog.connectionTemplate;
   const credentialKeys: string[] = template.credentialKeys;
 
-  const [serverName, setServerName] = useState(
-    formatCatalogDisplayName(catalog.name),
-  );
+  const [serverName, setServerName] = useState(catalog.name);
   const [credentials, setCredentials] = useState<Record<string, string>>(
     Object.fromEntries(credentialKeys.map((key) => [key, ""])),
   );
@@ -79,8 +73,8 @@ export const AddMcpModal = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isFilesystemStdio = catalog.name === FILESYSTEM_STDIO_NAME;
-  const isOutline = catalog.name === OUTLINE_MCP_NAME;
+  const isFilesystem = catalog.name === FILESYSTEM_NAME;
+  const isOutline = catalog.name === OUTLINE_NAME;
   const [directoryPath, setDirectoryPath] = useState("");
   const [customUrl, setCustomUrl] = useState(template.url ?? "");
 
@@ -149,7 +143,7 @@ export const AddMcpModal = ({
       return;
     }
 
-    if (isFilesystemStdio && !directoryPath.trim()) {
+    if (isFilesystem && !directoryPath.trim()) {
       setError("アクセスディレクトリを入力してください");
       return;
     }
@@ -163,7 +157,7 @@ export const AddMcpModal = ({
     setError(null);
 
     let resolvedArgs = template.args;
-    if (isFilesystemStdio) {
+    if (isFilesystem) {
       resolvedArgs = [...template.args, directoryPath.trim()];
     }
 
@@ -351,7 +345,7 @@ export const AddMcpModal = ({
         </div>
 
         {/* ディレクトリ入力（Filesystem STDIO の場合のみ） */}
-        {isFilesystemStdio && (
+        {isFilesystem && (
           <div className="mb-6">
             <label className="mb-2 block text-sm font-medium text-gray-900 dark:text-white">
               アクセスディレクトリ

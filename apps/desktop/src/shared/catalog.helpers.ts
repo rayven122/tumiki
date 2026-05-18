@@ -4,13 +4,6 @@
  */
 import type { CatalogItem } from "../types/catalog";
 
-/**
- * カタログ表示名から末尾の "STDIO" / "MCP" トークンを除去する（UI表示専用）
- * 内部の name（識別キーや DB の値）は変更せず、表示時のみ整形する
- */
-export const formatCatalogDisplayName = (name: string): string =>
-  name.replace(/\s+(STDIO|MCP)$/i, "").trim();
-
 /** 認証種別ラベル（UI表示用） */
 export const authTypeLabel: Record<CatalogItem["authType"], string> = {
   NONE: "設定不要",

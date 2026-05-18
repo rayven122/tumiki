@@ -1,7 +1,6 @@
 import React from "react";
 import type { McpCatalogItem } from "../constants/mcpCatalog";
 import { Server, Wrench } from "lucide-react";
-import { formatCatalogDisplayName } from "../../shared/catalog.helpers";
 
 type CatalogCardProps = {
   item: McpCatalogItem;
@@ -42,7 +41,7 @@ export const CatalogCard = ({ item }: CatalogCardProps): React.ReactElement => {
         </div>
         <div className="min-w-0 flex-1 pr-16">
           <h3 className="truncate text-base font-semibold text-gray-900">
-            {formatCatalogDisplayName(item.name)}
+            {item.name}
           </h3>
         </div>
       </div>
