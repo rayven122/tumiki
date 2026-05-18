@@ -227,7 +227,7 @@ pnpm keycloak:staging:plan
 pnpm keycloak:staging:apply
 ```
 
-Desktop App は Keycloak を直接開くため、`tumiki-desktop` client に `tumiki://auth/callback` を許可する必要があります。この設定は `terraform.tfvars.staging` と `terraform.tfvars.production` の `desktop_redirect_uris` で明示しています。
+Desktop App は Keycloak を直接開くため、`tumiki-desktop` client に loopback HTTP の `http://127.0.0.1:33418/callback` を許可する必要があります。既存インストールの互換用に `tumiki://auth/callback` も残しています。この設定は `terraform.tfvars.staging` と `terraform.tfvars.production` の `desktop_redirect_uris` で明示しています。
 
 ### 本番用コマンド
 

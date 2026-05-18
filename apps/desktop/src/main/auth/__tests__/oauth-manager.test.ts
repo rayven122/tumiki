@@ -17,6 +17,9 @@ const {
   mockRefreshToken,
   mockLogout,
   mockGenerateAuthUrl,
+  mockStartLoopbackServer,
+  mockWaitForCallback,
+  mockCloseLoopbackServer,
 } = vi.hoisted(() => ({
   mockExchangeCodeForToken: vi.fn(),
   mockRefreshToken: vi.fn(),
@@ -24,6 +27,9 @@ const {
   mockGenerateAuthUrl: vi
     .fn()
     .mockReturnValue("https://keycloak.example.com/auth"),
+  mockStartLoopbackServer: vi.fn(),
+  mockWaitForCallback: vi.fn(),
+  mockCloseLoopbackServer: vi.fn(),
 }));
 
 vi.mock("../oidc-client", () => ({
@@ -33,6 +39,10 @@ vi.mock("../oidc-client", () => ({
     refreshToken: mockRefreshToken,
     logout: mockLogout,
   }),
+}));
+
+vi.mock("../../features/oauth/oauth.loopback", () => ({
+  startLoopbackServer: mockStartLoopbackServer,
 }));
 
 import { shell } from "electron";
@@ -60,6 +70,13 @@ describe("OAuthManager", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers({ shouldAdvanceTime: false });
+    mockWaitForCallback.mockReturnValue(new Promise(() => {}));
+    mockCloseLoopbackServer.mockResolvedValue(undefined);
+    mockStartLoopbackServer.mockResolvedValue({
+      redirectUri: "http://127.0.0.1:33418/callback",
+      waitForCallback: mockWaitForCallback,
+      close: mockCloseLoopbackServer,
+    });
 
     // vi.clearAllMocks()でcreateOidcClientのmockReturnValueがリセットされるため再設定
     vi.mocked(createOidcClient).mockReturnValue({

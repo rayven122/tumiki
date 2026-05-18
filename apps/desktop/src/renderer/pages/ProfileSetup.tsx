@@ -250,68 +250,72 @@ export const ProfileSetup = (): JSX.Element => {
         </div>
 
         {view === "choice" ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => void selectPersonal()}
-              className="group rounded-xl border border-gray-200 bg-white p-6 text-left transition hover:border-gray-400 hover:bg-black/[.02] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/[.08] dark:bg-zinc-900 dark:hover:border-zinc-600"
-            >
-              <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-black/[.06] text-gray-900 dark:bg-white/[.08] dark:text-white">
-                <User size={22} />
-              </span>
-              <span className="mt-5 block text-base font-semibold text-gray-900 dark:text-white">
-                個人利用
-              </span>
-              <span className="mt-2 block text-sm leading-6 text-gray-500 dark:text-zinc-500">
-                自分のPC上でMCPコネクタを管理します。組織の承認や監査は使いません。
-              </span>
-              <span className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-gray-600 group-hover:text-gray-900 dark:text-zinc-400">
-                {isSubmitting ? (
-                  <>
-                    <Loader2 size={15} className="animate-spin" />
-                    {isWaitingForCallback ? "サインイン待機中..." : "接続中..."}
-                  </>
-                ) : (
-                  <>
-                    このプロファイルで始める
-                    <Check size={15} />
-                  </>
-                )}
-              </span>
-            </button>
+          <div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => void selectPersonal()}
+                className="group rounded-xl border border-gray-200 bg-white p-6 text-left transition hover:border-gray-400 hover:bg-black/[.02] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/[.08] dark:bg-zinc-900 dark:hover:border-zinc-600"
+              >
+                <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-black/[.06] text-gray-900 dark:bg-white/[.08] dark:text-white">
+                  <User size={22} />
+                </span>
+                <span className="mt-5 block text-base font-semibold text-gray-900 dark:text-white">
+                  個人利用
+                </span>
+                <span className="mt-2 block text-sm leading-6 text-gray-500 dark:text-zinc-500">
+                  自分のPC上でMCPコネクタを管理します。組織の承認や監査は使いません。
+                </span>
+                <span className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-gray-600 group-hover:text-gray-900 dark:text-zinc-400">
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={15} className="animate-spin" />
+                      {isWaitingForCallback
+                        ? "サインイン待機中..."
+                        : "接続中..."}
+                    </>
+                  ) : (
+                    <>
+                      このプロファイルで始める
+                      <Check size={15} />
+                    </>
+                  )}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setView("organization")}
+                disabled={isSubmitting}
+                className="group rounded-xl border border-gray-200 bg-white p-6 text-left transition hover:border-gray-400 hover:bg-black/[.02] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/[.08] dark:bg-zinc-900 dark:hover:border-zinc-600"
+              >
+                <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-black/[.06] text-gray-900 dark:bg-white/[.08] dark:text-white">
+                  <Building2 size={22} />
+                </span>
+                <span className="mt-5 block text-base font-semibold text-gray-900 dark:text-white">
+                  組織利用
+                </span>
+                <span className="mt-2 block text-sm leading-6 text-gray-500 dark:text-zinc-500">
+                  管理サーバーに接続し、組織のユーザー・承認・監査機能を有効化します。
+                </span>
+                <span className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-gray-600 group-hover:text-gray-900 dark:text-zinc-400">
+                  管理サーバーに接続
+                  <KeyRound size={15} />
+                </span>
+              </button>
+            </div>
 
             {isSubmitting && (
               <button
                 type="button"
                 onClick={() => void cancelPersonalSetup()}
-                className="mx-auto flex items-center gap-2 text-sm text-gray-500 transition hover:text-gray-900 md:col-span-2 dark:text-zinc-500"
+                className="mx-auto mt-5 flex items-center gap-2 text-sm text-gray-500 transition hover:text-gray-900 dark:text-zinc-500"
               >
                 <ArrowLeft size={15} />
                 キャンセル
               </button>
             )}
-
-            <button
-              type="button"
-              onClick={() => setView("organization")}
-              disabled={isSubmitting}
-              className="group rounded-xl border border-gray-200 bg-white p-6 text-left transition hover:border-gray-400 hover:bg-black/[.02] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/[.08] dark:bg-zinc-900 dark:hover:border-zinc-600"
-            >
-              <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-black/[.06] text-gray-900 dark:bg-white/[.08] dark:text-white">
-                <Building2 size={22} />
-              </span>
-              <span className="mt-5 block text-base font-semibold text-gray-900 dark:text-white">
-                組織利用
-              </span>
-              <span className="mt-2 block text-sm leading-6 text-gray-500 dark:text-zinc-500">
-                管理サーバーに接続し、組織のユーザー・承認・監査機能を有効化します。
-              </span>
-              <span className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-gray-600 group-hover:text-gray-900 dark:text-zinc-400">
-                管理サーバーに接続
-                <KeyRound size={15} />
-              </span>
-            </button>
           </div>
         ) : (
           <form

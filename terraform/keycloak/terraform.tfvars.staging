@@ -30,6 +30,7 @@ manager_web_origins = [
 # Desktop は Keycloak を直接開くため、custom scheme の redirect URI を Keycloak 側で許可する
 desktop_client_id = "tumiki-desktop"
 desktop_redirect_uris = [
+  "http://127.0.0.1:33418/callback",
   "tumiki://auth/callback"
 ]
 

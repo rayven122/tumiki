@@ -23,7 +23,7 @@ GET {managerUrl}/api/auth/config
 }
 ```
 
-Desktop は `issuer` の Discovery Document から `authorization_endpoint` / `token_endpoint` を解決する。`redirect_uri` は現行 Desktop 実装では `tumiki://auth/callback` 固定。
+Desktop は `issuer` の Discovery Document から `authorization_endpoint` / `token_endpoint` を解決する。`redirect_uri` は現行 Desktop 実装では loopback HTTP の `http://127.0.0.1:33418/callback` 固定。
 
 注意:
 
