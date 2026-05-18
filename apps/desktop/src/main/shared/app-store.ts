@@ -18,6 +18,9 @@ type AppStoreSchema = {
   activeProfile?: DesktopProfile;
   organizationProfile?: OrganizationProfile;
   hasCompletedInitialProfileSetup?: boolean;
+  // 表示テーマ（ライト/ダーク）。renderer 側の jotai atom は揮発的なので
+  // ここに永続化し、起動時に復元する
+  theme?: "light" | "dark";
   // AI コーディングツール テレメトリ設定
   aiCodingTelemetry?: {
     tools: {

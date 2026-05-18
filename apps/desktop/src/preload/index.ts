@@ -224,6 +224,14 @@ const api = {
       ipcRenderer.invoke("profile:disconnectOrganization"),
   },
 
+  // アプリ設定の永続化 API
+  appConfig: {
+    getTheme: (): Promise<"light" | "dark" | null> =>
+      ipcRenderer.invoke("appConfig:getTheme"),
+    setTheme: (theme: "light" | "dark"): Promise<void> =>
+      ipcRenderer.invoke("appConfig:setTheme", theme),
+  },
+
   // 外部URLを既定ブラウザで開くシェル API
   shell: {
     openExternal: (url: string): Promise<void> =>
