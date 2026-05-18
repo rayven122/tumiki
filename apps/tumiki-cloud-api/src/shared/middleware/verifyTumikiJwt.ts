@@ -162,9 +162,7 @@ export const verifyTumikiBearerToken = async (
   const jwks = await getJwks();
   const allowedAudiences = getAllowedAudiences();
   if (process.env.NODE_ENV === "production" && allowedAudiences.length === 0) {
-    console.warn(
-      "[verifyTumikiJwt] audience validation is disabled in production",
-    );
+    throw new Error("KEYCLOAK_ALLOWED_AUDIENCES is required in production");
   }
 
   const { payload } = await jwtVerify(bearerToken, jwks, {
