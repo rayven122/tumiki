@@ -11,28 +11,22 @@ export const getProfileState = async (): Promise<ProfileState> => {
   };
 };
 
-export const selectPersonalProfile = async (): Promise<ProfileState> => {
-  const store = await getAppStore();
+const confirmPersonalProfile = async (
+  store: Awaited<ReturnType<typeof getAppStore>>,
+): Promise<void> => {
   if (store.get("activeProfile") === "organization") {
     throw new Error("組織利用中は個人利用に切り替えられません");
   }
   store.set("activeProfile", "personal");
-  store.set("hasCompletedInitialProfileSetup", true);
   store.delete("pendingProfile");
   store.delete("organizationProfile");
-  return getProfileState();
+  store.set("hasCompletedInitialProfileSetup", true);
 };
 
 // 認証コールバック完了後に personal profile を確定する。
 export const activatePersonalProfile = async (): Promise<ProfileState> => {
   const store = await getAppStore();
-  if (store.get("activeProfile") === "organization") {
-    throw new Error("組織利用中は個人利用に切り替えられません");
-  }
-  store.set("activeProfile", "personal");
-  store.delete("pendingProfile");
-  store.delete("organizationProfile");
-  store.set("hasCompletedInitialProfileSetup", true);
+  await confirmPersonalProfile(store);
   return getProfileState();
 };
 

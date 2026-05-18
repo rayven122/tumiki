@@ -76,12 +76,11 @@ describe("setupProfileIpc", () => {
     });
   });
 
-  test("個人利用選択で個人プロファイルを保存する", async () => {
+  test("認証コールバック経由で個人プロファイルを保存する", async () => {
     storeData.set("managerUrl", "https://manager.example.com");
     storeData.set("pendingProfile", "personal");
 
-    const handler = mockIpcHandlers.get("profile:selectPersonal");
-    const result = await handler!({} as IpcMainInvokeEvent);
+    const result = await activatePersonalProfile();
 
     expect(storeData.get("managerUrl")).toBe("https://manager.example.com");
     expect(storeData.has("pendingProfile")).toBe(false);
@@ -92,15 +91,6 @@ describe("setupProfileIpc", () => {
     });
   });
 
-  test("組織利用中は個人利用へ切り替えられない", async () => {
-    await activateOrganizationProfile("https://manager.example.com");
-
-    const handler = mockIpcHandlers.get("profile:selectPersonal");
-    await expect(handler!({} as IpcMainInvokeEvent)).rejects.toThrow(
-      "組織利用中は個人利用に切り替えられません",
-    );
-  });
-
   test("認証コールバック経由でも組織利用中は個人利用へ切り替えられない", async () => {
     await activateOrganizationProfile("https://manager.example.com");
 
@@ -109,13 +99,13 @@ describe("setupProfileIpc", () => {
     );
   });
 
-  test("組織セットアップキャンセルで未確定の管理サーバーURLをクリアする", async () => {
+  test("セットアップキャンセルで未確定の管理サーバーURLをクリアする", async () => {
     const cancelAuthFlow = vi.fn();
     const stopAutoRefresh = vi.fn();
     mockGetOAuthManager.mockReturnValue({ cancelAuthFlow, stopAutoRefresh });
     storeData.set("managerUrl", "https://manager.example.com");
 
-    const handler = mockIpcHandlers.get("profile:cancelOrganizationSetup");
+    const handler = mockIpcHandlers.get("profile:cancelPendingSetup");
     const result = await handler!({} as IpcMainInvokeEvent);
 
     expect(cancelAuthFlow).toHaveBeenCalled();
@@ -129,7 +119,7 @@ describe("setupProfileIpc", () => {
     });
   });
 
-  test("組織セットアップキャンセル時にプロファイルクリアが失敗した場合はOAuthManagerを停止しない", async () => {
+  test("セットアップキャンセル時にプロファイルクリアが失敗した場合はOAuthManagerを停止しない", async () => {
     const cancelAuthFlow = vi.fn();
     const stopAutoRefresh = vi.fn();
     mockGetOAuthManager.mockReturnValue({ cancelAuthFlow, stopAutoRefresh });
@@ -138,10 +128,10 @@ describe("setupProfileIpc", () => {
     });
     storeData.set("managerUrl", "https://manager.example.com");
 
-    const handler = mockIpcHandlers.get("profile:cancelOrganizationSetup");
+    const handler = mockIpcHandlers.get("profile:cancelPendingSetup");
 
     await expect(handler!({} as IpcMainInvokeEvent)).rejects.toThrow(
-      "組織利用セットアップのキャンセルに失敗しました",
+      "セットアップのキャンセルに失敗しました",
     );
 
     expect(cancelAuthFlow).not.toHaveBeenCalled();

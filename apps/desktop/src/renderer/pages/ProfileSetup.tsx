@@ -152,7 +152,7 @@ export const ProfileSetup = (): JSX.Element => {
     setupCancelledRef.current = true;
     try {
       await window.electronAPI.auth.cancelLogin();
-      await window.electronAPI.profile.cancelOrganizationSetup();
+      await window.electronAPI.profile.cancelPendingSetup();
       if (mountedRef.current) {
         setError(null);
       }
@@ -188,7 +188,7 @@ export const ProfileSetup = (): JSX.Element => {
     }
 
     try {
-      await window.electronAPI.profile.cancelOrganizationSetup();
+      await window.electronAPI.profile.cancelPendingSetup();
       if (mountedRef.current) {
         setError(null);
         setView("choice");

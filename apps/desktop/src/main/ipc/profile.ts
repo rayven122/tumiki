@@ -3,7 +3,6 @@ import { getDb } from "../shared/db";
 import {
   clearOrganizationProfile,
   getProfileState,
-  selectPersonalProfile,
 } from "../shared/profile-store";
 import { getOAuthManager, setOAuthManager } from "../auth/manager-registry";
 import * as logger from "../shared/utils/logger";
@@ -19,18 +18,16 @@ const stopOAuthManager = (): void => {
 export const setupProfileIpc = (): void => {
   ipcMain.handle("profile:getState", () => getProfileState());
 
-  ipcMain.handle("profile:selectPersonal", () => selectPersonalProfile());
-
-  ipcMain.handle("profile:cancelOrganizationSetup", async () => {
+  ipcMain.handle("profile:cancelPendingSetup", async () => {
     let profileState: ProfileState;
     try {
       profileState = await clearOrganizationProfile();
     } catch (error) {
       logger.error(
-        "Failed to clear organization profile while cancelling organization setup",
+        "Failed to clear profile state while cancelling pending setup",
         error instanceof Error ? error : { error },
       );
-      throw new Error("組織利用セットアップのキャンセルに失敗しました", {
+      throw new Error("セットアップのキャンセルに失敗しました", {
         cause: error,
       });
     }

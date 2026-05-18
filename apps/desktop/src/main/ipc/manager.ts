@@ -67,26 +67,23 @@ export const setupManagerIpc = (
     return store.get("managerUrl") ?? null;
   });
 
-  ipcMain.handle(
-    "manager:connect",
-    async (_event, url: unknown, profile: unknown = "organization") => {
-      if (typeof url !== "string") {
-        throw new Error("URLは文字列で指定してください");
+  ipcMain.handle("manager:connect", async (_event, url: unknown) => {
+    if (typeof url !== "string") {
+      throw new Error("URLは文字列で指定してください");
+    }
+    try {
+      const parsedUrl = new URL(url);
+      if (parsedUrl.protocol !== "https:" && parsedUrl.protocol !== "http:") {
+        throw new Error("unsupported protocol");
       }
-      try {
-        const parsedUrl = new URL(url);
-        if (parsedUrl.protocol !== "https:" && parsedUrl.protocol !== "http:") {
-          throw new Error("unsupported protocol");
-        }
-      } catch {
-        throw new Error(
-          "管理サーバーURLはhttp://またはhttps://で指定してください",
-        );
-      }
+    } catch {
+      throw new Error(
+        "管理サーバーURLはhttp://またはhttps://で指定してください",
+      );
+    }
 
-      await connectToManager(url, profile);
-    },
-  );
+    await connectToManager(url, "organization");
+  });
 
   ipcMain.handle("manager:connectPersonal", () =>
     connectToManager(PERSONAL_PROFILE_MANAGER_URL, "personal"),

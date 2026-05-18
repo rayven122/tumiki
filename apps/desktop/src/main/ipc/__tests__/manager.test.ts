@@ -107,6 +107,21 @@ describe("setupManagerIpc", () => {
     expect(storeData.get("hasCompletedInitialProfileSetup")).toBeUndefined();
   });
 
+  test("個人プロファイル接続失敗時はpendingProfileを保存しない", async () => {
+    initOAuthManager.mockRejectedValue(new Error("init failed"));
+    const handler = mockIpcHandlers.get("manager:connectPersonal");
+
+    await expect(handler!({} as IpcMainInvokeEvent)).rejects.toThrow(
+      "init failed",
+    );
+
+    expect(storeData.get("managerUrl")).toBeUndefined();
+    expect(storeData.get("pendingProfile")).toBeUndefined();
+    expect(storeData.get("activeProfile")).toBeUndefined();
+    expect(storeData.get("organizationProfile")).toBeUndefined();
+    expect(storeData.get("hasCompletedInitialProfileSetup")).toBeUndefined();
+  });
+
   test("無効なURLは拒否する", async () => {
     const handler = mockIpcHandlers.get("manager:connect");
 

@@ -594,6 +594,7 @@ if (appMode === "mcp-proxy") {
       await manager.handleAuthCallback(url);
       const store = await getAppStore();
       const managerUrl = store.get("managerUrl");
+      // pendingProfile 未設定は旧フローの callback として組織利用扱いにする。
       const pendingProfile = store.get("pendingProfile") ?? "organization";
       if (pendingProfile === "personal") {
         await activatePersonalProfile();
@@ -807,7 +808,8 @@ if (appMode === "mcp-proxy") {
       await initializeDb();
       startAuditLogManagerSyncScheduler();
 
-      // OAuthManager初期化: electron-store保存済みURLを優先、フォールバックで環境変数
+      // OAuthManager初期化: electron-store保存済みURLを優先、フォールバックで環境変数。
+      // 個人利用でも tumiki.cloud の認証セッション維持に managerUrl を使う。
       const savedManagerUrl = (await getAppStore()).get("managerUrl");
       if (savedManagerUrl) {
         try {
