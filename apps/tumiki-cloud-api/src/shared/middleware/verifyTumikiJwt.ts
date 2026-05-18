@@ -130,6 +130,13 @@ const toVerifiedTumikiJwt = (
   };
 };
 
+const getAllowedAudiences = (): string[] => {
+  const audiences = process.env.KEYCLOAK_ALLOWED_AUDIENCES?.split(",")
+    .map((audience) => audience.trim())
+    .filter((audience) => audience.length > 0);
+  return audiences ?? [];
+};
+
 const isInvalidJwtError = (err: unknown): boolean =>
   err instanceof JWTExpired ||
   err instanceof JWTClaimValidationFailed ||
@@ -150,11 +157,13 @@ export const verifyTumikiBearerToken = async (
 ): Promise<VerifiedTumikiJwt | null> => {
   const metadata = await getKeycloakServerMetadata();
   const jwks = await getJwks();
+  const allowedAudiences = getAllowedAudiences();
 
   const { payload } = await jwtVerify(bearerToken, jwks, {
     issuer: metadata.issuer,
-    // apps/mcp-proxy と同じ検証境界に揃えるため audience / azp はここでは検証しない。
-    // Desktop が保持する idToken を受け取り、issuer・署名・exp・sub を API 境界で確認する。
+    ...(allowedAudiences.length > 0 ? { audience: allowedAudiences } : {}),
+    // apps/mcp-proxy と同じ検証境界に揃えるため、未設定時は audience / azp を検証しない。
+    // 専用 audience を発行できる環境では KEYCLOAK_ALLOWED_AUDIENCES で任意検証する。
     // TODO(#1351): api.tumiki.cloud 専用 audience を発行できるようになったら検証を追加する。
     clockTolerance: 60,
     requiredClaims: ["exp", "sub"],

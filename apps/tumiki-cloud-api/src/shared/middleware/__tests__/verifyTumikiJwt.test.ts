@@ -189,6 +189,38 @@ describe("verifyTumikiJwtMiddleware", () => {
     expect(res.status).toBe(200);
   });
 
+  test("KEYCLOAK_ALLOWED_AUDIENCES設定時はaudience一致で認証が通る", async () => {
+    stubKeycloakEnv();
+    vi.stubEnv("KEYCLOAK_ALLOWED_AUDIENCES", "tumiki-cloud-api, other-client");
+    stubKeycloakFetch();
+
+    const token = await issueJwt(
+      { sub: "user_abc" },
+      { audience: "tumiki-cloud-api" },
+    );
+    const res = await buildTestApp().request("/protected", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    expect(res.status).toBe(200);
+  });
+
+  test("KEYCLOAK_ALLOWED_AUDIENCES設定時はaudience不一致で401", async () => {
+    stubKeycloakEnv();
+    vi.stubEnv("KEYCLOAK_ALLOWED_AUDIENCES", "tumiki-cloud-api");
+    stubKeycloakFetch();
+
+    const token = await issueJwt(
+      { sub: "user_abc" },
+      { audience: "other-client" },
+    );
+    const res = await buildTestApp().request("/protected", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    expect(res.status).toBe(401);
+  });
+
   test("期限切れJWTは401", async () => {
     stubKeycloakEnv();
     stubKeycloakFetch();

@@ -71,12 +71,6 @@ const verifyRateLimit = (): MiddlewareHandler<{
     bucket.count += 1;
     rateLimitBuckets.set(subject, bucket);
 
-    if (
-      rateLimitBuckets.size > TOOL_SEARCH_EMBEDDING_CONFIG.maxRateLimitBuckets
-    ) {
-      deleteExpiredRateLimitBuckets(now);
-    }
-
     if (bucket.count > TOOL_SEARCH_EMBEDDING_CONFIG.maxRequestsPerWindow) {
       const retryAfterSec = Math.max(
         1,
