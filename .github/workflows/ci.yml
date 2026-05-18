@@ -233,11 +233,16 @@ jobs:
         if: needs.docker-smoke-changes.outputs[matrix.change_output] == 'true'
         uses: docker/setup-buildx-action@v3
 
+      - name: ⚙️ Setup NPM proxy
+        if: needs.docker-smoke-changes.outputs[matrix.change_output] == 'true'
+        uses: rayven122/actions/setup-npm-proxy@v1
+
       - name: 🔨 Build image
         if: needs.docker-smoke-changes.outputs[matrix.change_output] == 'true'
         run: |
           docker buildx build \
             --load \
+            --build-arg NPM_CONFIG_REGISTRY="${NPM_CONFIG_REGISTRY:-}" \
             --cache-from type=gha,scope=docker-smoke-${{ matrix.app }} \
             --cache-to type=gha,mode=max,scope=docker-smoke-${{ matrix.app }} \
             -f "${{ matrix.dockerfile }}" \

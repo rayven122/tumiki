@@ -21,6 +21,7 @@ WORKDIR /app
 # Stage 2: Build
 # ========================================
 FROM base AS build
+ARG NPM_CONFIG_REGISTRY
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY patches ./patches

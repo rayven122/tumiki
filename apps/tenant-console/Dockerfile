@@ -21,6 +21,7 @@ WORKDIR /app
 # Stage 2: Build
 # ========================================
 FROM base AS build
+ARG NPM_CONFIG_REGISTRY
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY patches ./patches
@@ -60,6 +61,7 @@ RUN pnpm --filter @tumiki/tenant-console run build:bare
 # Stage 3: Production
 # ========================================
 FROM node:24-alpine AS production
+ARG NPM_CONFIG_REGISTRY
 
 # helm/kubectl: テナントプロビジョニング用、dumb-init: シグナル伝播、wget: ヘルスチェック
 # バージョン固定 + SHA256チェックサム検証（サプライチェーン攻撃対策）

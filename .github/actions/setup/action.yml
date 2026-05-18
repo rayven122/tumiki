@@ -15,6 +15,9 @@ runs:
         node-version: "22"
         cache: "pnpm"
 
+    - name: Setup NPM proxy
+      uses: rayven122/actions/setup-npm-proxy@v1
+
     - name: Install packages
       shell: bash
       run: pnpm install --frozen-lockfile

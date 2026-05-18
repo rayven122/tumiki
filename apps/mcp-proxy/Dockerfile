@@ -22,6 +22,7 @@ WORKDIR /app
 # Stage 2: Build
 # ========================================
 FROM base AS build
+ARG NPM_CONFIG_REGISTRY
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY patches ./patches
@@ -62,6 +63,7 @@ RUN PRISMA_DIR=$(node -e "console.log(require('path').dirname(require.resolve('@
 # Stage 3: Production
 # ========================================
 FROM node:24-alpine AS production
+ARG NPM_CONFIG_REGISTRY
 
 # corepack で pnpm を有効化（本番依存関係のインストールに必要）
 ENV PNPM_HOME="/pnpm"

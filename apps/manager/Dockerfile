@@ -22,6 +22,7 @@ WORKDIR /app
 # Stage 2: Build
 # ========================================
 FROM base AS build
+ARG NPM_CONFIG_REGISTRY
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY patches ./patches
@@ -67,6 +68,7 @@ RUN NEXT_PUBLIC_TUMIKI_EDITION="${NEXT_PUBLIC_TUMIKI_EDITION}" \
 # Stage 3: Production
 # ========================================
 FROM node:24-alpine AS production
+ARG NPM_CONFIG_REGISTRY
 
 # dumb-init: シグナル伝播、wget: ヘルスチェック
 RUN apk add --no-cache dumb-init wget

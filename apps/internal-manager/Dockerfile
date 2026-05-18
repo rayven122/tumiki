@@ -22,6 +22,7 @@ WORKDIR /app
 # Stage 2: Build
 # ========================================
 FROM base AS build
+ARG NPM_CONFIG_REGISTRY
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY patches ./patches
@@ -67,6 +68,7 @@ RUN cd /app/apps/internal-manager/.next/standalone/node_modules && \
 # Stage 3: Production
 # ========================================
 FROM node:24-alpine AS production
+ARG NPM_CONFIG_REGISTRY
 
 # dumb-init: シグナル伝播、wget: ヘルスチェック
 RUN apk add --no-cache dumb-init wget
