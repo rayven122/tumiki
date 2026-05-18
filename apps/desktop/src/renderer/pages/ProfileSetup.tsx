@@ -15,8 +15,6 @@ import { PROFILE_CHANGED_EVENT } from "../../shared/events";
 
 type View = "choice" | "organization";
 
-const PERSONAL_PROFILE_MANAGER_URL = "https://www.tumiki.cloud";
-
 const getManagerUrlProtocol = (value: string): string | null => {
   try {
     return new URL(value.trim()).protocol;
@@ -100,10 +98,7 @@ export const ProfileSetup = (): JSX.Element => {
     setIsSubmitting(true);
     setError(null);
     try {
-      await window.electronAPI.manager.connect(
-        PERSONAL_PROFILE_MANAGER_URL,
-        "personal",
-      );
+      await window.electronAPI.manager.connectPersonal();
       await window.electronAPI.auth.login();
       setIsWaitingForCallback(true);
     } catch (err) {
@@ -152,6 +147,30 @@ export const ProfileSetup = (): JSX.Element => {
 
   const managerUrlProtocol = getManagerUrlProtocol(managerUrl);
   const shouldWarnHttp = managerUrlProtocol === "http:";
+
+  const cancelPersonalSetup = async (): Promise<void> => {
+    setupCancelledRef.current = true;
+    try {
+      await window.electronAPI.auth.cancelLogin();
+      await window.electronAPI.profile.cancelOrganizationSetup();
+      if (mountedRef.current) {
+        setError(null);
+      }
+    } catch (err) {
+      if (mountedRef.current) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "個人利用セットアップのキャンセルに失敗しました",
+        );
+      }
+    } finally {
+      if (mountedRef.current) {
+        setIsSubmitting(false);
+        setIsWaitingForCallback(false);
+      }
+    }
+  };
 
   const cancelOrganizationSetup = async (): Promise<void> => {
     setupCancelledRef.current = true;
@@ -238,6 +257,17 @@ export const ProfileSetup = (): JSX.Element => {
                 )}
               </span>
             </button>
+
+            {isWaitingForCallback && (
+              <button
+                type="button"
+                onClick={() => void cancelPersonalSetup()}
+                className="mx-auto flex items-center gap-2 text-sm text-gray-500 transition hover:text-gray-900 md:col-span-2 dark:text-zinc-500"
+              >
+                <ArrowLeft size={15} />
+                キャンセル
+              </button>
+            )}
 
             <button
               type="button"

@@ -78,14 +78,10 @@ describe("setupManagerIpc", () => {
     expect(storeData.get("hasCompletedInitialProfileSetup")).toBeUndefined();
   });
 
-  test("個人プロファイル用の接続ではpendingProfileをpersonalとして保存する", async () => {
-    const handler = mockIpcHandlers.get("manager:connect");
+  test("個人プロファイル用の接続ではtumiki.cloudを使いpendingProfileをpersonalとして保存する", async () => {
+    const handler = mockIpcHandlers.get("manager:connectPersonal");
 
-    await handler!(
-      {} as IpcMainInvokeEvent,
-      "https://www.tumiki.cloud",
-      "personal",
-    );
+    await handler!({} as IpcMainInvokeEvent);
 
     expect(initOAuthManager).toHaveBeenCalledWith(
       "https://www.tumiki.cloud",
@@ -105,6 +101,7 @@ describe("setupManagerIpc", () => {
     ).rejects.toThrow("init failed");
 
     expect(storeData.get("managerUrl")).toBeUndefined();
+    expect(storeData.get("pendingProfile")).toBeUndefined();
     expect(storeData.get("activeProfile")).toBeUndefined();
     expect(storeData.get("organizationProfile")).toBeUndefined();
     expect(storeData.get("hasCompletedInitialProfileSetup")).toBeUndefined();

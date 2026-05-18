@@ -49,7 +49,10 @@ vi.mock("../../auth/manager-registry", () => ({
 vi.mock("../../shared/utils/logger");
 
 import { setupProfileIpc } from "../profile";
-import { activateOrganizationProfile } from "../../shared/profile-store";
+import {
+  activateOrganizationProfile,
+  activatePersonalProfile,
+} from "../../shared/profile-store";
 
 describe("setupProfileIpc", () => {
   beforeEach(() => {
@@ -94,6 +97,14 @@ describe("setupProfileIpc", () => {
 
     const handler = mockIpcHandlers.get("profile:selectPersonal");
     await expect(handler!({} as IpcMainInvokeEvent)).rejects.toThrow(
+      "組織利用中は個人利用に切り替えられません",
+    );
+  });
+
+  test("認証コールバック経由でも組織利用中は個人利用へ切り替えられない", async () => {
+    await activateOrganizationProfile("https://manager.example.com");
+
+    await expect(activatePersonalProfile()).rejects.toThrow(
       "組織利用中は個人利用に切り替えられません",
     );
   });

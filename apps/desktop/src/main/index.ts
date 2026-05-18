@@ -599,6 +599,15 @@ if (appMode === "mcp-proxy") {
         await activatePersonalProfile();
       } else if (managerUrl) {
         await activateOrganizationProfile(managerUrl);
+      } else {
+        logger.error(
+          "Auth callback could not activate organization profile: managerUrl is missing",
+        );
+        sendToWindow(
+          "auth:callbackError",
+          "管理サーバーURLが見つかりません。再度サインインしてください。",
+        );
+        return;
       }
       sendToWindow("auth:callbackSuccess");
       logger.info("Deep link auth callback handled successfully");

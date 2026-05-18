@@ -23,8 +23,12 @@ export const selectPersonalProfile = async (): Promise<ProfileState> => {
   return getProfileState();
 };
 
+// 認証コールバック完了後に personal profile を確定する。
 export const activatePersonalProfile = async (): Promise<ProfileState> => {
   const store = await getAppStore();
+  if (store.get("activeProfile") === "organization") {
+    throw new Error("組織利用中は個人利用に切り替えられません");
+  }
   store.set("activeProfile", "personal");
   store.delete("pendingProfile");
   store.delete("organizationProfile");

@@ -13,6 +13,7 @@ export type OidcConfig = z.infer<typeof oidcConfigResponseSchema>;
 
 const FETCH_TIMEOUT_MS = 10_000;
 const profileSchema = z.enum(["personal", "organization"]);
+const PERSONAL_PROFILE_MANAGER_URL = "https://www.tumiki.cloud";
 
 /**
  * 管理サーバーからOIDC設定を取得する
@@ -46,6 +47,21 @@ export const setupManagerIpc = (
     clientId: string,
   ) => Promise<void>,
 ): void => {
+  const connectToManager = async (
+    url: string,
+    profile: unknown = "organization",
+  ): Promise<void> => {
+    const pendingProfile: DesktopProfile = profileSchema.parse(profile);
+    const config = await fetchManagerOidcConfig(url);
+    await initOAuthManager(url, config.issuer, config.clientId);
+
+    const store = await getAppStore();
+    store.set("managerUrl", url);
+    store.set("pendingProfile", pendingProfile);
+
+    logger.info("Manager URL connected", { url, pendingProfile });
+  };
+
   ipcMain.handle("manager:getUrl", async () => {
     const store = await getAppStore();
     return store.get("managerUrl") ?? null;
@@ -68,15 +84,11 @@ export const setupManagerIpc = (
         );
       }
 
-      const pendingProfile: DesktopProfile = profileSchema.parse(profile);
-      const config = await fetchManagerOidcConfig(url);
-      await initOAuthManager(url, config.issuer, config.clientId);
-
-      const store = await getAppStore();
-      store.set("managerUrl", url);
-      store.set("pendingProfile", pendingProfile);
-
-      logger.info("Manager URL connected", { url, pendingProfile });
+      await connectToManager(url, profile);
     },
+  );
+
+  ipcMain.handle("manager:connectPersonal", () =>
+    connectToManager(PERSONAL_PROFILE_MANAGER_URL, "personal"),
   );
 };
