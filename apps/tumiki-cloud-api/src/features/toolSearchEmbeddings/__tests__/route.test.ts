@@ -141,6 +141,26 @@ describe("POST /v1/tool-search/embeddings", () => {
     expect(res.status).toBe(400);
   });
 
+  test("不正なJSON bodyは400", async () => {
+    stubEnv();
+    stubKeycloakFetch();
+    const token = await issueJwt();
+
+    const res = await toolSearchEmbeddingsRoute.request(
+      "/v1/tool-search/embeddings",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: "{",
+      },
+    );
+
+    expect(res.status).toBe(400);
+  });
+
   test("有効なTumiki JWTでembeddingを返す", async () => {
     stubEnv();
     stubKeycloakFetch();
@@ -194,6 +214,29 @@ describe("POST /v1/tool-search/embeddings", () => {
 
     expect(res.status).toBe(500);
     expect(embedMany).not.toHaveBeenCalled();
+  });
+
+  test("embedding生成失敗は500を返す", async () => {
+    stubEnv();
+    stubKeycloakFetch();
+    vi.mocked(embedMany).mockRejectedValueOnce(
+      new Error("embedding upstream failed"),
+    );
+    const token = await issueJwt();
+
+    const res = await toolSearchEmbeddingsRoute.request(
+      "/v1/tool-search/embeddings",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ texts: ["query"] }),
+      },
+    );
+
+    expect(res.status).toBe(500);
   });
 
   test("DYNAMIC_SEARCH_EMBEDDING_MODELでモデルを上書きできる", async () => {
