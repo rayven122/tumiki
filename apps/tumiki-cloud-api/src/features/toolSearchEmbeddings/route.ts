@@ -40,16 +40,6 @@ const deleteExpiredRateLimitBuckets = (now: number): void => {
   }
 };
 
-const getEarliestRateLimitBucketExpiry = (): number | null => {
-  let earliestExpiry: number | null = null;
-  for (const bucket of rateLimitBuckets.values()) {
-    if (earliestExpiry === null || bucket.resetAt < earliestExpiry) {
-      earliestExpiry = bucket.resetAt;
-    }
-  }
-  return earliestExpiry;
-};
-
 let rateLimitCleanupInterval: NodeJS.Timeout | null = null;
 
 export const startToolSearchEmbeddingsRateLimitCleanup = (): void => {
@@ -85,12 +75,7 @@ const verifyRateLimit = (): MiddlewareHandler<{
         rateLimitBuckets.size >=
         TOOL_SEARCH_EMBEDDING_CONFIG.maxRateLimitBuckets
       ) {
-        const earliestExpiry =
-          getEarliestRateLimitBucketExpiry() ?? now + windowMs;
-        const retryAfterSec = Math.max(
-          1,
-          Math.ceil((earliestExpiry - now) / 1000),
-        );
+        const retryAfterSec = Math.ceil(windowMs / 1000);
         return c.json({ error: "Too Many Requests" }, 429, {
           "Retry-After": String(retryAfterSec),
         });

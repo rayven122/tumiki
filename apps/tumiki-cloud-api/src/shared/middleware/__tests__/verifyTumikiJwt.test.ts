@@ -55,6 +55,7 @@ const toUrlString = (input: string | URL | Request): string => {
 
 const stubKeycloakEnv = () => {
   vi.stubEnv("KEYCLOAK_ISSUER", issuer);
+  vi.stubEnv("KEYCLOAK_ALLOWED_AUDIENCES", "tumiki-manager");
 };
 
 const stubKeycloakFetch = () => {
@@ -174,8 +175,10 @@ describe("verifyTumikiJwtMiddleware", () => {
     expect(res.status).toBe(401);
   });
 
-  test("KEYCLOAK_ALLOWED_AUDIENCES未設定時はaudienceを検証しない", async () => {
+  test("KEYCLOAK_SKIP_AUDIENCE_CHECK=trueならaudienceを検証しない", async () => {
     stubKeycloakEnv();
+    vi.stubEnv("KEYCLOAK_ALLOWED_AUDIENCES", "");
+    vi.stubEnv("KEYCLOAK_SKIP_AUDIENCE_CHECK", "true");
     stubKeycloakFetch();
 
     const token = await issueJwt(
@@ -189,7 +192,7 @@ describe("verifyTumikiJwtMiddleware", () => {
     expect(res.status).toBe(200);
   });
 
-  test("KEYCLOAK_ALLOWED_AUDIENCES空文字時はaudienceを検証しない", async () => {
+  test("KEYCLOAK_SKIP_AUDIENCE_CHECK=falseならaudience未設定で500", async () => {
     stubKeycloakEnv();
     vi.stubEnv("KEYCLOAK_ALLOWED_AUDIENCES", "");
     stubKeycloakFetch();
@@ -202,28 +205,11 @@ describe("verifyTumikiJwtMiddleware", () => {
       headers: { Authorization: `Bearer ${token}` },
     });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(500);
   });
 
-  test("KEYCLOAK_ALLOWED_AUDIENCES空白のみ時はaudienceを検証しない", async () => {
+  test("KEYCLOAK_ALLOWED_AUDIENCES空白のみなら500", async () => {
     stubKeycloakEnv();
-    vi.stubEnv("KEYCLOAK_ALLOWED_AUDIENCES", "   ");
-    stubKeycloakFetch();
-
-    const token = await issueJwt(
-      { sub: "user_abc" },
-      { audience: "other-client" },
-    );
-    const res = await buildTestApp().request("/protected", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    expect(res.status).toBe(200);
-  });
-
-  test("本番環境でKEYCLOAK_ALLOWED_AUDIENCES空白のみなら500", async () => {
-    stubKeycloakEnv();
-    vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("KEYCLOAK_ALLOWED_AUDIENCES", "   ");
     stubKeycloakFetch();
 
@@ -236,6 +222,23 @@ describe("verifyTumikiJwtMiddleware", () => {
     });
 
     expect(res.status).toBe(500);
+  });
+
+  test("KEYCLOAK_SKIP_AUDIENCE_CHECK=trueなら空白のみでもaudienceを検証しない", async () => {
+    stubKeycloakEnv();
+    vi.stubEnv("KEYCLOAK_ALLOWED_AUDIENCES", "   ");
+    vi.stubEnv("KEYCLOAK_SKIP_AUDIENCE_CHECK", "true");
+    stubKeycloakFetch();
+
+    const token = await issueJwt(
+      { sub: "user_abc" },
+      { audience: "other-client" },
+    );
+    const res = await buildTestApp().request("/protected", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    expect(res.status).toBe(200);
   });
 
   test("KEYCLOAK_ALLOWED_AUDIENCES設定時はaudience一致で認証が通る", async () => {

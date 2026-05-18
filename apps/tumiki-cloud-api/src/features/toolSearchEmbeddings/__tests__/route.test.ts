@@ -17,6 +17,7 @@ import { TOOL_SEARCH_EMBEDDING_CONFIG } from "../../../shared/constants/config.j
 import { resetTumikiJwtCache } from "../../../shared/middleware/verifyTumikiJwt.js";
 import {
   resetToolSearchEmbeddingsRateLimit,
+  stopToolSearchEmbeddingsRateLimitCleanup,
   toolSearchEmbeddingsRoute,
 } from "../route.js";
 
@@ -49,6 +50,7 @@ const issueJwt = async (): Promise<string> => {
 
 const stubEnv = () => {
   vi.stubEnv("KEYCLOAK_ISSUER", issuer);
+  vi.stubEnv("KEYCLOAK_ALLOWED_AUDIENCES", "tumiki-manager");
   vi.stubEnv("AI_GATEWAY_API_KEY", "gateway-secret");
 };
 
@@ -104,6 +106,7 @@ afterEach(() => {
   vi.clearAllMocks();
   resetTumikiJwtCache();
   resetToolSearchEmbeddingsRateLimit();
+  stopToolSearchEmbeddingsRateLimitCleanup();
 });
 
 describe("POST /v1/tool-search/embeddings", () => {

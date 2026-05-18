@@ -59,7 +59,7 @@ spec:
               value: "production"
           # Infisical Operator が同期した k8s Secret を環境変数として注入
           # 必須: LICENSE_PUBLIC_KEY, AI_GATEWAY_API_KEY, KEYCLOAK_ISSUER, KEYCLOAK_ALLOWED_AUDIENCES
-          # 任意: DYNAMIC_SEARCH_MODEL, DYNAMIC_SEARCH_EMBEDDING_MODEL
+          # 任意: KEYCLOAK_SKIP_AUDIENCE_CHECK, DYNAMIC_SEARCH_MODEL, DYNAMIC_SEARCH_EMBEDDING_MODEL
           envFrom:
             - secretRef:
                 name: tumiki-cloud-api-env

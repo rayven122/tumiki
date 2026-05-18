@@ -163,18 +163,19 @@ export const resetTumikiJwtCache = (): void => {
 export const verifyTumikiBearerToken = async (
   bearerToken: string,
 ): Promise<VerifiedTumikiJwt> => {
+  const allowedAudiences = getAllowedAudiences();
+  const skipAudienceCheck = process.env.KEYCLOAK_SKIP_AUDIENCE_CHECK === "true";
+  if (!skipAudienceCheck && allowedAudiences.length === 0) {
+    throw new Error("KEYCLOAK_ALLOWED_AUDIENCES is required");
+  }
+
   const metadata = await getKeycloakServerMetadata();
   const jwks = await getJwks();
-  const allowedAudiences = getAllowedAudiences();
-  if (process.env.NODE_ENV === "production" && allowedAudiences.length === 0) {
-    throw new Error("KEYCLOAK_ALLOWED_AUDIENCES is required in production");
-  }
 
   const { payload } = await jwtVerify(bearerToken, jwks, {
     issuer: metadata.issuer,
-    ...(allowedAudiences.length > 0 ? { audience: allowedAudiences } : {}),
-    // 本番では required env の KEYCLOAK_ALLOWED_AUDIENCES で audience を検証する。
-    // 開発・テスト環境では未設定時に apps/mcp-proxy と同様の検証境界へ戻す。
+    ...(!skipAudienceCheck ? { audience: allowedAudiences } : {}),
+    // KEYCLOAK_SKIP_AUDIENCE_CHECK=true の明示時だけ、apps/mcp-proxy と同様の検証境界へ戻す。
     // TODO(#1351): api.tumiki.cloud 専用 audience 設定後に運用環境での検証結果を確認する。
     clockTolerance: 60,
     requiredClaims: ["sub"],
