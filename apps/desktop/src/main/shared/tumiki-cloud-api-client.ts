@@ -18,11 +18,12 @@ const findValidAuthToken = async (): Promise<AuthToken | null> => {
   const db = await getDb();
   const now = new Date();
   const token = await db.authToken.findFirst({
-    where: { expiresAt: { gt: now } },
     orderBy: { createdAt: "desc" },
   });
 
-  if (!token) {
+  if (!token) return null;
+
+  if (token.expiresAt <= now) {
     await db.authToken.deleteMany({
       where: { expiresAt: { lte: now } },
     });

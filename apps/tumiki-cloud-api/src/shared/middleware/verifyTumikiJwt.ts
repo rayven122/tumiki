@@ -34,13 +34,16 @@ let serverMetadataCache: openidClient.ServerMetadata | null = null;
 let metadataDiscoveringPromise: Promise<openidClient.ServerMetadata> | null =
   null;
 let cachedJwks: JwksCacheEntry | null = null;
-let jwksCreatingPromise: Promise<ReturnType<typeof createRemoteJWKSet>> | null =
-  null;
 
 const isLocalhostUrl = (issuerUrl: string): boolean => {
   try {
     const url = new URL(issuerUrl);
-    return url.hostname === "localhost" || url.hostname === "127.0.0.1";
+    return (
+      url.hostname === "localhost" ||
+      url.hostname === "127.0.0.1" ||
+      url.hostname === "::1" ||
+      url.hostname === "[::1]"
+    );
   } catch {
     return false;
   }
@@ -98,14 +101,7 @@ const getJwks = async (): Promise<ReturnType<typeof createRemoteJWKSet>> => {
     return cachedJwks.jwks;
   }
 
-  if (jwksCreatingPromise) return jwksCreatingPromise;
-
-  jwksCreatingPromise = Promise.resolve(createJwks(metadata.jwks_uri));
-  try {
-    return await jwksCreatingPromise;
-  } finally {
-    jwksCreatingPromise = null;
-  }
+  return createJwks(metadata.jwks_uri);
 };
 
 const toVerifiedTumikiJwt = (
@@ -129,7 +125,6 @@ export const resetTumikiJwtCache = (): void => {
   serverMetadataCache = null;
   metadataDiscoveringPromise = null;
   cachedJwks = null;
-  jwksCreatingPromise = null;
 };
 
 export const verifyTumikiBearerToken = async (
@@ -141,7 +136,8 @@ export const verifyTumikiBearerToken = async (
   try {
     const { payload } = await jwtVerify(bearerToken, jwks, {
       issuer: metadata.issuer,
-      // apps/mcp-proxy の Keycloak JWT 検証に合わせ、audience はここでは検証しない。
+      // apps/mcp-proxy と同じ検証境界に揃えるため audience / azp はここでは検証しない。
+      // Desktop が保持する idToken を受け取り、issuer・署名・exp・sub を API 境界で確認する。
       clockTolerance: 60,
       requiredClaims: ["exp", "sub"],
     });

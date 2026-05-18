@@ -96,17 +96,28 @@ describe("tumiki-cloud-api-client", () => {
     const result = await requestTumikiCloudApi("/v1/tool-search/embeddings");
 
     expect(result).toBeNull();
+    expect(mockFindFirst).toHaveBeenCalledWith({
+      orderBy: { createdAt: "desc" },
+    });
+    expect(mockDeleteMany).not.toHaveBeenCalled();
     expect(fetch).not.toHaveBeenCalled();
   });
 
   test("期限切れトークンは削除してリクエストしない", async () => {
-    mockFindFirst.mockResolvedValue(null);
+    mockFindFirst.mockResolvedValue({
+      id: 1,
+      accessToken: "encrypted:access-token",
+      refreshToken: null,
+      idToken: "encrypted:id-token",
+      expiresAt: new Date(Date.now() - 60 * 1000),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
 
     const result = await requestTumikiCloudApi("/v1/tool-search/embeddings");
 
     expect(result).toBeNull();
     expect(mockFindFirst).toHaveBeenCalledWith({
-      where: { expiresAt: { gt: expect.any(Date) } },
       orderBy: { createdAt: "desc" },
     });
     expect(mockDeleteMany).toHaveBeenCalledWith({

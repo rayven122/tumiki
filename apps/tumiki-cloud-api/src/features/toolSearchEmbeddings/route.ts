@@ -59,6 +59,7 @@ const verifyRateLimit = (): MiddlewareHandler<{
     if (
       rateLimitBuckets.size > TOOL_SEARCH_EMBEDDING_CONFIG.maxRateLimitBuckets
     ) {
+      // 全バケットが有効な場合は次リクエストでも再走査するが、上限は小さくPod単位の軽い防御に留める。
       deleteExpiredRateLimitBuckets(now);
     }
 
@@ -76,6 +77,7 @@ const verifyRateLimit = (): MiddlewareHandler<{
   };
 };
 
+/** @internal テスト専用 */
 export const resetToolSearchEmbeddingsRateLimit = (): void => {
   rateLimitBuckets.clear();
 };
