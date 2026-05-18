@@ -34,6 +34,7 @@ jobs:
     name: 🔍 Lint
     runs-on:
       group: self-arc
+    needs: build
     steps:
       - name: 📥 Checkout branch
         uses: actions/checkout@v6
@@ -48,6 +49,7 @@ jobs:
     name: 💅 Format
     runs-on:
       group: self-arc
+    needs: lint
     steps:
       - name: 📥 Checkout branch
         uses: actions/checkout@v6
@@ -62,6 +64,7 @@ jobs:
     name: 🔬 Typecheck
     runs-on:
       group: self-arc
+    needs: format
     env:
       NODE_OPTIONS: --max-old-space-size=4096
     steps:
@@ -84,6 +87,7 @@ jobs:
     name: 🧪 Test
     runs-on:
       group: self-arc
+    needs: typecheck
     steps:
       - name: 📥 Checkout branch
         uses: actions/checkout@v6
@@ -104,6 +108,7 @@ jobs:
     name: 🐳 Docker Smoke Changes
     runs-on:
       group: self-arc
+    needs: test
     outputs:
       manager: ${{ steps.filter.outputs.manager }}
       mcp_proxy: ${{ steps.filter.outputs.mcp_proxy }}
@@ -180,6 +185,7 @@ jobs:
     needs: docker-smoke-changes
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         include:
           - app: manager
@@ -229,22 +235,17 @@ jobs:
         if: needs.docker-smoke-changes.outputs[matrix.change_output] == 'true'
         uses: actions/checkout@v6
 
-      - name: 🧱 Setup Docker Buildx
-        if: needs.docker-smoke-changes.outputs[matrix.change_output] == 'true'
-        uses: docker/setup-buildx-action@v3
-
       - name: ⚙️ Setup NPM proxy
         if: needs.docker-smoke-changes.outputs[matrix.change_output] == 'true'
         uses: ./.github/actions/setup-npm-proxy
 
       - name: 🔨 Build image
         if: needs.docker-smoke-changes.outputs[matrix.change_output] == 'true'
+        env:
+          DOCKER_BUILDKIT: "1"
         run: |
-          docker buildx build \
-            --load \
+          docker build \
             --build-arg NPM_CONFIG_REGISTRY="${NPM_CONFIG_REGISTRY:-}" \
-            --cache-from type=gha,scope=docker-smoke-${{ matrix.app }} \
-            --cache-to type=gha,mode=max,scope=docker-smoke-${{ matrix.app }} \
             -f "${{ matrix.dockerfile }}" \
             -t "${{ matrix.image }}" \
             .
@@ -307,6 +308,7 @@ jobs:
     name: 🗄️ Desktop Migration Check
     runs-on:
       group: self-arc
+    needs: test
     steps:
       - name: 📥 Checkout branch
         uses: actions/checkout@v6
