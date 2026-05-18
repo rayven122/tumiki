@@ -22,6 +22,11 @@ export const getCachedCredentials = (
 export const hasCachedCredentials = (secretId: number): boolean =>
   cache.has(secretId);
 
+/**
+ * @internal
+ * テスト用に cache 全体を破棄する。本番コードからは呼ばないこと（全 OAuth 接続が
+ * 静的 headers 取得時の認証エラーに陥る危険があるため）。
+ */
 export const clearCredentialsCache = (): void => {
   cache.clear();
 };

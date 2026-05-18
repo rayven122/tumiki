@@ -139,6 +139,26 @@ describe("oauth.scheduler", () => {
       expect(getCachedCredentials(4)).toBeUndefined();
     });
 
+    test("credentials が string 以外の値を含むとスキーマ検証で skip され cache は更新されない", async () => {
+      vi.mocked(getDb).mockResolvedValue(
+        buildDb([
+          {
+            secretId: 10,
+            url: "https://example.com/mcp",
+            // PORT が number → z.record(z.string(), z.string()) で reject される
+            secret: {
+              credentials: 'enc:{"access_token":"a","PORT":3000}',
+            },
+          },
+        ]),
+      );
+
+      await refreshAllOAuthSecrets();
+
+      expect(refreshOAuthTokenIfNeeded).not.toHaveBeenCalled();
+      expect(getCachedCredentials(10)).toBeUndefined();
+    });
+
     test("1 secret の例外は握り潰され、他の secret 処理は継続する", async () => {
       vi.mocked(getDb).mockResolvedValue(
         buildDb([

@@ -128,8 +128,15 @@ if (isMcpProxyMode) {
       startOAuthRefreshScheduler();
       powerMonitor.on("resume", () => {
         void syncPendingAuditLogsToManager();
-        // 長時間スリープ後の停滞解消のため、resume 時に即時 1 回 refresh を走らせる
-        void refreshAllOAuthSecrets().catch(() => {});
+        // 長時間スリープ後の停滞解消のため、resume 時に即時 1 回 refresh を走らせる。
+        // 失敗を握り潰すと resume 後の不調がデバッグ不能になるため、エラーは必ずログに出す。
+        void refreshAllOAuthSecrets().catch((error: unknown) => {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          logger.error("OAuth scheduler: resume 後の refresh に失敗", {
+            error: message,
+          });
+        });
       });
 
       // 有効なMCPサーバー設定 + 監査ログ用メタデータを取得

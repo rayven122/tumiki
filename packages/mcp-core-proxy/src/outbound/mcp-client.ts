@@ -78,6 +78,9 @@ const buildDynamicFetch =
     }
     return fetch(input, {
       ...init,
+      // マージ優先順位: dynamic（getHeaders 結果 or static headers）> existing（SDK 付加）。
+      // OAuth Authorization のように上位レイヤで都度最新値を返すべきヘッダを確実に反映するため、
+      // SDK 既定値を上書きする向き。dynamic 側で Content-Type 等を返さない前提。
       headers: { ...existing, ...dynamic },
     });
   };
@@ -93,6 +96,9 @@ const createClientTransport = (config: McpServerConfig): Transport => {
       });
     }
     case "SSE": {
+      // EventSource は `requestInit.headers` を初回ハンドシェイク後の再接続で適用しない仕様のため、
+      // `eventSourceInit.fetch` で常にヘッダを注入する必要がある（getHeaders 未指定でも buildDynamicFetch
+      // を経由させて static headers を毎回付与する）。STREAMABLE_HTTP との非対称はこの仕様差に由来する。
       const sseFetch = buildDynamicFetch(config.headers, config.getHeaders);
       return new SSEClientTransport(new URL(config.url), {
         requestInit: {
@@ -104,6 +110,8 @@ const createClientTransport = (config: McpServerConfig): Transport => {
       });
     }
     case "STREAMABLE_HTTP":
+      // SDK が requestInit を全リクエストに適用するため、getHeaders 未指定なら custom fetch 不要。
+      // getHeaders がある時のみ wrap して動的注入する。
       return new StreamableHTTPClientTransport(new URL(config.url), {
         requestInit: {
           headers: config.headers,

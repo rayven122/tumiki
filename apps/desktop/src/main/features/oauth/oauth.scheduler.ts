@@ -7,6 +7,7 @@
  * 既存 transport の getHeaders が常に最新の token を返せるようにする。
  */
 
+import { z } from "zod";
 import { getDb } from "../../shared/db";
 import { decryptCredentials } from "../../utils/credentials";
 import * as logger from "../../shared/utils/logger";
@@ -15,6 +16,10 @@ import { setCachedCredentials } from "./credentials-cache";
 
 /** デフォルト実行間隔: 5 分。REFRESH_THRESHOLD_SECONDS (= 5 分) と揃えて取りこぼしを防ぐ */
 const DEFAULT_INTERVAL_MS = 5 * 60 * 1000;
+
+// mcp-proxy.service.ts の connectionEnvSchema と揃え、credentials の全値が string であることを保証する。
+// 破損・改ざんで非文字列が混ざった場合、refreshOAuthTokenIfNeeded に渡す前にスキップする。
+const credentialsSchema = z.record(z.string(), z.string());
 
 let intervalId: NodeJS.Timeout | undefined;
 
@@ -49,7 +54,15 @@ export const refreshAllOAuthSecrets = async (): Promise<void> => {
   for (const [secretId, { url, encryptedCredentials }] of seen) {
     try {
       const decrypted = await decryptCredentials(encryptedCredentials);
-      const credentials = JSON.parse(decrypted) as Record<string, string>;
+      const parsed = credentialsSchema.safeParse(JSON.parse(decrypted));
+      if (!parsed.success) {
+        logger.warn(
+          "OAuth scheduler: credentials のスキーマ検証に失敗しました（skip）",
+          { secretId, error: parsed.error.message },
+        );
+        continue;
+      }
+      const credentials = parsed.data;
 
       const refreshed = await refreshOAuthTokenIfNeeded(
         secretId,
