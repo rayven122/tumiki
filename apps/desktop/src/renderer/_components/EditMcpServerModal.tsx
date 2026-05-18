@@ -186,11 +186,11 @@ export const EditMcpServerModal = ({
       aria-labelledby="edit-mcp-server-modal-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
     >
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-8">
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-gray-200 bg-white p-8 dark:border-white/[.08] dark:bg-zinc-900">
         <div className="mb-1 flex items-start justify-between">
           <h2
             id="edit-mcp-server-modal-title"
-            className="text-xl font-bold text-[var(--text-primary)]"
+            className="text-xl font-bold text-gray-900 dark:text-white"
           >
             サーバー設定を編集
           </h2>
@@ -198,7 +198,7 @@ export const EditMcpServerModal = ({
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-[var(--text-muted)] transition hover:opacity-70 disabled:opacity-50"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-gray-500 transition hover:opacity-70 disabled:opacity-50 dark:text-zinc-400"
             aria-label="閉じる"
           >
             <X size={20} />
@@ -208,11 +208,11 @@ export const EditMcpServerModal = ({
         {phase === "success-with-restart" ? (
           <RestartGuidance onClose={onClose} />
         ) : loading ? (
-          <p className="py-10 text-center text-sm text-[var(--text-muted)]">
+          <p className="py-10 text-center text-sm text-gray-500 dark:text-zinc-400">
             読み込み中...
           </p>
         ) : error ? (
-          <p className="py-10 text-center text-sm text-[var(--badge-error-text)]">
+          <p className="py-10 text-center text-sm text-red-600 dark:text-red-400">
             {error}
           </p>
         ) : detail ? (
@@ -269,7 +269,7 @@ const EditingForm = ({
 
   return (
     <>
-      <p className="mb-6 text-sm text-[var(--text-muted)]">
+      <p className="mb-6 text-sm text-gray-500 dark:text-zinc-400">
         サーバー名・説明と、接続単位の認証情報を更新できます。
       </p>
 
@@ -277,9 +277,9 @@ const EditingForm = ({
       <div className="mb-4">
         <label
           htmlFor="edit-mcp-server-name"
-          className="mb-2 block text-sm font-medium text-[var(--text-primary)]"
+          className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
         >
-          サーバー名<span className="text-[var(--badge-error-text)]">*</span>
+          サーバー名<span className="text-red-600 dark:text-red-400">*</span>
         </label>
         <input
           id="edit-mcp-server-name"
@@ -287,7 +287,7 @@ const EditingForm = ({
           value={name}
           onChange={(e) => onChangeName(e.target.value)}
           disabled={submitting}
-          className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-input)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none disabled:opacity-50"
+          className="w-full rounded-lg border border-gray-200 bg-black/[.02] px-4 py-3 text-sm text-gray-900 outline-none disabled:opacity-50 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white"
         />
       </div>
 
@@ -295,7 +295,7 @@ const EditingForm = ({
       <div className="mb-6">
         <label
           htmlFor="edit-mcp-server-description"
-          className="mb-2 block text-sm font-medium text-[var(--text-primary)]"
+          className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
         >
           説明
         </label>
@@ -305,14 +305,14 @@ const EditingForm = ({
           onChange={(e) => onChangeDescription(e.target.value)}
           disabled={submitting}
           rows={3}
-          className="w-full resize-none rounded-lg border border-[var(--border)] bg-[var(--bg-input)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-subtle)] disabled:opacity-50"
+          className="w-full resize-none rounded-lg border border-gray-200 bg-black/[.02] px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 disabled:opacity-50 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white dark:placeholder:text-zinc-500"
           placeholder="サーバーの説明（任意）"
         />
       </div>
 
       {/* 認証情報セクション */}
       <div className="mb-6 space-y-3">
-        <div className="flex items-start gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card-hover)] px-3 py-2 text-xs text-[var(--text-muted)]">
+        <div className="flex items-start gap-2 rounded-lg border border-gray-200 bg-black/[.02] px-3 py-2 text-xs text-gray-500 dark:border-white/[.08] dark:bg-white/[.03] dark:text-zinc-400">
           <Info size={14} className="mt-0.5 shrink-0" />
           <span>
             キーの追加・削除はこの画面では行えません。既存キーの値のみ更新できます。
@@ -331,12 +331,12 @@ const EditingForm = ({
       </div>
 
       {/* フッターボタン */}
-      <div className="flex justify-end gap-3 border-t border-[var(--border)] pt-5">
+      <div className="flex justify-end gap-3 border-t border-gray-200 pt-5 dark:border-white/[.08]">
         <button
           type="button"
           onClick={onClose}
           disabled={submitting}
-          className="rounded-lg border border-[var(--border)] px-5 py-2.5 text-sm font-medium text-[var(--text-secondary)] transition hover:opacity-80 disabled:opacity-50"
+          className="rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-700 transition hover:opacity-80 disabled:opacity-50 dark:border-white/[.08] dark:text-zinc-300"
         >
           キャンセル
         </button>
@@ -344,7 +344,7 @@ const EditingForm = ({
           type="button"
           onClick={onSubmit}
           disabled={!canSubmit}
-          className="rounded-lg bg-[var(--text-primary)] px-6 py-2.5 text-sm font-medium text-[var(--bg-card)] transition hover:opacity-90 disabled:opacity-50"
+          className="rounded-lg bg-zinc-900 px-6 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50 dark:bg-white dark:text-zinc-900"
         >
           {submitting ? "保存中..." : "保存"}
         </button>
@@ -369,14 +369,16 @@ const CredentialsSection = ({
 }): JSX.Element => {
   const body =
     connection.authType === "OAUTH" ? (
-      <div className="flex items-start gap-2 px-3 py-2 text-xs text-[var(--text-muted)]">
+      <div className="flex items-start gap-2 px-3 py-2 text-xs text-gray-500 dark:text-zinc-400">
         <KeyRound size={14} className="mt-0.5 shrink-0" />
         <span>
           OAuth認証情報はメニューの「OAuthを再設定」から更新してください。
         </span>
       </div>
     ) : connection.credentialKeys.length === 0 ? (
-      <p className="px-3 py-2 text-xs text-[var(--text-muted)]">認証情報なし</p>
+      <p className="px-3 py-2 text-xs text-gray-500 dark:text-zinc-400">
+        認証情報なし
+      </p>
     ) : (
       <div className="space-y-3 px-3 py-3">
         {connection.credentialKeys.map((key) => {
@@ -387,7 +389,7 @@ const CredentialsSection = ({
             <div key={key}>
               <label
                 htmlFor={inputId}
-                className="mb-1.5 block text-xs font-medium text-[var(--text-secondary)]"
+                className="mb-1.5 block text-xs font-medium text-gray-700 dark:text-zinc-300"
               >
                 {key}
               </label>
@@ -399,12 +401,12 @@ const CredentialsSection = ({
                 onChange={(e) => onChange(connection.id, key, e.target.value)}
                 disabled={submitting}
                 placeholder={CREDENTIALS_MASK_VALUE}
-                className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-input)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-subtle)] disabled:opacity-50"
+                className="w-full rounded-lg border border-gray-200 bg-black/[.02] px-3 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 disabled:opacity-50 dark:border-white/[.08] dark:bg-white/[.03] dark:text-white dark:placeholder:text-zinc-500"
               />
             </div>
           );
         })}
-        <p className="text-[10px] text-[var(--text-subtle)]">
+        <p className="text-[10px] text-gray-400 dark:text-zinc-500">
           空欄またはマスク表示のままだと、既存の値が維持されます。
         </p>
       </div>
@@ -412,24 +414,24 @@ const CredentialsSection = ({
 
   if (!isCollapsible) {
     return (
-      <div className="rounded-lg border border-[var(--border-subtle)]">
+      <div className="rounded-lg border border-gray-200 dark:border-white/[.08]">
         {body}
       </div>
     );
   }
 
   return (
-    <details className="group rounded-lg border border-[var(--border-subtle)]">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm text-[var(--text-primary)]">
+    <details className="group rounded-lg border border-gray-200 dark:border-white/[.08]">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm text-gray-900 dark:text-white">
         <span className="truncate">{connection.name}</span>
         <div className="flex shrink-0 items-center gap-2">
-          <span className="rounded-full bg-[var(--bg-active)] px-2 py-0.5 text-[10px] font-medium text-[var(--text-muted)]">
+          <span className="rounded-full bg-black/[.06] px-2 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-white/[.08] dark:text-zinc-400">
             {connection.authType}
           </span>
           {/* list-none で標準の▶が消えるため、ChevronDown で開閉状態を明示する */}
           <ChevronDown
             size={14}
-            className="text-[var(--text-muted)] transition-transform group-open:rotate-180"
+            className="text-gray-500 transition-transform group-open:rotate-180 dark:text-zinc-400"
           />
         </div>
       </summary>
@@ -441,14 +443,14 @@ const CredentialsSection = ({
 /** credentials 変更後の再起動案内 */
 const RestartGuidance = ({ onClose }: { onClose: () => void }): JSX.Element => (
   <div className="space-y-5 py-2">
-    <div className="flex items-start gap-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card-hover)] px-4 py-3">
+    <div className="flex items-start gap-3 rounded-lg border border-gray-200 bg-black/[.02] px-4 py-3 dark:border-white/[.08] dark:bg-white/[.03]">
       <RefreshCw
         size={18}
-        className="mt-0.5 shrink-0 text-[var(--text-primary)]"
+        className="mt-0.5 shrink-0 text-gray-900 dark:text-white"
       />
-      <div className="space-y-1 text-sm text-[var(--text-primary)]">
+      <div className="space-y-1 text-sm text-gray-900 dark:text-white">
         <p className="font-medium">保存しました</p>
-        <p className="text-xs text-[var(--text-muted)]">
+        <p className="text-xs text-gray-500 dark:text-zinc-400">
           認証情報の変更を反映するには、接続中のAIクライアントを再起動してください。
         </p>
       </div>
@@ -457,7 +459,7 @@ const RestartGuidance = ({ onClose }: { onClose: () => void }): JSX.Element => (
       <button
         type="button"
         onClick={onClose}
-        className="rounded-lg bg-[var(--text-primary)] px-6 py-2.5 text-sm font-medium text-[var(--bg-card)] transition hover:opacity-90"
+        className="rounded-lg bg-zinc-900 px-6 py-2.5 text-sm font-medium text-white transition hover:opacity-90 dark:bg-white dark:text-zinc-900"
       >
         閉じる
       </button>
