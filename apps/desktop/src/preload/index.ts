@@ -5,7 +5,7 @@ import type {
   LocalCatalogItem,
   AddFromCatalogInput,
 } from "../types/catalog";
-import type { ProfileState } from "../shared/types";
+import type { DesktopProfile, ProfileState } from "../shared/types";
 import type {
   McpServerItem,
   McpServerDetailItem,
@@ -202,8 +202,8 @@ const api = {
   // 管理サーバー連携 API
   manager: {
     getUrl: (): Promise<string | null> => ipcRenderer.invoke("manager:getUrl"),
-    connect: (url: string): Promise<void> =>
-      ipcRenderer.invoke("manager:connect", url),
+    connect: (url: string, profile?: DesktopProfile): Promise<void> =>
+      ipcRenderer.invoke("manager:connect", url, profile),
   },
 
   // Desktopセッション API

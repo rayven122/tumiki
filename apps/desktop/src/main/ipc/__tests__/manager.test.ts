@@ -72,9 +72,28 @@ describe("setupManagerIpc", () => {
       "desktop-client",
     );
     expect(storeData.get("managerUrl")).toBe("https://manager.example.com");
+    expect(storeData.get("pendingProfile")).toBe("organization");
     expect(storeData.get("activeProfile")).toBeUndefined();
     expect(storeData.get("organizationProfile")).toBeUndefined();
     expect(storeData.get("hasCompletedInitialProfileSetup")).toBeUndefined();
+  });
+
+  test("個人プロファイル用の接続ではpendingProfileをpersonalとして保存する", async () => {
+    const handler = mockIpcHandlers.get("manager:connect");
+
+    await handler!(
+      {} as IpcMainInvokeEvent,
+      "https://www.tumiki.cloud",
+      "personal",
+    );
+
+    expect(initOAuthManager).toHaveBeenCalledWith(
+      "https://www.tumiki.cloud",
+      "https://issuer.example.com",
+      "desktop-client",
+    );
+    expect(storeData.get("managerUrl")).toBe("https://www.tumiki.cloud");
+    expect(storeData.get("pendingProfile")).toBe("personal");
   });
 
   test("接続失敗時はプロファイル状態を確定しない", async () => {

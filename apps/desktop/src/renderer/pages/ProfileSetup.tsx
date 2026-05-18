@@ -15,6 +15,8 @@ import { PROFILE_CHANGED_EVENT } from "../../shared/events";
 
 type View = "choice" | "organization";
 
+const PERSONAL_PROFILE_MANAGER_URL = "https://www.tumiki.cloud";
+
 const getManagerUrlProtocol = (value: string): string | null => {
   try {
     return new URL(value.trim()).protocol;
@@ -98,17 +100,20 @@ export const ProfileSetup = (): JSX.Element => {
     setIsSubmitting(true);
     setError(null);
     try {
-      await window.electronAPI.profile.selectPersonal();
-      window.dispatchEvent(new Event(PROFILE_CHANGED_EVENT));
-      navigate("/", { replace: true });
+      await window.electronAPI.manager.connect(
+        PERSONAL_PROFILE_MANAGER_URL,
+        "personal",
+      );
+      await window.electronAPI.auth.login();
+      setIsWaitingForCallback(true);
     } catch (err) {
       if (mountedRef.current) {
         setError(
           err instanceof Error ? err.message : "個人利用の設定に失敗しました",
         );
+        setIsWaitingForCallback(false);
+        setIsSubmitting(false);
       }
-    } finally {
-      if (mountedRef.current) setIsSubmitting(false);
     }
   };
 
@@ -220,15 +225,25 @@ export const ProfileSetup = (): JSX.Element => {
                 自分のPC上でMCPコネクタを管理します。組織の承認や監査は使いません。
               </span>
               <span className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-gray-600 group-hover:text-gray-900 dark:text-zinc-400">
-                このプロファイルで始める
-                <Check size={15} />
+                {isSubmitting ? (
+                  <>
+                    <Loader2 size={15} className="animate-spin" />
+                    {isWaitingForCallback ? "サインイン待機中..." : "接続中..."}
+                  </>
+                ) : (
+                  <>
+                    このプロファイルで始める
+                    <Check size={15} />
+                  </>
+                )}
               </span>
             </button>
 
             <button
               type="button"
               onClick={() => setView("organization")}
-              className="group rounded-xl border border-gray-200 bg-white p-6 text-left transition hover:border-gray-400 hover:bg-black/[.02] dark:border-white/[.08] dark:bg-zinc-900 dark:hover:border-zinc-600"
+              disabled={isSubmitting}
+              className="group rounded-xl border border-gray-200 bg-white p-6 text-left transition hover:border-gray-400 hover:bg-black/[.02] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/[.08] dark:bg-zinc-900 dark:hover:border-zinc-600"
             >
               <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-black/[.06] text-gray-900 dark:bg-white/[.08] dark:text-white">
                 <Building2 size={22} />

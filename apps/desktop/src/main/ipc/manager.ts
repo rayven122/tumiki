@@ -2,6 +2,7 @@ import { ipcMain } from "electron";
 import { z } from "zod";
 import { getAppStore } from "../shared/app-store";
 import * as logger from "../shared/utils/logger";
+import type { DesktopProfile } from "../../shared/types";
 
 const oidcConfigResponseSchema = z.object({
   issuer: z.string().url(),
@@ -11,6 +12,7 @@ const oidcConfigResponseSchema = z.object({
 export type OidcConfig = z.infer<typeof oidcConfigResponseSchema>;
 
 const FETCH_TIMEOUT_MS = 10_000;
+const profileSchema = z.enum(["personal", "organization"]);
 
 /**
  * 管理サーバーからOIDC設定を取得する
@@ -49,27 +51,32 @@ export const setupManagerIpc = (
     return store.get("managerUrl") ?? null;
   });
 
-  ipcMain.handle("manager:connect", async (_event, url: unknown) => {
-    if (typeof url !== "string") {
-      throw new Error("URLは文字列で指定してください");
-    }
-    try {
-      const parsedUrl = new URL(url);
-      if (parsedUrl.protocol !== "https:" && parsedUrl.protocol !== "http:") {
-        throw new Error("unsupported protocol");
+  ipcMain.handle(
+    "manager:connect",
+    async (_event, url: unknown, profile: unknown = "organization") => {
+      if (typeof url !== "string") {
+        throw new Error("URLは文字列で指定してください");
       }
-    } catch {
-      throw new Error(
-        "管理サーバーURLはhttp://またはhttps://で指定してください",
-      );
-    }
+      try {
+        const parsedUrl = new URL(url);
+        if (parsedUrl.protocol !== "https:" && parsedUrl.protocol !== "http:") {
+          throw new Error("unsupported protocol");
+        }
+      } catch {
+        throw new Error(
+          "管理サーバーURLはhttp://またはhttps://で指定してください",
+        );
+      }
 
-    const config = await fetchManagerOidcConfig(url);
-    await initOAuthManager(url, config.issuer, config.clientId);
+      const pendingProfile: DesktopProfile = profileSchema.parse(profile);
+      const config = await fetchManagerOidcConfig(url);
+      await initOAuthManager(url, config.issuer, config.clientId);
 
-    const store = await getAppStore();
-    store.set("managerUrl", url);
+      const store = await getAppStore();
+      store.set("managerUrl", url);
+      store.set("pendingProfile", pendingProfile);
 
-    logger.info("Manager URL connected", { url });
-  });
+      logger.info("Manager URL connected", { url, pendingProfile });
+    },
+  );
 };

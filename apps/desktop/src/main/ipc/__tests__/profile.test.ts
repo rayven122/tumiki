@@ -75,11 +75,13 @@ describe("setupProfileIpc", () => {
 
   test("個人利用選択で個人プロファイルを保存する", async () => {
     storeData.set("managerUrl", "https://manager.example.com");
+    storeData.set("pendingProfile", "personal");
 
     const handler = mockIpcHandlers.get("profile:selectPersonal");
     const result = await handler!({} as IpcMainInvokeEvent);
 
-    expect(storeData.has("managerUrl")).toBe(false);
+    expect(storeData.get("managerUrl")).toBe("https://manager.example.com");
+    expect(storeData.has("pendingProfile")).toBe(false);
     expect(result).toStrictEqual({
       activeProfile: "personal",
       organizationProfile: null,
@@ -185,11 +187,11 @@ describe("setupProfileIpc", () => {
     const cancelAuthFlow = vi.fn();
     const stopAutoRefresh = vi.fn();
     mockGetOAuthManager.mockReturnValue({ cancelAuthFlow, stopAutoRefresh });
+    await activateOrganizationProfile("https://manager.example.com");
+    storeData.set("managerUrl", "https://manager.example.com");
     mockStoreDelete.mockImplementationOnce(() => {
       throw new Error("store error");
     });
-    await activateOrganizationProfile("https://manager.example.com");
-    storeData.set("managerUrl", "https://manager.example.com");
 
     const handler = mockIpcHandlers.get("profile:disconnectOrganization");
 

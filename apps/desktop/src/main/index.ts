@@ -35,7 +35,10 @@ import {
   syncPendingAuditLogsToManager,
 } from "./features/audit-log-manager-sync/audit-log-manager-sync.service";
 import { getAppStore } from "./shared/app-store";
-import { activateOrganizationProfile } from "./shared/profile-store";
+import {
+  activateOrganizationProfile,
+  activatePersonalProfile,
+} from "./shared/profile-store";
 import { ServerStatus } from "@prisma/desktop-client";
 import type { Prisma } from "@prisma/desktop-client";
 import * as logger from "./shared/utils/logger";
@@ -591,7 +594,10 @@ if (appMode === "mcp-proxy") {
       await manager.handleAuthCallback(url);
       const store = await getAppStore();
       const managerUrl = store.get("managerUrl");
-      if (managerUrl) {
+      const pendingProfile = store.get("pendingProfile") ?? "organization";
+      if (pendingProfile === "personal") {
+        await activatePersonalProfile();
+      } else if (managerUrl) {
         await activateOrganizationProfile(managerUrl);
       }
       sendToWindow("auth:callbackSuccess");

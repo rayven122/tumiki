@@ -18,8 +18,17 @@ export const selectPersonalProfile = async (): Promise<ProfileState> => {
   }
   store.set("activeProfile", "personal");
   store.set("hasCompletedInitialProfileSetup", true);
-  store.delete("managerUrl");
+  store.delete("pendingProfile");
   store.delete("organizationProfile");
+  return getProfileState();
+};
+
+export const activatePersonalProfile = async (): Promise<ProfileState> => {
+  const store = await getAppStore();
+  store.set("activeProfile", "personal");
+  store.delete("pendingProfile");
+  store.delete("organizationProfile");
+  store.set("hasCompletedInitialProfileSetup", true);
   return getProfileState();
 };
 
@@ -28,6 +37,7 @@ export const activateOrganizationProfile = async (
 ): Promise<ProfileState> => {
   const store = await getAppStore();
   store.set("activeProfile", "organization");
+  store.delete("pendingProfile");
   store.set("organizationProfile", {
     managerUrl,
     connectedAt: new Date().toISOString(),
@@ -41,6 +51,7 @@ export const clearOrganizationProfile = async (): Promise<ProfileState> => {
   // managerUrl は認証完了前のセットアップ再開と起動時OAuth初期化に使うステージングキー。
   // organizationProfile.managerUrl は認証完了後のUI表示用として保持する。
   store.delete("managerUrl");
+  store.delete("pendingProfile");
   store.delete("organizationProfile");
   store.delete("activeProfile");
   store.set("hasCompletedInitialProfileSetup", false);
