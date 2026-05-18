@@ -1,6 +1,5 @@
 import { ipcMain } from "electron";
-import { getAppStore } from "../shared/app-store";
-import type { ThemeMode } from "../shared/app-store";
+import { getAppStore, type ThemeMode } from "../shared/app-store";
 
 const isThemeMode = (value: unknown): value is ThemeMode =>
   value === "light" || value === "dark";
