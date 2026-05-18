@@ -7,8 +7,8 @@ import { app } from "electron";
 import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
 import * as logger from "../../shared/utils/logger";
 import type {
-  AiCodingTool,
   ApplyToolSettingsResult,
+  ConfigurableAiCodingTool,
 } from "./ai-coding-telemetry.types";
 import type { McpEntry } from "../ai-client/ai-client.types";
 import { ANALYTICS_RECEIVER_FLAG } from "../../app-mode";
@@ -83,6 +83,14 @@ const getAnalyticsMcpEntry = (): McpEntry => {
     args: [getAnalyticsNodeEntryPath(), ANALYTICS_RECEIVER_FLAG],
   };
 };
+
+const getRecord = (value: unknown): Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+
+const getCodexOtelEndpoint = (port: number, signal: string): string =>
+  `http://127.0.0.1:${port}/v1/${signal}`;
 
 // 一時ファイルを使ったアトミック書き込み
 const writeAtomic = async (
@@ -219,25 +227,47 @@ const applyToCodex = async (port: number): Promise<ApplyToolSettingsResult> => {
       existing = parsed as Record<string, unknown>;
     }
 
-    // 既存の telemetry セクションをマージする
-    const existingTelemetry =
-      typeof existing.telemetry === "object" &&
-      existing.telemetry !== null &&
-      !Array.isArray(existing.telemetry)
-        ? (existing.telemetry as Record<string, unknown>)
-        : {};
-    const existingMcpServers =
-      typeof existing.mcp_servers === "object" &&
-      existing.mcp_servers !== null &&
-      !Array.isArray(existing.mcp_servers)
-        ? (existing.mcp_servers as Record<string, unknown>)
-        : {};
+    // Codex の現行設定は [otel] 配下で exporter を指定する
+    const existingOtel = getRecord(existing.otel);
+    const existingLogExporter = getRecord(existingOtel.exporter);
+    const existingLogOtlpHttp = getRecord(existingLogExporter["otlp-http"]);
+    const existingTraceExporter = getRecord(existingOtel.trace_exporter);
+    const existingTraceOtlpHttp = getRecord(existingTraceExporter["otlp-http"]);
+    const existingMetricsExporter = getRecord(existingOtel.metrics_exporter);
+    const existingMetricsOtlpHttp = getRecord(
+      existingMetricsExporter["otlp-http"],
+    );
+    const existingMcpServers = getRecord(existing.mcp_servers);
 
     const merged = {
       ...existing,
-      telemetry: {
-        ...existingTelemetry,
-        otel_exporter_otlp_endpoint: `http://127.0.0.1:${port}`,
+      otel: {
+        ...existingOtel,
+        exporter: {
+          ...existingLogExporter,
+          "otlp-http": {
+            ...existingLogOtlpHttp,
+            endpoint: getCodexOtelEndpoint(port, "logs"),
+            protocol: "json",
+          },
+        },
+        trace_exporter: {
+          ...existingTraceExporter,
+          "otlp-http": {
+            ...existingTraceOtlpHttp,
+            endpoint: getCodexOtelEndpoint(port, "traces"),
+            protocol: "json",
+          },
+        },
+        metrics_exporter: {
+          ...existingMetricsExporter,
+          "otlp-http": {
+            ...existingMetricsOtlpHttp,
+            endpoint: getCodexOtelEndpoint(port, "metrics"),
+            protocol: "json",
+          },
+        },
+        log_user_prompt: false,
       },
       mcp_servers: {
         ...existingMcpServers,
@@ -262,7 +292,7 @@ const applyToCodex = async (port: number): Promise<ApplyToolSettingsResult> => {
 
 // 指定ツールの設定ファイルに OTLP env vars を書き込む
 export const applyOtlpToTool = async (
-  tool: AiCodingTool,
+  tool: ConfigurableAiCodingTool,
   port: number,
 ): Promise<ApplyToolSettingsResult> => {
   if (!isValidPort(port)) {

@@ -6,13 +6,17 @@ import { applyOtlpToTool } from "./ai-coding-telemetry.config-writer";
 import { isAiCodingTool } from "./ai-coding-telemetry.types";
 import { OTLP_DEFAULT_PORT } from "./ai-coding-telemetry.receiver";
 import type {
-  AiCodingTool,
   ApplyToolSettingsInput,
   ApplyToolSettingsResult,
+  AiCodingDashboardDetailsResult,
+  ConfigurableAiCodingTool,
+  DailyModelUsageItem,
   DailyUsageItem,
   GetDailyUsageInput,
   GetSummaryInput,
   GetToolSettingsResult,
+  ListTracesInput,
+  ListTracesResult,
   MetricRecord,
   ReceiverStatus,
   TelemetrySummaryItem,
@@ -24,6 +28,11 @@ const MAX_TOOL_NAME_LENGTH = 128;
 const MAX_RECORD_FIELD_LENGTH = 255;
 const MAX_ATTRIBUTES_LENGTH = 4096;
 const MAX_RECORDS_PER_REQUEST = 1000;
+const FALLBACK_TRACE_PER_PAGE = 20;
+const MAX_TRACE_PER_PAGE = 100;
+
+const getDashboardInterval = (days: number): "day" | "hour" =>
+  days <= 7 ? "hour" : "day";
 
 const truncateString = (value: string, maxLength: number): string =>
   value.length > maxLength ? value.slice(0, maxLength) : value;
@@ -37,34 +46,49 @@ const parseBigIntSafe = (value: string): bigint => {
 };
 
 // OTLP JSON の resource.attributes から service.name を安全に抽出する
-const extractToolName = (resourceMetric: unknown): string => {
+const extractToolName = (resourceMetric: unknown): string | null => {
   if (typeof resourceMetric !== "object" || resourceMetric === null)
-    return "unknown";
+    return null;
   const rm = resourceMetric as Record<string, unknown>;
   const resource = rm.resource;
-  if (typeof resource !== "object" || resource === null) return "unknown";
+  if (typeof resource !== "object" || resource === null) return null;
   const attrs = (resource as Record<string, unknown>).attributes;
-  if (!Array.isArray(attrs)) return "unknown";
+  if (!Array.isArray(attrs)) return null;
   for (const attr of attrs) {
     if (typeof attr !== "object" || attr === null) continue;
     const a = attr as Record<string, unknown>;
     if (a.key === "service.name") {
       const val = a.value as Record<string, unknown> | undefined;
       const str = val?.stringValue;
-      if (typeof str === "string")
-        return truncateString(str, MAX_TOOL_NAME_LENGTH);
+      if (typeof str === "string" && str.trim().length > 0) {
+        return truncateString(str.trim(), MAX_TOOL_NAME_LENGTH);
+      }
     }
   }
-  return "unknown";
+  return null;
 };
 
-const getEnabledToolMap = async (): Promise<Record<AiCodingTool, boolean>> => {
+const getEnabledToolMap = async (): Promise<
+  Record<ConfigurableAiCodingTool, boolean>
+> => {
   const store = await getAppStore();
   const tools = store.get("aiCodingTelemetry")?.tools ?? {};
   return {
     "claude-code": tools["claude-code"]?.enabled === true,
     codex: tools.codex?.enabled === true,
   };
+};
+
+const hasAnyEnabledTool = (
+  enabledTools: Record<ConfigurableAiCodingTool, boolean>,
+): boolean => Object.values(enabledTools).some(Boolean);
+
+const shouldStoreTelemetryForTool = (
+  tool: string,
+  enabledTools: Record<ConfigurableAiCodingTool, boolean>,
+): boolean => {
+  if (isAiCodingTool(tool)) return enabledTools[tool];
+  return hasAnyEnabledTool(enabledTools);
 };
 
 // OTLP dataPoint から数値を安全に抽出する
@@ -109,8 +133,8 @@ export const storeOtlpMetrics = async (body: unknown): Promise<void> => {
     if (metrics.length >= MAX_RECORDS_PER_REQUEST) break;
     if (typeof rm !== "object" || rm === null) continue;
     const tool = extractToolName(rm);
-    if (!isAiCodingTool(tool)) continue;
-    if (!enabledTools[tool]) continue;
+    if (!tool) continue;
+    if (!shouldStoreTelemetryForTool(tool, enabledTools)) continue;
     const scopeMetrics = (rm as Record<string, unknown>).scopeMetrics;
     if (!Array.isArray(scopeMetrics)) continue;
 
@@ -169,8 +193,8 @@ export const storeOtlpTraces = async (body: unknown): Promise<void> => {
     if (traces.length >= MAX_RECORDS_PER_REQUEST) break;
     if (typeof rs !== "object" || rs === null) continue;
     const tool = extractToolName(rs);
-    if (!isAiCodingTool(tool)) continue;
-    if (!enabledTools[tool]) continue;
+    if (!tool) continue;
+    if (!shouldStoreTelemetryForTool(tool, enabledTools)) continue;
     const scopeSpans = (rs as Record<string, unknown>).scopeSpans;
     if (!Array.isArray(scopeSpans)) continue;
 
@@ -233,7 +257,86 @@ export const getDailyUsage = async (
 ): Promise<DailyUsageItem[]> => {
   const since = new Date(Date.now() - input.days * 86400_000);
   const db = await getDb();
-  return repository.getDailyUsage(db, since);
+  return repository.getDailyUsage(db, since, input.days <= 7 ? "hour" : "day");
+};
+
+export const getDailyModelUsage = async (
+  input: GetDailyUsageInput,
+): Promise<DailyModelUsageItem[]> => {
+  const since = new Date(Date.now() - input.days * 86400_000);
+  const db = await getDb();
+  return repository.getDailyModelUsage(
+    db,
+    since,
+    getDashboardInterval(input.days),
+  );
+};
+
+export const getDashboardDetails = async (
+  input: GetSummaryInput,
+): Promise<AiCodingDashboardDetailsResult> => {
+  const since = new Date(Date.now() - input.days * 86400_000);
+  const db = await getDb();
+  const interval = getDashboardInterval(input.days);
+  const [modelUsage, dailyModelUsage, memberUsage] = await Promise.all([
+    repository.getModelUsage(db, since),
+    repository.getDailyModelUsage(db, since, interval),
+    repository.getMemberUsage(db, since),
+  ]);
+  return { modelUsage, dailyModelUsage, memberUsage };
+};
+
+// AIコーディングメトリクスを操作履歴向けに返す
+export const listTraces = async (
+  input: ListTracesInput,
+): Promise<ListTracesResult> => {
+  const db = await getDb();
+  const page = input.page ?? 1;
+  const perPage = Math.min(
+    input.perPage ?? FALLBACK_TRACE_PER_PAGE,
+    MAX_TRACE_PER_PAGE,
+  );
+  const toolFilter = input.toolFilter === "all" ? undefined : input.toolFilter;
+  const skip = (page - 1) * perPage;
+
+  const [records, totalCount] = await Promise.all([
+    repository.listTraces(db, {
+      skip,
+      take: perPage,
+      toolFilter,
+      categoryFilter: input.categoryFilter,
+      metricSearch: input.metricSearch,
+      dateFrom: input.dateFrom,
+      dateTo: input.dateTo,
+    }),
+    repository.countTraces(db, {
+      toolFilter,
+      categoryFilter: input.categoryFilter,
+      metricSearch: input.metricSearch,
+      dateFrom: input.dateFrom,
+      dateTo: input.dateTo,
+    }),
+  ]);
+
+  return {
+    items: records.map((record) => ({
+      id: record.id,
+      tool: record.tool,
+      metricName: record.metricName,
+      value: record.value,
+      startedAt: record.startedAt.toISOString(),
+      hasAttributes: record.hasAttributes,
+      sampleCount: record.sampleCount,
+    })),
+    totalCount,
+    totalPages: Math.ceil(totalCount / perPage),
+    currentPage: page,
+  };
+};
+
+export const listMetricTools = async (): Promise<string[]> => {
+  const db = await getDb();
+  return repository.listMetricTools(db);
 };
 
 // ツールの設定ファイルに OTLP env vars を書き込み、electron-store に記録する
@@ -261,7 +364,7 @@ export const applyToolSettings = async (
 
 // ツールのテレメトリ設定を electron-store から返す
 export const getToolSettings = async (
-  tool: AiCodingTool,
+  tool: ConfigurableAiCodingTool,
 ): Promise<GetToolSettingsResult> => {
   const store = await getAppStore();
   const current = store.get("aiCodingTelemetry");
@@ -302,11 +405,11 @@ export const pruneOldTelemetry = async (
 // 戻り値: 実際に再書き込みできたツールの一覧（トースト表示用）
 export const autoReapplyMismatchedPorts = async (
   currentPort: number,
-): Promise<AiCodingTool[]> => {
+): Promise<ConfigurableAiCodingTool[]> => {
   const store = await getAppStore();
   const current = store.get("aiCodingTelemetry");
   const tools = current?.tools ?? {};
-  const reapplied: AiCodingTool[] = [];
+  const reapplied: ConfigurableAiCodingTool[] = [];
 
   for (const [toolKey, settings] of Object.entries(tools)) {
     // electron-store は外部入力扱いとし、未知のキーは無視する
@@ -356,7 +459,7 @@ export const autoReapplyMismatchedPorts = async (
 
 // ツールのテレメトリ有効フラグを electron-store に保存する
 export const saveToolEnabled = async (
-  tool: AiCodingTool,
+  tool: ConfigurableAiCodingTool,
   enabled: boolean,
 ): Promise<void> => {
   const store = await getAppStore();

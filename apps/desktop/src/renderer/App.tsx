@@ -20,13 +20,13 @@ import { AiIntegrations } from "./pages/AiIntegrations";
 import { ProfileSetup } from "./pages/ProfileSetup";
 import { toast } from "./_components/Toast";
 import { TRACKING_TOOL_LABELS } from "./utils/ai-coding-telemetry-tools";
-import type { AiCodingTool } from "../main/types";
+import type { ConfigurableAiCodingTool } from "../main/types";
 
 /** OTLP ポート不一致時の自動再書き込み通知をトースト表示 */
 const useAutoReapplyToast = (): void => {
   useEffect(() => {
     const showToast = (payload: {
-      tools: AiCodingTool[];
+      tools: ConfigurableAiCodingTool[];
       port: number;
     }): void => {
       const names = payload.tools

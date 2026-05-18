@@ -99,7 +99,11 @@ export const startOtlpReceiver = async (
       if (bodyExceeded || requestFailed) return;
       void (async () => {
         const pathname = req.url?.split("?")[0] ?? "";
-        if (pathname !== "/v1/metrics" && pathname !== "/v1/traces") {
+        if (
+          pathname !== "/v1/metrics" &&
+          pathname !== "/v1/traces" &&
+          pathname !== "/v1/logs"
+        ) {
           sendJsonResponse(404);
           return;
         }
@@ -118,8 +122,12 @@ export const startOtlpReceiver = async (
         try {
           if (pathname === "/v1/metrics") {
             await service.storeOtlpMetrics(data);
-          } else {
+          } else if (pathname === "/v1/traces") {
             await service.storeOtlpTraces(data);
+          } else {
+            logger.debug("OTLP receiver: logs を受信しました", {
+              url: req.url,
+            });
           }
         } catch (error) {
           logger.error("OTLP receiver: テレメトリ保存に失敗しました", {
