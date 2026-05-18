@@ -13,11 +13,14 @@ export const setupAppConfigIpc = (): void => {
     return isThemeMode(theme) ? theme : null;
   });
 
-  ipcMain.handle("appConfig:setTheme", async (_event, theme: unknown) => {
-    if (!isThemeMode(theme)) {
-      throw new Error("テーマは 'light' または 'dark' で指定してください");
-    }
-    const store = await getAppStore();
-    store.set("theme", theme);
-  });
+  ipcMain.handle(
+    "appConfig:setTheme",
+    async (_event, theme: unknown): Promise<void> => {
+      if (!isThemeMode(theme)) {
+        throw new Error("テーマは 'light' または 'dark' で指定してください");
+      }
+      const store = await getAppStore();
+      store.set("theme", theme);
+    },
+  );
 };

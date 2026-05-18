@@ -59,7 +59,7 @@ export const App = (): JSX.Element => {
     void window.electronAPI.appConfig
       .getTheme()
       .then((saved) => {
-        if (saved !== null) setTheme(saved);
+        if (!cancelled && saved !== null) setTheme(saved);
       })
       .catch(() => {
         // 取得失敗時は atom 既定値で続行する
