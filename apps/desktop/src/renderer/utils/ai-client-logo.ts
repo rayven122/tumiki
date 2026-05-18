@@ -2,7 +2,7 @@
 const AI_CLIENT_LOGOS: Record<string, { dark: string; light: string }> = {
   cursor: {
     dark: "/logos/ai-clients/cursor.webp",
-    light: "/logos/ai-clients/cursor-light.webp",
+    light: "/logos/ai-clients/cursor.svg",
   },
   "claude code": {
     dark: "/logos/ai-clients/claude.webp",
