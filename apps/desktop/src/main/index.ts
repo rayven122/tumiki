@@ -26,7 +26,11 @@ import { setupOAuthIpc } from "./features/oauth/oauth.ipc";
 import type { McpOAuthManager } from "./features/oauth/oauth.service";
 import { findConnectionByIdWithServer } from "./features/mcp-server-list/mcp.repository";
 import { parseReauthDeepLink } from "./shared/app-protocol";
-import { setupManagerIpc, fetchManagerOidcConfig } from "./ipc/manager";
+import {
+  PERSONAL_PROFILE_MANAGER_URL,
+  setupManagerIpc,
+  fetchManagerOidcConfig,
+} from "./ipc/manager";
 import { setupProfileIpc } from "./ipc/profile";
 import { setupShellIpc } from "./ipc/shell";
 import {
@@ -594,9 +598,12 @@ if (appMode === "mcp-proxy") {
       await manager.handleAuthCallback(url);
       const store = await getAppStore();
       const managerUrl = store.get("managerUrl");
-      // pendingProfile 未設定は旧フローの callback として組織利用扱いにする。
-      const pendingProfile = store.get("pendingProfile") ?? "organization";
-      if (pendingProfile === "personal") {
+      const pendingProfile = store.get("pendingProfile");
+      const isPersonalManagerUrl = managerUrl === PERSONAL_PROFILE_MANAGER_URL;
+      if (
+        pendingProfile === "personal" ||
+        (!pendingProfile && isPersonalManagerUrl)
+      ) {
         await activatePersonalProfile();
       } else if (managerUrl) {
         await activateOrganizationProfile(managerUrl);

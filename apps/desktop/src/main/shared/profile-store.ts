@@ -24,7 +24,6 @@ const confirmPersonalProfile = async (
   store.set("hasCompletedInitialProfileSetup", true);
 };
 
-// 認証コールバック完了後に personal profile を確定する。
 export const activatePersonalProfile = async (): Promise<ProfileState> => {
   const store = await getAppStore();
   await confirmPersonalProfile(store);
