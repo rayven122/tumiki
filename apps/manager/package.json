@@ -7,7 +7,7 @@
     "dev": "pnpm with-env next dev --turbopack",
     "dev:https": "pnpm with-env next dev --turbopack --experimental-https",
     "build": "pnpm with-env next build --turbopack",
-    "build:bare": "next build --webpack",
+    "build:bare": "next build --turbopack",
     "build:ce": "NEXT_PUBLIC_TUMIKI_EDITION=ce pnpm with-env next build --webpack",
     "build:ee": "NEXT_PUBLIC_TUMIKI_EDITION=ee pnpm with-env next build --turbopack",
     "start": "pnpm with-env next start",
