@@ -148,15 +148,16 @@ export const embedToolSearchTextsWithTumikiCloudApi = async (
     );
   }
 
-  const parsed = await response
-    .json()
-    .then((body: unknown) => toolSearchEmbeddingsResponseSchema.parse(body))
-    .catch((err: unknown) => {
-      throw new TumikiCloudApiError(
-        "Tumiki Cloud API returned unexpected response format",
-        response.status,
-        err,
-      );
-    });
+  let parsed: z.infer<typeof toolSearchEmbeddingsResponseSchema>;
+  try {
+    const body: unknown = await response.json();
+    parsed = toolSearchEmbeddingsResponseSchema.parse(body);
+  } catch (err) {
+    throw new TumikiCloudApiError(
+      "Tumiki Cloud API returned unexpected response format",
+      response.status,
+      err,
+    );
+  }
   return parsed.embeddings;
 };

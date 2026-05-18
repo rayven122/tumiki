@@ -332,7 +332,8 @@ describe("POST /v1/tool-search/embeddings", () => {
     );
 
     expect(res.status).toBe(429);
-    expect(res.headers.get("Retry-After")).toBeTruthy();
+    const retryAfter = Number(res.headers.get("Retry-After"));
+    expect(retryAfter).toBeGreaterThan(0);
   });
 
   test("app全体で /v1/tool-search/embeddings を使える", async () => {

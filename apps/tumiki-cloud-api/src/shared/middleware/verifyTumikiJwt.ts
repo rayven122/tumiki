@@ -44,6 +44,7 @@ let metadataDiscoveringPromise: Promise<openidClient.ServerMetadata> | null =
   null;
 let cachedJwks: JwksCacheEntry | null = null;
 let cachedAllowedAudiences: string[] | null = null;
+let cachedSkipAudienceCheck: boolean | null = null;
 
 const isLocalhostUrl = (issuerUrl: string): boolean => {
   try {
@@ -144,6 +145,12 @@ const getAllowedAudiences = (): string[] => {
   return cachedAllowedAudiences;
 };
 
+const shouldSkipAudienceCheck = (): boolean => {
+  if (cachedSkipAudienceCheck !== null) return cachedSkipAudienceCheck;
+  cachedSkipAudienceCheck = process.env.KEYCLOAK_SKIP_AUDIENCE_CHECK === "true";
+  return cachedSkipAudienceCheck;
+};
+
 const isInvalidJwtError = (err: unknown): boolean =>
   err instanceof JWTExpired ||
   err instanceof JWTClaimValidationFailed ||
@@ -158,13 +165,14 @@ export const resetTumikiJwtCache = (): void => {
   metadataDiscoveringPromise = null;
   cachedJwks = null;
   cachedAllowedAudiences = null;
+  cachedSkipAudienceCheck = null;
 };
 
 export const verifyTumikiBearerToken = async (
   bearerToken: string,
 ): Promise<VerifiedTumikiJwt> => {
   const allowedAudiences = getAllowedAudiences();
-  const skipAudienceCheck = process.env.KEYCLOAK_SKIP_AUDIENCE_CHECK === "true";
+  const skipAudienceCheck = shouldSkipAudienceCheck();
   if (!skipAudienceCheck && allowedAudiences.length === 0) {
     throw new Error("KEYCLOAK_ALLOWED_AUDIENCES is required");
   }
