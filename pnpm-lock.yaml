@@ -994,6 +994,9 @@ importers:
       jose:
         specifier: ^6.1.3
         version: 6.2.2
+      openid-client:
+        specifier: ^6.8.2
+        version: 6.8.2
       zod:
         specifier: 'catalog:'
         version: 4.1.13

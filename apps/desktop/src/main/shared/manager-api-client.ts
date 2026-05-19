@@ -1,7 +1,7 @@
 import { decryptToken } from "../utils/encryption";
 import { getAppStore } from "./app-store";
 import { findValidAuthToken } from "./auth-token-store";
-import { AuthRequiredError } from "../../shared/constants";
+import { AuthRequiredError } from "../../shared/errors";
 
 type ManagerRequestOptions = Omit<RequestInit, "headers"> & {
   headers?: HeadersInit;

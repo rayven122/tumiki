@@ -241,26 +241,6 @@ describe("setupProfileIpc", () => {
     expect(storeData.get("managerUrl")).toBe("https://manager.example.com");
   });
 
-  test("ログアウト用リセットでプロファイル状態をクリアする", async () => {
-    const cancelAuthFlow = vi.fn();
-    const stopAutoRefresh = vi.fn();
-    mockGetOAuthManager.mockReturnValue({ cancelAuthFlow, stopAutoRefresh });
-    storeData.set("managerUrl", "https://manager.example.com");
-
-    const handler = mockIpcHandlers.get("profile:resetForLogout");
-    const result = await handler!({} as IpcMainInvokeEvent);
-
-    expect(cancelAuthFlow).toHaveBeenCalled();
-    expect(stopAutoRefresh).toHaveBeenCalled();
-    expect(mockSetOAuthManager).toHaveBeenCalledWith(null);
-    expect(storeData.has("managerUrl")).toBe(false);
-    expect(result).toStrictEqual({
-      activeProfile: null,
-      organizationProfile: null,
-      hasCompletedInitialProfileSetup: false,
-    });
-  });
-
   test("組織変更キャンセルで既存組織URLを復元しpendingProfileをクリアする", async () => {
     const cancelAuthFlow = vi.fn();
     const stopAutoRefresh = vi.fn();

@@ -5,7 +5,7 @@ import { decryptToken } from "../utils/encryption";
 import { findValidAuthToken } from "../shared/auth-token-store";
 import { getDb } from "../shared/db";
 import * as logger from "../shared/utils/logger";
-import { AUTH_REQUIRED_MESSAGE } from "../../shared/constants";
+import { AuthRequiredError } from "../../shared/errors";
 import { resetProfileState } from "../shared/profile-store";
 
 // アカウント表示用のクレーム取得のみ。署名検証はOAuth認証フロー側で行う。
@@ -77,7 +77,7 @@ export const setupAuthIpc = (): void => {
       const token = await findValidAuthToken();
 
       if (!token) {
-        throw new Error(AUTH_REQUIRED_MESSAGE);
+        throw new AuthRequiredError();
       }
 
       // 暗号化されたトークンを非同期で復号化（失敗時はエラーをスロー）
@@ -88,12 +88,15 @@ export const setupAuthIpc = (): void => {
         logger.warn(
           "Decrypted access token is empty, token data may be corrupted",
         );
-        throw new Error(AUTH_REQUIRED_MESSAGE);
+        throw new AuthRequiredError();
       }
 
       // idTokenはmainプロセス内（ログアウト時）でのみ使用し、レンダラーには返さない
       return { accessToken: decryptedAccessToken };
     } catch (error) {
+      if (error instanceof AuthRequiredError) {
+        throw error;
+      }
       logger.error(
         "Failed to get auth token",
         error instanceof Error ? error : { error },
@@ -107,11 +110,14 @@ export const setupAuthIpc = (): void => {
       const token = await findValidAuthToken();
 
       if (!token) {
-        throw new Error(AUTH_REQUIRED_MESSAGE);
+        throw new AuthRequiredError();
       }
 
       return await buildAuthProfile(token);
     } catch (error) {
+      if (error instanceof AuthRequiredError) {
+        throw error;
+      }
       logger.error(
         "Failed to get auth profile",
         error instanceof Error ? error : { error },

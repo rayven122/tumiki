@@ -4,14 +4,20 @@
 import { serve } from "@hono/node-server";
 
 import app from "./app.js";
+import { startToolSearchEmbeddingsRateLimitCleanup } from "./features/toolSearchEmbeddings/route.js";
 import { DEFAULT_PORT } from "./shared/constants/config.js";
 
 const port = Number(process.env.PORT) || DEFAULT_PORT;
 
 // 必須環境変数の事前検証（本番のみ厳密チェック）
 const isProduction = process.env.NODE_ENV === "production";
-const requiredEnvVars = ["LICENSE_PUBLIC_KEY", "AI_GATEWAY_API_KEY"];
-const missing = requiredEnvVars.filter((key) => !process.env[key]);
+const requiredEnvVars = [
+  "LICENSE_PUBLIC_KEY",
+  "AI_GATEWAY_API_KEY",
+  "KEYCLOAK_ISSUER",
+  "KEYCLOAK_ALLOWED_AUDIENCES",
+];
+const missing = requiredEnvVars.filter((key) => !process.env[key]?.trim());
 if (missing.length > 0) {
   if (isProduction) {
     console.error(
@@ -24,6 +30,8 @@ if (missing.length > 0) {
     );
   }
 }
+
+startToolSearchEmbeddingsRateLimitCleanup();
 
 // HTTP モードのみ（TLS は Cloudflare Tunnel で終端する）
 serve({ fetch: app.fetch, port }, (info) => {

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { requestManagerApi } from "../../shared/manager-api-client";
+import { AuthRequiredError } from "../../../shared/errors";
 
 export const desktopSessionSchema = z.object({
   user: z.object({
@@ -62,9 +63,19 @@ export const desktopSessionSchema = z.object({
 });
 
 export const getDesktopSession = async () => {
-  const response = await requestManagerApi("/api/desktop/v1/session", {
-    signal: AbortSignal.timeout(10_000),
-  });
+  let response: Response;
+  try {
+    response = await requestManagerApi("/api/desktop/v1/session", {
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch (error) {
+    if (error instanceof AuthRequiredError) {
+      throw new Error("管理サーバーへの再ログインが必要です", {
+        cause: error,
+      });
+    }
+    throw error;
+  }
 
   if (response.status === 401) {
     throw new Error("管理サーバーへの再ログインが必要です");

@@ -21,7 +21,6 @@ WORKDIR /app
 # Stage 2: Build
 # ========================================
 FROM base AS build
-ARG NPM_CONFIG_REGISTRY
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY patches ./patches
@@ -34,7 +33,7 @@ COPY .env.example .env
 ENV CI=true
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-  pnpm install --frozen-lockfile --prod=false --ignore-scripts
+  pnpm install --frozen-lockfile --prod=false
 
 # NEXT_PUBLIC_* は Next.js が build 時に静的展開するため、production image 用の値を build 時に明示する。
 ARG NEXT_PUBLIC_CALENDAR_URL=

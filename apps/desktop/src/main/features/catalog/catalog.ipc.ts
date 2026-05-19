@@ -4,6 +4,7 @@ import type { AddFromCatalogInput } from "../../../types/catalog";
 import * as catalogService from "./catalog.service";
 import { ToolFetchError } from "../mcp-proxy/mcp-proxy.service";
 import * as logger from "../../shared/utils/logger";
+import { AuthRequiredError } from "../../../shared/errors";
 
 const addFromCatalogSchema = z.object({
   catalogId: z.string().min(1),
@@ -40,6 +41,9 @@ export const setupCatalogIpc = (): void => {
     try {
       return await catalogService.getAllCatalogs();
     } catch (error) {
+      if (error instanceof AuthRequiredError) {
+        throw error;
+      }
       logger.error(
         "Failed to get catalog list",
         error instanceof Error ? error : { error },

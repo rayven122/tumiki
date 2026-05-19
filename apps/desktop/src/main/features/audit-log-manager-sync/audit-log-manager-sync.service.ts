@@ -5,7 +5,7 @@ import { postManagerApi } from "../../shared/manager-api-client";
 import { getDb } from "../../shared/db";
 import { getAppStore } from "../../shared/app-store";
 import * as logger from "../../shared/utils/logger";
-import { AuthRequiredError } from "../../../shared/constants";
+import { AuthRequiredError } from "../../../shared/errors";
 
 const SYNC_INTERVAL_MS = 15 * 60 * 1000;
 const POST_TIMEOUT_MS = 10_000;

@@ -38,6 +38,7 @@ vi.mock("../../auth/manager-registry", () => ({
 import { setupAuthIpc } from "../auth";
 import { getDb } from "../../shared/db";
 import { decryptToken } from "../../utils/encryption";
+import { AUTH_REQUIRED_MESSAGE } from "../../../shared/constants";
 import { resetProfileState } from "../../shared/profile-store";
 
 const createJwt = (claims: Record<string, unknown>): string =>
@@ -119,7 +120,7 @@ describe("setupAuthIpc", () => {
       const handler = mockIpcHandlers.get("auth:getToken");
 
       await expect(handler!({} as IpcMainInvokeEvent)).rejects.toThrow(
-        "認証トークンの取得に失敗しました",
+        AUTH_REQUIRED_MESSAGE,
       );
     });
 
@@ -139,7 +140,7 @@ describe("setupAuthIpc", () => {
       const handler = mockIpcHandlers.get("auth:getToken");
 
       await expect(handler!({} as IpcMainInvokeEvent)).rejects.toThrow(
-        "認証トークンの取得に失敗しました",
+        AUTH_REQUIRED_MESSAGE,
       );
       expect(mockDbAuthToken.deleteMany).toHaveBeenCalledWith({
         where: { expiresAt: { lte: expect.any(Date) } },
@@ -161,7 +162,7 @@ describe("setupAuthIpc", () => {
       const handler = mockIpcHandlers.get("auth:getToken");
 
       await expect(handler!({} as IpcMainInvokeEvent)).rejects.toThrow(
-        "認証トークンの取得に失敗しました",
+        AUTH_REQUIRED_MESSAGE,
       );
     });
 
@@ -245,7 +246,7 @@ describe("setupAuthIpc", () => {
       const handler = mockIpcHandlers.get("auth:getProfile");
 
       await expect(handler!({} as IpcMainInvokeEvent)).rejects.toThrow(
-        "認証プロファイルの取得に失敗しました",
+        AUTH_REQUIRED_MESSAGE,
       );
     });
 
@@ -265,7 +266,7 @@ describe("setupAuthIpc", () => {
       const handler = mockIpcHandlers.get("auth:getProfile");
 
       await expect(handler!({} as IpcMainInvokeEvent)).rejects.toThrow(
-        "認証プロファイルの取得に失敗しました",
+        AUTH_REQUIRED_MESSAGE,
       );
       expect(mockDbAuthToken.deleteMany).toHaveBeenCalledWith({
         where: { expiresAt: { lte: expect.any(Date) } },

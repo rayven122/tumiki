@@ -35,7 +35,7 @@ import {
 import { postManagerApi } from "../../../shared/manager-api-client";
 import { getDb } from "../../../shared/db";
 import * as logger from "../../../shared/utils/logger";
-import { AuthRequiredError } from "../../../../shared/constants";
+import { AuthRequiredError } from "../../../../shared/errors";
 
 describe("audit-log-manager-sync.service", () => {
   const mockFindMany = vi.fn();

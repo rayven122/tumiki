@@ -39,25 +39,6 @@ export const setupProfileIpc = (): void => {
     return profileState;
   });
 
-  ipcMain.handle("profile:resetForLogout", async () => {
-    let profileState: ProfileState;
-    try {
-      profileState = await resetProfileState();
-    } catch (error) {
-      logger.error(
-        "Failed to clear profile state while logging out",
-        error instanceof Error ? error : { error },
-      );
-      throw new Error("ログアウト後のプロファイルリセットに失敗しました", {
-        cause: error,
-      });
-    }
-
-    stopOAuthManager();
-
-    return profileState;
-  });
-
   ipcMain.handle("profile:cancelOrganizationChange", async () => {
     let profileState: ProfileState;
     try {

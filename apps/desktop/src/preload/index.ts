@@ -229,8 +229,6 @@ const api = {
       ipcRenderer.invoke("profile:getState"),
     cancelPendingSetup: (): Promise<ProfileState> =>
       ipcRenderer.invoke("profile:cancelPendingSetup"),
-    resetForLogout: (): Promise<ProfileState> =>
-      ipcRenderer.invoke("profile:resetForLogout"),
     cancelOrganizationChange: (): Promise<ProfileState> =>
       ipcRenderer.invoke("profile:cancelOrganizationChange"),
     disconnectOrganization: (): Promise<ProfileState> =>

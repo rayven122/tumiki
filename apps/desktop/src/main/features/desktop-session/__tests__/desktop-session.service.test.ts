@@ -6,6 +6,7 @@ vi.mock("../../../shared/manager-api-client", () => ({
 
 import { getDesktopSession } from "../desktop-session.service";
 import { requestManagerApi } from "../../../shared/manager-api-client";
+import { AuthRequiredError } from "../../../../shared/errors";
 
 const validSession = {
   user: {
@@ -110,12 +111,10 @@ describe("desktop-session.service", () => {
   });
 
   test("Manager未接続または未ログインの場合はエラーを返す", async () => {
-    vi.mocked(requestManagerApi).mockRejectedValue(
-      new Error("認証セッションがありません。再ログインしてください。"),
-    );
+    vi.mocked(requestManagerApi).mockRejectedValue(new AuthRequiredError());
 
     await expect(getDesktopSession()).rejects.toThrow(
-      "認証セッションがありません。再ログインしてください。",
+      "管理サーバーへの再ログインが必要です",
     );
   });
 
