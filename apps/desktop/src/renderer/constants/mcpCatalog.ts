@@ -15,7 +15,7 @@ export type McpCatalogItem = {
 
 export const MCP_CATALOG_ITEMS: McpCatalogItem[] = [
   {
-    id: "filesystem-stdio",
+    id: "filesystem",
     name: "Filesystem",
     description:
       "ファイルシステム操作 - ローカルファイルの読み書き（開発・テスト用）",
@@ -27,7 +27,7 @@ export const MCP_CATALOG_ITEMS: McpCatalogItem[] = [
     authType: "NONE",
   },
   {
-    id: "github-stdio",
+    id: "github",
     name: "GitHub",
     description: "GitHub API - リポジトリ、イシュー、PR の操作",
     tags: ["開発", "Git"],
@@ -38,7 +38,7 @@ export const MCP_CATALOG_ITEMS: McpCatalogItem[] = [
     authType: "API_KEY",
   },
   {
-    id: "gitlab-stdio",
+    id: "gitlab",
     name: "GitLab",
     description: "GitLab API - プロジェクト、イシュー、MR の操作",
     tags: ["開発", "Git"],
@@ -49,7 +49,7 @@ export const MCP_CATALOG_ITEMS: McpCatalogItem[] = [
     authType: "API_KEY",
   },
   {
-    id: "postgresql-stdio",
+    id: "postgresql",
     name: "PostgreSQL",
     description: "PostgreSQL データベース - SQL クエリの実行とスキーマ操作",
     tags: ["データベース", "SQL"],
@@ -60,7 +60,7 @@ export const MCP_CATALOG_ITEMS: McpCatalogItem[] = [
     authType: "API_KEY",
   },
   {
-    id: "slack-stdio",
+    id: "slack",
     name: "Slack",
     description: "Slack API - メッセージの送受信とチャンネル操作",
     tags: ["コミュニケーション", "チャット"],
@@ -71,7 +71,7 @@ export const MCP_CATALOG_ITEMS: McpCatalogItem[] = [
     authType: "API_KEY",
   },
   {
-    id: "sequential-thinking-stdio",
+    id: "sequential-thinking",
     name: "Sequential Thinking",
     description: "段階的思考サーバー - 複雑な問題解決のための段階的推論支援",
     tags: ["ユーティリティ", "AI"],
@@ -82,7 +82,7 @@ export const MCP_CATALOG_ITEMS: McpCatalogItem[] = [
     authType: "NONE",
   },
   {
-    id: "everything-stdio",
+    id: "everything",
     name: "Everything",
     description:
       "MCP テストサーバー - prompts, tools, resources, sampling などの全機能テスト用",

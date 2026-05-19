@@ -344,7 +344,7 @@ export const AddMcpModal = ({
           </div>
         </div>
 
-        {/* ディレクトリ入力（Filesystem STDIO の場合のみ） */}
+        {/* ディレクトリ入力（Filesystem の場合のみ） */}
         {isFilesystem && (
           <div className="mb-6">
             <label className="mb-2 block text-sm font-medium text-gray-900 dark:text-white">

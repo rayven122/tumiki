@@ -153,7 +153,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
   {
     name: "Salesforce",
     description:
-      "Salesforce MCP - オブジェクト・メタデータの参照と操作（組織認証が前提）",
+      "Salesforce - オブジェクト・メタデータの参照と操作（組織認証が前提）",
     iconPath: "/logos/services/salesforce.svg",
     transportType: "STDIO",
     command: "${runtime:npx}",
@@ -165,7 +165,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
   {
     name: "Chrome DevTools",
     description:
-      "Chrome DevTools MCP - DOM・コンソール・ネットワーク・パフォーマンスのデバッグ",
+      "Chrome DevTools - DOM・コンソール・ネットワーク・パフォーマンスのデバッグ",
     iconPath: "/logos/services/chrome-devtools.svg",
     transportType: "STDIO",
     command: "${runtime:npx}",
@@ -177,7 +177,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
   {
     name: "Playwright",
     description:
-      "Playwright MCP - ブラウザ操作、スクリーンショット、フォーム入力、UI検証",
+      "Playwright - ブラウザ操作、スクリーンショット、フォーム入力、UI検証",
     iconPath: "/logos/services/playwright.svg",
     transportType: "STDIO",
     command: "${runtime:npx}",
@@ -189,7 +189,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
   {
     name: "Google Analytics",
     description:
-      "Google アナリティクス MCP - プロパティ・レポート・指標へのアクセス",
+      "Google アナリティクス - プロパティ・レポート・指標へのアクセス",
     iconPath: "/logos/services/google-analytics.svg",
     transportType: "STDIO",
     command: "${runtime:uvx}",
@@ -280,7 +280,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
   },
   {
     name: "Slack",
-    description: "Slack MCP - チャンネル・スレッド・メッセージの参照と投稿",
+    description: "Slack - チャンネル・スレッド・メッセージの参照と投稿",
     iconPath: "/logos/services/slack.svg",
     transportType: "STREAMABLE_HTTP",
     url: "https://mcp.slack.com/mcp",
@@ -291,7 +291,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
   {
     name: "Money Forward",
     description:
-      "マネーフォワード クラウド会計 MCP - 取引・口座・帳票など会計データへのアクセス",
+      "マネーフォワード クラウド会計 - 取引・口座・帳票など会計データへのアクセス",
     iconPath: "/logos/services/moneyforward.svg",
     transportType: "STREAMABLE_HTTP",
     // 公式URL（β提供中）。旧 mcp.moneyforward.com はDNS解決不能。
@@ -303,7 +303,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
   },
   {
     name: "Freee",
-    description: "freee MCP - 会計・人事労務データの参照と操作",
+    description: "freee - 会計・人事労務データの参照と操作",
     iconPath: "/logos/services/freee.svg",
     transportType: "STREAMABLE_HTTP",
     url: "https://mcp.freee.co.jp/mcp",
@@ -323,7 +323,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
   },
   {
     name: "Asana",
-    description: "Asana MCP - プロジェクト、タスク、コメントの管理",
+    description: "Asana - プロジェクト、タスク、コメントの管理",
     iconPath: "/logos/services/asana.svg",
     transportType: "STREAMABLE_HTTP",
     url: "https://mcp.asana.com/v2/mcp",
@@ -356,7 +356,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
   {
     name: "HubSpot",
     description:
-      "HubSpot CRM MCP - コンタクト、会社、取引、マーケティング活動の管理",
+      "HubSpot CRM - コンタクト、会社、取引、マーケティング活動の管理",
     iconPath: "/logos/services/hubspot.svg",
     transportType: "STREAMABLE_HTTP",
     url: "https://mcp.hubspot.com",
@@ -366,8 +366,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
   },
   {
     name: "Box",
-    description:
-      "Box MCP - ファイル検索、メタデータ参照、共有・コラボレーション",
+    description: "Box - ファイル検索、メタデータ参照、共有・コラボレーション",
     iconPath: "/logos/services/box.svg",
     transportType: "STREAMABLE_HTTP",
     url: "https://mcp.box.com",
@@ -377,7 +376,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
   },
   {
     name: "Attio",
-    description: "Attio CRM MCP - 人物、会社、リスト、パイプラインの管理",
+    description: "Attio CRM - 人物、会社、リスト、パイプラインの管理",
     iconPath: "/logos/services/attio.svg",
     transportType: "STREAMABLE_HTTP",
     url: "https://mcp.attio.com/mcp",
@@ -388,7 +387,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
   {
     name: OUTLINE_NAME,
     description:
-      "Outline ナレッジベース MCP - コレクション・ドキュメントの検索と参照",
+      "Outline ナレッジベース - コレクション・ドキュメントの検索と参照",
     iconPath: "/logos/services/outline.svg",
     transportType: "STREAMABLE_HTTP",
     url: "https://app.getoutline.com/mcp",

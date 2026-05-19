@@ -467,7 +467,7 @@ describe("oauth.service", () => {
       server: {
         id: 11,
         name: "Figma",
-        slug: "figma-mcp",
+        slug: "figma",
         description: "",
         serverType: "OFFICIAL" as const,
         serverStatus: "RUNNING" as const,
