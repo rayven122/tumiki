@@ -12,6 +12,8 @@ type AiCodingTelemetryToolSetting = {
   appliedPort?: number;
 };
 
+export type ThemeMode = "light" | "dark";
+
 type AppStoreSchema = {
   installationId?: string;
   managerUrl?: string;
@@ -19,6 +21,8 @@ type AppStoreSchema = {
   activeProfile?: DesktopProfile;
   organizationProfile?: OrganizationProfile;
   hasCompletedInitialProfileSetup?: boolean;
+  // 表示テーマ。renderer の jotai atom は揮発的なので起動時に復元するため永続化する
+  theme?: ThemeMode;
   // AI コーディングツール テレメトリ設定
   aiCodingTelemetry?: {
     tools: {

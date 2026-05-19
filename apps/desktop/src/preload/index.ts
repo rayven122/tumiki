@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
+import type { ThemeMode } from "../main/shared/app-store";
 import type { AuthTokenResult } from "../types/auth";
 import type {
   CatalogItem,
@@ -228,6 +229,14 @@ const api = {
       ipcRenderer.invoke("profile:cancelOrganizationChange"),
     disconnectOrganization: (): Promise<ProfileState> =>
       ipcRenderer.invoke("profile:disconnectOrganization"),
+  },
+
+  // アプリ設定の永続化 API
+  appConfig: {
+    getTheme: (): Promise<ThemeMode | null> =>
+      ipcRenderer.invoke("appConfig:getTheme"),
+    setTheme: (theme: ThemeMode): Promise<void> =>
+      ipcRenderer.invoke("appConfig:setTheme", theme),
   },
 
   // 外部URLを既定ブラウザで開くシェル API
