@@ -12,7 +12,7 @@ import type {
 } from "./ai-coding-telemetry.types";
 import type { McpEntry } from "../ai-client/ai-client.types";
 import { ANALYTICS_RECEIVER_FLAG } from "../../app-mode";
-import { ensureNodeShim, resolveValue } from "../../runtime/path-resolver";
+import { resolveValue } from "../../runtime/path-resolver";
 
 // Claude Code のユーザー設定ファイルパス（env セクションで環境変数を定義できる）
 const CLAUDE_CODE_SETTINGS_PATH = path.join(
@@ -77,7 +77,6 @@ const getAnalyticsNodeEntryPath = (): string => {
 };
 
 const getAnalyticsMcpEntry = (): McpEntry => {
-  ensureNodeShim();
   return {
     command: resolveValue("${runtime:node}"),
     args: [getAnalyticsNodeEntryPath(), ANALYTICS_RECEIVER_FLAG],
