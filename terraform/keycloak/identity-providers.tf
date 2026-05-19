@@ -12,6 +12,9 @@ locals {
   # Google IdP alias（マッパーで参照）
   google_idp_alias = local.google_idp_enabled ? keycloak_oidc_google_identity_provider.google[0].alias : ""
 
+  # Google IdP のみへ自動リダイレクトする browser flow を有効化するかどうか
+  google_only_browser_login_enabled = var.google_only_browser_login && local.google_idp_enabled
+
   # Google IdP 属性マッパー定義
   google_attribute_mappers = {
     email = {

@@ -10,13 +10,13 @@ resource "keycloak_realm" "tumiki" {
   ssl_required = var.ssl_required
 
   # ユーザー登録設定
-  registration_allowed           = true
+  registration_allowed           = var.registration_allowed
   registration_email_as_username = true
-  reset_password_allowed         = true
+  reset_password_allowed         = var.reset_password_allowed
   remember_me                    = true
 
   # ログイン設定
-  login_with_email_allowed = true
+  login_with_email_allowed = var.login_with_email_allowed
   duplicate_emails_allowed = false
   verify_email             = true
   edit_username_allowed    = false

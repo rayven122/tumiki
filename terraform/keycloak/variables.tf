@@ -33,6 +33,35 @@ variable "realm_display_name" {
   default     = "Tumiki Platform"
 }
 
+variable "registration_allowed" {
+  description = "ユーザーによるセルフ登録を許可するか"
+  type        = bool
+  default     = true
+}
+
+variable "reset_password_allowed" {
+  description = "ユーザーによるパスワードリセットを許可するか"
+  type        = bool
+  default     = true
+}
+
+variable "login_with_email_allowed" {
+  description = "ローカルユーザーがメールアドレスでログインできるようにするか"
+  type        = bool
+  default     = true
+}
+
+variable "google_only_browser_login" {
+  description = "Browser login を Google IdP へ自動リダイレクトし、ローカル username/password フローを通常経路から外すか"
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.google_only_browser_login || (var.google_client_id != "" && var.google_client_secret != "")
+    error_message = "google_only_browser_login を true にする場合は google_client_id と google_client_secret が必要です。"
+  }
+}
+
 # クライアント設定
 variable "manager_client_id" {
   description = "Manager App クライアントID"
@@ -135,6 +164,7 @@ variable "desktop_redirect_uris" {
     "tumiki://auth/callback"
   ]
 }
+
 # セキュリティ設定
 variable "ssl_required" {
   description = "SSL要求レベル（none/external/all）"

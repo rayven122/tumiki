@@ -10,6 +10,8 @@
 # - TF_VAR_manager_client_secret
 # - TF_VAR_proxy_client_secret
 # - TF_VAR_test_user_password
+# - TF_VAR_google_client_id
+# - TF_VAR_google_client_secret
 # - TF_VAR_smtp_host
 # - TF_VAR_smtp_user
 # - TF_VAR_smtp_from
@@ -23,6 +25,17 @@ keycloak_url = "http://localhost:8080"
 realm_name         = "tumiki"
 realm_display_name = "Tumiki Platform"
 
+# 個人利用向けの本番ログインは Google IdP のみに限定する。
+# 企業向け SSO は今後、別 IdP / 別接続を追加してカバーする。
+# Google IdP 障害時は master realm の管理コンソールまたは direct grant の
+# break-glass ユーザーで復旧する。google_only_browser_login = false で apply すると
+# browser flow はデフォルトへ戻るが、Google IdP が残る限り通常ログイン画面は
+# Google ボタンのみを表示する。
+registration_allowed       = false
+reset_password_allowed     = false
+login_with_email_allowed   = false
+google_only_browser_login  = true
+
 # Manager Appクライアント設定
 # 本番環境のリダイレクトURI
 # Vercel preview URL の team scope（rayven-38d708d3）は Vercel Project URL から確認して更新する。
@@ -34,6 +47,10 @@ manager_web_origins = [
   "https://www.tumiki.cloud",
   "https://tumiki-*-rayven-38d708d3.vercel.app"
 ]
+
+# Internal Manager は本番公開しないため、localhost デフォルトを本番 realm に入れない。
+internal_manager_redirect_uris = []
+internal_manager_web_origins   = []
 
 # Desktop Appクライアント設定
 # Desktop は Keycloak を直接開くため、custom scheme の redirect URI を Keycloak 側で許可する
@@ -58,7 +75,7 @@ ssl_required = "external"
 login_theme   = "tumiki"
 account_theme = "keycloak.v3"
 
-# テストユーザー設定（動作確認・監視用アカウント）
+# テストユーザー設定（direct grant / break-glass 用。通常のブラウザログイン対象外）
 # test_user_passwordは環境変数TF_VAR_test_user_passwordで設定
 test_user_email      = "admin@tumiki.cloud"
 test_user_first_name = "Admin"
