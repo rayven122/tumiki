@@ -1,7 +1,7 @@
 import type { Server } from "node:http";
 import { closeDb, initializeDb } from "./shared/db";
 import * as logger from "./shared/utils/logger";
-import { pruneOldTelemetry } from "./features/ai-coding-telemetry/ai-coding-telemetry.service";
+import { setupTelemetryPruneSchedule } from "./features/ai-coding-telemetry/ai-coding-telemetry.service";
 import {
   startAnalyticsMcpServer,
   startAnalyticsReceiverSingleton,
@@ -12,15 +12,10 @@ const startAnalyticsNodeMode = async (): Promise<void> => {
 
   const runtime = await startAnalyticsReceiverSingleton();
 
-  const runTelemetryPrune = (): void => {
-    void pruneOldTelemetry().catch((error: unknown) => {
+  const telemetryPruneSchedule = setupTelemetryPruneSchedule(
+    (error: unknown) => {
       logger.error("Failed to prune old AI coding telemetry", { error });
-    });
-  };
-  runTelemetryPrune();
-  const telemetryPruneInterval = setInterval(
-    runTelemetryPrune,
-    24 * 60 * 60 * 1000,
+    },
   );
 
   let isShuttingDown = false;
@@ -32,7 +27,7 @@ const startAnalyticsNodeMode = async (): Promise<void> => {
   const shutdown = (): void => {
     if (isShuttingDown) return;
     isShuttingDown = true;
-    clearInterval(telemetryPruneInterval);
+    telemetryPruneSchedule.cancel();
     void (async () => {
       if (runtime.server) {
         await closeServer(runtime.server);

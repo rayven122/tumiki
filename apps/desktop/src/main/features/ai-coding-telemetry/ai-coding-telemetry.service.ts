@@ -30,6 +30,14 @@ const MAX_ATTRIBUTES_LENGTH = 4096;
 const MAX_RECORDS_PER_REQUEST = 1000;
 const FALLBACK_TRACE_PER_PAGE = 20;
 const MAX_TRACE_PER_PAGE = 100;
+export const PERSONAL_TELEMETRY_RETENTION_DAYS = 30;
+export const ORGANIZATION_TELEMETRY_RETENTION_DAYS = 90;
+export const TELEMETRY_PRUNE_START_DELAY_MS = 30_000;
+const TELEMETRY_PRUNE_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+type TelemetryPruneSchedule = {
+  cancel: () => void;
+};
 
 const getDashboardInterval = (days: number): "day" | "hour" =>
   days <= 7 ? "hour" : "day";
@@ -97,11 +105,25 @@ const extractDataPointValue = (dataPoint: unknown): number => {
   const dp = dataPoint as Record<string, unknown>;
   if (typeof dp.asDouble === "number") return dp.asDouble;
   if (typeof dp.asInt === "number") return dp.asInt;
+  if (typeof dp.sum === "number") return dp.sum;
   if (typeof dp.asInt === "string") {
     const value = Number(dp.asInt);
     return Number.isFinite(value) ? value : 0;
   }
+  if (typeof dp.sum === "string") {
+    const value = Number(dp.sum);
+    return Number.isFinite(value) ? value : 0;
+  }
   return 0;
+};
+
+const getMetricDataPoints = (metric: Record<string, unknown>): unknown[] => {
+  const dataPointContainer = metric.sum ?? metric.gauge ?? metric.histogram;
+  if (typeof dataPointContainer !== "object" || dataPointContainer === null) {
+    return [];
+  }
+  const dataPoints = (dataPointContainer as Record<string, unknown>).dataPoints;
+  return Array.isArray(dataPoints) ? dataPoints : [];
 };
 
 // OTLP dataPoint の attributes を JSON 文字列で返す
@@ -152,15 +174,8 @@ export const storeOtlpMetrics = async (body: unknown): Promise<void> => {
           typeof m.name === "string"
             ? truncateString(m.name, MAX_RECORD_FIELD_LENGTH)
             : "unknown";
-        const dataPointContainer = m.sum ?? m.gauge;
-        if (
-          typeof dataPointContainer !== "object" ||
-          dataPointContainer === null
-        )
-          continue;
-        const dataPoints = (dataPointContainer as Record<string, unknown>)
-          .dataPoints;
-        if (!Array.isArray(dataPoints)) continue;
+        const dataPoints = getMetricDataPoints(m);
+        if (dataPoints.length === 0) continue;
 
         for (const dp of dataPoints) {
           if (metrics.length >= MAX_RECORDS_PER_REQUEST) break;
@@ -377,11 +392,12 @@ export const getToolSettings = async (
   };
 };
 
-// 指定日数より古いメトリクス・トレースを削除する（デフォルト 90 日）。
+// 指定日数より古いメトリクス・トレースを削除する。
+// 直接呼び出し時のデフォルトは組織利用向けの 90 日。通常の起動時 pruning は pruneOldTelemetryForProfile を使う。
 // 起動時に呼び出すことで、SQLite が長期的に肥大化するのを防ぐ。
 // 戻り値はメトリクス・トレースそれぞれの削除件数。
 export const pruneOldTelemetry = async (
-  retentionDays: number = 90,
+  retentionDays: number = ORGANIZATION_TELEMETRY_RETENTION_DAYS,
 ): Promise<{ metrics: number; traces: number }> => {
   const db = await getDb();
   const cutoff = new Date(Date.now() - retentionDays * 86400_000);
@@ -397,6 +413,43 @@ export const pruneOldTelemetry = async (
     });
   }
   return { metrics, traces };
+};
+
+export const resolveTelemetryRetentionDays = (
+  activeProfile: "personal" | "organization" | null | undefined,
+): number =>
+  activeProfile === "organization"
+    ? ORGANIZATION_TELEMETRY_RETENTION_DAYS
+    : PERSONAL_TELEMETRY_RETENTION_DAYS;
+
+export const pruneOldTelemetryForProfile = async (): Promise<{
+  metrics: number;
+  traces: number;
+}> => {
+  const store = await getAppStore();
+  return pruneOldTelemetry(
+    resolveTelemetryRetentionDays(store.get("activeProfile")),
+  );
+};
+
+export const setupTelemetryPruneSchedule = (
+  onError: (error: unknown) => void,
+): TelemetryPruneSchedule => {
+  const runTelemetryPrune = (): void => {
+    void pruneOldTelemetryForProfile().catch(onError);
+  };
+  const startTimer = setTimeout(
+    runTelemetryPrune,
+    TELEMETRY_PRUNE_START_DELAY_MS,
+  );
+  const interval = setInterval(runTelemetryPrune, TELEMETRY_PRUNE_INTERVAL_MS);
+
+  return {
+    cancel: () => {
+      clearTimeout(startTimer);
+      clearInterval(interval);
+    },
+  };
 };
 
 // OTLP レシーバーのポートが前回と変わった場合、適用済みツールの設定ファイルを

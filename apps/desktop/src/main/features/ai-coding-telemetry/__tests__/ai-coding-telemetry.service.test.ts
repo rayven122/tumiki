@@ -342,6 +342,86 @@ describe("storeOtlpMetrics", () => {
     ]);
   });
 
+  test("histogram 型のメトリクスも解析できる", async () => {
+    const attrs = [
+      { key: "model", value: { stringValue: "gpt-5.5" } },
+      { key: "token_type", value: { stringValue: "input" } },
+    ];
+
+    await service.storeOtlpMetrics({
+      resourceMetrics: [
+        {
+          resource: {
+            attributes: [
+              {
+                key: "service.name",
+                value: { stringValue: "codex-app-server" },
+              },
+            ],
+          },
+          scopeMetrics: [
+            {
+              metrics: [
+                {
+                  name: "codex.turn.token_usage",
+                  histogram: {
+                    dataPoints: [{ sum: 12000, attributes: attrs }],
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(repository.storeMetrics).toHaveBeenCalledWith(mockDb, [
+      expect.objectContaining({
+        tool: "codex-app-server",
+        metricName: "codex.turn.token_usage",
+        value: 12000,
+        attributes: JSON.stringify(attrs),
+      }),
+    ]);
+  });
+
+  test("histogram sum が文字列数値でも正しく変換される", async () => {
+    await service.storeOtlpMetrics({
+      resourceMetrics: [
+        {
+          resource: {
+            attributes: [
+              {
+                key: "service.name",
+                value: { stringValue: "codex-app-server" },
+              },
+            ],
+          },
+          scopeMetrics: [
+            {
+              metrics: [
+                {
+                  name: "codex.turn.token_usage",
+                  histogram: {
+                    dataPoints: [{ sum: "12000" }],
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(repository.storeMetrics).toHaveBeenCalledWith(mockDb, [
+      expect.objectContaining({
+        tool: "codex-app-server",
+        metricName: "codex.turn.token_usage",
+        value: 12000,
+      }),
+    ]);
+  });
+
   test("dataPoint に attributes がある場合は JSON 文字列で保存される", async () => {
     const attrs = [{ key: "type", value: { stringValue: "input" } }];
     await service.storeOtlpMetrics({
@@ -1131,6 +1211,75 @@ describe("pruneOldTelemetry", () => {
     const result = await service.pruneOldTelemetry();
 
     expect(result).toStrictEqual({ metrics: 0, traces: 0 });
+  });
+
+  test("プロファイル別の保持日数を解決する", () => {
+    expect(service.resolveTelemetryRetentionDays("personal")).toBe(30);
+    expect(service.resolveTelemetryRetentionDays("organization")).toBe(90);
+    expect(service.resolveTelemetryRetentionDays(null)).toBe(30);
+    expect(service.resolveTelemetryRetentionDays(undefined)).toBe(30);
+  });
+
+  test("個人プロファイルでは 30 日より古いデータを削除する", async () => {
+    vi.mocked(mockStore.get).mockImplementation((key: string) =>
+      key === "activeProfile" ? "personal" : undefined,
+    );
+
+    const before = Date.now();
+    await service.pruneOldTelemetryForProfile();
+    const after = Date.now();
+
+    const [[, cutoff]] = vi.mocked(repository.deleteOldMetrics).mock.calls as [
+      [unknown, Date],
+    ];
+    const thirtyDaysMs = 30 * 86400_000;
+    expect(cutoff.getTime()).toBeGreaterThanOrEqual(
+      before - thirtyDaysMs - 100,
+    );
+    expect(cutoff.getTime()).toBeLessThanOrEqual(after - thirtyDaysMs + 100);
+  });
+
+  test("組織プロファイルでは 90 日より古いデータを削除する", async () => {
+    vi.mocked(mockStore.get).mockImplementation((key: string) =>
+      key === "activeProfile" ? "organization" : undefined,
+    );
+
+    const before = Date.now();
+    await service.pruneOldTelemetryForProfile();
+    const after = Date.now();
+
+    const [[, cutoff]] = vi.mocked(repository.deleteOldMetrics).mock.calls as [
+      [unknown, Date],
+    ];
+    const ninetyDaysMs = 90 * 86400_000;
+    expect(cutoff.getTime()).toBeGreaterThanOrEqual(
+      before - ninetyDaysMs - 100,
+    );
+    expect(cutoff.getTime()).toBeLessThanOrEqual(after - ninetyDaysMs + 100);
+  });
+
+  test("pruning schedule は 30 秒後に開始し、cancel で停止できる", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.mocked(repository.deleteOldMetrics).mockResolvedValue(1);
+      vi.mocked(repository.deleteOldTraces).mockResolvedValue(1);
+      const onError = vi.fn();
+
+      const schedule = service.setupTelemetryPruneSchedule(onError);
+
+      await vi.advanceTimersByTimeAsync(29_999);
+      expect(repository.deleteOldMetrics).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(1);
+      expect(repository.deleteOldMetrics).toHaveBeenCalledOnce();
+      expect(onError).not.toHaveBeenCalled();
+
+      schedule.cancel();
+      await vi.advanceTimersByTimeAsync(24 * 60 * 60 * 1000);
+      expect(repository.deleteOldMetrics).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
