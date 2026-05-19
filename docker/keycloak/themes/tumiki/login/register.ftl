@@ -3,7 +3,7 @@
 
 <@layout.registrationLayout
   displayInfo=false
-  displayMessage=!messagesPerField.existsError("firstName", "lastName", "email", "password", "password-confirm")
+  displayMessage=!messagesPerField.existsError("firstName", "lastName", "email", "username", "password", "password-confirm")
   ;
   section
 >

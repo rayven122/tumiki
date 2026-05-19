@@ -185,17 +185,8 @@ body {
 }
 
 .tumiki-divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 22px 0;
-}
-
-.tumiki-divider::before,
-.tumiki-divider::after {
-  content: "";
   height: 1px;
-  flex: 1;
+  margin: 22px 0;
   background: var(--tumiki-border);
 }
 

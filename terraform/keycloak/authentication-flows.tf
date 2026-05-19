@@ -15,6 +15,7 @@ resource "keycloak_authentication_execution" "google_only_cookie" {
   parent_flow_alias = keycloak_authentication_flow.google_only_browser[0].alias
   authenticator     = "auth-cookie"
   requirement       = "ALTERNATIVE"
+  priority          = 10
 }
 
 resource "keycloak_authentication_execution" "google_only_idp_redirector" {
@@ -24,9 +25,8 @@ resource "keycloak_authentication_execution" "google_only_idp_redirector" {
   parent_flow_alias = keycloak_authentication_flow.google_only_browser[0].alias
   authenticator     = "identity-provider-redirector"
   requirement       = "ALTERNATIVE"
+  priority          = 20
 
-  # Keycloak assigns execution priority by creation order. Keep auth-cookie first
-  # so existing SSO sessions are accepted before redirecting anonymous users to Google.
   depends_on = [
     keycloak_authentication_execution.google_only_cookie,
   ]

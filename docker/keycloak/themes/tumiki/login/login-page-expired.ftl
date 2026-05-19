@@ -12,7 +12,7 @@
         ${msg("pageExpiredMsg1")}
       </p>
     </div>
-    <a href="${url.loginRestartFlowUrl}" class="tumiki-button tumiki-button-link">
+    <a href="${url.loginRestartFlowUrl}" class="tumiki-button tumiki-button-link" role="button">
       ${msg("doTryAgain")}
     </a>
   </#if>
