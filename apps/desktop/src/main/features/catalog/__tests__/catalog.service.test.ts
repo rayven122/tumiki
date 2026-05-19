@@ -125,10 +125,12 @@ describe("catalog.service", () => {
       });
 
       test("Manager未接続時はエラーにする", async () => {
-        vi.mocked(requestManagerApi).mockResolvedValueOnce(null);
+        vi.mocked(requestManagerApi).mockRejectedValueOnce(
+          new Error("認証セッションがありません。再ログインしてください。"),
+        );
 
         await expect(catalogService.getAllCatalogs()).rejects.toThrow(
-          "管理サーバーに接続またはログインされていません",
+          "認証セッションがありません。再ログインしてください。",
         );
         expect(catalogRepository.findAll).not.toHaveBeenCalled();
       });

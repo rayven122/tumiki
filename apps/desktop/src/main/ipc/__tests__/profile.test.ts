@@ -49,10 +49,11 @@ vi.mock("../../auth/manager-registry", () => ({
 vi.mock("../../shared/utils/logger");
 
 import { setupProfileIpc } from "../profile";
-import { PERSONAL_PROFILE_MANAGER_URL } from "../manager";
+import { PERSONAL_PROFILE_MANAGER_URL } from "../../../shared/constants";
 import {
   activateOrganizationProfile,
   activatePersonalProfile,
+  restorePersonalProfileManagerUrlIfMissing,
   resolvePendingProfile,
 } from "../../shared/profile-store";
 
@@ -91,6 +92,31 @@ describe("profile-store", () => {
     await expect(activatePersonalProfile()).rejects.toThrow(
       "組織利用中は個人利用に切り替えられません",
     );
+  });
+
+  test("個人プロファイル確定済みでmanagerUrlが欠けている場合はtumiki.cloudを復元する", async () => {
+    storeData.set("activeProfile", "personal");
+    storeData.set("hasCompletedInitialProfileSetup", true);
+
+    const restored = await restorePersonalProfileManagerUrlIfMissing(
+      PERSONAL_PROFILE_MANAGER_URL,
+    );
+
+    expect(restored).toBe(true);
+    expect(storeData.get("managerUrl")).toBe(PERSONAL_PROFILE_MANAGER_URL);
+  });
+
+  test("未確定のpendingProfileがある場合は個人managerUrlを復元しない", async () => {
+    storeData.set("activeProfile", "personal");
+    storeData.set("pendingProfile", "organization");
+    storeData.set("hasCompletedInitialProfileSetup", true);
+
+    const restored = await restorePersonalProfileManagerUrlIfMissing(
+      PERSONAL_PROFILE_MANAGER_URL,
+    );
+
+    expect(restored).toBe(false);
+    expect(storeData.has("managerUrl")).toBe(false);
   });
 
   test("pendingProfileが無くtumiki.cloudの場合は個人利用として解決する", () => {
@@ -215,6 +241,26 @@ describe("setupProfileIpc", () => {
     expect(storeData.get("managerUrl")).toBe("https://manager.example.com");
   });
 
+  test("ログアウト用リセットでプロファイル状態をクリアする", async () => {
+    const cancelAuthFlow = vi.fn();
+    const stopAutoRefresh = vi.fn();
+    mockGetOAuthManager.mockReturnValue({ cancelAuthFlow, stopAutoRefresh });
+    storeData.set("managerUrl", "https://manager.example.com");
+
+    const handler = mockIpcHandlers.get("profile:resetForLogout");
+    const result = await handler!({} as IpcMainInvokeEvent);
+
+    expect(cancelAuthFlow).toHaveBeenCalled();
+    expect(stopAutoRefresh).toHaveBeenCalled();
+    expect(mockSetOAuthManager).toHaveBeenCalledWith(null);
+    expect(storeData.has("managerUrl")).toBe(false);
+    expect(result).toStrictEqual({
+      activeProfile: null,
+      organizationProfile: null,
+      hasCompletedInitialProfileSetup: false,
+    });
+  });
+
   test("組織変更キャンセルで既存組織URLを復元しpendingProfileをクリアする", async () => {
     const cancelAuthFlow = vi.fn();
     const stopAutoRefresh = vi.fn();
@@ -248,25 +294,28 @@ describe("setupProfileIpc", () => {
     });
   });
 
-  test("復元できる組織プロファイルが無い場合は組織変更キャンセルを拒否する", async () => {
+  test("個人利用からの組織変更キャンセルで個人URLを復元しpendingProfileをクリアする", async () => {
     const cancelAuthFlow = vi.fn();
     const stopAutoRefresh = vi.fn();
     mockGetOAuthManager.mockReturnValue({ cancelAuthFlow, stopAutoRefresh });
     storeData.set("activeProfile", "personal");
     storeData.set("managerUrl", "https://new-manager.example.com");
     storeData.set("pendingProfile", "organization");
+    storeData.set("hasCompletedInitialProfileSetup", true);
 
     const handler = mockIpcHandlers.get("profile:cancelOrganizationChange");
+    const result = await handler!({} as IpcMainInvokeEvent);
 
-    await expect(handler!({} as IpcMainInvokeEvent)).rejects.toThrow(
-      "組織変更のキャンセルに失敗しました",
-    );
-
-    expect(cancelAuthFlow).not.toHaveBeenCalled();
-    expect(stopAutoRefresh).not.toHaveBeenCalled();
-    expect(mockSetOAuthManager).not.toHaveBeenCalled();
-    expect(storeData.get("managerUrl")).toBe("https://new-manager.example.com");
-    expect(storeData.get("pendingProfile")).toBe("organization");
+    expect(cancelAuthFlow).toHaveBeenCalled();
+    expect(stopAutoRefresh).toHaveBeenCalled();
+    expect(mockSetOAuthManager).toHaveBeenCalledWith(null);
+    expect(storeData.get("managerUrl")).toBe(PERSONAL_PROFILE_MANAGER_URL);
+    expect(storeData.has("pendingProfile")).toBe(false);
+    expect(result).toStrictEqual({
+      activeProfile: "personal",
+      organizationProfile: null,
+      hasCompletedInitialProfileSetup: true,
+    });
   });
 
   test("組織切断で認証とプロファイル状態をクリアする", async () => {

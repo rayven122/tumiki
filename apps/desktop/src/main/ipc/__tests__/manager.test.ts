@@ -36,9 +36,9 @@ vi.mock("../../shared/utils/logger");
 import {
   CLOUD_KEYCLOAK_DESKTOP_CLIENT_ID,
   CLOUD_KEYCLOAK_ISSUER,
-  PERSONAL_PROFILE_MANAGER_URL,
   setupManagerIpc,
 } from "../manager";
+import { PERSONAL_PROFILE_MANAGER_URL } from "../../../shared/constants";
 
 describe("setupManagerIpc", () => {
   const initOAuthManager = vi.fn();

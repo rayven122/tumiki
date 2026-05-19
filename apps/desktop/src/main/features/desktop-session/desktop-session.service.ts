@@ -65,7 +65,6 @@ export const getDesktopSession = async () => {
   const response = await requestManagerApi("/api/desktop/v1/session", {
     signal: AbortSignal.timeout(10_000),
   });
-  if (!response) return null;
 
   if (response.status === 401) {
     throw new Error("管理サーバーへの再ログインが必要です");

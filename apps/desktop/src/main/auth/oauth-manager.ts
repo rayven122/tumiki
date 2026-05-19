@@ -556,6 +556,7 @@ export const createOAuthManager = (
               },
             );
           }
+          options.onAuthExpired?.();
         }
         return;
       }

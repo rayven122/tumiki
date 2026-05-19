@@ -27,7 +27,7 @@ export const createTRPCClient = () => {
           try {
             const result = await window.electronAPI.auth.getToken();
             return {
-              authorization: result ? `Bearer ${result.accessToken}` : "",
+              authorization: `Bearer ${result.accessToken}`,
             };
           } catch (error) {
             // IPC障害等でトークン取得に失敗した場合はエラーを伝播

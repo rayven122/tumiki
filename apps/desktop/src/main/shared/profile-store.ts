@@ -34,6 +34,22 @@ export const getProfileState = async (): Promise<ProfileState> => {
   };
 };
 
+export const restorePersonalProfileManagerUrlIfMissing = async (
+  personalManagerUrl: string,
+): Promise<boolean> => {
+  const store = await getAppStore();
+  if (
+    store.get("activeProfile") !== "personal" ||
+    store.get("pendingProfile") ||
+    store.get("managerUrl") ||
+    !store.get("hasCompletedInitialProfileSetup")
+  ) {
+    return false;
+  }
+  store.set("managerUrl", personalManagerUrl);
+  return true;
+};
+
 const confirmPersonalProfile = async (
   store: Awaited<ReturnType<typeof getAppStore>>,
 ): Promise<void> => {
@@ -67,7 +83,7 @@ export const activateOrganizationProfile = async (
   return getProfileState();
 };
 
-export const restoreOrganizationProfileManagerUrl =
+const restoreOrganizationProfileManagerUrl =
   async (): Promise<ProfileState> => {
     const store = await getAppStore();
     const organizationProfile = store.get("organizationProfile");
@@ -79,6 +95,21 @@ export const restoreOrganizationProfileManagerUrl =
     store.set("hasCompletedInitialProfileSetup", true);
     return getProfileState();
   };
+
+export const restoreProfileManagerUrlAfterOrganizationChange = async (
+  personalManagerUrl: string,
+): Promise<ProfileState> => {
+  const store = await getAppStore();
+  const activeProfile = store.get("activeProfile");
+  if (activeProfile === "personal") {
+    store.set("managerUrl", personalManagerUrl);
+    store.delete("pendingProfile");
+    store.delete("organizationProfile");
+    store.set("hasCompletedInitialProfileSetup", true);
+    return getProfileState();
+  }
+  return restoreOrganizationProfileManagerUrl();
+};
 
 export const resetProfileState = async (): Promise<ProfileState> => {
   const store = await getAppStore();

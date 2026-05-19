@@ -24,17 +24,24 @@ vi.mock("electron", () => ({
 vi.mock("../../shared/db");
 vi.mock("../../utils/encryption");
 vi.mock("../../shared/utils/logger");
+vi.mock("../../shared/profile-store");
 
 // manager-registryのOAuthManager参照をモック
 const mockGetOAuthManager = vi.fn().mockReturnValue(null);
+const mockSetOAuthManager = vi.fn();
 vi.mock("../../auth/manager-registry", () => ({
   getOAuthManager: () => mockGetOAuthManager(),
+  setOAuthManager: (manager: unknown) => mockSetOAuthManager(manager),
 }));
 
 // テスト対象のインポート（モックの後に行う）
 import { setupAuthIpc } from "../auth";
 import { getDb } from "../../shared/db";
 import { decryptToken } from "../../utils/encryption";
+import { resetProfileState } from "../../shared/profile-store";
+
+const createJwt = (claims: Record<string, unknown>): string =>
+  `header.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.signature`;
 
 describe("setupAuthIpc", () => {
   const mockDbAuthToken = {
@@ -61,6 +68,11 @@ describe("setupAuthIpc", () => {
     vi.mocked(getDb).mockResolvedValue(
       mockDb as unknown as Awaited<ReturnType<typeof getDb>>,
     );
+    vi.mocked(resetProfileState).mockResolvedValue({
+      activeProfile: null,
+      organizationProfile: null,
+      hasCompletedInitialProfileSetup: false,
+    });
 
     // encryption モックのセットアップ
     vi.mocked(decryptToken).mockImplementation((encryptedText: string) => {
@@ -101,16 +113,17 @@ describe("setupAuthIpc", () => {
       });
     });
 
-    test("トークンが存在しない場合はnullを返す", async () => {
+    test("トークンが存在しない場合はエラーを返す", async () => {
       mockDbAuthToken.findFirst.mockResolvedValue(null);
 
       const handler = mockIpcHandlers.get("auth:getToken");
-      const result = await handler!({} as IpcMainInvokeEvent);
 
-      expect(result).toBeNull();
+      await expect(handler!({} as IpcMainInvokeEvent)).rejects.toThrow(
+        "認証トークンの取得に失敗しました",
+      );
     });
 
-    test("有効期限切れのトークンの場合はnullを返し、DBから削除する", async () => {
+    test("有効期限切れのトークンの場合はエラーを返し、DBから削除する", async () => {
       const expiredToken = {
         id: 1,
         accessToken: "encrypted:test-access-token",
@@ -124,15 +137,16 @@ describe("setupAuthIpc", () => {
       mockDbAuthToken.deleteMany.mockResolvedValue({ count: 1 });
 
       const handler = mockIpcHandlers.get("auth:getToken");
-      const result = await handler!({} as IpcMainInvokeEvent);
 
-      expect(result).toBeNull();
+      await expect(handler!({} as IpcMainInvokeEvent)).rejects.toThrow(
+        "認証トークンの取得に失敗しました",
+      );
       expect(mockDbAuthToken.deleteMany).toHaveBeenCalledWith({
         where: { expiresAt: { lte: expect.any(Date) } },
       });
     });
 
-    test("復号化されたトークンが空の場合はnullを返す", async () => {
+    test("復号化されたトークンが空の場合はエラーを返す", async () => {
       const mockToken = {
         id: 1,
         accessToken: "encrypted:",
@@ -145,9 +159,10 @@ describe("setupAuthIpc", () => {
       mockDbAuthToken.findFirst.mockResolvedValue(mockToken);
 
       const handler = mockIpcHandlers.get("auth:getToken");
-      const result = await handler!({} as IpcMainInvokeEvent);
 
-      expect(result).toBeNull();
+      await expect(handler!({} as IpcMainInvokeEvent)).rejects.toThrow(
+        "認証トークンの取得に失敗しました",
+      );
     });
 
     test("データベースエラーの場合はエラーをスロー", async () => {
@@ -157,6 +172,122 @@ describe("setupAuthIpc", () => {
 
       await expect(handler!({} as IpcMainInvokeEvent)).rejects.toThrow(
         "認証トークンの取得に失敗しました",
+      );
+    });
+  });
+
+  describe("auth:getProfile", () => {
+    test("idTokenから名前とメールを取得できる", async () => {
+      const claims = {
+        sub: "user-1",
+        name: "鈴山英寿",
+        email: "user@example.com",
+        preferred_username: "hisuzuya",
+      };
+      const idToken = createJwt(claims);
+      const mockToken = {
+        id: 1,
+        accessToken: "encrypted:test-access-token",
+        refreshToken: "encrypted:test-refresh-token",
+        idToken: `encrypted:${idToken}`,
+        expiresAt: new Date(Date.now() + 3600000),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      mockDbAuthToken.findFirst.mockResolvedValue(mockToken);
+
+      const handler = mockIpcHandlers.get("auth:getProfile");
+      expect(handler).toBeDefined();
+
+      const result = await handler!({} as IpcMainInvokeEvent);
+
+      expect(result).toStrictEqual({
+        name: "鈴山英寿",
+        email: "user@example.com",
+        preferredUsername: "hisuzuya",
+        subject: "user-1",
+      });
+    });
+
+    test("idTokenがない場合は表示用クレームをnullで返す", async () => {
+      const claims = {
+        sub: "user-2",
+        name: "山田太郎",
+        email: "taro@example.com",
+        preferred_username: "taro",
+      };
+      const accessToken = createJwt(claims);
+      const mockToken = {
+        id: 1,
+        accessToken: `encrypted:${accessToken}`,
+        refreshToken: "encrypted:test-refresh-token",
+        idToken: null,
+        expiresAt: new Date(Date.now() + 3600000),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      mockDbAuthToken.findFirst.mockResolvedValue(mockToken);
+
+      const handler = mockIpcHandlers.get("auth:getProfile");
+      const result = await handler!({} as IpcMainInvokeEvent);
+
+      expect(result).toStrictEqual({
+        name: null,
+        email: null,
+        preferredUsername: null,
+        subject: null,
+      });
+    });
+
+    test("トークンが存在しない場合はエラーを返す", async () => {
+      mockDbAuthToken.findFirst.mockResolvedValue(null);
+
+      const handler = mockIpcHandlers.get("auth:getProfile");
+
+      await expect(handler!({} as IpcMainInvokeEvent)).rejects.toThrow(
+        "認証プロファイルの取得に失敗しました",
+      );
+    });
+
+    test("有効期限切れのトークンの場合はエラーを返し、DBから削除する", async () => {
+      const expiredToken = {
+        id: 1,
+        accessToken: "encrypted:test-access-token",
+        refreshToken: "encrypted:test-refresh-token",
+        idToken: null,
+        expiresAt: new Date(Date.now() - 1000),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      mockDbAuthToken.findFirst.mockResolvedValue(expiredToken);
+      mockDbAuthToken.deleteMany.mockResolvedValue({ count: 1 });
+
+      const handler = mockIpcHandlers.get("auth:getProfile");
+
+      await expect(handler!({} as IpcMainInvokeEvent)).rejects.toThrow(
+        "認証プロファイルの取得に失敗しました",
+      );
+      expect(mockDbAuthToken.deleteMany).toHaveBeenCalledWith({
+        where: { expiresAt: { lte: expect.any(Date) } },
+      });
+    });
+
+    test("idToken復号に失敗した場合はエラーを返す", async () => {
+      const mockToken = {
+        id: 1,
+        accessToken: "encrypted:test-access-token",
+        refreshToken: "encrypted:test-refresh-token",
+        idToken: "invalid-token",
+        expiresAt: new Date(Date.now() + 3600000),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      mockDbAuthToken.findFirst.mockResolvedValue(mockToken);
+
+      const handler = mockIpcHandlers.get("auth:getProfile");
+
+      await expect(handler!({} as IpcMainInvokeEvent)).rejects.toThrow(
+        "認証プロファイルの取得に失敗しました",
       );
     });
   });
@@ -305,6 +436,50 @@ describe("setupAuthIpc", () => {
       await expect(handler!({} as IpcMainInvokeEvent)).rejects.toThrow(
         "Logout failed",
       );
+    });
+  });
+
+  describe("auth:logoutAndResetProfile", () => {
+    test("プロファイルをリセットしてからログアウトする", async () => {
+      const mockLogout = vi.fn().mockResolvedValue(undefined);
+      mockGetOAuthManager.mockReturnValue({ logout: mockLogout });
+
+      const handler = mockIpcHandlers.get("auth:logoutAndResetProfile");
+      expect(handler).toBeDefined();
+
+      await handler!({} as IpcMainInvokeEvent);
+
+      expect(resetProfileState).toHaveBeenCalled();
+      expect(mockLogout).toHaveBeenCalled();
+      expect(mockSetOAuthManager).toHaveBeenCalledWith(null);
+    });
+
+    test("プロファイルリセットに失敗した場合はログアウトしない", async () => {
+      const mockLogout = vi.fn().mockResolvedValue(undefined);
+      mockGetOAuthManager.mockReturnValue({ logout: mockLogout });
+      vi.mocked(resetProfileState).mockRejectedValueOnce(
+        new Error("profile reset failed"),
+      );
+
+      const handler = mockIpcHandlers.get("auth:logoutAndResetProfile");
+
+      await expect(handler!({} as IpcMainInvokeEvent)).rejects.toThrow(
+        "profile reset failed",
+      );
+      expect(mockLogout).not.toHaveBeenCalled();
+      expect(mockSetOAuthManager).not.toHaveBeenCalled();
+    });
+
+    test("OAuthManagerが未設定でもプロファイルリセット後にローカルトークンを削除する", async () => {
+      mockGetOAuthManager.mockReturnValue(null);
+      mockDbAuthToken.deleteMany.mockResolvedValue({ count: 1 });
+
+      const handler = mockIpcHandlers.get("auth:logoutAndResetProfile");
+      await handler!({} as IpcMainInvokeEvent);
+
+      expect(resetProfileState).toHaveBeenCalled();
+      expect(mockDbAuthToken.deleteMany).toHaveBeenCalledWith({});
+      expect(mockSetOAuthManager).toHaveBeenCalledWith(null);
     });
   });
 });

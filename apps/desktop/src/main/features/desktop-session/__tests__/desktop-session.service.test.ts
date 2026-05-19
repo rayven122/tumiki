@@ -109,10 +109,14 @@ describe("desktop-session.service", () => {
     });
   });
 
-  test("Manager未接続または未ログインの場合はnullを返す", async () => {
-    vi.mocked(requestManagerApi).mockResolvedValue(null);
+  test("Manager未接続または未ログインの場合はエラーを返す", async () => {
+    vi.mocked(requestManagerApi).mockRejectedValue(
+      new Error("認証セッションがありません。再ログインしてください。"),
+    );
 
-    await expect(getDesktopSession()).resolves.toBeNull();
+    await expect(getDesktopSession()).rejects.toThrow(
+      "認証セッションがありません。再ログインしてください。",
+    );
   });
 
   test("401の場合は再ログインが必要なエラーを返す", async () => {

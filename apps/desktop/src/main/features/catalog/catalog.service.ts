@@ -62,9 +62,6 @@ const fetchFromManagerApi = async (): Promise<CatalogItem[]> => {
     const response = await requestManagerApi(
       `/api/desktop/v1/catalogs?${params.toString()}`,
     );
-    if (!response) {
-      throw new Error("管理サーバーに接続またはログインされていません");
-    }
     if (!response.ok) {
       throw new Error(
         `管理サーバーのカタログ取得に失敗しました (${String(response.status)})`,

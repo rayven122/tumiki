@@ -1,30 +1,13 @@
-import type { AuthToken } from "@prisma/desktop-client";
 import { decryptToken } from "../utils/encryption";
 import { getAppStore } from "./app-store";
-import { getDb } from "./db";
+import { findValidAuthToken } from "./auth-token-store";
+import { AuthRequiredError } from "../../shared/constants";
 
 type ManagerRequestOptions = Omit<RequestInit, "headers"> & {
   headers?: HeadersInit;
 };
 
-const findValidAuthToken = async (): Promise<AuthToken | null> => {
-  const db = await getDb();
-  const token = await db.authToken.findFirst({
-    orderBy: { createdAt: "desc" },
-  });
-
-  if (!token) return null;
-
-  const now = new Date();
-  if (now > token.expiresAt) {
-    await db.authToken.deleteMany({
-      where: { expiresAt: { lte: now } },
-    });
-    return null;
-  }
-
-  return token;
-};
+type AuthToken = NonNullable<Awaited<ReturnType<typeof findValidAuthToken>>>;
 
 const getApiBearerToken = async (token: AuthToken): Promise<string | null> => {
   // Jackson の access_token は opaque のため、internal-manager がJWT検証できる id_token を優先する。
@@ -35,33 +18,33 @@ const getApiBearerToken = async (token: AuthToken): Promise<string | null> => {
   return bearerToken || null;
 };
 
-const buildManagerUrl = async (path: string): Promise<string | null> => {
+const buildManagerUrl = async (path: string): Promise<string> => {
   const store = await getAppStore();
   const managerUrl = store.get("managerUrl");
-  if (!managerUrl) return null;
+  if (!managerUrl) {
+    throw new Error("管理サーバーURLが設定されていません");
+  }
 
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   return `${managerUrl.replace(/\/$/, "")}${normalizedPath}`;
 };
 
 /**
- * Manager連携済み・認証済みの場合だけ、internal-manager APIへ認証付きリクエストする。
- *
- * Manager URL未設定、未ログイン、期限切れトークンの場合はnullを返す。
+ * internal-manager APIへ認証付きリクエストする。
+ * 個人利用・組織利用とも認証必須のため、未ログインや期限切れトークンはエラーにする。
  * fetch自体の通信エラーは呼び出し元で扱えるようにthrowさせる。
  */
 export const requestManagerApi = async (
   path: string,
   options: ManagerRequestOptions = {},
-): Promise<Response | null> => {
+): Promise<Response> => {
   const url = await buildManagerUrl(path);
-  if (!url) return null;
 
   const token = await findValidAuthToken();
-  if (!token) return null;
+  if (!token) throw new AuthRequiredError();
 
   const bearerToken = await getApiBearerToken(token);
-  if (!bearerToken) return null;
+  if (!bearerToken) throw new AuthRequiredError();
 
   const headers = new Headers(options.headers);
   headers.set("Authorization", `Bearer ${bearerToken}`);
@@ -76,7 +59,7 @@ export const postManagerApi = async (
   path: string,
   body: unknown,
   options: ManagerRequestOptions = {},
-): Promise<Response | null> => {
+): Promise<Response> => {
   const headers = new Headers(options.headers);
   headers.set("Content-Type", "application/json");
 
