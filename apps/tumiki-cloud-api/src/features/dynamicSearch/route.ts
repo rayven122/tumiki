@@ -18,7 +18,9 @@ import {
 import { searchRequestSchema } from "./schema.js";
 import { searchTools } from "./service.js";
 
-const dynamicSearchRoute = new Hono<{ Variables: LicenseContextVariables }>();
+type DynamicSearchVariables = LicenseContextVariables;
+
+const dynamicSearchRoute = new Hono<{ Variables: DynamicSearchVariables }>();
 
 // ツールリストが大きくなる可能性があるため 200KB に制限
 dynamicSearchRoute.use(
@@ -52,12 +54,10 @@ dynamicSearchRoute.post("/v1/dynamic-search/search", async (c) => {
     return c.json({ error: "Invalid request body" }, 400);
   }
 
-  const license = c.var.license;
-
   try {
     const result = await searchTools(parsed.data);
     console.log(
-      `[dynamic-search/search] sub=${license.sub} type=${license.type} tools=${parsed.data.tools.length} results=${result.results.length}`,
+      `[dynamic-search/search] sub=${c.var.license.sub} tools=${parsed.data.tools.length} results=${result.results.length}`,
     );
     return c.json(result);
   } catch (err) {
