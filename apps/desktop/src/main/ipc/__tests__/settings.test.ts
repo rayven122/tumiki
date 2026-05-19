@@ -31,13 +31,13 @@ vi.mock("../../shared/app-store", () => ({
     }),
 }));
 
-import { setupAppConfigIpc } from "../app-config";
+import { setupSettingsIpc } from "../settings";
 
-describe("setupAppConfigIpc", () => {
+describe("setupSettingsIpc", () => {
   beforeEach(() => {
     mockIpcHandlers.clear();
     storeData.clear();
-    setupAppConfigIpc();
+    setupSettingsIpc();
   });
 
   test("未保存時は appConfig:getTheme が null を返す", async () => {

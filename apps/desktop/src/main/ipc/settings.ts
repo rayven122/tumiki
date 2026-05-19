@@ -5,7 +5,7 @@ const isThemeMode = (value: unknown): value is ThemeMode =>
   value === "light" || value === "dark";
 
 // テーマ永続化 IPC（getTheme: 保存値取得、setTheme: 保存）
-export const setupAppConfigIpc = (): void => {
+export const setupSettingsIpc = (): void => {
   ipcMain.handle("appConfig:getTheme", async (): Promise<ThemeMode | null> => {
     const store = await getAppStore();
     const theme = store.get("theme");
