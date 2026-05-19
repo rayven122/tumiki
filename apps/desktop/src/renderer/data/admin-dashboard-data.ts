@@ -248,7 +248,7 @@ export const AI_CLIENTS = [
   {
     name: "Antigravity",
     dark: "/logos/ai-clients/antigravity.webp",
-    light: "/logos/ai-clients/antigravity.svg",
+    light: "/logos/ai-clients/antigravity.webp",
   },
 ];
 

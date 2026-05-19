@@ -38,7 +38,7 @@ const AI_CLIENT_LOGOS: Record<string, { dark: string; light: string }> = {
   },
   antigravity: {
     dark: "/logos/ai-clients/antigravity.webp",
-    light: "/logos/ai-clients/antigravity.svg",
+    light: "/logos/ai-clients/antigravity.webp",
   },
 };
 
