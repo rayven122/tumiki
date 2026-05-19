@@ -12,7 +12,7 @@ import {
   type ToolSearchRow,
 } from "./tool-search.repository";
 import { simplifyToolSearchText } from "./search-text";
-import { buildMcpConfigName } from "../mcp-proxy/config-name";
+import { buildMcpConfigName } from "../../shared/utils/config-name";
 import * as logger from "../../shared/utils/logger";
 
 const DEFAULT_SEARCH_LIMIT = 10;

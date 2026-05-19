@@ -16,7 +16,7 @@ import {
   resolveArgs,
   resolveValue,
 } from "../../runtime/path-resolver";
-import { buildMcpConfigName } from "./config-name";
+import { buildMcpConfigName } from "../../shared/utils/config-name";
 
 /** ツール一覧取得のデフォルトタイムアウト（npx の初回ダウンロードを考慮し30秒） */
 const DEFAULT_TOOL_FETCH_TIMEOUT_MS = 30_000;
