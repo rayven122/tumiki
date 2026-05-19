@@ -15,6 +15,9 @@ runs:
         node-version: "22"
         cache: "pnpm"
 
+    - name: Setup NPM proxy
+      uses: ./.github/actions/setup-npm-proxy
+
     - name: Install packages
       shell: bash
-      run: pnpm install --frozen-lockfile
+      run: pnpm install --frozen-lockfile --ignore-scripts

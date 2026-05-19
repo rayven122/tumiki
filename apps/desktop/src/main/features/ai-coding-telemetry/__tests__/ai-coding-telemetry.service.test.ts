@@ -39,6 +39,11 @@ beforeEach(() => {
   vi.mocked(repository.storeTraces).mockResolvedValue(undefined);
   vi.mocked(repository.getSummary).mockResolvedValue([]);
   vi.mocked(repository.getDailyUsage).mockResolvedValue([]);
+  vi.mocked(repository.getDailyModelUsage).mockResolvedValue([]);
+  vi.mocked(repository.getModelUsage).mockResolvedValue([]);
+  vi.mocked(repository.getMemberUsage).mockResolvedValue([]);
+  vi.mocked(repository.listTraces).mockResolvedValue([]);
+  vi.mocked(repository.countTraces).mockResolvedValue(0);
   vi.mocked(repository.deleteOldMetrics).mockResolvedValue(0);
   vi.mocked(repository.deleteOldTraces).mockResolvedValue(0);
 });
@@ -165,7 +170,46 @@ describe("storeOtlpMetrics", () => {
     expect(repository.storeMetrics).not.toHaveBeenCalled();
   });
 
-  test("未知の service.name は保存しない", async () => {
+  test("未知の service.name も保存する", async () => {
+    await service.storeOtlpMetrics({
+      resourceMetrics: [
+        {
+          resource: {
+            attributes: [
+              { key: "service.name", value: { stringValue: "unknown-tool" } },
+            ],
+          },
+          scopeMetrics: [
+            {
+              metrics: [
+                {
+                  name: "test_metric",
+                  sum: { dataPoints: [{ asDouble: 100 }] },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(repository.storeMetrics).toHaveBeenCalledWith(mockDb, [
+      expect.objectContaining({
+        tool: "unknown-tool",
+        metricName: "test_metric",
+        value: 100,
+      }),
+    ]);
+  });
+
+  test("既知ツールがすべて無効な場合は未知の service.name も保存しない", async () => {
+    vi.mocked(mockStore.get).mockReturnValue({
+      tools: {
+        "claude-code": { enabled: false },
+        codex: { enabled: false },
+      },
+    });
+
     await service.storeOtlpMetrics({
       resourceMetrics: [
         {
@@ -421,6 +465,41 @@ describe("storeOtlpTraces", () => {
     ]);
   });
 
+  test("未知の service.name の OTLP トレースも保存する", async () => {
+    await service.storeOtlpTraces({
+      resourceSpans: [
+        {
+          resource: {
+            attributes: [
+              { key: "service.name", value: { stringValue: "claude-desktop" } },
+            ],
+          },
+          scopeSpans: [
+            {
+              spans: [
+                {
+                  traceId: "trace-claude-desktop",
+                  name: "desktop.action",
+                  startTimeUnixNano: "1000000000",
+                  endTimeUnixNano: "1500000000",
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(repository.storeTraces).toHaveBeenCalledWith(mockDb, [
+      expect.objectContaining({
+        tool: "claude-desktop",
+        traceId: "trace-claude-desktop",
+        spanName: "desktop.action",
+        durationMs: 500,
+      }),
+    ]);
+  });
+
   test("traceId、span 名、attributes が長すぎる場合は切り詰める", async () => {
     const longTraceId = "t".repeat(300);
     const longSpanName = "s".repeat(300);
@@ -637,6 +716,103 @@ describe("getDailyUsage", () => {
     expect(repository.getDailyUsage).toHaveBeenCalledWith(
       mockDb,
       expect.any(Date),
+      "day",
+    );
+  });
+
+  test("24h の場合は時間別集計で repository を呼び出す", async () => {
+    await service.getDailyUsage({ days: 1 });
+    expect(repository.getDailyUsage).toHaveBeenCalledWith(
+      mockDb,
+      expect.any(Date),
+      "hour",
+    );
+  });
+
+  test("7d の場合も時間別集計で repository を呼び出す", async () => {
+    await service.getDailyUsage({ days: 7 });
+    expect(repository.getDailyUsage).toHaveBeenCalledWith(
+      mockDb,
+      expect.any(Date),
+      "hour",
+    );
+  });
+});
+
+describe("getDashboardDetails", () => {
+  test("7d の場合はモデル別推移を時間別集計で取得する", async () => {
+    await service.getDashboardDetails({ days: 7 });
+
+    expect(repository.getDailyModelUsage).toHaveBeenCalledWith(
+      mockDb,
+      expect.any(Date),
+      "hour",
+    );
+  });
+
+  test("30d の場合はモデル別推移を日別集計で取得する", async () => {
+    await service.getDashboardDetails({ days: 30 });
+
+    expect(repository.getDailyModelUsage).toHaveBeenCalledWith(
+      mockDb,
+      expect.any(Date),
+      "day",
+    );
+  });
+});
+
+describe("listTraces", () => {
+  test("startedAt を ISO 文字列に変換し属性有無を返す", async () => {
+    vi.mocked(repository.listTraces).mockResolvedValue([
+      {
+        id: "metric-row-1",
+        tool: "claude-code",
+        metricName: "claude_code.token.usage",
+        value: 500,
+        startedAt: new Date("2026-01-01T00:00:00.000Z"),
+        hasAttributes: true,
+        sampleCount: 3,
+      },
+    ]);
+    vi.mocked(repository.countTraces).mockResolvedValue(1);
+
+    const result = await service.listTraces({
+      page: 2,
+      perPage: 10,
+      toolFilter: "claude-code",
+    });
+
+    expect(repository.listTraces).toHaveBeenCalledWith(
+      mockDb,
+      expect.objectContaining({
+        skip: 10,
+        take: 10,
+        toolFilter: "claude-code",
+      }),
+    );
+    expect(result).toStrictEqual({
+      items: [
+        {
+          id: "metric-row-1",
+          tool: "claude-code",
+          metricName: "claude_code.token.usage",
+          value: 500,
+          startedAt: "2026-01-01T00:00:00.000Z",
+          hasAttributes: true,
+          sampleCount: 3,
+        },
+      ],
+      totalCount: 1,
+      totalPages: 1,
+      currentPage: 2,
+    });
+  });
+
+  test("perPage は 100 件を上限にする", async () => {
+    await service.listTraces({ perPage: 1000 });
+    expect(repository.listTraces).toHaveBeenCalledWith(
+      mockDb,
+      expect.objectContaining({ take: 100 }),
     );
   });
 });

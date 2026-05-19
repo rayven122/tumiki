@@ -21,6 +21,7 @@ WORKDIR /app
 # Stage 2: Build
 # ========================================
 FROM base AS build
+ARG NPM_CONFIG_REGISTRY
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY patches ./patches
@@ -31,7 +32,7 @@ COPY apps/tumiki-cloud-api ./apps/tumiki-cloud-api
 ENV CI=true
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-  pnpm install --frozen-lockfile --prod=false
+  pnpm install --frozen-lockfile --prod=false --ignore-scripts
 
 RUN pnpm turbo run build --filter=@tumiki/tumiki-cloud-api^...
 RUN pnpm --filter @tumiki/tumiki-cloud-api run build

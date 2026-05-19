@@ -99,7 +99,7 @@ export const AI_CLIENTS: AiClient[] = [
   },
   {
     id: "codex-cli",
-    name: "Codex CLI",
+    name: "Codex",
     logoPath: () => "/logos/ai-clients/codex-cli.svg",
     configTargetPath: "~/.codex/config.toml",
   },

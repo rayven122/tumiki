@@ -14,13 +14,13 @@ import {
   useOtlpReceiverPort,
 } from "../hooks/useAiCodingTelemetry";
 import { TRACKING_TOOL_MAP } from "../utils/ai-coding-telemetry-tools";
-import type { AiCodingTool } from "../../main/types";
+import type { ConfigurableAiCodingTool } from "../../main/types";
 
 /** 使用量記録が有効なツールに表示するバッジ（フック安定化のためサブコンポーネント化） */
 const TrackingBadge = ({
   tool,
 }: {
-  tool: AiCodingTool;
+  tool: ConfigurableAiCodingTool;
 }): JSX.Element | null => {
   const { settings } = useAiCodingToolSettings(tool);
   if (!settings?.enabled) return null;
@@ -45,6 +45,29 @@ const AUTO_WRITE_SUPPORTED_IDS = new Set([
   "codex-cli",
 ]);
 
+const TRACKING_CLIENT_ORDER = ["codex-cli", "claude-code"];
+
+const sortAiClients = (clients: AiClient[]): AiClient[] =>
+  clients
+    .map((client, index) => ({ client, index }))
+    .sort((a, b) => {
+      const aTracking = TRACKING_TOOL_MAP[a.client.id] !== undefined;
+      const bTracking = TRACKING_TOOL_MAP[b.client.id] !== undefined;
+      if (aTracking || bTracking) {
+        if (aTracking !== bTracking) return aTracking ? -1 : 1;
+        const aTrackingOrder = TRACKING_CLIENT_ORDER.indexOf(a.client.id);
+        const bTrackingOrder = TRACKING_CLIENT_ORDER.indexOf(b.client.id);
+        return aTrackingOrder - bTrackingOrder;
+      }
+
+      const aSupported = AUTO_WRITE_SUPPORTED_IDS.has(a.client.id);
+      const bSupported = AUTO_WRITE_SUPPORTED_IDS.has(b.client.id);
+      if (aSupported !== bSupported) return aSupported ? -1 : 1;
+
+      return a.index - b.index;
+    })
+    .map(({ client }) => client);
+
 export const AiIntegrations = (): JSX.Element => {
   const theme = useAtomValue(themeAtom);
   const { servers } = useMcpServers();
@@ -58,6 +81,7 @@ export const AiIntegrations = (): JSX.Element => {
     () => servers.filter((s) => s.isEnabled),
     [servers],
   );
+  const sortedClients = useMemo(() => sortAiClients(AI_CLIENTS), []);
 
   const handleClick = (client: AiClient): void => {
     if (AUTO_WRITE_SUPPORTED_IDS.has(client.id)) {
@@ -86,7 +110,7 @@ export const AiIntegrations = (): JSX.Element => {
 
       {/* AIクライアントカード一覧 */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-        {AI_CLIENTS.map((client) => {
+        {sortedClients.map((client) => {
           const logo = client.logoPath?.(theme);
           const supported = AUTO_WRITE_SUPPORTED_IDS.has(client.id);
           const trackingTool = TRACKING_TOOL_MAP[client.id];

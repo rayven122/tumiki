@@ -1,9 +1,9 @@
 import { ipcMain } from "electron";
 import { getDb } from "../shared/db";
 import {
-  clearOrganizationProfile,
   getProfileState,
-  selectPersonalProfile,
+  resetProfileState,
+  restoreOrganizationProfileManagerUrl,
 } from "../shared/profile-store";
 import { getOAuthManager, setOAuthManager } from "../auth/manager-registry";
 import * as logger from "../shared/utils/logger";
@@ -19,18 +19,35 @@ const stopOAuthManager = (): void => {
 export const setupProfileIpc = (): void => {
   ipcMain.handle("profile:getState", () => getProfileState());
 
-  ipcMain.handle("profile:selectPersonal", () => selectPersonalProfile());
-
-  ipcMain.handle("profile:cancelOrganizationSetup", async () => {
+  ipcMain.handle("profile:cancelPendingSetup", async () => {
     let profileState: ProfileState;
     try {
-      profileState = await clearOrganizationProfile();
+      profileState = await resetProfileState();
     } catch (error) {
       logger.error(
-        "Failed to clear organization profile while cancelling organization setup",
+        "Failed to clear profile state while cancelling pending setup",
         error instanceof Error ? error : { error },
       );
-      throw new Error("組織利用セットアップのキャンセルに失敗しました", {
+      throw new Error("セットアップのキャンセルに失敗しました", {
+        cause: error,
+      });
+    }
+
+    stopOAuthManager();
+
+    return profileState;
+  });
+
+  ipcMain.handle("profile:cancelOrganizationChange", async () => {
+    let profileState: ProfileState;
+    try {
+      profileState = await restoreOrganizationProfileManagerUrl();
+    } catch (error) {
+      logger.error(
+        "Failed to restore organization profile while cancelling organization change",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error("組織変更のキャンセルに失敗しました", {
         cause: error,
       });
     }
@@ -43,7 +60,11 @@ export const setupProfileIpc = (): void => {
   ipcMain.handle("profile:disconnectOrganization", async () => {
     let profileState: ProfileState;
     try {
-      profileState = await clearOrganizationProfile();
+      const currentProfileState = await getProfileState();
+      if (currentProfileState.activeProfile !== "organization") {
+        throw new Error("組織利用プロファイルがアクティブではありません");
+      }
+      profileState = await resetProfileState();
     } catch (error) {
       logger.error(
         "Failed to clear organization profile while disconnecting organization profile",

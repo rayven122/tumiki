@@ -40,9 +40,13 @@ import type {
   AiClientPreview,
   AiClientWriteRequest,
   AiClientWriteResult,
-  AiCodingTool,
+  ConfigurableAiCodingTool,
+  AiCodingDashboardDetailsResult,
   TelemetrySummaryItem,
   DailyUsageItem,
+  DailyModelUsageItem,
+  ListMetricLogsInput,
+  ListMetricLogsResult,
   ApplyToolSettingsResult,
   GetToolSettingsResult,
   ReceiverStatus,
@@ -204,6 +208,8 @@ const api = {
     getUrl: (): Promise<string | null> => ipcRenderer.invoke("manager:getUrl"),
     connect: (url: string): Promise<void> =>
       ipcRenderer.invoke("manager:connect", url),
+    connectPersonal: (): Promise<void> =>
+      ipcRenderer.invoke("manager:connectPersonal"),
   },
 
   // Desktopセッション API
@@ -216,10 +222,10 @@ const api = {
   profile: {
     getState: (): Promise<ProfileState> =>
       ipcRenderer.invoke("profile:getState"),
-    selectPersonal: (): Promise<ProfileState> =>
-      ipcRenderer.invoke("profile:selectPersonal"),
-    cancelOrganizationSetup: (): Promise<ProfileState> =>
-      ipcRenderer.invoke("profile:cancelOrganizationSetup"),
+    cancelPendingSetup: (): Promise<ProfileState> =>
+      ipcRenderer.invoke("profile:cancelPendingSetup"),
+    cancelOrganizationChange: (): Promise<ProfileState> =>
+      ipcRenderer.invoke("profile:cancelOrganizationChange"),
     disconnectOrganization: (): Promise<ProfileState> =>
       ipcRenderer.invoke("profile:disconnectOrganization"),
   },
@@ -236,23 +242,42 @@ const api = {
       ipcRenderer.invoke("aiCodingTelemetry:getSummary", { days }),
     getDailyUsage: (days: number): Promise<DailyUsageItem[]> =>
       ipcRenderer.invoke("aiCodingTelemetry:getDailyUsage", { days }),
+    getDailyModelUsage: (days: number): Promise<DailyModelUsageItem[]> =>
+      ipcRenderer.invoke("aiCodingTelemetry:getDailyModelUsage", { days }),
+    getDashboardDetails: (
+      days: number,
+    ): Promise<AiCodingDashboardDetailsResult> =>
+      ipcRenderer.invoke("aiCodingTelemetry:getDashboardDetails", { days }),
+    listMetricLogs: (
+      input: ListMetricLogsInput,
+    ): Promise<ListMetricLogsResult> =>
+      ipcRenderer.invoke("aiCodingTelemetry:listMetricLogs", input),
+    listMetricTools: (): Promise<string[]> =>
+      ipcRenderer.invoke("aiCodingTelemetry:listMetricTools"),
     getReceiverPort: (): Promise<number> =>
       ipcRenderer.invoke("aiCodingTelemetry:getReceiverPort"),
     getReceiverStatus: (): Promise<ReceiverStatus> =>
       ipcRenderer.invoke("aiCodingTelemetry:getReceiverStatus"),
-    getToolSettings: (tool: AiCodingTool): Promise<GetToolSettingsResult> =>
+    getToolSettings: (
+      tool: ConfigurableAiCodingTool,
+    ): Promise<GetToolSettingsResult> =>
       ipcRenderer.invoke("aiCodingTelemetry:getToolSettings", tool),
-    saveToolEnabled: (tool: AiCodingTool, enabled: boolean): Promise<void> =>
+    saveToolEnabled: (
+      tool: ConfigurableAiCodingTool,
+      enabled: boolean,
+    ): Promise<void> =>
       ipcRenderer.invoke("aiCodingTelemetry:saveToolEnabled", {
         tool,
         enabled,
       }),
-    applyToTool: (tool: AiCodingTool): Promise<ApplyToolSettingsResult> =>
+    applyToTool: (
+      tool: ConfigurableAiCodingTool,
+    ): Promise<ApplyToolSettingsResult> =>
       ipcRenderer.invoke("aiCodingTelemetry:applyToTool", { tool }),
     // 起動時の自動再書き込み結果を取得（マウント時の取りこぼし対策）。
     // 取得後は main 側でクリアされるため、複数回呼んでも重複表示されない。
     getPendingAutoReapplied: (): Promise<{
-      tools: AiCodingTool[];
+      tools: ConfigurableAiCodingTool[];
       port: number;
     } | null> =>
       ipcRenderer.invoke("aiCodingTelemetry:getPendingAutoReapplied"),
