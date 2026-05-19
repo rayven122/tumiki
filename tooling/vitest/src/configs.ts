@@ -1,12 +1,15 @@
 import type { InlineConfig } from "vitest";
 
+const testTimeout = Number(process.env.VITEST_TEST_TIMEOUT_MS ?? 30_000);
+const hookTimeout = Number(process.env.VITEST_HOOK_TIMEOUT_MS ?? 10_000);
+
 // 基本的なテスト設定
 export const baseTestConfig: InlineConfig = {
   globals: true,
   setupFiles: ["@tumiki/vitest-config/setup"],
   passWithNoTests: true,
-  testTimeout: 30_000,
-  hookTimeout: 10_000,
+  testTimeout,
+  hookTimeout,
   exclude: [
     "**/node_modules/**",
     "**/dist/**",

@@ -4,14 +4,18 @@ on:
   pull_request:
     branches:
       - main
+    types: [opened, ready_for_review, reopened, synchronize]
   push:
     branches: [main]
 
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build:
-    name: 🔧 Build
-    runs-on:
-      group: self-arc
+  verify:
+    name: ✅ Verify
+    runs-on: ubuntu-latest
     env:
       NODE_OPTIONS: --max-old-space-size=4096
     steps:
@@ -21,114 +25,13 @@ jobs:
       - name: ⚙️ Setup
         uses: ./.github/actions/setup
 
-      - name: 🔧 Build dependency packages
-        run: pnpm turbo build --filter=@tumiki/manager^...
-
-      - name: 🔧 Build manager (Infisical不使用・.env.exampleのダミー値を使用)
-        working-directory: apps/manager
-        env:
-          NEXT_PUBLIC_TUMIKI_EDITION: ee
-        run: cp ../../.env.example .env && pnpm build:bare
-
-  lint:
-    name: 🔍 Lint
-    runs-on:
-      group: self-arc
-    needs: build
-    steps:
-      - name: 📥 Checkout branch
-        uses: actions/checkout@v6
-
-      - name: ⚙️ Setup
-        uses: ./.github/actions/setup
-
-      - name: 🔍 Run lint
-        run: pnpm turbo lint
-
-  format:
-    name: 💅 Format
-    runs-on:
-      group: self-arc
-    needs: lint
-    steps:
-      - name: 📥 Checkout branch
-        uses: actions/checkout@v6
-
-      - name: ⚙️ Setup
-        uses: ./.github/actions/setup
-
-      - name: 💅 Check format
-        run: pnpm turbo format
-
-  typecheck:
-    name: 🔬 Typecheck
-    runs-on:
-      group: self-arc
-    needs: format
-    env:
-      NODE_OPTIONS: --max-old-space-size=4096
-    steps:
-      - name: 📥 Checkout branch
-        uses: actions/checkout@v6
-
-      - name: ⚙️ Setup
-        uses: ./.github/actions/setup
-
-      - name: 📝 Create .env file for CI
-        run: cp .env.example .env
-
-      - name: 🗃️ Generate Prisma clients
-        run: pnpm turbo db:generate
-
-      - name: 🔬 Run typecheck
-        run: pnpm turbo typecheck
-
-  test:
-    name: 🧪 Test
-    runs-on:
-      group: self-arc
-    needs: typecheck
-    steps:
-      - name: 📥 Checkout branch
-        uses: actions/checkout@v6
-
-      - name: ⚙️ Setup
-        uses: ./.github/actions/setup
-
-      - name: 📝 Create .env file for CI
-        run: cp .env.example .env
-
-      - name: 🔧 Build packages (apps は除外・テストに必要なパッケージのみ)
-        run: pnpm turbo build --filter="./packages/*"
-
-      - name: 🗃️ Generate app Prisma clients for tests
-        run: pnpm turbo db:generate --filter=@tumiki/desktop --filter=@tumiki/tenant-console
-
-      - name: 🧪 Run tests
-        run: pnpm test
-
-  docker-smoke-changes:
-    name: 🐳 Docker Smoke Changes
-    runs-on:
-      group: self-arc
-    needs: test
-    outputs:
-      manager: ${{ steps.filter.outputs.manager }}
-      mcp_proxy: ${{ steps.filter.outputs.mcp_proxy }}
-      internal_manager: ${{ steps.filter.outputs.internal_manager }}
-    steps:
-      - name: 📥 Checkout branch
-        uses: actions/checkout@v6
-
-      - name: 🔎 Detect Docker smoke changes
-        id: filter
+      - name: 🔎 Detect manager build changes
+        id: manager_build_changes
         uses: dorny/paths-filter@v3
         with:
           filters: |
             manager:
-              - '.dockerignore'
               - '.env.example'
-              - '.github/workflows/ci.yml'
               - '.npmrc'
               - 'package.json'
               - 'pnpm-lock.yaml'
@@ -146,178 +49,62 @@ jobs:
               - 'packages/prompts/**'
               - 'packages/shared/**'
               - 'packages/ui/**'
-            mcp_proxy:
-              - '.dockerignore'
-              - '.github/workflows/ci.yml'
-              - '.npmrc'
-              - 'package.json'
-              - 'pnpm-lock.yaml'
-              - 'pnpm-workspace.yaml'
-              - 'turbo.json'
-              - 'patches/**'
-              - 'tooling/**'
-              - 'apps/mcp-proxy/**'
-              - 'packages/db/**'
-              - 'packages/license/**'
-              - 'packages/mcp-core-proxy/**'
-              - 'packages/oauth-token-manager/**'
-              - 'packages/prompts/**'
-              - 'packages/shared/**'
-              - 'packages/slack/**'
-            internal_manager:
-              - '.dockerignore'
-              - '.env.example'
-              - '.github/workflows/ci.yml'
-              - '.npmrc'
-              - 'package.json'
-              - 'pnpm-lock.yaml'
-              - 'pnpm-workspace.yaml'
-              - 'turbo.json'
-              - 'patches/**'
-              - 'tooling/**'
-              - 'apps/internal-manager/**'
-              - 'packages/db/**'
-              - 'packages/internal-db/**'
-              - 'packages/keycloak/**'
-              - 'packages/ui/**'
 
-  docker-smoke-images:
-    name: 🐳 Docker Smoke Image (${{ matrix.app }})
-    runs-on:
-      group: self-arc
-    needs: docker-smoke-changes
-    strategy:
-      fail-fast: false
-      max-parallel: 1
-      matrix:
-        include:
-          - app: manager
-            change_output: manager
-            image: tumiki-manager
-            dockerfile: apps/manager/Dockerfile
-            container: manager
-            host_port: 8080
-            container_port: 8080
-            health_path: /api/health
-            env_file: |
-              KEYCLOAK_CLIENT_ID=test
-              KEYCLOAK_CLIENT_SECRET=test
-              KEYCLOAK_ISSUER=https://dummy.keycloak.local/realms/tumiki
-              DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
-              SKIP_MIGRATE=true
-          - app: mcp-proxy
-            change_output: mcp_proxy
-            image: tumiki-mcp-proxy
-            dockerfile: apps/mcp-proxy/Dockerfile
-            container: mcp-proxy
-            host_port: 8081
-            container_port: 8080
-            health_path: /health
-            env_file: |
-              DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
-          - app: internal-manager
-            change_output: internal_manager
-            image: tumiki-internal-manager
-            dockerfile: apps/internal-manager/Dockerfile
-            container: internal-manager
-            host_port: 3100
-            container_port: 3100
-            health_path: /api/health
-            env_file: |
-              TUMIKI_INTERNAL_MANAGER_SECRET_KEY=dummy-internal-manager-secret-key
-              TUMIKI_INTERNAL_MANAGER_OIDC_PRIVATE_KEY=placeholder-for-healthcheck-only
-              TUMIKI_INTERNAL_MANAGER_PUBLIC_URL=http://localhost:3100
-              TUMIKI_INTERNAL_MANAGER_OIDC_DISCOVERY_URL=https://dummy.oidc.local/.well-known/openid-configuration
-              TUMIKI_INTERNAL_MANAGER_OIDC_CLIENT_ID=test
-              TUMIKI_INTERNAL_MANAGER_OIDC_CLIENT_SECRET=test
-              DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
-              INTERNAL_DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
-              SKIP_MIGRATE=true
-    steps:
-      - name: 📥 Checkout branch
-        if: needs.docker-smoke-changes.outputs[matrix.change_output] == 'true'
-        uses: actions/checkout@v6
+      - name: 🔧 Build dependency packages
+        if: steps.manager_build_changes.outputs.manager == 'true'
+        run: pnpm turbo build --filter=@tumiki/manager^...
 
-      - name: ⚙️ Setup NPM proxy
-        if: needs.docker-smoke-changes.outputs[matrix.change_output] == 'true'
-        uses: ./.github/actions/setup-npm-proxy
-
-      - name: 🔨 Build image
-        if: needs.docker-smoke-changes.outputs[matrix.change_output] == 'true'
+      - name: 🔧 Build manager (Infisical不使用・.env.exampleのダミー値を使用)
+        if: steps.manager_build_changes.outputs.manager == 'true'
+        working-directory: apps/manager
         env:
-          DOCKER_BUILDKIT: "1"
+          NEXT_PUBLIC_TUMIKI_EDITION: ee
+        run: cp ../../.env.example .env && pnpm build:bare
+
+      - name: ⏭️ Skip manager build
+        if: steps.manager_build_changes.outputs.manager != 'true'
+        run: echo "No manager build relevant changes."
+
+      - name: 📝 Create .env file for CI
+        run: cp .env.example .env
+
+      - name: 🗃️ Generate Prisma clients
+        run: pnpm turbo db:generate
+
+      - name: 🔍 Run lint and format
         run: |
-          docker build \
-            --build-arg NPM_CONFIG_REGISTRY="${NPM_CONFIG_REGISTRY:-}" \
-            -f "${{ matrix.dockerfile }}" \
-            -t "${{ matrix.image }}" \
-            .
+          pnpm turbo lint &
+          lint_pid=$!
 
-      - name: 🚀 Start container
-        if: needs.docker-smoke-changes.outputs[matrix.change_output] == 'true'
-        env:
-          MATRIX_ENV_FILE: ${{ matrix.env_file }}
-        run: |
-          # スモークテスト専用のダミーキー。実際の暗号化には使用しない。
-          smoke_prisma_key="k1.aesgcm256.$(printf '12345678901234567890123456789012' | base64 | tr '+/' '-_' | tr -d '=')"
-          smoke_env_file="$(mktemp)"
-          trap 'rm -f "${smoke_env_file}"' EXIT
-          printf 'PRISMA_FIELD_ENCRYPTION_KEY=%s\n' "${smoke_prisma_key}" > "${smoke_env_file}"
-          printf '%s\n' "${MATRIX_ENV_FILE}" >> "${smoke_env_file}"
-          docker run -d --name "${{ matrix.container }}" \
-            -p "${{ matrix.host_port }}:${{ matrix.container_port }}" \
-            --env-file "${smoke_env_file}" \
-            "${{ matrix.image }}"
+          pnpm turbo format &
+          format_pid=$!
 
-      - name: ✅ Wait and verify health endpoint
-        if: needs.docker-smoke-changes.outputs[matrix.change_output] == 'true'
-        run: |
-          for i in $(seq 1 30); do
-            if curl -sf "http://localhost:${{ matrix.host_port }}${{ matrix.health_path }}" > /dev/null 2>&1; then
-              curl -sf "http://localhost:${{ matrix.host_port }}${{ matrix.health_path }}" | jq .
-              exit 0
-            fi
-            echo "Waiting... ($i/30)"
-            sleep 2
-          done
-          echo "Timeout waiting for ${{ matrix.container }}"
-          docker logs "${{ matrix.container }}"
-          exit 1
+          lint_status=0
+          format_status=0
 
-      - name: ⏭️ Skip unchanged image
-        if: needs.docker-smoke-changes.outputs[matrix.change_output] != 'true'
-        run: echo "No Docker smoke relevant changes for ${{ matrix.app }}."
+          wait "$lint_pid" || lint_status=$?
+          wait "$format_pid" || format_status=$?
 
-      - name: 🧹 Cleanup container
-        if: always() && needs.docker-smoke-changes.outputs[matrix.change_output] == 'true'
-        run: docker rm -f "${{ matrix.container }}" || true
-
-  docker-smoke-test:
-    name: 🐳 Docker Smoke Test
-    runs-on:
-      group: self-arc
-    needs: docker-smoke-images
-    if: always()
-    steps:
-      - name: ✅ Verify smoke image jobs
-        run: |
-          if [ "${{ needs.docker-smoke-images.result }}" != "success" ]; then
-            echo "Docker smoke image jobs finished with: ${{ needs.docker-smoke-images.result }}"
+          if [ "$lint_status" -ne 0 ] || [ "$format_status" -ne 0 ]; then
+            echo "lint exit status: $lint_status"
+            echo "format exit status: $format_status"
             exit 1
           fi
-          echo "All Docker smoke image jobs passed."
 
-  desktop-migration-check:
-    name: 🗄️ Desktop Migration Check
-    runs-on:
-      group: self-arc
-    needs: test
-    steps:
-      - name: 📥 Checkout branch
-        uses: actions/checkout@v6
+      - name: 🔬 Run typecheck
+        run: pnpm turbo typecheck --concurrency=1
 
-      - name: ⚙️ Setup
-        uses: ./.github/actions/setup
+      - name: 🔧 Build packages (apps は除外・テストに必要なパッケージのみ)
+        run: pnpm turbo build --filter="./packages/*"
+
+      - name: 🗃️ Generate app Prisma clients for tests
+        run: pnpm turbo db:generate --filter=@tumiki/desktop --filter=@tumiki/tenant-console
+
+      - name: 🧪 Run tests
+        env:
+          VITEST_TEST_TIMEOUT_MS: "90000"
+          VITEST_HOOK_TIMEOUT_MS: "90000"
+        run: pnpm exec vitest run --no-file-parallelism
 
       - name: 🗄️ Check desktop migration status
         working-directory: apps/desktop
@@ -342,3 +129,216 @@ jobs:
             echo "$DIFF"
             exit 1
           }
+
+      - name: 🔎 Detect Docker smoke changes
+        id: docker_changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            manager:
+              - '.dockerignore'
+              - '.env.example'
+              - '.npmrc'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+              - 'patches/**'
+              - 'tooling/**'
+              - 'apps/manager/**'
+              - 'packages/db/**'
+              - 'packages/keycloak/**'
+              - 'packages/mailer/**'
+              - 'packages/oauth-token-manager/**'
+              - 'packages/slack/**'
+              - 'packages/license/**'
+              - 'packages/prompts/**'
+              - 'packages/shared/**'
+              - 'packages/ui/**'
+            mcp_proxy:
+              - '.dockerignore'
+              - '.npmrc'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+              - 'patches/**'
+              - 'tooling/**'
+              - 'apps/mcp-proxy/**'
+              - 'packages/db/**'
+              - 'packages/license/**'
+              - 'packages/mcp-core-proxy/**'
+              - 'packages/oauth-token-manager/**'
+              - 'packages/prompts/**'
+              - 'packages/shared/**'
+              - 'packages/slack/**'
+            internal_manager:
+              - '.dockerignore'
+              - '.env.example'
+              - '.npmrc'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+              - 'patches/**'
+              - 'tooling/**'
+              - 'apps/internal-manager/**'
+              - 'packages/db/**'
+              - 'packages/internal-db/**'
+              - 'packages/keycloak/**'
+              - 'packages/ui/**'
+
+      - name: ⚙️ Setup NPM proxy for Docker smoke
+        if: steps.docker_changes.outputs.manager == 'true' || steps.docker_changes.outputs.mcp_proxy == 'true' || steps.docker_changes.outputs.internal_manager == 'true'
+        uses: ./.github/actions/setup-npm-proxy
+
+      - name: 🐳 Docker smoke manager
+        if: steps.docker_changes.outputs.manager == 'true'
+        env:
+          DOCKER_BUILDKIT: "1"
+          IMAGE: tumiki-manager
+          CONTAINER: manager
+          HOST_PORT: "8080"
+          CONTAINER_PORT: "8080"
+          HEALTH_PATH: /api/health
+          DOCKERFILE: apps/manager/Dockerfile
+          SMOKE_ENV_FILE: |
+            KEYCLOAK_CLIENT_ID=test
+            KEYCLOAK_CLIENT_SECRET=test
+            KEYCLOAK_ISSUER=https://dummy.keycloak.local/realms/tumiki
+            DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
+            SKIP_MIGRATE=true
+        run: |
+          smoke_prisma_key="k1.aesgcm256.$(printf '12345678901234567890123456789012' | base64 | tr '+/' '-_' | tr -d '=')"
+          smoke_env_file="$(mktemp)"
+          trap 'rm -f "${smoke_env_file}"' EXIT
+          printf 'PRISMA_FIELD_ENCRYPTION_KEY=%s\n' "${smoke_prisma_key}" > "${smoke_env_file}"
+          printf '%s\n' "${SMOKE_ENV_FILE}" >> "${smoke_env_file}"
+
+          docker build \
+            --build-arg NPM_CONFIG_REGISTRY="${NPM_CONFIG_REGISTRY:-}" \
+            -f "${DOCKERFILE}" \
+            -t "${IMAGE}" \
+            .
+          docker run -d --name "${CONTAINER}" \
+            -p "${HOST_PORT}:${CONTAINER_PORT}" \
+            --env-file "${smoke_env_file}" \
+            "${IMAGE}"
+
+          for i in $(seq 1 30); do
+            if curl -sf "http://localhost:${HOST_PORT}${HEALTH_PATH}" > /dev/null 2>&1; then
+              curl -sf "http://localhost:${HOST_PORT}${HEALTH_PATH}" | jq .
+              exit 0
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+          echo "Timeout waiting for ${CONTAINER}"
+          docker logs "${CONTAINER}"
+          exit 1
+
+      - name: 🧹 Cleanup manager smoke container
+        if: always()
+        run: docker rm -f manager || true
+
+      - name: 🐳 Docker smoke mcp-proxy
+        if: steps.docker_changes.outputs.mcp_proxy == 'true'
+        env:
+          DOCKER_BUILDKIT: "1"
+          IMAGE: tumiki-mcp-proxy
+          CONTAINER: mcp-proxy
+          HOST_PORT: "8081"
+          CONTAINER_PORT: "8080"
+          HEALTH_PATH: /health
+          DOCKERFILE: apps/mcp-proxy/Dockerfile
+          SMOKE_ENV_FILE: |
+            DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
+        run: |
+          smoke_prisma_key="k1.aesgcm256.$(printf '12345678901234567890123456789012' | base64 | tr '+/' '-_' | tr -d '=')"
+          smoke_env_file="$(mktemp)"
+          trap 'rm -f "${smoke_env_file}"' EXIT
+          printf 'PRISMA_FIELD_ENCRYPTION_KEY=%s\n' "${smoke_prisma_key}" > "${smoke_env_file}"
+          printf '%s\n' "${SMOKE_ENV_FILE}" >> "${smoke_env_file}"
+
+          docker build \
+            --build-arg NPM_CONFIG_REGISTRY="${NPM_CONFIG_REGISTRY:-}" \
+            -f "${DOCKERFILE}" \
+            -t "${IMAGE}" \
+            .
+          docker run -d --name "${CONTAINER}" \
+            -p "${HOST_PORT}:${CONTAINER_PORT}" \
+            --env-file "${smoke_env_file}" \
+            "${IMAGE}"
+
+          for i in $(seq 1 30); do
+            if curl -sf "http://localhost:${HOST_PORT}${HEALTH_PATH}" > /dev/null 2>&1; then
+              curl -sf "http://localhost:${HOST_PORT}${HEALTH_PATH}" | jq .
+              exit 0
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+          echo "Timeout waiting for ${CONTAINER}"
+          docker logs "${CONTAINER}"
+          exit 1
+
+      - name: 🧹 Cleanup mcp-proxy smoke container
+        if: always()
+        run: docker rm -f mcp-proxy || true
+
+      - name: 🐳 Docker smoke internal-manager
+        if: steps.docker_changes.outputs.internal_manager == 'true'
+        env:
+          DOCKER_BUILDKIT: "1"
+          IMAGE: tumiki-internal-manager
+          CONTAINER: internal-manager
+          HOST_PORT: "3100"
+          CONTAINER_PORT: "3100"
+          HEALTH_PATH: /api/health
+          DOCKERFILE: apps/internal-manager/Dockerfile
+          SMOKE_ENV_FILE: |
+            TUMIKI_INTERNAL_MANAGER_SECRET_KEY=dummy-internal-manager-secret-key
+            TUMIKI_INTERNAL_MANAGER_OIDC_PRIVATE_KEY=placeholder-for-healthcheck-only
+            TUMIKI_INTERNAL_MANAGER_PUBLIC_URL=http://localhost:3100
+            TUMIKI_INTERNAL_MANAGER_OIDC_DISCOVERY_URL=https://dummy.oidc.local/.well-known/openid-configuration
+            TUMIKI_INTERNAL_MANAGER_OIDC_CLIENT_ID=test
+            TUMIKI_INTERNAL_MANAGER_OIDC_CLIENT_SECRET=test
+            DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
+            INTERNAL_DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
+            SKIP_MIGRATE=true
+        run: |
+          smoke_prisma_key="k1.aesgcm256.$(printf '12345678901234567890123456789012' | base64 | tr '+/' '-_' | tr -d '=')"
+          smoke_env_file="$(mktemp)"
+          trap 'rm -f "${smoke_env_file}"' EXIT
+          printf 'PRISMA_FIELD_ENCRYPTION_KEY=%s\n' "${smoke_prisma_key}" > "${smoke_env_file}"
+          printf '%s\n' "${SMOKE_ENV_FILE}" >> "${smoke_env_file}"
+
+          docker build \
+            --build-arg NPM_CONFIG_REGISTRY="${NPM_CONFIG_REGISTRY:-}" \
+            -f "${DOCKERFILE}" \
+            -t "${IMAGE}" \
+            .
+          docker run -d --name "${CONTAINER}" \
+            -p "${HOST_PORT}:${CONTAINER_PORT}" \
+            --env-file "${smoke_env_file}" \
+            "${IMAGE}"
+
+          for i in $(seq 1 30); do
+            if curl -sf "http://localhost:${HOST_PORT}${HEALTH_PATH}" > /dev/null 2>&1; then
+              curl -sf "http://localhost:${HOST_PORT}${HEALTH_PATH}" | jq .
+              exit 0
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+          echo "Timeout waiting for ${CONTAINER}"
+          docker logs "${CONTAINER}"
+          exit 1
+
+      - name: 🧹 Cleanup internal-manager smoke container
+        if: always()
+        run: docker rm -f internal-manager || true
+
+      - name: ⏭️ Skip Docker smoke
+        if: steps.docker_changes.outputs.manager != 'true' && steps.docker_changes.outputs.mcp_proxy != 'true' && steps.docker_changes.outputs.internal_manager != 'true'
+        run: echo "No Docker smoke relevant changes."

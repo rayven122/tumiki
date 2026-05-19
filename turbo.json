@@ -11,7 +11,9 @@
     "OIDC_ISSUER",
     "OIDC_DESKTOP_CLIENT_ID",
     "TENANT_DATABASE_URL",
-    "KEYCLOAK_ADMIN_URL"
+    "KEYCLOAK_ADMIN_URL",
+    "VITEST_TEST_TIMEOUT_MS",
+    "VITEST_HOOK_TIMEOUT_MS"
   ],
   "tasks": {
     "build": {
