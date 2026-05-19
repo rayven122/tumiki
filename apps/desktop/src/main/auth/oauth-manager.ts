@@ -14,6 +14,10 @@ import { getDb } from "../shared/db";
 import { encryptToken, decryptToken } from "../utils/encryption";
 import * as logger from "../shared/utils/logger";
 import { AUTH_SESSION_TIMEOUT_MS } from "../../shared/types";
+import {
+  startLoopbackServer,
+  type LoopbackServer,
+} from "../features/oauth/oauth.loopback";
 
 /**
  * OAuth認証セッションの状態
@@ -43,6 +47,10 @@ export type OAuthManager = {
 export type OAuthManagerOptions = {
   /** 認証セッション失効時のコールバック（リフレッシュ失敗等） */
   onAuthExpired?: () => void;
+  /** ループバックHTTPで受け取った認証コールバックの処理 */
+  onAuthCallback?: (url: string) => Promise<void>;
+  /** ループバックHTTPコールバック待機中のエラー通知 */
+  onAuthCallbackError?: (message: string) => void;
 };
 
 /** 自動リフレッシュのリトライ設定 */
@@ -61,6 +69,7 @@ export const createOAuthManager = (
 ): OAuthManager => {
   const keycloakClient: OidcClient = createOidcClient(config);
   let currentSession: OAuthSession | null = null;
+  let loopbackServer: LoopbackServer | null = null;
   let refreshTimerId: NodeJS.Timeout | null = null;
   let refreshPromise: Promise<void> | null = null;
 
@@ -241,8 +250,14 @@ export const createOAuthManager = (
       logger.info("Existing auth session found, discarding and restarting");
       currentSession = null;
     }
+    if (loopbackServer) {
+      await loopbackServer.close();
+      loopbackServer = null;
+    }
 
     try {
+      loopbackServer = await startLoopbackServer();
+
       // PKCE パラメータを生成
       const codeVerifier = generateCodeVerifier();
       const codeChallenge = generateCodeChallenge(codeVerifier);
@@ -265,6 +280,37 @@ export const createOAuthManager = (
       await shell.openExternal(authUrl);
 
       logger.info("Auth flow started, opened browser for authentication");
+
+      const activeLoopback = loopbackServer;
+      void activeLoopback
+        .waitForCallback(AUTH_SESSION_TIMEOUT_MS)
+        .then(async (callbackUrl) => {
+          await (options.onAuthCallback ?? handleAuthCallback)(callbackUrl);
+        })
+        .catch((callbackError: unknown) => {
+          const message =
+            callbackError instanceof Error
+              ? callbackError.message
+              : "認証コールバックの待機に失敗しました";
+          currentSession = null;
+          options.onAuthCallbackError?.(message);
+          logger.error("Auth loopback callback failed", {
+            error: message,
+          });
+        })
+        .finally(() => {
+          if (loopbackServer === activeLoopback) {
+            loopbackServer = null;
+          }
+          void activeLoopback.close().catch((closeError: unknown) => {
+            logger.warn("Failed to close auth loopback server", {
+              error:
+                closeError instanceof Error
+                  ? closeError.message
+                  : String(closeError),
+            });
+          });
+        });
     } catch (error) {
       if (error instanceof Error) {
         logger.error("Failed to start auth flow", error);
@@ -272,6 +318,17 @@ export const createOAuthManager = (
         logger.error("Failed to start auth flow", { error });
       }
       currentSession = null;
+      if (loopbackServer) {
+        await loopbackServer.close().catch((closeError: unknown) => {
+          logger.warn("Failed to close auth loopback server after error", {
+            error:
+              closeError instanceof Error
+                ? closeError.message
+                : String(closeError),
+          });
+        });
+        loopbackServer = null;
+      }
       throw error;
     }
   };
@@ -422,6 +479,10 @@ export const createOAuthManager = (
         refreshTimerId = null;
       }
       currentSession = null;
+      if (loopbackServer) {
+        await loopbackServer.close();
+        loopbackServer = null;
+      }
       logger.info("Logout completed successfully");
     }
   };
@@ -531,6 +592,14 @@ export const createOAuthManager = (
     if (currentSession) {
       currentSession = null;
       logger.info("Auth flow cancelled");
+    }
+    if (loopbackServer) {
+      void loopbackServer.close().catch((error: unknown) => {
+        logger.warn("Failed to close auth loopback server on cancel", {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+      loopbackServer = null;
     }
   };
 

@@ -89,6 +89,17 @@ erDiagram
   DateTime updatedAt
   Int connectionId FK
 }
+"McpToolEmbeddingCache" {
+  Int id PK
+  Int toolId FK
+  String modelId
+  Int textVersion
+  Int dim
+  String contentHash
+  Bytes vector
+  DateTime createdAt
+  DateTime updatedAt
+}
 "McpServer" {
   Int id PK
   String name
@@ -132,6 +143,7 @@ erDiagram
 "McpConnection" }o--o| "McpCatalog" : catalog
 "McpConnection" }o--|| "McpSecret" : secret
 "McpTool" }o--|| "McpConnection" : connection
+"McpToolEmbeddingCache" }o--|| "McpTool" : tool
 "AuditLog" }o--|| "McpServer" : server
 ```
 
@@ -205,6 +217,20 @@ MCPツール（接続が提供するツールの定義・権限管理）
   - `createdAt`: 
   - `updatedAt`: 
   - `connectionId`: 対象MCP接続
+
+### `McpToolEmbeddingCache`
+動的検索用ツールembeddingキャッシュ
+
+**Properties**
+  - `id`:
+  - `toolId`: 対象ツール
+  - `modelId`: embeddingモデルID
+  - `textVersion`: 検索テキスト生成ロジックのバージョン
+  - `dim`: embedding次元数
+  - `contentHash`: 検索テキストのSHA-256
+  - `vector`: Float32Arrayをそのまま保存したBLOB
+  - `createdAt`:
+  - `updatedAt`:
 
 ### `McpServer`
 MCPサーバー（仮想・統合サーバー = Proxyエンドポイント）

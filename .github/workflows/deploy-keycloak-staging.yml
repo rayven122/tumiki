@@ -20,7 +20,8 @@ permissions:
 jobs:
   deploy:
     name: 🔑 Deploy Keycloak to Staging
-    runs-on: ubuntu-latest
+    runs-on:
+      group: self-arc
     environment: staging
     timeout-minutes: 30
 
@@ -73,6 +74,11 @@ jobs:
 
       - name: 🔒 Restrict secrets file permissions
         run: chmod 600 keycloak.env
+
+      - name: 🧰 Setup Node.js for theme build
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
 
       - name: 🎨 Build parent theme
         run: |

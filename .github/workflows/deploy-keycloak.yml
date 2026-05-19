@@ -32,7 +32,8 @@ env:
 jobs:
   deploy-staging:
     name: 🔑 Deploy Keycloak Config to Staging
-    runs-on: ubuntu-latest
+    runs-on:
+      group: self-arc
     timeout-minutes: 30
     if: |
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
@@ -98,6 +99,11 @@ jobs:
           # GitHub Actions runner と Keycloak VM が同一アーキテクチャ（linux/amd64）である前提
           mkdir -p /tmp/terraform-bin
           install -m 755 "$(command -v terraform)" /tmp/terraform-bin/terraform
+
+      - name: 🧰 Setup Node.js for theme build
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
 
       - name: 📤 Transfer Terraform files
         run: |
@@ -204,7 +210,8 @@ jobs:
 
   deploy-production:
     name: 🔑 Deploy Keycloak Config to Production
-    runs-on: ubuntu-latest
+    runs-on:
+      group: self-arc
     timeout-minutes: 45
     if: |
       (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'keycloak-v')) ||
@@ -305,6 +312,11 @@ jobs:
           # GitHub Actions runner と Keycloak VM が同一アーキテクチャ（linux/amd64）である前提
           mkdir -p /tmp/terraform-bin
           install -m 755 "$(command -v terraform)" /tmp/terraform-bin/terraform
+
+      - name: 🧰 Setup Node.js for theme build
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
 
       - name: 📤 Transfer Terraform files
         run: |

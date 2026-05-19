@@ -52,6 +52,8 @@
     "setup:dev": "pnpm docker:up && pnpm keycloak:wait && pnpm keycloak:dev-init && pnpm keycloak:init && pnpm keycloak:apply",
     "keycloak:prod:plan": "bash scripts/keycloak.sh prod plan",
     "keycloak:prod:apply": "bash scripts/keycloak.sh prod apply",
+    "keycloak:staging:plan": "bash scripts/keycloak.sh staging plan",
+    "keycloak:staging:apply": "bash scripts/keycloak.sh staging apply",
     "keycloak:prod:setup-db": "bash docker/prod/deploy.sh setup-db",
     "keycloak:prod:setup": "bash docker/prod/deploy.sh setup",
     "keycloak:prod:deploy": "bash docker/prod/deploy.sh deploy",

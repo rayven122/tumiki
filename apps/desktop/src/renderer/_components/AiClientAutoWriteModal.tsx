@@ -15,7 +15,7 @@ import type {
   AiClientPreview,
   McpEntry,
   McpProxyLaunchCommand,
-  AiCodingTool,
+  ConfigurableAiCodingTool,
 } from "../../main/types";
 import type { McpServerWithRuntime } from "../hooks/useMcpServers";
 import { toast } from "./Toast";
@@ -39,7 +39,7 @@ const TrackingSection = ({
   tool,
   port,
 }: {
-  tool: AiCodingTool;
+  tool: ConfigurableAiCodingTool;
   port: number;
 }): JSX.Element => {
   const { settings, isLoading, refresh } = useAiCodingToolSettings(tool);
@@ -435,7 +435,7 @@ export const AiClientAutoWriteModal = ({
           )}
         </div>
 
-        {/* タブ切り替え（claude-code / codex-cli のみ表示） */}
+        {/* タブ切り替え（Claude Code / Codex のみ表示） */}
         {trackingTool !== undefined && (
           <div className="mb-4 flex gap-1 rounded-lg bg-[#e8eaed] p-1 dark:bg-[#0a0a0a]">
             <button

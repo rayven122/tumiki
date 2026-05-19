@@ -1,0 +1,85 @@
+name: Setup Bun
+description: Setup Bun with the self-arc cache server when available
+
+inputs:
+  bun-version:
+    description: Bun version
+    default: ""
+  bun-version-file:
+    description: File containing the Bun version
+    default: ""
+  registries:
+    description: Additional registries passed to oven-sh/setup-bun
+    default: ""
+  cache-server-url-prefix:
+    description: Bun binary cache server URL prefix
+    default: "http://bun-cache.arc-tools.svc.cluster.local"
+
+outputs:
+  bun-path:
+    description: Installed bun command path
+    value: ${{ steps.output-bun-path.outputs.bun-path }}
+
+runs:
+  using: composite
+  steps:
+    - name: Check cache server
+      shell: bash
+      id: check-cache-server
+      run: |
+        if curl --silent --fail --max-time 5 --connect-timeout 3 "${{ inputs.cache-server-url-prefix }}/health" > /dev/null 2>&1; then
+          echo "Cache server is available at ${{ inputs.cache-server-url-prefix }}"
+          echo "cache-server-available=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "Cache server is not available at ${{ inputs.cache-server-url-prefix }}. Falling back to direct download."
+          echo "cache-server-available=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Install Bun without cache server
+      if: steps.check-cache-server.outputs.cache-server-available == 'false'
+      uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+      with:
+        bun-version: ${{ inputs.bun-version }}
+        bun-version-file: ${{ inputs.bun-version-file }}
+        registries: ${{ inputs.registries }}
+
+    - name: Detect version
+      shell: bash
+      if: steps.check-cache-server.outputs.cache-server-available == 'true'
+      id: detect-version
+      run: |
+        if [[ -n "${{ inputs.bun-version }}" ]]; then
+          bun_version="${{ inputs.bun-version }}"
+        elif [[ -n "${{ inputs.bun-version-file }}" ]]; then
+          if [[ -f "${{ inputs.bun-version-file }}" ]]; then
+            bun_version=$(cat "${{ inputs.bun-version-file }}")
+          else
+            echo "ERROR: bun-version-file is set to ${{ inputs.bun-version-file }}, but file does not exist."
+            exit 1
+          fi
+        elif [[ -f "package.json" ]]; then
+          bun_version=$(jq -r '.packageManager // empty' package.json | grep -Eo 'bun@([0-9]+\.[0-9]+\.[0-9]+)' | sed 's/bun@//' || true)
+          if [[ -z "$bun_version" ]]; then
+            bun_version=$(jq -r '.engines.bun // empty' package.json | grep -Eo '([0-9]+\.[0-9]+\.[0-9]+)' || true)
+          fi
+        fi
+
+        if [[ -z "$bun_version" ]]; then
+          bun_version="latest"
+        fi
+
+        echo "Bun version to install: $bun_version"
+        echo "download-url=${{ inputs.cache-server-url-prefix }}/${bun_version}" >> "$GITHUB_OUTPUT"
+
+    - name: Install Bun with cache server
+      if: steps.check-cache-server.outputs.cache-server-available == 'true'
+      uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+      with:
+        registries: ${{ inputs.registries }}
+        no-cache: true
+        bun-download-url: ${{ steps.detect-version.outputs.download-url }}
+
+    - name: Output Bun path
+      shell: bash
+      id: output-bun-path
+      run: echo "bun-path=$(which bun)" >> "$GITHUB_OUTPUT"

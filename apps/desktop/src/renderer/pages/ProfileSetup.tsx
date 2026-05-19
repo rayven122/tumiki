@@ -98,17 +98,22 @@ export const ProfileSetup = (): JSX.Element => {
     setIsSubmitting(true);
     setError(null);
     try {
-      await window.electronAPI.profile.selectPersonal();
-      window.dispatchEvent(new Event(PROFILE_CHANGED_EVENT));
-      navigate("/", { replace: true });
+      await window.electronAPI.manager.connectPersonal();
+      await window.electronAPI.auth.login();
+      setIsWaitingForCallback(true);
     } catch (err) {
+      try {
+        await window.electronAPI.profile.cancelPendingSetup();
+      } catch {
+        // 元のログイン失敗を優先して表示する。pending setup は次回操作でも上書きされる。
+      }
       if (mountedRef.current) {
         setError(
           err instanceof Error ? err.message : "個人利用の設定に失敗しました",
         );
+        setIsWaitingForCallback(false);
+        setIsSubmitting(false);
       }
-    } finally {
-      if (mountedRef.current) setIsSubmitting(false);
     }
   };
 
@@ -135,6 +140,11 @@ export const ProfileSetup = (): JSX.Element => {
       await window.electronAPI.auth.login();
       setIsWaitingForCallback(true);
     } catch (err) {
+      try {
+        await window.electronAPI.profile.cancelPendingSetup();
+      } catch {
+        // 元のログイン失敗を優先して表示する。再試行時は manager.connect で状態を上書きする。
+      }
       if (mountedRef.current) {
         setError(
           err instanceof Error ? err.message : "組織利用の設定に失敗しました",
@@ -148,34 +158,28 @@ export const ProfileSetup = (): JSX.Element => {
   const managerUrlProtocol = getManagerUrlProtocol(managerUrl);
   const shouldWarnHttp = managerUrlProtocol === "http:";
 
-  const cancelOrganizationSetup = async (): Promise<void> => {
-    setupCancelledRef.current = true;
-    if (isOrganizationChange) {
-      try {
-        await window.electronAPI.auth.cancelLogin();
-      } finally {
-        if (mountedRef.current) {
-          setIsSubmitting(false);
-          setIsWaitingForCallback(false);
-          navigate("/settings", { replace: true });
-        }
-      }
-      return;
+  const cancelPendingInitialSetup = async (
+    fallbackMessage: string,
+  ): Promise<void> => {
+    try {
+      await window.electronAPI.auth.cancelLogin();
+    } catch (err) {
+      // ブラウザ起動前後の状態にかかわらず、ローカルの pending setup cleanup は続行する。
+      console.warn(
+        "セットアップキャンセル中の cancelLogin に失敗しました:",
+        err,
+      );
     }
 
     try {
-      await window.electronAPI.profile.cancelOrganizationSetup();
+      await window.electronAPI.profile.cancelPendingSetup();
       if (mountedRef.current) {
         setError(null);
         setView("choice");
       }
     } catch (err) {
       if (mountedRef.current) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "組織セットアップのキャンセルに失敗しました",
-        );
+        setError(err instanceof Error ? err.message : fallbackMessage);
       }
     } finally {
       if (mountedRef.current) {
@@ -183,6 +187,49 @@ export const ProfileSetup = (): JSX.Element => {
         setIsWaitingForCallback(false);
       }
     }
+  };
+
+  const cancelPersonalSetup = async (): Promise<void> => {
+    setupCancelledRef.current = true;
+    await cancelPendingInitialSetup(
+      "個人利用セットアップのキャンセルに失敗しました",
+    );
+  };
+
+  const cancelOrganizationSetup = async (): Promise<void> => {
+    setupCancelledRef.current = true;
+    if (isOrganizationChange) {
+      try {
+        await window.electronAPI.auth.cancelLogin();
+      } catch (err) {
+        // 設定画面からの変更キャンセルでは、ブラウザ状態にかかわらず設定画面へ戻す。
+        console.warn("組織変更キャンセル中の cancelLogin に失敗しました:", err);
+      }
+
+      try {
+        await window.electronAPI.profile.cancelOrganizationChange();
+        if (mountedRef.current) {
+          setIsSubmitting(false);
+          setIsWaitingForCallback(false);
+          navigate("/settings", { replace: true });
+        }
+      } catch (err) {
+        if (mountedRef.current) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "組織変更のキャンセルに失敗しました",
+          );
+          setIsSubmitting(false);
+          setIsWaitingForCallback(false);
+        }
+      }
+      return;
+    }
+
+    await cancelPendingInitialSetup(
+      "組織セットアップのキャンセルに失敗しました",
+    );
   };
 
   return (
@@ -203,47 +250,72 @@ export const ProfileSetup = (): JSX.Element => {
         </div>
 
         {view === "choice" ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => void selectPersonal()}
-              className="group rounded-xl border border-gray-200 bg-white p-6 text-left transition hover:border-gray-400 hover:bg-black/[.02] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/[.08] dark:bg-zinc-900 dark:hover:border-zinc-600"
-            >
-              <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-black/[.06] text-gray-900 dark:bg-white/[.08] dark:text-white">
-                <User size={22} />
-              </span>
-              <span className="mt-5 block text-base font-semibold text-gray-900 dark:text-white">
-                個人利用
-              </span>
-              <span className="mt-2 block text-sm leading-6 text-gray-500 dark:text-zinc-500">
-                自分のPC上でMCPコネクタを管理します。組織の承認や監査は使いません。
-              </span>
-              <span className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-gray-600 group-hover:text-gray-900 dark:text-zinc-400">
-                このプロファイルで始める
-                <Check size={15} />
-              </span>
-            </button>
+          <div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => void selectPersonal()}
+                className="group rounded-xl border border-gray-200 bg-white p-6 text-left transition hover:border-gray-400 hover:bg-black/[.02] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/[.08] dark:bg-zinc-900 dark:hover:border-zinc-600"
+              >
+                <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-black/[.06] text-gray-900 dark:bg-white/[.08] dark:text-white">
+                  <User size={22} />
+                </span>
+                <span className="mt-5 block text-base font-semibold text-gray-900 dark:text-white">
+                  個人利用
+                </span>
+                <span className="mt-2 block text-sm leading-6 text-gray-500 dark:text-zinc-500">
+                  自分のPC上でMCPコネクタを管理します。組織の承認や監査は使いません。
+                </span>
+                <span className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-gray-600 group-hover:text-gray-900 dark:text-zinc-400">
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={15} className="animate-spin" />
+                      {isWaitingForCallback
+                        ? "サインイン待機中..."
+                        : "接続中..."}
+                    </>
+                  ) : (
+                    <>
+                      このプロファイルで始める
+                      <Check size={15} />
+                    </>
+                  )}
+                </span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setView("organization")}
-              className="group rounded-xl border border-gray-200 bg-white p-6 text-left transition hover:border-gray-400 hover:bg-black/[.02] dark:border-white/[.08] dark:bg-zinc-900 dark:hover:border-zinc-600"
-            >
-              <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-black/[.06] text-gray-900 dark:bg-white/[.08] dark:text-white">
-                <Building2 size={22} />
-              </span>
-              <span className="mt-5 block text-base font-semibold text-gray-900 dark:text-white">
-                組織利用
-              </span>
-              <span className="mt-2 block text-sm leading-6 text-gray-500 dark:text-zinc-500">
-                管理サーバーに接続し、組織のユーザー・承認・監査機能を有効化します。
-              </span>
-              <span className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-gray-600 group-hover:text-gray-900 dark:text-zinc-400">
-                管理サーバーに接続
-                <KeyRound size={15} />
-              </span>
-            </button>
+              <button
+                type="button"
+                onClick={() => setView("organization")}
+                disabled={isSubmitting}
+                className="group rounded-xl border border-gray-200 bg-white p-6 text-left transition hover:border-gray-400 hover:bg-black/[.02] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/[.08] dark:bg-zinc-900 dark:hover:border-zinc-600"
+              >
+                <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-black/[.06] text-gray-900 dark:bg-white/[.08] dark:text-white">
+                  <Building2 size={22} />
+                </span>
+                <span className="mt-5 block text-base font-semibold text-gray-900 dark:text-white">
+                  組織利用
+                </span>
+                <span className="mt-2 block text-sm leading-6 text-gray-500 dark:text-zinc-500">
+                  管理サーバーに接続し、組織のユーザー・承認・監査機能を有効化します。
+                </span>
+                <span className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-gray-600 group-hover:text-gray-900 dark:text-zinc-400">
+                  管理サーバーに接続
+                  <KeyRound size={15} />
+                </span>
+              </button>
+            </div>
+
+            {isSubmitting && (
+              <button
+                type="button"
+                onClick={() => void cancelPersonalSetup()}
+                className="mx-auto mt-5 flex items-center gap-2 text-sm text-gray-500 transition hover:text-gray-900 dark:text-zinc-500"
+              >
+                <ArrowLeft size={15} />
+                キャンセル
+              </button>
+            )}
           </div>
         ) : (
           <form

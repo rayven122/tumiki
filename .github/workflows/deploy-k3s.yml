@@ -13,7 +13,8 @@ on:
 jobs:
   deploy-tenant-console:
     name: 🚀 Deploy tenant-console to k3s
-    runs-on: ubuntu-latest
+    runs-on:
+      group: self-arc
     # 起動条件:
     #   - 手動実行 (workflow_dispatch): 任意のタグでデプロイ
     #   - リリースタグ (v*) で Docker Publish が成功した場合のみ自動デプロイ
