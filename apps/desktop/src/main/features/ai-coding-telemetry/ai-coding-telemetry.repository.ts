@@ -155,6 +155,43 @@ const toFiniteNumber = (value: unknown): number => {
   return Number.isFinite(numericValue) ? numericValue : 0;
 };
 
+// normalized_metric_attrs CTE の token_type / model 列を参照し、Codex の token usage から概算コストを算出する。
+const CODEX_ESTIMATED_COST_SQL = Prisma.sql`
+  CASE
+    WHEN "metricName" = 'codex.turn.token_usage' THEN
+      "value" / 1000000.0 *
+      CASE
+        WHEN token_type IN ('input') THEN
+          CASE
+            WHEN model = 'gpt-5.5' THEN 5.0
+            WHEN model = 'gpt-5.4' THEN 2.5
+            WHEN model = 'gpt-5.4-mini' THEN 0.75
+            WHEN model IN ('gpt-5.3-codex', 'gpt-5.3-codex-spark', 'codex-auto-review') THEN 1.75
+            ELSE 0
+          END
+        WHEN token_type IN ('cached_input', 'cached') THEN
+          CASE
+            WHEN model = 'gpt-5.5' THEN 0.5
+            WHEN model = 'gpt-5.4' THEN 0.25
+            WHEN model = 'gpt-5.4-mini' THEN 0.075
+            WHEN model IN ('gpt-5.3-codex', 'gpt-5.3-codex-spark', 'codex-auto-review') THEN 0.175
+            ELSE 0
+          END
+        WHEN token_type IN ('output', 'reasoning_output') THEN
+          CASE
+            WHEN model = 'gpt-5.5' THEN 30.0
+            WHEN model = 'gpt-5.4' THEN 15.0
+            WHEN model = 'gpt-5.4-mini' THEN 4.5
+            WHEN model IN ('gpt-5.3-codex', 'gpt-5.3-codex-spark', 'codex-auto-review') THEN 14.0
+            ELSE 0
+          END
+        ELSE 0
+      END
+    WHEN "metricName" LIKE '%cost%' THEN "value"
+    ELSE 0
+  END
+`;
+
 // メトリクスを一括保存する
 export const storeMetrics = async (
   db: DbClient,
@@ -423,32 +460,42 @@ export const getMemberUsage = async (
              MAX(CASE
                WHEN json_extract(j.value, '$.key') = 'type'
                THEN json_extract(j.value, '$.value.stringValue')
-             END) as token_type
+             END) as legacy_token_type,
+             MAX(CASE
+               WHEN json_extract(j.value, '$.key') = 'token_type'
+               THEN json_extract(j.value, '$.value.stringValue')
+             END) as codex_token_type,
+             MAX(CASE
+               WHEN json_extract(j.value, '$.key') = 'model'
+               THEN json_extract(j.value, '$.value.stringValue')
+             END) as model
       FROM   "AiCodingMetric" m
       LEFT JOIN json_each(m."attributes") j
       WHERE  m."recordedAt" >= ${sinceMs}
       GROUP  BY m."id"
+    ),
+    normalized_metric_attrs AS (
+      SELECT *,
+             COALESCE(codex_token_type, legacy_token_type) as token_type
+      FROM   metric_attrs
     )
     SELECT COALESCE(user_email, user_name, 'ユーザー情報なし') as member,
            "tool" as tool,
            SUM(CASE
-             WHEN "metricName" LIKE '%token%' AND token_type = 'input'
+             WHEN "metricName" LIKE '%token%' AND token_type IN ('input', 'cached_input', 'cached')
              THEN "value" ELSE 0
            END) as inputTokens,
            SUM(CASE
-             WHEN "metricName" LIKE '%token%' AND token_type = 'output'
+             WHEN "metricName" LIKE '%token%' AND token_type IN ('output', 'reasoning_output')
              THEN "value" ELSE 0
            END) as outputTokens,
-           SUM(CASE
-             WHEN "metricName" LIKE '%cost%'
-             THEN "value" ELSE 0
-           END) as costUsd,
+           SUM(${CODEX_ESTIMATED_COST_SQL}) as costUsd,
            SUM(CASE
              WHEN "metricName" LIKE '%session%' OR "metricName" LIKE '%thread.started%'
              THEN "value" ELSE 0
            END) as sessionCount,
            MAX("recordedAt") as lastSeenAt
-    FROM   metric_attrs
+    FROM   normalized_metric_attrs
     GROUP  BY member, "tool"
     HAVING inputTokens > 0 OR outputTokens > 0 OR costUsd > 0 OR sessionCount > 0
     ORDER  BY costUsd DESC, (inputTokens + outputTokens) DESC

@@ -56,7 +56,7 @@ import {
 } from "./features/ai-coding-telemetry/ai-coding-telemetry.receiver";
 import {
   autoReapplyMismatchedPorts,
-  pruneOldTelemetry,
+  setupTelemetryPruneSchedule,
 } from "./features/ai-coding-telemetry/ai-coding-telemetry.service";
 import {
   setupAiCodingTelemetryIpc,
@@ -123,22 +123,17 @@ const startAnalyticsSidecarMode = async (): Promise<void> => {
 
   const runtime = await startAnalyticsReceiverSingleton();
 
-  const runTelemetryPrune = (): void => {
-    void pruneOldTelemetry().catch((error: unknown) => {
+  const telemetryPruneSchedule = setupTelemetryPruneSchedule(
+    (error: unknown) => {
       logger.error("Failed to prune old AI coding telemetry", { error });
-    });
-  };
-  runTelemetryPrune();
-  const telemetryPruneInterval = setInterval(
-    runTelemetryPrune,
-    24 * 60 * 60 * 1000,
+    },
   );
 
   let isShuttingDown = false;
   const shutdown = (): void => {
     if (isShuttingDown) return;
     isShuttingDown = true;
-    clearInterval(telemetryPruneInterval);
+    telemetryPruneSchedule.cancel();
     const closeDbAndExit = (): void => {
       void closeDb()
         .catch((error: unknown) => {
@@ -514,7 +509,7 @@ if (appMode === "mcp-proxy") {
   let mcpOAuthManager: McpOAuthManager | null = null;
   // OTLP レシーバーのサーバーインスタンス（will-quit で close するため外側スコープで保持）
   let otlpHttpServer: import("http").Server | null = null;
-  let telemetryPruneInterval: ReturnType<typeof setInterval> | null = null;
+  let cancelTelemetryPruneSchedule: (() => void) | null = null;
 
   /**
    * 管理サーバーURLとOIDC設定からOAuthManagerを初期化（or 再初期化）
@@ -947,18 +942,15 @@ if (appMode === "mcp-proxy") {
       }
       setupAiCodingTelemetryIpc();
 
-      // 90 日より古い AI コーディングテレメトリを削除（SQLite 肥大化防止）。
+      // profile に応じて古い AI コーディングテレメトリを削除（SQLite 肥大化防止）。
+      // 個人利用は 30 日、組織利用は 90 日を保持する。
       // 起動ブロックしないよう fire-and-forget で実行し、長時間起動に備えて日次でも実行する。
-      const runTelemetryPrune = (): void => {
-        void pruneOldTelemetry().catch((error: unknown) => {
+      const telemetryPruneSchedule = setupTelemetryPruneSchedule(
+        (error: unknown) => {
           logger.error("Failed to prune old AI coding telemetry", { error });
-        });
-      };
-      runTelemetryPrune();
-      telemetryPruneInterval = setInterval(
-        runTelemetryPrune,
-        24 * 60 * 60 * 1000,
+        },
       );
+      cancelTelemetryPruneSchedule = telemetryPruneSchedule.cancel;
 
       createWindow();
 
@@ -1009,9 +1001,9 @@ if (appMode === "mcp-proxy") {
     event.preventDefault();
     const oauthManager = getOAuthManager();
     oauthManager?.stopAutoRefresh();
-    if (telemetryPruneInterval) {
-      clearInterval(telemetryPruneInterval);
-      telemetryPruneInterval = null;
+    if (cancelTelemetryPruneSchedule) {
+      cancelTelemetryPruneSchedule();
+      cancelTelemetryPruneSchedule = null;
     }
     // OTLP サーバーのクローズを Promise でラップして DB クローズ前に完了を保証する
     const closeOtlpServer = (): Promise<void> =>

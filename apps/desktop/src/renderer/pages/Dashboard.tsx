@@ -386,7 +386,7 @@ const buildAiKpiCards = (
     {
       label: `推定コスト / ${period}`,
       value: formatCurrency(costTotal),
-      sub: "USD",
+      sub: "概算 USD",
       colorClass: "text-violet-600 dark:text-violet-400",
     },
   ];

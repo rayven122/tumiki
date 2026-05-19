@@ -294,6 +294,42 @@ describe("getDailyUsage", () => {
   });
 });
 
+describe("getMemberUsage", () => {
+  test("Codex token usage から概算コストを算出する SQL を使う", async () => {
+    const since = new Date("2026-01-01");
+    mockQueryRaw.mockResolvedValue([
+      {
+        member: "ユーザー情報なし",
+        tool: "codex-app-server",
+        inputTokens: 1000000,
+        outputTokens: 100000,
+        costUsd: 8,
+        sessionCount: 1,
+        lastSeenAt: BigInt(since.getTime()),
+      },
+    ]);
+
+    const result = await repository.getMemberUsage(mockDb, since);
+
+    expect(mockQueryRaw).toHaveBeenCalledOnce();
+    const [[query]] = mockQueryRaw.mock.calls as [[unknown]];
+    const sql = JSON.stringify(query);
+    expect(sql).toContain("codex_token_type");
+    expect(sql).toContain("costUsd");
+    expect(result).toStrictEqual([
+      {
+        member: "ユーザー情報なし",
+        tool: "codex-app-server",
+        inputTokens: 1000000,
+        outputTokens: 100000,
+        costUsd: 8,
+        sessionCount: 1,
+        lastSeenAt: since.toISOString(),
+      },
+    ]);
+  });
+});
+
 describe("deleteOldMetrics", () => {
   test("指定日時より前の recordedAt を持つレコードを削除する", async () => {
     const before = new Date("2026-01-01");
