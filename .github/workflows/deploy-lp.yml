@@ -18,8 +18,7 @@ concurrency:
 jobs:
   deploy:
     name: 🚀 Deploy LP to Vercel
-    runs-on:
-      group: self-arc
+    runs-on: ubuntu-latest
     environment:
       name: production
       url: https://lp.tumiki.cloud
@@ -39,8 +38,6 @@ jobs:
           node-version: "22"
           cache: pnpm
 
-      - uses: ./.github/actions/setup-npm-proxy
-
       - name: Install Vercel CLI
         run: pnpm add -g vercel@latest
 
@@ -48,7 +45,7 @@ jobs:
         run: vercel pull --yes --environment=production
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile --ignore-scripts
+        run: pnpm install --frozen-lockfile
 
       - name: Build
         run: vercel build --prod
