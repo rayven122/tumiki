@@ -34,6 +34,7 @@ import {
 import { MCP_OAUTH_REDIRECT_URI } from "../shared/oauth/redirect-uri";
 import { setupProfileIpc } from "./ipc/profile";
 import { setupShellIpc } from "./ipc/shell";
+import { setupSettingsIpc } from "./ipc/settings";
 import {
   startAuditLogManagerSyncScheduler,
   stopAuditLogManagerSyncScheduler,
@@ -905,6 +906,7 @@ if (appMode === "mcp-proxy") {
       setupDashboardIpc();
       setupDesktopSessionIpc();
       setupShellIpc();
+      setupSettingsIpc();
 
       // OTLP レシーバーを起動する
       // OTLP HTTP の標準ポート 4318 を常に優先する。

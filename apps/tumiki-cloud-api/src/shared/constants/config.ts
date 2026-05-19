@@ -29,3 +29,15 @@ export const DYNAMIC_SEARCH_CONFIG = {
   defaultLimit: 10,
   maxLimit: 50,
 } as const;
+
+export const TOOL_SEARCH_EMBEDDING_CONFIG = {
+  defaultModel: "text-embedding-3-small",
+  maxTextsPerRequest: 512,
+  maxTextLength: 1000,
+  maxRequestBodySize: 200 * 1024,
+  rateLimitWindowMs: 60 * 1000,
+  cleanupIntervalMs: 5 * 60 * 1000,
+  // Pod単位の上限。複数Pod環境では実効上限がPod数に比例するため、Ingress/Cloudflare側の制限と併用する。
+  maxRequestsPerWindow: 120,
+  maxRateLimitBuckets: 10_000,
+} as const;

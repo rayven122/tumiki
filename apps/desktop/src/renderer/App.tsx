@@ -1,7 +1,7 @@
-import { type JSX, useEffect } from "react";
+import { type JSX, useEffect, useRef, useState } from "react";
 import { HashRouter, Navigate, Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
-import { useAtomValue } from "jotai";
+import { useAtom } from "jotai";
 import { themeAtom } from "./store/atoms";
 import { DeeplinkHandler } from "./_components/DeeplinkHandler";
 import { Layout } from "./_components/Layout";
@@ -50,11 +50,44 @@ const useAutoReapplyToast = (): void => {
 
 export const App = (): JSX.Element => {
   useAutoReapplyToast();
-  const theme = useAtomValue(themeAtom);
+  const [theme, setTheme] = useAtom(themeAtom);
+  // electron-store からの復元が終わるまでは store への保存をスキップする
+  const [hydrated, setHydrated] = useState(false);
+  // ハイドレーション直後の初回実行（読み取り直後の冗長な書き戻し）をスキップする
+  const skipFirstWrite = useRef(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    void window.electronAPI.appConfig
+      .getTheme()
+      .then((saved) => {
+        if (!cancelled && saved !== null) setTheme(saved);
+      })
+      .catch(() => {
+        // 取得失敗時は atom 既定値で続行する
+      })
+      .finally(() => {
+        if (!cancelled) setHydrated(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [setTheme]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (skipFirstWrite.current) {
+      skipFirstWrite.current = false;
+      return;
+    }
+    void window.electronAPI.appConfig.setTheme(theme).catch(() => {
+      // 永続化失敗はユーザー操作を妨げないため握りつぶす
+    });
+  }, [theme, hydrated]);
   return (
     <>
       <Toaster position="top-center" duration={3000} />

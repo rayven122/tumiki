@@ -85,7 +85,7 @@ export const resetLicensePublicKeyCache = (): void => {
 /**
  * ライセンス JWT を検証する
  */
-const verifyLicense = async (
+export const verifyLicenseKey = async (
   licenseKey: string,
   publicKeyPem: string,
 ): Promise<VerifiedLicense | null> => {
@@ -161,7 +161,7 @@ export const verifyLicenseMiddleware = (
     }
 
     const licenseKey = authHeader.slice(7);
-    const license = await verifyLicense(licenseKey, publicKeyPem);
+    const license = await verifyLicenseKey(licenseKey, publicKeyPem);
     if (!license) {
       return c.json({ error: "Invalid or expired license" }, 401);
     }

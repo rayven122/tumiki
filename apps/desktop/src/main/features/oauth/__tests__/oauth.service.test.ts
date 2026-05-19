@@ -95,7 +95,7 @@ describe("oauth.service", () => {
     };
 
   const defaultInput: StartOAuthInput = {
-    catalogName: "Figma MCP",
+    catalogName: "Figma",
     description: "Figma MCP Server",
     transportType: "STREAMABLE_HTTP",
     command: null,
@@ -143,7 +143,7 @@ describe("oauth.service", () => {
     });
     vi.mocked(createFromCatalog).mockResolvedValue({
       serverId: 42,
-      serverName: "Figma MCP",
+      serverName: "Figma",
     });
   });
 
@@ -189,7 +189,7 @@ describe("oauth.service", () => {
 
       expect(result).toStrictEqual({
         serverId: 42,
-        serverName: "Figma MCP",
+        serverName: "Figma",
       });
 
       // 完了時にセッションがクリアされる
@@ -312,7 +312,7 @@ describe("oauth.service", () => {
       });
       vi.mocked(createFromManagerCatalog).mockResolvedValueOnce({
         serverId: 99,
-        serverName: "Figma MCP",
+        serverName: "Figma",
       });
 
       const manager = createMcpOAuthManager();
@@ -327,7 +327,7 @@ describe("oauth.service", () => {
       expect(createFromManagerCatalog).toHaveBeenCalledWith(
         expect.objectContaining({
           catalogId: "manager-catalog-uuid",
-          serverName: "Figma MCP",
+          serverName: "Figma",
         }),
       );
       expect(createFromCatalog).not.toHaveBeenCalled();
@@ -466,8 +466,8 @@ describe("oauth.service", () => {
       updatedAt: new Date(),
       server: {
         id: 11,
-        name: "Figma MCP",
-        slug: "figma-mcp",
+        name: "Figma",
+        slug: "figma",
         description: "",
         serverType: "OFFICIAL" as const,
         serverStatus: "RUNNING" as const,
@@ -523,7 +523,7 @@ describe("oauth.service", () => {
       expect(result).toStrictEqual({
         connectionId: 7,
         serverId: 11,
-        serverName: "Figma MCP",
+        serverName: "Figma",
         connectionName: "Figma",
       });
     });

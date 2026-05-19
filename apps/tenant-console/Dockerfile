@@ -21,7 +21,6 @@ WORKDIR /app
 # Stage 2: Build
 # ========================================
 FROM base AS build
-ARG NPM_CONFIG_REGISTRY
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY patches ./patches
@@ -36,10 +35,7 @@ COPY .env.example .env
 ENV CI=true
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-  pnpm install --frozen-lockfile --prod=false --ignore-scripts
-
-RUN pnpm --filter @tumiki/db db:generate && \
-    pnpm --filter @tumiki/tenant-console db:generate
+  pnpm install --frozen-lockfile --prod=false
 
 RUN pnpm turbo run build --filter=@tumiki/tenant-console^...
 
@@ -64,7 +60,6 @@ RUN pnpm --filter @tumiki/tenant-console run build:bare
 # Stage 3: Production
 # ========================================
 FROM node:24-alpine AS production
-ARG NPM_CONFIG_REGISTRY
 
 # helm/kubectl: テナントプロビジョニング用、dumb-init: シグナル伝播、wget: ヘルスチェック
 # バージョン固定 + SHA256チェックサム検証（サプライチェーン攻撃対策）
