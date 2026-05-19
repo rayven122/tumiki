@@ -12,6 +12,7 @@ import {
   type ToolSearchRow,
 } from "./tool-search.repository";
 import { simplifyToolSearchText } from "./search-text";
+import { buildMcpConfigName } from "../../shared/utils/config-name";
 import * as logger from "../../shared/utils/logger";
 
 const DEFAULT_SEARCH_LIMIT = 10;
@@ -110,18 +111,8 @@ const getDynamicSearchEmbeddingModel = (): string => {
     : DEFAULT_DYNAMIC_SEARCH_EMBEDDING_MODEL;
 };
 
-const getConfigName = (tool: ToolSearchRow): string => {
-  const isStandaloneCatalogConnection =
-    tool.connection.catalogId !== null &&
-    tool.connection.server.serverType === "OFFICIAL" &&
-    tool.connection.server.slug === tool.connection.slug;
-  return isStandaloneCatalogConnection
-    ? tool.connection.slug
-    : `${tool.connection.server.slug}-${tool.connection.slug}`;
-};
-
 const getPrefixedToolName = (tool: ToolSearchRow): string =>
-  `${getConfigName(tool)}__${tool.name}`;
+  `${buildMcpConfigName(tool.connection)}__${tool.name}`;
 
 const toResult = (tool: ToolSearchRow, score: number): ToolSearchResult => ({
   toolId: tool.id,

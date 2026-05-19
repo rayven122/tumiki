@@ -16,6 +16,7 @@ import {
   resolveArgs,
   resolveValue,
 } from "../../runtime/path-resolver";
+import { buildMcpConfigName } from "../../shared/utils/config-name";
 
 /** ツール一覧取得のデフォルトタイムアウト（npx の初回ダウンロードを考慮し30秒） */
 const DEFAULT_TOOL_FETCH_TIMEOUT_MS = 30_000;
@@ -136,15 +137,7 @@ const buildConfigFromConnection = async (
   oauthCache: Map<number, Record<string, string>> = new Map(),
 ): Promise<{ config: McpServerConfig; meta: McpConnectionMeta } | null> => {
   const connLabel = `${conn.server.slug}/${conn.slug}`;
-  // 単独公式カタログ接続のみ connSlug に短縮する。
-  // 仮想MCPなど複数接続を束ねるサーバーでは serverSlug を残し、接続の所属を失わない。
-  const isStandaloneCatalogConnection =
-    conn.catalogId !== null &&
-    conn.server.serverType === "OFFICIAL" &&
-    conn.server.slug === conn.slug;
-  const name = isStandaloneCatalogConnection
-    ? conn.slug
-    : `${conn.server.slug}-${conn.slug}`;
+  const name = buildMcpConfigName(conn);
 
   const plainCredentials = await decryptCredentials(conn.secret.credentials);
   let credentials = parseAndValidate(
