@@ -26,9 +26,9 @@ KEYCLOAK_ADMIN_PASSWORD=admin123
 KEYCLOAK_CLIENT_ID=tumiki-manager
 KEYCLOAK_CLIENT_SECRET=tumiki-manager-secret-change-in-production
 
-# 必須: Registry Appクライアント設定
-REGISTRY_KEYCLOAK_CLIENT_ID=tumiki-registry
-REGISTRY_KEYCLOAK_CLIENT_SECRET=tumiki-registry-secret-change-in-production
+# 必須: Internal Managerクライアント設定
+KEYCLOAK_INTERNAL_MANAGER_CLIENT_ID=tumiki-internal-manager
+KEYCLOAK_INTERNAL_MANAGER_CLIENT_SECRET=tumiki-internal-manager-secret
 
 # 任意: Google OAuth設定（空の場合はGoogle IdPを設定しない）
 GOOGLE_CLIENT_ID=
@@ -55,7 +55,7 @@ Terraformにより以下が自動セットアップされます：
 
 - **Tumiki Realm**の作成
 - **Manager App用OIDCクライアント**の作成（ポート3000）
-- **Registry App用OIDCクライアント**の作成（ポート3100）
+- **Internal Manager App用OIDCクライアント**の作成（ポート3100）
 - **MCP Proxy用OIDCクライアント**の作成
 - **テストユーザー**の作成
 - **カスタムクレーム設定**
@@ -85,10 +85,10 @@ Terraformにより以下が自動セットアップされます：
 - Client ID: `.env` の `KEYCLOAK_CLIENT_ID`（デフォルト: `tumiki-manager`）
 - Client Secret: `.env` の `KEYCLOAK_CLIENT_SECRET`
 
-### Registry App用クライアント（ポート3100）
+### Internal Manager App用クライアント（ポート3100）
 
-- Client ID: `.env` の `REGISTRY_KEYCLOAK_CLIENT_ID`（デフォルト: `tumiki-registry`）
-- Client Secret: `.env` の `REGISTRY_KEYCLOAK_CLIENT_SECRET`
+- Client ID: `.env` の `KEYCLOAK_INTERNAL_MANAGER_CLIENT_ID`（デフォルト: `tumiki-internal-manager`）
+- Client Secret: `.env` の `KEYCLOAK_INTERNAL_MANAGER_CLIENT_SECRET`
 
 ### MCP Proxy用クライアント
 
@@ -140,14 +140,16 @@ terraform/keycloak/
 
 認証情報は `.env` ファイルで管理され、`scripts/keycloak.sh` により `TF_VAR_*` 形式に変換されます。
 
-| .env 変数                 | Terraform変数             | 必須 |
-| ------------------------- | ------------------------- | ---- |
-| `KEYCLOAK_ADMIN_USERNAME` | `keycloak_admin_username` | ✅   |
-| `KEYCLOAK_ADMIN_PASSWORD` | `keycloak_admin_password` | ✅   |
-| `KEYCLOAK_CLIENT_ID`      | `manager_client_id`       | ✅   |
-| `KEYCLOAK_CLIENT_SECRET`  | `manager_client_secret`   | ✅   |
-| `GOOGLE_CLIENT_ID`        | `google_client_id`        | -    |
-| `GOOGLE_CLIENT_SECRET`    | `google_client_secret`    | -    |
+| .env 変数                                 | Terraform変数                    | 必須 |
+| ----------------------------------------- | -------------------------------- | ---- |
+| `KEYCLOAK_ADMIN_USERNAME`                 | `keycloak_admin_username`        | ✅   |
+| `KEYCLOAK_ADMIN_PASSWORD`                 | `keycloak_admin_password`        | ✅   |
+| `KEYCLOAK_CLIENT_ID`                      | `manager_client_id`              | ✅   |
+| `KEYCLOAK_CLIENT_SECRET`                  | `manager_client_secret`          | ✅   |
+| `KEYCLOAK_INTERNAL_MANAGER_CLIENT_ID`     | `internal_manager_client_id`     | ✅   |
+| `KEYCLOAK_INTERNAL_MANAGER_CLIENT_SECRET` | `internal_manager_client_secret` | ✅   |
+| `GOOGLE_CLIENT_ID`                        | `google_client_id`               | -    |
+| `GOOGLE_CLIENT_SECRET`                    | `google_client_secret`           | -    |
 
 その他の設定は `terraform.tfvars` で編集できます。
 
@@ -161,6 +163,8 @@ GOOGLE_CLIENT_SECRET=your-client-secret
 ```
 
 その後、`pnpm keycloak:apply` を実行します。
+
+Google IdP を有効にした開発環境では、ログイン画面のローカルメールアドレス + パスワードフォームは非表示になります。`registration_allowed = true` のままにしている場合は、Google ボタンの下に登録リンクが表示され、Keycloak の登録画面でも Google IdP で続行する導線になります。本番環境では `registration_allowed = false` のため登録リンクも表示されません。
 
 ## Manager App環境変数
 
