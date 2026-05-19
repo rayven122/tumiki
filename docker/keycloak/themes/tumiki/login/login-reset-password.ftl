@@ -48,7 +48,7 @@
     <#-- ログインに戻るリンク -->
     <div class="tumiki-footer-link">
       <a href="${url.loginUrl}" class="tumiki-link">
-        ${msg("backToLogin")}
+        ${kcSanitize(msg("backToLogin"))}
       </a>
     </div>
   <#elseif section="info">

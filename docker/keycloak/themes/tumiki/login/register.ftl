@@ -3,7 +3,7 @@
 
 <@layout.registrationLayout
   displayInfo=false
-  displayMessage=!messagesPerField.existsError("email", "password", "password-confirm")
+  displayMessage=!messagesPerField.existsError("firstName", "lastName", "email", "password", "password-confirm")
   ;
   section
 >
@@ -27,6 +27,38 @@
     <#-- Email/Password登録フォーム -->
     <#if showLocalRegistrationForm>
       <form action="${url.registrationAction}" method="post">
+        <div class="tumiki-field">
+          <label for="firstName" class="tumiki-label">
+            ${msg("firstName")}
+          </label>
+          <input
+            id="firstName"
+            name="firstName"
+            type="text"
+            autocomplete="given-name"
+            value="${(register.formData.firstName)!''}"
+            class="tumiki-input<#if messagesPerField.existsError('firstName')> tumiki-input-error</#if>"
+          />
+          <#if messagesPerField.existsError("firstName")>
+            <p class="tumiki-error">${kcSanitize(messagesPerField.get("firstName"))}</p>
+          </#if>
+        </div>
+        <div class="tumiki-field">
+          <label for="lastName" class="tumiki-label">
+            ${msg("lastName")}
+          </label>
+          <input
+            id="lastName"
+            name="lastName"
+            type="text"
+            autocomplete="family-name"
+            value="${(register.formData.lastName)!''}"
+            class="tumiki-input<#if messagesPerField.existsError('lastName')> tumiki-input-error</#if>"
+          />
+          <#if messagesPerField.existsError("lastName")>
+            <p class="tumiki-error">${kcSanitize(messagesPerField.get("lastName"))}</p>
+          </#if>
+        </div>
         <#-- Emailフィールド -->
         <div class="tumiki-field">
           <label for="email" class="tumiki-label">
@@ -86,6 +118,7 @@
         </button>
       </form>
     </#if>
+    <#-- ログインリンクは常に表示するため、区切り線も常に表示する。 -->
     <div class="tumiki-divider"></div>
     <#-- ログインリンク -->
     <div class="tumiki-footer-link">
