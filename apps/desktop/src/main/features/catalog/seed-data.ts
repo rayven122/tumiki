@@ -1,4 +1,7 @@
-import { FILESYSTEM_STDIO_NAME } from "../../../shared/catalog.constants";
+import {
+  FILESYSTEM_NAME,
+  OUTLINE_NAME,
+} from "../../../shared/catalog.constants";
 import type { CatalogSeedData } from "./catalog.repository";
 
 /**
@@ -13,7 +16,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
   // stdio MCP（ローカルプロセス）— 表の順
   // ========================================
   {
-    name: FILESYSTEM_STDIO_NAME,
+    name: FILESYSTEM_NAME,
     description:
       "ファイルシステム操作 - ローカルファイルの読み書き（開発・テスト用）",
     iconPath: "/logos/services/filesystem.svg",
@@ -25,7 +28,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "Sequential Thinking STDIO",
+    name: "Sequential Thinking",
     description: "段階的思考サーバー - 複雑な問題解決のための段階的推論支援",
     iconPath: "/logos/services/sequential-thinking.svg",
     transportType: "STDIO",
@@ -36,7 +39,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "Serena STDIO",
+    name: "Serena",
     description:
       "Serena コード支援 - シンボル検索、ファイル参照、エージェント向け編集補助",
     iconPath: "/logos/services/serena.svg",
@@ -59,7 +62,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "DeepL STDIO",
+    name: "DeepL",
     description: "DeepL 翻訳サービス",
     iconPath: "/logos/services/deepl.svg",
     transportType: "STDIO",
@@ -70,7 +73,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "Brave Search STDIO",
+    name: "Brave Search",
     description: "Brave Search API統合 - 検索エンジンAPI",
     iconPath: "/logos/services/brave.svg",
     transportType: "STDIO",
@@ -81,7 +84,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "Chatwork STDIO",
+    name: "Chatwork",
     description:
       "Chatwork API統合 - ルーム・メッセージの参照、送信、通知まわりの操作",
     iconPath: "/logos/services/chatwork.svg",
@@ -93,7 +96,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "Microsoft Clarity STDIO",
+    name: "Microsoft Clarity",
     description: "Microsoft Clarity分析とヒートマップ統合",
     iconPath: "/logos/services/clarity.svg",
     transportType: "STDIO",
@@ -104,7 +107,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "Kubernetes STDIO",
+    name: "Kubernetes",
     description: "Kubernetes API とリソース管理",
     iconPath: "/logos/services/kubernetes.svg",
     transportType: "STDIO",
@@ -115,7 +118,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "LINE Bot STDIO",
+    name: "LINE Bot",
     description: "LINE Messaging API統合 - Bot からのメッセージ送信・会話操作",
     iconPath: "/logos/services/line.svg",
     transportType: "STDIO",
@@ -126,7 +129,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "microCMS STDIO",
+    name: "microCMS",
     description: "microCMS API統合",
     iconPath: "/logos/services/microcms.svg",
     transportType: "STDIO",
@@ -137,7 +140,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "Backlog STDIO",
+    name: "Backlog",
     description: "Backlog API統合 - 課題、Wiki、ファイル、通知の操作",
     iconPath: "/logos/services/backlog.svg",
     transportType: "STDIO",
@@ -148,9 +151,9 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "Salesforce STDIO",
+    name: "Salesforce",
     description:
-      "Salesforce MCP - オブジェクト・メタデータの参照と操作（組織認証が前提）",
+      "Salesforce - オブジェクト・メタデータの参照と操作（組織認証が前提）",
     iconPath: "/logos/services/salesforce.svg",
     transportType: "STDIO",
     command: "${runtime:npx}",
@@ -160,9 +163,9 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "Chrome DevTools STDIO",
+    name: "Chrome DevTools",
     description:
-      "Chrome DevTools MCP - DOM・コンソール・ネットワーク・パフォーマンスのデバッグ",
+      "Chrome DevTools - DOM・コンソール・ネットワーク・パフォーマンスのデバッグ",
     iconPath: "/logos/services/chrome-devtools.svg",
     transportType: "STDIO",
     command: "${runtime:npx}",
@@ -172,9 +175,9 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "Playwright STDIO",
+    name: "Playwright",
     description:
-      "Playwright MCP - ブラウザ操作、スクリーンショット、フォーム入力、UI検証",
+      "Playwright - ブラウザ操作、スクリーンショット、フォーム入力、UI検証",
     iconPath: "/logos/services/playwright.svg",
     transportType: "STDIO",
     command: "${runtime:npx}",
@@ -184,9 +187,9 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "Google Analytics MCP",
+    name: "Google Analytics",
     description:
-      "Google アナリティクス MCP - プロパティ・レポート・指標へのアクセス",
+      "Google アナリティクス - プロパティ・レポート・指標へのアクセス",
     iconPath: "/logos/services/google-analytics.svg",
     transportType: "STDIO",
     command: "${runtime:uvx}",
@@ -196,7 +199,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "Firecrawl MCP",
+    name: "Firecrawl",
     description: "Firecrawl ウェブスクレイピング・クローリングサービス",
     iconPath: "/logos/services/firecrawl.svg",
     transportType: "STDIO",
@@ -222,7 +225,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "Figma MCP",
+    name: "Figma",
     description:
       "Figma 公式MCPサーバー - デザインファイルの読み取りとコード生成",
     iconPath: "/logos/services/figma.svg",
@@ -233,7 +236,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "Linear MCP",
+    name: "Linear",
     description:
       "Linear プロジェクト管理サービス - イシュー、プロジェクト、チーム情報へのアクセス",
     iconPath: "/logos/services/linear.svg",
@@ -244,7 +247,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "Notion MCP",
+    name: "Notion",
     description:
       "Notion ワークスペース統合 - ページ、データベース、コメントへのライブアクセス",
     iconPath: "/logos/services/notion.svg",
@@ -255,7 +258,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "GitHub MCP",
+    name: "GitHub",
     description:
       "GitHub 公式MCPサーバー - リポジトリ、イシュー、PR、ワークフローの管理",
     iconPath: "/logos/services/github_black.svg",
@@ -266,7 +269,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "GitLab MCP",
+    name: "GitLab",
     description: "GitLab 公式MCPサーバー - リポジトリ、イシュー、MR の操作",
     iconPath: "/logos/services/gitlab.svg",
     transportType: "STREAMABLE_HTTP",
@@ -276,8 +279,8 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "Slack MCP",
-    description: "Slack MCP - チャンネル・スレッド・メッセージの参照と投稿",
+    name: "Slack",
+    description: "Slack - チャンネル・スレッド・メッセージの参照と投稿",
     iconPath: "/logos/services/slack.svg",
     transportType: "STREAMABLE_HTTP",
     url: "https://mcp.slack.com/mcp",
@@ -286,9 +289,9 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "Money Forward MCP",
+    name: "Money Forward",
     description:
-      "マネーフォワード クラウド会計 MCP - 取引・口座・帳票など会計データへのアクセス",
+      "マネーフォワード クラウド会計 - 取引・口座・帳票など会計データへのアクセス",
     iconPath: "/logos/services/moneyforward.svg",
     transportType: "STREAMABLE_HTTP",
     // 公式URL（β提供中）。旧 mcp.moneyforward.com はDNS解決不能。
@@ -299,8 +302,8 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "Freee MCP",
-    description: "freee MCP - 会計・人事労務データの参照と操作",
+    name: "Freee",
+    description: "freee - 会計・人事労務データの参照と操作",
     iconPath: "/logos/services/freee.svg",
     transportType: "STREAMABLE_HTTP",
     url: "https://mcp.freee.co.jp/mcp",
@@ -309,7 +312,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "Atlassian MCP",
+    name: "Atlassian",
     description: "Atlassian 公式MCPサーバー - Jira、Confluenceとの統合アクセス",
     iconPath: "/logos/services/atlassian.svg",
     transportType: "STREAMABLE_HTTP",
@@ -319,8 +322,8 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "Asana MCP",
-    description: "Asana MCP - プロジェクト、タスク、コメントの管理",
+    name: "Asana",
+    description: "Asana - プロジェクト、タスク、コメントの管理",
     iconPath: "/logos/services/asana.svg",
     transportType: "STREAMABLE_HTTP",
     url: "https://mcp.asana.com/v2/mcp",
@@ -329,7 +332,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "Neon MCP",
+    name: "Neon",
     description:
       "Neon PostgreSQL データベースサービス - データベース管理とAI統合",
     iconPath: "/logos/services/neon.svg",
@@ -340,7 +343,7 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "Supabase MCP",
+    name: "Supabase",
     description:
       "Supabase プロジェクト管理 - データベース、認証、ストレージへのアクセス",
     iconPath: "/logos/services/supabase.svg",
@@ -351,9 +354,9 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "HubSpot MCP",
+    name: "HubSpot",
     description:
-      "HubSpot CRM MCP - コンタクト、会社、取引、マーケティング活動の管理",
+      "HubSpot CRM - コンタクト、会社、取引、マーケティング活動の管理",
     iconPath: "/logos/services/hubspot.svg",
     transportType: "STREAMABLE_HTTP",
     url: "https://mcp.hubspot.com",
@@ -362,9 +365,8 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "Box MCP",
-    description:
-      "Box MCP - ファイル検索、メタデータ参照、共有・コラボレーション",
+    name: "Box",
+    description: "Box - ファイル検索、メタデータ参照、共有・コラボレーション",
     iconPath: "/logos/services/box.svg",
     transportType: "STREAMABLE_HTTP",
     url: "https://mcp.box.com",
@@ -373,8 +375,8 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "Attio MCP",
-    description: "Attio CRM MCP - 人物、会社、リスト、パイプラインの管理",
+    name: "Attio",
+    description: "Attio CRM - 人物、会社、リスト、パイプラインの管理",
     iconPath: "/logos/services/attio.svg",
     transportType: "STREAMABLE_HTTP",
     url: "https://mcp.attio.com/mcp",
@@ -383,9 +385,9 @@ export const CATALOG_SEEDS: readonly CatalogSeedData[] = [
     isOfficial: true,
   },
   {
-    name: "Outline MCP",
+    name: OUTLINE_NAME,
     description:
-      "Outline ナレッジベース MCP - コレクション・ドキュメントの検索と参照",
+      "Outline ナレッジベース - コレクション・ドキュメントの検索と参照",
     iconPath: "/logos/services/outline.svg",
     transportType: "STREAMABLE_HTTP",
     url: "https://app.getoutline.com/mcp",

@@ -1,2 +1,2 @@
-export const FILESYSTEM_STDIO_NAME = "Filesystem STDIO";
-export const OUTLINE_MCP_NAME = "Outline MCP";
+export const FILESYSTEM_NAME = "Filesystem";
+export const OUTLINE_NAME = "Outline";

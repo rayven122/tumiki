@@ -40,7 +40,7 @@ describe("catalog.seed", () => {
       // 最初の呼び出しを検証
       expect(catalogRepository.upsert).toHaveBeenCalledWith(
         mockDb,
-        expect.objectContaining({ name: "Filesystem STDIO" }),
+        expect.objectContaining({ name: "Filesystem" }),
       );
     });
   });
