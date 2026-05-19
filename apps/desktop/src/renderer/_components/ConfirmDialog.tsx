@@ -7,6 +7,7 @@ type ConfirmDialogProps = {
   message: string;
   confirmLabel?: string;
   confirmDisabled?: boolean;
+  variant?: "default" | "danger";
   onConfirm: () => void;
   onCancel: () => void;
 };
@@ -17,6 +18,7 @@ export const ConfirmDialog = ({
   message,
   confirmLabel = "削除",
   confirmDisabled = false,
+  variant = "danger",
   onConfirm,
   onCancel,
 }: ConfirmDialogProps): JSX.Element | null => {
@@ -63,7 +65,11 @@ export const ConfirmDialog = ({
             type="button"
             onClick={onConfirm}
             disabled={confirmDisabled}
-            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className={
+              variant === "danger"
+                ? "rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                : "rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black"
+            }
           >
             {confirmLabel}
           </button>

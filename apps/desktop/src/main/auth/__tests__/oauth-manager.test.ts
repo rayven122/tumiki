@@ -423,7 +423,8 @@ describe("OAuthManager", () => {
       expect(mockRefreshToken).toHaveBeenCalledWith("refresh-token");
     });
 
-    test("有効期限切れトークンのリフレッシュに失敗した場合はトークンを削除する", async () => {
+    test("有効期限切れトークンのリフレッシュに失敗した場合はトークンを削除して認証失効を通知する", async () => {
+      const onAuthExpired = vi.fn();
       const mockToken = {
         id: 1,
         refreshToken: "encrypted:refresh-token",
@@ -435,10 +436,18 @@ describe("OAuthManager", () => {
       mockRefreshToken.mockRejectedValue(new Error("Refresh failed"));
       mockDbAuthToken.deleteMany.mockResolvedValue({ count: 1 });
 
-      const manager = createTestOAuthManager();
+      const manager = createOAuthManager(
+        {
+          issuer: "https://keycloak.example.com/realms/test",
+          clientId: "test-client",
+          redirectUri: "tumiki://auth/callback",
+        },
+        { onAuthExpired },
+      );
       await manager.initialize();
 
       expect(mockDbAuthToken.deleteMany).toHaveBeenCalledWith({});
+      expect(onAuthExpired).toHaveBeenCalledTimes(1);
     });
   });
 

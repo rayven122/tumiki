@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getAppStore } from "../shared/app-store";
 import * as logger from "../shared/utils/logger";
 import type { DesktopProfile } from "../../shared/types";
+import { PERSONAL_PROFILE_MANAGER_URL } from "../../shared/constants";
 
 const oidcConfigResponseSchema = z.object({
   issuer: z.string().url(),
@@ -12,7 +13,6 @@ const oidcConfigResponseSchema = z.object({
 export type OidcConfig = z.infer<typeof oidcConfigResponseSchema>;
 
 const FETCH_TIMEOUT_MS = 10_000;
-export const PERSONAL_PROFILE_MANAGER_URL = "https://www.tumiki.cloud";
 // electron-vite の define で build 時に埋め込まれる値。
 // 未設定ビルドでは Tumiki Cloud の既定 Keycloak client を使う。
 export const CLOUD_KEYCLOAK_ISSUER =

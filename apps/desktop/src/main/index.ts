@@ -26,11 +26,8 @@ import { setupOAuthIpc } from "./features/oauth/oauth.ipc";
 import type { McpOAuthManager } from "./features/oauth/oauth.service";
 import { findConnectionByIdWithServer } from "./features/mcp-server-list/mcp.repository";
 import { parseReauthDeepLink } from "./shared/app-protocol";
-import {
-  PERSONAL_PROFILE_MANAGER_URL,
-  setupManagerIpc,
-  resolveManagerOidcConfig,
-} from "./ipc/manager";
+import { setupManagerIpc, resolveManagerOidcConfig } from "./ipc/manager";
+import { PERSONAL_PROFILE_MANAGER_URL } from "../shared/constants";
 import { MCP_OAUTH_REDIRECT_URI } from "../shared/oauth/redirect-uri";
 import { setupProfileIpc } from "./ipc/profile";
 import { setupShellIpc } from "./ipc/shell";
@@ -44,6 +41,7 @@ import { getAppStore } from "./shared/app-store";
 import {
   activateOrganizationProfile,
   activatePersonalProfile,
+  restorePersonalProfileManagerUrlIfMissing,
   resolvePendingProfile,
 } from "./shared/profile-store";
 import { ServerStatus } from "@prisma/desktop-client";
@@ -508,6 +506,7 @@ if (appMode === "mcp-proxy") {
 
   let mainWindow: BrowserWindow | null = null;
   let mcpOAuthManager: McpOAuthManager | null = null;
+  let pendingSessionExpiredMessage: string | null = null;
   // OTLP レシーバーのサーバーインスタンス（will-quit で close するため外側スコープで保持）
   let otlpHttpServer: import("http").Server | null = null;
   let cancelTelemetryPruneSchedule: (() => void) | null = null;
@@ -535,8 +534,7 @@ if (appMode === "mcp-proxy") {
       },
       {
         onAuthExpired: () => {
-          mainWindow?.webContents.send(
-            "auth:sessionExpired",
+          sendSessionExpired(
             "認証セッションの有効期限が切れました。再度ログインしてください。",
           );
         },
@@ -565,6 +563,11 @@ if (appMode === "mcp-proxy") {
     mainWindow.on("closed", () => {
       mainWindow = null;
     });
+    if (pendingSessionExpiredMessage) {
+      const message = pendingSessionExpiredMessage;
+      pendingSessionExpiredMessage = null;
+      sendToWindow("auth:sessionExpired", message);
+    }
   };
 
   /**
@@ -579,6 +582,15 @@ if (appMode === "mcp-proxy") {
     } else {
       mainWindow.webContents.send(channel, ...args);
     }
+  };
+
+  const sendSessionExpired = (message: string): void => {
+    if (!mainWindow) {
+      if (pendingSessionExpiredMessage) return;
+      pendingSessionExpiredMessage = message;
+      return;
+    }
+    sendToWindow("auth:sessionExpired", message);
   };
 
   /**
@@ -838,6 +850,13 @@ if (appMode === "mcp-proxy") {
 
       // OAuthManager初期化: electron-store保存済みURLを優先、フォールバックで環境変数。
       // 個人利用でも tumiki.cloud の認証セッション維持に managerUrl を使う。
+      const repairedPersonalManagerUrl =
+        await restorePersonalProfileManagerUrlIfMissing(
+          PERSONAL_PROFILE_MANAGER_URL,
+        );
+      if (repairedPersonalManagerUrl) {
+        logger.info("Restored missing manager URL for personal profile");
+      }
       const savedManagerUrl = (await getAppStore()).get("managerUrl");
       if (savedManagerUrl) {
         try {
@@ -965,10 +984,7 @@ if (appMode === "mcp-proxy") {
             logger.error("Failed to re-initialize OAuth after resume", {
               error,
             });
-            mainWindow?.webContents.send(
-              "auth:sessionExpired",
-              "スリープ復帰後の認証状態の復元に失敗しました",
-            );
+            sendSessionExpired("スリープ復帰後の認証状態の復元に失敗しました");
           });
         }
       });

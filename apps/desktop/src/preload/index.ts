@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { ThemeMode } from "../main/shared/app-store";
-import type { AuthTokenResult } from "../types/auth";
+import type { AuthProfileResult, AuthTokenResult } from "../types/auth";
 import type {
   CatalogItem,
   LocalCatalogItem,
@@ -64,13 +64,17 @@ const api = {
 
   // 認証関連 API
   auth: {
-    getToken: (): Promise<AuthTokenResult | null> =>
+    getToken: (): Promise<AuthTokenResult> =>
       ipcRenderer.invoke("auth:getToken"),
+    getProfile: (): Promise<AuthProfileResult> =>
+      ipcRenderer.invoke("auth:getProfile"),
     isAuthenticated: (): Promise<boolean> =>
       ipcRenderer.invoke("auth:isAuthenticated"),
     login: (): Promise<void> => ipcRenderer.invoke("auth:login"),
     cancelLogin: (): Promise<void> => ipcRenderer.invoke("auth:cancelLogin"),
     logout: (): Promise<void> => ipcRenderer.invoke("auth:logout"),
+    logoutAndResetProfile: (): Promise<void> =>
+      ipcRenderer.invoke("auth:logoutAndResetProfile"),
     onCallbackSuccess: (callback: () => void): (() => void) => {
       // ipcRenderer.onのコールバック型に合わせるため、引数を受け取って無視する
       // eslint-disable-next-line @typescript-eslint/no-unused-vars -- IPC eventは型整合性のため受け取るが使用しない

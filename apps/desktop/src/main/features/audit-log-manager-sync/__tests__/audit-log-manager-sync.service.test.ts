@@ -35,6 +35,7 @@ import {
 import { postManagerApi } from "../../../shared/manager-api-client";
 import { getDb } from "../../../shared/db";
 import * as logger from "../../../shared/utils/logger";
+import { AuthRequiredError } from "../../../../shared/errors";
 
 describe("audit-log-manager-sync.service", () => {
   const mockFindMany = vi.fn();
@@ -183,8 +184,8 @@ describe("audit-log-manager-sync.service", () => {
     );
   });
 
-  test("Manager API clientがスキップした場合は同期状態を変更しない", async () => {
-    vi.mocked(postManagerApi).mockResolvedValue(null);
+  test("Manager API clientが認証エラーを返した場合はskipped: trueを返す", async () => {
+    vi.mocked(postManagerApi).mockRejectedValue(new AuthRequiredError());
 
     const result = await syncPendingAuditLogsToManager();
 

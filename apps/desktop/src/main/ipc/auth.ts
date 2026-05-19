@@ -1,33 +1,70 @@
 import { ipcMain } from "electron";
-import type { AuthToken } from "../../types/auth";
-import { getDb } from "../shared/db";
-import { getOAuthManager } from "../auth/manager-registry";
+import type { AuthProfileResult, AuthToken } from "../../types/auth";
+import { getOAuthManager, setOAuthManager } from "../auth/manager-registry";
 import { decryptToken } from "../utils/encryption";
+import { findValidAuthToken } from "../shared/auth-token-store";
+import { getDb } from "../shared/db";
 import * as logger from "../shared/utils/logger";
+import { AuthRequiredError } from "../../shared/errors";
+import { resetProfileState } from "../shared/profile-store";
 
-/**
- * DBから有効なトークンを取得（期限切れの場合は削除してnullを返す）
- */
-const findValidToken = async (): Promise<AuthToken | null> => {
-  const db = await getDb();
-  const token = await db.authToken.findFirst({
-    orderBy: { createdAt: "desc" },
-  });
-
-  if (!token) {
+// アカウント表示用のクレーム取得のみ。署名検証はOAuth認証フロー側で行う。
+const decodeJwtPayloadForDisplay = (
+  token: string,
+): Record<string, unknown> | null => {
+  const [, payload] = token.split(".");
+  if (!payload) return null;
+  try {
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(
+      normalized.length + ((4 - (normalized.length % 4)) % 4),
+      "=",
+    );
+    return JSON.parse(Buffer.from(padded, "base64").toString("utf8")) as Record<
+      string,
+      unknown
+    >;
+  } catch (error) {
+    logger.warn(
+      "Failed to decode JWT payload for auth profile display",
+      error instanceof Error ? { message: error.message } : { error },
+    );
     return null;
   }
+};
 
-  const now = new Date();
-  if (now > token.expiresAt) {
-    logger.debug("Token expired, deleting from database");
-    await db.authToken.deleteMany({
-      where: { expiresAt: { lte: now } },
-    });
-    return null;
+const getClaimString = (
+  claims: Record<string, unknown> | null,
+  key: string,
+): string | null => {
+  const value = claims?.[key];
+  return typeof value === "string" && value.trim() ? value : null;
+};
+
+const buildAuthProfile = async (
+  token: AuthToken,
+): Promise<AuthProfileResult> => {
+  const idToken = token.idToken ? await decryptToken(token.idToken) : null;
+  const claims = idToken ? decodeJwtPayloadForDisplay(idToken) : null;
+  return {
+    name: getClaimString(claims, "name"),
+    email: getClaimString(claims, "email"),
+    preferredUsername: getClaimString(claims, "preferred_username"),
+    subject: getClaimString(claims, "sub"),
+  };
+};
+
+const logoutAuth = async (): Promise<void> => {
+  const oauthManager = getOAuthManager();
+  if (!oauthManager) {
+    // OAuthManagerがなくてもローカルのトークンは削除する
+    const db = await getDb();
+    await db.authToken.deleteMany({});
+    logger.info("Auth tokens cleared (OAuth not configured)");
+    return;
   }
-
-  return token;
+  await oauthManager.logout();
+  logger.info("Auth logout completed");
 };
 
 /**
@@ -37,10 +74,10 @@ export const setupAuthIpc = (): void => {
   // 認証トークン取得
   ipcMain.handle("auth:getToken", async () => {
     try {
-      const token = await findValidToken();
+      const token = await findValidAuthToken();
 
       if (!token) {
-        return null;
+        throw new AuthRequiredError();
       }
 
       // 暗号化されたトークンを非同期で復号化（失敗時はエラーをスロー）
@@ -51,17 +88,43 @@ export const setupAuthIpc = (): void => {
         logger.warn(
           "Decrypted access token is empty, token data may be corrupted",
         );
-        return null;
+        throw new AuthRequiredError();
       }
 
       // idTokenはmainプロセス内（ログアウト時）でのみ使用し、レンダラーには返さない
       return { accessToken: decryptedAccessToken };
     } catch (error) {
+      if (error instanceof AuthRequiredError) {
+        throw error;
+      }
       logger.error(
         "Failed to get auth token",
         error instanceof Error ? error : { error },
       );
       throw new Error("認証トークンの取得に失敗しました", { cause: error });
+    }
+  });
+
+  ipcMain.handle("auth:getProfile", async () => {
+    try {
+      const token = await findValidAuthToken();
+
+      if (!token) {
+        throw new AuthRequiredError();
+      }
+
+      return await buildAuthProfile(token);
+    } catch (error) {
+      if (error instanceof AuthRequiredError) {
+        throw error;
+      }
+      logger.error(
+        "Failed to get auth profile",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error("認証プロファイルの取得に失敗しました", {
+        cause: error,
+      });
     }
   });
 
@@ -96,16 +159,7 @@ export const setupAuthIpc = (): void => {
   // ログアウト
   ipcMain.handle("auth:logout", async () => {
     try {
-      const oauthManager = getOAuthManager();
-      if (!oauthManager) {
-        // OAuthManagerがなくてもローカルのトークンは削除する
-        const db = await getDb();
-        await db.authToken.deleteMany({});
-        logger.info("Auth tokens cleared (OAuth not configured)");
-        return;
-      }
-      await oauthManager.logout();
-      logger.info("Auth logout completed");
+      await logoutAuth();
     } catch (error) {
       logger.error(
         "Failed to logout",
@@ -117,10 +171,27 @@ export const setupAuthIpc = (): void => {
     }
   });
 
+  ipcMain.handle("auth:logoutAndResetProfile", async () => {
+    try {
+      await resetProfileState();
+      await logoutAuth();
+      setOAuthManager(null);
+      logger.info("Auth logout and profile reset completed");
+    } catch (error) {
+      logger.error(
+        "Failed to logout and reset profile",
+        error instanceof Error ? error : { error },
+      );
+      throw error instanceof Error
+        ? error
+        : new Error("ログアウトに失敗しました");
+    }
+  });
+
   // 認証状態確認
   ipcMain.handle("auth:isAuthenticated", async () => {
     try {
-      const token = await findValidToken();
+      const token = await findValidAuthToken();
       return token !== null;
     } catch (error) {
       logger.error(

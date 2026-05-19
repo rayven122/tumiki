@@ -5,6 +5,7 @@ import { postManagerApi } from "../../shared/manager-api-client";
 import { getDb } from "../../shared/db";
 import { getAppStore } from "../../shared/app-store";
 import * as logger from "../../shared/utils/logger";
+import { AuthRequiredError } from "../../../shared/errors";
 
 const SYNC_INTERVAL_MS = 15 * 60 * 1000;
 const POST_TIMEOUT_MS = 10_000;
@@ -169,9 +170,6 @@ export const syncPendingAuditLogsToManager = (): Promise<SyncResult> => {
           signal: AbortSignal.timeout(POST_TIMEOUT_MS),
         },
       );
-      if (!response) {
-        return { attempted: 0, synced: 0, failed: 0, skipped: true };
-      }
 
       const now = new Date();
       const ids = selectedLogs.map((log) => log.id);
@@ -212,6 +210,10 @@ export const syncPendingAuditLogsToManager = (): Promise<SyncResult> => {
         skipped: false,
       };
     } catch (error) {
+      if (error instanceof AuthRequiredError) {
+        logger.info("Skipped audit log manager sync because auth is required");
+        return { attempted: 0, synced: 0, failed: 0, skipped: true };
+      }
       logger.warn("Failed to sync audit log to manager", {
         error: error instanceof Error ? error.message : String(error),
       });

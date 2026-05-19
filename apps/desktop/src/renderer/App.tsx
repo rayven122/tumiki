@@ -21,6 +21,11 @@ import { ProfileSetup } from "./pages/ProfileSetup";
 import { toast } from "./_components/Toast";
 import { TRACKING_TOOL_LABELS } from "./utils/ai-coding-telemetry-tools";
 import type { ConfigurableAiCodingTool } from "../main/types";
+import {
+  completeDesktopReloginError,
+  completeDesktopReloginSuccess,
+  startDesktopRelogin,
+} from "./utils/desktop-relogin";
 
 /** OTLP ポート不一致時の自動再書き込み通知をトースト表示 */
 const useAutoReapplyToast = (): void => {
@@ -48,8 +53,37 @@ const useAutoReapplyToast = (): void => {
   }, []);
 };
 
+const useSessionExpiredRelogin = (): void => {
+  useEffect(() => {
+    const cleanupSessionExpired = window.electronAPI.auth.onSessionExpired(
+      (message) => {
+        void startDesktopRelogin(message).catch((error) => {
+          const errorMessage =
+            error instanceof Error
+              ? error.message
+              : "再ログインの開始に失敗しました";
+          toast.error(errorMessage);
+        });
+      },
+    );
+    const cleanupSuccess = window.electronAPI.auth.onCallbackSuccess(() => {
+      completeDesktopReloginSuccess();
+    });
+    const cleanupError = window.electronAPI.auth.onCallbackError((message) => {
+      completeDesktopReloginError(message);
+    });
+
+    return () => {
+      cleanupSessionExpired();
+      cleanupSuccess();
+      cleanupError();
+    };
+  }, []);
+};
+
 export const App = (): JSX.Element => {
   useAutoReapplyToast();
+  useSessionExpiredRelogin();
   const [theme, setTheme] = useAtom(themeAtom);
   // electron-store からの復元が終わるまでは store への保存をスキップする
   const [hydrated, setHydrated] = useState(false);

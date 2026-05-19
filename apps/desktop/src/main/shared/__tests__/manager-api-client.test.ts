@@ -45,10 +45,11 @@ describe("manager-api-client", () => {
     );
   });
 
-  test("Manager URLが未設定ならリクエストしない", async () => {
-    const result = await requestManagerApi("/api/example");
+  test("Manager URLが未設定ならエラーにする", async () => {
+    await expect(requestManagerApi("/api/example")).rejects.toThrow(
+      "管理サーバーURLが設定されていません",
+    );
 
-    expect(result).toBeNull();
     expect(fetch).not.toHaveBeenCalled();
     expect(mockFindFirst).not.toHaveBeenCalled();
   });
@@ -109,7 +110,7 @@ describe("manager-api-client", () => {
     );
   });
 
-  test("復号したBearerが空ならリクエストしない", async () => {
+  test("復号したBearerが空ならエラーにする", async () => {
     storeData.set("managerUrl", "https://manager.example.com");
     mockFindFirst.mockResolvedValue({
       id: 1,
@@ -122,13 +123,14 @@ describe("manager-api-client", () => {
     });
     vi.mocked(decryptToken).mockResolvedValue("");
 
-    const result = await requestManagerApi("/api/example");
+    await expect(requestManagerApi("/api/example")).rejects.toThrow(
+      "認証セッションがありません。再ログインしてください。",
+    );
 
-    expect(result).toBeNull();
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  test("Bearer候補がnullなら復号せずリクエストしない", async () => {
+  test("Bearer候補がnullなら復号せずエラーにする", async () => {
     storeData.set("managerUrl", "https://manager.example.com");
     mockFindFirst.mockResolvedValue({
       id: 1,
@@ -140,14 +142,15 @@ describe("manager-api-client", () => {
       updatedAt: new Date(),
     });
 
-    const result = await requestManagerApi("/api/example");
+    await expect(requestManagerApi("/api/example")).rejects.toThrow(
+      "認証セッションがありません。再ログインしてください。",
+    );
 
-    expect(result).toBeNull();
     expect(decryptToken).not.toHaveBeenCalled();
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  test("期限切れトークンは削除してリクエストしない", async () => {
+  test("期限切れトークンは削除してエラーにする", async () => {
     storeData.set("managerUrl", "https://manager.example.com");
     mockFindFirst.mockResolvedValue({
       id: 1,
@@ -159,9 +162,10 @@ describe("manager-api-client", () => {
       updatedAt: new Date(),
     });
 
-    const result = await requestManagerApi("/api/example");
+    await expect(requestManagerApi("/api/example")).rejects.toThrow(
+      "認証セッションがありません。再ログインしてください。",
+    );
 
-    expect(result).toBeNull();
     expect(mockDeleteMany).toHaveBeenCalledWith({
       where: { expiresAt: { lte: expect.any(Date) } },
     });

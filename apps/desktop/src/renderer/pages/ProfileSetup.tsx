@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { themeAtom } from "../store/atoms";
 import { PROFILE_CHANGED_EVENT } from "../../shared/events";
+import { PERSONAL_PROFILE_MANAGER_URL } from "../../shared/constants";
 
 type View = "choice" | "organization";
 
@@ -64,7 +65,13 @@ export const ProfileSetup = (): JSX.Element => {
     window.electronAPI.manager
       .getUrl()
       .then((url) => {
-        if (mountedRef.current && url) setManagerUrl(url);
+        if (
+          mountedRef.current &&
+          url &&
+          (!isOrganizationChange || url !== PERSONAL_PROFILE_MANAGER_URL)
+        ) {
+          setManagerUrl(url);
+        }
       })
       .catch(() => {
         if (mountedRef.current) {
@@ -141,7 +148,11 @@ export const ProfileSetup = (): JSX.Element => {
       setIsWaitingForCallback(true);
     } catch (err) {
       try {
-        await window.electronAPI.profile.cancelPendingSetup();
+        if (isOrganizationChange) {
+          await window.electronAPI.profile.cancelOrganizationChange();
+        } else {
+          await window.electronAPI.profile.cancelPendingSetup();
+        }
       } catch {
         // 元のログイン失敗を優先して表示する。再試行時は manager.connect で状態を上書きする。
       }
