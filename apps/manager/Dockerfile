@@ -22,7 +22,6 @@ WORKDIR /app
 # Stage 2: Build
 # ========================================
 FROM base AS build
-ARG NPM_CONFIG_REGISTRY
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY patches ./patches
@@ -49,9 +48,7 @@ COPY .env.example apps/manager/.env
 ENV CI=true
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-  pnpm install --frozen-lockfile --prod=false --ignore-scripts
-
-RUN pnpm --filter @tumiki/db db:generate
+  pnpm install --frozen-lockfile --prod=false
 
 # manager 依存パッケージのみを順序解決してビルド
 RUN pnpm turbo run build --filter=@tumiki/manager^...
@@ -70,7 +67,6 @@ RUN NEXT_PUBLIC_TUMIKI_EDITION="${NEXT_PUBLIC_TUMIKI_EDITION}" \
 # Stage 3: Production
 # ========================================
 FROM node:24-alpine AS production
-ARG NPM_CONFIG_REGISTRY
 
 # dumb-init: シグナル伝播、wget: ヘルスチェック
 RUN apk add --no-cache dumb-init wget
